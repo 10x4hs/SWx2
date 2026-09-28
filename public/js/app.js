@@ -11,6 +11,7 @@ import * as aiView from "./views/ai.js";
 import * as homeView from "./views/home.js";
 import * as diaryView from "./views/diary.js";
 import { mountAuth } from "./views/auth.js";
+import { scrambleIn } from "./fx.js";
 
 const app = $("#app");
 const ctx = {
@@ -70,32 +71,32 @@ const NAV = [
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 function renderShell() {
+  // 얇은 아이콘 줄 + 넓은 본문. 한 화면에는 그 화면의 주인공만.
   app.innerHTML = `
     <div class="shell">
-      <aside class="side glass" aria-label="사이드바">
-        <div class="brand">${logo()}<b>Study Trio</b></div>
-        <button class="search-btn" type="button" id="open-palette">${icon.search(16)}<span>검색 · 명령</span><kbd>${isMac ? "⌘" : "Ctrl"} K</kbd></button>
-        <nav class="nav" aria-label="메뉴">
-          ${NAV.map((n) => `<a href="${n.hash}" data-nav="${n.key}">${n.icon()}<span>${n.label}</span></a>`).join("")}
+      <aside class="rail glass" aria-label="메뉴">
+        <a class="rail-brand" href="#/" aria-label="Study Trio 홈">${logo(24)}</a>
+        <button class="rail-btn" type="button" id="open-palette" aria-label="검색 · 명령 (${isMac ? "⌘" : "Ctrl"} K)" data-tip="검색 ${isMac ? "⌘" : "Ctrl"}K">${icon.search(19)}</button>
+        <nav class="rail-nav">
+          ${NAV.map((n) => `<a class="rail-btn" href="${n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.label}">${n.icon(19)}</a>`).join("")}
         </nav>
-        <section class="side-sec" aria-label="최근 노트">
-          <div class="eyebrow"><span>최근 노트</span><button class="icon-btn sm" type="button" id="side-new-note" aria-label="새 노트">${icon.plus(14)}</button></div>
-          <div class="side-list" id="side-notes"></div>
-        </section>
-        <section class="side-sec" aria-label="태그">
-          <div class="eyebrow"><span>태그</span></div>
-          <div class="tagcloud" id="side-tags"></div>
-        </section>
-        <div class="side-foot">
-          <section class="timer" id="timer" aria-label="집중 타이머"></section>
-          <div class="me-row" id="me-row"></div>
-          <p class="credit">배경: Golden Gate above the fog · Frank Schulenburg, CC BY-SA 3.0</p>
+        <div class="rail-foot">
+          <button class="rail-btn" type="button" id="timer-btn" aria-label="집중 타이머" data-tip="집중 타이머" aria-expanded="false"><span id="timer-mini">${icon.reset(19)}</span></button>
+          <div id="me-row"></div>
         </div>
       </aside>
+      <section class="timer-pop glass" id="timer" aria-label="집중 타이머" hidden></section>
       <main class="main glass" id="main" tabindex="-1"></main>
     </div>`;
   $("#open-palette").addEventListener("click", openPalette);
-  $("#side-new-note").addEventListener("click", () => notesView.createNote(ctx, ""));
+  $("#timer-btn").addEventListener("click", () => {
+    const pop = $("#timer"), open = pop.hidden;
+    pop.hidden = !open; $("#timer-btn").setAttribute("aria-expanded", String(open));
+  });
+  document.addEventListener("click", (e) => {
+    const pop = $("#timer");
+    if (pop && !pop.hidden && !e.target.closest("#timer, #timer-btn")) { pop.hidden = true; $("#timer-btn")?.setAttribute("aria-expanded", "false"); }
+  });
   renderMeRow();
   renderTimer();
 }
@@ -104,11 +105,11 @@ function renderMeRow() {
   const el = $("#me-row");
   if (!el || !ctx.me) return;
   const dark = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
+  el.className = "rail-me";
   el.innerHTML = `
-    <span class="av" style="--c:${esc(ctx.me.color)}">${esc(initial(ctx.me.display_name))}</span>
-    <div class="who"><b>${esc(ctx.me.display_name)}</b><span>@${esc(ctx.me.username)}</span></div>
-    <button class="icon-btn sm" type="button" id="theme-btn" aria-label="${dark ? "밝은 테마" : "어두운 테마"}">${dark ? icon.sun(16) : icon.moon(16)}</button>
-    <button class="icon-btn sm" type="button" id="logout-btn" aria-label="로그아웃">${icon.logout(16)}</button>`;
+    <button class="rail-btn" type="button" id="theme-btn" aria-label="${dark ? "밝은 테마" : "어두운 테마"}" data-tip="${dark ? "밝게" : "어둡게"}">${dark ? icon.sun(18) : icon.moon(18)}</button>
+    <button class="rail-btn" type="button" id="logout-btn" aria-label="로그아웃" data-tip="로그아웃 · ${esc(ctx.me.username)}">${icon.logout(18)}</button>
+    <span class="av" style="--c:${esc(ctx.me.color)}" title="${esc(ctx.me.display_name)}">${esc(initial(ctx.me.display_name))}</span>`;
   $("#theme-btn").addEventListener("click", () => {
     const next = dark ? "light" : "dark";
     document.documentElement.dataset.theme = next;
@@ -166,6 +167,7 @@ function route() {
   main.scrollTop = 0;
   lastView = r.view;
   cleanup = VIEWS[r.view].mount(host, ctx, r) || null;
+  requestAnimationFrame(() => scrambleIn(host));
 }
 window.addEventListener("hashchange", route);
 
@@ -284,6 +286,8 @@ const timer = {
     el.textContent = t;
     bar.style.width = `${(1 - this.left / this.total) * 100}%`;
     document.title = this.running ? `${t} · 집중 중` : "Study Trio";
+    const mini = $("#timer-mini");
+    if (mini) { mini.classList.toggle("on", this.running); if (this.running) mini.textContent = t; else if (!mini.querySelector("svg")) mini.innerHTML = icon.reset(19); }
   },
 };
 function renderTimer() {

@@ -477,7 +477,7 @@ on("DELETE", "/notes/:id", async ({ env, user, params }) => {
 
 on("GET", "/graph", async ({ env, user }) => {
   const [nodes, edges] = await env.DB.batch([
-    env.DB.prepare(`SELECT n.id, n.user_id, n.title FROM notes n WHERE ${VISIBLE}`).bind(user.id),
+    env.DB.prepare(`SELECT n.id, n.user_id, n.title, (SELECT group_concat(t.tag) FROM note_tags t WHERE t.note_id = n.id) AS tags FROM notes n WHERE ${VISIBLE}`).bind(user.id),
     env.DB.prepare(`SELECT l.src_id, l.dst_title FROM note_links l JOIN notes n ON n.id = l.src_id WHERE ${VISIBLE}`).bind(user.id),
   ]);
   return json({ nodes: nodes.results, edges: edges.results });

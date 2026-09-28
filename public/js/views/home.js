@@ -1,143 +1,135 @@
-// 홈: 내 링 차트 하나(누르면 그 기간 계획으로) + 오늘·올해 남은 시간 + 서로의 현황
+// 홈 — 한 화면에 3D 링 하나. 모서리에 작은 HUD, 아래에 사람 전환.
+// 링을 누르면 카메라가 다가가며 그 기간의 계획으로 들어가요. WebGL이 없으면 SVG 링으로 대신해요.
 import { api } from "../api.js";
-import { $, esc, ymd, today, periodKey, elapsed, dayScore, pct, pace, initial, toMin, nowTime, toast, DOW, MON_EN, hm, daysInYear, dayOfYear } from "../util.js";
-import { rings, bindRings, swatch, timebar, toneVar, hud, RING } from "../chart.js";
-import { icon } from "../icons.js";
+import { $, $$, esc, ymd, today, periodKey, elapsed, dayScore, pct, nowTime, toast, pad, daysInYear, dayOfYear, initial } from "../util.js";
+import { rings as svgRings, bindRings, toneVar, RING } from "../chart.js";
+import { scramble } from "../fx.js";
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
+const cssVar = (el, name) => getComputedStyle(el).getPropertyValue(name).trim();
+const resolve = (el, v) => { const m = /^var\((--[\w-]+)\)$/.exec(v || ""); return m ? cssVar(el, m[1]) : v; };
 
 export function mount(root, ctx) {
   const t = today();
   const K = { year: periodKey("year", t), month: periodKey("month", t), week: periodKey("week", t), day: periodKey("day", t) };
-  const HREF = { year: "#/plans/year", month: "#/plans/month", week: "#/plans/week", day: "#/today" };
   const left = daysInYear(t.getFullYear()) - dayOfYear(t);
+  const HREF = { year: "#/plans/year", month: "#/plans/month", week: "#/plans/week", day: "#/today" };
+  const S = { who: ctx.me.id, data: null, three: null, hover: null };
 
   root.innerHTML = `
-    <div class="view home">
-      <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
-      <header class="vhead">
-        <div class="title">
-          <span class="eyebrow">${MON_EN[t.getMonth()].slice(0, 3)} ${t.getDate()} · ${DOW[t.getDay()]}요일 · ${K.week.slice(7)}</span>
-          <h1 class="home-hi"><span class="serif">${greet(new Date().getHours())},</span> ${esc(ctx.me.display_name)}</h1>
+    <div class="stage" id="stage">
+      <div class="stage-gl" id="gl"></div>
+      <div class="hud-layer">
+        <div class="hud-tl">
+          <span class="eyebrow">Study Trio // ${t.getFullYear()}.${pad(t.getMonth() + 1)}.${pad(t.getDate())} · ${K.week.slice(7)}</span>
+          <h1 class="stage-hi" id="hi"><span class="serif">${greet(new Date().getHours())},</span> <b></b></h1>
         </div>
-        <a class="btn" href="#/today">${icon.plus(15)}오늘 계획 세우기</a>
-      </header>
-      <section class="hero-chart" aria-label="내 진행 차트">
-        <span id="me-hud"></span>
-        <div class="hc-left">
-          <div class="hc-chart" id="me-chart"><div class="rings-skel"></div></div>
-          <div class="hc-time" id="me-time"></div>
+        <div class="hud-tr mono" id="clock"></div>
+        <div class="stage-center" aria-live="polite"><b id="score">–</b><span id="score-cap">TODAY SCORE</span></div>
+        <div class="hud-bl" id="legend"></div>
+        <div class="hud-bc" id="focus-line"></div>
+        <div class="hud-br">
+          <div class="who-switch" role="tablist" aria-label="누구의 현황을 볼까요">
+            ${ctx.users.map((u) => `<button type="button" role="tab" data-who="${u.id}" style="--c:${esc(u.color)}"><span class="av sm" style="--c:${esc(u.color)}">${esc(initial(u.display_name))}</span>${esc(u.username.toUpperCase())}</button>`).join("")}
+          </div>
         </div>
-        <div class="hc-side">
-          <div class="hc-legend" id="me-legend"></div>
-          <div class="hc-goals" id="me-goals"></div>
-          <p class="hc-hint">링이나 줄을 누르면 그 기간의 계획으로 들어가요 · 링의 홈은 지금까지 흘러간 시간이에요</p>
-        </div>
-      </section>
-      <section class="mates-sec" aria-labelledby="h-mates">
-        <div class="panel-head"><h2 class="h2" id="h-mates">서로의 현황</h2><span class="faint" style="font-size:13px">누르면 그 사람의 하루를 볼 수 있어요</span></div>
-        <div class="mates-row" id="mates"></div>
-      </section>
+      </div>
+      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
     </div>`;
-  bindRings(root, ctx.go);
 
+  const stage = $("#stage", root), gl = $("#gl", root);
   const rate = (rows, uid, key) => { const r = rows.find((x) => x.user_id === uid && x.period === key); return r && r.total ? { v: r.done / r.total, done: r.done, total: r.total } : { v: 0, done: 0, total: 0 }; };
-  const segs = (goals) => goals.map((g, i) => ({ tone: toneVar(g.color, i), done: !!g.done, title: g.text }));
 
-  function nowBlock(plans) {
-    const m = toMin(nowTime());
-    const timed = plans.filter((p) => p.start).sort((a, b) => toMin(a.start) - toMin(b.start));
-    const cur = timed.find((p) => toMin(p.start) <= m && m < toMin(p.start) + (p.mins || 30));
-    if (cur) return { tag: "지금", p: cur };
-    const next = timed.find((p) => toMin(p.start) > m && !p.done);
-    return next ? { tag: "다음", p: next } : null;
+  function info(key) {
+    const d = S.data; if (!d) return "";
+    return {
+      year: d.year.length ? `올해 목표 ${d.yDone}/${d.year.length} 이룸 · D-${left}` : `올해 목표가 없어요 · D-${left}`,
+      month: `이번 달 ${d.R.month.done}/${d.R.month.total} 완료 · 이달 ${pct(elapsed(K.month))}% 지남`,
+      week: `이번 주 ${d.R.week.done}/${d.R.week.total} 완료 · ${pct(elapsed(K.week))}% 지남`,
+      day: `오늘 ${d.sc.doneCount}/${d.sc.count} 실행 · 하루 ${pct(d.dayPassed)}% 지남`,
+    }[key];
+  }
+  function drawFocusLine() {
+    const mine = S.who === ctx.me.id, key = S.hover;
+    $("#focus-line", root).innerHTML = key
+      ? `<span class="fl-key">${RING[key].label}</span><span>${esc(info(key))}</span><span class="fl-go">${mine ? "눌러서 계획 →" : "눌러서 하루 보기 →"}</span>`
+      : `<span class="faint">${mine ? "링을 눌러 그 기간의 계획으로 들어가요" : "다른 사람의 링이에요 · 누르면 그 사람의 하루를 봐요"}</span>`;
   }
 
-  let first = true;
-  async function load() {
+  async function load(assemble) {
     try {
+      const u = ctx.user(S.who) || ctx.me;
       const now = new Date(), dayPassed = (now.getHours() * 60 + now.getMinutes()) / 1440;
-      const { rows } = await api.summary(Object.values(K));
-      const per = await Promise.all(ctx.users.map(async (u) => {
-        const [p, l] = await Promise.all([api.plans([K.day, K.year], u.id), api.logs(ymd(t), u.id)]);
-        return { u, day: p.plans.filter((x) => x.period === K.day), year: p.plans.filter((x) => x.period === K.year), logs: l.logs };
-      }));
-      const chartFor = (x, uid) => {
-        const s = dayScore(x.day, x.u.day_goal);
-        return {
-          s,
-          items: [
-            { key: "year", value: rate(rows, uid, K.year).v, time: elapsed(K.year), segments: segs(x.year), href: HREF.year, mark: `D-${left}`, title: `올해 목표 ${x.year.filter((g) => g.done).length}/${x.year.length} · 올해 ${left}일 남음` },
-            { key: "month", value: rate(rows, uid, K.month).v, time: elapsed(K.month), href: HREF.month, title: `이번 달 ${pct(rate(rows, uid, K.month).v)}% 완료` },
-            { key: "week", value: rate(rows, uid, K.week).v, time: elapsed(K.week), href: HREF.week, title: `이번 주 ${pct(rate(rows, uid, K.week).v)}% 완료` },
-            { key: "day", value: s.exec, time: dayPassed, href: HREF.day, title: `오늘 실행 ${pct(s.exec)}% · 지금 ${nowTime()}` },
-          ],
-        };
-      };
+      const [{ rows }, { plans }] = await Promise.all([api.summary([K.year, K.month, K.week, K.day]), api.plans([K.day, K.year], u.id)]);
+      const day = plans.filter((p) => p.period === K.day), year = plans.filter((p) => p.period === K.year);
+      const sc = dayScore(day, u.day_goal);
+      const R = { month: rate(rows, u.id, K.month), week: rate(rows, u.id, K.week) };
+      const yDone = year.filter((g) => g.done).length;
+      S.data = { u, day, year, sc, R, yDone, dayPassed };
 
-      // ---- me ----
-      const mine = per.find((x) => x.u.id === ctx.me.id) || { u: ctx.me, day: [], year: [], logs: [] };
-      const { s: sc, items } = chartFor(mine, ctx.me.id);
-      const size = Math.min(400, Math.max(280, Math.round(innerWidth * 0.28)));
-      $("#me-chart", root).innerHTML = rings(items, { size, stroke: Math.round(size * 0.05), gap: Math.round(size * 0.02), big: sc.score ?? "–", small: "오늘 점수", animate: first, marks: true, label: "올해·이번 달·이번 주·오늘" });
-      const done4 = [items[0], items[1], items[2], items[3]].reduce((n, x) => n + (x.segments ? (x.segments.length ? x.segments.filter((g) => g.done).length / x.segments.length : 0) : x.value), 0) / 4;
-      $("#me-hud", root).outerHTML = `<span id="me-hud">${hud({ tl: `${t.getFullYear()} · ${K.week.slice(7)}`, tr: `NOW ${nowTime()}`, bl: `D-${left}`, br: `ALL ${pct(done4)}%` })}</span>`;
-      $("#me-time", root).innerHTML =
-        timebar("오늘", dayPassed, `${nowTime()} · ${pct(dayPassed)}% 지남`) +
-        timebar("올해", elapsed(K.year), `D-${left} · ${pct(elapsed(K.year))}% 지남`);
+      $("#hi b", root).textContent = u.display_name;
+      scramble($("#score", root), String(sc.score ?? "–"));
+      $("#score-cap", root).textContent = S.who === ctx.me.id ? "TODAY SCORE" : `${u.username.toUpperCase()} · TODAY`;
+      $("#clock", root).innerHTML = `<span>NOW ${nowTime()}</span><span>DAY ${pct(dayPassed)}%</span><span>D-${left}</span>`;
+      $$("[data-who]", root).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.who === S.who)));
 
-      const goals = mine.day.filter((p) => !p.start), timed = mine.day.filter((p) => p.start);
-      const R = { month: rate(rows, ctx.me.id, K.month), week: rate(rows, ctx.me.id, K.week) };
-      const yDone = mine.year.filter((g) => g.done).length, yv = mine.year.length ? yDone / mine.year.length : 0;
-      const row = (key, v, sub, time, total) => {
-        const pc = pace(v, time, total);
-        return `<a class="lg-row" href="${HREF[key]}">
-          ${swatch(key)}
-          <span class="lg-name"><b>${RING[key].label}</b><span>${sub}</span></span>
-          <span class="lg-val">${pct(v)}<small>%</small></span>
-          <span class="chip ${pc.cls}">${pc.text}</span>
-          <span class="lg-go">${icon.right(16)}</span>
-        </a>`;
-      };
-      $("#me-legend", root).innerHTML = [
-        row("year", yv, mine.year.length ? `목표 ${yDone}/${mine.year.length} 이룸 · D-${left}` : "올해 목표를 세워 보세요", elapsed(K.year), mine.year.length),
-        row("month", R.month.v, R.month.total ? `${R.month.done}/${R.month.total} 완료 · 이달 ${pct(elapsed(K.month))}% 지남` : "이번 달 체크리스트가 비어 있어요", elapsed(K.month), R.month.total),
-        row("week", R.week.v, R.week.total ? `${R.week.done}/${R.week.total} 완료 · 이번 주 ${pct(elapsed(K.week))}% 지남` : "이번 주 체크리스트가 비어 있어요", elapsed(K.week), R.week.total),
-        row("day", sc.exec, mine.day.length ? `시간표 ${timed.filter((p) => p.done).length}/${timed.length} · 목표 ${goals.filter((p) => p.done).length}/${goals.length}` : "오늘 목표와 시간표를 적어 보세요", dayPassed, mine.day.length),
-      ].join("");
-      $("#me-goals", root).innerHTML = mine.year.length ? `
-        <span class="eyebrow">올해 목표 · 링의 바깥 칸</span>
-        <div class="goal-chips">${mine.year.map((g, i) => `<a class="goal-chip${g.done ? " done" : ""}" href="#/plans/year"><i style="background:${toneVar(g.color, i)}"></i>${esc(g.text)}</a>`).join("")}</div>` : "";
+      const items = [
+        { key: "year", value: year.length ? yDone / year.length : 0, time: elapsed(K.year), segments: year.map((g, i) => ({ tone: toneVar(g.color, i), done: !!g.done, title: g.text })) },
+        { key: "month", value: R.month.v, time: elapsed(K.month) },
+        { key: "week", value: R.week.v, time: elapsed(K.week) },
+        { key: "day", value: sc.exec, time: dayPassed },
+      ];
+      const target = (key) => (S.who === ctx.me.id ? HREF[key] : `#/u/${u.id}/today/${ymd(t)}`);
+      $("#legend", root).innerHTML = items.map((it) => `<a class="lg" href="${target(it.key)}" data-lg="${it.key}"><i style="background:${RING[it.key].tone}"></i><span>${RING[it.key].label}</span><b>${pct(it.value)}</b></a>`).join("");
 
-      // ---- mates ----
-      const others = per.filter((x) => x.u.id !== ctx.me.id);
-      $("#mates", root).innerHTML = others.length ? others.map((x) => {
-        const { u, logs, day } = x, { s, items: it } = chartFor(x, u.id);
-        it.forEach((i) => delete i.href);
-        const nb = nowBlock(day), last = logs[logs.length - 1];
-        const focus = logs.filter((l) => l.kind === "focus").reduce((n, l) => n + (l.mins || 0), 0);
-        return `<a class="mate-card" href="#/u/${u.id}/today/${ymd(t)}" style="--me:${esc(u.color)}">
-          <div class="mc-top"><span class="av" style="--c:${esc(u.color)}">${esc(initial(u.display_name))}</span><b>${esc(u.display_name)}</b><span class="faint">@${esc(u.username)}</span></div>
-          <div class="mc-body">
-            ${rings(it, { size: 156, stroke: 8, gap: 4, big: s.score ?? "–", small: "오늘", animate: first, soft: true, label: `${u.display_name}의 진행` })}
-            <dl class="mc-facts">
-              <div><dt>올해 목표</dt><dd>${x.year.length ? `${x.year.filter((g) => g.done).length}/${x.year.length}` : "–"}</dd></div>
-              <div><dt>이번 달</dt><dd>${pct(it[1].value)}%</dd></div>
-              <div><dt>이번 주</dt><dd>${pct(it[2].value)}%</dd></div>
-              <div><dt>오늘</dt><dd>${s.count ? `${s.doneCount}/${s.count}` : "–"}</dd></div>
-              <div><dt>집중</dt><dd>${focus ? hm(focus) : "–"}</dd></div>
-            </dl>
-          </div>
-          <div class="mc-now">${nb ? `<span class="chip ${nb.tag === "지금" ? "good" : ""}">${nb.tag} ${esc(nb.p.start)}</span><span>${esc(nb.p.text)}</span>` : `<span class="faint">${day.length ? "오늘 시간표를 다 지나왔어요" : "아직 오늘 계획이 없어요"}</span>`}</div>
-          ${last ? `<div class="mc-log"><time>${esc(last.at)}</time>${esc(last.text)}</div>` : ""}
-        </a>`;
-      }).join("") : `<p class="empty">다른 멤버가 아직 없어요.</p>`;
-      first = false;
+      if (S.three) {
+        S.three.set(items.map((it) => ({
+          key: it.key, value: it.value, time: it.time, n: RING[it.key].segs,
+          color: resolve(stage, RING[it.key].tone),
+          segments: it.segments?.length ? it.segments.map((sg) => ({ color: resolve(stage, sg.tone), done: sg.done })) : null,
+        })), { assemble });
+      } else {
+        gl.innerHTML = `<div class="svg-fallback">${svgRings(items.map((it) => ({ ...it, href: target(it.key), mark: it.key === "year" ? `D-${left}` : null })), { size: 440, stroke: 22, gap: 9, marks: true, animate: assemble })}</div>`;
+      }
+      drawFocusLine();
     } catch (e) { toast(e.message, "err"); }
   }
-  load();
-  const tick = setInterval(load, 60_000);
-  const onChanged = () => load();
+
+  function applyTheme() {
+    if (!S.three) return;
+    S.three.theme({ fogColor: cssVar(stage, "--stage-fog"), dustColor: cssVar(stage, "--stage-dust"), stageColor: cssVar(stage, "--stage-line"), glassColor: cssVar(stage, "--stage-glass"), glassOpacity: parseFloat(cssVar(stage, "--stage-glass-a")) || 0.16 });
+    if (S.data) load(false);
+  }
+
+  // WebGL 장면은 필요할 때만 불러와요
+  (async () => {
+    let ok = false;
+    try {
+      const mod = await import("../three/ring3d.js");
+      if (mod.supportsWebGL() && root.isConnected) {
+        S.three = mod.mountRing3D(gl, {
+          onHover: (key) => { S.hover = key; drawFocusLine(); $$("[data-lg]", root).forEach((a) => a.classList.toggle("on", a.dataset.lg === key)); },
+          onPick: (key) => ctx.go(S.who === ctx.me.id ? HREF[key] : `#/u/${S.who}/today/${ymd(t)}`),
+        });
+        ok = true;
+      }
+    } catch (e) { console.warn("3D 장면을 불러오지 못해 평면 차트로 보여줘요", e); }
+    if (!ok) bindRings(root, ctx.go);
+    applyTheme();
+    load(true);
+  })();
+
+  root.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-who]");
+    if (b && b.dataset.who !== S.who) { S.who = b.dataset.who; S.hover = null; load(true); }
+  });
+  root.addEventListener("mouseover", (e) => { const a = e.target.closest("[data-lg]"); if (a && a.dataset.lg !== S.hover) { S.hover = a.dataset.lg; drawFocusLine(); } });
+
+  const mo = new MutationObserver(applyTheme);
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  const mq = matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener("change", applyTheme);
+  const tick = setInterval(() => load(false), 60_000);
+  const onChanged = () => load(false);
   window.addEventListener("trio:changed", onChanged);
-  return () => { clearInterval(tick); window.removeEventListener("trio:changed", onChanged); };
+  return () => { clearInterval(tick); mo.disconnect(); mq.removeEventListener("change", applyTheme); window.removeEventListener("trio:changed", onChanged); S.three?.destroy(); S.three = null; };
 }

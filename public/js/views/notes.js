@@ -66,7 +66,9 @@ export function mount(root, ctx, r) {
   function drawList() {
     const q = S.filter.toLowerCase();
     const list = S.notes.filter((n) => !q || n.title.toLowerCase().includes(q) || (n.snippet || "").toLowerCase().includes(q));
-    $("#tagbar", root).innerHTML = S.tag ? `<span class="row" style="gap:6px"><span class="tag" aria-pressed="true">#${esc(S.tag)}</span><a class="linkbtn faint" href="#/notes" style="font-size:12px">태그 해제</a></span>` : "";
+    $("#tagbar", root).innerHTML = S.tag
+      ? `<span class="row" style="gap:6px"><span class="tag" aria-pressed="true">#${esc(S.tag)}</span><a class="linkbtn faint" href="#/notes" style="font-size:12px">태그 해제</a></span>`
+      : `<div class="tagcloud" style="padding:0">${(S.allTags || []).slice(0, 12).map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t.tag)}">#${esc(t.tag)}</a>`).join("")}</div>`;
     $("#nl", root).innerHTML = list.length ? list.map((n) => {
       const u = ctx.user(n.user_id);
       return `<li><a href="#/notes/${n.id}" ${S.cur?.id === n.id ? 'aria-current="page"' : ""}>
@@ -76,7 +78,7 @@ export function mount(root, ctx, r) {
     }).join("") : `<li class="empty" style="margin:8px">${S.notes.length ? "맞는 노트가 없어요" : "첫 노트를 만들어 보세요"}</li>`;
   }
   async function loadList() {
-    try { S.notes = (await api.notes(S.tag)).notes; drawList(); } catch (e) { toast(e.message, "err"); }
+    try { const [{ notes }, { tags }] = await Promise.all([api.notes(S.tag), api.tags()]); S.notes = notes; S.allTags = tags; drawList(); } catch (e) { toast(e.message, "err"); }
   }
 
   // ---------- editor ----------

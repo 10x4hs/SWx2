@@ -17,7 +17,8 @@
 
 - 규칙서: [`DESIGN.md`](DESIGN.md) — 분위기, 색, 글꼴, 컴포넌트 규칙, 하지 말 것
 - 값: [`public/css/tokens.css`](public/css/tokens.css) — 색·반경·그림자·유리·링 톤을 여기서만 바꿔요
-- 차트: [`public/js/chart.js`](public/js/chart.js) — 점토 유리 링, HUD, 시간 막대
+- 3D: [`public/js/three/ring3d.js`](public/js/three/ring3d.js) (홈 3D 링), [`public/js/three/brain3d.js`](public/js/three/brain3d.js) (Second Brain 그래프)
+- 차트(대비책): [`public/js/chart.js`](public/js/chart.js) — WebGL이 없을 때 쓰는 SVG 점토 링
 - 참고: `docs/design-md/` (Apple · Vercel · Raycast DESIGN.md 원본), `docs/refs/web-design-source/` (영상 레퍼런스 장면)
 
 ## 로컬에서 실행 (가입 없이, 오프라인 가능)

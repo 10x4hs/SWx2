@@ -66,6 +66,9 @@
   --bead: #171717; --bead-ring: #FFFFFF;
   --lens-hi: rgba(255, 255, 255, .9); --lens-lo: rgba(255, 255, 255, .3); --lens-rim: rgba(0, 0, 0, .06);
   --orb: rgba(0, 0, 0, .10);
+  /* 3D stage (IGLOO fog) */
+  --stage-fog: #ECECEE; --stage-dust: #8A8A92; --stage-line: #FFFFFF; --stage-glass: #9A9AA2; --stage-glass-a: .22;
+  --stage-bg: radial-gradient(120% 90% at 50% 38%, #FAFAFB 0%, #EEEEF0 55%, #E2E2E5 100%);
 
   --good: #171717; --good-bg: #171717; --warn: #4D4D4D; --warn-bg: rgba(0, 0, 0, .07); --bad: #6B6B72; --bad-bg: transparent;
   --scrim: linear-gradient(180deg, rgba(245, 245, 247, .12), rgba(245, 245, 247, .5));
@@ -91,6 +94,8 @@
     --bead: #F4F4F6; --bead-ring: #0B0B0D;
     --lens-hi: rgba(255, 255, 255, .09); --lens-lo: rgba(255, 255, 255, .015); --lens-rim: rgba(255, 255, 255, .08);
     --orb: rgba(255, 255, 255, .06);
+    --stage-fog: #0B0B0D; --stage-dust: #5A5A62; --stage-line: #9A9AA2; --stage-glass: #FFFFFF; --stage-glass-a: .1;
+    --stage-bg: radial-gradient(120% 90% at 50% 38%, #18181B 0%, #0B0B0D 60%, #050506 100%);
     --good: #F4F4F6; --good-bg: #F4F4F6; --warn: #CDCDCD; --warn-bg: rgba(255, 255, 255, .09); --bad: #9C9C9D;
     --scrim: linear-gradient(180deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, .62));
   }
@@ -113,6 +118,8 @@
   --bead: #F4F4F6; --bead-ring: #0B0B0D;
   --lens-hi: rgba(255, 255, 255, .09); --lens-lo: rgba(255, 255, 255, .015); --lens-rim: rgba(255, 255, 255, .08);
   --orb: rgba(255, 255, 255, .06);
+  --stage-fog: #0B0B0D; --stage-dust: #5A5A62; --stage-line: #9A9AA2; --stage-glass: #FFFFFF; --stage-glass-a: .1;
+  --stage-bg: radial-gradient(120% 90% at 50% 38%, #18181B 0%, #0B0B0D 60%, #050506 100%);
   --good: #F4F4F6; --good-bg: #F4F4F6; --warn: #CDCDCD; --warn-bg: rgba(255, 255, 255, .09); --bad: #9C9C9D;
   --scrim: linear-gradient(180deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, .62));
 }
