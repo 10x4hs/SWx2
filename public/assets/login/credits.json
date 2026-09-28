@@ -1,0 +1,8 @@
+{
+  "note": "Login background images for private use. Style reference: https://bloom.ai/ (full-bleed looping cloud video /images/cloud_bg_compressed.mp4, not downloaded).",
+  "images": [
+    {"file": "clouds-golden-cumulus.jpg", "primary": true, "description": "Golden-hour cumulus clouds (closest match to bloom's hero)", "photographer": "Daniel Gregoire", "source": "https://unsplash.com/photos/hZe5eOlvqDk", "original": "https://images.unsplash.com/photo-1521942132694-5daae96ff62d", "downloaded": "https://images.unsplash.com/photo-1521942132694-5daae96ff62d?w=2560&q=80&fm=jpg&fit=max", "license": "Unsplash License", "size": "2560x1707"},
+    {"file": "clouds-dusk-storm.jpg", "description": "Dark storm clouds around a warm golden sky", "photographer": "Łukasz Łada", "source": "https://unsplash.com/photos/q7z-AUlHPaw", "original": "https://images.unsplash.com/photo-1493130952181-47e36589f64d", "downloaded": "https://images.unsplash.com/photo-1493130952181-47e36589f64d?w=2560&q=80&fm=jpg&fit=max", "license": "Unsplash License", "size": "2560x1557"},
+    {"file": "clouds-ember-teal.jpg", "description": "Golden-hour clouds, orange light with teal shadows", "photographer": "Jason W", "source": "https://unsplash.com/photos/NCb50hjk-pQ", "original": "https://images.unsplash.com/photo-1503494201477-5e04f651cfe5", "downloaded": "https://images.unsplash.com/photo-1503494201477-5e04f651cfe5?w=2560&q=80&fm=jpg&fit=max", "license": "Unsplash License", "size": "2560x1707"}
+  ]
+}

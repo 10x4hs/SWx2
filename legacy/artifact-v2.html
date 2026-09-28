@@ -1,0 +1,661 @@
+<title>스터디 트리오</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap">
+<style>
+:root {
+  --bg: #ECEEF3;
+  --surface: #FFFFFF;
+  --surface-2: #F4F5F8;
+  --ink: #15171C;
+  --ink-2: #5C6170;
+  --ink-3: #9A9FAD;
+  --line: #E2E5EB;
+  --track: #EBEDF1;
+  --card-border: transparent;
+  --shadow: 0 1px 2px rgba(22, 26, 40, .04), 0 10px 30px -12px rgba(22, 26, 40, .12);
+  --hero-bg: #16181F;
+  --hero-ink: #F3F4F7;
+  --hero-mute: #8C91A0;
+  --hero-future: #2B2F3A;
+  --hero-past: #5A6072;
+  --hero-today: #FFC53D;
+  --m1: #4F6BED;
+  --m2: #EE5157;
+  --m3: #0F9E8C;
+  --good: #16895A; --good-bg: #DFF3E9;
+  --warn: #B26F00; --warn-bg: #FBEFD6;
+  --bad: #D2383F;  --bad-bg: #FBE3E4;
+  --kr: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --num: "Bricolage Grotesque", "Gothic A1", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0D0F13; --surface: #161920; --surface-2: #1D2029; --ink: #ECEEF3; --ink-2: #A3A8B6; --ink-3: #6C7180;
+    --line: #262A34; --track: #242832; --card-border: #232731; --shadow: none;
+    --hero-bg: #1C1F29; --hero-ink: #F3F4F7; --hero-mute: #8C91A0; --hero-future: #2A2E3A; --hero-past: #596075; --hero-today: #FFC53D;
+    --m1: #7D93F7; --m2: #FF7B80; --m3: #3CCAB5;
+    --good: #4FD19A; --good-bg: #16302A; --warn: #F2B94B; --warn-bg: #33291A; --bad: #FF7B80; --bad-bg: #3A2024;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0D0F13; --surface: #161920; --surface-2: #1D2029; --ink: #ECEEF3; --ink-2: #A3A8B6; --ink-3: #6C7180;
+  --line: #262A34; --track: #242832; --card-border: #232731; --shadow: none;
+  --hero-bg: #1C1F29; --hero-ink: #F3F4F7; --hero-mute: #8C91A0; --hero-future: #2A2E3A; --hero-past: #596075; --hero-today: #FFC53D;
+  --m1: #7D93F7; --m2: #FF7B80; --m3: #3CCAB5;
+  --good: #4FD19A; --good-bg: #16302A; --warn: #F2B94B; --warn-bg: #33291A; --bad: #FF7B80; --bad-bg: #3A2024;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--kr); padding: 0 16px; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px; display: grid; gap: 20px; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--mc, var(--m1)); outline-offset: 2px; }
+.num { font-family: var(--num); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+
+/* ---------- header ---------- */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.logo { width: 46px; height: 32px; flex: none; }
+.logo circle { mix-blend-mode: multiply; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo circle { mix-blend-mode: screen; } }
+:root[data-theme="dark"] .logo circle { mix-blend-mode: screen; }
+h1 { margin: 0; font: 800 24px/1.15 var(--kr); letter-spacing: -.02em; }
+.date { margin: 2px 0 0; font-size: 13px; color: var(--ink-2); }
+.seg { display: flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--card-border); border-radius: 999px; box-shadow: var(--shadow); flex-wrap: wrap; }
+.seg button {
+  display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; cursor: pointer;
+  padding: 5px 14px 5px 5px; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--ink-2);
+}
+.seg button:hover { background: var(--surface-2); color: var(--ink); }
+.seg button[aria-selected="true"] { background: var(--mc); color: #fff; }
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: var(--mc); color: #fff; font: 800 13px/1 var(--kr);
+}
+.seg button[aria-selected="true"] .avatar { background: rgba(255, 255, 255, .24); }
+.subbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: -6px; }
+.status { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
+.status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+.status.live::before { background: var(--good); box-shadow: 0 0 0 3px var(--good-bg); }
+.status.err { color: var(--bad); }
+.status.err::before { background: var(--bad); }
+.ghost { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 500; color: var(--ink-2); cursor: pointer; }
+.ghost:hover { color: var(--ink); border-color: var(--ink-3); }
+.rename { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--surface); padding: 12px; border-radius: 14px; border: 1px solid var(--card-border); }
+.rename label { font-size: 13px; color: var(--ink-2); }
+
+/* ---------- cards ---------- */
+.card { background: var(--surface); border: 1px solid var(--card-border); border-radius: 22px; box-shadow: var(--shadow); padding: 24px; display: grid; gap: 20px; align-content: start; min-width: 0; }
+.eyebrow { display: block; font: 700 12px/1 var(--kr); letter-spacing: .04em; color: var(--ink-3); margin-bottom: 8px; }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.head h2 { margin: 0; font: 800 20px/1.25 var(--kr); letter-spacing: -.02em; text-wrap: balance; }
+.chip { font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
+.chip.good { background: var(--good-bg); color: var(--good); }
+.chip.warn { background: var(--warn-bg); color: var(--warn); }
+.chip.bad { background: var(--bad-bg); color: var(--bad); }
+.chip.idle { background: var(--surface-2); color: var(--ink-2); }
+
+.row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 820px) { .row2 { grid-template-columns: 1fr; } }
+
+/* ---------- chart 1: year hero ---------- */
+.hero { background: var(--hero-bg); color: var(--hero-ink); border-radius: 26px; padding: 28px; display: flex; flex-wrap: wrap; gap: 28px 40px; align-items: center; }
+.hero .eyebrow { color: var(--hero-mute); }
+.hero-num { font: 800 clamp(64px, 10vw, 112px)/.9 var(--num); letter-spacing: -.045em; margin: 0; font-variant-numeric: tabular-nums; }
+.hero-num small { font-size: .42em; letter-spacing: -.02em; margin-left: 4px; color: var(--hero-mute); }
+.hero-side { flex: 0 1 300px; display: grid; gap: 18px; }
+.hero-facts { display: grid; grid-template-columns: repeat(3, auto); gap: 6px 22px; justify-content: start; }
+.hero-facts b { display: block; font: 700 22px/1.1 var(--num); font-variant-numeric: tabular-nums; }
+.hero-facts span { font-size: 12px; color: var(--hero-mute); }
+.yr { flex: 1 1 440px; min-width: 0; display: grid; gap: 3px; }
+.yr-row { display: grid; grid-template-columns: 30px repeat(31, minmax(0, 1fr)); gap: 3px; align-items: center; }
+.yr-row > span { font: 700 10px/1 var(--kr); color: var(--hero-mute); }
+.yr-row.cur > span { color: var(--hero-today); }
+.yr-row i { aspect-ratio: 1; max-width: 100%; border-radius: 2.5px; background: var(--hero-future); }
+.yr-row i.p { background: var(--hero-past); }
+.yr-row i.t { background: var(--hero-today); box-shadow: 0 0 0 2px var(--hero-bg), 0 0 0 3.5px var(--hero-today); }
+.yr-row i.x { background: transparent; }
+.yr-legend { display: flex; gap: 14px; justify-content: flex-end; font-size: 11px; color: var(--hero-mute); margin-top: 6px; }
+.yr-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+/* ---------- donut cards ---------- */
+.viz { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.donut { width: 148px; height: 148px; flex: none; }
+.donut .trk { fill: none; stroke: var(--track); }
+.donut .val { fill: none; stroke: var(--mc); transition: stroke-dasharray .6s cubic-bezier(.2, .8, .2, 1); }
+.donut .tick { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+.donut .big { fill: var(--ink); font: 800 34px var(--num); letter-spacing: -.03em; }
+.donut .pc { font-size: 16px; fill: var(--ink-2); }
+.donut .sm { fill: var(--ink-2); font: 500 11px var(--kr); }
+.facts { flex: 1 1 170px; display: grid; gap: 12px; min-width: 0; }
+.fact-big { font: 800 28px/1 var(--num); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.fact-big span { font-size: 15px; color: var(--ink-3); font-weight: 600; }
+.fact-cap { font-size: 13px; color: var(--ink-2); margin-top: 4px; }
+.vs { display: grid; gap: 7px; }
+.vs div { display: grid; grid-template-columns: 34px 1fr 38px; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-2); }
+.vs .bar { height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+.vs .bar b { display: block; height: 100%; border-radius: 3px; background: var(--mc); }
+.vs .bar.time b { background: var(--ink-3); }
+.vs em { font: 700 12px var(--num); font-style: normal; text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week div { text-align: center; font-size: 12px; font-weight: 700; padding: 7px 0; border-radius: 10px; background: var(--surface-2); color: var(--ink-3); }
+.week .past { color: var(--ink-2); background: var(--track); }
+.week .today { background: var(--mc); color: #fff; }
+
+/* ---------- checklist ---------- */
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.list li { display: flex; align-items: center; gap: 12px; padding: 9px 8px; border-radius: 12px; }
+.list li:hover { background: var(--surface-2); }
+.list input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; margin: 0; flex: none; cursor: pointer;
+  width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface);
+  display: grid; place-items: center; transition: background .15s, border-color .15s;
+}
+.list input[type="checkbox"]:hover { border-color: var(--mc); }
+.list input[type="checkbox"]::after { content: ""; width: 6px; height: 10px; border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg) scale(0); transition: transform .15s; }
+.list input[type="checkbox"]:checked { background: var(--mc); border-color: var(--mc); }
+.list input[type="checkbox"]:checked::after { transform: translateY(-1px) rotate(45deg) scale(1); }
+.list label { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: pointer; font-weight: 500; }
+.list li.done label { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
+.list .when { font: 600 12px var(--num); color: var(--ink-2); background: var(--surface-2); padding: 3px 8px; border-radius: 6px; flex: none; font-variant-numeric: tabular-nums; }
+.list li:hover .when { background: var(--track); }
+.list .del { opacity: 0; background: none; border: 0; color: var(--ink-3); cursor: pointer; width: 28px; height: 28px; border-radius: 8px; font-size: 18px; line-height: 1; flex: none; }
+.list li:hover .del, .list .del:focus-visible { opacity: 1; }
+.list .del:hover { color: var(--bad); background: var(--bad-bg); }
+@media (hover: none) { .list .del { opacity: 1; } }
+.empty { margin: 0; padding: 14px; border: 1.5px dashed var(--line); border-radius: 12px; color: var(--ink-3); font-size: 14px; text-align: center; }
+.add { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.field, .add select, .rename input {
+  border: 1px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: 9px 12px; min-width: 0;
+}
+.field:focus, .add select:focus, .rename input:focus { outline: none; border-color: var(--mc); background: var(--surface); }
+.add .field.grow { flex: 1 1 180px; }
+.btn { border: 0; border-radius: 12px; padding: 9px 16px; background: var(--ink); color: var(--surface); font-weight: 700; cursor: pointer; white-space: nowrap; }
+.btn:hover { opacity: .88; }
+
+/* ---------- chart 4: today ---------- */
+.today-grid { display: grid; grid-template-columns: 280px minmax(0, 1fr) minmax(0, 1.2fr); gap: 28px; align-items: start; }
+@media (max-width: 1020px) { .today-grid { grid-template-columns: 260px minmax(0, 1fr); } .today-list { grid-column: 1 / -1; } }
+@media (max-width: 620px) { .today-grid { grid-template-columns: 1fr; } .clock { justify-self: center; } }
+.clock { width: 100%; max-width: 280px; aspect-ratio: 1; }
+.clock .face { fill: var(--surface-2); }
+.clock .ring-bg { fill: none; stroke: var(--track); }
+.clock .tk { stroke: var(--ink-3); stroke-width: 1; }
+.clock .tk.major { stroke: var(--ink-2); stroke-width: 2; }
+.clock .hl { fill: var(--ink-2); font: 700 11px var(--num); }
+.clock .w { stroke: var(--surface-2); stroke-width: 1.5; }
+.clock .w.done { fill: var(--mc); }
+.clock .w.plan { fill: var(--mc); fill-opacity: .28; }
+.clock .w.miss { fill: var(--bad); fill-opacity: .35; }
+.clock .hand { stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; }
+.clock .hub { fill: var(--surface); }
+.clock .hub-num { fill: var(--ink); font: 800 26px var(--num); letter-spacing: -.03em; }
+.clock .hub-cap { fill: var(--ink-3); font: 700 10px var(--kr); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.metrics { display: grid; gap: 16px; }
+.score { display: flex; align-items: baseline; gap: 8px; }
+.score b { font: 800 64px/.9 var(--num); letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.score span { font-size: 16px; color: var(--ink-3); font-weight: 700; }
+.metric { display: grid; gap: 7px; }
+.metric-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.metric-top b { font: 700 14px var(--num); color: var(--ink); font-variant-numeric: tabular-nums; }
+.metric .bar { height: 10px; border-radius: 5px; background: var(--track); overflow: hidden; }
+.metric .bar b { display: block; height: 100%; border-radius: 5px; background: var(--mc); }
+.metric .bar.soft b { background: color-mix(in srgb, var(--mc) 45%, var(--track)); }
+.formula { margin: 0; font-size: 12px; color: var(--ink-3); line-height: 1.6; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--ink-2); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-size: 12px; }
+.today-list { display: grid; gap: 14px; }
+
+/* ---------- team ---------- */
+.team-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 820px) { .team-grid { grid-template-columns: 1fr; } }
+.mate { border-radius: 18px; background: var(--surface-2); padding: 18px; display: grid; gap: 14px; border: 2px solid transparent; }
+.mate.me { border-color: var(--mc); background: var(--surface); }
+.mate-top { display: flex; align-items: center; gap: 10px; }
+.mate-top .avatar { width: 36px; height: 36px; font-size: 15px; }
+.mate-name { font-weight: 800; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mate-tag { font-size: 11px; font-weight: 700; color: var(--mc); }
+.mate-score { margin-left: auto; text-align: right; }
+.mate-score b { font: 800 30px/1 var(--num); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.mate-score span { display: block; font-size: 11px; color: var(--ink-3); font-weight: 700; }
+.mate .vs div { grid-template-columns: 44px 1fr 38px; }
+@media (prefers-reduced-motion: reduce) { .donut .val, .list input[type="checkbox"], .list input[type="checkbox"]::after { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 46 32" aria-hidden="true">
+        <circle cx="12" cy="16" r="11" style="fill: var(--m1)"/><circle cx="23" cy="16" r="11" style="fill: var(--m2)"/><circle cx="34" cy="16" r="11" style="fill: var(--m3)"/>
+      </svg>
+      <div>
+        <h1>스터디 트리오</h1>
+        <p class="date" id="today-label"></p>
+      </div>
+    </div>
+    <div class="seg" role="tablist" aria-label="누구의 계획을 볼까요" id="tabs"></div>
+  </header>
+  <div class="subbar">
+    <span class="status" id="status">불러오는 중…</span>
+    <button class="ghost" id="rename-toggle" type="button">이름 바꾸기</button>
+  </div>
+  <form class="rename" id="rename-form" hidden>
+    <label for="rename-input">새 이름</label>
+    <input id="rename-input" type="text" maxlength="12" required>
+    <button class="btn" type="submit">저장</button>
+    <button class="ghost" type="button" id="rename-cancel">취소</button>
+  </form>
+
+  <section class="hero" id="c-year" aria-label="올해 진행률"></section>
+  <div class="row2">
+    <section class="card" id="c-month" aria-labelledby="h-month"></section>
+    <section class="card" id="c-week" aria-labelledby="h-week"></section>
+  </div>
+  <section class="card" id="c-day" aria-labelledby="h-day"></section>
+  <section class="card" aria-labelledby="h-team">
+    <div class="head"><div><span class="eyebrow">함께 보기</span><h2 id="h-team">우리 셋, 지금 어디쯤</h2></div></div>
+    <div class="team-grid" id="team"></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const MEMBERS = ["m1", "m2", "m3"];
+  const DEFAULT_MEMBERS = { m1: { name: "멤버 1", goal: 240 }, m2: { name: "멤버 2", goal: 240 }, m3: { name: "멤버 3", goal: 240 } };
+  const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const pad = (n) => String(n).padStart(2, "0");
+  const clamp = (x) => Math.max(0, Math.min(1, x));
+  const pct = (x) => Math.round(x * 100);
+  const hm = (mins) => { const h = Math.floor(mins / 60), m = mins % 60; return h ? (m ? h + "시간 " + m + "분" : h + "시간") : m + "분"; };
+  const initial = (name) => (String(name).trim()[0] || "?").toUpperCase();
+
+  const ls = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+
+  // ---------- dates ----------
+  function isoWeek(d) {
+    const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const day = t.getUTCDay() || 7;
+    t.setUTCDate(t.getUTCDate() + 4 - day);
+    const y = t.getUTCFullYear();
+    return { y, w: Math.ceil(((t - Date.UTC(y, 0, 1)) / 864e5 + 1) / 7) };
+  }
+  function periods(now) {
+    const y = now.getFullYear(), m = now.getMonth(), wk = isoWeek(now);
+    return {
+      month: "M:" + y + "-" + pad(m + 1),
+      week: "W:" + wk.y + "-W" + pad(wk.w),
+      day: "D:" + y + "-" + pad(m + 1) + "-" + pad(now.getDate()),
+      weekNo: wk.w,
+      monday: new Date(y, m, now.getDate() - ((now.getDay() + 6) % 7)),
+    };
+  }
+  function timeFacts(now) {
+    const y = now.getFullYear(), m = now.getMonth(), p = periods(now);
+    const ys = new Date(y, 0, 1), ye = new Date(y + 1, 0, 1), ms = new Date(y, m, 1), me = new Date(y, m + 1, 1);
+    const we = new Date(p.monday.getFullYear(), p.monday.getMonth(), p.monday.getDate() + 7);
+    const yearDays = Math.round((ye - ys) / 864e5);
+    const dayOfYear = Math.round((new Date(y, m, now.getDate()) - ys) / 864e5) + 1;
+    let weekends = 0;
+    for (let d = new Date(y, m, now.getDate() + 1); d < ye; d.setDate(d.getDate() + 1)) if (d.getDay() === 6) weekends++;
+    return {
+      ...p, yearDays, dayOfYear, daysLeft: yearDays - dayOfYear, weekends,
+      year: (now - ys) / (ye - ys), month: (now - ms) / (me - ms), week: (now - p.monday) / (we - p.monday),
+      minutesNow: now.getHours() * 60 + now.getMinutes(),
+    };
+  }
+
+  // ---------- state & store ----------
+  const state = {
+    members: structuredClone(DEFAULT_MEMBERS),
+    tasks: [],
+    active: MEMBERS.includes(ls.get("trio-active")) ? ls.get("trio-active") : "m1",
+    mode: "loading",
+    now: new Date(),
+  };
+  let db = null, unsubTasks = null, subscribedDay = null;
+
+  const LOCAL_KEY = "trio-local-v1";
+  function loadLocal() {
+    const saved = ls.get(LOCAL_KEY);
+    if (saved) { state.members = { ...state.members, ...saved.members }; state.tasks = saved.tasks || []; }
+  }
+  function saveLocal() { ls.set(LOCAL_KEY, { members: state.members, tasks: state.tasks }); }
+
+  function setStatus(text, kind) { const el = $("#status"); el.textContent = text; el.className = "status" + (kind ? " " + kind : ""); }
+  function reportWriteError(e) {
+    setStatus(e && e.code === "quota_exceeded"
+      ? "저장 공간이 가득 찼어요. 지난 항목 몇 개를 지운 뒤 다시 추가해 주세요."
+      : "저장하지 못했어요. 이 페이지에 참여자 이상 권한이 있는지 확인해 주세요.", "err");
+  }
+
+  function subscribeTasks() {
+    if (!db) return;
+    const p = periods(state.now);
+    if (subscribedDay === p.day) return;
+    subscribedDay = p.day;
+    if (unsubTasks) unsubTasks();
+    unsubTasks = db.collection("tasks").where("period", "in", [p.month, p.week, p.day]).onSnapshot(
+      (snap) => { state.tasks = snap.docs.map((d) => ({ id: d.id, ...d.data() })); render(); },
+      () => setStatus("연결이 끊겼어요. 페이지를 새로고침해 주세요.", "err")
+    );
+  }
+
+  const store = {
+    async add(t) {
+      if (state.mode === "db") { try { await db.collection("tasks").add(t); } catch (e) { reportWriteError(e); } }
+      else { state.tasks.push({ id: "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ...t }); saveLocal(); render(); }
+    },
+    async toggle(id, done) {
+      if (state.mode === "db") { try { await db.doc("tasks/" + id).update({ done }); } catch (e) { reportWriteError(e); } }
+      else { const t = state.tasks.find((x) => x.id === id); if (t) t.done = done; saveLocal(); render(); }
+    },
+    async remove(id) {
+      if (state.mode === "db") { try { await db.doc("tasks/" + id).delete(); } catch (e) { reportWriteError(e); } }
+      else { state.tasks = state.tasks.filter((x) => x.id !== id); saveLocal(); render(); }
+    },
+    async member(id, patch) {
+      const next = { ...state.members[id], ...patch };
+      if (state.mode === "db") { try { await db.doc("members/" + id).set(next); } catch (e) { reportWriteError(e); } }
+      else { state.members[id] = next; saveLocal(); render(); }
+    },
+  };
+
+  async function connect() {
+    const hasHost = window.claude && typeof window.claude.use === "function";
+    db = hasHost ? await window.claude.use("db").catch(() => null) : null;
+    if (!db) {
+      state.mode = "local";
+      loadLocal();
+      setStatus("이 브라우저에만 저장돼요. 셋이 함께 보려면 공유 링크에서 열어 주세요.");
+      render();
+      return;
+    }
+    state.mode = "db";
+    setStatus("실시간 공유 중 · 체크하면 셋 모두에게 바로 반영돼요", "live");
+    db.collection("members").onSnapshot((snap) => {
+      const next = structuredClone(DEFAULT_MEMBERS);
+      snap.docs.forEach((d) => { if (next[d.id]) Object.assign(next[d.id], d.data()); });
+      state.members = next;
+      render();
+    }, () => {});
+    subscribeTasks();
+  }
+
+  // ---------- metrics ----------
+  function tasksFor(member, scope, p) {
+    return state.tasks
+      .filter((t) => t.member === member && t.scope === scope && t.period === p[scope])
+      .sort((a, b) => scope === "day" ? (a.start || "99").localeCompare(b.start || "99") : (a.created || 0) - (b.created || 0));
+  }
+  const completion = (list) => list.length ? list.filter((t) => t.done).length / list.length : 0;
+  function dayScore(member, p) {
+    const list = tasksFor(member, "day", p);
+    const goal = Math.max(30, Number(state.members[member].goal) || 240);
+    const planned = list.reduce((s, t) => s + (Number(t.mins) || 0), 0);
+    const doneMins = list.filter((t) => t.done).reduce((s, t) => s + (Number(t.mins) || 0), 0);
+    const plan = clamp(planned / goal), exec = planned ? doneMins / planned : 0;
+    return { list, goal, planned, doneMins, plan, exec, score: Math.round(40 * plan + 60 * exec) };
+  }
+  function pace(done, elapsed, total) {
+    if (!total) return { cls: "idle", text: "목표를 추가해 보세요" };
+    if (done >= 1) return { cls: "good", text: "모두 완료" };
+    const diff = Math.round((done - elapsed) * 100);
+    if (diff >= 0) return { cls: "good", text: "시간보다 앞섬 +" + diff + "%p" };
+    if (diff > -15) return { cls: "warn", text: "조금 뒤처짐 " + diff + "%p" };
+    return { cls: "bad", text: "많이 뒤처짐 " + diff + "%p" };
+  }
+  const startMin = (t) => { const [h, m] = String(t.start || "0:0").split(":").map(Number); return h * 60 + m; };
+
+  // ---------- drawing ----------
+  function donut({ value, elapsed, label, sub }) {
+    const c = 74, R = 60, C = 2 * Math.PI * R, v = clamp(value);
+    const arc = v > 0 ? `<circle class="val" cx="${c}" cy="${c}" r="${R}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${(C * v).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 ${c} ${c})"/>` : "";
+    const a = (clamp(elapsed) * 360 - 90) * Math.PI / 180;
+    const tick = `<line class="tick" x1="${(c + (R - 11) * Math.cos(a)).toFixed(2)}" y1="${(c + (R - 11) * Math.sin(a)).toFixed(2)}" x2="${(c + (R + 11) * Math.cos(a)).toFixed(2)}" y2="${(c + (R + 11) * Math.sin(a)).toFixed(2)}"/>`;
+    return `<svg class="donut" viewBox="0 0 148 148" role="img" aria-label="${esc(label)}">
+      <circle class="trk" cx="${c}" cy="${c}" r="${R}" stroke-width="14"/>${arc}${tick}
+      <text class="big" x="${c}" y="${c + 8}" text-anchor="middle">${pct(v)}<tspan class="pc">%</tspan></text>
+      <text class="sm" x="${c}" y="${c + 28}" text-anchor="middle">${esc(sub)}</text></svg>`;
+  }
+
+  // 동그란 생활계획표: 0시가 맨 위, 시계 방향
+  function clock(list, f, score, hasPlan) {
+    const c = 140, r0 = 42, r1 = 104;
+    const P = (r, deg) => { const a = (deg - 90) * Math.PI / 180; return [(c + r * Math.cos(a)).toFixed(2), (c + r * Math.sin(a)).toFixed(2)]; };
+    const sector = (d0, d1) => {
+      const large = d1 - d0 > 180 ? 1 : 0, [ax, ay] = P(r1, d0), [bx, by] = P(r1, d1), [cx, cy] = P(r0, d1), [dx, dy] = P(r0, d0);
+      return `M${ax} ${ay}A${r1} ${r1} 0 ${large} 1 ${bx} ${by}L${cx} ${cy}A${r0} ${r0} 0 ${large} 0 ${dx} ${dy}Z`;
+    };
+    let ticks = "", labels = "";
+    for (let h = 0; h < 24; h++) {
+      const major = h % 3 === 0, [x1, y1] = P(major ? 110 : 112, h * 15), [x2, y2] = P(117, h * 15);
+      ticks += `<line class="tk${major ? " major" : ""}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+      if (major) { const [lx, ly] = P(129, h * 15); labels += `<text class="hl" x="${lx}" y="${(+ly + 4).toFixed(2)}" text-anchor="middle">${h}</text>`; }
+    }
+    const wedges = list.map((t) => {
+      const s = startMin(t), e = Math.min(1440, s + (Number(t.mins) || 0));
+      if (e <= s) return "";
+      const cls = t.done ? "done" : e <= f.minutesNow ? "miss" : "plan";
+      return `<path class="w ${cls}" d="${sector(s / 4, Math.min(e / 4, s / 4 + 359.99))}"><title>${esc(t.start + " " + t.text)}</title></path>`;
+    }).join("");
+    const [hx, hy] = P(118, f.minutesNow / 4);
+    return `<svg class="clock" viewBox="0 0 280 280" role="img" aria-label="오늘 생활계획표. 오늘 점수 ${hasPlan ? score + "점" : "없음"}">
+      <circle class="face" cx="${c}" cy="${c}" r="138"/>
+      <circle class="ring-bg" cx="${c}" cy="${c}" r="${(r0 + r1) / 2}" stroke-width="${r1 - r0}"/>
+      ${ticks}${labels}${wedges}
+      <line class="hand" x1="${c}" y1="${c}" x2="${hx}" y2="${hy}"/>
+      <circle class="hub" cx="${c}" cy="${c}" r="${r0 - 4}"/>
+      <text class="hub-num" x="${c}" y="${c + 6}" text-anchor="middle">${hasPlan ? score : "–"}</text>
+      <text class="hub-cap" x="${c}" y="${c + 22}" text-anchor="middle">오늘 점수</text></svg>`;
+  }
+
+  function listHTML(scope, items, emptyText) {
+    if (!items.length) return `<p class="empty">${emptyText}</p>`;
+    return `<ul class="list">${items.map((t) => {
+      const when = scope === "day" && t.start
+        ? (() => { const e = startMin(t) + (Number(t.mins) || 0); return `<span class="when">${esc(t.start)}–${pad(Math.floor(e / 60) % 24)}:${pad(e % 60)}</span>`; })() : "";
+      return `<li class="${t.done ? "done" : ""}">
+        <input type="checkbox" id="t-${esc(t.id)}" data-id="${esc(t.id)}" ${t.done ? "checked" : ""}>
+        <label for="t-${esc(t.id)}">${esc(t.text)}</label>${when}
+        <button class="del" type="button" data-del="${esc(t.id)}" aria-label="삭제: ${esc(t.text)}">×</button>
+      </li>`;
+    }).join("")}</ul>`;
+  }
+  const addForm = (scope, placeholder, label) => `
+    <form class="add" data-scope="${scope}">
+      <input class="field grow" type="text" id="add-${scope}" name="text" maxlength="80" placeholder="${placeholder}" aria-label="${label}" required>
+      <button class="btn" type="submit">추가</button>
+    </form>`;
+
+  // ---------- render ----------
+  function render() {
+    // keep half-typed entries and focus when another member's change re-renders the page
+    const kept = {};
+    document.querySelectorAll("form.add input, form.add select").forEach((el) => { if (el.id && el.id !== "goal-input") kept[el.id] = el.value; });
+    const focusId = document.activeElement && document.activeElement.id;
+    draw();
+    Object.entries(kept).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+    if (focusId) { const el = document.getElementById(focusId); if (el) el.focus(); }
+  }
+
+  function draw() {
+    const now = state.now, f = timeFacts(now), me = state.active, M = state.members;
+    document.documentElement.style.setProperty("--mc", `var(--${me})`);
+
+    $("#today-label").textContent = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${DOW[now.getDay()]}요일 · ${f.weekNo}주차`;
+    $("#tabs").innerHTML = MEMBERS.map((id) =>
+      `<button role="tab" type="button" data-member="${id}" aria-selected="${id === me}" style="--mc: var(--${id})">
+        <span class="avatar">${esc(initial(M[id].name))}</span>${esc(M[id].name)}</button>`).join("");
+    $("#rename-toggle").textContent = `${M[me].name} 이름 바꾸기`;
+
+    // ---- chart 1: year ----
+    const y = now.getFullYear();
+    let rows = "";
+    for (let m = 0; m < 12; m++) {
+      const dim = new Date(y, m + 1, 0).getDate();
+      let cells = "";
+      for (let d = 1; d <= 31; d++) {
+        if (d > dim) { cells += `<i class="x"></i>`; continue; }
+        const cmp = m < now.getMonth() || (m === now.getMonth() && d < now.getDate()) ? "p" : (m === now.getMonth() && d === now.getDate()) ? "t" : "";
+        cells += `<i class="${cmp}"></i>`;
+      }
+      rows += `<div class="yr-row${m === now.getMonth() ? " cur" : ""}"><span>${m + 1}월</span>${cells}</div>`;
+    }
+    const [yi, yd] = (f.year * 100).toFixed(1).split(".");
+    $("#c-year").innerHTML = `
+      <div class="hero-side">
+        <div><span class="eyebrow">CHART 1 · ${y}년이 지나간 만큼</span>
+          <p class="hero-num">${yi}<small>.${yd}%</small></p></div>
+        <div class="hero-facts">
+          <div><b>${f.dayOfYear}</b><span>번째 날</span></div>
+          <div><b>${f.daysLeft}</b><span>남은 날</span></div>
+          <div><b>${f.weekends}</b><span>남은 주말</span></div>
+        </div>
+      </div>
+      <div class="yr" role="img" aria-label="${y}년 달력: ${f.dayOfYear}일째, ${f.daysLeft}일 남음">
+        ${rows}
+        <div class="yr-legend"><span><i style="background: var(--hero-past)"></i>지난 날</span><span><i style="background: var(--hero-today)"></i>오늘</span><span><i style="background: var(--hero-future)"></i>남은 날</span></div>
+      </div>`;
+
+    // ---- chart 2 & 3: month / week ----
+    const periodCard = (scope, el, eyebrow, title, elapsed, extra, placeholder) => {
+      const items = tasksFor(me, scope, f), rate = completion(items), done = items.filter((t) => t.done).length, pc = pace(rate, elapsed, items.length);
+      $(el).innerHTML = `
+        <div class="head"><div><span class="eyebrow">${eyebrow}</span><h2 id="h-${scope}">${title}</h2></div>
+          <span class="chip ${pc.cls}">${pc.text}</span></div>
+        <div class="viz">
+          ${donut({ value: rate, elapsed, label: `${title} 완료율 ${pct(rate)}%, 기간 ${pct(elapsed)}% 경과`, sub: "완료율" })}
+          <div class="facts">
+            <div><div class="fact-big">${done}<span> / ${items.length}개 완료</span></div>
+              <div class="fact-cap">남은 항목 ${items.length - done}개</div></div>
+            <div class="vs">
+              <div><span>완료</span><span class="bar"><b style="width:${(rate * 100).toFixed(1)}%"></b></span><em>${pct(rate)}%</em></div>
+              <div><span>시간</span><span class="bar time"><b style="width:${(elapsed * 100).toFixed(1)}%"></b></span><em>${pct(elapsed)}%</em></div>
+            </div>
+          </div>
+        </div>
+        ${extra}
+        ${listHTML(scope, items, `아직 ${scope === "month" ? "이번 달" : "이번 주"} 목표가 없어요`)}
+        ${addForm(scope, placeholder, title + " 항목 추가")}`;
+    };
+    periodCard("month", "#c-month", `CHART 2 · ${now.getMonth() + 1}월`, "이번 달 체크리스트", f.month, "", "예: 정보처리기사 기출 3회분");
+    const ti = (now.getDay() + 6) % 7;
+    const week = ["월", "화", "수", "목", "금", "토", "일"].map((d, i) => `<div class="${i < ti ? "past" : i === ti ? "today" : ""}">${d}</div>`).join("");
+    periodCard("week", "#c-week", `CHART 3 · ${f.weekNo}주차`, "이번 주 체크리스트", f.week, `<div class="week" aria-hidden="true">${week}</div>`, "예: 강의 3강까지 듣고 정리");
+
+    // ---- chart 4: today ----
+    const ds = dayScore(me, f), hasPlan = ds.list.length > 0;
+    const chip = !hasPlan ? { cls: "idle", text: "계획을 세워 보세요" } : ds.score >= 80 ? { cls: "good", text: "아주 잘하고 있어요" } : ds.score >= 50 ? { cls: "warn", text: "조금만 더" } : { cls: "bad", text: "다시 힘내요" };
+    const durOpts = [30, 60, 90, 120, 180].map((m) => `<option value="${m}" ${m === 60 ? "selected" : ""}>${hm(m)}</option>`).join("");
+    $("#c-day").innerHTML = `
+      <div class="head"><div><span class="eyebrow">CHART 4 · 오늘</span><h2 id="h-day">오늘 생활계획표</h2></div>
+        <span class="chip ${chip.cls}">${chip.text}</span></div>
+      <div class="today-grid">
+        <div style="display:grid; gap:12px; justify-items:center">
+          ${clock(ds.list, f, ds.score, hasPlan)}
+          <div class="legend"><span><i style="background: var(--mc)"></i>완료</span><span><i style="background: color-mix(in srgb, var(--mc) 28%, var(--surface))"></i>예정</span><span><i style="background: color-mix(in srgb, var(--bad) 40%, var(--surface))"></i>놓침</span></div>
+        </div>
+        <div class="metrics">
+          <div class="score"><b>${hasPlan ? ds.score : "–"}</b><span>/ 100점</span></div>
+          <div class="metric">
+            <div class="metric-top"><span>계획 세우기 · 목표 ${hm(ds.goal)} 중</span><b>${hm(ds.planned)} · ${pct(ds.plan)}%</b></div>
+            <div class="bar soft"><b style="width:${(ds.plan * 100).toFixed(1)}%"></b></div>
+          </div>
+          <div class="metric">
+            <div class="metric-top"><span>실행하기 · 세운 계획 중</span><b>${hm(ds.doneMins)} · ${pct(ds.exec)}%</b></div>
+            <div class="bar"><b style="width:${(ds.exec * 100).toFixed(1)}%"></b></div>
+          </div>
+          <p class="formula">오늘 점수 = 계획 세우기 × 40 + 실행하기 × 60<br>
+            <button class="linkbtn" type="button" id="goal-btn">하루 목표 시간 바꾸기</button></p>
+          <form class="add" id="goal-form" hidden>
+            <label for="goal-input" style="font-size:13px; color:var(--ink-2)">하루 목표(분)</label>
+            <input class="field" type="number" id="goal-input" min="30" max="960" step="30" value="${ds.goal}" style="width:96px">
+            <button class="btn" type="submit">저장</button>
+          </form>
+        </div>
+        <div class="today-list">
+          ${listHTML("day", ds.list, "오늘 계획이 없어요. 시간과 함께 추가해 보세요")}
+          <form class="add" data-scope="day">
+            <input class="field grow" type="text" id="add-day" name="text" maxlength="80" placeholder="예: 영단어 50개 암기" aria-label="오늘 계획 추가" required>
+            <input class="field" type="time" id="add-day-start" name="start" value="${pad(Math.min(23, now.getHours() + 1))}:00" aria-label="시작 시각" required>
+            <select id="add-day-mins" name="mins" aria-label="걸리는 시간">${durOpts}</select>
+            <button class="btn" type="submit">추가</button>
+          </form>
+        </div>
+      </div>`;
+
+    // ---- team ----
+    $("#team").innerHTML = MEMBERS.map((id) => {
+      const mo = completion(tasksFor(id, "month", f)), wk = completion(tasksFor(id, "week", f)), d = dayScore(id, f);
+      const bar = (lbl, v) => `<div><span>${lbl}</span><span class="bar"><b style="width:${(v * 100).toFixed(1)}%"></b></span><em>${pct(v)}%</em></div>`;
+      return `<div class="mate${id === me ? " me" : ""}" style="--mc: var(--${id})">
+        <div class="mate-top">
+          <span class="avatar">${esc(initial(M[id].name))}</span>
+          <div style="min-width:0"><div class="mate-name">${esc(M[id].name)}</div>${id === me ? `<div class="mate-tag">보는 중</div>` : ""}</div>
+          <div class="mate-score"><b>${d.list.length ? d.score : "–"}</b><span>오늘 점수</span></div>
+        </div>
+        <div class="vs">${bar("이번 달", mo)}${bar("이번 주", wk)}${bar("오늘 실행", d.exec)}</div>
+      </div>`;
+    }).join("");
+  }
+
+  // ---------- events ----------
+  document.addEventListener("click", (e) => {
+    const tab = e.target.closest("[data-member]");
+    if (tab) { state.active = tab.dataset.member; ls.set("trio-active", state.active); $("#rename-form").hidden = true; render(); return; }
+    const del = e.target.closest("[data-del]");
+    if (del) { store.remove(del.dataset.del); return; }
+    if (e.target.id === "goal-btn") { const g = $("#goal-form"); g.hidden = !g.hidden; if (!g.hidden) $("#goal-input").focus(); }
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target.matches('.list input[type="checkbox"]')) store.toggle(e.target.dataset.id, e.target.checked);
+  });
+  document.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const form = e.target;
+    if (form.id === "goal-form") { store.member(state.active, { goal: Math.max(30, Math.min(960, Number($("#goal-input").value) || 240)) }); return; }
+    if (form.id === "rename-form") {
+      const name = $("#rename-input").value.trim();
+      if (name) store.member(state.active, { name });
+      form.hidden = true;
+      return;
+    }
+    const scope = form.dataset.scope;
+    if (!scope) return;
+    const text = form.elements.text.value.trim();
+    if (!text) return;
+    const t = { member: state.active, scope, period: periods(state.now)[scope], text, done: false, created: Date.now() };
+    if (scope === "day") { t.start = form.elements.start.value || "09:00"; t.mins = Number(form.elements.mins.value) || 60; }
+    form.elements.text.value = "";
+    store.add(t);
+  });
+  $("#rename-toggle").addEventListener("click", () => {
+    const f = $("#rename-form");
+    f.hidden = !f.hidden;
+    if (!f.hidden) { $("#rename-input").value = state.members[state.active].name; $("#rename-input").focus(); }
+  });
+  $("#rename-cancel").addEventListener("click", () => { $("#rename-form").hidden = true; });
+
+  // clock: keep time-based charts current; re-subscribe when the day rolls over
+  setInterval(() => {
+    const a = document.activeElement;
+    if (a && a.matches("input, select") && a.closest("form")) return;
+    state.now = new Date();
+    subscribeTasks();
+    render();
+  }, 60000);
+
+  render();
+  connect();
+})();
+</script>
