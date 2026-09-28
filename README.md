@@ -13,6 +13,13 @@
 - 공통: `⌘K` 검색·명령 팔레트, 집중 타이머(끝나면 공부 시간이 기록에 저장), 다크/라이트
 - 입장: 구름 위 유리 입력창 하나(아이디 → 비밀번호). 가입 화면 없음 — 계정은 명령어로 만들어요
 
+## 디자인 고치기
+
+- 규칙서: [`DESIGN.md`](DESIGN.md) — 분위기, 색, 글꼴, 컴포넌트 규칙, 하지 말 것
+- 값: [`public/css/tokens.css`](public/css/tokens.css) — 색·반경·그림자·유리·링 톤을 여기서만 바꿔요
+- 차트: [`public/js/chart.js`](public/js/chart.js) — 점토 유리 링, HUD, 시간 막대
+- 참고: `docs/design-md/` (Apple · Vercel · Raycast DESIGN.md 원본), `docs/refs/web-design-source/` (영상 레퍼런스 장면)
+
 ## 로컬에서 실행 (가입 없이, 오프라인 가능)
 
 ```bash
@@ -66,6 +73,8 @@ public/                정적 프론트엔드 (빌드 없음, ES 모듈)
   js/app.js            셸 · 라우팅 · ⌘K · 집중 타이머
   js/views/*.js        오늘 · 계획 · 노트 · 그래프 · 우리 셋 · 로그인
   vendor/              marked, DOMPurify
+  css/tokens.css       디자인 토큰 (DESIGN.md 참고)
+  js/chart.js          점토 유리 링 차트 · HUD
   assets/fonts, bg     Geist, Pretendard, Instrument Serif · 배경 사진
 scripts/               smoke.mjs(API+AI 테스트), seed.mjs(예시 데이터), add-user.mjs(계정)
 legacy/                이전 단일 파일 버전

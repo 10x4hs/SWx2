@@ -71,7 +71,7 @@ export function mount(root, ctx, r) {
     const pc = pace(rate, time, total);
     $("#pace", root).innerHTML = `<span class="chip ${pc.cls}">${pc.text}</span>`;
     $("#top", root).innerHTML = `
-      ${rings([{ key: scope, value: rate, time, segments: scope === "year" ? S.items.map((p, i) => ({ tone: toneVar(p.color, i), done: !!p.done, title: p.text })) : null }], { size: 164, stroke: 14, big: pct(rate) + "%", small: `기간 ${pct(time)}% 지남`, label: `완료 ${pct(rate)}%, 기간 ${pct(time)}% 경과` })}
+      ${rings([{ key: scope, value: rate, time, segments: scope === "year" ? S.items.map((p, i) => ({ tone: toneVar(p.color, i), done: !!p.done, title: p.text })) : null }], { size: 170, stroke: 14, soft: true, big: pct(rate) + "%", small: `기간 ${pct(time)}% 지남`, label: `완료 ${pct(rate)}%, 기간 ${pct(time)}% 경과` })}
       <div class="facts">
         <div class="big">${done}<span> / ${total}개 완료</span></div>
         <div class="meter"><span>완료</span><div class="bar"><i style="width:${pct(rate)}%"></i></div><em>${pct(rate)}%</em></div>

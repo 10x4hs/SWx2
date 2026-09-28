@@ -1,7 +1,7 @@
 // 홈: 내 링 차트 하나(누르면 그 기간 계획으로) + 오늘·올해 남은 시간 + 서로의 현황
 import { api } from "../api.js";
 import { $, esc, ymd, today, periodKey, elapsed, dayScore, pct, pace, initial, toMin, nowTime, toast, DOW, MON_EN, hm, daysInYear, dayOfYear } from "../util.js";
-import { rings, bindRings, swatch, timebar, toneVar, RING } from "../chart.js";
+import { rings, bindRings, swatch, timebar, toneVar, hud, RING } from "../chart.js";
 import { icon } from "../icons.js";
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
@@ -14,6 +14,7 @@ export function mount(root, ctx) {
 
   root.innerHTML = `
     <div class="view home">
+      <div class="ambient" aria-hidden="true"><i></i><i></i><i></i></div>
       <header class="vhead">
         <div class="title">
           <span class="eyebrow">${MON_EN[t.getMonth()].slice(0, 3)} ${t.getDate()} · ${DOW[t.getDay()]}요일 · ${K.week.slice(7)}</span>
@@ -22,6 +23,7 @@ export function mount(root, ctx) {
         <a class="btn" href="#/today">${icon.plus(15)}오늘 계획 세우기</a>
       </header>
       <section class="hero-chart" aria-label="내 진행 차트">
+        <span id="me-hud"></span>
         <div class="hc-left">
           <div class="hc-chart" id="me-chart"><div class="rings-skel"></div></div>
           <div class="hc-time" id="me-time"></div>
@@ -68,7 +70,7 @@ export function mount(root, ctx) {
             { key: "year", value: rate(rows, uid, K.year).v, time: elapsed(K.year), segments: segs(x.year), href: HREF.year, mark: `D-${left}`, title: `올해 목표 ${x.year.filter((g) => g.done).length}/${x.year.length} · 올해 ${left}일 남음` },
             { key: "month", value: rate(rows, uid, K.month).v, time: elapsed(K.month), href: HREF.month, title: `이번 달 ${pct(rate(rows, uid, K.month).v)}% 완료` },
             { key: "week", value: rate(rows, uid, K.week).v, time: elapsed(K.week), href: HREF.week, title: `이번 주 ${pct(rate(rows, uid, K.week).v)}% 완료` },
-            { key: "day", value: s.exec, time: dayPassed, href: HREF.day, mark: nowTime(), title: `오늘 실행 ${pct(s.exec)}% · 지금 ${nowTime()}` },
+            { key: "day", value: s.exec, time: dayPassed, href: HREF.day, title: `오늘 실행 ${pct(s.exec)}% · 지금 ${nowTime()}` },
           ],
         };
       };
@@ -76,8 +78,10 @@ export function mount(root, ctx) {
       // ---- me ----
       const mine = per.find((x) => x.u.id === ctx.me.id) || { u: ctx.me, day: [], year: [], logs: [] };
       const { s: sc, items } = chartFor(mine, ctx.me.id);
-      const size = Math.min(380, Math.max(260, Math.round(innerWidth * 0.27)));
-      $("#me-chart", root).innerHTML = rings(items, { size, stroke: Math.round(size * 0.058), gap: Math.round(size * 0.026), big: sc.score ?? "–", small: "오늘 점수", animate: first, marks: true, label: "올해·이번 달·이번 주·오늘" });
+      const size = Math.min(400, Math.max(280, Math.round(innerWidth * 0.28)));
+      $("#me-chart", root).innerHTML = rings(items, { size, stroke: Math.round(size * 0.05), gap: Math.round(size * 0.02), big: sc.score ?? "–", small: "오늘 점수", animate: first, marks: true, label: "올해·이번 달·이번 주·오늘" });
+      const done4 = [items[0], items[1], items[2], items[3]].reduce((n, x) => n + (x.segments ? (x.segments.length ? x.segments.filter((g) => g.done).length / x.segments.length : 0) : x.value), 0) / 4;
+      $("#me-hud", root).outerHTML = `<span id="me-hud">${hud({ tl: `${t.getFullYear()} · ${K.week.slice(7)}`, tr: `NOW ${nowTime()}`, bl: `D-${left}`, br: `ALL ${pct(done4)}%` })}</span>`;
       $("#me-time", root).innerHTML =
         timebar("오늘", dayPassed, `${nowTime()} · ${pct(dayPassed)}% 지남`) +
         timebar("올해", elapsed(K.year), `D-${left} · ${pct(elapsed(K.year))}% 지남`);
@@ -115,7 +119,7 @@ export function mount(root, ctx) {
         return `<a class="mate-card" href="#/u/${u.id}/today/${ymd(t)}" style="--me:${esc(u.color)}">
           <div class="mc-top"><span class="av" style="--c:${esc(u.color)}">${esc(initial(u.display_name))}</span><b>${esc(u.display_name)}</b><span class="faint">@${esc(u.username)}</span></div>
           <div class="mc-body">
-            ${rings(it, { size: 150, stroke: 9, gap: 5, big: s.score ?? "–", small: "오늘", animate: first, label: `${u.display_name}의 진행` })}
+            ${rings(it, { size: 156, stroke: 8, gap: 4, big: s.score ?? "–", small: "오늘", animate: first, soft: true, label: `${u.display_name}의 진행` })}
             <dl class="mc-facts">
               <div><dt>올해 목표</dt><dd>${x.year.length ? `${x.year.filter((g) => g.done).length}/${x.year.length}` : "–"}</dd></div>
               <div><dt>이번 달</dt><dd>${pct(it[1].value)}%</dd></div>
