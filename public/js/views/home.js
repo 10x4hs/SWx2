@@ -15,8 +15,7 @@ import { prioDonut, prioStats, PRIO_COLOR, PRIO_LABEL } from "../charts/prio.js"
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
 const daysLeft = (key) => Math.max(0, Math.ceil((periodEnd(key) - Date.now()) / 864e5));
-const PAGES = [{ key: "all", label: "전체" }, { key: "check", label: "체크리스트" }, { key: "month", label: "한 달" }, { key: "week", label: "한 주" }, { key: "day", label: "하루" }, { key: "team", label: "우리 셋" }];
-const MAX_PERIODS = 20; // 서버가 한 번에 받는 기간 수
+const PAGES = [{ key: "all", label: "All" }, { key: "month", label: "Month" }, { key: "week", label: "Week" }, { key: "day", label: "Day" }, { key: "team", label: "Trio" }, { key: "check", label: "CheckList" }];
 
 // 아래 범례 — 페이지마다 같은 문법, 말만 조금씩
 const LEGEND = {
@@ -26,7 +25,7 @@ const LEGEND = {
   day: ["진한 색 = 끝낸 일", "옅은 색 = 이미 지난 시간", "회색 = 아직 안 한 일"],
   check: ["진한 색 = 끝낸 할 일", "옅은 색 = 남은 할 일", "색 = 우선순위 (Max → Low)"],
 };
-const HINT = { all: "링을 누르면 그 기간 목표 · 체크리스트로", check: "도넛 · 날짜를 누르면 체크리스트로", month: "바깥 링 = 목표 · 칸을 누르면 그날 체크리스트", week: "바깥 링 = 목표 · 칸을 누르면 그날 체크리스트", day: "누르면 오늘 체크리스트로" };
+const HINT = { all: "링을 누르면 그 기간 목표 · 오늘은 하루 계획표", check: "도넛 · 요일을 누르면 체크리스트로", month: "누르면 이번 달 목표", week: "누르면 이번 주 목표", day: "누르면 시간 순 하루 계획표" };
 const COLOR = { all: "var(--r-week)", check: "var(--p-max)", month: "var(--r-month)", week: "var(--r-week)", day: "var(--r-day)", team: "var(--m0)" };
 // 서버 시각은 ms · 초 · ISO 어느 쪽이 와도 ms 로
 const ms = (v) => (v == null ? null : typeof v === "string" ? Date.parse(v) : v < 1e12 ? v * 1000 : v);
@@ -37,7 +36,7 @@ export function mount(root, ctx) {
   const t = today();
   const K = { year: periodKey("year", t), month: periodKey("month", t), week: periodKey("week", t), day: periodKey("day", t) };
   const left = daysInYear(t.getFullYear()) - dayOfYear(t);
-  const HREF = { year: "#/goals/year", month: "#/goals/month", week: "#/goals/week", day: "#/checklist" }; // 링을 누르면 그 기간 목표 · 오늘은 체크리스트
+  const HREF = { year: "#/goals/year", month: "#/goals/month", week: "#/goals/week", day: `#/calendar/${ymd(t)}` }; // 링 → 그 기간 목표 페이지 · 오늘 → 시간 순 하루 계획표
   const S = { who: ctx.me.id, items: null, data: null, score: null, hover: null, tip: null, wide: null, first: true,
     pres: null, presAt: 0, cheers: { received: [], sent: [] }, cheering: false,
     wk: { off: 0, cache: {}, busy: false, error: null } };
@@ -85,7 +84,8 @@ export function mount(root, ctx) {
   const chart = $("#chart", root), view = $("#pg-view", root);
   const mine = () => S.who === ctx.me.id;
   const target = (key) => (mine() ? HREF[key] : "#/"); // 다른 사람은 차트만 (눌러도 안내만)
-  const dayTarget = (d) => `#/checklist/${d}`; // 날짜 칸을 누르면 그날 체크리스트로
+  // 한 달 · 한 주 차트는 어디를 눌러도 그 기간 페이지로 (달은 달치만 · 주는 주치만)
+  const dayTarget = (d) => (pageKey() === "month" ? "#/goals/month" : pageKey() === "week" ? "#/goals/week" : `#/calendar/${d}`);
   const pageKey = () => PAGES[pager.index].key;
 
   function drawFocusLine() {
@@ -112,7 +112,7 @@ export function mount(root, ctx) {
     return `<div class="hc${wide ? " wide" : ""}">
       ${go("#/checklist", prioDonut(items, { size: wide ? 360 : 260 }), "hc-donut")}
       <div class="hc-side">
-        <div class="hc-h"><b>오늘 체크리스트</b>${own ? `<a class="btn sm ghost" href="#/checklist">열어서 적기 ›</a>` : ""}</div>
+        <div class="hc-h"><b>오늘 체크리스트</b>${own ? `<span class="faint">도넛을 누르면 적기</span>` : ""}</div>
         <div class="hc-bars">${rows.length ? rows.map((r) => `<div class="pb" style="--pc:${PRIO_COLOR[r.k]}"><span class="pb-l">${PRIO_LABEL[r.k]}</span><span class="pb-t" style="--w:${(r.n / max) * 100}%"><i style="--f:${(r.d / r.n) * 100}%"></i></span><span class="pb-n">${r.d}/${r.n}</span></div>`).join("") : `<p class="faint">${own ? "아직 오늘 할 일이 없어요. 도넛을 눌러 적어 보세요." : "오늘 할 일이 없어요."}</p>`}</div>
         ${own && left.length ? `<ul class="hc-left">${left.map((p) => `<li><i style="background:${PRIO_COLOR[p.priority || "none"]}"></i>${p.start ? `<em>${esc(p.start)}</em>` : ""}<span>${esc(p.text)}</span></li>`).join("")}</ul>` : ""}
         <div class="hc-week" aria-label="이번 주 체크리스트">${c.week.map((d) => go(`#/checklist/${d.ymd}`, `<span class="hw-bar${d.today ? " today" : ""}${d.future ? " future" : ""}" style="--h:${d.total ? Math.max(8, (d.total / wkMax) * 100) : 4}%;--f:${d.total ? (d.done / d.total) * 100 : 0}%"><i></i></span><span class="hw-d">${"일월화수목금토"[d.date.getDay()]}</span><span class="hw-n">${d.total ? `${d.done}/${d.total}` : ""}</span>`, "hw")).join("")}</div>
@@ -193,10 +193,9 @@ export function mount(root, ctx) {
     try {
       const u = ctx.user(S.who) || ctx.me;
       const now = new Date(), dayPassed = (now.getHours() * 60 + now.getMinutes()) / 1440;
-      // 기간이 많으면 20개씩 나눠서 한꺼번에 불러요
-      const periods = [...new Set([K.year, K.month, K.week, K.day, ...dayKeys])], chunks = [];
-      for (let i = 0; i < periods.length; i += MAX_PERIODS) chunks.push(periods.slice(i, i + MAX_PERIODS));
-      const plans = (await Promise.all(chunks.map((c) => api.plans(c, u.id)))).flatMap((r) => r.plans || []);
+      // 한 번에: 올해·이번 달·이번 주 목표 + 이번 달·이번 주 날짜 범위 (예전엔 20개씩 나눠 3번 불렀어요)
+      const dayList = [...monthDays, ...weekDays].map((d) => ymd(d)).sort();
+      const plans = (await api.plans([K.year, K.month, K.week], u.id, `${dayList[0]}..${dayList[dayList.length - 1]}`)).plans || [];
       const of = (key) => plans.filter((p) => p.period === key).sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0) || (a.sort ?? 0) - (b.sort ?? 0));
       const year = of(K.year), month = of(K.month), week = of(K.week), day = of(K.day);
       const sc = dayScore(day, u.day_goal);

@@ -2895,3 +2895,20 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .ch .ch-past { fill: color-mix(in srgb, var(--c) 18%, transparent); }
 .ch .ch-track { fill: color-mix(in srgb, var(--c) 9%, transparent); }
 .hc-left { justify-items: stretch; } .hc-left li { width: 100%; }
+
+/* ======================================================================
+   v19 — 어우러지는 차트 색 (OKLCH: 밝기 · 채도를 같게, 색상만 고르게 → 어느 하나 튀지 않게)
+   링: 로즈 · 세이지 · 스카이 · 샌드  /  우선순위: 슬레이트 → 샌드 → 앰버 → 오렌지 → 로즈 (한 온도 계단)
+   ====================================================================== */
+:root {
+  --r-year: oklch(0.74 0.12 12); --r-month: oklch(0.78 0.11 155); --r-week: oklch(0.76 0.10 238); --r-day: oklch(0.82 0.11 80);
+  --p-low: oklch(0.72 0.035 255); --p-medium: oklch(0.80 0.07 95); --p-high: oklch(0.80 0.12 75); --p-xhigh: oklch(0.74 0.14 48); --p-max: oklch(0.68 0.16 18);
+}
+:root[data-theme="light"] {
+  --r-year: oklch(0.60 0.14 12); --r-month: oklch(0.62 0.12 155); --r-week: oklch(0.60 0.11 238); --r-day: oklch(0.66 0.12 75);
+  --p-low: oklch(0.58 0.04 255); --p-medium: oklch(0.64 0.08 95); --p-high: oklch(0.66 0.13 75); --p-xhigh: oklch(0.60 0.15 48); --p-max: oklch(0.55 0.18 18);
+}
+.prio[data-p="max"] { color: #fff; }
+/* 홈 슬라이드 안의 HTML 차트(CheckList)도 눌리게 — 차트 영역은 원래 SVG 링에만 클릭을 열어 뒀어요 */
+.pg-slide .hc, .pg-slide .hc * { pointer-events: auto; }
+.hc-h .faint { font-size: 12.5px; }

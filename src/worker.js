@@ -267,13 +267,16 @@ async function ownPlan(env, id, user) {
 
 on("GET", "/plans", async ({ env, q, user }) => {
   const periods = (q.get("periods") || "").split(",").filter(Boolean).slice(0, 20);
-  if (!periods.length) return json({ plans: [] });
+  // days=YYYY-MM-DD..YYYY-MM-DD : 그 사이 날마다의 계획을 한 번에 (홈 차트가 요청 여러 번 대신 한 번으로). 최대 62일
+  const dm = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/.exec(q.get("days") || "");
+  const range = dm && dm[1] <= dm[2] && (Date.parse(dm[2]) - Date.parse(dm[1])) / 864e5 <= 62 ? ["D:" + dm[1], "D:" + dm[2]] : null;
+  if (!periods.length && !range) return json({ plans: [] });
   const who = q.get("user") || user.id;
-  const marks = periods.map(() => "?").join(",");
+  const where = [periods.length ? `period IN (${periods.map(() => "?").join(",")})` : "", range ? "(period >= ? AND period <= ?)" : ""].filter(Boolean).join(" OR ");
   const { results } = await env.DB.prepare(
     `SELECT plans.*, (SELECT COALESCE(SUM(l.mins), 0) FROM logs l WHERE l.plan_id = plans.id AND l.kind = 'focus') AS focus_mins
-     FROM plans WHERE user_id = ? AND period IN (${marks}) ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at`
-  ).bind(who, ...periods).all();
+     FROM plans WHERE user_id = ? AND (${where}) ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at`
+  ).bind(who, ...periods, ...(range || [])).all();
   // focus_mins = 그 할 일에 쌓인 집중 기록 분의 합 (logs.plan_id)
   // 서로는 차트만: 다른 사람 계획은 칸 모양(완료·시각·길이·집중 분)만 보내고 내용은 비워요
   if (who !== user.id) return json({ plans: results.map((p) => ({ ...p, text: "" })), private: true });

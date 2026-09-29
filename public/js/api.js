@@ -40,7 +40,7 @@ export const api = {
   updateMe: (b) => request("PATCH", "/me", b),
   users: () => request("GET", "/users"),
 
-  plans: (periods, user) => request("GET", "/plans?" + qs({ periods: periods.join(","), user })),
+  plans: (periods, user, days) => request("GET", "/plans?" + qs({ periods: periods.join(","), user, days })), // days = "YYYY-MM-DD..YYYY-MM-DD"
   addPlan: (b) => request("POST", "/plans", b),
   updatePlan: (id, b) => request("PATCH", "/plans/" + id, b),
   deletePlan: (id) => request("DELETE", "/plans/" + id),

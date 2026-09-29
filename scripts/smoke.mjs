@@ -40,6 +40,8 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("a", "PUT", "/records/self", { day: "2026-09-28", self: 85 }); ok(r.status === 200 && r.data.self === 85, "self score: saved 85");
   r = await call("a", "GET", "/records/recent?to=2026-09-28&days=7"); ok(r.status === 200 && Array.isArray(r.data.days) && r.data.days.every((d) => "ai_score" in d), "records/recent: returns AI score field");
   r = await call("a", "PUT", "/records/self", { day: "2026-09-28", self: null }); ok(r.status === 200 && r.data.self === null, "self score: cleared");
+  r = await call("a", "GET", "/plans?days=2026-09-20..2026-09-30"); ok(r.status === 200 && r.data.plans.some((p) => p.period === "D:2026-09-28"), "plans: day range in one request");
+  r = await call("a", "GET", "/plans?days=2026-01-01..2026-12-31"); ok(r.status === 200 && r.data.plans.length === 0, "plans: day range over 62 days ignored");
   await call("a", "DELETE", "/plans/" + ppid); }
 r = await call("a", "POST", "/plans", { scope: "year", period: "Y:2026", text: "정보처리기사 합격" }); ok(r.status === 201, "create year plan");
 r = await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-27", text: "어제 못한 일" }); ok(r.status === 201, "create yesterday plan");
