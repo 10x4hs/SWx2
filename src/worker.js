@@ -656,24 +656,29 @@ on("GET", "/search", async ({ env, user, q }) => {
 
 // ---------- 하루 기록: 그날 계획·실행을 얼려 둔 사본 (본인만) ----------
 // 점수 공식은 public/js/util.js 의 dayScore 와 같아요: 계획 40 + 실행 60
+// 하루 점수 (public/js/util.js 의 dayScore 와 같은 식): 계획 35 + 실행 65.
+// 실행 = 끝낸 일의 무게 / 전체 무게. 무게 = 우선순위(low 1 · medium 2 · high 3 · xhigh 4 · max 5, 없으면 2) × 걸리는 시간(없으면 30분)
+const PRIO_W = { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 };
 function scoreOf(plans, goal) {
   const planned = plans.reduce((a, p) => a + (p.mins || 0), 0);
   const doneMins = plans.filter((p) => p.done).reduce((a, p) => a + (p.mins || 0), 0);
   const count = plans.length, doneCount = plans.filter((p) => p.done).length;
-  const plan = Math.min(1, planned / Math.max(30, goal || 240));
-  const exec = planned ? doneMins / planned : count ? doneCount / count : 0;
-  return { planned, doneMins, count, doneCount, plan, exec, score: count ? Math.round(40 * plan + 60 * exec) : null };
+  const plan = Math.min(1, (planned || count * 30) / Math.max(30, goal || 240));
+  const w = (p) => (PRIO_W[p.priority] || 2) * (p.mins || 30);
+  const all = plans.reduce((a, p) => a + w(p), 0), got = plans.filter((p) => p.done).reduce((a, p) => a + w(p), 0);
+  const exec = all ? got / all : 0;
+  return { planned, doneMins, count, doneCount, plan, exec, score: count ? Math.round(35 * plan + 65 * exec) : null };
 }
 async function snapshotDay(env, u, day, auto) {
   const [plans, logs] = await env.DB.batch([
-    env.DB.prepare("SELECT text, done, start, mins, done_at FROM plans WHERE user_id = ? AND period = ? ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at").bind(u.id, "D:" + day),
+    env.DB.prepare("SELECT text, done, start, mins, priority, done_at FROM plans WHERE user_id = ? AND period = ? ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at").bind(u.id, "D:" + day),
     env.DB.prepare("SELECT at, text, kind, mins FROM logs WHERE user_id = ? AND day = ? ORDER BY at, created_at").bind(u.id, day),
   ]);
   const P = plans.results, L = logs.results;
   if (!P.length && !L.length) return null;
   const sc = scoreOf(P, u.day_goal);
   const focus = L.filter((l) => l.kind === "focus").reduce((a, l) => a + (l.mins || 0), 0);
-  const data = { plans: P.map((p) => ({ text: p.text, done: !!p.done, start: p.start, mins: p.mins })), logs: L, ...sc, focus, goal: u.day_goal };
+  const data = { plans: P.map((p) => ({ text: p.text, done: !!p.done, start: p.start, mins: p.mins, priority: p.priority || null })), logs: L, ...sc, focus, goal: u.day_goal };
   const at = now();
   await env.DB.prepare(
     "INSERT INTO day_records (user_id, day, data, score, done, total, auto, saved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, day) DO UPDATE SET data = excluded.data, score = excluded.score, done = excluded.done, total = excluded.total, auto = excluded.auto, saved_at = excluded.saved_at"
@@ -685,7 +690,7 @@ const kstDay = (offsetDays = 0) => new Date(Date.now() + 9 * 3600e3 + offsetDays
 // 어제 기록이 아직 없으면 만들어 둬요 (크론이 못 돈 날을 위한 대비책)
 async function ensureYesterday(env, u) {
   const y = kstDay(-1);
-  const has = await env.DB.prepare("SELECT 1 FROM day_records WHERE user_id = ? AND day = ?").bind(u.id, y).first();
+  const has = await env.DB.prepare("SELECT 1 FROM day_records WHERE user_id = ? AND day = ? AND data != '{}'").bind(u.id, y).first(); // 내 점수만 적힌 빈 기록은 없는 것으로
   if (!has) await snapshotDay(env, u, y, true);
 }
 export async function autoSaveYesterday(env) {
@@ -707,8 +712,27 @@ on("POST", "/records", async ({ req, env, user }) => {
 on("GET", "/records", async ({ env, q, user }) => {
   const day = q.get("day") || "";
   if (!DAY_RE.test(day)) fail(400, "날짜 형식이 올바르지 않아요.");
-  const r = await env.DB.prepare("SELECT day, data, score, done, total, auto, saved_at FROM day_records WHERE user_id = ? AND day = ?").bind(user.id, day).first();
+  const r = await env.DB.prepare("SELECT day, data, score, self, done, total, auto, saved_at FROM day_records WHERE user_id = ? AND day = ?").bind(user.id, day).first();
   return json({ record: r ? { ...r, data: JSON.parse(r.data) } : null });
+});
+// 내가 매긴 하루 점수 (0~100, null 이면 지워요). 기록이 없던 날이면 빈 기록을 만들어 점수만 붙여요.
+on("PUT", "/records/self", async ({ req, env, user }) => {
+  const b = await body(req);
+  if (!DAY_RE.test(b.day || "")) fail(400, "날짜 형식이 올바르지 않아요.");
+  const v = b.self === null || b.self === "" ? null : Math.round(Number(b.self));
+  if (v !== null && !(v >= 0 && v <= 100)) fail(400, "점수는 0~100 이에요.");
+  await env.DB.prepare("INSERT INTO day_records (user_id, day, data, score, self, done, total, auto, saved_at) VALUES (?, ?, '{}', NULL, ?, 0, 0, 0, ?) ON CONFLICT(user_id, day) DO UPDATE SET self = excluded.self")
+    .bind(user.id, b.day, v, now()).run();
+  return json({ day: b.day, self: v });
+});
+// 최근 N일 점수 흐름 (자동 · 내 점수)
+on("GET", "/records/recent", async ({ env, q, user }) => {
+  const to = DAY_RE.test(q.get("to") || "") ? q.get("to") : kstDay(0);
+  const n = Math.min(60, Math.max(3, +q.get("days") || 14));
+  const from = new Date(new Date(to + "T00:00:00Z").getTime() - (n - 1) * 864e5).toISOString().slice(0, 10);
+  await ensureYesterday(env, user);
+  const { results } = await env.DB.prepare("SELECT day, score, self, done, total FROM day_records WHERE user_id = ? AND day BETWEEN ? AND ? ORDER BY day").bind(user.id, from, to).all();
+  return json({ from, to, days: results });
 });
 on("GET", "/records/days", async ({ env, q, user }) => {
   const year = q.get("year") || "";

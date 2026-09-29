@@ -52,6 +52,8 @@ function ringSvg(it, i) {
   return `<g class="rh-ring" data-ring="${it.key}" style="--c:${it.color};--i:${i}" tabindex="0" role="link" aria-label="${esc(it.label)} ${it.total ? `${pct(it.value)}% 달성, ` : ""}${pct(t)}% 지남">
     <circle class="rh-track" cx="${C}" cy="${C}" r="${r}" stroke-width="${SW}"/>
     ${pieces(it, r, t)}
+    <circle class="rh-sheen" cx="${C}" cy="${C}" r="${r}" stroke-width="${SW}" stroke="url(#rh-sheen)"/>
+    <circle class="rh-edge" cx="${C}" cy="${C}" r="${r + SW / 2 - 0.5}"/><circle class="rh-edge in" cx="${C}" cy="${C}" r="${r - SW / 2 + 0.5}"/>
     <line class="rh-now" x1="${f2(tx1)}" y1="${f2(ty1)}" x2="${f2(tx2)}" y2="${f2(ty2)}"/>
     ${hours}
     <circle class="rh-hit" cx="${C}" cy="${C}" r="${r}" stroke-width="${SW + GAP}"/>
@@ -75,7 +77,16 @@ function rowSvg(it, i, x0) {
 
 export function ringHud(items, { wide = true, center = "", caption = "" } = {}) {
   const x0 = 2 * C + 64, W = wide ? x0 + 380 : 2 * C;
-  return `<svg class="rh${wide ? " wide" : ""}" viewBox="0 0 ${W} ${2 * C}" role="group" aria-label="기간별 계획과 흘러간 시간">
+  const disc = radius(items.length - 1) - SW / 2 - 14;
+  return `<svg class="rh glassy${wide ? " wide" : ""}" viewBox="0 0 ${W} ${2 * C}" role="group" aria-label="기간별 계획과 흘러간 시간">
+    <defs>
+      <!-- 유리: 링 위쪽이 밝게 비치는 반사광 · 가운데 원판 -->
+      <linearGradient id="rh-sheen" gradientUnits="userSpaceOnUse" x1="0" y1="${C - R0}" x2="0" y2="${C + R0}">
+        <stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".42" stop-color="#fff" stop-opacity=".04"/><stop offset=".7" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".08"/>
+      </linearGradient>
+      <radialGradient id="rh-disc" cx="50%" cy="30%" r="75%"><stop offset="0" stop-color="#fff" stop-opacity=".10"/><stop offset=".6" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#fff" stop-opacity=".06"/></radialGradient>
+    </defs>
+    <circle class="rh-disc" cx="${C}" cy="${C}" r="${disc}" fill="url(#rh-disc)"/>
     ${wide ? items.map((it, i) => rowSvg(it, i, x0)).join("") : ""}
     ${items.map(ringSvg).join("")}
     <text class="rh-center" x="${C}" y="${C + 22}" text-anchor="middle">${esc(center)}</text>

@@ -2676,3 +2676,78 @@ a.btn { text-decoration: none; }
 .dp-goal-add, .dp-wm-add { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
 .dp-goal-add .input, .dp-wm-add .input { flex: 1 1 auto; min-width: 0; }
 .dp-goal-add .btn, .dp-wm-add .btn, .dp-goal-add .select, .dp-wm-add .select { flex: none; width: auto; }
+
+/* v16.3: 대화방은 인스타 DM 처럼 — 머리·입력창은 제자리, 대화만 스크롤 */
+.host-room { height: 100%; min-height: 0; overflow: hidden; }
+.rm-chatwrap { grid-template-rows: minmax(0, 1fr); min-height: 0; height: 100%; overflow: hidden; }
+.rm-chat-host { min-height: 0; height: 100%; overflow: hidden; }
+.rm-chat { overflow: hidden; }
+.rm-list { overscroll-behavior: contain; scroll-behavior: auto; }
+.rm-compose { flex: none; }
+@media (max-width: 860px) { .rm-chatwrap { grid-template-rows: auto minmax(0, 1fr); } .host-room { height: calc(100dvh - var(--tabbar-h, 64px)); } }
+
+/* v16.4: 목표 · 체크리스트 입력 — 미니멀하게 (점선 안내 상자 없이 한 줄) */
+.cal-page .cd-add { padding: 2px; border-radius: 12px; background: rgba(255, 255, 255, .03); border: 1px solid var(--lg-edge); }
+.cal-page .cd-add:focus-within { border-color: var(--lg-edge-hi); }
+.cal-page .cd-add .input, .cal-page .cd-add .select { border: 0; background: transparent; box-shadow: none; }
+.cal-page .cd-add .input:focus, .cal-page .cd-add .select:focus { box-shadow: none; background: transparent; }
+.cal-page .cd-add .bare-sel, .cal-page .cd-add .prio-sel { min-width: 0; font-size: 12.5px; color: var(--ink-2); padding-right: 22px; }
+.cal-page .cd-add .add-go { flex: none; width: 30px; height: 30px; border-radius: 9px; background: var(--lg-fill-hi); border: 1px solid var(--lg-edge); color: var(--ink); }
+.cal-page .cd-add .add-go:hover { background: var(--ink); color: var(--paper-solid); }
+.cal-page .dp-wm:empty, .cal-page #dp-goals:empty { display: none; }
+
+/* v16.5: 하루 점수 카드 — 유리 링 · 우선순위 색 막대 · 내 점수 · 14일 흐름 */
+.sc-top { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; align-items: center; }
+.gl-ring { width: 112px; height: 112px; display: block; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .35)); }
+.gl-disc { fill: rgba(255, 255, 255, .045); stroke: rgba(255, 255, 255, .14); stroke-width: 1; }
+.gl-track { fill: none; stroke: rgba(255, 255, 255, .08); }
+.gl-val { fill: none; filter: drop-shadow(0 0 6px rgba(255, 255, 255, .35)); transition: stroke-dasharray .6s var(--ease); }
+.gl-big { font: 600 26px var(--font-display, var(--font)); fill: var(--ink); letter-spacing: -.03em; }
+.gl-cap { font: 600 9px var(--font); fill: var(--ink-3); letter-spacing: .08em; }
+:root[data-theme="light"] .gl-disc { fill: rgba(255, 255, 255, .6); stroke: rgba(0, 0, 0, .08); }
+:root[data-theme="light"] .gl-track { stroke: rgba(0, 0, 0, .07); }
+:root[data-theme="light"] .gl-val { stroke: var(--ink); }
+.sc-prio { display: grid; gap: 7px; min-width: 0; }
+.pb { display: grid; grid-template-columns: 54px minmax(0, 1fr) 34px; gap: 8px; align-items: center; font-size: 12px; }
+.pb-l { font-weight: 700; color: var(--pc); font-size: 11.5px; }
+.pb-t { position: relative; height: 12px; width: var(--w); min-width: 18px; border-radius: 99px; background: color-mix(in srgb, var(--pc) 16%, rgba(255, 255, 255, .04)); border: 1px solid color-mix(in srgb, var(--pc) 35%, transparent); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12); overflow: hidden; }
+.pb-t i { position: absolute; inset: 0 auto 0 0; width: var(--f); border-radius: 99px; background: linear-gradient(180deg, color-mix(in srgb, var(--pc) 70%, #fff), var(--pc)); box-shadow: 0 0 10px -1px color-mix(in srgb, var(--pc) 70%, transparent); transition: width .5s var(--ease); }
+.pb-t i::after { content: ""; position: absolute; left: 3px; right: 3px; top: 1px; height: 4px; border-radius: 99px; background: rgba(255, 255, 255, .45); }
+.pb-n { font: 600 11px var(--mono); color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
+.pb-empty { margin: 0; font-size: 12.5px; }
+.sc-self { display: grid; grid-template-columns: auto minmax(0, 1fr) 34px auto; gap: 10px; align-items: center; font-size: 13px; }
+.sc-self label { font-weight: 600; color: var(--ink-2); }
+.sc-self b { font: 600 15px var(--mono); text-align: right; }
+.sc-self input[type=range] { width: 100%; accent-color: var(--ink); }
+.sc-trend { display: grid; gap: 6px; }
+.sc-leg { display: flex; gap: 12px; font-size: 11.5px; color: var(--ink-3); align-items: center; }
+.sc-leg span { display: inline-flex; align-items: center; gap: 5px; } .sc-leg .faint { margin-left: auto; }
+.sc-leg .lg-b { width: 10px; height: 10px; border-radius: 3px; background: linear-gradient(180deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .25)); border: 1px solid rgba(255, 255, 255, .35); }
+.sc-leg .lg-d { width: 7px; height: 7px; border-radius: 50%; background: var(--c-violet); box-shadow: 0 0 6px var(--c-violet); }
+.gl-trend { width: 100%; height: 76px; display: block; }
+.gl-trend .tb { fill: rgba(255, 255, 255, .16); stroke: rgba(255, 255, 255, .22); stroke-width: .6; }
+.gl-trend .tb.on { fill: rgba(255, 255, 255, .62); stroke: rgba(255, 255, 255, .8); }
+.gl-trend .tb.none { fill: rgba(255, 255, 255, .06); stroke: none; }
+.gl-trend .td { fill: var(--c-violet); filter: drop-shadow(0 0 3px var(--c-violet)); }
+.gl-trend .tl { font: 500 8px var(--mono); fill: var(--ink-3); }
+:root[data-theme="light"] .gl-trend .tb { fill: rgba(0, 0, 0, .1); stroke: none; } :root[data-theme="light"] .gl-trend .tb.on { fill: var(--ink); }
+.sc-card .dp-rec { padding: 8px 0 0; background: none; border: 0; }
+@container dp (max-width: 380px) { .sc-top { grid-template-columns: 1fr; justify-items: center; } .sc-prio { width: 100%; } }
+
+/* v16.6: 홈 링 차트 — 유리 */
+.rh.glassy .rh-sheen { fill: none; pointer-events: none; mix-blend-mode: screen; }
+.rh.glassy .rh-edge { fill: none; stroke: rgba(255, 255, 255, .10); stroke-width: 1; pointer-events: none; }
+.rh.glassy .rh-edge.in { stroke: rgba(0, 0, 0, .25); }
+.rh.glassy .rh-disc { stroke: rgba(255, 255, 255, .14); stroke-width: 1; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .35)); }
+.rh.glassy .rh-track { stroke: rgba(255, 255, 255, .05); }
+.rh.glassy .rh-seg.done { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--c) 55%, transparent)); }
+:root[data-theme="light"] .rh.glassy .rh-sheen { mix-blend-mode: normal; opacity: .6; }
+:root[data-theme="light"] .rh.glassy .rh-edge { stroke: rgba(0, 0, 0, .06); }
+
+/* v16.7: 홈 AI 챗봇 (오늘 줄 아래) */
+.hud-ai { position: absolute; z-index: 6; display: grid; gap: 8px; padding: 12px; border-radius: 18px; background: var(--lg-fill); border: 1px solid var(--lg-edge); box-shadow: var(--lg-top), var(--lg-lift); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.hud-ai[hidden] { display: none; }
+.hud-ai-h { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.hud-ai-h .faint { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hud-ai .aic { margin: 0; }
+.hud-ai .aic-out { max-height: 180px; overflow-y: auto; }

@@ -36,6 +36,10 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "max" }); ok(r.status === 200 && r.data.plan.priority === "max", "plan priority: update to max");
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "urgent" }); ok(r.status === 400, "plan priority: unknown value → 400");
   r = await call("a", "PATCH", "/plans/" + ppid, { start: "14:35", mins: 5 }); ok(r.status === 200 && r.data.plan.start === "14:35" && r.data.plan.mins === 5, "plan: 5-minute slot");
+  r = await call("a", "PUT", "/records/self", { day: "2026-09-28", self: 150 }); ok(r.status === 400, "self score: out of range → 400");
+  r = await call("a", "PUT", "/records/self", { day: "2026-09-28", self: 85 }); ok(r.status === 200 && r.data.self === 85, "self score: saved 85");
+  r = await call("a", "GET", "/records/recent?to=2026-09-28&days=7"); ok(r.status === 200 && r.data.days.some((d) => d.day === "2026-09-28" && d.self === 85), "records/recent: includes self score");
+  r = await call("a", "PUT", "/records/self", { day: "2026-09-28", self: null }); ok(r.status === 200 && r.data.self === null, "self score: cleared");
   await call("a", "DELETE", "/plans/" + ppid); }
 r = await call("a", "POST", "/plans", { scope: "year", period: "Y:2026", text: "정보처리기사 합격" }); ok(r.status === 201, "create year plan");
 r = await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-27", text: "어제 못한 일" }); ok(r.status === 201, "create yesterday plan");

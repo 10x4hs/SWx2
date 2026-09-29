@@ -108,14 +108,18 @@ export function pace(done, time, total) {
   return { cls: "bad", text: `많이 뒤처짐 ${diff}%p` };
 }
 
+// 하루 점수 = 계획 35 + 실행 65 (서버 scoreOf 와 같은 식).
+// 실행 = 끝낸 일의 무게 / 전체 무게 · 무게 = 우선순위(low 1 … max 5, 없으면 2) × 걸리는 시간(없으면 30분)
+export const PRIO_W = { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 };
 export function dayScore(plans, goal) {
   const planned = plans.reduce((s, p) => s + (p.mins || 0), 0);
   const doneMins = plans.filter((p) => p.done).reduce((s, p) => s + (p.mins || 0), 0);
   const count = plans.length, doneCount = plans.filter((p) => p.done).length;
-  const plan = clamp(planned / Math.max(30, goal || 240));
-  // 시간이 없는 할 일도 실행률에 반영: 분 단위가 있으면 분 기준, 없으면 개수 기준
-  const exec = planned ? doneMins / planned : count ? doneCount / count : 0;
-  return { planned, doneMins, count, doneCount, plan, exec, score: count ? Math.round(40 * plan + 60 * exec) : null };
+  const plan = clamp((planned || count * 30) / Math.max(30, goal || 240));
+  const w = (p) => (PRIO_W[p.priority] || 2) * (p.mins || 30);
+  const all = plans.reduce((s, p) => s + w(p), 0), got = plans.filter((p) => p.done).reduce((s, p) => s + w(p), 0);
+  const exec = all ? got / all : 0;
+  return { planned, doneMins, count, doneCount, plan, exec, score: count ? Math.round(35 * plan + 65 * exec) : null };
 }
 
 // 원형 진행 링 (SVG)

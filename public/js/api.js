@@ -80,6 +80,8 @@ export const api = {
   diaries: (before) => request("GET", "/diary/list?" + qs({ before })),
   record: (day) => request("GET", "/records?" + qs({ day })),
   saveRecord: (day) => request("POST", "/records", { day }),
+  saveSelfScore: (day, self) => request("PUT", "/records/self", { day, self }),
+  recentRecords: (to, days = 14) => request("GET", "/records/recent?" + qs({ to, days })),
   recordDays: (year) => request("GET", "/records/days?" + qs({ year })),
 
   // 캘린더 — 한 달 칸 요약 · 하루 한 페이지 (본인만)

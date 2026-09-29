@@ -10,6 +10,7 @@ import { dayClock } from "../charts/day.js";
 import { mountPager, savedPage } from "../charts/pager.js";
 import { teamWeek } from "../charts/team.js";
 import { scramble } from "../fx.js";
+import { mountCommand } from "../ai-command.js";
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
 const daysLeft = (key) => Math.max(0, Math.ceil((periodEnd(key) - Date.now()) / 864e5));
@@ -67,6 +68,7 @@ export function mount(root, ctx) {
           <button type="button" class="pg-mini" data-page-next>›</button>
         </nav>
         <div class="stage-rows" id="rows"></div>
+        <div class="hud-ai" id="hud-ai" hidden aria-label="AI 챗봇"><div class="hud-ai-h"><span class="orb mini" aria-hidden="true"><span class="orb-glass"></span></span><b>AI 챗봇</b><span class="faint">묻거나 시키기</span></div><div id="hud-ai-box"></div></div>
         <section class="guide glass" id="guide" hidden aria-label="시작하기"></section>
         <div class="hud-bc" id="focus-line"></div>
         <div class="hud-br">
@@ -122,7 +124,22 @@ export function mount(root, ctx) {
     focus(pageKey() === "all" ? S.hover : null);
   }
   // 화살표를 차트 바로 옆에 붙여요 (svg 가 칸에 맞춰 줄어든 실제 폭으로)
+  // 홈 AI 챗봇: 넓은 화면 · 전체 쪽 · 내 현황일 때 "오늘" 줄 바로 아래(오른쪽 숫자 열)에 붙어요
+  const hudAi = $("#hud-ai", root);
+  const stopAi = mountCommand($("#hud-ai-box", root), { day: () => ymd(today()) }); // 계획이 바뀌면 trio:changed 로 홈이 알아서 다시 그려요
+  function placeAi(slide) {
+    const svg = slide?.querySelector(":scope > svg.rh.wide");
+    const show = !!svg && pageKey() === "all" && S.wide && mine();
+    hudAi.hidden = !show; if (!show) return;
+    const vb = svg.viewBox.baseVal, r = svg.getBoundingClientRect(), host = hudAi.offsetParent?.getBoundingClientRect() || { left: 0, top: 0 };
+    const k = Math.min(r.width / vb.width, r.height / vb.height), ox = r.left + (r.width - vb.width * k) / 2, oy = r.top + (r.height - vb.height * k) / 2;
+    const x0 = 2 * 260 + 64; // ringhud.js 의 숫자 열 시작점
+    hudAi.style.left = ox + (x0 - 18) * k - host.left + "px";
+    hudAi.style.top = oy + 196 * k - host.top + "px";
+    hudAi.style.width = Math.max(300, (vb.width - x0 + 18) * k) + "px";
+  }
   function fitArrows(slide) {
+    placeAi(slide);
     const svg = slide?.querySelector(":scope > svg");
     if (!svg) { const w = slide?.firstElementChild?.offsetWidth; if (w) chart.style.setProperty("--cw", w + "px"); return; }
     const vb = svg.viewBox.baseVal, w = svg.clientWidth, h = svg.clientHeight;
@@ -346,5 +363,5 @@ export function mount(root, ctx) {
   const tick = setInterval(() => { load(false); loadTogether(); if (pageKey() === "team") loadWeek(true); }, 60_000);
   const onChanged = () => { load(false); loadTogether(); };
   window.addEventListener("trio:changed", onChanged);
-  return () => { alive = false; clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); };
+  return () => { alive = false; stopAi?.(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); };
 }
