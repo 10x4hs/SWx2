@@ -22,7 +22,7 @@ export function mount(root, ctx) {
         <nav class="seg nt-tabs obs-tabs" aria-label="노트 · 그래프"><a href="#/notes">노트</a><a href="#/graph" aria-current="page">그래프</a></nav>
         <h1 class="obs-title">Second Brain</h1>
         <p class="obs-stat" id="gstat"></p>
-        <p class="obs-hint" id="ghint">한 번 누르면 고르고, 다른 점을 누르면 이어져요 · 두 번 누르면 열기 · 선 위 ✕ 로 끊기</p>
+        <p class="obs-hint" id="ghint">빈 곳을 누르면 새 노트 · 점을 누르고 다른 점을 누르면 연결 · 두 번 누르면 열기 · 선 위 ✕ 로 끊기</p>
       </header>
       <div class="obs-zoom" role="group" aria-label="확대">
         <button type="button" class="icon-btn" data-zoom="in" aria-label="확대">＋</button>
@@ -56,8 +56,15 @@ export function mount(root, ctx) {
       <div class="obs-sel glass" id="selbar" hidden>
         <span class="dot" id="sel-dot"></span><b id="sel-title"></b><span class="faint">→ 연결할 노트를 누르세요</span>
         <button type="button" class="btn sm ghost" id="sel-open">열기</button>
+        <button type="button" class="btn sm ghost danger-btn" id="sel-del" hidden>지우기</button>
         <button type="button" class="icon-btn sm" id="sel-x" aria-label="선택 취소">✕</button>
       </div>
+      <form class="obs-new glass" id="newpop" hidden>
+        <span class="faint">여기에 새 노트</span>
+        <input class="input" id="new-title" placeholder="제목 · Enter" maxlength="120" aria-label="새 노트 제목" autocomplete="off">
+        <label class="chk" id="new-link-row" hidden><input type="checkbox" id="new-link" checked><span id="new-link-t"></span></label>
+        <div class="row" style="gap:6px;justify-content:flex-end"><button type="button" class="btn sm ghost" id="new-x">취소</button><button type="submit" class="btn sm accent">만들기</button></div>
+      </form>
       <p class="obs-empty" id="empty" hidden>노트를 쓰고 <b>AI 정리</b>를 누르면 주제별로 모여요. <a href="#/notes">노트 쓰러 가기</a></p>
     </div>`;
 
@@ -66,7 +73,7 @@ export function mount(root, ctx) {
   const view = { x: 0, y: 0, k: 1 };
   let data = { nodes: [], edges: [] }, all = [], nodes = [], links = [], adj = new Map(), groups = [];
   let hover = null, hoverLink = null, drag = null, query = "", focusGroup = null;
-  let sel = null, pendingClick = 0, lastTap = { node: null, at: 0 }, mouse = null, busy = false;
+  let sel = null, lastTap = { node: null, at: 0 }, mouse = null, busy = false;
 
   const cssVar = (n) => getComputedStyle(root).getPropertyValue(n).trim();
   let C = {};
@@ -160,20 +167,35 @@ export function mount(root, ctx) {
 
   // ---------- 그리기 ----------
   const match = (n) => query && n.title.toLowerCase().includes(query);
+  const rgba = (hex, a) => { const m = /^#?([0-9a-f]{6})$/i.exec((hex || "").trim()); if (!m) return hex; const v = parseInt(m[1], 16); return `rgba(${v >> 16},${(v >> 8) & 255},${v & 255},${a})`; };
   function draw() {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, W, H);
+    // 배경: 아주 옅은 점 격자 (종이 느낌)
+    const gap = 28 * view.k, ox = ((W / 2 + view.x) % gap + gap) % gap, oy = ((H / 2 + view.y) % gap + gap) % gap;
+    if (gap > 14) { g.fillStyle = C.dark ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.07)"; for (let x = ox; x < W; x += gap) for (let y = oy; y < H; y += gap) g.fillRect(x - 0.5, y - 0.5, 1, 1); }
     g.translate(W / 2 + view.x, H / 2 + view.y); g.scale(view.k, view.k);
     const focus = hover || sel;
     const near = focus ? adj.get(focus) : null;
     const dim = !!(focus || query || focusGroup);
     const lit = (n) => (focus ? n === focus || near?.has(n) : query ? match(n) : focusGroup ? n.group === focusGroup : true);
+    // 주제 무리: 같은 색 점들 뒤에 아주 옅은 둥근 안개 하나
+    if (!dim) {
+      const cl = new Map();
+      for (const n of nodes) if (n.group && !n.ghost && !n.tag) { const c = cl.get(n.group) || { x: 0, y: 0, n: 0, color: n.color, pts: [] }; c.x += n.x; c.y += n.y; c.n++; c.pts.push(n); cl.set(n.group, c); }
+      for (const c of cl.values()) {
+        if (c.n < 2) continue;
+        const cx = c.x / c.n, cy = c.y / c.n; let r = 0; for (const n of c.pts) r = Math.max(r, Math.hypot(n.x - cx, n.y - cy)); r += 40;
+        const grd = g.createRadialGradient(cx, cy, 0, cx, cy, r); grd.addColorStop(0, rgba(c.color, C.dark ? 0.10 : 0.09)); grd.addColorStop(1, rgba(c.color, 0));
+        g.globalAlpha = 1; g.fillStyle = grd; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+      }
+    }
     // 선
     for (const l of links) {
       const on = focus && (l.s === focus || l.t === focus), isHL = l === hoverLink;
       g.globalAlpha = isHL ? 1 : on ? 0.8 : dim ? 0.06 : l.tagLink ? 0.2 : l.page ? 0.28 : 0.38;
-      g.strokeStyle = on || isHL ? C.ink : C.line;
-      g.lineWidth = ((isHL ? 2 : on ? 1.4 : l.page ? 0.8 : 1) * set.line) / view.k;
+      g.strokeStyle = on || isHL ? C.ink2 : C.line;
+      g.lineWidth = ((isHL ? 2 : on ? 1.5 : l.page ? 0.8 : 1.1) * set.line) / view.k;
       g.setLineDash(l.page ? [3 / view.k, 4 / view.k] : []);
       g.beginPath(); g.moveTo(l.s.x, l.s.y); g.lineTo(l.t.x, l.t.y); g.stroke();
     }
@@ -190,8 +212,17 @@ export function mount(root, ctx) {
       g.beginPath(); g.arc(n.x, n.y, r, 0, Math.PI * 2);
       if (n.ghost) { g.fillStyle = C.bg; g.fill(); g.strokeStyle = C.ink3; g.lineWidth = 1.2 / view.k; g.setLineDash([2 / view.k, 2 / view.k]); g.stroke(); g.setLineDash([]); }
       else if (n.tag) { g.fillStyle = C.ink3; g.fill(); }
-      else { g.fillStyle = col; g.fill(); }
-      if (n === hover || n === sel || (query && match(n))) { g.beginPath(); g.arc(n.x, n.y, r + 3.5 / view.k, 0, Math.PI * 2); g.strokeStyle = C.ink; g.lineWidth = 1.2 / view.k; g.stroke(); }
+      else { // 유리 구슬: 색 유리 + 위쪽 빛 + 하얀 테
+        g.fillStyle = rgba(col, C.dark ? 0.55 : 0.5); g.fill();
+        const sh = g.createRadialGradient(n.x - r * 0.35, n.y - r * 0.4, r * 0.1, n.x, n.y, r);
+        sh.addColorStop(0, "rgba(255,255,255,.55)"); sh.addColorStop(0.5, "rgba(255,255,255,.08)"); sh.addColorStop(1, C.dark ? "rgba(0,0,0,.18)" : "rgba(0,0,0,.06)");
+        g.fillStyle = sh; g.fill();
+        g.strokeStyle = C.dark ? "rgba(255,255,255,.45)" : "rgba(255,255,255,.95)"; g.lineWidth = 1.2 / view.k; g.stroke();
+      }
+      if (n === hover || n === sel || (query && match(n))) { // 얇은 고리 + 옅은 후광
+        g.globalAlpha = 0.25; g.beginPath(); g.arc(n.x, n.y, r + 9 / view.k, 0, Math.PI * 2); g.fillStyle = col; g.fill();
+        g.globalAlpha = 1; g.beginPath(); g.arc(n.x, n.y, r + 3.5 / view.k, 0, Math.PI * 2); g.strokeStyle = n === sel ? col : C.ink; g.lineWidth = 1.4 / view.k; g.stroke();
+      }
     }
     // 제목
     const fs = set.text / Math.max(0.7, view.k);
@@ -203,7 +234,8 @@ export function mount(root, ctx) {
       if (!show) continue;
       const t = n.title.length > 24 ? n.title.slice(0, 23) + "…" : n.title;
       const y = n.y + radius(n) + 6 / view.k;
-      g.globalAlpha = !on ? 0.12 : n === hover || n === sel ? 1 : n.ghost || n.tag ? 0.6 : 0.86;
+      g.globalAlpha = !on ? 0.12 : n === hover || n === sel ? 1 : n.ghost || n.tag ? 0.6 : 0.8;
+      g.lineWidth = 3 / view.k; g.strokeStyle = C.bg; g.lineJoin = "round"; g.strokeText(t, n.x, y); // 글자 뒤 배경색 테두리로 선과 겹쳐도 읽히게
       g.fillStyle = n === hover || n === sel ? C.ink : C.ink2;
       g.fillText(t, n.x, y);
     }
@@ -234,8 +266,9 @@ export function mount(root, ctx) {
   function select(n) {
     sel = n && !n.tag ? n : null;
     selbar.hidden = !sel;
-    if (sel) { $("#sel-title", root).textContent = sel.title; $("#sel-dot", root).style.setProperty("--c", sel.color); hint.textContent = "다른 점을 누르면 이어져요 · 다시 누르면 취소 · 두 번 누르면 열기"; }
-    else hint.textContent = "한 번 누르면 고르고, 다른 점을 누르면 이어져요 · 두 번 누르면 열기 · 선을 누르면 끊기";
+    $("#sel-del", root).hidden = !(sel && !sel.ghost && sel.user_id === ctx.me.id);
+    if (sel) { $("#sel-title", root).textContent = sel.title; $("#sel-dot", root).style.setProperty("--c", sel.color); hint.textContent = "다른 점을 누르면 이어져요 · 빈 곳을 누르면 이어진 새 노트 · 다시 누르면 취소 · 두 번 누르면 열기"; }
+    else hint.textContent = "빈 곳을 누르면 새 노트 · 점을 누르고 다른 점을 누르면 연결 · 두 번 누르면 열기 · 선 위 ✕ 로 끊기";
     kick();
   }
   function openNode(n) {
@@ -279,8 +312,43 @@ export function mount(root, ctx) {
     }
   });
   $("#sel-x", root).addEventListener("click", () => select(null));
+  // 지우기: 한 번 누르면 "정말?", 3초 안에 다시 누르면 지워요
+  const delBtn = $("#sel-del", root);
+  delBtn.addEventListener("click", async () => {
+    if (!sel || sel.ghost) return;
+    if (!delBtn.dataset.armed) { delBtn.dataset.armed = "1"; delBtn.textContent = "정말 지울까요?"; setTimeout(() => { if (delBtn.isConnected) { delete delBtn.dataset.armed; delBtn.textContent = "지우기"; } }, 3000); return; }
+    const n = sel; delete delBtn.dataset.armed; delBtn.textContent = "지우기";
+    try { await api.deleteNote(n.id); toast(`'${n.title}' 노트를 지웠어요.`); select(null); await reload(null); ctx.changed?.("notes"); } catch (e) { toast(e.message, "err"); }
+  });
+  // 빈 곳 클릭 → 새 노트
+  const newpop = $("#newpop", root); let newAt = null;
+  function openNew(e, p) {
+    newAt = p; const r = root.getBoundingClientRect();
+    newpop.hidden = false; newpop.style.left = Math.min(e.clientX - r.left + 10, r.width - 290) + "px"; newpop.style.top = Math.min(e.clientY - r.top + 10, r.height - 170) + "px";
+    $("#new-link-row", root).hidden = !sel; if (sel) $("#new-link-t", root).textContent = `${sel.title} 와 연결`;
+    const inp = $("#new-title", root); inp.value = ""; setTimeout(() => inp.focus(), 60);
+  }
+  const closeNew = () => { newpop.hidden = true; newAt = null; };
+  $("#new-x", root).addEventListener("click", closeNew);
+  newpop.addEventListener("keydown", (e) => { if (e.key === "Escape") closeNew(); });
+  newpop.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = $("#new-title", root).value.replace(/[\[\]|#]/g, "").trim(); if (!title) return;
+    const from = sel && $("#new-link", root).checked ? sel : null, at = newAt; closeNew();
+    if (busy) return; busy = true;
+    try {
+      let d;
+      try { d = await api.addNote({ title, body: `# ${title}\n\n` }); } catch (e) { if (e.status === 409) { toast("같은 제목의 노트가 이미 있어요.", "err"); return; } throw e; }
+      if (from && !from.ghost) await api.linkNote(from.id, title);
+      toast(from && !from.ghost ? `'${title}' 을 만들고 ${from.title} 와 이었어요.` : `'${title}' 노트를 만들었어요.`);
+      select(null); await reload(null);
+      const nn = all.find((n) => n.id === d.note?.id); if (nn && at) { nn.x = at.x; nn.y = at.y; nn.vx = nn.vy = 0; kick(); }
+      ctx.changed?.("notes");
+    } catch (err) { toast(err.message, "err"); }
+    finally { busy = false; }
+  });
   $("#sel-open", root).addEventListener("click", () => sel && openNode(sel));
-  const onKey = (e) => { if (e.key === "Escape" && (sel || !pop.hidden)) { select(null); pop.hidden = true; } };
+  const onKey = (e) => { if (e.key === "Escape" && (sel || !pop.hidden || !newpop.hidden)) { select(null); pop.hidden = true; closeNew(); } };
   document.addEventListener("keydown", onKey);
 
   // ---------- 마우스 ----------
@@ -343,20 +411,21 @@ export function mount(root, ctx) {
     pop.hidden = true;
     const n = d.node;
     if (!n) { // 빈 곳 또는 선
-      if (d.link) showLinkPop(d.link, e); else select(null);
+      if (d.link) { closeNew(); showLinkPop(d.link, e); }
+      else if (!newpop.hidden) closeNew();
+      else openNew(e, toWorld(e)); // 고른 점이 있으면 "그 점과 연결" 체크가 함께 떠요
       return;
     }
+    closeNew();
+    // 바로 고르고 바로 잇기. 같은 점을 빠르게 두 번 누르면 열기.
     const nowT = performance.now(), dbl = lastTap.node === n && nowT - lastTap.at < DBL_MS;
     lastTap = { node: n, at: nowT };
-    if (dbl) { clearTimeout(pendingClick); pendingClick = 0; lastTap = { node: null, at: 0 }; openNode(n); return; }
-    clearTimeout(pendingClick);
-    pendingClick = setTimeout(() => {
-      pendingClick = 0;
-      if (n.tag) return openNode(n);
-      if (!sel) return select(n);
-      if (sel === n) return select(null);
-      connect(sel, n);
-    }, DBL_MS);
+    if (dbl) { lastTap = { node: null, at: 0 }; openNode(n); return; }
+    if (n.tag) return openNode(n);
+    if (!sel) return select(n);
+    if (sel === n) return select(null);
+    lastTap = { node: null, at: 0 }; // 이어 붙인 뒤 한 번 더 눌러도 열리지 않게
+    connect(sel, n);
   });
   canvas.addEventListener("pointerleave", (e) => { mouse = null; if (!drag) { hover = null; tip.hidden = true; if (e.relatedTarget !== cut) { hoverLink = null; showCut(null); } kick(); } });
   cut.addEventListener("pointerleave", () => { hoverLink = null; showCut(null); kick(); });
@@ -388,5 +457,5 @@ export function mount(root, ctx) {
   const mo = new MutationObserver(onTheme); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   api.graph().then((d) => { data = d; buildAll(); setTimeout(fit, 1400); }).catch((e) => toast(e.message, "err"));
-  return () => { cancelAnimationFrame(raf); ro.disconnect(); mo.disconnect(); document.removeEventListener("keydown", onKey); clearTimeout(pendingClick); };
+  return () => { cancelAnimationFrame(raf); ro.disconnect(); mo.disconnect(); document.removeEventListener("keydown", onKey); };
 }

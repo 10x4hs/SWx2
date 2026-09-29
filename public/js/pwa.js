@@ -87,7 +87,8 @@ window.addEventListener("offline", renderNet);
 if (CAN_SW) {
   navigator.serviceWorker.addEventListener("message", (e) => {
     const type = e.data && e.data.type;
-    if (type === "net-offline") { swOffline = true; renderNet(); }
+    if (type === "updated") showUpdate();
+    else if (type === "net-offline") { swOffline = true; renderNet(); }
     else if (type === "net-online") { swOffline = false; renderNet(); }
   });
 }
@@ -161,4 +162,17 @@ if (!standalone && !store.get(HINT_KEY)) {
       showHint({ text: "공유 버튼 → ‘홈 화면에 추가’ 로 앱처럼 쓸 수 있어요" });
     });
   }
+}
+
+// ---------- 새 버전 알림 ----------
+// 정적 파일은 "먼저 캐시, 뒤에서 새로 받기" 라서 배포 직후 첫 화면은 옛 파일이에요. 새 SW 가 켜지면 띠를 띄워 한 번 새로고침하게 해요.
+let updShown = false;
+function showUpdate() {
+  if (updShown) return; updShown = true;
+  const host = document.getElementById("toasts") || document.body;
+  const el = document.createElement("div");
+  el.className = "toast upd"; el.setAttribute("role", "status");
+  el.innerHTML = `새 버전이 있어요. <button type="button" class="btn sm accent" style="margin-left:8px">새로 고침</button>`;
+  el.querySelector("button").addEventListener("click", () => location.reload());
+  host.appendChild(el);
 }

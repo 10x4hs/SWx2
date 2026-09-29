@@ -47,6 +47,10 @@ npx wrangler d1 migrations apply "$DB" --remote < /dev/null
 
 # 4) 배포 (비밀값을 올리려면 Worker 가 먼저 있어야 해서 배포부터 해요)
 step "Worker 배포"
+# 서비스 워커 버전을 배포 시각으로 찍어요 → 친구들 브라우저가 새 파일을 받아요
+STAMP="v$(date +%Y%m%d%H%M%S)"
+node -e 'const fs=require("fs"),[f,v]=process.argv.slice(1);fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/const VERSION = "[^"]*"/,`const VERSION = "${v}"`))' public/sw.js "$STAMP"
+echo "sw 버전: $STAMP"
 OUT="$(npx wrangler deploy < /dev/null 2>&1)" || { echo "$OUT" >&2; exit 1; }
 echo "$OUT" | grep -Ev "^\s*$" | tail -n 8
 URL="$(echo "$OUT" | grep -Eo 'https://[a-zA-Z0-9._-]+\.workers\.dev' | head -n 1 || true)"
