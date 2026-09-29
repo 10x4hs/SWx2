@@ -3,11 +3,16 @@ import { api } from "../api.js";
 import { $, esc, debounce, toast, initial, nowTime, ymd, parseYmd, DOW } from "../util.js";
 import { icon } from "../icons.js";
 import { renderMarkdown, outline } from "../md.js";
+import { createEditor } from "../notes/editor.js";
 
 let live = null; // the mounted notes view, so route changes can swap notes without remounting
 
-const getMode = () => { try { return localStorage.getItem("trio-ed-mode") || "split"; } catch { return "split"; } };
+const MODES = new Set(["block", "md", "view"]);
+const getMode = () => { try { const m = localStorage.getItem("trio-ed-mode"); return MODES.has(m) ? m : "block"; } catch { return "block"; } };
 const setMode = (m) => { try { localStorage.setItem("trio-ed-mode", m); } catch {} };
+const getListOpen = () => { try { return localStorage.getItem("trio-nl") !== "0"; } catch { return true; } };
+const setListOpen = (v) => { try { localStorage.setItem("trio-nl", v ? "1" : "0"); } catch {} };
+const noteCache = new Map(); // id → { at, data } 방금 본 노트는 바로 띄우고 뒤에서 새로 받아요
 // 목록·백링크 미리보기: AI 표시와 마크다운 기호를 걷어낸 글자만
 const plain = (t) => (t || "").replace(/<!--[\s\S]*?(-->|$)/g, " ").replace(/[#*>\-\[\]`]/g, "").replace(/\s+/g, " ").trim();
 const fmt = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
@@ -43,10 +48,11 @@ export async function openDaily(ctx, day) {
 export function update(r) { if (live) live.route(r); }
 
 export function mount(root, ctx, r) {
-  const S = { notes: [], filter: "", tag: null, cur: null, backlinks: [], tags: [], mode: getMode(), status: "" };
+  const S = { notes: [], filter: "", tag: null, cur: null, backlinks: [], tags: [], children: [], crumbs: [], mode: getMode(), status: "", listOpen: getListOpen() };
+  let ED = null; // 블록 편집기
 
   root.innerHTML = `
-    <div class="notes" id="notes">
+    <div class="notes${S.listOpen ? "" : " list-hidden"}" id="notes">
       <aside class="note-list" aria-label="노트 목록">
         <div class="top">
           <div class="row" style="justify-content:space-between">
@@ -102,7 +108,8 @@ export function mount(root, ctx, r) {
         <h2 class="h1 vault-title">Second Brain<br><span class="muted">공부한 것을 연결해요</span></h2>
         <div class="md muted">
           <ul>
-            <li><code>[[노트 제목]]</code> 으로 다른 노트를 연결해요. 없는 제목이면 누를 때 새로 만들어져요.</li>
+            <li>Notion 처럼 써요. <code>/</code> 를 치면 제목·목록·할 일·코드·페이지·AI 블록이 떠요. 글자를 긁으면 굵게·링크 도구가 나와요.</li>
+            <li><code>[[노트 제목]]</code> 으로 다른 노트를 연결해요. 없는 제목이면 누를 때 새로 만들어져요. 그래프에서는 점을 누르고 다른 점을 누르면 이어져요.</li>
             <li><code>#태그</code> 를 붙이면 왼쪽 사이드바에서 모아 볼 수 있어요.</li>
             <li><b>AI 정리</b>를 누르면 AI가 노트마다 주제·태그·관련 링크를 달고, 주제별 목차(<code>MOC · 주제</code>) 노트를 만들어요.</li>
             <li><b>AI로 만들기</b>에 주제를 적으면 서로 연결된 개념 노트를 여러 개 만들어 줘요. AI 튜터 대화도 노트로 정리할 수 있어요.</li>
@@ -123,38 +130,79 @@ export function mount(root, ctx, r) {
     $("#notes", root).classList.add("has-note");
     $("#ed", root).innerHTML = `
       <div class="ed-bar">
-        <a class="icon-btn sm" href="#/notes" aria-label="목록으로" id="ed-back">${icon.left(16)}</a>
+        <a class="icon-btn sm only-m" href="#/notes" aria-label="목록으로" id="ed-back">${icon.left(16)}</a>
+        <button class="icon-btn sm only-d" type="button" id="ed-list" aria-label="${S.listOpen ? "찾기 패널 접기" : "찾기 패널 펴기"}" aria-expanded="${S.listOpen}" title="${S.listOpen ? "찾기 패널 접기" : "찾기 패널 펴기"}">${S.listOpen ? icon.left(15) : icon.right(15)}</button>
         <span class="status" id="ed-status">${own ? esc(S.status || "수정 " + fmt(n.updated_at)) : `${esc(u?.display_name || "누군가")}의 노트 · 보기 전용`}</span>
         ${own ? `
         <div class="seg" role="tablist" aria-label="보기 방식">
-          <button type="button" role="tab" data-mode="edit" aria-selected="${mode === "edit"}" title="편집">${icon.edit(14)}</button>
-          <button type="button" role="tab" data-mode="split" aria-selected="${mode === "split"}" title="분할">${icon.split(14)}</button>
-          <button type="button" role="tab" data-mode="view" aria-selected="${mode === "view"}" title="보기">${icon.eye(14)}</button>
+          <button type="button" role="tab" data-mode="block" aria-selected="${mode === "block"}" title="블록 편집">${icon.edit(14)}<span class="seg-l">편집</span></button>
+          <button type="button" role="tab" data-mode="md" aria-selected="${mode === "md"}" title="마크다운 원문">${icon.split(14)}<span class="seg-l">원문</span></button>
+          <button type="button" role="tab" data-mode="view" aria-selected="${mode === "view"}" title="보기">${icon.eye(14)}<span class="seg-l">보기</span></button>
         </div>
         <button class="btn ghost sm ai-btn" type="button" id="ed-ai" title="이 노트에 주제·#태그·[[링크]]를 달아요">${icon.spark(14)}AI 정리</button>
         <button class="btn ghost sm ai-btn" type="button" id="ed-split-ai" title="이 노트를 개념 하나당 노트 하나로 쪼개 새로 만들어요">쪼개기</button>
         <button class="icon-btn sm danger" type="button" id="ed-del" aria-label="노트 삭제">${icon.trash(15)}</button>` : ""}
       </div>
-      <div class="ed-body"><div class="ed-inner" style="${mode === "split" ? "max-width:1180px" : ""}">
+      <div class="ed-body"><div class="ed-inner" style="${mode === "md" ? "max-width:1180px" : ""}">
+        ${S.crumbs.length ? `<nav class="crumbs" aria-label="상위 페이지">${S.crumbs.map((c) => `<a href="#/notes/${c.id}">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b></nav>` : ""}
         <input class="ed-title" id="ed-title" value="${esc(n.title)}" aria-label="노트 제목" ${own ? "" : "readonly"} maxlength="120">
         <div class="row faint" style="font-size:12px;gap:10px">
           <span class="row" style="gap:6px"><span class="av sm" style="--c:${esc(u?.color || "#999")}">${esc(initial(u?.display_name))}</span>${esc(u?.display_name || "")}</span>
           <span>${fmt(n.created_at)} 작성</span>
           <span id="ed-tags" class="row" style="gap:4px">${S.tags.map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join("")}</span>
         </div>
-        <div class="${mode === "split" ? "ed-split" : ""}">
-          ${mode !== "view" ? `<textarea class="ed-text" id="ed-text" spellcheck="false" placeholder="마크다운으로 쓰세요. [[ 를 치면 노트 제목이 떠요.">${esc(n.body)}</textarea>` : ""}
-          ${mode !== "edit" ? `<article class="md" id="ed-md"></article>` : ""}
-        </div>
+        ${mode === "block" ? `<div id="ed-blocks"></div>` : `<div class="${mode === "md" ? "ed-split" : ""}">
+          ${mode === "md" ? `<textarea class="ed-text" id="ed-text" spellcheck="false" placeholder="마크다운으로 쓰세요. [[ 를 치면 노트 제목이 떠요.">${esc(n.body)}</textarea>` : ""}
+          <article class="md" id="ed-md"></article>
+        </div>`}
         <div class="ed-meta">
+          <div class="row" style="justify-content:space-between;align-items:center"><div class="eyebrow">페이지 · ${S.children.length}</div>${own ? `<button class="btn ghost sm" type="button" id="ed-newpage">${icon.plus(13)}페이지</button>` : ""}</div>
+          <div class="pages" id="ed-pages">${S.children.length ? S.children.map((c) => `<a href="#/notes/${c.id}"><span class="pg-ic">📄</span><b>${esc(c.title)}</b></a>`).join("") : `<span class="faint" style="font-size:13px">이 노트 아래에 페이지를 만들어 내용을 나눠 담을 수 있어요.</span>`}</div>
           <div class="eyebrow">백링크 · ${S.backlinks.length}</div>
           <div class="backlinks" id="ed-back-list">${S.backlinks.length ? S.backlinks.map((b) => `<a href="#/notes/${b.id}"><b>${esc(b.title)}</b><span>${esc(plain(b.snippet).slice(0, 120))}</span></a>`).join("") : `<span class="faint" style="font-size:13px">아직 이 노트를 가리키는 노트가 없어요. 다른 노트에서 <code>[[${esc(n.title)}]]</code> 라고 써 보세요.</span>`}</div>
           <div id="ed-outline"></div>
         </div>
       </div></div>`;
-    drawPreview();
+    if (mode === "block") mountBlocks(own); else drawPreview();
     bindEditor();
   }
+  function mountBlocks(own) {
+    ED?.destroy();
+    const host = $("#ed-blocks", root);
+    ED = createEditor(host, {
+      value: S.cur.body, readOnly: !own,
+      notes: () => S.notes.filter((n) => n.id !== S.cur?.id).map((n) => n.title),
+      onChange: () => { setStatus("입력 중…"); save(); drawOutlineSoon(); },
+      onOpenTitle: (t) => { save.flush(); const hit = S.notes.find((n) => n.title.toLowerCase() === t.toLowerCase()); if (hit) ctx.go("#/notes/" + hit.id); else openByTitle(ctx, t); },
+      onOpenTag: (t) => ctx.go("#/notes/tag/" + encodeURIComponent(t)),
+      onError: (e) => toast(e.message || "실패했어요.", "err"),
+      onAsk: async (question, context) => { const r = await api.askAi({ note_id: S.cur.id, question, context }); return { text: r.text, model: r.model }; },
+      onNewPage: (title) => newPage(title, false),
+    });
+    drawOutline();
+  }
+  async function newPage(title, go = true) {
+    if (!mine()) return null;
+    save.flush(); await chain;
+    const parent = S.cur;
+    try {
+      const { note } = await api.addNote({ title, parent_id: parent.id, body: `# ${title}\n\n` });
+      S.children.push({ id: note.id, title: note.title, updated_at: note.updated_at });
+      const pg = $("#ed-pages", root); if (pg) pg.innerHTML = S.children.map((c) => `<a href="#/notes/${c.id}"><span class="pg-ic">📄</span><b>${esc(c.title)}</b></a>`).join("");
+      loadList(); ctx.refreshSide();
+      if (go) ctx.go("#/notes/" + note.id);
+      return note;
+    } catch (e) {
+      if (e.status === 409) { toast("같은 제목의 노트가 이미 있어요. 다른 제목으로 해 주세요.", "err"); return null; }
+      toast(e.message, "err"); return null;
+    }
+  }
+  function drawOutline() {
+    const body = ED ? ED.getValue() : ($("#ed-text", root)?.value ?? S.cur?.body ?? "");
+    const ol = outline(body), oe = $("#ed-outline", root);
+    if (oe) oe.innerHTML = ol.length > 1 ? `<div class="eyebrow" style="margin:6px 0">개요</div><div style="display:grid;gap:3px;font-size:13px">${ol.map((h) => `<span class="muted" style="padding-left:${(h.level - 1) * 14}px">${esc(h.text)}</span>`).join("")}</div>` : "";
+  }
+  const drawOutlineSoon = debounce(drawOutline, 400);
 
   function drawPreview() {
     const md = $("#ed-md", root), body = $("#ed-text", root)?.value ?? S.cur.body;
@@ -163,9 +211,7 @@ export function mount(root, ctx, r) {
       const titles = new Set(S.notes.map((n) => n.title.toLowerCase()));
       md.querySelectorAll("[data-wikilink]").forEach((a) => a.classList.toggle("missing", !titles.has(a.dataset.wikilink.toLowerCase())));
     }
-    const ol = outline(body);
-    const oe = $("#ed-outline", root);
-    if (oe) oe.innerHTML = ol.length > 1 ? `<div class="eyebrow" style="margin:6px 0">개요</div><div style="display:grid;gap:3px;font-size:13px">${ol.map((h) => `<span class="muted" style="padding-left:${(h.level - 1) * 14}px">${esc(h.text)}</span>`).join("")}</div>` : "";
+    drawOutline();
   }
 
   // ---------- saving ----------
@@ -173,7 +219,7 @@ export function mount(root, ctx, r) {
   const setStatus = (t) => { S.status = t; const el = $("#ed-status", root); if (el) el.textContent = t; };
   const save = debounce(() => {
     if (!mine()) return;
-    const id = S.cur.id, title = $("#ed-title", root)?.value.trim(), body = $("#ed-text", root)?.value;
+    const id = S.cur.id, title = $("#ed-title", root)?.value.trim(), body = ED && S.mode === "block" ? ED.getValue() : $("#ed-text", root)?.value;
     const patch = {};
     if (title && title !== S.cur.title) patch.title = title;
     if (body !== undefined && body !== S.cur.body) patch.body = body;
@@ -182,6 +228,7 @@ export function mount(root, ctx, r) {
       try {
         const { note } = await api.saveNote(id, patch);
         if (S.cur?.id === id) { S.cur = note; setStatus("저장됨 " + nowTime()); }
+        const c = noteCache.get(id); if (c) c.data = { ...c.data, note };
         const li = S.notes.find((x) => x.id === id);
         if (li) { li.title = note.title; li.snippet = note.body.slice(0, 160); li.updated_at = note.updated_at; }
         drawList();
@@ -192,7 +239,11 @@ export function mount(root, ctx, r) {
 
   function bindEditor() {
     const ta = $("#ed-text", root), title = $("#ed-title", root);
-    $$m("[data-mode]").forEach((b) => b.addEventListener("click", () => { save.flush(); S.mode = b.dataset.mode; setMode(S.mode); if (ta) S.cur.body = ta.value; drawEditor(); }));
+    $$m("[data-mode]").forEach((b) => b.addEventListener("click", () => { if (ED && S.mode === "block") S.cur.body = ED.getValue(); else if (ta) S.cur.body = ta.value; save.flush(); S.mode = b.dataset.mode; setMode(S.mode); ED?.destroy(); ED = null; drawEditor(); }));
+    const lt = $("#ed-list", root);
+    if (lt) lt.addEventListener("click", () => { S.listOpen = !S.listOpen; setListOpen(S.listOpen); $("#notes", root).classList.toggle("list-hidden", !S.listOpen); lt.innerHTML = S.listOpen ? icon.left(15) : icon.right(15); lt.setAttribute("aria-expanded", String(S.listOpen)); lt.title = lt.ariaLabel = S.listOpen ? "찾기 패널 접기" : "찾기 패널 펴기"; });
+    const np = $("#ed-newpage", root);
+    if (np) np.addEventListener("click", () => { const t = prompt("새 페이지 제목", ""); if (t && t.trim()) newPage(t.trim().replace(/[\[\]|#]/g, "")); });
     const share = $("#ed-share", root);
     if (share) share.addEventListener("click", async () => {
       try { const { note } = await api.saveNote(S.cur.id, { shared: !S.cur.shared }); S.cur = note; toast(note.shared ? "다른 두 사람도 이 노트를 볼 수 있어요." : "이제 나만 볼 수 있어요."); const li = S.notes.find((x) => x.id === note.id); if (li) li.shared = note.shared; drawEditor(); drawList(); }
@@ -295,12 +346,22 @@ export function mount(root, ctx, r) {
   async function open(id) {
     save.flush();
     closeSuggest();
-    if (!id) { S.cur = null; drawEmpty(); drawList(); return; }
-    try {
-      const { note, backlinks, tags } = await api.note(id);
-      S.cur = note; S.backlinks = backlinks; S.tags = tags; S.status = "";
+    if (!id) { ED?.destroy(); ED = null; S.cur = null; drawEmpty(); drawList(); return; }
+    const show = (d) => {
+      const { note, backlinks, tags, children = [], crumbs = [] } = d;
+      ED?.destroy(); ED = null;
+      S.cur = note; S.backlinks = backlinks; S.tags = tags; S.children = children; S.crumbs = crumbs; S.status = "";
       drawEditor(); drawList();
-      if (mine() && !note.body.trim()) setTimeout(() => ($("#ed-title", root).value.startsWith("제목 없음") ? $("#ed-title", root) : $("#ed-text", root))?.select?.(), 30);
+    };
+    const hit = noteCache.get(id);
+    if (hit && S.cur?.id !== id) show(hit.data); // 본 적 있으면 먼저 띄우고
+    try {
+      const d = await api.note(id);
+      noteCache.set(id, { at: Date.now(), data: d });
+      if (location.hash !== "#/notes/" + id) return; // 그 사이 다른 데로 갔어요
+      const same = hit && hit.data.note.updated_at === d.note.updated_at && hit.data.backlinks.length === d.backlinks.length && hit.data.children?.length === d.children?.length;
+      if (!same || S.cur?.id !== id) show(d);
+      if (mine() && !d.note.body.trim()) setTimeout(() => { const t = $("#ed-title", root); if (t?.value.startsWith("제목 없음")) t.select(); else if (ED) ED.focus("end"); else $("#ed-text", root)?.focus(); }, 30);
     } catch (e) { toast(e.message, "err"); S.cur = null; drawEmpty(); }
   }
   function route(rr) {
@@ -344,7 +405,7 @@ export function mount(root, ctx, r) {
 
   S.tag = r.tag || null;
   live = { route };
-  loadList().then(() => open(r.id));
+  loadList(); open(r.id);
 
-  return () => { save.flush(); closeSuggest(); live = null; };
+  return () => { save.flush(); closeSuggest(); ED?.destroy(); ED = null; live = null; };
 }

@@ -52,6 +52,20 @@ r = await call("a", "GET", "/tags"); ok(r.data.tags.find((t) => t.tag === "cs")?
 r = await call("a", "GET", "/graph"); ok(r.data.nodes.length >= 2 && r.data.edges.length >= 2, "graph");
 r = await call("a", "GET", "/search?q=" + encodeURIComponent("스택")); ok(r.data.notes.some((n) => n.id === n1) && !r.data.notes.some((n) => n.id === n2), "search");
 r = await call("a", "GET", "/notes/resolve?title=" + encodeURIComponent("알고리즘")); ok(r.data.id === n2, "resolve");
+// v14: 그래프에서 클릭으로 연결 → 본문 끝 "## 연결" 에 [[제목]] · 끊기 · 페이지(parent_id) · 경로
+r = await call("a", "POST", "/notes/" + n2 + "/link", { title: "그래프 연결" }); ok(r.status === 200 && r.data.added && /## 연결\n- \[\[그래프 연결\]\]\n$/.test(r.data.note.body), "link: appends [[title]] under ## 연결");
+r = await call("a", "POST", "/notes/" + n2 + "/link", { title: "그래프 연결" }); ok(r.status === 200 && r.data.added === false, "link: same title twice → added false");
+r = await call("a", "POST", "/notes/" + n2 + "/link", { title: "알고리즘" }); ok(r.status === 400, "link: self → 400");
+r = await call("a", "GET", "/graph"); ok(r.data.edges.some((e) => e.src_id === n2 && e.dst_title === "그래프 연결"), "link: shows up in /graph edges");
+r = await call("a", "DELETE", "/notes/" + n2 + "/link?title=" + encodeURIComponent("그래프 연결")); ok(r.status === 200 && r.data.removed && !r.data.note.body.includes("## 연결") && !r.data.note.body.includes("그래프 연결"), "unlink: removes line and empty ## 연결");
+r = await call("b", "POST", "/notes/" + n2 + "/link", { title: "x" }); ok(r.status === 404, "link: other's note → 404");
+r = await call("a", "POST", "/notes", { title: "하위 페이지", parent_id: n1, body: "# 하위" }); ok(r.status === 201 && r.data.note.parent_id === n1, "page: create with parent_id"); const pg = r.data.note.id;
+r = await call("a", "GET", "/notes/" + pg); ok(r.data.crumbs.length === 1 && r.data.crumbs[0].id === n1, "page: crumbs");
+r = await call("a", "GET", "/notes/" + n1); ok(r.data.children.length === 1 && r.data.children[0].id === pg, "page: children");
+r = await call("a", "POST", "/notes", { title: "부모 없음", parent_id: "nope" }); ok(r.status === 404, "page: unknown parent → 404");
+r = await call("a", "PUT", "/notes/" + pg, { parent_id: pg }); ok(r.status === 400, "page: self parent → 400");
+r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status === 200 && r.data.note.parent_id === null, "page: move to top");
+r = await call("a", "POST", "/ai/ask", { note_id: n1, question: "" }); ok(r.status === 400, "ai/ask: empty question → 400");
 if (jar.b) {
   r = await call("b", "GET", "/notes/" + n1); ok(r.status === 404, "private note hidden from b");
   await call("a", "PUT", "/notes/" + n1, { shared: true });

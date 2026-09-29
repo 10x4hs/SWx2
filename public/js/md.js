@@ -38,6 +38,12 @@ export function renderMarkdown(src) {
   return DOMPurify.sanitize(html, { ADD_ATTR: ["data-wikilink", "data-tag", "target"] });
 }
 
+// 한 줄(인라인)만: 블록 편집기가 줄마다 굵게·링크·[[위키링크]]·#태그를 그릴 때
+export function renderInline(src) {
+  const html = marked.parseInline(String(src || "").replace(/\n/g, "  \n"));
+  return DOMPurify.sanitize(html, { ADD_ATTR: ["data-wikilink", "data-tag", "target"] });
+}
+
 // 노트 본문에서 제목(h1~h3) 목록 뽑기 — 개요 패널용
 export function outline(src) {
   return (src || "").split("\n").map((l) => /^(#{1,3})\s+(.+)/.exec(l)).filter(Boolean).map((m) => ({ level: m[1].length, text: m[2].trim() }));

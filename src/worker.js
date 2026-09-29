@@ -476,8 +476,8 @@ async function visibleNote(env, id, user) {
 on("GET", "/notes", async ({ env, user, q }) => {
   const tag = q.get("tag");
   const sql = tag
-    ? `SELECT n.id, n.user_id, n.title, n.shared, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n JOIN note_tags t ON t.note_id = n.id AND t.tag = ?2 WHERE ${VISIBLE} ORDER BY n.updated_at DESC`
-    : `SELECT n.id, n.user_id, n.title, n.shared, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n WHERE ${VISIBLE} ORDER BY n.updated_at DESC`;
+    ? `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n JOIN note_tags t ON t.note_id = n.id AND t.tag = ?2 WHERE ${VISIBLE} ORDER BY n.updated_at DESC`
+    : `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n WHERE ${VISIBLE} ORDER BY n.updated_at DESC`;
   const stmt = tag ? env.DB.prepare(sql).bind(user.id, tag) : env.DB.prepare(sql).bind(user.id);
   const { results } = await stmt.all();
   return json({ notes: results });
@@ -494,14 +494,21 @@ on("GET", "/notes/resolve", async ({ env, user, q }) => {
 
 on("GET", "/notes/:id", async ({ env, user, params }) => {
   const n = await visibleNote(env, params.id, user);
-  const [back, tags] = await env.DB.batch([
+  const [back, tags, children] = await env.DB.batch([
     env.DB.prepare(
       `SELECT n.id, n.user_id, n.title, substr(n.body, 1, 160) AS snippet FROM note_links l JOIN notes n ON n.id = l.src_id
        WHERE l.dst_title = ?2 AND n.id != ?3 AND ${VISIBLE} ORDER BY n.updated_at DESC`
     ).bind(user.id, n.title, n.id),
     env.DB.prepare("SELECT tag FROM note_tags WHERE note_id = ?").bind(n.id),
+    env.DB.prepare("SELECT id, title, updated_at FROM notes WHERE parent_id = ? AND user_id = ? ORDER BY created_at").bind(n.id, user.id),
   ]);
-  return json({ note: n, backlinks: back.results, tags: tags.results.map((t) => t.tag) });
+  // 위로 올라가는 경로 (부모 › 조부모 …, 최대 6단계)
+  const crumbs = [];
+  for (let pid = n.parent_id, i = 0; pid && i < 6; i++) {
+    const p = await env.DB.prepare("SELECT id, title, parent_id FROM notes WHERE id = ? AND user_id = ?").bind(pid, user.id).first();
+    if (!p) break; crumbs.unshift({ id: p.id, title: p.title }); pid = p.parent_id;
+  }
+  return json({ note: n, backlinks: back.results, tags: tags.results.map((t) => t.tag), children: children.results, crumbs });
 });
 
 on("POST", "/notes", async ({ req, env, user }) => {
@@ -511,9 +518,15 @@ on("POST", "/notes", async ({ req, env, user }) => {
   const text = typeof b.body === "string" ? b.body.slice(0, MAX_NOTE) : "";
   const dup = await env.DB.prepare("SELECT id FROM notes WHERE user_id = ? AND title = ? COLLATE NOCASE").bind(user.id, title).first();
   if (dup) return json({ error: "같은 제목의 노트가 이미 있어요.", id: dup.id }, 409);
-  const n = { id: uid(), user_id: user.id, title, body: text, shared: b.shared ? 1 : 0, created_at: now(), updated_at: now() };
-  await env.DB.prepare("INSERT INTO notes (id, user_id, title, body, shared, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .bind(n.id, n.user_id, n.title, n.body, n.shared, n.created_at, n.updated_at).run();
+  let parent_id = null;
+  if (typeof b.parent_id === "string" && b.parent_id) {
+    const p = await env.DB.prepare("SELECT id FROM notes WHERE id = ? AND user_id = ?").bind(b.parent_id, user.id).first();
+    if (!p) fail(404, "상위 노트를 찾을 수 없어요.");
+    parent_id = p.id;
+  }
+  const n = { id: uid(), user_id: user.id, title, body: text, shared: b.shared ? 1 : 0, parent_id, created_at: now(), updated_at: now() };
+  await env.DB.prepare("INSERT INTO notes (id, user_id, title, body, shared, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(n.id, n.user_id, n.title, n.body, n.shared, n.parent_id, n.created_at, n.updated_at).run();
   await indexNote(env, n.id, text);
   return json({ note: n }, 201);
 });
@@ -534,11 +547,69 @@ on("PUT", "/notes/:id", async ({ req, env, user, params }) => {
     next.body = b.body;
   }
   if (b.shared !== undefined) next.shared = b.shared ? 1 : 0;
+  if (b.parent_id !== undefined) {
+    if (b.parent_id === null || b.parent_id === "") next.parent_id = null;
+    else {
+      if (b.parent_id === n.id) fail(400, "자기 자신 아래에 둘 수 없어요.");
+      const p = await env.DB.prepare("SELECT id FROM notes WHERE id = ? AND user_id = ?").bind(b.parent_id, user.id).first();
+      if (!p) fail(404, "상위 노트를 찾을 수 없어요.");
+      next.parent_id = p.id;
+    }
+  }
   next.updated_at = now();
-  await env.DB.prepare("UPDATE notes SET title = ?, body = ?, shared = ?, updated_at = ? WHERE id = ?")
-    .bind(next.title, next.body, next.shared, next.updated_at, n.id).run();
+  await env.DB.prepare("UPDATE notes SET title = ?, body = ?, shared = ?, parent_id = ?, updated_at = ? WHERE id = ?")
+    .bind(next.title, next.body, next.shared, next.parent_id ?? null, next.updated_at, n.id).run();
   if (typeof b.body === "string") await indexNote(env, n.id, next.body);
   return json({ note: next });
+});
+
+// 그래프에서 클릭으로 연결: 본문 끝 "## 연결" 아래에 [[제목]] 한 줄을 적어요 (옵시디언처럼 노트 안에서도 보이게)
+const LINK_HEAD = "## 연결";
+function addLinkLine(text, title) {
+  const t = text.replace(/\s+$/, "");
+  const re = new RegExp("\\[\\[" + title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?:[#|][^\\]]*)?\\]\\]", "i");
+  if (re.test(t)) return null;
+  // AI 구역은 맨 끝에 두는 규칙이라 그 앞에 끼워 넣어요
+  const ai = t.indexOf("<!-- ai:start -->");
+  const head = ai >= 0 ? t.slice(0, ai).replace(/\s+$/, "") : t, tail = ai >= 0 ? "\n\n" + t.slice(ai) : "";
+  const idx = head.lastIndexOf("\n" + LINK_HEAD);
+  const section = idx >= 0 || head.startsWith(LINK_HEAD);
+  return (section ? head + "\n- [[" + title + "]]" : head + (head ? "\n\n" : "") + LINK_HEAD + "\n- [[" + title + "]]") + tail + "\n";
+}
+function removeLink(text, title) {
+  const q = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let out = text.replace(new RegExp("^[ \\t]*[-*][ \\t]*\\[\\[" + q + "(?:[#|][^\\]]*)?\\]\\][ \\t]*\\n?", "gim"), "");
+  out = out.replace(new RegExp("\\[\\[" + q + "(?:#[^\\]|]*)?(?:\\|([^\\]]+))?\\]\\]", "gi"), (_, label) => label || title);
+  out = out.replace(new RegExp("(^|\\n)" + LINK_HEAD + "[ \\t]*\\n(?=\\s*(?:\\n|$|<!--))", ""), "$1"); // 빈 연결 절은 지워요
+  return out.replace(/\n{3,}/g, "\n\n").replace(/\s+$/, "\n");
+}
+async function relink(env, n, text) {
+  await env.DB.batch([
+    env.DB.prepare("UPDATE notes SET body = ?, updated_at = ? WHERE id = ?").bind(text, now(), n.id),
+    ...indexStmts(env, n.id, text),
+  ]);
+  return { ...n, body: text, updated_at: now() };
+}
+on("POST", "/notes/:id/link", async ({ req, env, user, params }) => {
+  const n = await visibleNote(env, params.id, user);
+  if (n.user_id !== user.id) fail(403, "다른 사람의 노트는 수정할 수 없어요.");
+  const b = await body(req);
+  const title = str(b.title, 120, "연결할 노트 제목");
+  if (/[\[\]|#]/.test(title)) fail(400, "제목에는 [ ] | # 를 쓸 수 없어요.");
+  if (title.toLowerCase() === n.title.toLowerCase()) fail(400, "자기 자신과는 연결할 수 없어요.");
+  const text = addLinkLine(n.body || "", title);
+  if (text === null) return json({ note: n, added: false });
+  if (text.length > MAX_NOTE) fail(400, "노트가 너무 길어요.");
+  return json({ note: await relink(env, n, text), added: true });
+});
+on("DELETE", "/notes/:id/link", async ({ env, user, params, q }) => {
+  const n = await visibleNote(env, params.id, user);
+  if (n.user_id !== user.id) fail(403, "다른 사람의 노트는 수정할 수 없어요.");
+  const title = String(q.get("title") || "").trim();
+  if (!title) fail(400, "끊을 연결의 제목을 알려 주세요.");
+  const text = removeLink(n.body || "", title);
+  if (text === n.body) return json({ note: n, removed: false });
+  return json({ note: await relink(env, n, text), removed: true });
 });
 
 on("DELETE", "/notes/:id", async ({ env, user, params }) => {
@@ -549,7 +620,7 @@ on("DELETE", "/notes/:id", async ({ env, user, params }) => {
 
 on("GET", "/graph", async ({ env, user }) => {
   const [nodes, edges] = await env.DB.batch([
-    env.DB.prepare(`SELECT n.id, n.user_id, n.title, n.topic, (SELECT group_concat(t.tag) FROM note_tags t WHERE t.note_id = n.id) AS tags FROM notes n WHERE ${VISIBLE}`).bind(user.id),
+    env.DB.prepare(`SELECT n.id, n.user_id, n.title, n.topic, n.parent_id, (SELECT group_concat(t.tag) FROM note_tags t WHERE t.note_id = n.id) AS tags FROM notes n WHERE ${VISIBLE}`).bind(user.id),
     env.DB.prepare(`SELECT l.src_id, l.dst_title FROM note_links l JOIN notes n ON n.id = l.src_id WHERE ${VISIBLE}`).bind(user.id),
   ]);
   return json({ nodes: nodes.results, edges: edges.results });

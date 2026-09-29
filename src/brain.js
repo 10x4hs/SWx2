@@ -1,6 +1,6 @@
 // AI 두뇌: 내 노트를 옵시디언처럼 정리하고(주제·#태그·[[링크]]·목차 노트), 새 개념 노트를 만들어요.
 // AI가 쓰는 부분은 노트 끝의 표시된 구역에만 들어가고, 다시 돌리면 그 구역만 바뀌어요.
-import { aiJson } from "./ai.js";
+import { aiJson, aiText } from "./ai.js";
 
 const AI_START = "<!-- ai:start -->", AI_END = "<!-- ai:end -->", MOC_MARK = "<!-- ai:moc -->";
 const AI_BLOCK_RE = /\n*<!-- ai:start -->[\s\S]*?<!-- ai:end -->\n*/g;
@@ -127,6 +127,26 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
   }
 
   const knownTopics = async (env, user) => (await env.DB.prepare("SELECT name FROM topics WHERE user_id = ? ORDER BY updated_at DESC LIMIT 30").bind(user.id).all()).results.map((t) => t.name);
+
+  // ---------- 편집기 안 AI: 이 노트를 보면서 바로 묻기 (답은 마크다운, 노트에 끼워 넣기 좋게 짧게) ----------
+  on("POST", "/ai/ask", async ({ req, env, user }) => {
+    const b = await body(req);
+    const question = String(b.question || "").trim().slice(0, 2000);
+    if (!question) fail(400, "무엇을 물어볼지 적어 주세요.");
+    let note = null;
+    if (typeof b.note_id === "string" && b.note_id) note = await env.DB.prepare("SELECT title, body FROM notes WHERE id = ? AND user_id = ?").bind(b.note_id, user.id).first();
+    const context = typeof b.context === "string" ? b.context.slice(0, 12000) : (note?.body || "").slice(0, 12000);
+    const system = [
+      "너는 세 명이 같이 쓰는 공부 노트 앱 안의 AI야. 사용자가 노트를 쓰다가 바로 물어봐. 답은 그 노트에 그대로 끼워 넣을 수 있게 마크다운으로, 군더더기 없이 써.",
+      "규칙: 한국어. 제목 없이 본문만. 필요하면 짧은 목록·굵게. 코드가 필요하면 코드 블록. 길어야 300단어. 노트에 이미 있는 내용은 반복하지 말고 이어서 써.",
+      note ? `지금 보는 노트 제목: ${note.title}` : "",
+      context ? `노트 내용:\n${context}` : "",
+    ].filter(Boolean).join("\n\n");
+    try {
+      const { text, used } = await aiText(env, system, [{ role: "user", content: question }]);
+      return json({ text: String(text || "").trim(), model: used });
+    } catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
+  });
 
   // ---------- 정리: 노트 하나 또는 내 노트 전부 ----------
   on("POST", "/ai/organize", async ({ req, env, user }) => {
