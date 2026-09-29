@@ -77,6 +77,7 @@ MIMO_API_KEY=sk-...        # 선택
 ZHIPU_API_KEY=...          # 선택
 OPENROUTER_API_KEY=sk-or-... # 선택
 KILO_API_KEY=...           # 선택
+OLLAMA_API_KEY=...         # 선택
 INVITE_CODE=...
 PASSWORDLESS=1             # 로컬 전용
 ```
@@ -89,10 +90,11 @@ PASSWORDLESS=1             # 로컬 전용
 | `MIMO_API_KEY` | 샤오미 MiMo 개발자 플랫폼 (`api.xiaomimimo.com`) | 채팅(MiMo, 따로 선택), 정리 4순위. 추론 과정 표시 |
 | `ZHIPU_API_KEY` | https://open.bigmodel.cn → API Keys | 채팅(GLM 4.5 Flash, 따로 선택), 정리 5순위. 무료지만 느려요(수십 초). 4.6 은 무료 키가 429 |
 | `OPENROUTER_API_KEY` | https://openrouter.ai/keys | 채팅(`openrouter/free` — 그때그때 되는 무료 모델로 자동), 정리 6순위. 실제로 답한 모델은 상태 줄에 보여요 |
-| `KILO_API_KEY` | https://app.kilo.ai → API Keys | 채팅(`kilo-auto/free` 자동), 정리 마지막 순서. 유료 모델은 크레딧 오류라 무료 자동만 |
+| `KILO_API_KEY` | https://app.kilo.ai → API Keys | 채팅(`kilo-auto/free` 자동 → `stepfun/step-3.7-flash:free`), 정리 7순위. 유료 모델은 크레딧 오류라 무료만 |
+| `OLLAMA_API_KEY` | https://ollama.com → Settings → Keys | 채팅(`nemotron-3-ultra` → `gpt-oss:120b`), 정리 마지막 순서. 큰 모델이라 조금 느려요 |
 
 - 채팅의 **전체 비교** = Gemini · Groq · Cohere 세 답을 나란히. 키가 없는 모델은 건너뛰어요.
-- 노트 정리/생성(JSON)은 Gemini → Groq → Cohere → MiMo → Zhipu → OpenRouter → Kilo 순서로 되는 곳을 써요. 대화방 AI(`aiText`)는 Groq → Gemini → Cohere → MiMo → Zhipu → OpenRouter → Kilo. 뒤의 셋은 JSON 모드가 없어서 코드 펜스를 벗기고 `{ }` 만 골라 읽어요.
+- 노트 정리/생성(JSON)은 Gemini → Groq → Cohere → MiMo → Zhipu → OpenRouter → Kilo → Ollama 순서로 되는 곳을 써요. 대화방 AI(`aiText`)는 Groq → Gemini → Cohere → MiMo → Zhipu → OpenRouter → Kilo → Ollama. 뒤의 넷은 JSON 모드가 없어서 코드 펜스를 벗기고 `{ }` 만 골라 읽어요.
 - `COHERE_API_KEY` 가 없거나 임베딩이 실패하면 '비슷한 노트 후보' 없이 예전처럼 정리해요.
 
 키는 브라우저로 나가지 않고 Worker 비밀값에만 있어요. 사람당 하루 200개 질문 제한(`src/ai.js` 의 `DAILY_LIMIT`).
@@ -165,7 +167,7 @@ API=http://localhost:8787 EN_USER=t_en ENGLISH_OS=/볼트사본 npm run english:
 
 ```
 src/worker.js          API (인증·계획·기록·노트·그래프·검색)
-src/ai.js              AI 채팅 (Gemini·Groq·Cohere·MiMo·GLM·OpenRouter·Kilo 스트리밍, 기록 참고, 대화 저장) · aiJson/aiText 공용 호출
+src/ai.js              AI 채팅 (Gemini·Groq·Cohere·MiMo·GLM·OpenRouter·Kilo·Ollama 스트리밍, 기록 참고, 대화 저장) · aiJson/aiText 공용 호출
 src/brain.js           AI 정리·생성 (주제·태그·링크 써넣기, MOC 목차, 개념 노트 만들기)
 src/calendar.js        캘린더 (한 달 요약 · 하루 한 페이지)
 src/english.js         영어 기록 · 표현 · 복습 카드

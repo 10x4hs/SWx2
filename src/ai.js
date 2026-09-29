@@ -1,5 +1,5 @@
-// AI 채팅: Gemini(Google AI Studio) · Groq · Cohere · Xiaomi MiMo · Zhipu GLM · OpenRouter · Kilo · 여러 개 나란히 비교.
-// 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY, ZHIPU_API_KEY, OPENROUTER_API_KEY, KILO_API_KEY)에만 있고 브라우저로 나가지 않아요.
+// AI 채팅: Gemini(Google AI Studio) · Groq · Cohere · Xiaomi MiMo · Zhipu GLM · OpenRouter · Kilo · Ollama · 여러 개 나란히 비교.
+// 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY, ZHIPU_API_KEY, OPENROUTER_API_KEY, KILO_API_KEY, OLLAMA_API_KEY)에만 있고 브라우저로 나가지 않아요.
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
 const MIMO_URL = "https://api.xiaomimimo.com/v1/chat/completions";
@@ -8,13 +8,15 @@ const COHERE_URL = "https://api.cohere.com/v2/chat";
 // OpenAI 모양 API 셋 더 (무료 자동 라우팅·GLM). 회사 이름 → 주소·키·붙일 헤더·본문 추가
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const ZHIPU_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
-const KILO_URL = "https://api.kilo.ai/api/openrouter/chat/completions";
+const KILO_URL = "https://api.kilo.ai/api/gateway/chat/completions";
+const OLLAMA_URL = "https://ollama.com/v1/chat/completions";
 const OPENAI_LIKE = {
   openrouter: { url: OPENROUTER_URL, name: "OpenRouter", headers: { "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" } },
   zhipu: { url: ZHIPU_URL, name: "GLM", body: { thinking: { type: "disabled" } } },   // 생각 모드를 끄지 않으면 본문이 빈 채로 와요
   kilo: { url: KILO_URL, name: "Kilo", headers: { "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" } },
+  ollama: { url: OLLAMA_URL, name: "Ollama" },
 };
-const KEY = { gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY", cohere: "COHERE_API_KEY", mimo: "MIMO_API_KEY", openrouter: "OPENROUTER_API_KEY", zhipu: "ZHIPU_API_KEY", kilo: "KILO_API_KEY" };
+const KEY = { gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY", cohere: "COHERE_API_KEY", mimo: "MIMO_API_KEY", openrouter: "OPENROUTER_API_KEY", zhipu: "ZHIPU_API_KEY", kilo: "KILO_API_KEY", ollama: "OLLAMA_API_KEY" };
 
 // 혼잡(503)·한도(429)·폐지(404)면 다음 모델로 넘어가요
 const MODELS = {
@@ -28,12 +30,13 @@ const MODELS = {
   "mimo-pro": { label: "MiMo Pro", desc: "추론이 강한 큰 모델", provider: "mimo", chain: ["mimo-v2.6-pro", "mimo-v2.5-pro"] },
   // 무료 자동 라우팅 둘 + GLM (4.6 은 무료 키가 429 라서 4.5 Flash 만)
   zhipu: { label: "GLM 4.5 Flash", desc: "Zhipu · 무료 · 중국어권 모델이지만 한국어도 돼요", provider: "zhipu", chain: ["glm-4.5-flash"] },
-  openrouter: { label: "OpenRouter · 무료 자동", desc: "그때그때 되는 무료 모델로 보내요", provider: "openrouter", chain: ["openrouter/free"] },
-  kilo: { label: "Kilo · 무료 자동", desc: "Kilo 가 고른 무료 모델", provider: "kilo", chain: ["kilo-auto/free"] },
+  openrouter: { label: "OpenRouter · 무료 자동", desc: "그때그때 되는 무료 모델로 보내요", provider: "openrouter", chain: ["openrouter/free", "nvidia/nemotron-3-ultra-550b-a55b:free"] },
+  kilo: { label: "Kilo · 무료 자동", desc: "Kilo 가 고른 무료 모델", provider: "kilo", chain: ["kilo-auto/free", "stepfun/step-3.7-flash:free"] },
+  ollama: { label: "Ollama Nemotron", desc: "Ollama 클라우드 · 큰 모델이라 조금 느려요", provider: "ollama", chain: ["nemotron-3-ultra", "gpt-oss:120b"] },
 };
 // 한 번에 답 받는 순서 (뒤의 셋은 느리거나 JSON 모드가 없어서 마지막)
-const JSON_ORDER = ["gemini", "groq", "cohere", "mimo", "zhipu", "openrouter", "kilo"];
-export const TEXT_ORDER = ["groq", "gemini", "cohere", "mimo", "zhipu", "openrouter", "kilo"];
+const JSON_ORDER = ["gemini", "groq", "cohere", "mimo", "zhipu", "openrouter", "kilo", "ollama"];
+export const TEXT_ORDER = ["groq", "gemini", "cohere", "mimo", "zhipu", "openrouter", "kilo", "ollama"];
 const COMPARE = ["gemini", "groq", "cohere"]; // "all" = 이 셋을 나란히 (MiMo는 따로 골라요)
 const DAILY_LIMIT = 200;             // 사람당 하루 질문 수
 // 413 = Groq "한 번에 너무 큼(분당 토큰 초과)" → 다음 모델/회사로
@@ -212,7 +215,7 @@ async function contextPrompt(env, user, b, message) {
 // Gemini(JSON 모드) → Groq → Cohere → MiMo 순서. 키가 하나도 없으면 503.
 // 한 회사 안에서는 붐빌 때만 다음 모델로, 그 회사가 아예 안 되면(키·요청 오류) 다음 회사로 넘어가요.
 export async function aiJson(env, system, prompt) {
-  const JSON_RUN = { gemini: geminiJson, groq: groqJson, cohere: cohereJson, mimo: mimoJson, zhipu: openaiJson("zhipu"), openrouter: openaiJson("openrouter"), kilo: openaiJson("kilo") };
+  const JSON_RUN = { gemini: geminiJson, groq: groqJson, cohere: cohereJson, mimo: mimoJson, zhipu: openaiJson("zhipu"), openrouter: openaiJson("openrouter"), kilo: openaiJson("kilo"), ollama: openaiJson("ollama") };
   const groups = JSON_ORDER.filter((p) => hasKey(env, p));
   if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
   let lastErr = null;
@@ -434,7 +437,7 @@ const openaiLike = (provider) => (env, model, system, history, message, emit) =>
   return openaiStream(p.url, env[KEY[provider]], p.name, { model, ...(p.body || {}), messages: chatMessages(system, history, message), max_tokens: 4096, temperature: 0.7 }, emit, p.headers);
 };
 
-const RUN = { gemini, mimo, groq, cohere, zhipu: openaiLike("zhipu"), openrouter: openaiLike("openrouter"), kilo: openaiLike("kilo") };
+const RUN = { gemini, mimo, groq, cohere, zhipu: openaiLike("zhipu"), openrouter: openaiLike("openrouter"), kilo: openaiLike("kilo"), ollama: openaiLike("ollama") };
 
 // ---------- 글 한 번에 받기 (대화방 AI용) ----------
 // 스트리밍 함수를 그대로 쓰되 글자는 모아서 한 번에 돌려줘요. messages = [{ role: 'user'|'assistant', content }], 마지막은 user.

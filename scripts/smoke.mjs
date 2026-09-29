@@ -378,9 +378,9 @@ if (!process.env.SKIP_AI) {
   a = await ask("gemini", "방금 설명을 5단어 이내로 줄여 줘", meta.chat_id);
   ok(a.out("gemini").length > 0, "ai follow-up in same chat");
   r = await call("a", "GET", "/ai/chats/" + meta.chat_id); ok(r.data.messages.length >= 4, "chat saved: " + r.data.messages.length + " messages");
-  // 새 회사 셋 (Zhipu · OpenRouter · Kilo): 한 마디씩. 한도(429)면 PASS 로 표시만, 서버에 키가 없으면 건너뜀
+  // 새 회사 넷 (Zhipu · OpenRouter · Kilo · Ollama): 한 마디씩. 한도(429)면 PASS 로 표시만, 서버에 키가 없으면 건너뜀
   const avail = Object.fromEntries((await call("a", "GET", "/ai/models")).data.models.map((m) => [m.id, m.available]));
-  for (const m of ["zhipu", "openrouter", "kilo"]) {
+  for (const m of ["zhipu", "openrouter", "kilo", "ollama"]) {
     if (!avail[m]) { console.log(`SKIP ai ${m}: 서버에 키가 없어요 (.dev.vars 를 읽은 뒤 다시 시작해야 해요)`); continue; }
     const x = await ask(m, "한 단어로 인사해 줘");
     const err = x.ev.find((e) => e.type === "error" && e.model === m), done = x.ev.find((e) => e.type === "done" && e.model === m);
