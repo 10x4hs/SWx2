@@ -27,5 +27,5 @@ VALUES (${q(randomUUID())}, ${q(username)}, ${q(name)}, ${colorSql}, ${q(hash)},
 ON CONFLICT(username) DO UPDATE SET display_name = excluded.display_name, pw_hash = excluded.pw_hash, pw_salt = excluded.pw_salt, fail_count = 0, locked_until = 0${color ? ", color = excluded.color" : ""};
 DELETE FROM sessions WHERE user_id = (SELECT id FROM users WHERE username = ${q(username)});`;
 
-execFileSync("npx", ["wrangler", "d1", "execute", "study-trio", flags.remote ? "--remote" : "--local", "--command", sql], { stdio: ["ignore", "ignore", "inherit"] });
+execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", flags.remote ? "--remote" : "--local", "--command", sql], { stdio: ["ignore", "ignore", "inherit"] });
 console.log(`✓ ${name} (@${username}) 계정을 ${flags.remote ? "배포 DB" : "로컬 DB"}에 저장했어요.`);

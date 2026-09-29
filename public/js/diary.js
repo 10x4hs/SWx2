@@ -2,7 +2,7 @@
 import { api } from "./api.js";
 import { $, esc, debounce, nowTime, toast } from "./util.js";
 
-export const MOODS = [
+export const MOODS = [ // 기분은 UI라서 무채색 (색은 차트에만)
   { v: 5, label: "최고", color: "var(--t-ink)" },
   { v: 4, label: "좋음", color: "var(--t-graphite)" },
   { v: 3, label: "보통", color: "var(--t-steel)" },

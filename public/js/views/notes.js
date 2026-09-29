@@ -8,6 +8,8 @@ let live = null; // the mounted notes view, so route changes can swap notes with
 
 const getMode = () => { try { return localStorage.getItem("trio-ed-mode") || "split"; } catch { return "split"; } };
 const setMode = (m) => { try { localStorage.setItem("trio-ed-mode", m); } catch {} };
+// 목록·백링크 미리보기: AI 표시와 마크다운 기호를 걷어낸 글자만
+const plain = (t) => (t || "").replace(/<!--[\s\S]*?(-->|$)/g, " ").replace(/[#*>\-\[\]`]/g, "").replace(/\s+/g, " ").trim();
 const fmt = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 
 export async function createNote(ctx, title, body = "") {
@@ -54,6 +56,14 @@ export function mount(root, ctx, r) {
               <button class="btn sm accent" type="button" id="new">${icon.plus(14)}새 노트</button>
             </span>
           </div>
+          <div class="ai-bar" role="group" aria-label="AI">
+            <button class="btn sm ai-btn" type="button" id="ai-organize" title="내 노트 전부에 주제·#태그·[[링크]]를 달고 주제별 목차를 만들어요">${icon.spark(14)}AI 정리</button>
+            <button class="btn sm ai-btn" type="button" id="ai-make" title="주제를 적으면 서로 연결된 개념 노트를 만들어요">${icon.plus(14)}AI로 만들기</button>
+          </div>
+          <form class="ai-make" id="ai-make-form" hidden>
+            <input class="input" id="ai-topic" placeholder="무엇에 대한 노트? 예: 삼각함수 기초" maxlength="500" aria-label="만들 노트 주제">
+            <button class="btn sm accent" type="submit">만들기</button>
+          </form>
           <input class="input" id="filter" placeholder="제목·내용으로 거르기" aria-label="노트 거르기">
           <div id="tagbar"></div>
         </div>
@@ -72,8 +82,8 @@ export function mount(root, ctx, r) {
     $("#nl", root).innerHTML = list.length ? list.map((n) => {
       const u = ctx.user(n.user_id);
       return `<li><a href="#/notes/${n.id}" ${S.cur?.id === n.id ? 'aria-current="page"' : ""}>
-        <span class="nt"><span class="dot" style="--c:${esc(u?.color || "#999")}"></span><span>${esc(n.title)}</span>${n.shared ? `<span class="faint" title="공유됨">${icon.share(12)}</span>` : ""}</span>
-        <span class="ns">${esc((n.snippet || "").replace(/[#*>\-\[\]`]/g, "").replace(/\s+/g, " ").trim() || "빈 노트")}</span>
+        <span class="nt"><span class="dot" style="--c:${esc(u?.color || "#999")}"></span><span>${esc(n.title)}</span></span>
+        <span class="ns">${esc(plain(n.snippet) || "빈 노트")}</span>
       </a></li>`;
     }).join("") : `<li class="empty" style="margin:8px">${S.notes.length ? "맞는 노트가 없어요" : "첫 노트를 만들어 보세요"}</li>`;
   }
@@ -87,15 +97,17 @@ export function mount(root, ctx, r) {
     $("#notes", root).classList.remove("has-note");
     $("#ed", root).innerHTML = `
       <div class="ed-body"><div class="ed-inner" style="max-width:520px;padding-top:8vh">
-        <span class="eyebrow">Vault</span>
-        <h2 class="h1"><span class="serif" style="font-size:44px">Second brain</span><br>공부한 것을 연결해요</h2>
+        <span class="eyebrow">// Vault</span>
+        <h2 class="h1 vault-title">Second Brain<br><span class="muted">공부한 것을 연결해요</span></h2>
         <div class="md muted">
           <ul>
             <li><code>[[노트 제목]]</code> 으로 다른 노트를 연결해요. 없는 제목이면 누를 때 새로 만들어져요.</li>
             <li><code>#태그</code> 를 붙이면 왼쪽 사이드바에서 모아 볼 수 있어요.</li>
+            <li><b>AI 정리</b>를 누르면 AI가 노트마다 주제·태그·관련 링크를 달고, 주제별 목차(<code>MOC · 주제</code>) 노트를 만들어요.</li>
+            <li><b>AI로 만들기</b>에 주제를 적으면 서로 연결된 개념 노트를 여러 개 만들어 줘요. AI 튜터 대화도 노트로 정리할 수 있어요.</li>
             <li>다른 노트가 이 노트를 가리키면 아래에 <b>백링크</b>로 보여요.</li>
             <li><kbd>${/Mac/.test(navigator.platform) ? "⌘" : "Ctrl"} K</kbd> 로 어디서든 찾고, 없는 제목은 바로 만들어요.</li>
-            <li>공유를 켠 노트만 다른 두 사람이 볼 수 있어요.</li>
+            <li>노트는 나만 볼 수 있어요. 다른 두 사람에게는 차트만 보여요.</li>
           </ul>
         </div>
         <div class="row"><button class="btn accent" type="button" id="empty-new">${icon.plus(15)}새 노트</button><button class="btn ghost" type="button" id="empty-daily">오늘 데일리 노트</button></div>
@@ -118,7 +130,8 @@ export function mount(root, ctx, r) {
           <button type="button" role="tab" data-mode="split" aria-selected="${mode === "split"}" title="분할">${icon.split(14)}</button>
           <button type="button" role="tab" data-mode="view" aria-selected="${mode === "view"}" title="보기">${icon.eye(14)}</button>
         </div>
-        <button class="btn ghost sm" type="button" id="ed-share" aria-pressed="${!!n.shared}">${n.shared ? icon.share(14) + "공유 중" : icon.lock(14) + "나만 보기"}</button>
+        <button class="btn ghost sm ai-btn" type="button" id="ed-ai" title="이 노트에 주제·#태그·[[링크]]를 달아요">${icon.spark(14)}AI 정리</button>
+        <button class="btn ghost sm ai-btn" type="button" id="ed-split-ai" title="이 노트를 개념 하나당 노트 하나로 쪼개 새로 만들어요">쪼개기</button>
         <button class="icon-btn sm danger" type="button" id="ed-del" aria-label="노트 삭제">${icon.trash(15)}</button>` : ""}
       </div>
       <div class="ed-body"><div class="ed-inner" style="${mode === "split" ? "max-width:1180px" : ""}">
@@ -134,7 +147,7 @@ export function mount(root, ctx, r) {
         </div>
         <div class="ed-meta">
           <div class="eyebrow">백링크 · ${S.backlinks.length}</div>
-          <div class="backlinks" id="ed-back-list">${S.backlinks.length ? S.backlinks.map((b) => `<a href="#/notes/${b.id}"><b>${esc(b.title)}</b><span>${esc((b.snippet || "").replace(/\s+/g, " ").slice(0, 120))}</span></a>`).join("") : `<span class="faint" style="font-size:13px">아직 이 노트를 가리키는 노트가 없어요. 다른 노트에서 <code>[[${esc(n.title)}]]</code> 라고 써 보세요.</span>`}</div>
+          <div class="backlinks" id="ed-back-list">${S.backlinks.length ? S.backlinks.map((b) => `<a href="#/notes/${b.id}"><b>${esc(b.title)}</b><span>${esc(plain(b.snippet).slice(0, 120))}</span></a>`).join("") : `<span class="faint" style="font-size:13px">아직 이 노트를 가리키는 노트가 없어요. 다른 노트에서 <code>[[${esc(n.title)}]]</code> 라고 써 보세요.</span>`}</div>
           <div id="ed-outline"></div>
         </div>
       </div></div>`;
@@ -184,6 +197,19 @@ export function mount(root, ctx, r) {
       try { const { note } = await api.saveNote(S.cur.id, { shared: !S.cur.shared }); S.cur = note; toast(note.shared ? "다른 두 사람도 이 노트를 볼 수 있어요." : "이제 나만 볼 수 있어요."); const li = S.notes.find((x) => x.id === note.id); if (li) li.shared = note.shared; drawEditor(); drawList(); }
       catch (e) { toast(e.message, "err"); }
     });
+    const aiOne = $("#ed-ai", root);
+    if (aiOne) aiOne.addEventListener("click", () => aiRun(aiOne, "정리 중…", async () => {
+      save.flush(); await chain;
+      const id = S.cur.id, r = await api.organize(id);
+      toast(`주제 '${r.topics[0] || "?"}'로 정리했어요.`);
+      ctx.refreshSide(); ctx.changed("notes"); await loadList(); if (S.cur?.id === id) await open(id);
+    }));
+    const aiSplit = $("#ed-split-ai", root);
+    if (aiSplit) aiSplit.addEventListener("click", () => aiRun(aiSplit, "쪼개는 중…", async () => {
+      save.flush(); await chain;
+      const r = await api.generate({ note_id: S.cur.id });
+      afterGenerate(r);
+    }));
     const del = $("#ed-del", root);
     if (del) del.addEventListener("click", () => {
       if (del.dataset.armed) {
@@ -281,6 +307,35 @@ export function mount(root, ctx, r) {
     if (tag !== S.tag) { S.tag = tag; loadList(); }
     open(rr.id);
   }
+
+  // ---------- AI ----------
+  async function aiRun(btn, busy, fn) {
+    if (btn.disabled) return;
+    const html = btn.innerHTML;
+    btn.disabled = true; btn.classList.add("busy"); btn.innerHTML = `${icon.spark(14)}${busy}`;
+    try { await fn(); } catch (e) { toast(e.message, "err"); }
+    finally { if (btn.isConnected) { btn.disabled = false; btn.classList.remove("busy"); btn.innerHTML = html; } }
+  }
+  function afterGenerate(r) {
+    const made = r.notes.filter((n) => n.created).length, grew = r.notes.length - made;
+    toast(`'${r.topic}' 노트 ${made}개를 만들었어요${grew ? ` · ${grew}개는 기존 노트에 보탰어요` : ""}.`);
+    ctx.refreshSide(); ctx.changed("notes");
+    loadList().then(() => ctx.go("#/notes/" + (r.moc_id || r.notes[0]?.id || "")));
+  }
+  $("#ai-organize", root).addEventListener("click", (e) => aiRun(e.currentTarget, "정리 중…", async () => {
+    save.flush(); await chain;
+    const r = await api.organize();
+    toast(`노트 ${r.updated}개를 주제 ${r.topics.length}개(${r.topics.join(", ")})로 정리했어요.`);
+    ctx.refreshSide(); ctx.changed("notes"); await loadList(); if (S.cur) await open(S.cur.id);
+  }));
+  $("#ai-make", root).addEventListener("click", () => { const f = $("#ai-make-form", root); f.hidden = !f.hidden; if (!f.hidden) $("#ai-topic", root).focus(); });
+  $("#ai-make-form", root).addEventListener("submit", (e) => {
+    e.preventDefault();
+    const topic = $("#ai-topic", root).value.trim();
+    if (!topic) return $("#ai-topic", root).focus();
+    const btn = e.currentTarget.querySelector("button");
+    aiRun(btn, "만드는 중…", async () => { const r = await api.generate({ topic }); $("#ai-topic", root).value = ""; $("#ai-make-form", root).hidden = true; afterGenerate(r); });
+  });
 
   $("#new", root).addEventListener("click", () => createNote(ctx, ""));
   $("#daily", root).addEventListener("click", () => openDaily(ctx, ymd(new Date())));

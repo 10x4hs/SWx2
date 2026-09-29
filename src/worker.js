@@ -1,6 +1,8 @@
-// Study Trio API — Cloudflare Worker + D1.
+// Dsm-mafia API — Cloudflare Worker + D1.
 // Static files in ./public are served by the assets binding; only /api/* reaches this code.
 import { registerAi } from "./ai.js";
+import { registerBrain } from "./brain.js";
+import { registerEnglish } from "./english.js";
 
 const COLORS = ["#E8552B", "#4C6FFF", "#14A38B"]; // Golden Gate orange, bay blue, cypress green
 const SESSION_DAYS = 30;
@@ -34,6 +36,10 @@ export default {
       console.error(e);
       return json({ error: "서버에서 문제가 생겼어요. 잠시 후 다시 시도해 주세요." }, 500);
     }
+  },
+  // 매일 00:05 (한국 시간) — 지난 하루의 계획·기록을 모두 자동 저장해요 (wrangler.jsonc 의 triggers.crons)
+  async scheduled(event, env, ec) {
+    ec.waitUntil(autoSaveYesterday(env).then((r) => console.log("자동 저장", r.day, r.saved + "명")));
   },
 };
 
@@ -213,6 +219,8 @@ on("GET", "/plans", async ({ env, q, user }) => {
   const { results } = await env.DB.prepare(
     `SELECT * FROM plans WHERE user_id = ? AND period IN (${marks}) ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at`
   ).bind(who, ...periods).all();
+  // 서로는 차트만: 다른 사람 계획은 칸 모양(완료·시각·길이)만 보내고 내용은 비워요
+  if (who !== user.id) return json({ plans: results.map((p) => ({ ...p, text: "" })), private: true });
   return json({ plans: results });
 });
 
@@ -283,8 +291,9 @@ on("GET", "/summary", async ({ env, q }) => {
 on("GET", "/logs", async ({ env, q, user }) => {
   const day = q.get("day") || "";
   if (!DAY_RE.test(day)) fail(400, "날짜 형식이 올바르지 않아요.");
+  if (q.get("user") && q.get("user") !== user.id) fail(403, "다른 사람의 기록은 볼 수 없어요.");
   const { results } = await env.DB.prepare("SELECT * FROM logs WHERE user_id = ? AND day = ? ORDER BY at, created_at")
-    .bind(q.get("user") || user.id, day).all();
+    .bind(user.id, day).all();
   return json({ logs: results });
 });
 
@@ -371,7 +380,7 @@ on("GET", "/diary/list", async ({ env, q, user }) => {
 });
 
 // ---------- notes (owner, or shared) ----------
-const VISIBLE = "(n.user_id = ?1 OR n.shared = 1)";
+const VISIBLE = "(n.user_id = ?1)"; // 노트는 본인만 봐요 (서로는 차트만)
 function parseLinks(text) {
   const out = new Set();
   for (const m of text.matchAll(/\[\[([^\[\]|#\n]+)(?:[#|][^\]\n]*)?\]\]/g)) {
@@ -386,14 +395,16 @@ function parseTags(text) {
   for (const m of clean.matchAll(/(?:^|[\s(])#([\p{L}\p{N}_\-/]*[\p{L}_\-/][\p{L}\p{N}_\-/]*)/gu)) out.add(m[1].slice(0, 40));
   return [...out].slice(0, 50);
 }
-async function indexNote(env, id, text) {
-  const stmts = [
+function indexStmts(env, id, text) {
+  return [
     env.DB.prepare("DELETE FROM note_links WHERE src_id = ?").bind(id),
     env.DB.prepare("DELETE FROM note_tags WHERE note_id = ?").bind(id),
     ...parseLinks(text).map((t) => env.DB.prepare("INSERT OR IGNORE INTO note_links (src_id, dst_title) VALUES (?, ?)").bind(id, t)),
     ...parseTags(text).map((t) => env.DB.prepare("INSERT OR IGNORE INTO note_tags (note_id, tag) VALUES (?, ?)").bind(id, t)),
   ];
-  await env.DB.batch(stmts);
+}
+async function indexNote(env, id, text) {
+  await env.DB.batch(indexStmts(env, id, text));
 }
 async function visibleNote(env, id, user) {
   const n = await env.DB.prepare(`SELECT n.* FROM notes n WHERE n.id = ?2 AND ${VISIBLE}`).bind(user.id, id).first();
@@ -477,7 +488,7 @@ on("DELETE", "/notes/:id", async ({ env, user, params }) => {
 
 on("GET", "/graph", async ({ env, user }) => {
   const [nodes, edges] = await env.DB.batch([
-    env.DB.prepare(`SELECT n.id, n.user_id, n.title, (SELECT group_concat(t.tag) FROM note_tags t WHERE t.note_id = n.id) AS tags FROM notes n WHERE ${VISIBLE}`).bind(user.id),
+    env.DB.prepare(`SELECT n.id, n.user_id, n.title, n.topic, (SELECT group_concat(t.tag) FROM note_tags t WHERE t.note_id = n.id) AS tags FROM notes n WHERE ${VISIBLE}`).bind(user.id),
     env.DB.prepare(`SELECT l.src_id, l.dst_title FROM note_links l JOIN notes n ON n.id = l.src_id WHERE ${VISIBLE}`).bind(user.id),
   ]);
   return json({ nodes: nodes.results, edges: edges.results });
@@ -506,5 +517,71 @@ on("GET", "/search", async ({ env, user, q }) => {
   return json({ notes: notes.results, plans: plans.results });
 });
 
+// ---------- 하루 기록: 그날 계획·실행을 얼려 둔 사본 (본인만) ----------
+// 점수 공식은 public/js/util.js 의 dayScore 와 같아요: 계획 40 + 실행 60
+function scoreOf(plans, goal) {
+  const planned = plans.reduce((a, p) => a + (p.mins || 0), 0);
+  const doneMins = plans.filter((p) => p.done).reduce((a, p) => a + (p.mins || 0), 0);
+  const count = plans.length, doneCount = plans.filter((p) => p.done).length;
+  const plan = Math.min(1, planned / Math.max(30, goal || 240));
+  const exec = planned ? doneMins / planned : count ? doneCount / count : 0;
+  return { planned, doneMins, count, doneCount, plan, exec, score: count ? Math.round(40 * plan + 60 * exec) : null };
+}
+async function snapshotDay(env, u, day, auto) {
+  const [plans, logs] = await env.DB.batch([
+    env.DB.prepare("SELECT text, done, start, mins, done_at FROM plans WHERE user_id = ? AND period = ? ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at").bind(u.id, "D:" + day),
+    env.DB.prepare("SELECT at, text, kind, mins FROM logs WHERE user_id = ? AND day = ? ORDER BY at, created_at").bind(u.id, day),
+  ]);
+  const P = plans.results, L = logs.results;
+  if (!P.length && !L.length) return null;
+  const sc = scoreOf(P, u.day_goal);
+  const focus = L.filter((l) => l.kind === "focus").reduce((a, l) => a + (l.mins || 0), 0);
+  const data = { plans: P.map((p) => ({ text: p.text, done: !!p.done, start: p.start, mins: p.mins })), logs: L, ...sc, focus, goal: u.day_goal };
+  const at = now();
+  await env.DB.prepare(
+    "INSERT INTO day_records (user_id, day, data, score, done, total, auto, saved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, day) DO UPDATE SET data = excluded.data, score = excluded.score, done = excluded.done, total = excluded.total, auto = excluded.auto, saved_at = excluded.saved_at"
+  ).bind(u.id, day, JSON.stringify(data), sc.score, sc.doneCount, sc.count, auto ? 1 : 0, at).run();
+  return { day, data, score: sc.score, done: sc.doneCount, total: sc.count, auto: auto ? 1 : 0, saved_at: at };
+}
+// 한국 시간 기준 날짜 (자정 자동 저장용)
+const kstDay = (offsetDays = 0) => new Date(Date.now() + 9 * 3600e3 + offsetDays * 864e5).toISOString().slice(0, 10);
+// 어제 기록이 아직 없으면 만들어 둬요 (크론이 못 돈 날을 위한 대비책)
+async function ensureYesterday(env, u) {
+  const y = kstDay(-1);
+  const has = await env.DB.prepare("SELECT 1 FROM day_records WHERE user_id = ? AND day = ?").bind(u.id, y).first();
+  if (!has) await snapshotDay(env, u, y, true);
+}
+export async function autoSaveYesterday(env) {
+  const y = kstDay(-1);
+  const { results } = await env.DB.prepare(
+    "SELECT u.id, u.day_goal FROM users u WHERE EXISTS (SELECT 1 FROM plans p WHERE p.user_id = u.id AND p.period = ?) OR EXISTS (SELECT 1 FROM logs l WHERE l.user_id = u.id AND l.day = ?)"
+  ).bind("D:" + y, y).all();
+  for (const u of results) await snapshotDay(env, u, y, true);
+  return { day: y, saved: results.length };
+}
+
+on("POST", "/records", async ({ req, env, user }) => {
+  const b = await body(req);
+  if (!DAY_RE.test(b.day || "")) fail(400, "날짜 형식이 올바르지 않아요.");
+  const r = await snapshotDay(env, user, b.day, false);
+  if (!r) fail(400, "그날은 저장할 계획이나 기록이 없어요.");
+  return json({ record: r });
+});
+on("GET", "/records", async ({ env, q, user }) => {
+  const day = q.get("day") || "";
+  if (!DAY_RE.test(day)) fail(400, "날짜 형식이 올바르지 않아요.");
+  const r = await env.DB.prepare("SELECT day, data, score, done, total, auto, saved_at FROM day_records WHERE user_id = ? AND day = ?").bind(user.id, day).first();
+  return json({ record: r ? { ...r, data: JSON.parse(r.data) } : null });
+});
+on("GET", "/records/days", async ({ env, q, user }) => {
+  const year = q.get("year") || "";
+  if (!/^\d{4}$/.test(year)) fail(400, "연도를 알려 주세요.");
+  await ensureYesterday(env, user);
+  const { results } = await env.DB.prepare("SELECT day, score, done, total, auto FROM day_records WHERE user_id = ? AND day LIKE ? ORDER BY day").bind(user.id, year + "-%").all();
+  return json({ days: results });
+});
+
 // ---------- AI chat ----------
 registerAi(on, { json, body, fail, str, uid, now });
+registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_NOTE });
+registerEnglish(on, { json, body, fail, uid, now });

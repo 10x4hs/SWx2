@@ -1,4 +1,4 @@
-# Grill: Study Trio v3
+# Grill: Dsm-mafia v3
 Date: 2026-09-28
 
 ## Intent

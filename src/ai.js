@@ -1,27 +1,36 @@
-// AI 채팅: Gemini(Google AI Studio) · Xiaomi MiMo · 둘 다 비교.
-// 키는 Worker 비밀값(GEMINI_API_KEY, MIMO_API_KEY)에만 있고 브라우저로 나가지 않아요.
+// AI 채팅: Gemini(Google AI Studio) · Groq · Cohere · Xiaomi MiMo · 여러 개 나란히 비교.
+// 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY)에만 있고 브라우저로 나가지 않아요.
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
 const MIMO_URL = "https://api.xiaomimimo.com/v1/chat/completions";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const COHERE_URL = "https://api.cohere.com/v2/chat";
+const KEY = { gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY", cohere: "COHERE_API_KEY", mimo: "MIMO_API_KEY" };
 
 // 혼잡(503)·한도(429)·폐지(404)면 다음 모델로 넘어가요
 const MODELS = {
   gemini: { label: "Gemini Flash", desc: "빠르고 한국어가 자연스러워요", provider: "gemini", chain: ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash"] },
   // 무료 키는 Pro 한도가 거의 없어서(429) 막히면 Flash로 내려가요
   "gemini-pro": { label: "Gemini Pro", desc: "깊게 풀어요 · 무료 한도가 작아요", provider: "gemini", chain: ["gemini-3.1-pro-preview", "gemini-pro-latest", "gemini-3.8-flash", "gemini-flash-latest"] },
+  // Groq 무료 등급은 분당 토큰(8천)이 작아서, 막히면 더 작은 모델로 내려가요
+  groq: { label: "Groq GPT-OSS", desc: "아주 빨라요", provider: "groq", chain: ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"] },
+  cohere: { label: "Cohere Command A", desc: "한국어 정리가 깔끔해요", provider: "cohere", chain: ["command-a-03-2025", "command-a-plus-05-2026"] },
   mimo: { label: "MiMo Flash", desc: "생각 과정을 보여줘요", provider: "mimo", chain: ["mimo-v2.6-flash", "mimo-v2.5"] },
   "mimo-pro": { label: "MiMo Pro", desc: "추론이 강한 큰 모델", provider: "mimo", chain: ["mimo-v2.6-pro", "mimo-v2.5-pro"] },
 };
-const COMPARE = ["gemini", "mimo"]; // "all" = 이 둘을 나란히
+const COMPARE = ["gemini", "groq", "cohere"]; // "all" = 이 셋을 나란히 (MiMo는 따로 골라요)
 const DAILY_LIMIT = 200;             // 사람당 하루 질문 수
-const RETRYABLE = new Set([404, 429, 500, 502, 503, 504]);
+// 413 = Groq "한 번에 너무 큼(분당 토큰 초과)" → 다음 모델/회사로
+const RETRYABLE = new Set([404, 413, 429, 500, 502, 503, 504]);
 
-const available = (env, id) => (MODELS[id].provider === "gemini" ? !!env.GEMINI_API_KEY : !!env.MIMO_API_KEY);
+const hasKey = (env, provider) => !!env[KEY[provider]];
+const available = (env, id) => hasKey(env, MODELS[id].provider);
 
 export function registerAi(on, { json, body, fail, str, uid, now }) {
   on("GET", "/ai/models", ({ env }) => json({
     models: [
-      { id: "all", label: "전체 비교", desc: "Gemini와 MiMo 답을 나란히", available: COMPARE.every((m) => available(env, m)) },
+      // 키가 하나라도 있으면 비교를 열어 두고, 없는 모델은 meta.skipped 로 알려줘요
+      { id: "all", label: "전체 비교", desc: "Gemini · Groq · Cohere 답을 나란히", available: COMPARE.some((m) => available(env, m)), targets: COMPARE },
       ...Object.entries(MODELS).map(([id, m]) => ({ id, label: m.label, desc: m.desc, available: available(env, id) })),
     ],
     default: "all",
@@ -102,7 +111,7 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
         const history = past.filter((m) => m.role === "user" || m.model === t).slice(-16);
         try {
           const r = await runModel(env, t, system, history, message, (kind, text) => send({ type: kind, model: t, text }));
-          await send({ type: "done", model: t, used: r.used });
+          await send({ type: "done", model: t, used: r.used, fallback: r.used !== MODELS[t].chain[0] }); // fallback = 첫 모델이 아닌 걸로 답함
           return { t, text: r.text };
         } catch (e) {
           await send({ type: "error", model: t, message: e.message || "답을 받지 못했어요." });
@@ -125,7 +134,7 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
 // ---------- prompts ----------
 function basePrompt(user) {
   return [
-    `너는 세 친구가 함께 쓰는 공부 앱 'Study Trio'의 AI 튜터야. 지금 대화하는 사람은 ${user.display_name}이야.`,
+    `너는 세 친구가 함께 쓰는 공부 앱 'Dsm-mafia'의 AI 튜터야. 지금 대화하는 사람은 ${user.display_name}이야.`,
     "항상 한국어로, 친절하지만 군더더기 없이 답해. 마크다운(제목, 목록, 표, 코드블록)을 적절히 써.",
     "개념 설명은 핵심 → 예시 → 헷갈리기 쉬운 점 순서로. 문제 풀이는 단계별로.",
     "모르는 건 모른다고 말하고, 사용자의 기록에 없는 내용을 기록인 것처럼 지어내지 마.",
@@ -139,7 +148,7 @@ async function contextPrompt(env, user, b, message) {
   const [plans, logs, titles] = await env.DB.batch([
     env.DB.prepare(`SELECT scope, period, text, done, start, mins FROM plans WHERE user_id = ? AND period IN (${periods.map(() => "?").join(",") || "''"}) ORDER BY scope, start, created_at`).bind(user.id, ...periods),
     env.DB.prepare("SELECT at, text, kind FROM logs WHERE user_id = ? AND day = ? ORDER BY at").bind(user.id, day || ""),
-    env.DB.prepare("SELECT id, title FROM notes WHERE user_id = ?1 OR shared = 1 ORDER BY updated_at DESC LIMIT 80").bind(user.id),
+    env.DB.prepare("SELECT id, title FROM notes WHERE user_id = ?1 ORDER BY updated_at DESC LIMIT 80").bind(user.id),
   ]);
 
   // 질문과 관련된 노트: [[제목]] 언급 > 제목이 질문에 들어감 > 본문에 질문 단어가 들어감
@@ -150,7 +159,7 @@ async function contextPrompt(env, user, b, message) {
   let byBody = [];
   if (byTitle.length < 3 && words.length) {
     const cond = words.map((_, i) => `(n.title LIKE ?${i + 2} OR n.body LIKE ?${i + 2})`).join(" OR ");
-    const r = await env.DB.prepare(`SELECT n.id, n.title FROM notes n WHERE (n.user_id = ?1 OR n.shared = 1) AND (${cond}) ORDER BY n.updated_at DESC LIMIT 3`)
+    const r = await env.DB.prepare(`SELECT n.id, n.title FROM notes n WHERE n.user_id = ?1 AND (${cond}) ORDER BY n.updated_at DESC LIMIT 3`)
       .bind(user.id, ...words.map((w) => `%${w.replace(/[\\%_]/g, "")}%`)).all();
     byBody = r.results;
   }
@@ -183,6 +192,90 @@ async function contextPrompt(env, user, b, message) {
   ].filter((x) => x !== "").join("\n");
 }
 
+// ---------- JSON 한 번에 받기 (노트 정리·생성용) ----------
+// Gemini(JSON 모드) → Groq → Cohere → MiMo 순서. 키가 하나도 없으면 503.
+// 한 회사 안에서는 붐빌 때만 다음 모델로, 그 회사가 아예 안 되면(키·요청 오류) 다음 회사로 넘어가요.
+export async function aiJson(env, system, prompt) {
+  const JSON_RUN = { gemini: geminiJson, groq: groqJson, cohere: cohereJson, mimo: mimoJson };
+  const groups = ["gemini", "groq", "cohere", "mimo"].filter((p) => hasKey(env, p));
+  if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
+  let lastErr = null;
+  for (const p of groups) {
+    for (const model of MODELS[p].chain) {
+      try { return await JSON_RUN[p](env, model, system, prompt); }
+      catch (e) { lastErr = e; if (!e.retry) break; }
+    }
+  }
+  throw lastErr || new Error("AI 답을 받지 못했어요.");
+}
+
+function parseJsonText(text, name) {
+  const s = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+  const a = s.indexOf("{"), b = s.lastIndexOf("}");
+  try { return JSON.parse(a >= 0 && b > a ? s.slice(a, b + 1) : s); }
+  catch { const e = new Error(`${name}가 형식에 맞지 않는 답을 보냈어요.`); e.retry = true; throw e; }
+}
+
+async function geminiJson(env, model, system, prompt) {
+  const res = await fetch(`${GEMINI_URL}${model}:generateContent`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 16384, responseMimeType: "application/json" },
+    }),
+  });
+  if (!res.ok) throw await providerError(res, "Gemini");
+  const j = await res.json();
+  const text = (j.candidates?.[0]?.content?.parts || []).filter((p) => p.text && !p.thought).map((p) => p.text).join("");
+  if (!text) { const e = new Error("Gemini가 빈 답을 보냈어요."); e.retry = true; throw e; }
+  return { data: parseJsonText(text, "Gemini"), used: model };
+}
+
+async function mimoJson(env, model, system, prompt) {
+  const res = await fetch(MIMO_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${env.MIMO_API_KEY}` },
+    body: JSON.stringify({ model, messages: [{ role: "system", content: system + "\n반드시 JSON 객체 하나만 출력해." }, { role: "user", content: prompt }], max_tokens: 16384, temperature: 0.3 }),
+  });
+  if (!res.ok) throw await providerError(res, "MiMo");
+  const j = await res.json();
+  const text = j.choices?.[0]?.message?.content || "";
+  if (!text) { const e = new Error("MiMo가 빈 답을 보냈어요."); e.retry = true; throw e; }
+  return { data: parseJsonText(text, "MiMo"), used: model };
+}
+
+// OpenAI 모양 API(Groq)에서 JSON 한 덩어리 받기
+async function groqJson(env, model, system, prompt) {
+  const res = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${env.GROQ_API_KEY}` },
+    body: JSON.stringify({ model, ...groqExtra(model), messages: [{ role: "system", content: system + "\n반드시 JSON 객체 하나만 출력해." }, { role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 8192, temperature: 0.3 }),
+  });
+  if (!res.ok) throw await providerError(res, "Groq");
+  const j = await res.json();
+  const text = j.choices?.[0]?.message?.content || "";
+  if (!text) { const e = new Error("Groq가 빈 답을 보냈어요."); e.retry = true; throw e; }
+  return { data: parseJsonText(text, "Groq"), used: model };
+}
+
+async function cohereJson(env, model, system, prompt) {
+  const res = await fetch(COHERE_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${env.COHERE_API_KEY}` },
+    body: JSON.stringify({ model, messages: [{ role: "system", content: system }, { role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 8000, temperature: 0.3 }),
+  });
+  if (!res.ok) throw await providerError(res, "Cohere");
+  const j = await res.json();
+  const text = (j.message?.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
+  if (!text) { const e = new Error("Cohere가 빈 답을 보냈어요."); e.retry = true; throw e; }
+  return { data: parseJsonText(text, "Cohere"), used: model };
+}
+
+// Qwen은 생각 과정을 따로 빼 달라고 해야 본문에 <think>가 안 섞여요 (gpt-oss는 원래 따로 줘요)
+const groqExtra = (model) => (model.startsWith("qwen/") ? { reasoning_format: "parsed" } : {});
+
 // ---------- providers ----------
 async function runModel(env, id, system, history, message, emit) {
   const m = MODELS[id];
@@ -191,9 +284,7 @@ async function runModel(env, id, system, history, message, emit) {
     if (round) { await emit("status", "모두 붐벼서 잠시 후 다시 시도해요"); await new Promise((r) => setTimeout(r, 1200)); }
     for (const model of m.chain) {
       try {
-        const text = m.provider === "gemini"
-          ? await gemini(env, model, system, history, message, emit)
-          : await mimo(env, model, system, history, message, emit);
+        const text = await RUN[m.provider](env, model, system, history, message, emit);
         return { text, used: model };
       } catch (e) {
         lastErr = e;
@@ -208,7 +299,7 @@ async function runModel(env, id, system, history, message, emit) {
 async function providerError(res, name) {
   let msg = "";
   try { const j = await res.json(); msg = j.error?.message || j.message || ""; } catch {}
-  const e = new Error(res.status === 429 ? `${name} 사용 한도에 걸렸어요. 잠시 뒤 다시 시도해 주세요.` : res.status === 503 ? `${name}이(가) 지금 붐벼요.` : `${name} 오류 (${res.status}) ${msg.slice(0, 120)}`);
+  const e = new Error(res.status === 429 || res.status === 413 ? `${name} 사용 한도에 걸렸어요. 잠시 뒤 다시 시도해 주세요.` : res.status === 503 ? `${name}이(가) 지금 붐벼요.` : `${name} 오류 (${res.status}) ${msg.slice(0, 120)}`);
   e.retry = RETRYABLE.has(res.status);
   return e;
 }
@@ -251,20 +342,56 @@ async function gemini(env, model, system, history, message, emit) {
   return text;
 }
 
-async function mimo(env, model, system, history, message, emit) {
-  const messages = [{ role: "system", content: system }, ...history.map((m) => ({ role: m.role, content: m.content })), { role: "user", content: message }];
-  const res = await fetch(MIMO_URL, {
+// OpenAI 모양 스트림 (MiMo · Groq 둘 다): 생각 과정은 reasoning_content(MiMo) 또는 reasoning(Groq)으로 와요
+async function openaiStream(url, key, name, payload, emit) {
+  const res = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${env.MIMO_API_KEY}` },
-    body: JSON.stringify({ model, messages, stream: true, max_tokens: 8192, temperature: 0.7 }),
+    headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+    body: JSON.stringify({ ...payload, stream: true }),
   });
-  if (!res.ok) throw await providerError(res, "MiMo");
+  if (!res.ok) throw await providerError(res, name);
   let text = "";
   for await (const chunk of sse(res)) {
+    if (chunk.error) { const e = new Error(`${name} 오류: ${String(chunk.error.message || "").slice(0, 120)}`); e.retry = !text; throw e; }
     const d = chunk.choices?.[0]?.delta || {};
-    if (d.reasoning_content) await emit("reasoning", d.reasoning_content);
+    const think = d.reasoning_content || d.reasoning;
+    if (think) await emit("reasoning", think);
     if (d.content) { text += d.content; await emit("delta", d.content); }
   }
-  if (!text) { const e = new Error("MiMo가 빈 답을 보냈어요."); e.retry = true; throw e; }
+  if (!text) { const e = new Error(`${name}가 빈 답을 보냈어요.`); e.retry = true; throw e; }
   return text;
 }
+
+const chatMessages = (system, history, message) => [{ role: "system", content: system }, ...history.map((m) => ({ role: m.role, content: m.content })), { role: "user", content: message }];
+
+function mimo(env, model, system, history, message, emit) {
+  return openaiStream(MIMO_URL, env.MIMO_API_KEY, "MiMo", { model, messages: chatMessages(system, history, message), max_tokens: 8192, temperature: 0.7 }, emit);
+}
+
+function groq(env, model, system, history, message, emit) {
+  return openaiStream(GROQ_URL, env.GROQ_API_KEY, "Groq", { model, ...groqExtra(model), messages: chatMessages(system, history, message), max_tokens: 4096, temperature: 0.7 }, emit);
+}
+
+// Cohere v2: event 이름이 data 안의 type 에도 들어 있어요 → content-delta 만 글자로 받아요
+async function cohere(env, model, system, history, message, emit) {
+  const res = await fetch(COHERE_URL, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${env.COHERE_API_KEY}` },
+    body: JSON.stringify({ model, messages: chatMessages(system, history, message), stream: true, max_tokens: 4096, temperature: 0.7 }),
+  });
+  if (!res.ok) throw await providerError(res, "Cohere");
+  let text = "";
+  for await (const ev of sse(res)) {
+    if (ev.type === "content-delta") {
+      const c = ev.delta?.message?.content || {};
+      if (c.thinking) await emit("reasoning", c.thinking);   // 추론 모델(command-a-reasoning)일 때
+      if (c.text) { text += c.text; await emit("delta", c.text); }
+    } else if (ev.type === "error" || (ev.message && !ev.type)) {
+      const e = new Error(`Cohere 오류: ${String(ev.message || "").slice(0, 120)}`); e.retry = !text; throw e;
+    }
+  }
+  if (!text) { const e = new Error("Cohere가 빈 답을 보냈어요."); e.retry = true; throw e; }
+  return text;
+}
+
+const RUN = { gemini, mimo, groq, cohere };

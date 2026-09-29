@@ -1,125 +1,154 @@
-/* Study Trio — design tokens
-   Monochrome glass. Built from three DESIGN.md systems (docs/design-md):
-   Apple (glass over photography, one shadow family) · Vercel (Geist, neutral gray ladder, layered hairline shadows)
-   · Raycast (dark surfaces step lighter, hairline focus, white primary button in dark).
-   Chart: "clay-glass" rings from the IGLOO reference, HUD corners from EDOLUS (docs/refs/web-design-source).
-   Edit values here; components in styles.css only read these variables. */
+/* Dsm-mafia — design tokens (v8 · neutral Apple glass, color only in charts)
+   - Wallpaper: the golden cumulus photo from the login screen, blurred behind everything.
+   - Surfaces: Apple-style frosted glass — translucent fill + saturate(180%) blur, 1px light hairline,
+     a top highlight, almost no drop shadow.
+   - Color: Apple system colors, used a little — blue for primary/selection, one color per ring,
+     green for grass/heatmaps, one color per member.
+   - Type: SF Pro (system) → Pretendard → Geist. Numbers use tabular figures.
+   Edit values here; styles.css only reads them. Dark is the default theme. */
 
 :root {
   color-scheme: light;
-  /* type */
-  --font: "Geist", "Pretendard Variable", -apple-system, "Apple SD Gothic Neo", system-ui, sans-serif;
-  --mono: "Geist Mono", "Pretendard Variable", ui-monospace, "SF Mono", monospace;
-  --serif: "Instrument Serif", "Pretendard Variable", Georgia, serif;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Pretendard Variable", "Geist", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Pretendard Variable", "Geist", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Geist Mono", "Pretendard Variable", monospace;
+  --serif: var(--font-display);
 
-  /* neutrals (Vercel ladder) */
-  --ink: #171717;
-  --ink-2: #4D4D4D;
-  --ink-3: #888888;
+  /* Apple system colors (light) */
+  --sys-blue: #007AFF; --sys-green: #34C759; --sys-indigo: #5856D6; --sys-orange: #FF9500; --sys-pink: #FF2D55;
+  --sys-purple: #AF52DE; --sys-red: #FF3B30; --sys-teal: #30B0C7; --sys-yellow: #FFCC00; --sys-mint: #00C7BE;
+  --n-mint: var(--sys-green); /* 예전 이름 호환 */
+  /* chart palette — the only colored things in the app (soft, not system-saturated) */
+  --c-amber: #D9822B; --c-green: #2FA56B; --c-blue: #3F7BE0; --c-rose: #D2568F; --c-violet: #8A6AD8; --c-teal: #2A9DA8;
+
+  /* neutrals (Apple label colors) */
+  --ink: #1D1D1F;
+  --ink-2: #424245;
+  --ink-3: #6E6E73;
   --line: rgba(0, 0, 0, .08);
-  --line-2: rgba(0, 0, 0, .16);
-  --track: rgba(0, 0, 0, .06);
-  --hover: rgba(0, 0, 0, .04);
-  --accent: #171717;
-  --accent-soft: rgba(0, 0, 0, .06);
+  --line-2: rgba(0, 0, 0, .14);
+  --track: rgba(118, 118, 128, .12);
+  --hover: rgba(118, 118, 128, .1);
+  --accent: var(--ink);            /* UI는 무채색: 주 버튼·선택은 글자색 */
+  --accent-soft: rgba(0, 0, 0, .07);
+  --on-accent: #FFFFFF;
+  --on-ink: #FFFFFF; /* 글자색(ink)을 배경으로 쓸 때 그 위 글자 */
   --me: var(--m0);
   --on-me: #FFFFFF;
-  --err: #9B2C2C;
+  --err: var(--sys-red);
 
-  /* surfaces (Apple glass) */
-  --glass: rgba(250, 250, 252, .62);
-  --glass-2: rgba(255, 255, 255, .5);
-  --glass-3: rgba(255, 255, 255, .96);
-  --glass-edge: rgba(255, 255, 255, .6);
-  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .75);
-  --paper: rgba(250, 250, 250, .94);
-  --paper-solid: #FAFAFA;
-  --panel: rgba(255, 255, 255, .8);
-  --blur: blur(24px) saturate(160%);
-  --blur-lg: blur(40px) saturate(170%);
+  /* glass */
+  --glass: rgba(250, 250, 252, .66);
+  --glass-2: rgba(255, 255, 255, .42);
+  --glass-3: rgba(255, 255, 255, .92);
+  --glass-edge: rgba(255, 255, 255, .75);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .9);
+  --paper: rgba(255, 255, 255, .78);
+  --paper-solid: #FAFAFB;
+  --panel: rgba(255, 255, 255, .55);
+  --blur: saturate(180%) blur(24px);
+  --blur-lg: saturate(180%) blur(40px);
 
-  /* elevation (Vercel layered shadows) */
+  /* elevation — Apple keeps shadows rare and soft */
   --e-1: inset 0 0 0 1px var(--line);
-  --e-2: 0 1px 1px rgba(0, 0, 0, .02), 0 2px 2px rgba(0, 0, 0, .04);
-  --e-3: 0 2px 2px rgba(0, 0, 0, .04), 0 8px 16px -4px rgba(0, 0, 0, .04);
-  --e-4: 0 1px 1px rgba(0, 0, 0, .02), 0 8px 16px -4px rgba(0, 0, 0, .04), 0 24px 32px -8px rgba(0, 0, 0, .06);
-  --shadow: var(--glass-hi), 0 24px 60px -32px rgba(0, 0, 0, .3);
+  --e-2: 0 1px 2px rgba(0, 0, 0, .06);
+  --e-3: 0 4px 16px -6px rgba(0, 0, 0, .12);
+  --e-4: 0 18px 40px -18px rgba(0, 0, 0, .2);
+  --shadow: var(--glass-hi), 0 24px 60px -34px rgba(0, 0, 0, .28);
 
-  /* radii */
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --r-pill: 999px;
-  --r: 20px;
+  --r: 22px;
 
-  /* motion */
   --ease: cubic-bezier(.22, 1, .36, 1);
   --ease-inout: cubic-bezier(.65, 0, .35, 1);
-  --d-fast: 120ms; --d-base: 200ms; --d-slow: 360ms; --d-ring: 900ms;
+  --d-fast: 120ms; --d-base: 200ms; --d-slow: 360ms; --d-ring: 1400ms;
 
-  /* members & goal tones */
-  --m0: #171717; --m1: #56606B; --m2: #8E959D;
-  --t-ink: #171717; --t-graphite: #3A3A3F; --t-slate: #4E5A66; --t-steel: #7B838B;
+  /* members (data) */
+  --m0: var(--c-blue); --m1: var(--c-amber); --m2: var(--c-violet);
+  /* goal tones (year goals pick one) */
+  --t-ink: #1D1D1F; --t-graphite: #3A3A3F; --t-slate: #4E5A66; --t-steel: #7B838B;
   --t-silver: #A9AEB4; --t-sand: #A3977F; --t-ivory: #CDC4AE; --t-champagne: #B09866;
 
-  /* clay-glass rings */
-  --clay-year: #1D1D1F; --clay-month: #3F3F43; --clay-week: #76767B; --clay-day: #B1B1B6;
-  --r-year: var(--clay-year); --r-month: var(--clay-month); --r-week: var(--clay-week); --r-day: var(--clay-day);
-  --ghost: rgba(0, 0, 0, .055); --rim: rgba(255, 255, 255, .95);
-  --bead: #171717; --bead-ring: #FFFFFF;
+  /* rings: one system color per period (plans page reads --clay-*) */
+  --r-year: var(--c-amber); --r-month: var(--c-green); --r-week: var(--c-blue); --r-day: var(--c-rose);
+  --clay-year: var(--r-year); --clay-month: var(--r-month); --clay-week: var(--r-week); --clay-day: var(--r-day);
+  --rh-track: rgba(118, 118, 128, .12); --rh-time: rgba(60, 60, 67, .22); --rh-now: #1D1D1F;
+  --ghost: rgba(118, 118, 128, .12); --rim: rgba(255, 255, 255, .9);
+  --bead: #1D1D1F; --bead-ring: #FFFFFF;
   --lens-hi: rgba(255, 255, 255, .9); --lens-lo: rgba(255, 255, 255, .3); --lens-rim: rgba(0, 0, 0, .06);
   --orb: rgba(0, 0, 0, .10);
-  /* 3D stage (IGLOO fog) */
-  --stage-fog: #ECECEE; --stage-dust: #8A8A92; --stage-line: #FFFFFF; --stage-glass: #9A9AA2; --stage-glass-a: .22;
-  --stage-bg: radial-gradient(120% 90% at 50% 38%, #FAFAFB 0%, #EEEEF0 55%, #E2E2E5 100%);
 
-  --good: #171717; --good-bg: #171717; --warn: #4D4D4D; --warn-bg: rgba(0, 0, 0, .07); --bad: #6B6B72; --bad-bg: transparent;
-  --scrim: linear-gradient(180deg, rgba(245, 245, 247, .12), rgba(245, 245, 247, .5));
+  /* grass / heatmap: green, 4 steps */
+  --g0: rgba(118, 118, 128, .14); --g1: #CFEFD9; --g2: #8FD9A8; --g3: #46B870; --g4: #248A4B;
+
+  /* wallpaper */
+  --wall: url("/assets/login/clouds-golden-cumulus.jpg");
+  --wall-filter: grayscale(1) blur(36px) brightness(1.2);
+  --wall-scrim: linear-gradient(180deg, rgba(246, 246, 248, .55), rgba(238, 238, 241, .72));
+  --spot: rgba(255, 255, 255, .35);
+  --stage-bg: transparent;
+  --page-bg: #EEEEF1;
+  --grain-a: 0;
+
+  --good: var(--ink); --good-bg: var(--ink); --warn: var(--ink-2); --warn-bg: rgba(0, 0, 0, .07); --bad: var(--ink-3); --bad-bg: transparent;
+  --up: var(--c-green); --down: var(--c-rose); /* 차트 안 앞섬/밀림 */
+  --scrim: var(--wall-scrim);
 }
 
-/* dark (Raycast surfaces) — defined twice so the system setting and the toggle both work */
+/* dark (default) — defined twice so the system setting and the toggle both work */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --ink: #F4F4F6; --ink-2: #CDCDCD; --ink-3: #9C9C9D;
-    --line: rgba(255, 255, 255, .08); --line-2: rgba(255, 255, 255, .16); --track: rgba(255, 255, 255, .07); --hover: rgba(255, 255, 255, .05);
-    --accent: #F4F4F6; --accent-soft: rgba(255, 255, 255, .07); --on-me: #07080A; --err: #F0A0A0;
-    --glass: rgba(13, 13, 13, .55); --glass-2: rgba(255, 255, 255, .035); --glass-3: rgba(22, 22, 24, .97); --glass-edge: rgba(255, 255, 255, .1);
-    --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .08);
-    --paper: rgba(9, 9, 11, .9); --paper-solid: #0B0B0D; --panel: rgba(255, 255, 255, .03);
-    --e-2: 0 1px 2px rgba(0, 0, 0, .4); --e-3: 0 8px 24px -8px rgba(0, 0, 0, .5); --e-4: 0 24px 48px -12px rgba(0, 0, 0, .65);
-    --shadow: var(--glass-hi), 0 24px 60px -30px rgba(0, 0, 0, .8);
-    --m0: #F4F4F6; --m1: #A5B0BB; --m2: #6F767E;
+    --sys-blue: #0A84FF; --sys-green: #30D158; --sys-indigo: #5E5CE6; --sys-orange: #FF9F0A; --sys-pink: #FF375F;
+    --sys-purple: #BF5AF2; --sys-red: #FF453A; --sys-teal: #40CBE0; --sys-yellow: #FFD60A; --sys-mint: #63E6E2;
+  --c-amber: #F2A65A; --c-green: #7DD3A0; --c-blue: #7AA7F5; --c-rose: #E88AB4; --c-violet: #B39DF0; --c-teal: #6CC7CF;
+    --ink: #F5F5F7; --ink-2: rgba(235, 235, 245, .74); --ink-3: rgba(235, 235, 245, .52);
+    --line: rgba(255, 255, 255, .1); --line-2: rgba(255, 255, 255, .18); --track: rgba(255, 255, 255, .1); --hover: rgba(255, 255, 255, .08);
+    --accent-soft: rgba(255, 255, 255, .1); --on-me: #FFFFFF; --on-ink: #151517; --on-accent: #151517;
+    --glass: rgba(28, 28, 31, .6); --glass-2: rgba(255, 255, 255, .05); --glass-3: rgba(38, 38, 42, .96); --glass-edge: rgba(255, 255, 255, .11);
+    --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .12);
+    --paper: rgba(24, 24, 27, .8); --paper-solid: #1A1A1D; --panel: rgba(255, 255, 255, .05);
+    --e-2: 0 1px 2px rgba(0, 0, 0, .4); --e-3: 0 8px 24px -8px rgba(0, 0, 0, .5); --e-4: 0 24px 48px -16px rgba(0, 0, 0, .6);
+    --shadow: var(--glass-hi), 0 24px 60px -30px rgba(0, 0, 0, .7);
     --t-ink: #F4F4F6; --t-graphite: #CFCFD4; --t-slate: #9AA7B3; --t-steel: #858D95;
     --t-silver: #666B71; --t-sand: #B5A98F; --t-ivory: #E0D7C1; --t-champagne: #C8AE78;
-    --clay-year: #F4F4F6; --clay-month: #B9B9BD; --clay-week: #7C7D80; --clay-day: #3A3B3E;
-    --ghost: rgba(255, 255, 255, .05); --rim: rgba(255, 255, 255, .12);
-    --bead: #F4F4F6; --bead-ring: #0B0B0D;
+    --rh-track: rgba(255, 255, 255, .08); --rh-time: rgba(255, 255, 255, .26); --rh-now: #FFFFFF;
+    --ghost: rgba(255, 255, 255, .08); --rim: rgba(255, 255, 255, .14);
+    --bead: #FFFFFF; --bead-ring: #1A1A1D;
     --lens-hi: rgba(255, 255, 255, .09); --lens-lo: rgba(255, 255, 255, .015); --lens-rim: rgba(255, 255, 255, .08);
     --orb: rgba(255, 255, 255, .06);
-    --stage-fog: #0B0B0D; --stage-dust: #5A5A62; --stage-line: #9A9AA2; --stage-glass: #FFFFFF; --stage-glass-a: .1;
-    --stage-bg: radial-gradient(120% 90% at 50% 38%, #18181B 0%, #0B0B0D 60%, #050506 100%);
-    --good: #F4F4F6; --good-bg: #F4F4F6; --warn: #CDCDCD; --warn-bg: rgba(255, 255, 255, .09); --bad: #9C9C9D;
-    --scrim: linear-gradient(180deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, .62));
+    --g0: rgba(255, 255, 255, .08); --g1: #1B3B28; --g2: #25633D; --g3: #3C9A5F; --g4: #6DD08F;
+    --wall-filter: grayscale(1) blur(36px) brightness(.42);
+    --wall-scrim: linear-gradient(180deg, rgba(14, 14, 16, .3), rgba(10, 10, 12, .62));
+    --spot: rgba(255, 255, 255, .05);
+    --page-bg: #0F1012;
+    --good: var(--ink); --good-bg: var(--ink); --warn: var(--ink-2); --warn-bg: rgba(255, 255, 255, .09); --bad: var(--ink-3);
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ink: #F4F4F6; --ink-2: #CDCDCD; --ink-3: #9C9C9D;
-  --line: rgba(255, 255, 255, .08); --line-2: rgba(255, 255, 255, .16); --track: rgba(255, 255, 255, .07); --hover: rgba(255, 255, 255, .05);
-  --accent: #F4F4F6; --accent-soft: rgba(255, 255, 255, .07); --on-me: #07080A; --err: #F0A0A0;
-  --glass: rgba(13, 13, 13, .55); --glass-2: rgba(255, 255, 255, .035); --glass-3: rgba(22, 22, 24, .97); --glass-edge: rgba(255, 255, 255, .1);
-  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .08);
-  --paper: rgba(9, 9, 11, .9); --paper-solid: #0B0B0D; --panel: rgba(255, 255, 255, .03);
-  --e-2: 0 1px 2px rgba(0, 0, 0, .4); --e-3: 0 8px 24px -8px rgba(0, 0, 0, .5); --e-4: 0 24px 48px -12px rgba(0, 0, 0, .65);
-  --shadow: var(--glass-hi), 0 24px 60px -30px rgba(0, 0, 0, .8);
-  --m0: #F4F4F6; --m1: #A5B0BB; --m2: #6F767E;
+  --sys-blue: #0A84FF; --sys-green: #30D158; --sys-indigo: #5E5CE6; --sys-orange: #FF9F0A; --sys-pink: #FF375F;
+  --sys-purple: #BF5AF2; --sys-red: #FF453A; --sys-teal: #40CBE0; --sys-yellow: #FFD60A; --sys-mint: #63E6E2;
+  --c-amber: #F2A65A; --c-green: #7DD3A0; --c-blue: #7AA7F5; --c-rose: #E88AB4; --c-violet: #B39DF0; --c-teal: #6CC7CF;
+  --ink: #F5F5F7; --ink-2: rgba(235, 235, 245, .74); --ink-3: rgba(235, 235, 245, .52);
+  --line: rgba(255, 255, 255, .1); --line-2: rgba(255, 255, 255, .18); --track: rgba(255, 255, 255, .1); --hover: rgba(255, 255, 255, .08);
+  --accent-soft: rgba(255, 255, 255, .1); --on-me: #FFFFFF; --on-ink: #151517; --on-accent: #151517;
+  --glass: rgba(28, 28, 31, .6); --glass-2: rgba(255, 255, 255, .05); --glass-3: rgba(38, 38, 42, .96); --glass-edge: rgba(255, 255, 255, .11);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .12);
+  --paper: rgba(24, 24, 27, .8); --paper-solid: #1A1A1D; --panel: rgba(255, 255, 255, .05);
+  --e-2: 0 1px 2px rgba(0, 0, 0, .4); --e-3: 0 8px 24px -8px rgba(0, 0, 0, .5); --e-4: 0 24px 48px -16px rgba(0, 0, 0, .6);
+  --shadow: var(--glass-hi), 0 24px 60px -30px rgba(0, 0, 0, .7);
   --t-ink: #F4F4F6; --t-graphite: #CFCFD4; --t-slate: #9AA7B3; --t-steel: #858D95;
   --t-silver: #666B71; --t-sand: #B5A98F; --t-ivory: #E0D7C1; --t-champagne: #C8AE78;
-  --clay-year: #F4F4F6; --clay-month: #B9B9BD; --clay-week: #7C7D80; --clay-day: #3A3B3E;
-  --ghost: rgba(255, 255, 255, .05); --rim: rgba(255, 255, 255, .12);
-  --bead: #F4F4F6; --bead-ring: #0B0B0D;
+  --rh-track: rgba(255, 255, 255, .08); --rh-time: rgba(255, 255, 255, .26); --rh-now: #FFFFFF;
+  --ghost: rgba(255, 255, 255, .08); --rim: rgba(255, 255, 255, .14);
+  --bead: #FFFFFF; --bead-ring: #1A1A1D;
   --lens-hi: rgba(255, 255, 255, .09); --lens-lo: rgba(255, 255, 255, .015); --lens-rim: rgba(255, 255, 255, .08);
   --orb: rgba(255, 255, 255, .06);
-  --stage-fog: #0B0B0D; --stage-dust: #5A5A62; --stage-line: #9A9AA2; --stage-glass: #FFFFFF; --stage-glass-a: .1;
-  --stage-bg: radial-gradient(120% 90% at 50% 38%, #18181B 0%, #0B0B0D 60%, #050506 100%);
-  --good: #F4F4F6; --good-bg: #F4F4F6; --warn: #CDCDCD; --warn-bg: rgba(255, 255, 255, .09); --bad: #9C9C9D;
-  --scrim: linear-gradient(180deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, .62));
+  --g0: rgba(255, 255, 255, .08); --g1: #1B3B28; --g2: #25633D; --g3: #3C9A5F; --g4: #6DD08F;
+  --wall-filter: grayscale(1) blur(36px) brightness(.42);
+  --wall-scrim: linear-gradient(180deg, rgba(14, 14, 16, .3), rgba(10, 10, 12, .62));
+  --spot: rgba(255, 255, 255, .05);
+  --page-bg: #0F1012;
+  --good: var(--ink); --good-bg: var(--ink); --warn: var(--ink-2); --warn-bg: rgba(255, 255, 255, .09); --bad: var(--ink-3);
 }

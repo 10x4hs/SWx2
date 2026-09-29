@@ -1,4 +1,4 @@
-# Study Trio v3 — 설계 문서
+# Dsm-mafia v3 — 설계 문서
 Date: 2026-09-28 · Status: 승인("만들기 시작해", 추천안 채택)
 
 ## 목표

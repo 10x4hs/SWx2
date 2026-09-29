@@ -1,7 +1,7 @@
-// Study Trio — app shell: auth, routing, sidebar, command palette, focus timer.
+// Dsm-mafia — app shell: auth, routing, sidebar, command palette, focus timer.
 import { api } from "./api.js";
 import { $, $$, esc, initial, debounce, ymd, today, nowTime, toast, pad, planHash } from "./util.js";
-import { icon, logo } from "./icons.js";
+import { icon, appIcon } from "./icons.js";
 import * as todayView from "./views/today.js";
 import * as plansView from "./views/plans.js";
 import * as notesView from "./views/notes.js";
@@ -10,6 +10,7 @@ import * as teamView from "./views/team.js";
 import * as aiView from "./views/ai.js";
 import * as homeView from "./views/home.js";
 import * as diaryView from "./views/diary.js";
+import * as englishView from "./views/english.js";
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
 
@@ -60,28 +61,32 @@ window.addEventListener("trio:me", (e) => {
 
 // ---------- shell ----------
 const NAV = [
-  { key: "home", hash: "#/", label: "홈", icon: icon.home },
-  { key: "today", hash: "#/today", label: "오늘", icon: icon.today },
-  { key: "plans", hash: "#/plans/month", label: "계획", icon: icon.plans },
-  { key: "diary", hash: "#/diary", label: "일기", icon: icon.diary },
-  { key: "notes", hash: "#/notes", label: "노트", icon: icon.notes },
-  { key: "graph", hash: "#/graph", label: "그래프", icon: icon.graph },
-  { key: "ai", hash: "#/ai", label: "AI 튜터", icon: icon.spark },
+  { key: "home", hash: "#/", label: "홈", tip: "홈 · 올해·이번 달 진행률" },
+  { key: "today", hash: "#/today", label: "오늘", tip: "오늘 · 시간표·할 일·일기" },
+  { key: "plans", hash: "#/plans/month", label: "계획", tip: "계획 · 연·월·주 목표" },
+  { key: "diary", hash: "#/diary", label: "일기", tip: "일기 · 하루 한 편, 잔디" },
+  { key: "english", hash: "#/english", label: "영어", tip: "영어 · 6개월 프리토킹" },
+  { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리, AI 정리" },
+  { key: "graph", hash: "#/graph", label: "그래프", tip: "그래프 · 노트 연결 지도" },
+  { key: "ai", hash: "#/ai", label: "AI 튜터", tip: "AI 튜터 · 묻고 노트로 정리" },
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 function renderShell() {
-  // 얇은 아이콘 줄 + 넓은 본문. 한 화면에는 그 화면의 주인공만.
+  // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점.
+  const item = (n) => `<a class="rail-btn" href="${n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.key)}</a>`;
   app.innerHTML = `
     <div class="shell">
-      <aside class="rail glass" aria-label="메뉴">
-        <a class="rail-brand" href="#/" aria-label="Study Trio 홈">${logo(24)}</a>
-        <button class="rail-btn" type="button" id="open-palette" aria-label="검색 · 명령 (${isMac ? "⌘" : "Ctrl"} K)" data-tip="검색 ${isMac ? "⌘" : "Ctrl"}K">${icon.search(19)}</button>
+      <aside class="rail dock glass" aria-label="메뉴">
+        <button class="rail-btn" type="button" id="open-palette" aria-label="검색 · 명령 (${isMac ? "⌘" : "Ctrl"} K)" data-tip="검색 · ${isMac ? "⌘" : "Ctrl"}K">${appIcon("search")}</button>
+        <i class="dock-sep" aria-hidden="true"></i>
         <nav class="rail-nav">
-          ${NAV.map((n) => `<a class="rail-btn" href="${n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.label}">${n.icon(19)}</a>`).join("")}
+          ${NAV.slice(0, 4).map(item).join("")}
+          <i class="dock-sep" aria-hidden="true"></i>
+          ${NAV.slice(4).map(item).join("")}
         </nav>
         <div class="rail-foot">
-          <button class="rail-btn" type="button" id="timer-btn" aria-label="집중 타이머" data-tip="집중 타이머" aria-expanded="false"><span id="timer-mini">${icon.reset(19)}</span></button>
+          <button class="rail-btn" type="button" id="timer-btn" aria-label="집중 타이머" data-tip="집중 타이머 · 25분" aria-expanded="false">${appIcon("timer")}<span id="timer-mini"></span></button>
           <div id="me-row"></div>
         </div>
       </aside>
@@ -106,10 +111,21 @@ function renderMeRow() {
   if (!el || !ctx.me) return;
   const dark = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
   el.className = "rail-me";
+  // 내 프로필 → 작은 메뉴 (테마 · 로그아웃)
   el.innerHTML = `
-    <button class="rail-btn" type="button" id="theme-btn" aria-label="${dark ? "밝은 테마" : "어두운 테마"}" data-tip="${dark ? "밝게" : "어둡게"}">${dark ? icon.sun(18) : icon.moon(18)}</button>
-    <button class="rail-btn" type="button" id="logout-btn" aria-label="로그아웃" data-tip="로그아웃 · ${esc(ctx.me.username)}">${icon.logout(18)}</button>
-    <span class="av" style="--c:${esc(ctx.me.color)}" title="${esc(ctx.me.display_name)}">${esc(initial(ctx.me.display_name))}</span>`;
+    <button class="rail-btn me-btn" type="button" id="me-btn" aria-haspopup="menu" aria-expanded="false" aria-label="내 메뉴 · ${esc(ctx.me.display_name)}" data-tip="${esc(ctx.me.display_name)} · 설정">
+      <span class="av" style="--c:${esc(ctx.me.color)}">${esc(initial(ctx.me.display_name))}</span></button>
+    <div class="me-menu glass" id="me-menu" role="menu" hidden>
+      <div class="me-head"><span class="av" style="--c:${esc(ctx.me.color)}">${esc(initial(ctx.me.display_name))}</span><span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small></span></div>
+      <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
+      <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
+    </div>`;
+  const menu = $("#me-menu"), btn = $("#me-btn");
+  btn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute("aria-expanded", String(!menu.hidden)); });
+  if (!renderMeRow.bound) { // 바깥을 누르면 닫기 (한 번만 걸어요)
+    renderMeRow.bound = true;
+    document.addEventListener("click", (e) => { const m = $("#me-menu"); if (m && !m.hidden && !e.target.closest("#me-menu")) { m.hidden = true; $("#me-btn")?.setAttribute("aria-expanded", "false"); } });
+  }
   $("#theme-btn").addEventListener("click", () => {
     const next = dark ? "light" : "dark";
     document.documentElement.dataset.theme = next;
@@ -138,17 +154,19 @@ async function refreshSide() {
 function parseRoute() {
   const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
   const [a, b, c, d] = parts;
-  if (a === "u" && b) return { view: "today", nav: "home", user: b, date: d || ymd(today()) };
+  if (a === "u") return { view: "home", nav: "home" }; // 서로는 차트만: 다른 사람의 하루 페이지는 없어요
   if (a === "plans") return { view: "plans", nav: "plans", scope: b || "month", key: c || null };
   if (a === "notes" && b === "tag") return { view: "notes", nav: "notes", tag: c };
   if (a === "notes") return { view: "notes", nav: "notes", id: b || null };
   if (a === "graph") return { view: "graph", nav: "graph" };
   if (a === "team" || !a || a === "home") return { view: "home", nav: "home" };
   if (a === "diary") return { view: "diary", nav: "diary", day: b || null };
+  if (a === "records") return { view: "diary", nav: "diary", tab: "rec", day: b || null };
   if (a === "ai") return { view: "ai", nav: "ai", id: b || null };
+  if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
   return { view: "today", nav: "today", date: b || ymd(today()) };
 }
-const VIEWS = { home: homeView, today: todayView, plans: plansView, diary: diaryView, notes: notesView, graph: graphView, team: teamView, ai: aiView };
+const VIEWS = { home: homeView, today: todayView, plans: plansView, diary: diaryView, notes: notesView, graph: graphView, team: teamView, ai: aiView, english: englishView };
 let lastView = null;
 
 function route() {
@@ -159,6 +177,7 @@ function route() {
   // notes view keeps its list mounted while switching notes
   if (lastView === "notes" && r.view === "notes" && notesView.update) { notesView.update(r); return; }
   if (lastView === "ai" && r.view === "ai") return; // the chat view follows its own hash changes
+  if (lastView === "english" && r.view === "english" && englishView.update) { englishView.update(r); return; } // 영어 탭 전환은 판을 다시 만들지 않아요
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>
   const host = document.createElement("div");
@@ -270,7 +289,7 @@ const timer = {
     this.running = false;
     const mins = Math.round(this.total / 60);
     chime();
-    document.title = "Study Trio";
+    document.title = "Dsm-mafia";
     try {
       await api.addLog({ day: ymd(today()), at: nowTime(), text: `집중 ${mins}분${this.label ? " · " + this.label : ""}`, kind: "focus", mins });
       toast(`집중 ${mins}분 완료. 오늘 기록에 남겼어요.`);
@@ -285,9 +304,9 @@ const timer = {
     const t = `${pad(Math.floor(this.left / 60))}:${pad(this.left % 60)}`;
     el.textContent = t;
     bar.style.width = `${(1 - this.left / this.total) * 100}%`;
-    document.title = this.running ? `${t} · 집중 중` : "Study Trio";
+    document.title = this.running ? `${t} · 집중 중` : "Dsm-mafia";
     const mini = $("#timer-mini");
-    if (mini) { mini.classList.toggle("on", this.running); if (this.running) mini.textContent = t; else if (!mini.querySelector("svg")) mini.innerHTML = icon.reset(19); }
+    if (mini) { mini.classList.toggle("on", this.running); mini.textContent = this.running ? t : ""; }
   },
 };
 function renderTimer() {

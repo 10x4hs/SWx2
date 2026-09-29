@@ -54,6 +54,8 @@ export const api = {
   saveNote: (id, b) => request("PUT", "/notes/" + id, b),
   deleteNote: (id) => request("DELETE", "/notes/" + id),
   graph: () => request("GET", "/graph"),
+  organize: (note_id) => request("POST", "/ai/organize", { note_id }),
+  generate: (b) => request("POST", "/ai/generate", b),
   tags: () => request("GET", "/tags"),
   search: (q) => request("GET", "/search?" + qs({ q })),
   focus: (from, to, user) => request("GET", "/logs/focus?" + qs({ from, to, user })),
@@ -62,6 +64,19 @@ export const api = {
   saveDiary: (b) => request("PUT", "/diary", b),
   diaryDays: (year) => request("GET", "/diary/days?" + qs({ year })),
   diaries: (before) => request("GET", "/diary/list?" + qs({ before })),
+  record: (day) => request("GET", "/records?" + qs({ day })),
+  saveRecord: (day) => request("POST", "/records", { day }),
+  recordDays: (year) => request("GET", "/records/days?" + qs({ year })),
+
+  // 영어 (ENGLISH-OS) — 나만 보는 하루 기록 · 막힌 표현 · 복습 카드
+  englishDay: (day) => request("GET", "/english/day?" + qs({ day })),
+  saveEnglishDay: (b) => request("PUT", "/english/day", b),
+  englishDays: (from, to) => request("GET", "/english/days?" + qs({ from, to })),
+  phrases: () => request("GET", "/english/phrases"),
+  addPhrase: (b) => request("POST", "/english/phrases", b),
+  deletePhrase: (id) => request("DELETE", "/english/phrases/" + encodeURIComponent(id)),
+  cards: () => request("GET", "/english/cards"),
+  reviewCard: (b) => request("POST", "/english/cards/review", b),
 
   aiModels: () => request("GET", "/ai/models"),
   chats: () => request("GET", "/ai/chats"),

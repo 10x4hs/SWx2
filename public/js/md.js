@@ -30,8 +30,11 @@ marked.use({
   ],
 });
 
+// AI가 쓴 구역(<!-- ai:start --> … <!-- ai:end -->)은 따로 꾸민 상자로, 목차 표시는 숨겨요
+const AI_BLOCK = /<!-- ai:start -->\n?(?:---\n)?([\s\S]*?)\n?<!-- ai:end -->/g;
 export function renderMarkdown(src) {
-  const html = marked.parse(src || "");
+  const text = (src || "").replace(/^<!-- ai:moc -->\n?/, "").replace(AI_BLOCK, (_, inner) => `\n\n<div class="ai-block">\n\n${inner.trim()}\n\n</div>\n\n`);
+  const html = marked.parse(text);
   return DOMPurify.sanitize(html, { ADD_ATTR: ["data-wikilink", "data-tag", "target"] });
 }
 
