@@ -2824,3 +2824,74 @@ a.btn { text-decoration: none; }
 .ck-add .ck-at:not(:focus):invalid, .ck-add .ck-at[value=""] { color: var(--ink-3); }
 @media (max-width: 720px) { .ck-chart { grid-template-columns: 1fr; justify-items: center; } .ck-legend { width: 100%; } .ck-add { flex-wrap: wrap; } .ck-add .input[name=text] { flex: 1 1 100%; } }
 .ck, .gl { padding-bottom: 96px; }
+
+/* ======================================================================
+   v18 — 애플식 차트: 활동 링 색(빨강 · 연두 · 하늘 · 주황), 같은 색의 투명 트랙,
+   끝낸 몫에 은은한 빛, 둥근 시스템 글꼴 숫자. + 홈 '체크리스트' 쪽
+   ====================================================================== */
+:root { --r-year: #FA114F; --r-month: #92E82A; --r-week: #1EEAEF; --r-day: #FF9F0A; --font-round: ui-rounded, "SF Pro Rounded", "SF Pro Display", -apple-system, "Pretendard Variable", system-ui, sans-serif; }
+:root[data-theme="light"] { --r-year: #E0004D; --r-month: #5DBB00; --r-week: #00A9C7; --r-day: #F08C00; }
+/* 링: 트랙 = 같은 색 18% · 남은 칸 = 같은 색 26% · 지난 시간 = 45% · 이룬 칸 = 제 색 + 빛 */
+.rh .rh-track, .rh.glassy .rh-track { stroke: color-mix(in srgb, var(--c) 16%, transparent); }
+.rh .rh-seg:not(.done), .rh.glassy .rh-seg:not(.done), .rh-ring[data-ring="day"] .rh-seg:not(.done) { stroke: color-mix(in srgb, var(--c) 26%, transparent); }
+.rh .rh-past { stroke: color-mix(in srgb, var(--c) 45%, transparent); }
+.rh .rh-seg.done { stroke: var(--c); filter: drop-shadow(0 0 7px color-mix(in srgb, var(--c) 55%, transparent)); }
+.rh-ring:hover .rh-seg:not(.done) { stroke: color-mix(in srgb, var(--c) 38%, transparent); }
+.rh .rh-now { stroke: #fff; stroke-width: 3; filter: drop-shadow(0 0 4px rgba(255, 255, 255, .6)); }
+:root[data-theme="light"] .rh .rh-now { stroke: #1D1D1F; filter: none; }
+.rh-center, .gl-big, .pd-big, .rh-big, .gp-txt b { font-family: var(--font-round) !important; }
+.rh-center { font-weight: 600 !important; letter-spacing: -.035em; }
+.rh-name { font-family: var(--font-round) !important; }
+.rh-big { font-weight: 700 !important; }
+/* 기간 차트(한 달 · 한 주 · 하루): 같은 문법 */
+.ch .ch-track { fill: color-mix(in srgb, var(--c) 14%, transparent); }
+.ch .ch-todo, .ch .ch-plan { fill: color-mix(in srgb, var(--c) 24%, transparent); }
+.ch .ch-past { fill: color-mix(in srgb, var(--c) 45%, transparent); }
+.ch .ch-done { fill: var(--c); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--c) 50%, transparent)); }
+.ch text { font-family: var(--font-round); }
+/* 우선순위 도넛: 둥근 끝 · 트랙은 아주 옅게 */
+.pd .pd-rest { stroke-opacity: .2; }
+.pd .pd-done { stroke-linecap: round; }
+.pd .pd-track { stroke: rgba(255, 255, 255, .05); }
+
+/* 홈 체크리스트 쪽 */
+.hc { display: grid; grid-template-columns: 1fr; justify-items: center; gap: 24px; width: min(100%, 980px); margin: 0 auto; padding: 6px 12px; }
+.hc.wide { grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-items: stretch; gap: 48px; }
+.hc-donut { display: block; justify-self: center; border-radius: 50%; transition: transform .25s var(--ease); }
+a.hc-donut:hover { transform: scale(1.02); }
+.hc-side { display: grid; gap: 18px; min-width: 0; max-width: 460px; }
+.hc-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hc-h b { font: 700 22px var(--font-round); letter-spacing: -.02em; }
+.hc-bars { display: grid; gap: 10px; }
+.hc-bars .pb { grid-template-columns: 64px minmax(0, 1fr) 40px; font-size: 13.5px; }
+.hc-bars .pb-t { height: 14px; }
+.hc-left { list-style: none; margin: 0; padding: 12px 14px; display: grid; gap: 8px; border-radius: 16px; background: var(--lg-fill); border: 1px solid var(--lg-edge); box-shadow: var(--lg-top); }
+.hc-left li { display: flex; align-items: center; gap: 9px; font-size: 14px; min-width: 0; }
+.hc-left li i { flex: none; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.hc-left li em { font: 600 11.5px var(--mono); font-style: normal; color: var(--ink-3); }
+.hc-left li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hc-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-items: end; }
+.hw { display: grid; justify-items: center; gap: 4px; text-decoration: none; color: var(--ink-3); }
+.hw-bar { position: relative; width: 100%; max-width: 30px; height: 64px; border-radius: 9px; background: rgba(255, 255, 255, .04); display: flex; align-items: flex-end; overflow: hidden; }
+.hw-bar::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: var(--h); border-radius: 9px; background: color-mix(in srgb, var(--r-day) 22%, transparent); }
+.hw-bar i { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--h) * var(--f) / 100%); border-radius: 9px; background: linear-gradient(180deg, color-mix(in srgb, var(--r-day) 70%, #fff), var(--r-day)); box-shadow: 0 0 10px color-mix(in srgb, var(--r-day) 55%, transparent); }
+.hw-bar.today { outline: 1.5px solid rgba(255, 255, 255, .6); outline-offset: 2px; }
+.hw-bar.future::before { background: rgba(255, 255, 255, .05); }
+.hw-d { font: 600 11.5px var(--font-round); } .hw-n { font: 600 10.5px var(--mono); min-height: 1em; }
+a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
+/* v18.1: 링 — 이룬 칸만 선명하게 (지난 시간 · 남은 칸은 옅게) · 체크리스트 쪽 목록 왼쪽 정렬 */
+.rh .rh-past { stroke: color-mix(in srgb, var(--c) 30%, transparent); }
+.rh .rh-seg:not(.done), .rh.glassy .rh-seg:not(.done), .rh-ring[data-ring="day"] .rh-seg:not(.done) { stroke: color-mix(in srgb, var(--c) 20%, transparent); }
+.rh .rh-track, .rh.glassy .rh-track { stroke: color-mix(in srgb, var(--c) 12%, transparent); }
+.ch .ch-past { fill: color-mix(in srgb, var(--c) 30%, transparent); }
+.ch .ch-todo, .ch .ch-plan { fill: color-mix(in srgb, var(--c) 18%, transparent); }
+.hc, .hc-side { text-align: left; }
+.hc-left li { justify-content: flex-start; }
+/* v18.2: 선명한 활동 링 색에 맞춰 옅은 부분을 더 옅게 (이룬 칸만 눈에 띄게) */
+.rh .rh-past { stroke: color-mix(in srgb, var(--c) 18%, transparent); }
+.rh .rh-track, .rh.glassy .rh-track { stroke: color-mix(in srgb, var(--c) 9%, transparent); }
+.rh .rh-seg:not(.done), .rh.glassy .rh-seg:not(.done), .rh-ring[data-ring="day"] .rh-seg:not(.done) { stroke: color-mix(in srgb, var(--c) 15%, transparent); }
+.rh.glassy .rh-sheen { opacity: .55; }
+.ch .ch-past { fill: color-mix(in srgb, var(--c) 18%, transparent); }
+.ch .ch-track { fill: color-mix(in srgb, var(--c) 9%, transparent); }
+.hc-left { justify-items: stretch; } .hc-left li { width: 100%; }

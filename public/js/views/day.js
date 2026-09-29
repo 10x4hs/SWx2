@@ -53,45 +53,13 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       </div>
     </header>
     <div id="dp-aic"></div>
-    ${future ? `<p class="dp-note">앞으로 올 날이에요. 할 일과 시간표를 미리 적어 두면 그날 홈 차트에 그대로 나와요.</p>` : ""}
-    <div id="dp-carry"></div>
-    <div class="dp-cols">
-      <div class="dp-col">
-        <section class="cd-sec" aria-labelledby="dp-goals-t">
-          <div class="cd-sh"><h3 id="dp-goals-t">체크리스트</h3><span class="row" style="gap:8px"><span id="dp-goal-sum"></span><a class="faint dp-more" href="#/checklist/${day}" title="크게 보기 · 차트">크게 보기 ›</a></span></div>
-          <ul class="todos dp-todos" id="dp-goals"><li class="cd-loading faint">불러오는 중…</li></ul>
-          <form class="cd-add dp-goal-add" id="dp-goal-add" autocomplete="off">
-            <input class="input" name="text" maxlength="200" placeholder="해야 할 일 추가" aria-label="할 일 추가">
-            ${prioSelect()}
-            <button class="icon-btn sm add-go" type="submit" aria-label="할 일 추가">${icon.plus(15)}</button>
-          </form>
-        </section>
-        ${future ? "" : `<section class="cd-sec sc-card" aria-labelledby="dp-sc-t">
-          <div class="cd-sh"><h3 id="dp-sc-t">하루 점수</h3><span class="faint" id="dp-sc-sub"></span></div>
-          <div class="sc-top"><div class="sc-ring" id="dp-sc-ring"></div><div class="sc-prio" id="dp-sc-prio"></div></div>
-          <p class="sc-note" id="dp-sc-note"></p>
-          <div class="sc-trend" id="dp-sc-trend"></div>
-          <div class="dp-rec" id="dp-rec"></div>
-        </section>`}
-
-        ${future ? "" : `<section class="cd-sec" aria-labelledby="dp-diary-t">
-          <div class="cd-sh"><h3 id="dp-diary-t">일기</h3></div>
-          <a class="dp-diary glass" id="dp-diary" href="#/calendar/diary/${day}"><span class="faint">불러오는 중…</span></a>
-        </section>`}
-        <section class="cd-sec" aria-labelledby="dp-tt-t">
-          <div class="cd-sh"><h3 id="dp-tt-t">시간표</h3><span class="faint" id="dp-tt-sum"></span></div>
-          <p class="dp-hint">빈 시각을 누르면 그 자리에서 바로 적을 수 있어요. Enter로 추가, Esc로 닫기.</p>
-          <div class="day-grid" id="dp-grid"></div>
-        </section>
-      </div>
-      ${future ? "" : `
-      <div class="dp-col">
-        <section class="cd-sec" aria-labelledby="dp-study-t">
-          <div class="cd-sh"><h3 id="dp-study-t">그날 한 공부</h3></div>
-          <div id="dp-study"><p class="faint">불러오는 중…</p></div>
-        </section>
-      </div>`}
-    </div>`;
+    ${future ? `<p class="dp-note">앞으로 올 날이에요. 시간표를 미리 적어 두면 그날 홈 차트에 그대로 나와요.</p>` : ""}
+    <!-- 그날 판은 AI 와 시간표만 (체크리스트 · 목표 · 점수 · 일기는 각자 페이지에서: #/checklist · #/goals · 홈 차트) -->
+    <section class="cd-sec dp-tt" aria-labelledby="dp-tt-t">
+      <div class="cd-sh"><h3 id="dp-tt-t">하루 계획표</h3><span class="row" style="gap:8px"><span class="faint" id="dp-tt-sum"></span><a class="faint dp-more" href="#/checklist/${day}">체크리스트 ›</a></span></div>
+      <p class="dp-hint">빈 시각을 누르면 5분 단위로 바로 적을 수 있어요. Enter 추가 · Esc 닫기.</p>
+      <div class="day-grid" id="dp-grid"></div>
+    </section>`;
 
   // ---------- data ----------
   async function load() {
@@ -169,7 +137,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   async function loadTrend() { try { const r = await api.recentRecords(day, 14); if (!alive) return; S.trend = r.days || []; drawTrend(); } catch { S.trend = []; } }
 
   function drawCarry() {
-    const c = $("#dp-carry", el);
+    const c = $("#dp-carry", el); if (!c) return;
     c.innerHTML = S.carry ? `<div class="banner dp-banner"><p>어제 못 끝낸 일이 <b>${S.carry}개</b> 있어요. 오늘로 가져와서 다시 계획할까요?</p>
       <button class="btn sm" type="button" id="dp-carry-btn">오늘로 가져오기</button></div>` : "";
     $("#dp-carry-btn", c)?.addEventListener("click", async () => {
@@ -239,7 +207,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   // 시간이 없는 하루 계획 = 그날 꼭 할 것
   function drawGoals() {
     const ul = $("#dp-goals", el);
-    if (!S.plans) return;
+    if (!ul || !S.plans) return;
     // 시간 정해진 계획도 같은 체크리스트에 (시각 순서 → 시간 없는 것)
     // 시간 있는 건 시각 순, 시간 없는 할 일은 우선순위 높은 것부터
     const list = S.plans.slice().sort((a, b) => (a.start || "99:99").localeCompare(b.start || "99:99") || (PRIO_RANK[b.priority] || 0) - (PRIO_RANK[a.priority] || 0) || (a.sort || 0) - (b.sort || 0)), done = list.filter((p) => p.done).length;
@@ -382,7 +350,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     if (ed) return editInline(ed, async (text) => { await api.updatePlan(ed.dataset.edit, { text }); const p = S.plans.find((x) => x.id === ed.dataset.edit); if (p) p.text = text; changed("plans"); });
   }
 
-  $("#dp-goal-add", el).addEventListener("submit", async (e) => {
+  $("#dp-goal-add", el)?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.currentTarget, text = f.text.value.trim();
     if (!text || !S.plans) return f.text.focus();

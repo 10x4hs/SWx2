@@ -11,10 +11,11 @@ import { mountPager, savedPage } from "../charts/pager.js";
 import { teamWeek } from "../charts/team.js";
 import { scramble } from "../fx.js";
 import { mountCommand } from "../ai-command.js";
+import { prioDonut, prioStats, PRIO_COLOR, PRIO_LABEL } from "../charts/prio.js";
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
 const daysLeft = (key) => Math.max(0, Math.ceil((periodEnd(key) - Date.now()) / 864e5));
-const PAGES = [{ key: "all", label: "전체" }, { key: "month", label: "한 달" }, { key: "week", label: "한 주" }, { key: "day", label: "하루" }, { key: "team", label: "우리 셋" }];
+const PAGES = [{ key: "all", label: "전체" }, { key: "check", label: "체크리스트" }, { key: "month", label: "한 달" }, { key: "week", label: "한 주" }, { key: "day", label: "하루" }, { key: "team", label: "우리 셋" }];
 const MAX_PERIODS = 20; // 서버가 한 번에 받는 기간 수
 
 // 아래 범례 — 페이지마다 같은 문법, 말만 조금씩
@@ -23,9 +24,10 @@ const LEGEND = {
   month: ["진한 색 = 이룬 목표 · 다 한 날", "옅을수록 = 덜 한 날 · 지난 시간", "회색 = 남은 목표 · 빈 날"],
   week: ["진한 색 = 이룬 목표 · 다 한 날", "옅을수록 = 덜 한 날 · 지난 시간", "회색 = 남은 목표 · 빈 날"],
   day: ["진한 색 = 끝낸 일", "옅은 색 = 이미 지난 시간", "회색 = 아직 안 한 일"],
+  check: ["진한 색 = 끝낸 할 일", "옅은 색 = 남은 할 일", "색 = 우선순위 (Max → Low)"],
 };
-const HINT = { all: "링을 누르면 그 기간 계획으로", month: "칸을 누르면 그날로", week: "칸을 누르면 그날로", day: "누르면 오늘 시간표로" };
-const COLOR = { all: "var(--r-week)", month: "var(--r-month)", week: "var(--r-week)", day: "var(--r-day)", team: "var(--m0)" };
+const HINT = { all: "링을 누르면 그 기간 목표 · 체크리스트로", check: "도넛 · 날짜를 누르면 체크리스트로", month: "바깥 링 = 목표 · 칸을 누르면 그날 체크리스트", week: "바깥 링 = 목표 · 칸을 누르면 그날 체크리스트", day: "누르면 오늘 체크리스트로" };
+const COLOR = { all: "var(--r-week)", check: "var(--p-max)", month: "var(--r-month)", week: "var(--r-week)", day: "var(--r-day)", team: "var(--m0)" };
 // 서버 시각은 ms · 초 · ISO 어느 쪽이 와도 ms 로
 const ms = (v) => (v == null ? null : typeof v === "string" ? Date.parse(v) : v < 1e12 ? v * 1000 : v);
 // 이름 뒤 조사: 받침 있으면 "이", 없거나 영문이면 "가"
@@ -83,7 +85,7 @@ export function mount(root, ctx) {
   const chart = $("#chart", root), view = $("#pg-view", root);
   const mine = () => S.who === ctx.me.id;
   const target = (key) => (mine() ? HREF[key] : "#/"); // 다른 사람은 차트만 (눌러도 안내만)
-  const dayTarget = (d) => `#/calendar/${d}`;
+  const dayTarget = (d) => `#/checklist/${d}`; // 날짜 칸을 누르면 그날 체크리스트로
   const pageKey = () => PAGES[pager.index].key;
 
   function drawFocusLine() {
@@ -100,6 +102,25 @@ export function mount(root, ctx) {
     line.innerHTML = `<span class="key"><i class="k-done"></i>${a}</span><span class="key"><i class="k-past"></i>${b}</span><span class="key"><i class="k-todo"></i>${c}</span>${pk === "day" ? `<span class="key"><i class="k-now"></i>바늘 = 지금</span>` : ""}<span class="faint">${mine() ? HINT[pk] : "다른 사람은 차트만 보여요 · 내용은 비공개"}</span>`;
   }
 
+  // 체크리스트 쪽: 오늘 할 일을 얼마나 했는지 (우선순위 색 도넛) + 이번 주 날마다 + 남은 할 일
+  function checkPage(wide) {
+    const c = S.data.check, items = c.items, own = mine();
+    const rows = prioStats(items), max = Math.max(1, ...rows.map((r) => r.n));
+    const left = items.filter((p) => !p.done).sort((a, b) => (PR_RANK[b.priority] || 0) - (PR_RANK[a.priority] || 0) || (a.start || "99").localeCompare(b.start || "99")).slice(0, 5);
+    const wkMax = Math.max(1, ...c.week.map((d) => d.total));
+    const go = (h, inner, cls = "") => (own ? `<a class="${cls}" href="${h}">${inner}</a>` : `<span class="${cls}">${inner}</span>`);
+    return `<div class="hc${wide ? " wide" : ""}">
+      ${go("#/checklist", prioDonut(items, { size: wide ? 360 : 260 }), "hc-donut")}
+      <div class="hc-side">
+        <div class="hc-h"><b>오늘 체크리스트</b>${own ? `<a class="btn sm ghost" href="#/checklist">열어서 적기 ›</a>` : ""}</div>
+        <div class="hc-bars">${rows.length ? rows.map((r) => `<div class="pb" style="--pc:${PRIO_COLOR[r.k]}"><span class="pb-l">${PRIO_LABEL[r.k]}</span><span class="pb-t" style="--w:${(r.n / max) * 100}%"><i style="--f:${(r.d / r.n) * 100}%"></i></span><span class="pb-n">${r.d}/${r.n}</span></div>`).join("") : `<p class="faint">${own ? "아직 오늘 할 일이 없어요. 도넛을 눌러 적어 보세요." : "오늘 할 일이 없어요."}</p>`}</div>
+        ${own && left.length ? `<ul class="hc-left">${left.map((p) => `<li><i style="background:${PRIO_COLOR[p.priority || "none"]}"></i>${p.start ? `<em>${esc(p.start)}</em>` : ""}<span>${esc(p.text)}</span></li>`).join("")}</ul>` : ""}
+        <div class="hc-week" aria-label="이번 주 체크리스트">${c.week.map((d) => go(`#/checklist/${d.ymd}`, `<span class="hw-bar${d.today ? " today" : ""}${d.future ? " future" : ""}" style="--h:${d.total ? Math.max(8, (d.total / wkMax) * 100) : 4}%;--f:${d.total ? (d.done / d.total) * 100 : 0}%"><i></i></span><span class="hw-d">${"일월화수목금토"[d.date.getDay()]}</span><span class="hw-n">${d.total ? `${d.done}/${d.total}` : ""}</span>`, "hw")).join("")}</div>
+      </div>
+    </div>`;
+  }
+  const PR_RANK = { max: 5, xhigh: 4, high: 3, medium: 2, low: 1 };
+
   // 쪽 하나 그리기
   function render(i) {
     if (!S.items) return "";
@@ -107,6 +128,7 @@ export function mount(root, ctx) {
     if (key === "team") return renderTeam();
     if (key === "all") return ringHud(S.items, { wide, center: S.score == null ? "–" : String(S.score), caption: mine() ? "오늘 점수" : "오늘" });
     if (key === "day") return dayClock(S.data.day, { wide });
+    if (key === "check") return checkPage(wide);
     return periodChart(S.data[key], { wide });
   }
 
@@ -200,6 +222,7 @@ export function mount(root, ctx) {
       S.data = {
         month: { scope: "month", title: `${t.getMonth() + 1}월 한 달`, color: "var(--r-month)", goals: month, time: elapsed(K.month), dLeft: daysLeft(K.month), days: monthDays.map(stat) },
         week: { scope: "week", title: `${+K.week.slice(7).replace("W", "")}주차 한 주`, color: "var(--r-week)", goals: week, time: elapsed(K.week), dLeft: daysLeft(K.week), days: weekDays.map(stat) },
+        check: { items: day, week: weekDays.map(stat) },
         day: { color: "var(--r-day)", blocks, time: dayPassed, score: S.score, count: sc.count, doneCount: sc.doneCount, now: nowTime(), mine: mine() },
       };
       if (assemble) S.first = true;
