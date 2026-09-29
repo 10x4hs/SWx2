@@ -1,5 +1,6 @@
 // AI 비서 입력창 — "9시 반에 영어 수업 등록해 줘" 라고 쓰면 그날 계획에 바로 넣어요. 고치기·옮기기·지우기·끝냄 표시도 돼요.
 // mountCommand(host, { day: () => "YYYY-MM-DD", onDone(changed) }) — 캘린더 그날 판 · 홈 등 어디에나 붙일 수 있어요.
+import { keepDraft } from "./draft.js";
 import { api } from "./api.js";
 import { esc, toast, ymd, today, nowTime } from "./util.js";
 import { icon } from "./icons.js";
@@ -18,13 +19,14 @@ export function mountCommand(host, opts = {}) {
     </form>
     <div class="aic-out" hidden aria-live="polite"></div>`;
   const form = host.querySelector("form"), input = host.querySelector(".aic-in"), out = host.querySelector(".aic-out");
+  const draft = keepDraft(input, "aic");
   const rot = setInterval(() => { if (document.activeElement !== input && !input.value) { hintI = (hintI + 1) % HINTS.length; input.placeholder = "AI에게 시키기 · 예: " + HINTS[hintI]; } }, 4000);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = input.value.trim(); if (!text || busy) return;
     busy = true; host.classList.add("busy"); out.hidden = false;
     out.innerHTML = `<p class="aic-q">${esc(text)}</p><p class="aic-a faint">${icon.spark(12)} 하는 중…</p>`;
-    input.value = "";
+    input.value = ""; draft.clear();
     try {
       const p = aiPrefs();
       const r = await api.aiCommand({ text, day: opts.day ? opts.day() : ymd(today()), today: ymd(today()), time: nowTime(), model: p.model || undefined, web: p.web, history });

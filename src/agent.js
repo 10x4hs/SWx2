@@ -130,8 +130,9 @@ async function addPlan(env, user, a) {
   if (mins != null && !(mins >= 5 && mins <= 1440)) mins = 60;
   if (start && mins == null) mins = 60;
   const id = crypto.randomUUID(), t = Date.now(), period = periodOf(scope, date);
-  await env.DB.prepare("INSERT INTO plans (id, user_id, scope, period, text, done, start, mins, color, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?, NULL, ?, ?, ?)").bind(id, user.id, scope, period, text, start, mins, t, t, t).run();
-  return { ok: true, plan: { id, scope, period, date, text, start, mins } };
+  const priority = ["low", "medium", "high", "xhigh", "max"].includes(a.priority) ? a.priority : null;
+  await env.DB.prepare("INSERT INTO plans (id, user_id, scope, period, text, done, start, mins, color, priority, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?, NULL, ?, ?, ?, ?)").bind(id, user.id, scope, period, text, start, mins, priority, t, t, t).run();
+  return { ok: true, plan: { id, scope, period, date, text, start, mins, priority } };
 }
 async function updatePlan(env, user, a) {
   const p = await env.DB.prepare("SELECT * FROM plans WHERE id = ? AND user_id = ?").bind(String(a.id || ""), user.id).first();
@@ -142,7 +143,8 @@ async function updatePlan(env, user, a) {
   let period = p.period;
   if (a.date && DATE_RE.test(a.date) && p.scope === "day") period = "D:" + a.date;
   const done = a.done === undefined ? p.done : a.done ? 1 : 0;
-  await env.DB.prepare("UPDATE plans SET text = ?, start = ?, mins = ?, period = ?, done = ?, done_at = ?, updated_at = ? WHERE id = ?").bind(text, start, mins, period, done, done ? p.done_at || Date.now() : null, Date.now(), p.id).run();
+  const priority = a.priority === undefined ? p.priority ?? null : ["low", "medium", "high", "xhigh", "max"].includes(a.priority) ? a.priority : null;
+  await env.DB.prepare("UPDATE plans SET text = ?, start = ?, mins = ?, period = ?, done = ?, done_at = ?, priority = ?, updated_at = ? WHERE id = ?").bind(text, start, mins, period, done, done ? p.done_at || Date.now() : null, priority, Date.now(), p.id).run();
   return { ok: true, plan: { id: p.id, text, start, mins, period, done: !!done } };
 }
 async function deletePlan(env, user, a) {

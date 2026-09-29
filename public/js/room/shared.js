@@ -58,22 +58,25 @@ export const thumbHTML = (url, alt, kind, cls = "") => isHttps(url)
   : `<span class="${cls} rm-kind-ic k-${esc(kind || "link")}" aria-hidden="true">${kindIcon(kind, 26)}</span>`;
 
 // 글에서 URL 은 링크로, @이름 은 굵게. 나머지는 전부 이스케이프.
-export function richText(body, aiName) {
+// people = { others: [이름…], me: "내 이름" } — 친구를 부른 @이름도 강조, 나를 부르면 더 진하게
+export function richText(body, aiName, people = null) {
   const s = String(body || "");
   let out = "", last = 0;
   for (const m of s.matchAll(URL_RE)) {
-    out += mention(s.slice(last, m.index), aiName);
+    out += mention(s.slice(last, m.index), aiName, people);
     out += `<a href="${esc(m[0])}" target="_blank" rel="noopener noreferrer">${esc(m[0])}</a>`;
     last = m.index + m[0].length;
   }
-  out += mention(s.slice(last), aiName);
+  out += mention(s.slice(last), aiName, people);
   return out.replace(/\n/g, "<br>");
 }
-function mention(text, aiName) {
+function mention(text, aiName, people) {
   const e = esc(text);
-  if (!aiName) return e;
-  const re = new RegExp(`(^|[^\\p{L}\\p{N}_])(@(?:${escRe(esc(aiName))}|ai))(?![\\p{L}\\p{N}_])`, "giu");
-  return e.replace(re, (_, pre, at) => `${pre}<b class="rm-mention">${at}</b>`);
+  const names = [aiName, "ai", ...(people?.others || []), ...(people?.me ? [people.me] : [])].filter(Boolean);
+  if (!names.length) return e;
+  const re = new RegExp(`(^|[^\\p{L}\\p{N}_])(@(?:${names.map((n) => escRe(esc(n))).join("|")}))(?![\\p{L}\\p{N}_])`, "giu");
+  const meAt = people?.me ? "@" + esc(people.me).toLowerCase() : null;
+  return e.replace(re, (_, pre, at) => `${pre}<b class="rm-mention${meAt && at.toLowerCase() === meAt ? " me" : ""}">${at}</b>`);
 }
 const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

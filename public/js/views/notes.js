@@ -1,4 +1,5 @@
 // 노트: 옵시디언처럼 [[위키링크]] · 백링크 · #태그 · 편집/분할/보기
+import { keepDraft } from "../draft.js";
 import { api } from "../api.js";
 import { $, esc, debounce, toast, initial, nowTime, ymd, parseYmd, DOW } from "../util.js";
 import { icon } from "../icons.js";
@@ -398,10 +399,11 @@ export function mount(root, ctx, r) {
     const topic = $("#ai-topic", root).value.trim();
     if (!topic) return $("#ai-topic", root).focus();
     const btn = e.currentTarget.querySelector("button");
-    aiRun(btn, aiPrefs().web ? "검색하고 만드는 중…" : "만드는 중…", async () => { const p = aiPrefs(); const r = await api.generate({ topic, model: p.model || undefined, web: p.web }); $("#ai-topic", root).value = ""; $("#ai-make-form", root).hidden = true; afterGenerate(r); });
+    aiRun(btn, aiPrefs().web ? "검색하고 만드는 중…" : "만드는 중…", async () => { const p = aiPrefs(); const r = await api.generate({ topic, model: p.model || undefined, web: p.web }); $("#ai-topic", root).value = ""; topicDraft.clear(); $("#ai-make-form", root).hidden = true; afterGenerate(r); });
   });
 
   mountAiPick($("#nl-pick", root));
+  const topicDraft = keepDraft($("#ai-topic", root), "ai-topic");
   $("#new", root).addEventListener("click", () => createNote(ctx, ""));
   $("#daily", root).addEventListener("click", () => openDaily(ctx, ymd(new Date())));
   $("#filter", root).addEventListener("input", (e) => { S.filter = e.target.value.trim(); drawList(); });

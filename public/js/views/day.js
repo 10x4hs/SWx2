@@ -11,7 +11,15 @@ import { MOODS } from "../diary.js";
 import { icon } from "../icons.js";
 import { BLOCKS } from "../english/data.js";
 
-const HOUR_PX = 48;
+const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게)
+const STEP = 5;     // 시간표는 5분 단위
+// 우선순위 (색은 styles.css 의 --p-*)
+export const PRIOS = [
+  { k: "low", label: "Low" }, { k: "medium", label: "Medium" }, { k: "high", label: "High" }, { k: "xhigh", label: "XHigh" }, { k: "max", label: "Max" },
+];
+const PRIO_RANK = { max: 5, xhigh: 4, high: 3, medium: 2, low: 1 };
+const prioSelect = (name = "priority", cur = "") => `<select class="select sm prio-sel" name="${name}" aria-label="우선순위"><option value="">우선순위</option>${PRIOS.map((p) => `<option value="${p.k}" ${cur === p.k ? "selected" : ""}>${p.label}</option>`).join("")}</select>`;
+const prioPill = (p) => `<button type="button" class="prio" data-prio="${esc(p.id)}" data-p="${p.priority || ""}" title="우선순위 바꾸기 (누를 때마다 다음 단계)">${p.priority ? PRIOS.find((x) => x.k === p.priority)?.label : "우선순위"}</button>`;
 const longDate = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`;
 function relDay(k, tk) {
   const n = Math.round((parseYmd(k) - parseYmd(tk)) / 864e5);
@@ -53,7 +61,8 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
           <div class="cd-sh"><h3 id="dp-goals-t">체크리스트</h3><span id="dp-goal-sum"></span></div>
           <ul class="todos dp-todos" id="dp-goals"><li class="cd-loading faint">불러오는 중…</li></ul>
           <form class="cd-add dp-goal-add" id="dp-goal-add" autocomplete="off">
-            <input class="input" name="text" maxlength="200" placeholder="${future ? "이날 꼭 할 것을 적어 두세요" : "꼭 할 것 · 예: 기출 1회분 80점 넘기"}" aria-label="할 일 추가">
+            <input class="input" name="text" maxlength="200" placeholder="${future ? "이날 꼭 할 것을 적어 두세요" : "해야 할 일 · 예: 기출 1회분 80점 넘기"}" aria-label="할 일 추가">
+            ${prioSelect()}
             <button class="btn accent sm" type="submit">${icon.plus(14)} 추가</button>
           </form>
         </section>
@@ -148,12 +157,15 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     for (let h = startH; h < 24; h++) {
       const past = isPast || (isToday && (h + 1) * 60 <= nowM);
       const slot = `${pad(h)}:00`, cur = isToday && Math.floor(nowM / 60) === h;
-      hours += S.editSlot === slot
-        ? `<div class="hour editing${cur ? " cur" : ""}"><span>${slot}</span><form class="slot-add" data-slot-form="${slot}" autocomplete="off">
-            <input class="input" name="text" maxlength="200" placeholder="${slot}에 할 일" aria-label="${slot}에 할 일" autofocus>
-            <select class="select" name="mins" aria-label="걸리는 시간">${[15, 30, 45, 60, 90, 120, 180].map((m) => `<option value="${m}" ${m === S.editMins ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
+      const editing = S.editSlot && S.editSlot.slice(0, 2) === pad(h);
+      hours += editing
+        ? `<div class="hour editing${cur ? " cur" : ""}"><span>${slot}</span><form class="slot-add" data-slot-form="${S.editSlot}" autocomplete="off">
+            <input class="input slot-at" type="time" name="at" step="300" value="${S.editSlot}" aria-label="시작 시각 (5분 단위)">
+            <input class="input" name="text" maxlength="200" placeholder="${S.editSlot}에 할 일" aria-label="${S.editSlot}에 할 일" autofocus>
+            <select class="select" name="mins" aria-label="걸리는 시간">${[5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180].map((m) => `<option value="${m}" ${m === S.editMins ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
+            ${prioSelect("priority", S.editPrio || "")}
             <button class="btn accent sm" type="submit">추가</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form></div>`
-        : `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}"><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
+        : `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}" data-h="${h}"><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
     }
     // 겹치면 옆으로 나눠요
     const cols = [], placed = [];
@@ -166,10 +178,10 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const blocks = placed.map(({ p, s, e, c }) => {
       let n = 1;
       for (const y of placed) if (y.p !== p && y.s < e && s < y.e) n = Math.max(n, y.c + 1, c + 1);
-      const top = ((s - startH * 60) / 60) * HOUR_PX + 2, h = Math.max(24, ((e - s) / 60) * HOUR_PX - 4), w = 100 / n;
-      return `<div class="block ${status(p)}" style="top:${top}px;height:${h}px;left:calc(${c * w}% + ${c ? 3 : 0}px);right:auto;width:calc(${w}% - ${n > 1 ? 3 : 0}px)" data-id="${esc(p.id)}">
+      const top = ((s - startH * 60) / 60) * HOUR_PX + 1, h = Math.max(14, ((e - s) / 60) * HOUR_PX - 2), w = 100 / n;
+      return `<div class="block ${status(p)}${h < 30 ? " thin" : ""}" data-p="${p.priority || ""}" style="top:${top}px;height:${h}px;left:calc(${c * w}% + ${c ? 3 : 0}px);right:auto;width:calc(${w}% - ${n > 1 ? 3 : 0}px)" data-id="${esc(p.id)}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">
-        <div class="txt"><span data-edit="${esc(p.id)}">${esc(p.text)}</span>${h > 34 ? `<span class="when">${esc(p.start)}–${toTime(e)} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
+        <div class="txt"><span data-edit="${esc(p.id)}">${esc(p.text)}</span>${h >= 30 ? `<span class="when">${esc(p.start)}–${toTime(e)} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
         ${playBtn(p)}
         <button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button>
         <button class="icon-btn sm" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button>
@@ -187,13 +199,14 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const ul = $("#dp-goals", el);
     if (!S.plans) return;
     // 시간 정해진 계획도 같은 체크리스트에 (시각 순서 → 시간 없는 것)
-    const list = S.plans.slice().sort((a, b) => (a.start || "99:99").localeCompare(b.start || "99:99") || (a.sort || 0) - (b.sort || 0)), done = list.filter((p) => p.done).length;
+    // 시간 있는 건 시각 순, 시간 없는 할 일은 우선순위 높은 것부터
+    const list = S.plans.slice().sort((a, b) => (a.start || "99:99").localeCompare(b.start || "99:99") || (PRIO_RANK[b.priority] || 0) - (PRIO_RANK[a.priority] || 0) || (a.sort || 0) - (b.sort || 0)), done = list.filter((p) => p.done).length;
     $("#dp-goal-sum", el).innerHTML = list.length ? `<span class="chip ${done === list.length ? "good" : ""}">${done}/${list.length} 끝냄</span>` : "";
     ul.innerHTML = list.length ? list.map((p) => `
-      <li class="todo ${p.done ? "done" : ""}" data-id="${esc(p.id)}">
+      <li class="todo ${p.done ? "done" : ""}" data-id="${esc(p.id)}" data-p="${p.priority || ""}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 끝냄">
         ${p.start ? `<span class="t-when">${esc(p.start)}${p.mins ? ` · ${hm(p.mins)}` : ""}</span>` : ""}<span class="txt" data-edit="${esc(p.id)}">${esc(p.text)}</span>
-        ${focusTag(p)}${playBtn(p)}
+        ${prioPill(p)}${focusTag(p)}${playBtn(p)}
         <span class="acts"><button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button><button class="icon-btn sm danger" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button></span>
       </li>`).join("")
       : `<li class="empty cd-empty">${future ? "아직 적어 둔 일이 없어요." : isPast ? "이날은 적어 둔 계획이 없었어요." : "오늘 꼭 이루고 싶은 것을 1~3개 적어 보세요."}</li>`;
@@ -311,7 +324,15 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   }
   async function onElClick(e) {
     const slot = e.target.closest("[data-slot]");
-    if (slot) { S.editSlot = slot.dataset.slot; S.editText = ""; drawGrid(); return; }
+    if (slot) { S.editSlot = slotAt(slot, e.clientY); S.editText = ""; drawGrid(); return; }
+    const pr = e.target.closest("[data-prio]");
+    if (pr) {
+      const p = S.plans.find((x) => x.id === pr.dataset.prio); if (!p) return;
+      const order = ["", ...PRIOS.map((x) => x.k)], nx = order[(order.indexOf(p.priority || "") + 1) % order.length] || null, old = p.priority;
+      p.priority = nx; drawAll();
+      try { await api.updatePlan(p.id, { priority: nx }); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); }
+      return;
+    }
     if (e.target.closest("[data-slot-close]")) { S.editSlot = null; drawGrid(); return; }
     const play = e.target.closest("[data-play]");
     if (play) { const p = S.plans.find((x) => x.id === play.dataset.play); if (p) ctx.timer?.startFor(p); return; }
@@ -346,7 +367,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     e.preventDefault();
     const f = e.currentTarget, text = f.text.value.trim();
     if (!text || !S.plans) return f.text.focus();
-    try { await addPlan({ text }); f.text.value = ""; } catch (ex) { toast(ex.message, "err"); }
+    try { await addPlan({ text, ...(f.priority?.value ? { priority: f.priority.value } : {}) }); f.text.value = ""; } catch (ex) { toast(ex.message, "err"); }
     f.text.focus();
   });
   $("#dp-wm-add", el).addEventListener("submit", async (e) => {
@@ -364,18 +385,25 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const f = e.target.closest("[data-slot-form]");
     if (!f) return;
     e.preventDefault();
-    const text = f.text.value.trim(), start = f.dataset.slotForm, mins = +f.mins.value;
+    const text = f.text.value.trim(), start = /^\d{2}:\d{2}$/.test(f.at?.value || "") ? f.at.value : f.dataset.slotForm, mins = +f.mins.value, priority = f.priority?.value || null;
     if (!text || !S.plans) return f.text.focus();
-    S.editMins = mins;
+    S.editMins = mins; S.editPrio = priority || "";
     try {
-      await addPlan({ text, start, mins });
-      // 다음 칸을 바로 이어서 적을 수 있게 열어 둬요
+      await addPlan({ text, start, mins, ...(priority ? { priority } : {}) });
+      // 끝난 시각에서 바로 이어서 적을 수 있게 열어 둬요 (5분 단위)
       const next = toMin(start) + mins;
-      S.editSlot = next < 24 * 60 ? toTime(Math.floor(next / 60) * 60) : null; S.editText = "";
+      S.editSlot = next < 24 * 60 ? toTime(next) : null; S.editText = "";
       drawGrid();
     } catch (ex) { toast(ex.message, "err"); }
   });
   el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; drawGrid(); } });
+  // 마우스 위치 → 5분 단위 시각 ("+ 14:35에 추가")
+  function slotAt(btn, y) {
+    const row = btn.closest(".hour"), r = row.getBoundingClientRect(), h = +row.dataset.h;
+    const m = Math.max(0, Math.min(55, Math.floor(((y - r.top) / r.height) * 60 / STEP) * STEP));
+    return `${pad(h)}:${pad(m)}`;
+  }
+  el.addEventListener("pointermove", (e) => { const b = e.target.closest?.(".hour [data-slot]"); if (b) b.textContent = `+ ${slotAt(b, e.clientY)}에 추가`; });
   el.addEventListener("input", (e) => { if (e.target.matches("[data-slot-form] [name=text]")) S.editText = e.target.value; });
 
   const onChanged = (e) => { if (["logs", "plans"].includes(e.detail?.kind)) load(); };

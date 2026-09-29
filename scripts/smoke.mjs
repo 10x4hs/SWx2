@@ -31,6 +31,12 @@ ok(r.status === 403, "csrf header required");
 
 r = await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-28", text: "영단어 50개", start: "08:00", mins: 60 });
 ok(r.status === 201, "create day plan"); const pid = r.data.plan.id;
+r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period, text: "우선순위 할 일", priority: "xhigh" }); ok(r.status === 201 && r.data.plan.priority === "xhigh", "plan priority: create xhigh");
+{ const ppid = r.data.plan.id;
+  r = await call("a", "PATCH", "/plans/" + ppid, { priority: "max" }); ok(r.status === 200 && r.data.plan.priority === "max", "plan priority: update to max");
+  r = await call("a", "PATCH", "/plans/" + ppid, { priority: "urgent" }); ok(r.status === 400, "plan priority: unknown value → 400");
+  r = await call("a", "PATCH", "/plans/" + ppid, { start: "14:35", mins: 5 }); ok(r.status === 200 && r.data.plan.start === "14:35" && r.data.plan.mins === 5, "plan: 5-minute slot");
+  await call("a", "DELETE", "/plans/" + ppid); }
 r = await call("a", "POST", "/plans", { scope: "year", period: "Y:2026", text: "정보처리기사 합격" }); ok(r.status === 201, "create year plan");
 r = await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-27", text: "어제 못한 일" }); ok(r.status === 201, "create yesterday plan");
 r = await call("a", "POST", "/plans", { scope: "day", period: "2026-09-28", text: "bad" }); ok(r.status === 400, "bad period rejected");

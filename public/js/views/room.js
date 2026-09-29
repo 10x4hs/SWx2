@@ -101,6 +101,7 @@ export function mount(root, ctx, r) {
   }
   const env = {
     ctx,
+    onOtherRoom: () => refreshUnread(), // 다른 방에 새 메시지 → 방 목록 배지 바로
     getAiName: () => aiName,
     getRoom: () => roomId,
     onAiName: (n) => { if (n && n !== aiName) { aiName = n; if (!$("#rm-ai-form", aiEl)) drawAi(false); } },

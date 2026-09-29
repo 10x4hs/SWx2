@@ -13,6 +13,7 @@ import * as calendarView from "./views/calendar.js";
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
+import { startLive, stopLive } from "./live.js";
 
 const app = $("#app");
 const ctx = {
@@ -39,6 +40,7 @@ function showAuth() {
   if (cleanup) { cleanup(); cleanup = null; }
   if (ctx.me && timer.running) timer.stop(); // 로그아웃하면 타이머도 멈춰요
   ctx.me = null;
+  stopLive();
   lastView = null;
   document.querySelector(".pw-back")?.remove();
   window.dispatchEvent(new CustomEvent("trio:signed-out")); // pwa.js 가 듣고 API 캐시를 지워요
@@ -57,6 +59,7 @@ async function enter(user) {
   route();
   refreshSide();
   refreshUnread();
+  startLive(); // 실시간 대화 신호
 }
 // 어떤 API든 "비밀번호부터 바꿔 주세요"(403)를 받으면 같은 창
 window.addEventListener("trio:must-change", () => { if (ctx.me) { ctx.me.must_change_pw = true; openPassword({ force: true }); } });
@@ -244,6 +247,7 @@ async function refreshUnread() {
 }
 setInterval(() => { if (ctx.me && document.visibilityState === "visible") refreshUnread(); }, 60_000);
 window.addEventListener("trio:changed", (e) => { if (e.detail?.kind === "room") refreshUnread(); });
+window.addEventListener("room-live", (e) => { if (e.detail?.from !== ctx.me?.id) refreshUnread(); }); // 새 메시지 → 배지 바로
 
 // ---------- routing ----------
 // 예전 주소는 캘린더의 그날로 옮겨요 (뒤로 가기에 남지 않게 replaceState)

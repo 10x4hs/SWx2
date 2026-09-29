@@ -1,5 +1,6 @@
 // 계획 AI — 유리 구슬 아래에서 대화로 오늘·이번 주·이번 달 계획을 짜고, 제안된 항목을 한 번에 계획에 넣어요.
 // 서버 POST /ai/plan 이 도구(내 노트 찾기·읽기, 웹 검색)를 쓰는 AI 를 돌려요. 대화는 이 화면 안에서만(저장 안 함).
+import { keepDraft } from "../draft.js";
 import { api } from "../api.js";
 import { $, esc, toast, ymd, today, nowTime, periodKey, planHash } from "../util.js";
 import { icon } from "../icons.js";
@@ -40,6 +41,7 @@ export function mount(root, ctx, r) {
     </div>`;
   const inner = $("#pl-inner", root), body = $("#pl-body", root), q = $("#pl-q", root);
   mountAiPick($("#pl-pick", root));
+  const draft = keepDraft(q, "planner");
 
   function hero() {
     const l = SCOPES.find(([k]) => k === S.scope)[1];
@@ -77,7 +79,7 @@ export function mount(root, ctx, r) {
     S.busy = true; $("#pl-send", root).disabled = true;
     S.msgs.push({ role: "user", content: text });
     const ans = { role: "assistant", content: "", pending: true, steps: [], model: "" };
-    S.msgs.push(ans); q.value = ""; autosize(); draw(); toBottom();
+    S.msgs.push(ans); q.value = ""; draft.clear(); autosize(); draw(); toBottom();
     const t = today(), pref = aiPrefs();
     try {
       const r = await api.planAi({

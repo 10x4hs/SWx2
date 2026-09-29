@@ -8,6 +8,7 @@ import { registerTogether, weeklyReviewCron } from "./together.js";
 import { registerRoom } from "./room.js";
 import { registerLibrary } from "./library.js";
 import { registerPush } from "./push.js";
+export { RoomHub } from "./hub.js"; // Durable Object 클래스는 main 모듈에서 내보내야 해요
 
 const COLORS = ["#E8552B", "#4C6FFF", "#14A38B"]; // Golden Gate orange, bay blue, cypress green
 const SESSION_DAYS = 30;
@@ -24,6 +25,8 @@ const PERIOD_RE = {
 const DAY_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const TONES = ["ink", "graphite", "slate", "steel", "silver", "sand", "ivory", "champagne"];
+const PRIORITIES = ["low", "medium", "high", "xhigh", "max"];
+const prio = (v) => (v === null || v === "" ? null : PRIORITIES.includes(v) ? v : fail(400, "우선순위는 low · medium · high · xhigh · max 중 하나예요."));
 const tone = (v) => (v === null ? null : TONES.includes(v) ? v : fail(400, "고를 수 없는 색이에요."));
 
 class HttpError extends Error {
@@ -280,10 +283,10 @@ on("GET", "/plans", async ({ env, q, user }) => {
 on("POST", "/plans", async ({ req, env, user }) => {
   const b = await body(req);
   checkPeriod(b.scope, b.period);
-  const p = { id: uid(), user_id: user.id, scope: b.scope, period: b.period, text: str(b.text, 200, "내용"), done: 0, start: null, mins: null, color: b.color === undefined ? null : tone(b.color), sort: now(), created_at: now(), updated_at: now(), done_at: null };
+  const p = { id: uid(), user_id: user.id, scope: b.scope, period: b.period, text: str(b.text, 200, "내용"), done: 0, start: null, mins: null, color: b.color === undefined ? null : tone(b.color), priority: b.priority === undefined ? null : prio(b.priority), sort: now(), created_at: now(), updated_at: now(), done_at: null };
   if (b.scope === "day") checkSlot(b, p);
-  await env.DB.prepare("INSERT INTO plans (id, user_id, scope, period, text, done, start, mins, color, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)")
-    .bind(p.id, p.user_id, p.scope, p.period, p.text, p.start, p.mins, p.color, p.sort, p.created_at, p.updated_at).run();
+  await env.DB.prepare("INSERT INTO plans (id, user_id, scope, period, text, done, start, mins, color, priority, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(p.id, p.user_id, p.scope, p.period, p.text, p.start, p.mins, p.color, p.priority, p.sort, p.created_at, p.updated_at).run();
   return json({ plan: p }, 201);
 });
 
@@ -296,9 +299,10 @@ on("PATCH", "/plans/:id", async ({ req, env, user, params }) => {
   if (b.period !== undefined) { checkPeriod(p.scope, b.period); next.period = b.period; }
   if (p.scope === "day") checkSlot(b, next);
   if (b.color !== undefined) next.color = tone(b.color);
+  if (b.priority !== undefined) next.priority = prio(b.priority);
   next.updated_at = now();
-  await env.DB.prepare("UPDATE plans SET text = ?, done = ?, done_at = ?, period = ?, start = ?, mins = ?, color = ?, updated_at = ? WHERE id = ?")
-    .bind(next.text, next.done, next.done_at, next.period, next.start, next.mins, next.color, next.updated_at, p.id).run();
+  await env.DB.prepare("UPDATE plans SET text = ?, done = ?, done_at = ?, period = ?, start = ?, mins = ?, color = ?, priority = ?, updated_at = ? WHERE id = ?")
+    .bind(next.text, next.done, next.done_at, next.period, next.start, next.mins, next.color, next.priority ?? null, next.updated_at, p.id).run();
   return json({ plan: next });
 });
 

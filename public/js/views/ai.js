@@ -1,4 +1,5 @@
 // AI 채팅: 대화방 목록 · 모델 고르기(전체 비교 포함) · 스트리밍 답 · 노트로 저장
+import { keepDraft } from "../draft.js";
 import { api, streamChat } from "../api.js";
 import { $, esc, toast, ymd, today, nowTime, periodKey, debounce } from "../util.js";
 import { icon } from "../icons.js";
@@ -76,6 +77,7 @@ export function mount(root, ctx, r) {
     </div>`;
 
   const q = $("#q", root), body = $("#body", root);
+  const draft = keepDraft(q, "ai"); // 나갔다 와도 쓰던 질문이 남게
 
   // ---------- chat list ----------
   function drawList() {
@@ -171,7 +173,7 @@ export function mount(root, ctx, r) {
     const targets = S.model === "all" ? compareTargets() : [S.model];
     targets.forEach((m) => (turn.answers[m] = { text: "", reasoning: "", done: false, steps: [] }));
     S.turns.push(turn);
-    q.value = ""; autosize();
+    q.value = ""; draft.clear(); autosize();
     drawTurns(); toBottom();
     const t = today();
     S.abort = new AbortController();

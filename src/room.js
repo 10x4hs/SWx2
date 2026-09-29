@@ -8,6 +8,7 @@
 // 방 권한: 'all' 은 셋 다, dm 방은 아이디가 들어 있는 둘만 (아니면 403). room 을 안 주면 'all'.
 // AI는 그 방의 최근 40개 메시지와 창고 목록만 봐요. 개인 노트·일기·계획은 절대 안 보내요.
 import { pushUsers } from "./push.js";
+import { hubNotify, hubConnect } from "./hub.js";
 import { aiText, TEXT_ORDER } from "./ai.js";
 
 const AI_ORDER = TEXT_ORDER;   // Groq → Gemini → Cohere → MiMo → Zhipu → OpenRouter → Kilo
@@ -49,7 +50,11 @@ export async function postRoomMessage(env, msg) {
   await env.DB.prepare(
     "INSERT INTO room_messages (id, room, user_id, kind, body, ref_id, reply_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
   ).bind(msg.id, msg.room || ALL, msg.user_id ?? null, msg.kind || "text", msg.body, msg.ref_id ?? null, msg.reply_to ?? null, msg.created_at).run();
-  return { ...msg, room: msg.room || ALL };
+  const room = msg.room || ALL;
+  // 실시간: 방 사람(나 포함 — 내 다른 탭도)에게 "새 메시지" 신호. 'all' 은 모두
+  const dm = /^dm:([^:]+):([^:]+)$/.exec(room);
+  await hubNotify(env, dm ? [dm[1], dm[2]] : null, { type: "room", room, from: msg.user_id ?? null, kind: msg.kind || "text" });
+  return { ...msg, room };
 }
 
 export async function getAiName(env) {
@@ -211,10 +216,27 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
   });
 
   // Dock 배지용: 내가 들어갈 수 있는 방 전부. unread 는 room(기본 'all') 것
+  // 실시간 연결 (웹소켓). 로그인한 사람만, 소켓은 사용자 id 로 묶여요
+  on("GET", "/room/ws", async ({ req, env, user }) => {
+    if (req.headers.get("Upgrade") !== "websocket") fail(426, "웹소켓으로 연결해 주세요.");
+    return hubConnect(env, req, user.id);
+  });
+
   on("GET", "/room/unread", async ({ env, q, user }) => {
     const room = roomOf(q.get("room"), user);
     const rooms = await unreadRooms(env, user.id);
-    return json({ room, unread: rooms[room] || 0, rooms, total: Object.values(rooms).reduce((a, n) => a + n, 0) });
+    const total = Object.values(rooms).reduce((a, n) => a + n, 0);
+    // 알림용: 안 읽은 것 중 가장 최근 메시지 한 개 + 나를 @로 불렀는지
+    let last = null;
+    if (total) {
+      const ids = Object.keys(rooms).filter((r) => rooms[r]);
+      const m = await env.DB.prepare(`SELECT m.room, m.body, m.kind, m.user_id, u.display_name AS who FROM room_messages m LEFT JOIN users u ON u.id = m.user_id WHERE m.room IN (${ids.map(() => "?").join(",")}) AND (m.user_id IS NULL OR m.user_id != ?) ORDER BY m.created_at DESC LIMIT 1`).bind(...ids, user.id).first();
+      if (m) {
+        const low = String(m.body || "").toLowerCase(), me = [user.display_name, user.username].filter(Boolean).map((x) => "@" + x.toLowerCase());
+        last = { room: m.room, who: m.kind === "ai" ? await getAiName(env) : m.who || "누군가", body: String(m.body || "").slice(0, 140), mention: me.some((x) => low.includes(x)), dm: m.room.startsWith("dm:") };
+      }
+    }
+    return json({ room, unread: rooms[room] || 0, rooms, total, last });
   });
 
   // ---------- 설정 (방 공통) ----------

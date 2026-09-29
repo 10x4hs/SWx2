@@ -1,5 +1,7 @@
 // 대화 탭: 셋이 같이 쓰는 방 하나. 3초(보일 때) · 30초(숨겨질 때) 폴링, @이름 으로 AI 부르기.
 import { api } from "../api.js";
+import { keepDraft } from "../draft.js";
+import { live } from "../live.js";
 import { $, esc, toast } from "../util.js";
 import { icon } from "../icons.js";
 import { renderMarkdown } from "../md.js";
@@ -22,7 +24,7 @@ export function mountChat(el, env) {
       <button class="rm-newpill" id="rm-newpill" type="button" hidden>새 메시지 ↓</button>
       <div class="rm-typing" id="rm-typing" hidden aria-live="polite"><span class="rm-ai-av">${icon.spark(13)}</span><span id="rm-typing-t"></span><i class="typing"><span></span><span></span><span></span></i></div>
       <form class="rm-compose" id="rm-compose" autocomplete="off">
-        <div class="rm-chip" id="rm-chip" hidden><button type="button" class="chip" id="rm-chip-btn"></button><span class="faint">Tab 으로 넣기</span></div>
+        <div class="rm-chip" id="rm-chip" hidden role="listbox" aria-label="부를 사람"><span id="rm-chip-list"></span><span class="faint">Tab · ↑↓ 로 고르기</span></div>
         <div class="rm-compose-box">
           <textarea id="rm-ta" rows="1" placeholder="메시지… Enter 보냄 · Shift+Enter 줄바꿈" aria-label="메시지 입력" maxlength="2000"></textarea>
           <button class="btn ghost sm rm-call" type="button" id="rm-call" title="AI 이름을 넣어 불러요">${icon.spark(13)}AI 부르기</button>
@@ -54,7 +56,7 @@ export function mountChat(el, env) {
       } catch (e) { toast(e.message || "알림을 켜지 못했어요.", "err"); }
     });
   })();
-  const list = $("#rm-list", el), msgsEl = $("#rm-msgs", el), pill = $("#rm-newpill", el), typing = $("#rm-typing", el), ta = $("#rm-ta", el), chip = $("#rm-chip", el), chipBtn = $("#rm-chip-btn", el);
+  const list = $("#rm-list", el), msgsEl = $("#rm-msgs", el), pill = $("#rm-newpill", el), typing = $("#rm-typing", el), ta = $("#rm-ta", el), chip = $("#rm-chip", el), chipList = $("#rm-chip-list", el);
 
   const me = () => ctx.me.id;
   const room = () => env.getRoom?.() || "all";
@@ -63,6 +65,7 @@ export function mountChat(el, env) {
   const toBottom = () => { list.scrollTop = list.scrollHeight; pill.hidden = true; };
   const visible = () => document.visibilityState === "visible" && S.alive;
   const sorted = () => [...S.msgs.values()].sort((a, b) => a.created_at - b.created_at || String(a.id).localeCompare(String(b.id)));
+  const mentionNames = () => ({ others: ctx.users.filter((u) => u.id !== ctx.me.id).map((u) => u.display_name), me: ctx.me.display_name });
   const mentions = (body) => {
     const n = aiName().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return new RegExp(`@ai(?![\\p{L}\\p{N}_])|@${n}|(^|\\s)${n}[,!?\\s]`, "iu").test(body);
@@ -81,7 +84,7 @@ export function mountChat(el, env) {
     let body;
     if (ai) body = `<div class="rm-bubble md rm-md">${renderMarkdown(m.body)}</div>`;
     else if (m.kind === "share") body = shareHTML(m);
-    else body = `<div class="rm-bubble">${richText(m.body, aiName())}</div>`;
+    else body = `<div class="rm-bubble">${richText(m.body, aiName(), mentionNames())}</div>`;
     const tools = [
       url ? `<button type="button" class="icon-btn sm" data-lib="${esc(url)}" aria-label="창고에 넣기" title="창고에 넣기">${icon.plus(14)}</button>` : "",
       mine ? `<button type="button" class="icon-btn sm danger" data-del="${esc(m.id)}" aria-label="지우기" title="지우기">${icon.trash(14)}</button>` : "",
@@ -98,7 +101,7 @@ export function mountChat(el, env) {
   }
   function shareHTML(m) {
     const it = m.item;
-    if (!it) return `<div class="rm-bubble faint">${richText(m.body, aiName())}</div>`;
+    if (!it) return `<div class="rm-bubble faint">${richText(m.body, aiName(), mentionNames())}</div>`;
     return `<div class="rm-share" data-item="${esc(it.id)}">
       <span class="rm-share-th">${thumbHTML(it.thumb, "", it.kind, "rm-share-img")}</span>
       <span class="rm-share-t">
@@ -166,12 +169,15 @@ export function mountChat(el, env) {
     try { const r = await api.room(first ? undefined : S.since, undefined, rid); if (rid !== room()) return; merge(r, { first }); }
     catch (e) { if (first) msgsEl.innerHTML = `<p class="faint rm-loading">${esc(e.message || "불러오지 못했어요.")} <button type="button" class="linkbtn" id="rm-retry">다시 시도</button></p>`; }
     if (!S.alive) return;
-    S.timer = setTimeout(() => poll(), document.visibilityState === "visible" ? 3000 : 30000);
+    // 실시간 연결이 살아 있으면 폴링은 예비로만 (20초), 끊겼으면 예전처럼 3초
+    S.timer = setTimeout(() => poll(), document.visibilityState !== "visible" ? 30000 : live.open ? 20000 : 3000);
   }
   const onVis = () => { if (document.visibilityState === "visible") { poll(); markRead(); } };
   document.addEventListener("visibilitychange", onVis);
   const onPing = () => { if (S.alive) { clearTimeout(S.timer); poll(); } }; // 푸시가 "새 메시지" 라고 깨우면 바로 받아요
   window.addEventListener("room-ping", onPing);
+  const onLive = (e) => { if (S.alive && e.detail?.room === room()) { clearTimeout(S.timer); poll(); } else if (S.alive) env.onOtherRoom?.(e.detail?.room); };
+  window.addEventListener("room-live", onLive);
 
   // ---------- 보내기 ----------
   const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 160) + "px"; };
@@ -181,7 +187,7 @@ export function mountChat(el, env) {
     S.busy = true; $("#rm-send", el).disabled = true;
     const callsAi = mentions(body);
     if (callsAi) { $("#rm-typing-t", el).textContent = `${aiName()}가 쓰는 중…`; typing.hidden = false; }
-    ta.value = ""; grow(); chip.hidden = true;
+    ta.value = ""; draft.clear(); grow(); chip.hidden = true;
     try {
       const r = await api.sendRoom({ body, room: room() });
       if (r.message) S.msgs.set(r.message.id, r.message);
@@ -198,37 +204,44 @@ export function mountChat(el, env) {
     finally { typing.hidden = true; }
   }
 
-  // @ 자동완성 칩: 캐럿 앞이 "@" 나 "@마피" 면 칩을 보여요
+  // @ 자동완성: 캐럿 앞이 "@" 나 "@이" 면 이 방에서 부를 수 있는 사람(친구 + AI) 후보를 보여요
+  const peers = () => { const r = room(); const ids = r.startsWith("dm:") ? r.slice(3).split(":") : ctx.users.map((u) => u.id); return ctx.users.filter((u) => u.id !== ctx.me.id && ids.includes(u.id)); };
+  const candidates = () => [...peers().map((u) => ({ name: u.display_name, color: u.color, kind: "friend" })), { name: aiName(), kind: "ai" }];
+  let sugg = [], suggI = 0;
   function atMatch() {
     const before = ta.value.slice(0, ta.selectionStart);
     const m = /(^|\s)@([^\s@]*)$/.exec(before);
     if (!m) return null;
-    const name = aiName();
-    return !m[2] || name.toLowerCase().startsWith(m[2].toLowerCase()) || "ai".startsWith(m[2].toLowerCase()) ? { start: before.length - m[2].length - 1, end: ta.selectionStart } : null;
+    const q = m[2].toLowerCase();
+    const list = candidates().filter((c) => !q || c.name.toLowerCase().startsWith(q) || (c.kind === "ai" && "ai".startsWith(q)));
+    return list.length ? { start: before.length - m[2].length - 1, end: ta.selectionStart, list } : null;
   }
-  function insertMention(range) {
-    const name = aiName();
+  function drawChip(m) {
+    chip.hidden = !m; if (!m) { sugg = []; return; }
+    if (sugg.map((x) => x.name).join() !== m.list.map((x) => x.name).join()) suggI = 0;
+    sugg = m.list;
+    chipList.innerHTML = sugg.map((c, i) => `<button type="button" class="chip${i === suggI ? " on" : ""}" data-pick="${i}" role="option" aria-selected="${i === suggI}">${c.kind === "ai" ? icon.spark(11) : `<i class="dot" style="--c:${esc(c.color || "#999")}"></i>`}@${esc(c.name)}</button>`).join("");
+  }
+  function insertMention(range, name = aiName()) {
     const r = range || { start: ta.selectionStart, end: ta.selectionEnd };
     const pre = ta.value.slice(0, r.start), post = ta.value.slice(r.end);
     const ins = `@${name} `;
     ta.value = pre + (pre && !/\s$/.test(pre) ? " " : "") + ins + post;
     const pos = ta.value.length - post.length;
-    ta.setSelectionRange(pos, pos); ta.focus(); chip.hidden = true; grow();
+    ta.setSelectionRange(pos, pos); ta.focus(); chip.hidden = true; sugg = []; grow();
+    ta.dispatchEvent(new Event("input"));
   }
-  ta.addEventListener("input", () => {
-    grow();
-    const m = atMatch();
-    chip.hidden = !m;
-    if (m) chipBtn.textContent = `@${aiName()}`;
-  });
+  ta.addEventListener("input", () => { grow(); drawChip(atMatch()); });
+  const draft = keepDraft(ta, "room:" + room()); // 방마다 쓰던 글이 남게
   ta.addEventListener("keydown", (e) => {
     if (e.isComposing || e.keyCode === 229) return;
-    if (e.key === "Tab" && !chip.hidden) { e.preventDefault(); insertMention(atMatch()); return; }
+    if (!chip.hidden && sugg.length && (e.key === "ArrowDown" || e.key === "ArrowUp")) { e.preventDefault(); suggI = (suggI + (e.key === "ArrowDown" ? 1 : -1) + sugg.length) % sugg.length; drawChip(atMatch()); return; }
+    if ((e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) && !chip.hidden && sugg.length) { e.preventDefault(); insertMention(atMatch(), sugg[suggI].name); return; }
     if (e.key === "Escape" && !chip.hidden) { chip.hidden = true; return; }
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   });
   ta.addEventListener("blur", () => setTimeout(() => { if (!chip.contains(document.activeElement)) chip.hidden = true; }, 150));
-  chipBtn.addEventListener("click", () => insertMention(atMatch()));
+  chip.addEventListener("mousedown", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; e.preventDefault(); insertMention(atMatch(), sugg[+b.dataset.pick]?.name); });
   $("#rm-call", el).addEventListener("click", () => { if (mentions(ta.value)) ta.focus(); else insertMention(); });
   $("#rm-compose", el).addEventListener("submit", (e) => { e.preventDefault(); send(); });
 
@@ -249,10 +262,10 @@ export function mountChat(el, env) {
 
   poll(true);
   return {
-    stop() { S.alive = false; clearTimeout(S.timer); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("room-ping", onPing); },
+    stop() { S.alive = false; clearTimeout(S.timer); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("room-ping", onPing); window.removeEventListener("room-live", onLive); },
     refresh() { poll(); },
     // 방 바꾸기: 목록 · 읽음 상태를 비우고 처음부터
-    setRoom() { clearTimeout(S.timer); S.msgs.clear(); S.since = null; S.unreadFrom = null; S.aiErr = null; S.pendingRead = false; pill.hidden = true; typing.hidden = true; msgsEl.innerHTML = `<p class="faint rm-loading">불러오는 중…</p>`; poll(true); },
+    setRoom() { draft.rebind("room:" + room()); grow(); clearTimeout(S.timer); S.msgs.clear(); S.since = null; S.unreadFrom = null; S.aiErr = null; S.pendingRead = false; pill.hidden = true; typing.hidden = true; msgsEl.innerHTML = `<p class="faint rm-loading">불러오는 중…</p>`; poll(true); },
     rename() { render(); },
     focus() { ta.focus(); },
   };
