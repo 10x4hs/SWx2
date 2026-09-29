@@ -58,7 +58,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     <div class="dp-cols">
       <div class="dp-col">
         <section class="cd-sec" aria-labelledby="dp-goals-t">
-          <div class="cd-sh"><h3 id="dp-goals-t">체크리스트</h3><span id="dp-goal-sum"></span></div>
+          <div class="cd-sh"><h3 id="dp-goals-t">체크리스트</h3><span class="row" style="gap:8px"><span id="dp-goal-sum"></span><a class="faint dp-more" href="#/checklist/${day}" title="크게 보기 · 차트">크게 보기 ›</a></span></div>
           <ul class="todos dp-todos" id="dp-goals"><li class="cd-loading faint">불러오는 중…</li></ul>
           <form class="cd-add dp-goal-add" id="dp-goal-add" autocomplete="off">
             <input class="input" name="text" maxlength="200" placeholder="해야 할 일 추가" aria-label="할 일 추가">

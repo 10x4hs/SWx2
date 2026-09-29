@@ -2796,3 +2796,31 @@ a.btn { text-decoration: none; }
 .sc-note svg { flex: none; margin-top: 3px; color: var(--c-violet); } .sc-note b { color: var(--ink); margin-right: 2px; }
 .gl-trend .tb.pre { fill: transparent; stroke: rgba(255, 255, 255, .45); stroke-dasharray: 2 2; }
 .sc-leg .lg-b.pre { background: transparent; border: 1px dashed rgba(255, 255, 255, .5); }
+
+/* v17.1: 체크리스트 페이지 · 우선순위 색 유리 도넛 */
+.host-checklist { min-height: 100%; }
+.ck { max-width: 720px; margin: 0 auto; padding: 18px 8px 60px; display: grid; gap: 20px; }
+.ck .gl-top .eyebrow { font-size: 12px; }
+.ck-head { display: grid; gap: 18px; }
+.ck-when { display: grid; gap: 4px; }
+.ck-rel { font: 600 12.5px var(--font); color: var(--ink-3); min-height: 1em; }
+.ck-chart { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center; padding: 18px; border-radius: 22px; background: var(--lg-fill); border: 1px solid var(--lg-edge); box-shadow: var(--lg-top), var(--lg-lift); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.ck-legend { display: grid; gap: 9px; min-width: 0; }
+.ck-legend .pb { grid-template-columns: 58px minmax(0, 1fr) 38px; font-size: 13px; }
+.ck-tip { margin: 4px 0 0; font-size: 12px; }
+.pd { display: block; filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .35)); }
+.pd-track { fill: none; stroke: rgba(255, 255, 255, .06); }
+.pd-rest { fill: none; stroke-opacity: .22; }
+.pd-done { fill: none; filter: drop-shadow(0 0 6px currentColor); }
+.pd-sheen { fill: none; pointer-events: none; mix-blend-mode: screen; }
+.pd-disc { stroke: rgba(255, 255, 255, .14); stroke-width: 1; }
+.pd-big { font: 600 40px var(--font-display, var(--font)); fill: var(--ink); letter-spacing: -.04em; }
+.pd-of { font-size: 20px; fill: var(--ink-3); }
+.pd-cap { font: 600 11px var(--font); fill: var(--ink-3); letter-spacing: .04em; }
+:root[data-theme="light"] .pd-track { stroke: rgba(0, 0, 0, .06); } :root[data-theme="light"] .pd-sheen { mix-blend-mode: normal; opacity: .5; }
+.ck .gl-item .t-when { flex: none; font: 600 11.5px var(--mono); color: var(--ink-3); padding: 2px 7px; border-radius: 6px; background: rgba(255, 255, 255, .07); border: 1px solid var(--lg-edge); }
+.ck .gl-item.late .t-when { color: var(--sys-red, #FF453A); border-color: color-mix(in srgb, var(--sys-red, #FF453A) 40%, transparent); }
+.ck-add .ck-at { flex: none; width: 104px; padding: 10px 6px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ck-add .ck-at:not(:focus):invalid, .ck-add .ck-at[value=""] { color: var(--ink-3); }
+@media (max-width: 720px) { .ck-chart { grid-template-columns: 1fr; justify-items: center; } .ck-legend { width: 100%; } .ck-add { flex-wrap: wrap; } .ck-add .input[name=text] { flex: 1 1 100%; } }
+.ck, .gl { padding-bottom: 96px; }

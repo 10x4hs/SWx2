@@ -35,7 +35,7 @@ export function mount(root, ctx) {
   const t = today();
   const K = { year: periodKey("year", t), month: periodKey("month", t), week: periodKey("week", t), day: periodKey("day", t) };
   const left = daysInYear(t.getFullYear()) - dayOfYear(t);
-  const HREF = { year: "#/goals/year", month: "#/goals/month", week: "#/goals/week", day: `#/calendar/${ymd(t)}` }; // 링을 누르면 그 기간 목표 페이지로
+  const HREF = { year: "#/goals/year", month: "#/goals/month", week: "#/goals/week", day: "#/checklist" }; // 링을 누르면 그 기간 목표 · 오늘은 체크리스트
   const S = { who: ctx.me.id, items: null, data: null, score: null, hover: null, tip: null, wide: null, first: true,
     pres: null, presAt: 0, cheers: { received: [], sent: [] }, cheering: false,
     wk: { off: 0, cache: {}, busy: false, error: null } };
