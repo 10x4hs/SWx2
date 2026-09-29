@@ -5,7 +5,7 @@
 // - /english/data.json: network-first
 // VERSION 은 deploy.sh 가 배포마다 새로 찍어요 → 새 SW 설치 → 옛 캐시 삭제 → 열린 탭에 "updated" 메시지.
 
-const VERSION = "v20260929225714";
+const VERSION = "v20260929235642";
 const STATIC_CACHE = `dsm-static-${VERSION}`;
 const API_CACHE = `dsm-api-${VERSION}`;
 const KEEP = new Set([STATIC_CACHE, API_CACHE]);

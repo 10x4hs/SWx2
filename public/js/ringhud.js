@@ -61,8 +61,10 @@ function ringSvg(it, i) {
 // 넓은 화면용 숫자 행 (링 꼭대기와 같은 높이)
 function rowSvg(it, i, x0) {
   const y = C - radius(i);
+  // 점선은 가장 바깥 링 밖에서 시작해요 (가운데서 시작하면 바깥 링 띠를 가로질러 비쳐 보여요)
+  const dy = radius(i), xs = C + Math.sqrt(Math.max(0, (R0 + 6) ** 2 - dy * dy)) + 8;
   return `<g class="rh-row" data-ring="${it.key}" style="--c:${it.color};--i:${i}">
-    <line class="rh-lead" x1="${C}" y1="${y}" x2="${x0 - 18}" y2="${y}"/>
+    ${xs < x0 - 30 ? `<line class="rh-lead" x1="${f2(xs)}" y1="${y}" x2="${x0 - 18}" y2="${y}"/>` : ""}
     <circle class="rh-dot" cx="${x0 - 18}" cy="${y}" r="4"/>
     <text class="rh-name" x="${x0}" y="${y + 6}">${esc(it.label)}</text>
     <text class="rh-big${it.total ? "" : " none"}" x="${x0 + 92}" y="${y + 10}">${it.total ? pct(it.value) + "%" : "—"}</text>
