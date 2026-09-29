@@ -148,7 +148,7 @@ export function toast(msg, kind = "") {
 
 export function planHash(p) {
   const v = p.period.slice(2);
-  return p.scope === "day" ? "#/calendar/" + v : `#/plans/${p.scope}/${v}`;
+  return p.scope === "day" ? "#/calendar/" + v : "#/calendar"; // 연·월·주 목표는 캘린더 그날 판의 '목표' 칸에서
 }
 
 // ---------- 공부 시간 = 집중 기록 + 영어 블록 분 (캘린더 · 회고 · 홈이 같은 뜻) ----------

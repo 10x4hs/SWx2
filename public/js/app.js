@@ -2,11 +2,11 @@
 import { api } from "./api.js";
 import { $, $$, esc, initial, debounce, ymd, today, nowTime, toast, pad, planHash } from "./util.js";
 import { icon, appIcon } from "./icons.js";
-import * as plansView from "./views/plans.js";
 import * as notesView from "./views/notes.js";
 import * as graphView from "./views/graph.js";
 import * as aiView from "./views/ai.js";
 import * as plannerView from "./views/planner.js";
+import * as diaryView from "./views/diary.js";
 import * as homeView from "./views/home.js";
 import * as englishView from "./views/english.js";
 import * as calendarView from "./views/calendar.js";
@@ -69,18 +69,17 @@ window.addEventListener("trio:me", (e) => {
 });
 
 // ---------- shell ----------
-// 검색 | 홈 · 캘린더 · 계획 | 노트 · 영어 · AI · 대화 | 타이머 · 프로필
+// 검색 | 홈 · 캘린더 | 노트 · 영어 · AI · 대화 | 타이머 · 프로필 (연·월·주 목표는 캘린더 그날 판의 "목표" 칸)
 // 오늘 · 일기 · 기록은 캘린더 안으로(그날 페이지 · 연 잔디), 그래프는 노트 안의 탭으로 들어갔어요.
 const NAV = [
   { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
-  { key: "plans", hash: "#/plans/month", label: "계획", tip: "계획 · 연·월·주 목표" },
   { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리 · 그래프" },
   { key: "english", hash: "#/english", label: "영어", tip: "영어 · 6개월 프리토킹" },
   { key: "ai", hash: "#/ai", label: "AI 튜터", tip: "AI 튜터 · 묻고 노트로 정리" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
-const NAV_SPLIT = 3;
+const NAV_SPLIT = 2;
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 function renderShell() {
@@ -252,19 +251,20 @@ const OLD_DAY = /^#\/(?:today|diary|records)(?:\/(\d{4}-\d{2}-\d{2}))?\/?$/;
 function redirectOld() {
   const m = location.hash.match(OLD_DAY);
   if (m) history.replaceState(history.state, "", "#/calendar/" + (m[1] || ymd(today())));
+  if (/^#\/plans(\/|$)/.test(location.hash)) history.replaceState(history.state, "", "#/calendar"); // 계획 페이지는 캘린더로 합쳤어요
 }
 function parseRoute() {
   redirectOld();
   const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
   const [a, b, c, d] = parts;
   if (a === "u") return { view: "home", nav: "home" }; // 서로는 차트만: 다른 사람의 하루 페이지는 없어요
-  if (a === "plans") return { view: "plans", nav: "plans", scope: b || "month", key: c || null };
   if (a === "notes" && b === "tag") return { view: "notes", nav: "notes", tag: c };
   if (a === "notes") return { view: "notes", nav: "notes", id: b || null };
   if (a === "graph") return { view: "graph", nav: "notes" }; // 그래프는 노트 안의 탭
   if (a === "team" || !a || a === "home") return { view: "home", nav: "home" };
   if (a === "ai") return { view: "ai", nav: "ai", id: b || null };
   if (a === "planner") return { view: "planner", nav: "ai", scope: b || null };
+  if (a === "calendar" && b === "diary") return { view: "diary", nav: "calendar", day: c || null }; // 일기 페이지
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null };
   if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
@@ -272,7 +272,7 @@ function parseRoute() {
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, plans: plansView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, english: englishView, calendar: calendarView, room: roomView };
+const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, english: englishView, calendar: calendarView, room: roomView };
 let lastView = null;
 
 function route() {
@@ -283,6 +283,7 @@ function route() {
   // notes view keeps its list mounted while switching notes
   if (lastView === "notes" && r.view === "notes" && notesView.update) { notesView.update(r); return; }
   if (lastView === "ai" && r.view === "ai") return; // the chat view follows its own hash changes
+  if (lastView === "diary" && r.view === "diary") { diaryView.update(r); return; } // 날짜만 바뀌면 편집기만 바꿔요
   if (lastView === "calendar" && r.view === "calendar" && calendarView.update) { calendarView.update(r); return; } // 날짜만 바뀌면 달력은 그대로
   if (lastView === "english" && r.view === "english" && englishView.update) { englishView.update(r); return; } // 영어 탭 전환은 판을 다시 만들지 않아요
   if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요
@@ -322,11 +323,10 @@ function openPalette() {
     { grp: "이동", t: "일기 쓰기", s: "캘린더 · 오늘의 일기", run: () => { ctx.go("#/calendar/" + ymd(today())); setTimeout(() => $("#dp-diary textarea")?.focus(), 400); } },
     { grp: "이동", t: "내일 계획 세우기", s: ymd(new Date(Date.now() + 864e5)), run: () => ctx.go("#/calendar/" + ymd(new Date(Date.now() + 864e5))) },
     { grp: "이동", t: "한 해 잔디", s: "캘린더 · 연 · 일기 | 기록", run: () => ctx.go("#/calendar/year") },
-    { grp: "이동", t: "올해 계획", s: "연간 목표 · 히트맵", run: () => ctx.go("#/plans/year") },
-    { grp: "이동", t: "이번 달 계획", s: "월간 체크리스트", run: () => ctx.go("#/plans/month") },
-    { grp: "이동", t: "이번 주 계획", s: "주간 체크리스트", run: () => ctx.go("#/plans/week") },
+    { grp: "이동", t: "목표 적기", s: "캘린더 · 이번 주 · 이번 달 · 올해 목표", run: () => ctx.go("#/calendar") },
     { grp: "이동", t: "그래프 보기", s: "노트 · 그래프 탭", run: () => ctx.go("#/graph") },
     { grp: "이동", t: "계획 AI", s: "대화로 이번 주 계획 짜기", run: () => ctx.go("#/planner") },
+    { grp: "이동", t: "오늘 일기 쓰기", s: "캘린더 · 일기", run: () => ctx.go("#/calendar/diary/" + ymd(today())) },
     { grp: "이동", t: "우리 셋 주간 회고", s: "홈 · 5쪽", run: () => { try { localStorage.setItem("trio-home-page", "4"); } catch {} ctx.go("#/"); } },
     { grp: "명령", t: "오늘 데일리 노트 열기", s: ymd(today()), run: () => notesView.openDaily(ctx, ymd(today())) },
     { grp: "명령", t: "새 노트", s: "빈 노트", run: () => notesView.createNote(ctx, "") },

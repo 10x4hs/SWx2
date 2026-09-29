@@ -34,7 +34,7 @@ export function mount(root, ctx) {
   const t = today();
   const K = { year: periodKey("year", t), month: periodKey("month", t), week: periodKey("week", t), day: periodKey("day", t) };
   const left = daysInYear(t.getFullYear()) - dayOfYear(t);
-  const HREF = { year: "#/plans/year", month: "#/plans/month", week: "#/plans/week", day: `#/calendar/${ymd(t)}` };
+  const HREF = { year: "#/calendar", month: "#/calendar", week: "#/calendar", day: `#/calendar/${ymd(t)}` }; // 목표는 캘린더 그날 판에서
   const S = { who: ctx.me.id, items: null, data: null, score: null, hover: null, tip: null, wide: null, first: true,
     pres: null, presAt: 0, cheers: { received: [], sent: [] }, cheering: false,
     wk: { off: 0, cache: {}, busy: false, error: null } };
@@ -205,7 +205,7 @@ export function mount(root, ctx) {
     if (hasNotes === null) hasNotes = await api.notes().then((r) => r.notes.length > 0).catch(() => true);
     const steps = [
       { ok: done.day, n: 1, t: "오늘 할 일 적기", d: "캘린더의 오늘 페이지에서 시간표에 할 일을 넣고, 끝나면 체크해요. 가장 안쪽 분홍 링이 차요.", href: `#/calendar/${ymd(t)}`, go: "오늘로" },
-      { ok: done.year, n: 2, t: "올해 목표 정하기", d: "목표를 이룰 때마다 바깥 주황 링이 차요. 이번 달·주 목표도 같은 곳에서.", href: "#/plans/year", go: "계획으로" },
+      { ok: done.year, n: 2, t: "올해 목표 정하기", d: "캘린더 오른쪽 '목표' 칸에서 올해·이번 달·이번 주 목표를 적어요. 이룰 때마다 링이 차요.", href: "#/calendar", go: "캘린더로" },
       { ok: hasNotes, n: 3, t: "배운 것 노트에 쓰기 → AI 정리", d: "AI가 주제·태그·링크를 달아 주고, 그래프에서 연결이 보여요.", href: "#/notes", go: "노트로" },
     ];
     const left = steps.filter((x) => !x.ok).length;
