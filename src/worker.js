@@ -1,6 +1,6 @@
 // Dsm-mafia API — Cloudflare Worker + D1.
 // Static files in ./public are served by the assets binding; only /api/* reaches this code.
-import { registerAi } from "./ai.js";
+import { registerAi, aiJson } from "./ai.js";
 import { registerBrain } from "./brain.js";
 import { registerEnglish } from "./english.js";
 import { registerCalendar } from "./calendar.js";
@@ -685,20 +685,41 @@ async function snapshotDay(env, u, day, auto) {
   ).bind(u.id, day, JSON.stringify(data), sc.score, sc.doneCount, sc.count, auto ? 1 : 0, at).run();
   return { day, data, score: sc.score, done: sc.doneCount, total: sc.count, auto: auto ? 1 : 0, saved_at: at };
 }
+// 자정의 AI 채점: 그날 계획(우선순위·시간·끝냄)·집중 시간을 보고 0~100 점 + 한 줄 평. AI 가 안 되면 계산식 점수를 그대로 써요.
+const PRIO_KO = { low: "Low", medium: "Medium", high: "High", xhigh: "XHigh", max: "Max" };
+async function aiScoreDay(env, u, day) {
+  const r = await env.DB.prepare("SELECT data, score FROM day_records WHERE user_id = ? AND day = ?").bind(u.id, day).first();
+  if (!r || r.data === "{}") return null;
+  const d = JSON.parse(r.data);
+  const lines = (d.plans || []).map((p) => `- [${p.done ? "x" : " "}] ${p.start ? p.start + (p.mins ? `(${p.mins}분) ` : " ") : "(시간 없음) "}${p.text}${p.priority ? ` · 우선순위 ${PRIO_KO[p.priority]}` : ""}`).join("\n");
+  let ai = null, note = "", model = null;
+  try {
+    const out = await aiJson(env,
+      "너는 공부 앱의 하루 채점관이야. 하루 계획과 실행을 보고 0~100 점과 한국어 한 줄 평(40자 안팎, 다정하지만 솔직하게)을 줘. 우선순위가 높은 일(Max·XHigh·High)을 끝냈는지를 가장 크게 보고, 계획이 너무 적거나 비현실적이면 감점. 공부 시간도 반영.",
+      `날짜: ${day}\n하루 목표 공부 시간: ${d.goal || 240}분\n집중 기록: ${d.focus || 0}분\n계산식 점수(참고): ${r.score ?? "없음"}\n계획:\n${lines || "(없음)"}\n\nJSON 으로만: {"score": 0~100 정수, "note": "한 줄 평"}`);
+    const v = Math.round(Number(out.data?.score));
+    if (v >= 0 && v <= 100) { ai = v; note = String(out.data?.note || "").slice(0, 120); model = out.used || null; }
+  } catch (e) { console.warn("AI 채점 실패", u.id, day, e.message); }
+  if (ai === null) { if (r.score == null) return null; ai = r.score; note = "AI 가 바빠서 계산식 점수로 기록했어요."; model = "formula"; }
+  await env.DB.prepare("UPDATE day_records SET ai_score = ?, ai_note = ?, ai_model = ? WHERE user_id = ? AND day = ?").bind(ai, note, model, u.id, day).run();
+  return { ai_score: ai, ai_note: note, ai_model: model };
+}
 // 한국 시간 기준 날짜 (자정 자동 저장용)
 const kstDay = (offsetDays = 0) => new Date(Date.now() + 9 * 3600e3 + offsetDays * 864e5).toISOString().slice(0, 10);
 // 어제 기록이 아직 없으면 만들어 둬요 (크론이 못 돈 날을 위한 대비책)
-async function ensureYesterday(env, u) {
+async function ensureYesterday(env, u, ec = null) {
+  const later = (p) => (ec ? ec.waitUntil(p.catch((e) => console.warn("AI 채점", e.message))) : p); // AI 채점은 뒤에서 (화면을 기다리게 하지 않게)
   const y = kstDay(-1);
   const has = await env.DB.prepare("SELECT 1 FROM day_records WHERE user_id = ? AND day = ? AND data != '{}'").bind(u.id, y).first(); // 내 점수만 적힌 빈 기록은 없는 것으로
-  if (!has) await snapshotDay(env, u, y, true);
+  if (!has) { const s0 = await snapshotDay(env, u, y, true); if (s0) await later(aiScoreDay(env, u, y)); }
+  else { const a = await env.DB.prepare("SELECT ai_score FROM day_records WHERE user_id = ? AND day = ?").bind(u.id, y).first(); if (a && a.ai_score == null) await later(aiScoreDay(env, u, y)); } // 크론이 못 돌았으면 여기서
 }
 export async function autoSaveYesterday(env) {
   const y = kstDay(-1);
   const { results } = await env.DB.prepare(
     "SELECT u.id, u.day_goal FROM users u WHERE EXISTS (SELECT 1 FROM plans p WHERE p.user_id = u.id AND p.period = ?) OR EXISTS (SELECT 1 FROM logs l WHERE l.user_id = u.id AND l.day = ?)"
   ).bind("D:" + y, y).all();
-  for (const u of results) await snapshotDay(env, u, y, true);
+  for (const u of results) { const s0 = await snapshotDay(env, u, y, true); if (s0) await aiScoreDay(env, u, y); }
   return { day: y, saved: results.length };
 }
 
@@ -712,7 +733,7 @@ on("POST", "/records", async ({ req, env, user }) => {
 on("GET", "/records", async ({ env, q, user }) => {
   const day = q.get("day") || "";
   if (!DAY_RE.test(day)) fail(400, "날짜 형식이 올바르지 않아요.");
-  const r = await env.DB.prepare("SELECT day, data, score, self, done, total, auto, saved_at FROM day_records WHERE user_id = ? AND day = ?").bind(user.id, day).first();
+  const r = await env.DB.prepare("SELECT day, data, score, self, ai_score, ai_note, ai_model, done, total, auto, saved_at FROM day_records WHERE user_id = ? AND day = ?").bind(user.id, day).first();
   return json({ record: r ? { ...r, data: JSON.parse(r.data) } : null });
 });
 // 내가 매긴 하루 점수 (0~100, null 이면 지워요). 기록이 없던 날이면 빈 기록을 만들어 점수만 붙여요.
@@ -726,19 +747,19 @@ on("PUT", "/records/self", async ({ req, env, user }) => {
   return json({ day: b.day, self: v });
 });
 // 최근 N일 점수 흐름 (자동 · 내 점수)
-on("GET", "/records/recent", async ({ env, q, user }) => {
+on("GET", "/records/recent", async ({ env, q, user, ec }) => {
   const to = DAY_RE.test(q.get("to") || "") ? q.get("to") : kstDay(0);
   const n = Math.min(60, Math.max(3, +q.get("days") || 14));
   const from = new Date(new Date(to + "T00:00:00Z").getTime() - (n - 1) * 864e5).toISOString().slice(0, 10);
-  await ensureYesterday(env, user);
-  const { results } = await env.DB.prepare("SELECT day, score, self, done, total FROM day_records WHERE user_id = ? AND day BETWEEN ? AND ? ORDER BY day").bind(user.id, from, to).all();
+  await ensureYesterday(env, user, ec);
+  const { results } = await env.DB.prepare("SELECT day, score, ai_score, ai_note, done, total FROM day_records WHERE user_id = ? AND day BETWEEN ? AND ? ORDER BY day").bind(user.id, from, to).all();
   return json({ from, to, days: results });
 });
-on("GET", "/records/days", async ({ env, q, user }) => {
+on("GET", "/records/days", async ({ env, q, user, ec }) => {
   const year = q.get("year") || "";
   if (!/^\d{4}$/.test(year)) fail(400, "연도를 알려 주세요.");
-  await ensureYesterday(env, user);
-  const { results } = await env.DB.prepare("SELECT day, score, done, total, auto FROM day_records WHERE user_id = ? AND day LIKE ? ORDER BY day").bind(user.id, year + "-%").all();
+  await ensureYesterday(env, user, ec);
+  const { results } = await env.DB.prepare("SELECT day, score, ai_score, done, total, auto FROM day_records WHERE user_id = ? AND day LIKE ? ORDER BY day").bind(user.id, year + "-%").all();
   return json({ days: results });
 });
 

@@ -2751,3 +2751,48 @@ a.btn { text-decoration: none; }
 .hud-ai-h .faint { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hud-ai .aic { margin: 0; }
 .hud-ai .aic-out { max-height: 180px; overflow-y: auto; }
+
+/* v17: 목표 페이지 (주 · 월 · 년) — 미니멀 · 한 화면에 하나 */
+.host-goals { min-height: 100%; }
+.gl { max-width: 680px; margin: 0 auto; padding: 18px 8px 60px; display: grid; gap: 22px; }
+.gl-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.gl-top .seg a { min-width: 44px; text-align: center; }
+.gl-nav { display: flex; align-items: center; gap: 6px; }
+.gl-nav [hidden] { display: none; }
+.gl-head { display: grid; gap: 6px; padding-top: 8px; }
+.gl-title { margin: 0; font: 600 44px/1.05 var(--font-display, var(--font)); letter-spacing: -.04em; }
+.gl-range { margin: 0; font-size: 14px; }
+.gl-prog { display: grid; gap: 8px; margin-top: 12px; }
+.gp-bar { position: relative; height: 10px; border-radius: 99px; background: rgba(255, 255, 255, .06); border: 1px solid var(--lg-edge); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); overflow: visible; }
+.gp-bar i { position: absolute; inset: 0 auto 0 0; width: var(--v); border-radius: 99px; background: linear-gradient(180deg, rgba(255, 255, 255, .95), rgba(255, 255, 255, .6)); box-shadow: 0 0 12px rgba(255, 255, 255, .25); transition: width .5s var(--ease); }
+.gp-bar b { position: absolute; top: -4px; bottom: -4px; left: var(--t); width: 2px; border-radius: 2px; background: var(--ink-3); }
+:root[data-theme="light"] .gp-bar i { background: var(--ink); box-shadow: none; }
+.gp-txt { display: flex; gap: 14px; align-items: baseline; font-size: 13.5px; color: var(--ink-2); }
+.gp-txt b { font: 600 18px var(--mono); color: var(--ink); }
+.gp-txt .up { color: var(--sys-green, #30D158); font-weight: 600; margin-left: auto; } .gp-txt .down { color: var(--sys-red, #FF453A); font-weight: 600; margin-left: auto; }
+.gl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.gl-item { display: flex; align-items: center; gap: 12px; padding: 14px 14px; border-radius: 16px; background: var(--lg-fill); border: 1px solid var(--lg-edge); box-shadow: var(--lg-top); transition: background .15s var(--ease), border-color .15s var(--ease); }
+.gl-item:hover { background: var(--lg-fill-hi); border-color: var(--lg-edge-hi); }
+.gl-item[data-p]:not([data-p=""]) { box-shadow: var(--lg-top), inset 3px 0 0 var(--pc); }
+.gl-item[data-p="low"] { --pc: var(--p-low); } .gl-item[data-p="medium"] { --pc: var(--p-medium); } .gl-item[data-p="high"] { --pc: var(--p-high); } .gl-item[data-p="xhigh"] { --pc: var(--p-xhigh); } .gl-item[data-p="max"] { --pc: var(--p-max); }
+.gl-item .check { width: 22px; height: 22px; flex: none; }
+.gl-text { flex: 1; min-width: 0; font-size: 16px; line-height: 1.45; overflow-wrap: anywhere; cursor: text; }
+.gl-item.done .gl-text { color: var(--ink-3); text-decoration: line-through; }
+.gl-item .prio { opacity: 1; }
+.gl-item .prio[data-p=""] { opacity: 0; } .gl-item:hover .prio[data-p=""] { opacity: 1; }
+.gl-del { opacity: 0; } .gl-item:hover .gl-del, .gl-del:focus-visible { opacity: 1; }
+.gl-edit { flex: 1; min-width: 0; font-size: 16px; }
+.gl-empty { padding: 34px 8px; text-align: center; display: grid; gap: 4px; } .gl-empty p { margin: 0; } .gl-empty p:first-child { font-size: 17px; font-weight: 600; }
+.gl-load { padding: 16px 4px; }
+.gl-add { display: flex; gap: 6px; align-items: center; padding: 4px 4px 4px 6px; border-radius: 16px; background: var(--lg-fill); border: 1px solid var(--lg-edge); box-shadow: var(--lg-top); position: sticky; bottom: 12px; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.gl-add:focus-within { border-color: var(--lg-edge-hi); }
+.gl-add .input { flex: 1; min-width: 0; border: 0; background: transparent; box-shadow: none; font-size: 15.5px; padding: 12px 10px; }
+.gl-add .input:focus { box-shadow: none; background: transparent; }
+.gl-add .select { flex: none; width: auto; border: 0; background: transparent; box-shadow: none; color: var(--ink-3); font-size: 12.5px; }
+@media (max-width: 720px) { .gl-title { font-size: 34px; } .gl { padding: 8px 0 40px; } .gl-del, .gl-item .prio[data-p=""] { opacity: 1; } }
+
+/* 하루 점수: AI 한 줄 평 · 미리보기 막대 */
+.sc-note { margin: 0; display: flex; gap: 6px; align-items: flex-start; font-size: 13px; line-height: 1.5; color: var(--ink-2); padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); border: 1px solid var(--lg-edge); }
+.sc-note svg { flex: none; margin-top: 3px; color: var(--c-violet); } .sc-note b { color: var(--ink); margin-right: 2px; }
+.gl-trend .tb.pre { fill: transparent; stroke: rgba(255, 255, 255, .45); stroke-dasharray: 2 2; }
+.sc-leg .lg-b.pre { background: transparent; border: 1px dashed rgba(255, 255, 255, .5); }

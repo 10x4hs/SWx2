@@ -53,7 +53,7 @@ export function registerCalendar(on, { json, fail }) {
       env.DB.prepare("SELECT id, at, text, kind, mins, plan_id FROM logs WHERE user_id = ? AND day = ? ORDER BY at, created_at").bind(user.id, day),
       env.DB.prepare("SELECT day, mood, body, updated_at FROM diaries WHERE user_id = ? AND day = ?").bind(user.id, day),
       env.DB.prepare("SELECT blocks, minutes, spoken, newwords, mistakes, sentence FROM english_days WHERE user_id = ? AND day = ?").bind(user.id, day),
-      env.DB.prepare("SELECT score, self, done, total, auto, saved_at FROM day_records WHERE user_id = ? AND day = ?").bind(user.id, day),
+      env.DB.prepare("SELECT score, self, ai_score, ai_note, ai_model, done, total, auto, saved_at FROM day_records WHERE user_id = ? AND day = ?").bind(user.id, day),
       env.DB.prepare("SELECT id, title, created_at, updated_at FROM notes WHERE user_id = ? AND updated_at >= ? AND updated_at < ? ORDER BY updated_at DESC LIMIT 30").bind(user.id, ms0, ms1),
     ]);
     const en = english.results[0];

@@ -69,19 +69,11 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         ${future ? "" : `<section class="cd-sec sc-card" aria-labelledby="dp-sc-t">
           <div class="cd-sh"><h3 id="dp-sc-t">하루 점수</h3><span class="faint" id="dp-sc-sub"></span></div>
           <div class="sc-top"><div class="sc-ring" id="dp-sc-ring"></div><div class="sc-prio" id="dp-sc-prio"></div></div>
-          <div class="sc-self"><label for="dp-self">내 점수</label><input type="range" id="dp-self" min="0" max="100" step="5" value="0" aria-label="내가 매긴 하루 점수"><b id="dp-self-v">–</b><button type="button" class="linkbtn faint" id="dp-self-x" hidden>지우기</button></div>
+          <p class="sc-note" id="dp-sc-note"></p>
           <div class="sc-trend" id="dp-sc-trend"></div>
           <div class="dp-rec" id="dp-rec"></div>
         </section>`}
-        <section class="cd-sec" aria-labelledby="dp-wm-t">
-          <div class="cd-sh"><h3 id="dp-wm-t">목표</h3><span id="dp-wm-sum"></span></div>
-          <ul class="todos dp-todos dp-wm" id="dp-wm"><li class="cd-loading faint">불러오는 중…</li></ul>
-          <form class="cd-add dp-wm-add" id="dp-wm-add" autocomplete="off">
-            <select class="select sm bare-sel" name="scope" aria-label="어느 기간 목표">${["week", "month", "year"].map((k) => `<option value="${k}">${GOAL_LAB[k]}</option>`).join("")}</select>
-            <input class="input" name="text" maxlength="200" placeholder="목표 추가" aria-label="목표 추가">
-            <button class="icon-btn sm add-go" type="submit" aria-label="목표 추가">${icon.plus(15)}</button>
-          </form>
-        </section>
+
         ${future ? "" : `<section class="cd-sec" aria-labelledby="dp-diary-t">
           <div class="cd-sh"><h3 id="dp-diary-t">일기</h3></div>
           <a class="dp-diary glass" id="dp-diary" href="#/calendar/diary/${day}"><span class="faint">불러오는 중…</span></a>
@@ -104,7 +96,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   // ---------- data ----------
   async function load() {
     try {
-      const [p, d, g, di] = await Promise.all([api.plans([key]), api.calendarDay(day), api.plans([wKey, mKey, yKey]).catch(() => ({ plans: [] })), future ? Promise.resolve({ diary: null }) : api.diary(day).catch(() => ({ diary: null }))]);
+      const [p, d, g, di] = await Promise.all([api.plans([key]), api.calendarDay(day), Promise.resolve({ plans: [] }), future ? Promise.resolve({ diary: null }) : api.diary(day).catch(() => ({ diary: null }))]);
       if (!alive) return;
       S.plans = p.plans || []; S.goals = g.plans || []; S.diary = di.diary;
       Object.assign(S, { logs: d.logs || [], english: d.english, record: d.record, notes: d.notes || [] });
@@ -130,7 +122,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   }
 
   // ---------- drawing ----------
-  function drawAll() { drawGoals(); drawWM(); drawDiary(); drawGrid(); if (!future) { drawStudy(); drawRecord(); drawScore(); } }
+  function drawAll() { drawGoals(); drawDiary(); drawGrid(); if (!future) { drawStudy(); drawRecord(); drawScore(); } }
 
   // ---------- 하루 점수: 유리 링 + 우선순위 색 차트 + 내 점수 + 14일 흐름 ----------
   const PRIO_COL = { low: "var(--p-low)", medium: "var(--p-medium)", high: "var(--p-high)", xhigh: "var(--p-xhigh)", max: "var(--p-max)", none: "var(--ink-3)" };
@@ -148,9 +140,13 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   }
   function drawScore() {
     const ring = $("#dp-sc-ring", el); if (!ring || !S.plans) return;
-    const sc = dayScore(S.plans, me.day_goal);
-    ring.innerHTML = glassRing(sc.score == null ? 0 : sc.score / 100, sc.score == null ? "–" : String(sc.score), isToday ? "지금" : "그날");
+    const sc = dayScore(S.plans, me.day_goal), ai = S.record?.ai_score;
+    // 점수는 자정에 AI 가 매겨요. 오늘은 지금까지 모습으로 미리보기(참고)만
+    if (ai != null) ring.innerHTML = glassRing(ai / 100, String(ai), "AI 점수");
+    else ring.innerHTML = glassRing(sc.score == null ? 0 : sc.score / 100, sc.score == null ? "–" : String(sc.score), isToday ? "미리보기" : "계산");
     $("#dp-sc-sub", el).textContent = sc.count ? `실행 ${pct(sc.exec)}% · 계획 ${pct(sc.plan)}%` : "할 일을 넣으면 점수가 생겨요";
+    const note = $("#dp-sc-note", el);
+    if (note) note.innerHTML = ai != null ? `${icon.spark(12)} <b>AI</b> ${esc(S.record.ai_note || "")}` : isToday ? `${icon.spark(12)} 자정이 지나면 AI가 오늘을 보고 점수와 한 줄 평을 기록해요.` : `<span class="faint">이날은 AI 점수가 아직 없어요.</span>`;
     // 우선순위 색 차트: 단계마다 끝낸 수 / 전체 (진한 색 = 끝낸 몫)
     const rows = [...PRIOS.map((p) => p.k).reverse(), "none"].map((k) => {
       const list = S.plans.filter((p) => (p.priority || "none") === k); return { k, n: list.length, d: list.filter((p) => p.done).length };
@@ -158,22 +154,17 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const max = Math.max(1, ...rows.map((r) => r.n));
     $("#dp-sc-prio", el).innerHTML = rows.length ? rows.map((r) => `<div class="pb" style="--pc:${PRIO_COL[r.k]}"><span class="pb-l">${r.k === "none" ? "없음" : PRIOS.find((x) => x.k === r.k).label}</span><span class="pb-t" style="--w:${(r.n / max) * 100}%"><i style="--f:${(r.d / r.n) * 100}%"></i></span><span class="pb-n">${r.d}/${r.n}</span></div>`).join("")
       : `<p class="faint pb-empty">우선순위를 고르면 여기에 색으로 쌓여요.</p>`;
-    // 내 점수
-    const self = S.record?.self;
-    const sl = $("#dp-self", el); if (sl && document.activeElement !== sl) sl.value = self ?? 0;
-    $("#dp-self-v", el).textContent = self == null ? "–" : String(self);
-    $("#dp-self-x", el).hidden = self == null;
     drawTrend();
   }
   function drawTrend() {
     const box = $("#dp-sc-trend", el); if (!box || !S.trend) return;
     const live = dayScore(S.plans || [], me.day_goal).score;
     const byDay = new Map(S.trend.map((d) => [d.day, d]));
-    const days = []; for (let i = 13; i >= 0; i--) { const d = ymd(addDays(date, -i)); const r = byDay.get(d) || {}; days.push({ day: d, score: d === day ? live ?? r.score : r.score, self: d === day ? S.record?.self ?? r.self : r.self }); }
+    const days = []; for (let i = 13; i >= 0; i--) { const d = ymd(addDays(date, -i)); const r = byDay.get(d) || {}; const ai = d === day ? S.record?.ai_score ?? r.ai_score : r.ai_score; days.push({ day: d, score: ai ?? (d === day && isToday ? live : r.score), ai: ai != null, note: r.ai_note || "" }); }
     const W = 280, H = 76, bw = W / 14, y = (v) => H - 14 - (v / 100) * (H - 22);
-    const bars = days.map((d, i) => `${d.score != null ? `<rect x="${(i * bw + 3).toFixed(1)}" y="${y(d.score).toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${(H - 14 - y(d.score)).toFixed(1)}" rx="3" class="tb${d.day === day ? " on" : ""}"><title>${d.day} 자동 ${d.score}${d.self != null ? ` · 내 점수 ${d.self}` : ""}</title></rect>` : `<rect x="${(i * bw + 3).toFixed(1)}" y="${H - 16}" width="${(bw - 6).toFixed(1)}" height="2" rx="1" class="tb none"/>`}${d.self != null ? `<circle cx="${(i * bw + bw / 2).toFixed(1)}" cy="${y(d.self).toFixed(1)}" r="2.6" class="td"/>` : ""}`).join("");
+    const bars = days.map((d, i) => `${d.score != null ? `<rect x="${(i * bw + 3).toFixed(1)}" y="${y(d.score).toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${(H - 14 - y(d.score)).toFixed(1)}" rx="3" class="tb${d.day === day ? " on" : ""}${d.ai ? "" : " pre"}"><title>${d.day} ${d.ai ? "AI 점수" : "미리보기"} ${d.score}${d.note ? ` · ${esc(d.note)}` : ""}</title></rect>` : `<rect x="${(i * bw + 3).toFixed(1)}" y="${H - 16}" width="${(bw - 6).toFixed(1)}" height="2" rx="1" class="tb none"/>`}`).join("");
     const lab = [0, 7, 13].map((i) => `<text x="${(i * bw + bw / 2).toFixed(1)}" y="${H - 2}" text-anchor="middle" class="tl">${+days[i].day.slice(8)}일</text>`).join("");
-    box.innerHTML = `<div class="sc-leg"><span><i class="lg-b"></i>자동 점수</span><span><i class="lg-d"></i>내 점수</span><span class="faint">최근 14일</span></div><svg viewBox="0 0 ${W} ${H}" class="gl-trend" preserveAspectRatio="none">${bars}${lab}</svg>`;
+    box.innerHTML = `<div class="sc-leg"><span><i class="lg-b"></i>AI 점수</span><span><i class="lg-b pre"></i>미리보기</span><span class="faint">최근 14일</span></div><svg viewBox="0 0 ${W} ${H}" class="gl-trend" preserveAspectRatio="none">${bars}${lab}</svg>`;
   }
   async function loadTrend() { try { const r = await api.recentRecords(day, 14); if (!alive) return; S.trend = r.days || []; drawTrend(); } catch { S.trend = []; } }
 
@@ -261,20 +252,6 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         <span class="acts"><button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button><button class="icon-btn sm danger" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button></span>
       </li>`).join("")
       : "";
-  }
-  // 이번 주 · 이번 달 목표도 여기서 바로 체크
-  function drawWM() {
-    const ul = $("#dp-wm", el); if (!ul || !S.goals) return;
-    const order = { week: 0, month: 1, year: 2 };
-    const list = S.goals.slice().sort((a, b) => order[a.scope] - order[b.scope] || (a.sort || 0) - (b.sort || 0));
-    const done = list.filter((p) => p.done).length;
-    const sum = $("#dp-wm-sum", el); if (sum) sum.innerHTML = list.length ? `<span class="chip ${done === list.length ? "good" : ""}">${done}/${list.length} 이룸</span>` : "";
-    ul.innerHTML = list.length ? list.map((p) => `
-      <li class="todo ${p.done ? "done" : ""}" data-gid="${esc(p.id)}">
-        <input type="checkbox" class="check" data-gtoggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 이룸">
-        <span class="t-when">${GOAL_LAB[p.scope] || ""}</span><span class="txt">${esc(p.text)}</span>
-        <span class="acts"><button class="icon-btn sm danger" type="button" data-gdel="${esc(p.id)}" aria-label="목표 지우기">${icon.trash(14)}</button></span>
-      </li>`).join("") : "";
   }
   function drawDiary() {
     const a = $("#dp-diary", el); if (!a || S.diary === undefined) return;
@@ -367,8 +344,6 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   el.addEventListener("click", onElClick);
   el.addEventListener("dblclick", onElDbl);
   function onElChange(e) {
-    const gt = e.target.closest("[data-gtoggle]");
-    if (gt && S.goals) { const p = S.goals.find((x) => x.id === gt.dataset.gtoggle); if (p) { const v = gt.checked; p.done = v ? 1 : 0; drawWM(); api.updatePlan(p.id, { done: v }).then(() => changed("plans")).catch((err) => { p.done = v ? 0 : 1; drawWM(); toast(err.message, "err"); }); } return; }
     const t = e.target.closest("[data-toggle]");
     if (t && S.plans) toggle(t.dataset.toggle, t.checked);
     if (e.target.id === "dp-date" && e.target.value) ctx.go("#/calendar/" + e.target.value);
@@ -387,14 +362,6 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     if (e.target.closest("[data-slot-close]")) { S.editSlot = null; drawGrid(); return; }
     const play = e.target.closest("[data-play]");
     if (play) { const p = S.plans.find((x) => x.id === play.dataset.play); if (p) ctx.timer?.startFor(p); return; }
-    if (e.target.closest("#dp-self-x")) { clearTimeout(selfT); return saveSelf(null); }
-    const gdel = e.target.closest("[data-gdel]");
-    if (gdel) {
-      const id = gdel.dataset.gdel, keep = S.goals;
-      S.goals = S.goals.filter((p) => p.id !== id); drawWM();
-      try { await api.deletePlan(id); changed("plans"); } catch (ex) { S.goals = keep; drawWM(); toast(ex.message, "err"); }
-      return;
-    }
     const del = e.target.closest("[data-del]");
     if (del) {
       const id = del.dataset.del, keep = S.plans;
@@ -422,17 +389,6 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     try { await addPlan({ text, ...(f.priority?.value ? { priority: f.priority.value } : {}) }); f.text.value = ""; } catch (ex) { toast(ex.message, "err"); }
     f.text.focus();
   });
-  $("#dp-wm-add", el).addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const f = e.currentTarget, text = f.text.value.trim(), scope = f.scope.value;
-    if (!text || !S.goals) return f.text.focus();
-    try {
-      const { plan } = await api.addPlan({ scope, period: GOAL_KEY[scope], text }); S.goals.push(plan); f.text.value = ""; drawWM();
-      S.goals = (await api.plans([wKey, mKey, yKey])).plans || S.goals; drawWM(); changed("plans"); // 빠르게 여러 개 넣어도 서버 목록으로 맞춰요
-    }
-    catch (ex) { toast(ex.message, "err"); }
-    f.text.focus();
-  });
   el.addEventListener("submit", async (e) => {
     const f = e.target.closest("[data-slot-form]");
     if (!f) return;
@@ -449,13 +405,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     } catch (ex) { toast(ex.message, "err"); }
   });
   el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; drawGrid(); } });
-  // 내 점수: 끌면 숫자만, 손을 떼면 저장
-  let selfT = 0;
-  el.addEventListener("input", (e) => { if (e.target.id === "dp-self") { $("#dp-self-v", el).textContent = e.target.value; clearTimeout(selfT); selfT = setTimeout(() => saveSelf(+e.target.value), 500); } });
-  async function saveSelf(v) {
-    try { const r = await api.saveSelfScore(day, v); S.record = { ...(S.record || {}), self: r.self }; drawScore(); changed("record"); }
-    catch (ex) { toast(ex.message, "err"); }
-  }
+
   // 마우스 위치 → 5분 단위 시각 ("+ 14:35에 추가")
   function slotAt(btn, y) {
     const row = btn.closest(".hour"), r = row.getBoundingClientRect(), h = +row.dataset.h;
