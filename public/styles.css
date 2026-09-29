@@ -2263,3 +2263,34 @@ a.btn { text-decoration: none; }
   .rm-count { flex-basis: 100%; margin-left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .rm-list { scroll-behavior: auto; } }
+
+/* ======================================================================
+   v13.1 — 그날 페이지 정리: 시간표 칸에서 바로 추가 · 실행 기록/일기/점수 제거 · 색 조금
+   ====================================================================== */
+.hour > button { color: var(--ink-3); opacity: 0; transition: opacity .15s var(--ease); }
+.hour:hover > button, .hour > button:focus-visible { opacity: 1; }
+.hour.cur > span { color: var(--c-blue); font-weight: 700; }
+.hour.editing { height: auto; min-height: 48px; background: var(--hover); border-radius: 8px; margin: 0 -4px; padding: 0 4px; }
+.slot-add { display: grid; grid-template-columns: minmax(0, 1fr) 96px auto auto; gap: 6px; align-items: center; padding: 6px 0; }
+.slot-add .input, .slot-add .select { font-size: 13.5px; padding: 6px 10px; }
+.slot-add .icon-btn { color: var(--ink-3); }
+.block { border-left: 3px solid var(--c-blue); }
+.block.done { background: color-mix(in srgb, var(--c-green) 26%, var(--panel)); color: var(--ink); border-left-color: var(--c-green); }
+.block.done .when { color: var(--ink-2); }
+.block.done .check { background: var(--c-green); border-color: var(--c-green); }
+.block.miss { border-left-color: var(--c-rose); }
+.now-line { border-top-color: var(--c-blue); }
+.now-line::before { background: var(--c-blue); }
+.dp-todos .todo.done .check { background: var(--c-green); border-color: var(--c-green); }
+.dp-todos .check:checked::after { border-color: #151517; }
+.dp-focus { color: var(--c-amber); background: color-mix(in srgb, var(--c-amber) 14%, transparent); }
+.cd-stat b { color: var(--ink); }
+.cd-stats .cd-stat:nth-child(1) { box-shadow: inset 3px 0 0 var(--c-green); }
+.cd-stats .cd-stat:nth-child(2) { box-shadow: inset 3px 0 0 var(--c-amber); }
+.cd-stats .cd-stat:nth-child(3) { box-shadow: inset 3px 0 0 var(--c-teal); }
+.cd-stats .cd-stat:nth-child(4) { box-shadow: inset 3px 0 0 var(--c-blue); }
+@media (max-width: 720px) {
+  .slot-add { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "t t" "m b"; }
+  .slot-add [name="text"] { grid-area: t; } .slot-add [name="mins"] { grid-area: m; } .slot-add .btn { grid-area: b; } .slot-add .icon-btn { display: none; }
+  .hour > button { opacity: 1; }
+}

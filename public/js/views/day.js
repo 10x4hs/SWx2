@@ -7,7 +7,6 @@ import {
   DOW, isoWeek, dayOfYear, daysInYear, dayScore, pct, toast, focusOf, englishOf, studyMins,
 } from "../util.js";
 import { icon } from "../icons.js";
-import { mountDiary } from "../diary.js";
 import { BLOCKS } from "../english/data.js";
 
 const HOUR_PX = 48;
@@ -23,9 +22,9 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   const date = parseYmd(day), tk = ymd(today()), key = "D:" + day;
   const isToday = day === tk, isPast = day < tk, future = day > tk;
   const me = ctx.me;
-  const S = { plans: null, logs: [], english: null, record: null, notes: [], carry: 0 };
+  const S = { plans: null, logs: [], english: null, record: null, notes: [], carry: 0, editSlot: null, editMins: 60 };
   const wk = isoWeek(date);
-  let alive = true, stopDiary = null;
+  let alive = true;
   const changed = (kind) => onChange?.(kind);
 
   el.innerHTML = `
@@ -55,32 +54,12 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         </section>
         <section class="cd-sec" aria-labelledby="dp-tt-t">
           <div class="cd-sh"><h3 id="dp-tt-t">시간표</h3><span class="faint" id="dp-tt-sum"></span></div>
-          <form class="quick dp-quick" id="dp-quick" autocomplete="off">
-            <input class="input mono" type="time" name="start" aria-label="시작 시각" required value="${isToday ? pad(Math.min(23, new Date().getHours() + 1)) + ":00" : "09:00"}">
-            <select class="select" name="mins" aria-label="걸리는 시간">${[15, 30, 45, 60, 90, 120, 180].map((m) => `<option value="${m}" ${m === 60 ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
-            <input class="input grow" name="text" maxlength="200" placeholder="그 시간에 할 일" aria-label="시간표 할 일">
-            <button class="btn sm" type="submit">${icon.plus(14)} 추가</button>
-          </form>
-          <p class="dp-hint">시간이 정해진 할 일이에요. 빈 칸을 누르면 그 시각이 채워지고, 다음 칸은 이어서 채워져요.</p>
+          <p class="dp-hint">빈 시각을 누르면 그 자리에서 바로 적을 수 있어요. Enter로 추가, Esc로 닫기.</p>
           <div class="day-grid" id="dp-grid"></div>
         </section>
       </div>
       ${future ? "" : `
       <div class="dp-col">
-        <section class="cd-sec" aria-labelledby="dp-score-t"><div id="dp-score"></div></section>
-        <section class="cd-sec" aria-labelledby="dp-log-t">
-          <div class="cd-sh"><h3 id="dp-log-t">실행 기록</h3><span class="faint">시간 순서대로 쌓여요</span></div>
-          <form class="log-input" id="dp-log-form" autocomplete="off">
-            <input class="input mono" type="time" name="at" value="${isToday ? nowTime() : "21:00"}" aria-label="기록 시각">
-            <input class="input" name="text" maxlength="500" placeholder="방금 한 일, 떠오른 생각…" aria-label="기록 내용">
-            <button class="btn sm" type="submit">기록</button>
-          </form>
-          <ol class="timeline" id="dp-logs"></ol>
-        </section>
-        <section class="cd-sec" aria-labelledby="dp-diary-t">
-          <div class="cd-sh"><h3 id="dp-diary-t">일기</h3><span class="faint">${icon.lock(12)} 나만 봐요 · AI에도 안 보내요</span></div>
-          <div id="dp-diary"></div>
-        </section>
         <section class="cd-sec" aria-labelledby="dp-study-t">
           <div class="cd-sh"><h3 id="dp-study-t">그날 한 공부</h3></div>
           <div id="dp-study"><p class="faint">불러오는 중…</p></div>
@@ -118,7 +97,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   }
 
   // ---------- drawing ----------
-  function drawAll() { drawGoals(); drawGrid(); if (!future) { drawScore(); drawLogs(); drawStudy(); drawRecord(); } }
+  function drawAll() { drawGoals(); drawGrid(); if (!future) { drawStudy(); drawRecord(); } }
 
   function drawCarry() {
     const c = $("#dp-carry", el);
@@ -150,7 +129,13 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     let hours = "";
     for (let h = startH; h < 24; h++) {
       const past = isPast || (isToday && (h + 1) * 60 <= nowM);
-      hours += `<div class="hour${past ? " past" : ""}"><span>${pad(h)}:00</span><button type="button" data-slot="${pad(h)}:00" tabindex="-1">+ ${pad(h)}:00에 추가</button></div>`;
+      const slot = `${pad(h)}:00`, cur = isToday && Math.floor(nowM / 60) === h;
+      hours += S.editSlot === slot
+        ? `<div class="hour editing${cur ? " cur" : ""}"><span>${slot}</span><form class="slot-add" data-slot-form="${slot}" autocomplete="off">
+            <input class="input" name="text" maxlength="200" placeholder="${slot}에 할 일" aria-label="${slot}에 할 일" autofocus>
+            <select class="select" name="mins" aria-label="걸리는 시간">${[15, 30, 45, 60, 90, 120, 180].map((m) => `<option value="${m}" ${m === S.editMins ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
+            <button class="btn accent sm" type="submit">추가</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form></div>`
+        : `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}"><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
     }
     // 겹치면 옆으로 나눠요
     const cols = [], placed = [];
@@ -174,6 +159,8 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     }).join("");
     const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${((nowM - startH * 60) / 60) * HOUR_PX}px" aria-hidden="true"></div>` : "";
     $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine;
+    const f = $("[data-slot-form]", el);
+    if (f) { const i = f.text; i.focus(); i.value = S.editText || ""; i.setSelectionRange(i.value.length, i.value.length); }
     $("#dp-tt-sum", el).textContent = timed.length ? `${timed.length}개 · ${hm(timed.reduce((a, p) => a + (p.mins || 0), 0))}` : "";
   }
 
@@ -193,51 +180,6 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       : `<li class="empty cd-empty">${future ? "아직 적어 둔 일이 없어요." : isPast ? "이날은 시간 없는 할 일이 없었어요." : "오늘 꼭 이루고 싶은 것을 1~3개 적어 보세요."}</li>`;
   }
 
-  function drawScore() {
-    const box = $("#dp-score", el);
-    if (!box) return;
-    const sc = dayScore(S.plans || [], me.day_goal);
-    const study = studyMins({ focus: focusOf(S.logs), english: englishOf(S.english) });
-    const verdict = sc.score == null ? ["", "계획을 세우면 점수가 생겨요"] : sc.score >= 80 ? ["good", "아주 잘했어요"] : sc.score >= 50 ? ["warn", "조금만 더 힘내요"] : ["bad", isPast ? "다음엔 더 잘할 수 있어요" : "아직 시간이 있어요"];
-    box.innerHTML = `
-      <div class="cd-sh"><h3 id="dp-score-t">${isToday ? "오늘 점수" : "그날 점수"}</h3>${verdict[0] ? `<span class="chip ${verdict[0]}">${verdict[1]}</span>` : `<span class="faint">${verdict[1]}</span>`}</div>
-      <div class="score-card">
-        <div class="big">${sc.score ?? "–"}<small>/ 100</small></div>
-        <div class="meters">
-          <div class="meter"><span>계획</span><div class="bar"><i style="width:${pct(sc.plan)}%;opacity:.55"></i></div><em>${pct(sc.plan)}%</em></div>
-          <div class="meter"><span>실행</span><div class="bar"><i style="width:${pct(sc.exec)}%"></i></div><em>${pct(sc.exec)}%</em></div>
-          <div class="meter"><span>공부</span><div class="bar"><i style="width:${pct(study / Math.max(30, me.day_goal))}%;background:var(--accent)"></i></div><em>${study ? hm(study).replace("시간", "h").replace("분", "m").replace(" ", "") : "0m"}</em></div>
-        </div>
-      </div>
-      <p class="dp-hint">계획 = 세운 시간 ${hm(sc.planned)} ÷ 목표 ${hm(me.day_goal)} · 실행 = 해낸 ${sc.planned ? hm(sc.doneMins) : sc.doneCount + "개"} · 점수 = 계획 40 + 실행 60 · 공부 = 집중 + 영어
-        · <button class="linkbtn dp-goal-btn" type="button" id="dp-goal-btn">목표 바꾸기</button></p>
-      <form class="row" id="dp-goal-form" hidden>
-        <label class="muted" for="dp-goal-in" style="font-size:12.5px">하루 목표</label>
-        <select class="select" id="dp-goal-in">${[60, 120, 180, 240, 300, 360, 480, 600].map((m) => `<option value="${m}" ${m === me.day_goal ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
-        <button class="btn sm" type="submit">저장</button>
-      </form>`;
-    $("#dp-goal-btn", box).addEventListener("click", () => { const f = $("#dp-goal-form", box); f.hidden = !f.hidden; });
-    $("#dp-goal-form", box).addEventListener("submit", async (e) => {
-      e.preventDefault();
-      try {
-        const { user } = await api.updateMe({ day_goal: +$("#dp-goal-in", box).value });
-        me.day_goal = user.day_goal;
-        window.dispatchEvent(new CustomEvent("trio:me", { detail: user }));
-        drawScore();
-      } catch (ex) { toast(ex.message, "err"); }
-    });
-  }
-
-  function drawLogs() {
-    const ol = $("#dp-logs", el);
-    if (!ol) return;
-    ol.innerHTML = S.logs.length ? S.logs.map((l) => `
-      <li class="tl-item ${esc(l.kind)}">
-        <time>${esc(l.at)}</time><span class="pin"></span>
-        <span class="t" data-logedit="${esc(l.id)}">${esc(l.text)}</span>
-        <button class="icon-btn sm danger" type="button" data-logdel="${esc(l.id)}" aria-label="기록 삭제">${icon.x(13)}</button>
-      </li>`).join("") : `<li class="empty" style="list-style:none">할 일을 체크하거나, 방금 한 일을 적으면 여기에 시간 순서대로 남아요.</li>`;
-  }
 
   // 그날 한 공부: 숫자 넷 + 영어 블록 + 이날 쓴 노트
   function drawStudy() {
@@ -293,7 +235,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       await api.updatePlan(id, { done });
       if (done && isToday) {
         const { log } = await api.addLog({ day, at: nowTime(), text: `완료 · ${p.text}`, kind: "done" });
-        S.logs.push(log); S.logs.sort((a, b) => a.at.localeCompare(b.at)); drawLogs();
+        S.logs.push(log); S.logs.sort((a, b) => a.at.localeCompare(b.at)); drawStudy();
       }
       changed("plans");
     } catch (e) { p.done = done ? 0 : 1; drawAll(); toast(e.message, "err"); }
@@ -328,7 +270,8 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   }
   async function onElClick(e) {
     const slot = e.target.closest("[data-slot]");
-    if (slot) { const f = $("#dp-quick", el); f.start.value = slot.dataset.slot; f.text.focus(); return; }
+    if (slot) { S.editSlot = slot.dataset.slot; S.editText = ""; drawGrid(); return; }
+    if (e.target.closest("[data-slot-close]")) { S.editSlot = null; drawGrid(); return; }
     const play = e.target.closest("[data-play]");
     if (play) { const p = S.plans.find((x) => x.id === play.dataset.play); if (p) ctx.timer?.startFor(p); return; }
     const del = e.target.closest("[data-del]");
@@ -345,16 +288,10 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       catch (ex) { toast(ex.message, "err"); }
       return;
     }
-    const ld = e.target.closest("[data-logdel]");
-    if (ld) {
-      try { await api.deleteLog(ld.dataset.logdel); S.logs = S.logs.filter((l) => l.id !== ld.dataset.logdel); drawLogs(); drawScore(); drawStudy(); changed("logs"); } catch (ex) { toast(ex.message, "err"); }
-    }
   }
   function onElDbl(e) {
     const ed = e.target.closest("[data-edit]");
     if (ed) return editInline(ed, async (text) => { await api.updatePlan(ed.dataset.edit, { text }); const p = S.plans.find((x) => x.id === ed.dataset.edit); if (p) p.text = text; changed("plans"); });
-    const le = e.target.closest("[data-logedit]");
-    if (le) editInline(le, async (text) => { await api.updateLog(le.dataset.logedit, { text }); const l = S.logs.find((x) => x.id === le.dataset.logedit); if (l) l.text = text; });
   }
 
   $("#dp-goal-add", el).addEventListener("submit", async (e) => {
@@ -364,30 +301,23 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     try { await addPlan({ text }); f.text.value = ""; } catch (ex) { toast(ex.message, "err"); }
     f.text.focus();
   });
-  $("#dp-quick", el).addEventListener("submit", async (e) => {
+  el.addEventListener("submit", async (e) => {
+    const f = e.target.closest("[data-slot-form]");
+    if (!f) return;
     e.preventDefault();
-    const f = e.currentTarget, text = f.text.value.trim(), start = f.start.value, mins = +f.mins.value;
-    if (!text || !S.plans) { f.text.focus(); return; }
-    if (!start) { f.start.focus(); toast("시작 시각을 골라 주세요.", "err"); return; }
+    const text = f.text.value.trim(), start = f.dataset.slotForm, mins = +f.mins.value;
+    if (!text || !S.plans) return f.text.focus();
+    S.editMins = mins;
     try {
       await addPlan({ text, start, mins });
-      f.text.value = ""; f.start.value = toTime(Math.min(23 * 60, toMin(start) + mins)); // 다음 블록은 이어서
+      // 다음 칸을 바로 이어서 적을 수 있게 열어 둬요
+      const next = toMin(start) + mins;
+      S.editSlot = next < 24 * 60 ? toTime(Math.floor(next / 60) * 60) : null; S.editText = "";
+      drawGrid();
     } catch (ex) { toast(ex.message, "err"); }
   });
-  if (!future) {
-    $("#dp-log-form", el).addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const f = e.currentTarget, text = f.text.value.trim();
-      if (!text) return;
-      try {
-        const { log } = await api.addLog({ day, at: f.at.value || nowTime(), text });
-        S.logs.push(log); S.logs.sort((a, b) => a.at.localeCompare(b.at) || a.created_at - b.created_at);
-        f.text.value = ""; if (isToday) f.at.value = nowTime();
-        drawLogs(); changed("logs");
-      } catch (ex) { toast(ex.message, "err"); }
-    });
-    stopDiary = mountDiary($("#dp-diary", el), day, { rows: 5, onSaved: () => changed("diary") });
-  }
+  el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; drawGrid(); } });
+  el.addEventListener("input", (e) => { if (e.target.matches("[data-slot-form] [name=text]")) S.editText = e.target.value; });
 
   const onChanged = (e) => { if (["logs", "plans"].includes(e.detail?.kind)) load(); };
   window.addEventListener("trio:changed", onChanged);
@@ -397,7 +327,6 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
 
   return () => {
     alive = false;
-    stopDiary?.();
     window.removeEventListener("trio:changed", onChanged);
     el.removeEventListener("change", onElChange);
     el.removeEventListener("click", onElClick);
