@@ -19,6 +19,11 @@ async function request(method, path, body) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 401 && path !== "/me" && !path.startsWith("/auth")) window.dispatchEvent(new CustomEvent("trio:logout"));
+    // 스터디장이 정해 준 비밀번호를 아직 안 바꿨으면: 비밀번호 창을 띄우고, 화면마다 오류를 띄우지 않게 조용히 실패해요
+    if (res.status === 403 && data.must_change_password) {
+      window.dispatchEvent(new CustomEvent("trio:must-change"));
+      throw new ApiError(403, "", data);
+    }
     throw new ApiError(res.status, data.error || "요청을 처리하지 못했어요.", data);
   }
   return data;
@@ -31,6 +36,7 @@ export const api = {
   login: (username, password) => request("POST", "/auth/login", { username, password }),
   signup: (b) => request("POST", "/auth/signup", b),
   logout: () => request("POST", "/auth/logout"),
+  changePassword: (current, next) => request("POST", "/auth/password", { current, next }),
   updateMe: (b) => request("PATCH", "/me", b),
   users: () => request("GET", "/users"),
 
@@ -68,6 +74,18 @@ export const api = {
   saveRecord: (day) => request("POST", "/records", { day }),
   recordDays: (year) => request("GET", "/records/days?" + qs({ year })),
 
+  // 캘린더 — 한 달 칸 요약 · 하루 한 페이지 (본인만)
+  calendar: (from, to) => request("GET", "/calendar?" + qs({ from, to })),
+  calendarDay: (day) => request("GET", "/calendar/day?" + qs({ day })),
+
+  // 같이 하기 — 숫자·상태만 (내용은 비공개)
+  presence: () => request("GET", "/presence"),
+  setPresence: (b) => request("PUT", "/presence", b),
+  cheers: (day) => request("GET", "/cheers?" + qs({ day })),
+  cheer: (to) => request("POST", "/cheers", { to }),
+  reviewWeek: (week) => request("GET", "/review/week?" + qs({ week })),
+  reviewWeekAi: (week) => request("POST", "/review/week/ai", { week }),
+
   // 영어 (ENGLISH-OS) — 나만 보는 하루 기록 · 막힌 표현 · 복습 카드
   englishDay: (day) => request("GET", "/english/day?" + qs({ day })),
   saveEnglishDay: (b) => request("PUT", "/english/day", b),
@@ -101,6 +119,7 @@ export async function streamChat(payload, onEvent, signal) {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     if (res.status === 401) window.dispatchEvent(new CustomEvent("trio:logout"));
+    if (res.status === 403 && data.must_change_password) { window.dispatchEvent(new CustomEvent("trio:must-change")); throw new ApiError(403, "", data); }
     throw new ApiError(res.status, data.error || "질문을 보내지 못했어요.");
   }
   const reader = res.body.getReader(), dec = new TextDecoder();

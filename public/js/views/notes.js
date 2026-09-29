@@ -50,7 +50,8 @@ export function mount(root, ctx, r) {
       <aside class="note-list" aria-label="노트 목록">
         <div class="top">
           <div class="row" style="justify-content:space-between">
-            <h1 class="h2">노트</h1>
+            <h1 class="sr-only">노트</h1>
+            <nav class="seg nt-tabs" aria-label="노트 · 그래프"><a href="#/notes" aria-current="page">노트</a><a href="#/graph">그래프</a></nav>
             <span class="row" style="gap:2px">
               <button class="btn ghost sm" type="button" id="daily">오늘 노트</button>
               <button class="btn sm accent" type="button" id="new">${icon.plus(14)}새 노트</button>

@@ -1,17 +1,19 @@
-// 홈 — 차트 네 쪽을 넘겨 봐요: 전체(링 넷) · 한 달 · 한 주 · 하루.
+// 홈 — 차트 다섯 쪽을 넘겨 봐요: 전체(링 넷) · 한 달 · 한 주 · 하루 · 우리 셋(주간 회고).
+// 멤버 칩에는 "공부 중 · n분째"(숫자·상태만), 다른 사람 차트를 볼 땐 👏 응원(하루 한 번).
 // 읽는 법은 어디서나 같아요: 진한 색 = 이룬 목표/끝낸 일 · 옅은 색 = 이미 지난 시간 · 회색 = 남은 것 · 흰 눈금 = 지금.
 // 링이나 칸을 누르면 그 기간의 계획(또는 그날)으로 들어가요.
 import { api } from "../api.js";
-import { $, $$, esc, ymd, today, periodKey, periodStart, periodEnd, elapsed, dayScore, pct, nowTime, toast, daysInYear, dayOfYear, initial, addDays } from "../util.js";
+import { $, $$, esc, ymd, today, periodKey, periodStart, periodEnd, elapsed, dayScore, pct, nowTime, toast, daysInYear, dayOfYear, initial, addDays, isoWeek } from "../util.js";
 import { ringHud, ringRows, gapText, RINGS } from "../ringhud.js";
 import { periodChart } from "../charts/period.js";
 import { dayClock } from "../charts/day.js";
 import { mountPager, savedPage } from "../charts/pager.js";
+import { teamWeek } from "../charts/team.js";
 import { scramble } from "../fx.js";
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
 const daysLeft = (key) => Math.max(0, Math.ceil((periodEnd(key) - Date.now()) / 864e5));
-const PAGES = [{ key: "all", label: "전체" }, { key: "month", label: "한 달" }, { key: "week", label: "한 주" }, { key: "day", label: "하루" }];
+const PAGES = [{ key: "all", label: "전체" }, { key: "month", label: "한 달" }, { key: "week", label: "한 주" }, { key: "day", label: "하루" }, { key: "team", label: "우리 셋" }];
 const MAX_PERIODS = 20; // 서버가 한 번에 받는 기간 수
 
 // 아래 범례 — 페이지마다 같은 문법, 말만 조금씩
@@ -22,14 +24,21 @@ const LEGEND = {
   day: ["진한 색 = 끝낸 일", "옅은 색 = 이미 지난 시간", "회색 = 아직 안 한 일"],
 };
 const HINT = { all: "링을 누르면 그 기간 계획으로", month: "칸을 누르면 그날로", week: "칸을 누르면 그날로", day: "누르면 오늘 시간표로" };
-const COLOR = { all: "var(--r-week)", month: "var(--r-month)", week: "var(--r-week)", day: "var(--r-day)" };
+const COLOR = { all: "var(--r-week)", month: "var(--r-month)", week: "var(--r-week)", day: "var(--r-day)", team: "var(--m0)" };
+// 서버 시각은 ms · 초 · ISO 어느 쪽이 와도 ms 로
+const ms = (v) => (v == null ? null : typeof v === "string" ? Date.parse(v) : v < 1e12 ? v * 1000 : v);
+// 이름 뒤 조사: 받침 있으면 "이", 없거나 영문이면 "가"
+const iga = (w) => { const c = w.charCodeAt(w.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 ? "이" : "가"; };
 
 export function mount(root, ctx) {
   const t = today();
   const K = { year: periodKey("year", t), month: periodKey("month", t), week: periodKey("week", t), day: periodKey("day", t) };
   const left = daysInYear(t.getFullYear()) - dayOfYear(t);
-  const HREF = { year: "#/plans/year", month: "#/plans/month", week: "#/plans/week", day: "#/today" };
-  const S = { who: ctx.me.id, items: null, data: null, score: null, hover: null, tip: null, wide: null, first: true };
+  const HREF = { year: "#/plans/year", month: "#/plans/month", week: "#/plans/week", day: `#/calendar/${ymd(t)}` };
+  const S = { who: ctx.me.id, items: null, data: null, score: null, hover: null, tip: null, wide: null, first: true,
+    pres: null, presAt: 0, cheers: { received: [], sent: [] }, cheering: false,
+    wk: { off: 0, cache: {}, busy: false, error: null } };
+  let alive = true;
 
   // 이번 달의 모든 날 + 이번 주의 모든 날 (주가 달을 넘어가도)
   const monthDays = [], weekDays = [];
@@ -44,6 +53,7 @@ export function mount(root, ctx) {
         <div class="hud-tl">
           <span class="eyebrow">${t.getMonth() + 1}월 ${t.getDate()}일 ${"일월화수목금토"[t.getDay()]}요일 · ${+K.week.slice(7).replace("W", "")}주차</span>
           <h1 class="stage-hi" id="hi">${greet(new Date().getHours())}, <b></b></h1>
+          <div class="hud-cheer" id="cheer" aria-live="polite"></div>
         </div>
         <div class="hud-tr mono" id="clock"></div>
         <div class="stage-chart v9" id="chart">
@@ -70,8 +80,8 @@ export function mount(root, ctx) {
 
   const chart = $("#chart", root), view = $("#pg-view", root);
   const mine = () => S.who === ctx.me.id;
-  const target = (key) => (mine() ? HREF[key] : `#/u/${S.who}/today/${ymd(t)}`);
-  const dayTarget = (d) => (mine() ? `#/today/${d}` : `#/u/${S.who}/today/${d}`);
+  const target = (key) => (mine() ? HREF[key] : "#/"); // 다른 사람은 차트만 (눌러도 안내만)
+  const dayTarget = (d) => `#/calendar/${d}`;
   const pageKey = () => PAGES[pager.index].key;
 
   function drawFocusLine() {
@@ -80,6 +90,10 @@ export function mount(root, ctx) {
     line.style.setProperty("--kc", COLOR[pk]);
     if (S.tip) { line.innerHTML = `<span>${esc(S.tip.text)}</span>${S.tip.go ? `<span class="fl-go">${esc(S.tip.go)}</span>` : ""}`; return; }
     if (it) { line.innerHTML = `<span class="fl-key">${esc(it.en)}</span><span>${it.total ? `${pct(it.value)}% 달성` : "목표 없음"} · ${pct(it.time)}% 지남 · ${esc(gapText(it))}</span><span class="fl-go">${mine() ? "눌러서 계획 →" : "눌러서 하루 보기 →"}</span>`; return; }
+    if (pk === "team") {
+      line.innerHTML = `${ctx.users.map((u, i) => `<span class="key"><i class="k-done" style="background:var(--m${i % 3})"></i>${esc(u.username.toUpperCase())}</span>`).join("")}<span class="key"><i class="k-todo"></i>회색 = 남은 계획</span><span class="faint">공부 시간 = 집중 + 영어 · 숫자는 셋 다, 글은 나만</span>`;
+      return;
+    }
     const [a, b, c] = LEGEND[pk];
     line.innerHTML = `<span class="key"><i class="k-done"></i>${a}</span><span class="key"><i class="k-past"></i>${b}</span><span class="key"><i class="k-todo"></i>${c}</span>${pk === "day" ? `<span class="key"><i class="k-now"></i>바늘 = 지금</span>` : ""}<span class="faint">${mine() ? HINT[pk] : "다른 사람은 차트만 보여요 · 내용은 비공개"}</span>`;
   }
@@ -88,6 +102,7 @@ export function mount(root, ctx) {
   function render(i) {
     if (!S.items) return "";
     const key = PAGES[i].key, wide = S.wide;
+    if (key === "team") return renderTeam();
     if (key === "all") return ringHud(S.items, { wide, center: S.score == null ? "–" : String(S.score), caption: mine() ? "오늘 점수" : "오늘" });
     if (key === "day") return dayClock(S.data.day, { wide });
     return periodChart(S.data[key], { wide });
@@ -95,19 +110,21 @@ export function mount(root, ctx) {
 
   // 그린 뒤: 처음 차오르는 모션, 가운데 숫자, 화살표 자리, 좁은 화면용 목록
   function after(el, enter) {
-    const svg = $("svg", el);
+    const svg = el.querySelector(":scope > svg");
+    if (pageKey() === "team") loadWeek();
     if (svg && enter) { svg.classList.add("enter"); requestAnimationFrame(() => requestAnimationFrame(() => svg.classList.remove("enter"))); }
     if (pageKey() === "all") { const c = $(".rh-center", el); if (c && S.score != null && enter) scramble(c, String(S.score)); }
     $("#rows", root).innerHTML = !S.wide && pageKey() === "all" && S.items ? ringRows(S.items, target) : "";
-    fitArrows(svg);
+    fitArrows(el);
     // 시작하기: 전체 쪽에선 펼쳐 두고, 다른 쪽에선 차트를 가리지 않게 작게 접어요 (누르면 펼쳐져요)
     const g = $("#guide", root); g.classList.toggle("mini", pageKey() !== "all"); g.classList.remove("open");
     S.tip = null;
     focus(pageKey() === "all" ? S.hover : null);
   }
   // 화살표를 차트 바로 옆에 붙여요 (svg 가 칸에 맞춰 줄어든 실제 폭으로)
-  function fitArrows(svg) {
-    if (!svg) return;
+  function fitArrows(slide) {
+    const svg = slide?.querySelector(":scope > svg");
+    if (!svg) { const w = slide?.firstElementChild?.offsetWidth; if (w) chart.style.setProperty("--cw", w + "px"); return; }
     const vb = svg.viewBox.baseVal, w = svg.clientWidth, h = svg.clientHeight;
     if (!vb || !w || !h) return;
     chart.style.setProperty("--cw", Math.min(w, (vb.width * h) / vb.height) + "px");
@@ -174,6 +191,7 @@ export function mount(root, ctx) {
       $("#clock", root).innerHTML = `<span>${nowTime()}</span><span>올해 ${pct(elapsed(K.year))}% 지남</span><span>D-${left}</span>`;
       if (mine()) drawGuide({ day: sc.count > 0, year: year.length > 0 }); else $("#guide", root).hidden = true;
       $$("[data-who]", root).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.who === S.who)));
+      drawCheer();
       draw();
     } catch (e) { toast(e.message, "err"); }
   }
@@ -186,7 +204,7 @@ export function mount(root, ctx) {
     const g = $("#guide", root);
     if (hasNotes === null) hasNotes = await api.notes().then((r) => r.notes.length > 0).catch(() => true);
     const steps = [
-      { ok: done.day, n: 1, t: "오늘 할 일 적기", d: "시간표에 할 일을 넣고, 끝나면 체크해요. 가장 안쪽 분홍 링이 차요.", href: "#/today", go: "오늘로" },
+      { ok: done.day, n: 1, t: "오늘 할 일 적기", d: "캘린더의 오늘 페이지에서 시간표에 할 일을 넣고, 끝나면 체크해요. 가장 안쪽 분홍 링이 차요.", href: `#/calendar/${ymd(t)}`, go: "오늘로" },
       { ok: done.year, n: 2, t: "올해 목표 정하기", d: "목표를 이룰 때마다 바깥 주황 링이 차요. 이번 달·주 목표도 같은 곳에서.", href: "#/plans/year", go: "계획으로" },
       { ok: hasNotes, n: 3, t: "배운 것 노트에 쓰기 → AI 정리", d: "AI가 주제·태그·링크를 달아 주고, 그래프에서 연결이 보여요.", href: "#/notes", go: "노트로" },
     ];
@@ -200,6 +218,10 @@ export function mount(root, ctx) {
   }
 
   root.addEventListener("click", (e) => {
+    const wk = e.target.closest("[data-wk]");
+    if (wk) { const off = +wk.dataset.wk; if (off !== S.wk.off) { S.wk.off = off; S.wk.error = null; redrawTeam(); } return; }
+    if (e.target.closest("#wk-ai-btn")) { makeReview(); return; }
+    if (e.target.closest("#cheer-btn")) { sendCheer(); return; }
     const b = e.target.closest("[data-who]");
     if (b && b.dataset.who !== S.who) { S.who = b.dataset.who; S.hover = null; load(true); return; }
     const d = e.target.closest("svg [data-day]");
@@ -220,14 +242,109 @@ export function mount(root, ctx) {
 
   let lastW = 0;
   const ro = new ResizeObserver(() => {
-    const w = chart.clientWidth, svg = $(".pg-slide:not(.out) svg", view);
+    const w = chart.clientWidth, slide = $(".pg-slide:not(.out)", view);
     if (Math.abs(w - lastW) > 4) { lastW = w; if (S.items && (w >= 860) !== S.wide) { draw(false); return; } }
-    fitArrows(svg);
+    fitArrows(slide);
   });
   ro.observe(chart);
+  // ---------- 같이 하기: 지금 공부 중 · 응원 ----------
+  async function loadTogether() {
+    const day = ymd(t);
+    const [p, c] = await Promise.all([api.presence().catch(() => null), api.cheers(day).catch(() => null)]);
+    if (!alive) return;
+    if (p) { S.pres = p; S.presAt = Date.now(); }
+    if (c) S.cheers = { received: c.received || [], sent: c.sent || [] };
+    drawChips(); drawCheer();
+  }
+  function drawChips() {
+    const now = ms(S.pres?.now) ?? Date.now(), lag = Date.now() - S.presAt;
+    $$("[data-who]", root).forEach((b) => {
+      const u = ctx.user(b.dataset.who), m = (S.pres?.members || []).find((x) => x.user_id === b.dataset.who);
+      const on = !!(m?.focus && b.dataset.who !== ctx.me.id);
+      let live = $(".ws-live", b);
+      if (!on) { live?.remove(); b.removeAttribute("title"); b.setAttribute("aria-label", `${u?.display_name || ""} 현황 보기`); return; }
+      const mins = Math.max(1, Math.floor((now + lag - (ms(m.started_at) ?? now)) / 60000));
+      const txt = `공부 중 · ${mins}분째`;
+      if (!live) { live = document.createElement("span"); live.className = "ws-live"; b.append(live); }
+      live.innerHTML = `<i aria-hidden="true"></i>${txt}`;
+      b.title = `${u?.display_name || ""} · ${txt}`;
+      b.setAttribute("aria-label", `${u?.display_name || ""} 현황 보기 · ${txt}`);
+    });
+  }
+  function drawCheer() {
+    const el = $("#cheer", root);
+    if (!el) return;
+    if (!mine()) {
+      const u = ctx.user(S.who), sent = S.cheers.sent.includes(S.who);
+      el.innerHTML = `<button type="button" class="btn sm ghost cheer-btn" id="cheer-btn" ${sent || S.cheering ? "disabled" : ""} title="하루 한 번 응원을 보낼 수 있어요">👏 ${sent ? "오늘 응원했어요" : `${esc(u?.username.toUpperCase() || "")} 응원하기`}</button>`;
+      return;
+    }
+    const names = [...new Set(S.cheers.received.map((r) => ctx.user(r.from_id)?.username.toUpperCase()).filter(Boolean))];
+    el.innerHTML = names.length ? `<p class="cheer-got">오늘 ${esc(names.join("·"))}${iga(names.at(-1))} 응원했어요 👏</p>` : "";
+  }
+  async function sendCheer() {
+    const to = S.who, u = ctx.user(to);
+    if (to === ctx.me.id || S.cheering) return;
+    S.cheering = true; drawCheer();
+    try {
+      await api.cheer(to);
+      S.cheers.sent = [...S.cheers.sent, to];
+      toast(`👏 ${u?.username.toUpperCase() || ""}에게 응원을 보냈어요.`);
+    } catch (e) {
+      if (e.status === 409) { S.cheers.sent = [...S.cheers.sent, to]; toast("오늘은 이미 응원했어요"); }
+      else toast(e.message, "err");
+    } finally { S.cheering = false; if (alive) drawCheer(); }
+  }
+
+  // ---------- 5쪽 우리 셋: 한 주 숫자 + 내 AI 회고 ----------
+  const weekOf = (off) => {
+    const d = addDays(t, 7 * off), key = periodKey("week", d).slice(2);
+    const from = periodStart("W:" + key);
+    return { key, from, to: addDays(from, 6), no: isoWeek(from).w };
+  };
+  function renderTeam() {
+    const w = weekOf(S.wk.off);
+    return teamWeek({ data: S.wk.cache[w.key], users: ctx.users, meId: ctx.me.id, off: S.wk.off, weekNo: w.no, from: w.from, to: w.to, busy: S.wk.busy, error: S.wk.error });
+  }
+  function redrawTeam() {
+    if (pageKey() !== "team") return;
+    const el = pager.redraw();
+    fitArrows(el);
+    loadWeek();
+  }
+  let wkReq = 0;
+  async function loadWeek(force = false) {
+    const w = weekOf(S.wk.off);
+    if (!force && (S.wk.cache[w.key] || S.wk.error)) return;
+    const my = ++wkReq;
+    try {
+      const res = await api.reviewWeek(w.key);
+      if (!alive || my !== wkReq) return;
+      S.wk.cache[w.key] = res; S.wk.error = null;
+    } catch (e) {
+      if (!alive || my !== wkReq) return;
+      if (!S.wk.cache[w.key]) S.wk.error = e.message || "잠시 뒤 다시 해 주세요.";
+    }
+    if (pageKey() === "team") fitArrows(pager.redraw());
+  }
+  async function makeReview() {
+    if (S.wk.busy) return;
+    const w = weekOf(S.wk.off);
+    S.wk.busy = true; redrawTeam();
+    try {
+      const r = await api.reviewWeekAi(w.key);
+      const m = r?.mine || r?.review || (r?.body ? r : null);
+      if (m?.body && S.wk.cache[w.key]) S.wk.cache[w.key] = { ...S.wk.cache[w.key], mine: { body: m.body, created_at: m.created_at } };
+      else await loadWeek(true);
+      toast(`${S.wk.off === 0 ? "이번 주" : "지난주"} 회고를 만들었어요. 나만 볼 수 있어요.`);
+    } catch (e) { toast(e.message || "AI 회고를 만들지 못했어요.", "err"); }
+    finally { S.wk.busy = false; if (alive) redrawTeam(); }
+  }
+
   load(true);
-  const tick = setInterval(() => load(false), 60_000);
-  const onChanged = () => load(false);
+  loadTogether();
+  const tick = setInterval(() => { load(false); loadTogether(); if (pageKey() === "team") loadWeek(true); }, 60_000);
+  const onChanged = () => { load(false); loadTogether(); };
   window.addEventListener("trio:changed", onChanged);
-  return () => { clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); };
+  return () => { alive = false; clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); };
 }

@@ -1,6 +1,7 @@
 // 계정 만들기 / 비밀번호 바꾸기 (가입 화면 없이 3명만 쓰기 위해)
 //   node scripts/add-user.mjs <아이디> <이름> <비밀번호> [--color=#E8552B] [--remote]
 // 같은 아이디가 있으면 이름·비밀번호만 바꿔요. --remote 를 붙이면 배포된 DB에 적용돼요.
+// 스터디장이 정해 준 비밀번호라서, 그 사람은 첫 로그인 때 꼭 새 비밀번호로 바꿔야 해요 (must_change_pw = 1).
 import { pbkdf2Sync, randomBytes, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 
@@ -22,10 +23,10 @@ const hash = pbkdf2Sync(password, salt, 100_000, 32, "sha256").toString("hex"); 
 const q = (s) => "'" + String(s).replace(/'/g, "''") + "'";
 const palette = ["#E8552B", "#4C6FFF", "#14A38B"];
 const colorSql = color ? q(color) : `(SELECT CASE (SELECT COUNT(*) FROM users) % 3 WHEN 0 THEN ${q(palette[0])} WHEN 1 THEN ${q(palette[1])} ELSE ${q(palette[2])} END)`;
-const sql = `INSERT INTO users (id, username, display_name, color, pw_hash, pw_salt, created_at)
-VALUES (${q(randomUUID())}, ${q(username)}, ${q(name)}, ${colorSql}, ${q(hash)}, ${q(salt.toString("hex"))}, ${Date.now()})
-ON CONFLICT(username) DO UPDATE SET display_name = excluded.display_name, pw_hash = excluded.pw_hash, pw_salt = excluded.pw_salt, fail_count = 0, locked_until = 0${color ? ", color = excluded.color" : ""};
+const sql = `INSERT INTO users (id, username, display_name, color, pw_hash, pw_salt, must_change_pw, created_at)
+VALUES (${q(randomUUID())}, ${q(username)}, ${q(name)}, ${colorSql}, ${q(hash)}, ${q(salt.toString("hex"))}, 1, ${Date.now()})
+ON CONFLICT(username) DO UPDATE SET display_name = excluded.display_name, pw_hash = excluded.pw_hash, pw_salt = excluded.pw_salt, must_change_pw = 1, fail_count = 0, locked_until = 0${color ? ", color = excluded.color" : ""};
 DELETE FROM sessions WHERE user_id = (SELECT id FROM users WHERE username = ${q(username)});`;
 
 execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", flags.remote ? "--remote" : "--local", "--command", sql], { stdio: ["ignore", "ignore", "inherit"] });
-console.log(`✓ ${name} (@${username}) 계정을 ${flags.remote ? "배포 DB" : "로컬 DB"}에 저장했어요.`);
+console.log(`✓ ${name} (@${username}) 계정을 ${flags.remote ? "배포 DB" : "로컬 DB"}에 저장했어요. 첫 로그인 때 비밀번호를 바꾸게 돼요.`);

@@ -6,7 +6,6 @@ export const icon = {
   plans: (z) => s('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>', z),
   notes: (z) => s('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>', z),
   graph: (z) => s('<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="9" cy="18" r="2.5"/><path d="M8.2 7.2l7.5.6M7 8.4l1.5 7.2M16.5 10l-5.8 6.3"/>', z),
-  team: (z) => s('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.8.3 5 2.6 5 5.8"/>', z),
   search: (z) => s('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', z),
   plus: (z) => s('<path d="M12 5v14M5 12h14"/>', z),
   x: (z) => s('<path d="M6 6l12 12M18 6L6 18"/>', z),
@@ -41,16 +40,13 @@ export const logo = (size = 26) => `<svg width="${size}" height="${size}" viewBo
 // ---------- 툴바용 앱 아이콘 (아이폰 홈 화면처럼 색 있는 둥근 사각형 + 한눈에 뜻이 보이는 그림) ----------
 const g = (d, sw = 2) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const DOW_KO = ["일", "월", "화", "수", "목", "금", "토"];
+// Dock: 홈 · 캘린더(오늘 날짜 달력) · 계획 | 노트 · 영어 · AI | 타이머. 그래프·일기는 캘린더/노트 안으로 들어가서 그림이 없어요.
 // 타일은 무채색, 그 앱을 상징하는 부분에만 차트와 같은 차분한 색 (--c-*)
 const GLYPH = {
   home: g('<path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V19a1 1 0 0 0 1 1h3.5v-5.5h3V20H17a1 1 0 0 0 1-1V9.5"/>'),
   search: g('<circle cx="10.5" cy="10.5" r="6"/><path d="m15.2 15.2 4.8 4.8"/>', 2.4),
   // 미리 알림처럼: 색 동그라미 3개 + 회색 줄
   plans: `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><circle cx="6" cy="6.5" r="2.3" fill="var(--c-blue)"/><circle cx="6" cy="12" r="2.3" fill="var(--c-green)"/><circle cx="6" cy="17.5" r="2.3" fill="var(--c-amber)"/><path d="M10.5 6.5h9M10.5 12h9M10.5 17.5h9" stroke="currentColor" stroke-opacity=".55" stroke-width="1.8" stroke-linecap="round"/></svg>`,
-  // 일기: 무채색 책 + 로즈 하트
-  diary: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h11a1.5 1.5 0 0 1 1.5 1.5v14a1.5 1.5 0 0 1-1.5 1.5H6z"/><path d="M6 3.5v17"/><path d="M12 9.2c-.9-1.4-3.2-.9-3.2.9 0 1.6 3.2 3.6 3.2 3.6s3.2-2 3.2-3.6c0-1.8-2.3-2.3-3.2-.9z" fill="var(--c-rose)" stroke="none"/></svg>`,
-  // 그래프: 회색 선 + 보라 점
-  graph: `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M8 8.2 10.6 15M16.3 7.4 13.4 15.4M8.2 6.8l7.5-.6M14.5 16.8l3-1.2" stroke-opacity=".6"/><g fill="var(--c-violet)" stroke="none"><circle cx="6" cy="7" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="17.5" r="2.7"/><circle cx="19" cy="15" r="1.7"/></g></svg>`,
   // AI: 차트 색을 잇는 은은한 그라데이션 반짝임
   ai: `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><defs><linearGradient id="ai-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--c-amber)"/><stop offset=".5" stop-color="var(--c-rose)"/><stop offset="1" stop-color="var(--c-blue)"/></linearGradient></defs><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z" fill="url(#ai-g)"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="url(#ai-g)"/></svg>`,
   // 영어: 무채색 말풍선 + 청록 "En"

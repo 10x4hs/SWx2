@@ -135,6 +135,7 @@ export function ring(value, { size = 120, stroke = 10, time = null, label = "", 
 }
 
 export function toast(msg, kind = "") {
+  if (!msg) return; // 조용한 오류(예: 비밀번호를 먼저 바꿔야 할 때)는 띄우지 않아요
   let host = document.getElementById("toasts");
   const el = document.createElement("div");
   el.className = "toast " + kind;
@@ -147,5 +148,10 @@ export function toast(msg, kind = "") {
 
 export function planHash(p) {
   const v = p.period.slice(2);
-  return p.scope === "day" ? "#/today/" + v : `#/plans/${p.scope}/${v}`;
+  return p.scope === "day" ? "#/calendar/" + v : `#/plans/${p.scope}/${v}`;
 }
+
+// ---------- 공부 시간 = 집중 기록 + 영어 블록 분 (캘린더 · 회고 · 홈이 같은 뜻) ----------
+export const focusOf = (logs = []) => logs.reduce((n, l) => n + (l.kind === "focus" ? l.mins || 0 : 0), 0);
+export const englishOf = (en) => (en ? en.minutes ?? Object.values(en.blocks || {}).reduce((n, m) => n + (+m || 0), 0) : 0);
+export const studyMins = ({ focus = 0, english = 0 } = {}) => Math.max(0, Math.round((+focus || 0) + (+english || 0)));

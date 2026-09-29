@@ -2,15 +2,13 @@
 import { api } from "./api.js";
 import { $, $$, esc, initial, debounce, ymd, today, nowTime, toast, pad, planHash } from "./util.js";
 import { icon, appIcon } from "./icons.js";
-import * as todayView from "./views/today.js";
 import * as plansView from "./views/plans.js";
 import * as notesView from "./views/notes.js";
 import * as graphView from "./views/graph.js";
-import * as teamView from "./views/team.js";
 import * as aiView from "./views/ai.js";
 import * as homeView from "./views/home.js";
-import * as diaryView from "./views/diary.js";
 import * as englishView from "./views/english.js";
+import * as calendarView from "./views/calendar.js";
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
 
@@ -22,6 +20,7 @@ const ctx = {
   go: (hash) => { if (location.hash !== hash) location.hash = hash; else route(); },
   changed: (kind) => window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind } })),
   refreshSide: () => refreshSide(),
+  timer: null, // 아래 집중 타이머 (할 일 ▶ 에서 써요)
 };
 let cleanup = null;
 
@@ -36,8 +35,11 @@ async function boot() {
 }
 function showAuth() {
   if (cleanup) { cleanup(); cleanup = null; }
+  if (ctx.me && timer.running) timer.stop(); // 로그아웃하면 타이머도 멈춰요
   ctx.me = null;
   lastView = null;
+  document.querySelector(".pw-back")?.remove();
+  window.dispatchEvent(new CustomEvent("trio:signed-out")); // pwa.js 가 듣고 API 캐시를 지워요
   mountAuth(app, { onDone: enter });
 }
 // 무채색 테마: 멤버 색은 가입 순서대로 먹 · 슬레이트 · 실버 톤
@@ -48,9 +50,13 @@ async function enter(user) {
   ctx.me = { ...user, color: ctx.users.find((u) => u.id === user.id)?.color || MEMBER_TONES[0] };
   document.documentElement.style.setProperty("--me", ctx.me.color);
   renderShell();
+  // 스터디장이 정해 준 비밀번호 그대로면: 화면을 열기 전에 먼저 바꾸게 해요
+  if (ctx.me.must_change_pw) { openPassword({ force: true }); return; }
   route();
   refreshSide();
 }
+// 어떤 API든 "비밀번호부터 바꿔 주세요"(403)를 받으면 같은 창
+window.addEventListener("trio:must-change", () => { if (ctx.me) { ctx.me.must_change_pw = true; openPassword({ force: true }); } });
 window.addEventListener("trio:logout", () => { if (ctx.me) { toast("로그인이 만료됐어요. 다시 로그인해 주세요.", "err"); showAuth(); } });
 window.addEventListener("trio:me", (e) => {
   ctx.me = { ...e.detail, color: ctx.me?.color || MEMBER_TONES[0] };
@@ -60,30 +66,31 @@ window.addEventListener("trio:me", (e) => {
 });
 
 // ---------- shell ----------
+// 검색 | 홈 · 캘린더 · 계획 | 노트 · 영어 · AI | 타이머 · 프로필
+// 오늘 · 일기 · 기록은 캘린더 안으로(그날 페이지 · 연 잔디), 그래프는 노트 안의 탭으로 들어갔어요.
 const NAV = [
-  { key: "home", hash: "#/", label: "홈", tip: "홈 · 올해·이번 달 진행률" },
-  { key: "today", hash: "#/today", label: "오늘", tip: "오늘 · 시간표·할 일·일기" },
+  { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
+  { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
   { key: "plans", hash: "#/plans/month", label: "계획", tip: "계획 · 연·월·주 목표" },
-  { key: "diary", hash: "#/diary", label: "일기", tip: "일기 · 하루 한 편, 잔디" },
+  { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리 · 그래프" },
   { key: "english", hash: "#/english", label: "영어", tip: "영어 · 6개월 프리토킹" },
-  { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리, AI 정리" },
-  { key: "graph", hash: "#/graph", label: "그래프", tip: "그래프 · 노트 연결 지도" },
   { key: "ai", hash: "#/ai", label: "AI 튜터", tip: "AI 튜터 · 묻고 노트로 정리" },
 ];
+const NAV_SPLIT = 3;
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 function renderShell() {
   // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점.
-  const item = (n) => `<a class="rail-btn" href="${n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.key)}</a>`;
+  const item = (n) => `<a class="rail-btn" href="${n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}</a>`;
   app.innerHTML = `
     <div class="shell">
       <aside class="rail dock glass" aria-label="메뉴">
         <button class="rail-btn" type="button" id="open-palette" aria-label="검색 · 명령 (${isMac ? "⌘" : "Ctrl"} K)" data-tip="검색 · ${isMac ? "⌘" : "Ctrl"}K">${appIcon("search")}</button>
         <i class="dock-sep" aria-hidden="true"></i>
         <nav class="rail-nav">
-          ${NAV.slice(0, 4).map(item).join("")}
+          ${NAV.slice(0, NAV_SPLIT).map(item).join("")}
           <i class="dock-sep" aria-hidden="true"></i>
-          ${NAV.slice(4).map(item).join("")}
+          ${NAV.slice(NAV_SPLIT).map(item).join("")}
         </nav>
         <div class="rail-foot">
           <button class="rail-btn" type="button" id="timer-btn" aria-label="집중 타이머" data-tip="집중 타이머 · 25분" aria-expanded="false">${appIcon("timer")}<span id="timer-mini"></span></button>
@@ -100,7 +107,7 @@ function renderShell() {
   });
   document.addEventListener("click", (e) => {
     const pop = $("#timer");
-    if (pop && !pop.hidden && !e.target.closest("#timer, #timer-btn")) { pop.hidden = true; $("#timer-btn")?.setAttribute("aria-expanded", "false"); }
+    if (pop && !pop.hidden && e.target.isConnected && !e.target.closest("#timer, #timer-btn, [data-play]")) { pop.hidden = true; $("#timer-btn")?.setAttribute("aria-expanded", "false"); }
   });
   renderMeRow();
   renderTimer();
@@ -118,6 +125,7 @@ function renderMeRow() {
     <div class="me-menu glass" id="me-menu" role="menu" hidden>
       <div class="me-head"><span class="av" style="--c:${esc(ctx.me.color)}">${esc(initial(ctx.me.display_name))}</span><span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small></span></div>
       <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
+      <button type="button" role="menuitem" id="pw-btn">${icon.lock(16)}비밀번호 바꾸기</button>
       <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
     </div>`;
   const menu = $("#me-menu"), btn = $("#me-btn");
@@ -132,7 +140,75 @@ function renderMeRow() {
     try { localStorage.setItem("trio-theme", next); } catch {}
     renderMeRow();
   });
+  $("#pw-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openPassword(); });
   $("#logout-btn").addEventListener("click", async () => { await api.logout().catch(() => {}); showAuth(); });
+}
+
+// ---------- 비밀번호 바꾸기 (내 것만, 지금 비밀번호 확인) ----------
+// force = 스터디장이 정해 준 비밀번호 그대로일 때: 닫기 · Esc · 바깥 누르기 없이, 취소 대신 로그아웃만.
+function openPassword({ force = false } = {}) {
+  const open = document.querySelector(".pw-back");
+  if (open) { if (force && !open.dataset.force) { open.remove(); } else return; }
+  const prevFocus = document.activeElement;
+  const back = document.createElement("div");
+  back.className = "palette-back pw-back" + (force ? " force" : "");
+  if (force) back.dataset.force = "1";
+  back.innerHTML = `
+    <form class="pw-dialog glass" role="dialog" aria-modal="true" aria-labelledby="pw-title" aria-describedby="pw-help" autocomplete="on" novalidate>
+      <input type="text" name="username" value="${esc(ctx.me.username)}" autocomplete="username" hidden>
+      <div class="pw-head"><h2 id="pw-title">${force ? "먼저 비밀번호를 바꿔 주세요" : "비밀번호 바꾸기"}</h2>${force ? "" : `<button class="icon-btn sm" type="button" data-close aria-label="닫기">${icon.x(16)}</button>`}</div>
+      <p class="pw-help" id="pw-help">${force
+        ? `지금 비밀번호는 스터디장이 정해 준 거예요. <b>@${esc(ctx.me.username)}</b> 계정을 쓰려면 나만 아는 새 비밀번호로 먼저 바꿔야 해요.`
+        : `@${esc(ctx.me.username)} 계정의 비밀번호예요. 바꾸면 다른 기기에서는 다시 로그인해야 해요.`}</p>
+      <label class="pw-field"><span>${force ? "스터디장이 알려 준 비밀번호" : "지금 비밀번호"}</span><input class="input" type="password" name="current" autocomplete="current-password" required></label>
+      <label class="pw-field"><span>새 비밀번호 <small>8자 이상</small></span><input class="input" type="password" name="next" autocomplete="new-password" minlength="8" required></label>
+      <label class="pw-field"><span>새 비밀번호 한 번 더</span><input class="input" type="password" name="again" autocomplete="new-password" minlength="8" required></label>
+      <label class="pw-show"><input type="checkbox" data-show> 입력한 글자 보기</label>
+      <p class="pw-err" role="alert" aria-live="assertive"></p>
+      <div class="pw-foot">${force
+        ? `<button class="btn ghost" type="button" data-logout>${icon.logout(15)}로그아웃</button>`
+        : `<button class="btn ghost" type="button" data-close>취소</button>`}<button class="btn accent" type="submit">바꾸기</button></div>
+    </form>`;
+  document.body.appendChild(back);
+  const f = $(".pw-dialog", back), err = $(".pw-err", back), submit = f.querySelector('[type="submit"]');
+  const close = () => { back.remove(); document.removeEventListener("keydown", onKey, true); if (!force) prevFocus?.focus?.(); };
+  const onKey = (e) => {
+    if (!back.isConnected) { document.removeEventListener("keydown", onKey, true); return; }
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); if (!force) close(); }
+    if (e.key === "Tab") { // 대화상자 안에서만 돌기
+      const els = [...f.querySelectorAll("input:not([hidden]), button")];
+      const i = els.indexOf(document.activeElement);
+      if (e.shiftKey && i <= 0) { e.preventDefault(); els.at(-1).focus(); }
+      else if (!e.shiftKey && i === els.length - 1) { e.preventDefault(); els[0].focus(); }
+    }
+  };
+  document.addEventListener("keydown", onKey, true);
+  back.addEventListener("mousedown", (e) => { if (e.target === back && !force) close(); });
+  f.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
+  f.querySelector("[data-logout]")?.addEventListener("click", async () => { close(); await api.logout().catch(() => {}); showAuth(); });
+  f.querySelector("[data-show]").addEventListener("change", (e) => f.querySelectorAll('input[type="password"], input[data-pw]').forEach((i) => { i.dataset.pw = "1"; i.type = e.target.checked ? "text" : "password"; }));
+  f.addEventListener("input", () => { err.textContent = ""; });
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const cur = f.current.value, next = f.next.value, again = f.again.value;
+    const bad = !cur ? ["지금 비밀번호를 입력해 주세요.", f.current]
+      : next.length < 8 ? ["새 비밀번호는 8자 이상이어야 해요.", f.next]
+      : next !== again ? ["새 비밀번호 두 칸이 서로 달라요.", f.again]
+      : next === cur ? ["지금과 다른 비밀번호로 정해 주세요.", f.next] : null;
+    if (bad) { err.textContent = bad[0]; bad[1].focus(); return; }
+    submit.disabled = true; submit.textContent = "바꾸는 중…";
+    try {
+      const r = await api.changePassword(cur, next);
+      close();
+      toast(r.signed_out ? `비밀번호를 바꿨어요. 다른 기기 ${r.signed_out}곳은 로그아웃됐어요.` : "비밀번호를 바꿨어요.");
+      if (ctx.me?.must_change_pw) { ctx.me.must_change_pw = false; lastView = null; route(); refreshSide(); } // 막혀 있던 화면을 이어서 열어요
+    } catch (x) {
+      err.textContent = x.message || "비밀번호를 바꾸지 못했어요.";
+      (x.status === 403 ? f.current : f.next).focus();
+      if (x.status === 403) f.current.select();
+    } finally { if (submit.isConnected) { submit.disabled = false; submit.textContent = "바꾸기"; } }
+  });
+  f.current.focus();
 }
 
 async function refreshSide() {
@@ -151,32 +227,40 @@ async function refreshSide() {
 }
 
 // ---------- routing ----------
+// 예전 주소는 캘린더의 그날로 옮겨요 (뒤로 가기에 남지 않게 replaceState)
+const OLD_DAY = /^#\/(?:today|diary|records)(?:\/(\d{4}-\d{2}-\d{2}))?\/?$/;
+function redirectOld() {
+  const m = location.hash.match(OLD_DAY);
+  if (m) history.replaceState(history.state, "", "#/calendar/" + (m[1] || ymd(today())));
+}
 function parseRoute() {
+  redirectOld();
   const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
   const [a, b, c, d] = parts;
   if (a === "u") return { view: "home", nav: "home" }; // 서로는 차트만: 다른 사람의 하루 페이지는 없어요
   if (a === "plans") return { view: "plans", nav: "plans", scope: b || "month", key: c || null };
   if (a === "notes" && b === "tag") return { view: "notes", nav: "notes", tag: c };
   if (a === "notes") return { view: "notes", nav: "notes", id: b || null };
-  if (a === "graph") return { view: "graph", nav: "graph" };
+  if (a === "graph") return { view: "graph", nav: "notes" }; // 그래프는 노트 안의 탭
   if (a === "team" || !a || a === "home") return { view: "home", nav: "home" };
-  if (a === "diary") return { view: "diary", nav: "diary", day: b || null };
-  if (a === "records") return { view: "diary", nav: "diary", tab: "rec", day: b || null };
   if (a === "ai") return { view: "ai", nav: "ai", id: b || null };
+  if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
+  if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null };
   if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
-  return { view: "today", nav: "today", date: b || ymd(today()) };
+  return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, today: todayView, plans: plansView, diary: diaryView, notes: notesView, graph: graphView, team: teamView, ai: aiView, english: englishView };
+const VIEWS = { home: homeView, plans: plansView, notes: notesView, graph: graphView, ai: aiView, english: englishView, calendar: calendarView };
 let lastView = null;
 
 function route() {
-  if (!ctx.me) return;
+  if (!ctx.me || ctx.me.must_change_pw) return; // 비밀번호를 바꾸기 전엔 화면을 열지 않아요
   const r = parseRoute();
   $$("[data-nav]").forEach((a) => { if (a.dataset.nav === r.nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   const main = $("#main");
   // notes view keeps its list mounted while switching notes
   if (lastView === "notes" && r.view === "notes" && notesView.update) { notesView.update(r); return; }
   if (lastView === "ai" && r.view === "ai") return; // the chat view follows its own hash changes
+  if (lastView === "calendar" && r.view === "calendar" && calendarView.update) { calendarView.update(r); return; } // 날짜만 바뀌면 달력은 그대로
   if (lastView === "english" && r.view === "english" && englishView.update) { englishView.update(r); return; } // 영어 탭 전환은 판을 다시 만들지 않아요
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>
@@ -193,7 +277,7 @@ window.addEventListener("hashchange", route);
 // ---------- command palette ----------
 let paletteOpen = false;
 function openPalette() {
-  if (paletteOpen || !ctx.me) return;
+  if (paletteOpen || !ctx.me || document.querySelector(".pw-back.force")) return;
   paletteOpen = true;
   const prevFocus = document.activeElement;
   const back = document.createElement("div");
@@ -210,13 +294,15 @@ function openPalette() {
 
   const commands = () => [
     { grp: "이동", t: "홈", s: "차트 · 서로의 현황", run: () => ctx.go("#/") },
-    { grp: "이동", t: "오늘로 가기", s: "목표 · 시간표 · 일기", run: () => ctx.go("#/today") },
-    { grp: "이동", t: "일기 쓰기", s: "오늘의 일기", run: () => ctx.go("#/diary") },
-    { grp: "이동", t: "내일 계획 세우기", s: ymd(new Date(Date.now() + 864e5)), run: () => ctx.go("#/today/" + ymd(new Date(Date.now() + 864e5))) },
+    { grp: "이동", t: "오늘 페이지", s: "캘린더 · 할 일 · 시간표 · 일기", run: () => ctx.go("#/calendar/" + ymd(today())) },
+    { grp: "이동", t: "일기 쓰기", s: "캘린더 · 오늘의 일기", run: () => { ctx.go("#/calendar/" + ymd(today())); setTimeout(() => $("#dp-diary textarea")?.focus(), 400); } },
+    { grp: "이동", t: "내일 계획 세우기", s: ymd(new Date(Date.now() + 864e5)), run: () => ctx.go("#/calendar/" + ymd(new Date(Date.now() + 864e5))) },
+    { grp: "이동", t: "한 해 잔디", s: "캘린더 · 연 · 일기 | 기록", run: () => ctx.go("#/calendar/year") },
     { grp: "이동", t: "올해 계획", s: "연간 목표 · 히트맵", run: () => ctx.go("#/plans/year") },
     { grp: "이동", t: "이번 달 계획", s: "월간 체크리스트", run: () => ctx.go("#/plans/month") },
     { grp: "이동", t: "이번 주 계획", s: "주간 체크리스트", run: () => ctx.go("#/plans/week") },
-    { grp: "이동", t: "그래프 보기", s: "노트 연결", run: () => ctx.go("#/graph") },
+    { grp: "이동", t: "그래프 보기", s: "노트 · 그래프 탭", run: () => ctx.go("#/graph") },
+    { grp: "이동", t: "우리 셋 주간 회고", s: "홈 · 5쪽", run: () => { try { localStorage.setItem("trio-home-page", "4"); } catch {} ctx.go("#/"); } },
     { grp: "명령", t: "오늘 데일리 노트 열기", s: ymd(today()), run: () => notesView.openDaily(ctx, ymd(today())) },
     { grp: "명령", t: "새 노트", s: "빈 노트", run: () => notesView.createNote(ctx, "") },
     { grp: "명령", t: "AI에게 묻기", s: "Gemini · MiMo", run: () => ctx.go("#/ai") },
@@ -267,8 +353,10 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ---------- focus timer ----------
+// 시작 · 일시정지 · 처음으로 · 끝 에서 "지금 공부 중" 상태를 서버에 알려요 (무엇을 하는지는 안 보내요).
+const presence = (state, ends_at) => api.setPresence(state === "focus" ? { state, ends_at } : { state }).catch(() => {});
 const timer = {
-  total: 25 * 60, left: 25 * 60, running: false, t: null, label: "",
+  total: 25 * 60, left: 25 * 60, running: false, t: null, label: "", plan_id: null,
   start(min) {
     if (min) { this.total = this.left = min * 60; }
     if (this.left <= 0) this.left = this.total;
@@ -280,19 +368,37 @@ const timer = {
       if (this.left === 0) this.finish();
       this.paint();
     }, 250);
+    presence("focus", end);
     renderTimer();
   },
-  pause() { this.running = false; clearInterval(this.t); renderTimer(); },
+  // 할 일 ▶: 그 할 일 이름 · id 로 시작 (끝나면 그 할 일에 집중 시간이 쌓여요)
+  startFor(plan) {
+    if (this.running) {
+      toast(this.plan_id === plan.id ? "이미 이 할 일로 집중하고 있어요." : "집중 타이머가 이미 돌고 있어요. 멈추거나 끝난 뒤에 시작해요.");
+      openTimer(); return;
+    }
+    this.label = String(plan.text || "").slice(0, 60);
+    this.plan_id = plan.id;
+    this.left = this.total;
+    this.start();
+    openTimer();
+    toast(`‘${this.label}’ 집중 ${Math.round(this.total / 60)}분을 시작했어요.`);
+  },
+  pause() { this.running = false; clearInterval(this.t); presence("idle"); renderTimer(); },
   reset() { this.pause(); this.left = this.total; renderTimer(); },
+  stop() { this.running = false; clearInterval(this.t); presence("idle"); this.left = this.total; this.plan_id = null; this.label = ""; document.title = "Dsm-mafia"; },
   async finish() {
     clearInterval(this.t);
     this.running = false;
     const mins = Math.round(this.total / 60);
     chime();
     document.title = "Dsm-mafia";
+    presence("idle");
     try {
-      await api.addLog({ day: ymd(today()), at: nowTime(), text: `집중 ${mins}분${this.label ? " · " + this.label : ""}`, kind: "focus", mins });
-      toast(`집중 ${mins}분 완료. 오늘 기록에 남겼어요.`);
+      const b = { day: ymd(today()), at: nowTime(), text: `집중 ${mins}분${this.label ? " · " + this.label : ""}`, kind: "focus", mins };
+      if (this.plan_id) b.plan_id = this.plan_id;
+      await api.addLog(b);
+      toast(this.plan_id ? `집중 ${mins}분 완료. ‘${this.label}’에 쌓였어요.` : `집중 ${mins}분 완료. 오늘 기록에 남겼어요.`);
       ctx.changed("logs");
     } catch (e) { toast(e.message, "err"); }
     this.left = this.total;
@@ -309,6 +415,8 @@ const timer = {
     if (mini) { mini.classList.toggle("on", this.running); mini.textContent = this.running ? t : ""; }
   },
 };
+ctx.timer = timer;
+function openTimer() { const pop = $("#timer"); if (pop) { pop.hidden = false; $("#timer-btn")?.setAttribute("aria-expanded", "true"); } }
 function renderTimer() {
   const el = $("#timer");
   if (!el) return;
@@ -328,12 +436,17 @@ function renderTimer() {
         ${[15, 25, 50, 90].map((m) => `<option value="${m}" ${m * 60 === timer.total ? "selected" : ""}>${m}분</option>`).join("")}
       </select>
     </div>
-    <input class="input" id="tm-label" placeholder="무엇에 집중할까요?" value="${esc(timer.label)}" style="padding:6px 10px;font-size:12.5px">`;
+    <input class="input" id="tm-label" placeholder="무엇에 집중할까요?" value="${esc(timer.label)}" style="padding:6px 10px;font-size:12.5px">
+    ${timer.plan_id ? `<p class="tm-plan">할 일에 쌓여요 · <button type="button" class="linkbtn" id="tm-unlink">떼기</button></p>` : ""}`;
   timer.paint();
   $("#tm-toggle").addEventListener("click", () => (timer.running ? timer.pause() : timer.start()));
   $("#tm-reset").addEventListener("click", () => timer.reset());
   $("#tm-len").addEventListener("change", (e) => { timer.total = timer.left = +e.target.value * 60; timer.paint(); });
-  $("#tm-label").addEventListener("input", (e) => { timer.label = e.target.value.trim().slice(0, 60); });
+  $("#tm-label").addEventListener("input", (e) => { // 이름을 직접 바꾸면 할 일과의 연결은 풀어요
+    timer.label = e.target.value.trim().slice(0, 60);
+    if (timer.plan_id) { timer.plan_id = null; $("#timer .tm-plan")?.remove(); }
+  });
+  $("#tm-unlink")?.addEventListener("click", (e) => { e.stopPropagation(); timer.plan_id = null; renderTimer(); });
 }
 function chime() {
   try {

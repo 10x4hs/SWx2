@@ -46,6 +46,7 @@ npm run user:add -- <아이디> <이름> <비밀번호>            # 로컬
 npm run user:add -- <아이디> <이름> <비밀번호> --remote   # 배포된 DB
 # 같은 아이디로 다시 실행하면 이름·비밀번호가 바뀌고 기존 로그인은 끊겨요
 ```
+- 이 명령으로 정한 비밀번호는 "임시"예요. 그 사람은 **첫 로그인 때 새 비밀번호로 바꿔야** 다른 화면을 쓸 수 있어요 (`must_change_pw`, 아래 보안 메모)
 - 처음부터 다시: dev 서버를 끄고 `npm run db:reset`
 
 ## Cloudflare에 배포
@@ -90,6 +91,22 @@ PASSWORDLESS=1             # 로컬 전용
 
 키는 브라우저로 나가지 않고 Worker 비밀값에만 있어요. 사람당 하루 200개 질문 제한(`src/ai.js` 의 `DAILY_LIMIT`).
 
+## 캘린더
+
+`#/calendar` — 한 달 달력에서 날짜를 누르면 그날 한 페이지가 열려요. 앞으로 할 일을 날짜에 미리 적어 두고, 지난날은 일기와 그날 한 공부(끝낸 일 · 집중 시간 · 영어 · 노트 · 하루 점수)를 같이 봐요. API: `GET /api/calendar?from=&to=` (43일까지, 날마다 요약), `GET /api/calendar/day?day=` (그날 전부). 할 일 쓰기는 기존 `/api/plans` (scope `day`). 본인 것만 보여요. 날마다 `study_mins`(집중 기록 + 영어 분)도 같이 와요.
+
+## 같이 하기 (내용은 비공개, 숫자·상태만)
+
+`src/together.js` · 표는 `migrations/0008_together.sql`. 서로에게는 **숫자와 상태만** 보이고, 계획 제목·일기·노트 내용은 여전히 본인만 봐요.
+
+- **지금 공부 중**: `PUT /api/presence { state: "focus", ends_at, started_at? }` 또는 `{ state: "idle" }` (시각은 ms). `GET /api/presence` → `{ now, members: [{ user_id, focus, started_at, ends_at }] }` — `ends_at` 이 지나면 `focus: false`. 무엇을 공부하는지는 저장도 전송도 안 해요
+- **응원 👏**: `POST /api/cheers { to }` → 201 · 오늘(한국 시간) 이미 했으면 409 · 나에게는 400 · 없는 사람은 404. `GET /api/cheers?day=` (기본 오늘) → `{ day, received: [{ from_id, created_at }], sent: [to_id] }`
+- **할 일별 공부 시간**: `POST /api/logs` 에 `plan_id`(내 계획만, 남의 것 403 · 없는 것 400)를 달면 `GET /api/plans` 의 행마다 `focus_mins` 로 쌓여요. 계획을 지우면 기록은 남고 연결만 풀려요
+- **하루 공부 시간** `study_mins` = 집중 기록 분 + 영어 분. 캘린더 · 회고 · 홈이 같은 정의를 써요
+- **주간 회고**: `GET /api/review/week?week=2026-W40` (ISO 주, 월~일, 기본 이번 주) → `{ week, from, to, members: [{ user_id, plans_done, plans_total, focus_mins, english_mins, study_mins, diary_days, active_days, score_avg, cheers }], mine }` — 숫자는 셋 다, 회고 글(`mine`)은 나만
+  - `POST /api/review/week/ai { week }` → `{ review: { body, created_at } }`. AI가 **내 기록만**(계획 제목·완료, 실행 기록, 영어, 하루 점수, 노트 제목)으로 4~8줄 회고를 써요. **일기는 읽지도 않아요.** 기록이 없는 주는 400, AI 키가 없으면 503, 30초 안에 다시 누르면 429
+  - 일요일 22:00 (한국 시간, 크론 `0 13 * * SUN`)에 그 주 활동이 있는 사람 것을 미리 만들어 둬요. 그날 직접 만든 게 있으면 덮어쓰지 않아요
+
 ## 영어 (ENGLISH-OS 연동)
 
 옵시디언 볼트 `ENGLISH-OS`(6개월 영어 프로그램 2026-09-28 → 2027-03-28, 650시간)를 앱 안에서 매일 쓰는 페이지예요.
@@ -125,6 +142,9 @@ API=http://localhost:8787 EN_USER=t_en ENGLISH_OS=/볼트사본 npm run english:
 src/worker.js          API (인증·계획·기록·노트·그래프·검색)
 src/ai.js              AI 채팅 (Gemini·MiMo 스트리밍, 기록 참고, 대화 저장)
 src/brain.js           AI 정리·생성 (주제·태그·링크 써넣기, MOC 목차, 개념 노트 만들기)
+src/calendar.js        캘린더 (한 달 요약 · 하루 한 페이지)
+src/english.js         영어 기록 · 표현 · 복습 카드
+src/together.js        같이 하기 (지금 공부 중 · 응원 · 주간 회고)
 migrations/            D1 스키마
 public/                정적 프론트엔드 (빌드 없음, ES 모듈)
   js/app.js            셸 · 라우팅 · ⌘K · 집중 타이머
@@ -142,6 +162,9 @@ legacy/                이전 단일 파일 버전
 
 - 가입 API는 기본으로 닫혀 있어요 (`ALLOW_SIGNUP=1` 일 때만 열림)
 - 비밀번호: PBKDF2-SHA256 100,000회 + 솔트. 5번 틀리면 5분 잠금
+- 비밀번호 바꾸기: 프로필 메뉴 → `POST /api/auth/password` (지금 비밀번호 확인, 새 것 8자 이상, 지금과 달라야 함). 틀리면 로그인과 같은 잠금에 셈. 바꾸면 그 기기만 남기고 다른 로그인은 모두 풀려요. 잊었을 땐 `npm run user:add -- <아이디> <이름> <새 비밀번호> --remote` 로 스터디장이 다시 정해요
+- 첫 로그인 비밀번호 바꾸기: 스터디장이 정한 비밀번호(`user:add`)는 `users.must_change_pw = 1` 이에요. 마이그레이션 `0008` 이 기존 계정도 전부 1로 바꿔요 (지금 셋 다 스터디장이 정한 임시 비밀번호라서). 이 표시가 있으면 서버가 `/me` · `/users` · `/auth/*` 말고는 전부 `403 { error, must_change_password: true }` 로 막고, 화면은 닫을 수 없는 비밀번호 창을 띄워요. 비밀번호를 바꾸면 풀려요
+  - 로컬(`PASSWORDLESS=1`)은 비밀번호를 안 쓰니 이 표시도 무시해요 (`must_change_pw` 는 항상 false). `npm test` 는 요청에 `x-trio-strict: 1` 헤더를 붙여 배포본처럼 검사해요 — 이 헤더는 검사를 **더 엄격하게만** 하고, 배포본에서는 원래 켜져 있어서 아무 차이가 없어요
 - 세션: 무작위 토큰의 SHA-256만 DB에 저장, HttpOnly · SameSite=Lax 쿠키(https에서는 Secure)
 - 쓰기 요청은 `x-trio` 헤더 필수(CSRF 방지), 노트 HTML은 DOMPurify로 정리
 

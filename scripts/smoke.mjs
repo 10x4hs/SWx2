@@ -1,9 +1,9 @@
 // API smoke test against a running `wrangler dev` (default http://127.0.0.1:8787).
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
 const jar = {};
-async function call(who, method, path, body) {
+async function call(who, method, path, body, headers = {}) {
   const r = await fetch(BASE + "/api" + path, {
-    method, headers: { "content-type": "application/json", "x-trio": "1", cookie: jar[who] || "" },
+    method, headers: { "content-type": "application/json", "x-trio": "1", cookie: jar[who] || "", ...headers },
     body: body ? JSON.stringify(body) : undefined,
   });
   const sc = r.headers.get("set-cookie"); if (sc) jar[who] = sc.split(";")[0];
@@ -16,6 +16,8 @@ for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { a
 import { execFileSync } from "node:child_process";
 const tag = Date.now().toString(36).slice(-5);
 const mk = (u, n, pw) => execFileSync("node", ["scripts/add-user.mjs", u, n, pw], { stdio: "ignore" });
+// 로컬 D1 에 직접 묻기 (서버를 거치지 않고 저장된 값 확인)
+const d1 = (sql) => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", sql], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }))[0].results;
 let r = await call("a", "POST", "/auth/signup", { username: "x" + tag, password: "password1", display_name: "x", invite: "trio-2026" });
 ok(r.status === 403, "signup is closed");
 mk("t_a" + tag, "테스트A", "password1"); mk("t_b" + tag, "테스트B", "password2");
@@ -120,6 +122,141 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   ok(r.status === 200 && ed?.sentences?.length === 60 && ed?.patterns?.length === 91, "english data.json served");
 }
 
+// ---- 캘린더: 날짜별 할 일 · 하루 한 페이지 ----
+{
+  const F = "2027-01-15";
+  let r = await call("a", "POST", "/plans", { scope: "day", period: "D:" + F, text: "캘린더 할 일", start: "09:30" });
+  const pid = r.data.plan?.id;
+  await call("a", "POST", "/plans", { scope: "day", period: "D:" + F, text: "두 번째 할 일" });
+  await call("a", "PATCH", "/plans/" + pid, { done: true });
+  await call("a", "POST", "/logs", { day: F, at: "10:00", text: "집중", kind: "focus", mins: 40 });
+  await call("a", "PUT", "/diary", { day: F, mood: 4, body: "캘린더 일기" });
+  r = await call("a", "GET", `/calendar?from=2027-01-01&to=2027-01-31`);
+  const c = r.data.days?.[F];
+  ok(r.status === 200 && c?.total === 2 && c?.done === 1 && c?.todos[0]?.text === "캘린더 할 일" && c?.focus === 40 && c?.mood === 4, "calendar month: todos, done, focus, diary per day");
+  r = await call("a", "GET", "/calendar/day?day=" + F);
+  ok(r.status === 200 && r.data.plans?.length === 2 && r.data.logs?.length === 1 && r.data.diary?.body === "캘린더 일기", "calendar day page bundles plans, logs, diary");
+  r = await call("b", "GET", `/calendar?from=2027-01-01&to=2027-01-31`); ok(r.status === 200 && !r.data.days?.[F], "calendar private to owner");
+  r = await call("b", "GET", "/calendar/day?day=" + F); ok(r.data.plans?.length === 0 && !r.data.diary, "calendar day private to owner");
+  r = await call("a", "GET", "/calendar?from=2027-01-01&to=2027-03-31"); ok(r.status === 400, "calendar range > 43 days rejected");
+  r = await call("a", "GET", "/calendar/day?day=2027-02-30"); ok(r.status === 400, "calendar impossible date rejected");
+}
+
+// ---- 할 일별 집중 (logs.plan_id → plans.focus_mins) · 주간 회고 숫자 ----
+{
+  const W = "2027-W10", D1 = "2027-03-08", D2 = "2027-03-09";
+  const aid = (await call("a", "GET", "/me")).data.user.id, bid = (await call("b", "GET", "/me")).data.user.id;
+  const p1 = (await call("a", "POST", "/plans", { scope: "day", period: "D:" + D1, text: "회고용 할 일", start: "09:00", mins: 60 })).data.plan.id;
+  await call("a", "POST", "/plans", { scope: "day", period: "D:" + D2, text: "못 끝낸 일" });
+  await call("a", "PATCH", "/plans/" + p1, { done: true });
+  r = await call("a", "POST", "/logs", { day: D1, at: "09:00", text: "집중", kind: "focus", mins: 30, plan_id: p1 });
+  ok(r.status === 201 && r.data.log?.plan_id === p1, "log carries plan_id");
+  await call("a", "POST", "/logs", { day: D2, at: "10:00", text: "집중", kind: "focus", mins: 15, plan_id: p1 });
+  await call("a", "POST", "/logs", { day: "2027-03-10", at: "11:00", text: "메모만", kind: "note" });
+  r = await call("a", "POST", "/logs", { day: D1, at: "12:00", text: "x", kind: "focus", mins: 5, plan_id: "no-such-plan" }); ok(r.status === 400, "log with unknown plan_id rejected (400)");
+  r = await call("a", "POST", "/logs", { day: D1, at: "12:00", text: "x", kind: "focus", mins: 5, plan_id: 123 }); ok(r.status === 400, "log with non-string plan_id rejected (400)");
+  r = await call("b", "POST", "/logs", { day: D1, at: "12:00", text: "x", kind: "focus", mins: 5, plan_id: p1 }); ok(r.status === 403, "log on someone else's plan rejected (403)");
+  r = await call("a", "GET", `/plans?periods=D:${D1},D:${D2}`);
+  ok(r.data.plans.find((p) => p.id === p1)?.focus_mins === 45 && r.data.plans.every((p) => typeof p.focus_mins === "number"), "plans carry focus_mins (30+15=45)");
+  r = await call("b", "GET", `/plans?periods=D:${D1}&user=${aid}`);
+  ok(r.data.plans.find((p) => p.id === p1)?.focus_mins === 45 && r.data.plans.every((p) => p.text === ""), "others see focus_mins but no text");
+  const p3 = (await call("a", "POST", "/plans", { scope: "day", period: "D:" + D2, text: "지울 할 일" })).data.plan.id;
+  const l3 = (await call("a", "POST", "/logs", { day: D2, at: "13:00", text: "집중", kind: "focus", mins: 0, plan_id: p3 })).data.log.id;
+  await call("a", "DELETE", "/plans/" + p3);
+  r = await call("a", "GET", "/logs?day=" + D2); ok(r.data.logs.some((l) => l.id === l3 && l.plan_id === null), "deleting a plan keeps its logs (plan_id → null)");
+  r = await call("a", "GET", "/calendar/day?day=" + D1); ok(r.data.study_mins === 30 && r.data.logs.some((l) => l.plan_id === p1), "calendar day: study_mins + log plan_id");
+
+  await call("a", "PUT", "/english/day", { day: "2027-03-11", blocks: { words: 40 } });
+  await call("a", "PUT", "/diary", { day: "2027-03-12", mood: 3, body: "회고에 안 나와야 하는 비밀 일기" });
+  const rec = (await call("a", "POST", "/records", { day: D1 })).data.record;
+  r = await call("a", "GET", "/review/week?week=" + W);
+  const ma = r.data.members?.find((m) => m.user_id === aid), mb = r.data.members?.find((m) => m.user_id === bid);
+  ok(r.status === 200 && r.data.week === W && r.data.from === "2027-03-08" && r.data.to === "2027-03-14", "review week range (Mon~Sun)");
+  ok(ma && ma.plans_done === 1 && ma.plans_total === 2 && ma.focus_mins === 45 && ma.english_mins === 40 && ma.study_mins === 85,
+    `review numbers: plans ${ma?.plans_done}/${ma?.plans_total}, focus ${ma?.focus_mins}, english ${ma?.english_mins}, study ${ma?.study_mins}`);
+  ok(ma?.diary_days === 1 && ma?.active_days === 5 && ma?.score_avg === rec.score && ma?.cheers === 0, `review numbers: diary ${ma?.diary_days}, active ${ma?.active_days}, score ${ma?.score_avg}`);
+  ok(mb && mb.study_mins === 0 && mb.score_avg === null && r.data.mine === null, "review: zero row for idle member, mine null before AI");
+  r = await call("b", "GET", "/review/week?week=" + W);
+  ok(r.data.members?.find((m) => m.user_id === aid)?.study_mins === 85 && !JSON.stringify(r.data).includes("비밀 일기"), "b sees a's numbers only (no text)");
+  r = await call("a", "GET", "/review/week?week=2027-W53"); ok(r.status === 400, "review: week that doesn't exist rejected");
+  r = await call("a", "GET", "/review/week?week=2026-W53"); ok(r.status === 200 && r.data.from === "2026-12-28", "review: 2026 has a W53");
+  r = await call("a", "GET", "/review/week?week=2026-40"); ok(r.status === 400, "review: bad week format rejected");
+  r = await call("a", "POST", "/review/week/ai", { week: "nope" }); ok(r.status === 400, "review ai: bad week rejected before calling AI");
+  r = await call("a", "POST", "/review/week/ai", { week: "2031-W02" }); ok(r.status === 400, "review ai: empty week → 400, no AI call");
+}
+
+// ---- 지금 공부 중 ----
+{
+  const aid = (await call("a", "GET", "/me")).data.user.id;
+  const t = Date.now();
+  r = await call("a", "PUT", "/presence", { state: "focus", ends_at: t + 25 * 60e3, label: "비밀 과목" });
+  ok(r.status === 200 && r.data.presence?.focus === true && !JSON.stringify(r.data).includes("비밀"), "presence focus set (label dropped)");
+  const started = r.data.presence?.started_at;
+  r = await call("b", "GET", "/presence"); const pa = r.data.members?.find((m) => m.user_id === aid);
+  ok(r.status === 200 && typeof r.data.now === "number" && pa?.focus === true && pa.started_at === started, "b sees a is focusing");
+  ok(pa && Object.keys(pa).sort().join() === "ends_at,focus,started_at,user_id", "presence members carry only user_id/focus/started_at/ends_at");
+  r = await call("a", "PUT", "/presence", { state: "focus", ends_at: t + 30 * 60e3 }); ok(r.data.presence?.started_at === started, "presence: re-focus keeps started_at");
+  r = await call("a", "PUT", "/presence", { state: "focus", ends_at: t - 1000 }); ok(r.status === 400, "presence: past ends_at rejected");
+  r = await call("a", "PUT", "/presence", { state: "sleep" }); ok(r.status === 400, "presence: bad state rejected");
+  r = await call("a", "PUT", "/presence", { state: "idle" }); ok(r.status === 200 && r.data.presence?.focus === false, "presence idle");
+  r = await call("b", "GET", "/presence"); ok(r.data.members.find((m) => m.user_id === aid)?.focus === false, "b sees a idle");
+  await call("a", "PUT", "/presence", { state: "focus", ends_at: Date.now() + 1200 });
+  await new Promise((res) => setTimeout(res, 1600));
+  r = await call("b", "GET", "/presence"); const ex = r.data.members.find((m) => m.user_id === aid);
+  ok(ex?.focus === false && ex.started_at === null, "presence: expired focus reads as not focusing");
+}
+
+// ---- 응원 ----
+{
+  const aid = (await call("a", "GET", "/me")).data.user.id, bid = (await call("b", "GET", "/me")).data.user.id;
+  r = await call("a", "POST", "/cheers", { to: bid }); ok(r.status === 201 && r.data.cheer?.to_id === bid, "cheer sent (201)");
+  r = await call("a", "POST", "/cheers", { to: bid }); ok(r.status === 409, "cheer twice same day → 409");
+  r = await call("a", "POST", "/cheers", { to: aid }); ok(r.status === 400, "cheer myself → 400");
+  r = await call("a", "POST", "/cheers", { to: "no-such-user" }); ok(r.status === 404, "cheer unknown user → 404");
+  r = await call("a", "POST", "/cheers", {}); ok(r.status === 400, "cheer without to → 400");
+  r = await call("b", "GET", "/cheers"); ok(r.data.received?.length === 1 && r.data.received[0].from_id === aid && r.data.sent.length === 0, "b received a's cheer today");
+  r = await call("a", "GET", "/cheers?day=" + r.data.day); ok(r.data.sent?.includes(bid) && r.data.received.length === 0, "a sees cheer as sent");
+  r = await call("a", "GET", "/cheers?day=2026-02-30"); ok(r.status === 400, "cheers: impossible day rejected");
+  r = await call("b", "GET", "/review/week"); ok(r.status === 200 && r.data.members.find((m) => m.user_id === bid)?.cheers >= 1, "review (this week) counts cheers received");
+}
+
+// ---- 첫 로그인 비밀번호 바꾸기 (must_change_pw) ----
+// 로컬은 PASSWORDLESS=1 이라 이 표시를 무시해요. "x-trio-strict: 1" 헤더를 붙이면 배포본처럼 검사해요 (더 엄격해지기만 하는 테스트용 스위치).
+{
+  const cu = "t_c" + tag, S = { "x-trio-strict": "1" };
+  mk(cu, "테스트C", "password3");
+  ok(d1(`SELECT must_change_pw FROM users WHERE username = '${cu}'`)[0]?.must_change_pw === 1, "add-user sets must_change_pw = 1 (D1)");
+  r = await call("c", "POST", "/auth/login", { username: cu }); ok(r.status === 200 && r.data.user.must_change_pw === false, "PASSWORDLESS: login says must_change_pw false");
+  r = await call("c", "GET", "/plans?periods=D:2026-09-28"); ok(r.status === 200, "PASSWORDLESS: not blocked");
+  r = await call("c", "GET", "/me", null, S); ok(r.status === 200 && r.data.user.must_change_pw === true, "strict: /me says must_change_pw true");
+  r = await call("c", "GET", "/plans?periods=D:2026-09-28", null, S);
+  ok(r.status === 403 && r.data.must_change_password === true && r.data.error === "먼저 비밀번호를 바꿔 주세요.", "strict: other APIs blocked with must_change_password");
+  r = await call("c", "PUT", "/presence", { state: "idle" }, S); ok(r.status === 403 && r.data.must_change_password === true, "strict: writes blocked too");
+  r = await call("c", "GET", "/users", null, S); ok(r.status === 200, "strict: /users still open");
+  r = await call("c", "PATCH", "/me", { display_name: "테스트C" }, S); ok(r.status === 200, "strict: PATCH /me still open");
+  r = await call("c", "POST", "/auth/password", { current: "password3", next: "password3" }, S); ok(r.status === 400, "strict: same password rejected");
+  r = await call("c", "POST", "/auth/password", { current: "password3", next: "1234567" }, S); ok(r.status === 400, "strict: short password rejected");
+  r = await call("c", "POST", "/auth/password", { current: "password3", next: "fresh-pass-9" }, S); ok(r.status === 200, "strict: password changed");
+  ok(d1(`SELECT must_change_pw FROM users WHERE username = '${cu}'`)[0]?.must_change_pw === 0, "password change clears must_change_pw (D1)");
+  r = await call("c", "GET", "/plans?periods=D:2026-09-28", null, S); ok(r.status === 200, "strict: unblocked after change");
+  r = await call("c", "GET", "/me", null, S); ok(r.data.user.must_change_pw === false, "strict: /me says must_change_pw false after change");
+}
+
+// ---- 비밀번호 바꾸기 ----
+{
+  let r = await call("a", "POST", "/auth/password", { current: "wrong-pass", next: "newpassword1" }); ok(r.status === 403, "password change: wrong current rejected");
+  r = await call("a", "POST", "/auth/password", { current: "password1", next: "short" }); ok(r.status === 400, "password change: short new rejected");
+  r = await call("a", "POST", "/auth/password", { current: "password1", next: "password1" }); ok(r.status === 400, "password change: same as current rejected");
+  r = await call("x", "POST", "/auth/password", { current: "password1", next: "newpassword1" }); ok(r.status === 401, "password change: login required");
+  await call("a2", "POST", "/auth/login", { username: "t_a" + tag });
+  r = await call("a", "POST", "/auth/password", { current: "password1", next: "newpassword1" });
+  ok(r.status === 200 && r.data.signed_out >= 1, "password changed, other sessions signed out: " + r.data.signed_out);
+  r = await call("a2", "GET", "/me"); ok(r.status === 401, "other device logged out after change");
+  r = await call("a", "GET", "/me"); ok(r.status === 200, "this device stays logged in");
+  r = await call("a", "POST", "/auth/password", { current: "password1", next: "another-pass" }); ok(r.status === 403, "old password no longer works");
+  r = await call("a", "POST", "/auth/password", { current: "newpassword1", next: "password1" }); ok(r.status === 200, "new password works (changed back)");
+}
+
 // ---- AI ----
 r = await call("a", "GET", "/ai/models"); ok(r.data.models.length >= 5, "ai models: " + r.data.models.filter((m) => m.available).map((m) => m.id).join(","));
 async function ask(model, message, chat_id) {
@@ -154,6 +291,15 @@ if (!process.env.SKIP_AI) {
   r = await call("a", "GET", "/notes/" + org.id); ok((r.data.note.body.match(/<!-- ai:start -->/g) || []).length === 1, "only one ai block");
   r = await call("b", "POST", "/ai/organize", { note_id: org.id }); ok(r.status === 404 || r.status === 400, "cannot organize someone else's note");
   r = await call("a", "DELETE", "/ai/chats/" + meta.chat_id); ok(r.status === 200, "delete chat");
+  // 주간 회고 AI: 내 기록만으로 4~8줄, 일기 본문은 안 보냄
+  r = await call("a", "POST", "/review/week/ai", { week: "2027-W10" });
+  const lines = (r.data.review?.body || "").split("\n");
+  ok(r.status === 200 && lines.length >= 1 && lines.length <= 8 && r.data.review.created_at > 0, `review ai: ${lines.length} lines · ${(lines[0] || r.data.error || "").slice(0, 50)}`);
+  r = await call("a", "GET", "/review/week?week=2027-W10"); ok(r.data.mine?.body === lines.join("\n"), "review ai saved as mine");
+  r = await call("b", "GET", "/review/week?week=2027-W10"); ok(r.data.mine === null, "review text private to owner");
+  r = await call("a", "POST", "/review/week/ai", { week: "2027-W10" }); ok(r.status === 429, "review ai: regenerate too fast → 429");
+} else {
+  console.log("SKIP ai chat · brain · weekly review ai (SKIP_AI=1)");
 }
 
 r = await call("a", "POST", "/auth/logout"); r = await call("a", "GET", "/me"); ok(r.status === 401, "logout");

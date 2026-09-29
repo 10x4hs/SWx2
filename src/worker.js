@@ -3,9 +3,12 @@
 import { registerAi } from "./ai.js";
 import { registerBrain } from "./brain.js";
 import { registerEnglish } from "./english.js";
+import { registerCalendar } from "./calendar.js";
+import { registerTogether, weeklyReviewCron } from "./together.js";
 
 const COLORS = ["#E8552B", "#4C6FFF", "#14A38B"]; // Golden Gate orange, bay blue, cypress green
 const SESSION_DAYS = 30;
+const WEEKLY_CRON = "0 13 * * SUN";
 const PBKDF2_ITERATIONS = 100_000; // Workers' WebCrypto maximum
 const MAX_NOTE = 200_000;
 
@@ -21,9 +24,10 @@ const TONES = ["ink", "graphite", "slate", "steel", "silver", "sand", "ivory", "
 const tone = (v) => (v === null ? null : TONES.includes(v) ? v : fail(400, "고를 수 없는 색이에요."));
 
 class HttpError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, extra) { super(message); this.status = status; this.extra = extra; }
 }
-const fail = (status, message) => { throw new HttpError(status, message); };
+// extra: 에러 몸통에 같이 실어 보낼 값 (예: { must_change_password: true })
+const fail = (status, message, extra) => { throw new HttpError(status, message, extra); };
 
 export default {
   async fetch(req, env, ec) {
@@ -32,13 +36,19 @@ export default {
     try {
       return await route(req, env, url, ec);
     } catch (e) {
-      if (e instanceof HttpError) return json({ error: e.message }, e.status);
+      if (e instanceof HttpError) return json({ ...(e.extra || {}), error: e.message }, e.status);
       console.error(e);
       return json({ error: "서버에서 문제가 생겼어요. 잠시 후 다시 시도해 주세요." }, 500);
     }
   },
-  // 매일 00:05 (한국 시간) — 지난 하루의 계획·기록을 모두 자동 저장해요 (wrangler.jsonc 의 triggers.crons)
+  // wrangler.jsonc 의 triggers.crons
+  //   "5 15 * * *"  매일 00:05 (한국 시간) — 지난 하루의 계획·기록을 모두 자동 저장
+  //   "0 13 * * SUN" 일요일 22:00 (한국 시간) — 이번 주 활동이 있는 사람의 주간 회고를 미리 만들기
   async scheduled(event, env, ec) {
+    if (event.cron === WEEKLY_CRON) {
+      ec.waitUntil(weeklyReviewCron(env).then((r) => console.log("주간 회고", r.week, r.made + "명", r.skipped || "")));
+      return;
+    }
     ec.waitUntil(autoSaveYesterday(env).then((r) => console.log("자동 저장", r.day, r.saved + "명")));
   },
 };
@@ -57,11 +67,17 @@ async function route(req, env, url, ec) {
     // CSRF: every write must come from our own fetch() with this header (a form post can't set it)
     if (req.method !== "GET" && req.headers.get("x-trio") !== "1") fail(403, "잘못된 요청이에요.");
     const ctx = { req, env, ec, url, params: m.groups || {}, q: url.searchParams };
-    if (r.auth) ctx.user = await requireUser(req, env);
+    if (r.auth) {
+      ctx.user = await requireUser(req, env);
+      // 첫 로그인: 비밀번호를 바꾸기 전에는 내 정보·멤버 목록·로그인 관련 API만 쓸 수 있어요
+      if (ctx.user.must_change_pw && !MUST_CHANGE_OPEN(path)) fail(403, "먼저 비밀번호를 바꿔 주세요.", { must_change_password: true });
+    }
     return r.handler(ctx);
   }
   fail(404, "없는 주소예요.");
 }
+
+const MUST_CHANGE_OPEN = (path) => path === "/me" || path === "/users" || path.startsWith("/auth/");
 
 // ---------- helpers ----------
 function json(data, status = 200, headers = {}) {
@@ -108,16 +124,21 @@ async function startSession(req, env, userId) {
     .bind(await sha256(token), userId, now() + SESSION_DAYS * 864e5).run();
   return cookie(req, token, SESSION_DAYS * 86400);
 }
+// 비밀번호를 꼭 바꿔야 하는지. 아이디만으로 들어가는 로컬(PASSWORDLESS=1)에서는 묻지 않아요.
+// 단, 요청에 "x-trio-strict: 1" 이 있으면 로컬에서도 배포본처럼 검사해요 (smoke 테스트용 — 더 엄격해지기만 하고 풀어 주는 일은 없어요)
+const pwStrict = (req, env) => env.PASSWORDLESS !== "1" || req.headers.get("x-trio-strict") === "1";
+const mustChange = (req, env, u) => pwStrict(req, env) && Number(u.must_change_pw) === 1;
 async function requireUser(req, env) {
   const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
   if (!m) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
+    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.must_change_pw FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
   ).bind(await sha256(m[1]), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
-  return row;
+  return { ...row, must_change_pw: mustChange(req, env, row) };
 }
-const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal });
+// must_change_pw 는 requireUser / login 에서 이미 true·false 로 바뀐 값이에요
+const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, must_change_pw: u.must_change_pw === true });
 
 // ---------- auth ----------
 // 가입은 기본으로 꺼져 있어요. 계정은 scripts/add-user.mjs 로 만들어요 (ALLOW_SIGNUP=1 이면 켜짐)
@@ -146,7 +167,7 @@ on("POST", "/auth/login", async ({ req, env }) => {
   // 아이디만으로 들어가기 (PASSWORDLESS=1): 세 사람만 쓰는 공간이라 비밀번호를 묻지 않아요
   if (env.PASSWORDLESS === "1") {
     if (!u) fail(401, "없는 아이디예요.");
-    return json({ user: publicUser(u) }, 200, { "set-cookie": await startSession(req, env, u.id) });
+    return json({ user: publicUser({ ...u, must_change_pw: mustChange(req, env, u) }) }, 200, { "set-cookie": await startSession(req, env, u.id) });
   }
   if (!b.password) return json({ error: "비밀번호를 입력해 주세요.", need_password: true }, 401);
   const wrong = "아이디 또는 비밀번호가 맞지 않아요.";
@@ -163,7 +184,7 @@ on("POST", "/auth/login", async ({ req, env }) => {
     env.DB.prepare("UPDATE users SET fail_count = 0, locked_until = 0 WHERE id = ?").bind(u.id),
     env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now()),
   ]);
-  return json({ user: publicUser(u) }, 200, { "set-cookie": await startSession(req, env, u.id) });
+  return json({ user: publicUser({ ...u, must_change_pw: mustChange(req, env, u) }) }, 200, { "set-cookie": await startSession(req, env, u.id) });
 }, { auth: false });
 
 on("POST", "/auth/logout", async ({ req, env }) => {
@@ -171,6 +192,33 @@ on("POST", "/auth/logout", async ({ req, env }) => {
   if (m) await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(await sha256(m[1])).run();
   return json({ ok: true }, 200, { "set-cookie": cookie(req, "", 0) });
 }, { auth: false });
+
+// 내 비밀번호 바꾸기: 지금 비밀번호를 맞혀야 바뀌어요. 틀리면 로그인처럼 5번에 5분 잠김.
+// 바꾸면 다른 기기의 로그인은 모두 풀리고, 지금 이 기기만 남아요. 첫 로그인 표시(must_change_pw)도 여기서 꺼져요.
+on("POST", "/auth/password", async ({ req, env, user }) => {
+  const b = await body(req);
+  const u = await env.DB.prepare("SELECT id, pw_hash, pw_salt, fail_count, locked_until FROM users WHERE id = ?").bind(user.id).first();
+  if (u.locked_until > now()) fail(429, "여러 번 틀려서 잠시 잠겼어요. 5분 뒤에 다시 시도해 주세요.");
+  if (typeof b.current !== "string" || !b.current) fail(400, "지금 비밀번호를 입력해 주세요.");
+  if (typeof b.next !== "string" || b.next.length < 8) fail(400, "새 비밀번호는 8자 이상이어야 해요.");
+  if (b.next.length > 200) fail(400, "새 비밀번호가 너무 길어요.");
+  const { hash } = await hashPassword(b.current, u.pw_salt);
+  if (!safeEqual(hash, u.pw_hash)) {
+    const fails = u.fail_count + 1;
+    await env.DB.prepare("UPDATE users SET fail_count = ?, locked_until = ? WHERE id = ?")
+      .bind(fails >= 5 ? 0 : fails, fails >= 5 ? now() + 5 * 60e3 : 0, u.id).run();
+    fail(403, "지금 비밀번호가 맞지 않아요.");
+  }
+  if (b.next === b.current) fail(400, "지금과 다른 비밀번호로 정해 주세요.");
+  const next = await hashPassword(b.next);
+  const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
+  const keep = await sha256(m[1]);
+  const r = await env.DB.batch([
+    env.DB.prepare("UPDATE users SET pw_hash = ?, pw_salt = ?, fail_count = 0, locked_until = 0, must_change_pw = 0 WHERE id = ?").bind(next.hash, next.salt, u.id),
+    env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND id != ?").bind(u.id, keep),
+  ]);
+  return json({ ok: true, signed_out: r[1].meta.changes || 0 });
+});
 
 on("GET", "/me", ({ user }) => json({ user: publicUser(user) }));
 
@@ -217,9 +265,11 @@ on("GET", "/plans", async ({ env, q, user }) => {
   const who = q.get("user") || user.id;
   const marks = periods.map(() => "?").join(",");
   const { results } = await env.DB.prepare(
-    `SELECT * FROM plans WHERE user_id = ? AND period IN (${marks}) ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at`
+    `SELECT plans.*, (SELECT COALESCE(SUM(l.mins), 0) FROM logs l WHERE l.plan_id = plans.id AND l.kind = 'focus') AS focus_mins
+     FROM plans WHERE user_id = ? AND period IN (${marks}) ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at`
   ).bind(who, ...periods).all();
-  // 서로는 차트만: 다른 사람 계획은 칸 모양(완료·시각·길이)만 보내고 내용은 비워요
+  // focus_mins = 그 할 일에 쌓인 집중 기록 분의 합 (logs.plan_id)
+  // 서로는 차트만: 다른 사람 계획은 칸 모양(완료·시각·길이·집중 분)만 보내고 내용은 비워요
   if (who !== user.id) return json({ plans: results.map((p) => ({ ...p, text: "" })), private: true });
   return json({ plans: results });
 });
@@ -303,9 +353,18 @@ on("POST", "/logs", async ({ req, env, user }) => {
   if (!TIME_RE.test(b.at || "")) fail(400, "시각은 HH:MM 형식이에요.");
   const kind = ["note", "done", "focus"].includes(b.kind) ? b.kind : "note";
   const mins = kind === "focus" && Number(b.mins) > 0 ? Math.min(600, Math.round(Number(b.mins))) : null;
-  const log = { id: uid(), user_id: user.id, day: b.day, at: b.at, text: str(b.text, 500, "기록"), kind, mins, created_at: now() };
-  await env.DB.prepare("INSERT INTO logs (id, user_id, day, at, text, kind, mins, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(log.id, log.user_id, log.day, log.at, log.text, log.kind, log.mins, log.created_at).run();
+  // plan_id: 타이머를 할 일에서 시작했으면 그 할 일(내 계획만)에 집중 분이 쌓여요
+  let plan_id = null;
+  if (b.plan_id != null) {
+    if (typeof b.plan_id !== "string" || b.plan_id.length > 64) fail(400, "할 일 정보가 올바르지 않아요.");
+    const p = await env.DB.prepare("SELECT user_id FROM plans WHERE id = ?").bind(b.plan_id).first();
+    if (!p) fail(400, "연결할 할 일을 찾을 수 없어요.");
+    if (p.user_id !== user.id) fail(403, "다른 사람의 할 일에는 기록을 달 수 없어요.");
+    plan_id = b.plan_id;
+  }
+  const log = { id: uid(), user_id: user.id, day: b.day, at: b.at, text: str(b.text, 500, "기록"), kind, mins, plan_id, created_at: now() };
+  await env.DB.prepare("INSERT INTO logs (id, user_id, day, at, text, kind, mins, plan_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(log.id, log.user_id, log.day, log.at, log.text, log.kind, log.mins, log.plan_id, log.created_at).run();
   return json({ log }, 201);
 });
 
@@ -585,3 +644,5 @@ on("GET", "/records/days", async ({ env, q, user }) => {
 registerAi(on, { json, body, fail, str, uid, now });
 registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_NOTE });
 registerEnglish(on, { json, body, fail, uid, now });
+registerCalendar(on, { json, fail });
+registerTogether(on, { json, body, fail, now, kstDay });

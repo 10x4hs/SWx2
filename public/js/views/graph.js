@@ -18,6 +18,7 @@ export function mount(root, ctx) {
     <div class="obs" id="obs">
       <canvas id="gc" aria-label="노트 연결 그래프"></canvas>
       <header class="obs-top">
+        <nav class="seg nt-tabs obs-tabs" aria-label="노트 · 그래프"><a href="#/notes">노트</a><a href="#/graph" aria-current="page">그래프</a></nav>
         <h1 class="obs-title">Second Brain</h1>
         <p class="obs-stat" id="gstat"></p>
         <p class="obs-hint">끌어서 옮기기 · 휠로 확대 · 점에 마우스를 올리면 연결된 노트만 밝아져요 · 누르면 열기</p>

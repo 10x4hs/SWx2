@@ -41,7 +41,7 @@ export function mount(root, ctx, r) {
         <div class="row">
           <nav class="seg" aria-label="계획 단위">
             ${SCOPES.map((s) => `<a href="#/plans/${s.key}" ${s.key === scope ? 'aria-current="page"' : ""}>${s.label}</a>`).join("")}
-            <a href="#/today">하루</a>
+            <a href="#/calendar">하루</a>
           </nav>
           <div class="pager">
             <a class="icon-btn" href="${href(shiftPeriod(key, -1))}" aria-label="${PREV[scope]}">${icon.left()}</a>
@@ -126,7 +126,7 @@ export function mount(root, ctx, r) {
           if (rec && rec.total) { const v = rec.done / rec.total; cls = v === 0 ? "" : v < .34 ? "l1" : v < .67 ? "l2" : v < 1 ? "l3" : "l4"; }
           if (k === ymd(t)) cls += " today";
           const tip = `${m + 1}월 ${d}일${rec ? ` · ${rec.done}/${rec.total} 완료` : ""}`;
-          cells += `<a class="d ${cls}" href="#/today/${k}" title="${tip}" aria-label="${tip}"></a>`;
+          cells += `<a class="d ${cls}" href="#/calendar/${k}" title="${tip}" aria-label="${tip}"></a>`;
         }
         rows += `<div class="heat-row"><span>${m + 1}월</span>${cells}</div>`;
       }
@@ -152,7 +152,7 @@ export function mount(root, ctx, r) {
       for (let d = 1; d <= dim; d++) {
         const date = new Date(y, start.getMonth(), d), k = ymd(date), rec = byDay.get(k);
         const cls = [k === ymd(t) ? "today" : "", date < t ? "past" : ""].join(" ");
-        cells += `<a class="cell ${cls}" href="#/today/${k}" style="text-decoration:none" aria-label="${start.getMonth() + 1}월 ${d}일${rec ? `, ${rec.done}/${rec.total} 완료` : ""}">
+        cells += `<a class="cell ${cls}" href="#/calendar/${k}" style="text-decoration:none" aria-label="${start.getMonth() + 1}월 ${d}일${rec ? `, ${rec.done}/${rec.total} 완료` : ""}">
           <span class="n">${d}</span>
           ${rec ? `<span class="bar b"><i style="width:${pct(rec.done / rec.total)}%"></i></span><span class="c">${rec.done}/${rec.total}</span>` : ""}
         </a>`;
@@ -168,7 +168,7 @@ export function mount(root, ctx, r) {
         <div class="panel-head"><h2 class="h2" id="h-side">요일별 계획</h2><span class="faint" style="font-size:12.5px">요일을 눌러 시간표 짜기</span></div>
         <div class="weekcols">${dayKeys.map((dk, i) => {
           const list = plans.filter((p) => p.period === dk), d = addDays(start, i), k = dk.slice(2);
-          return `<a class="weekcol ${k === t ? "today" : ""}" href="#/today/${k}" style="text-decoration:none">
+          return `<a class="weekcol ${k === t ? "today" : ""}" href="#/calendar/${k}" style="text-decoration:none">
             <span class="d">${DOW[d.getDay()]}</span><span class="n">${d.getMonth() + 1}.${d.getDate()}</span>
             ${list.length ? `<span class="bar"><i style="width:${pct(list.filter((p) => p.done).length / list.length)}%"></i></span>` : ""}
             <ul>${list.slice(0, 5).map((p) => `<li class="${p.done ? "done" : ""}">${p.start ? esc(p.start) + " " : ""}${esc(p.text)}</li>`).join("")}${list.length > 5 ? `<li class="faint">+${list.length - 5}개</li>` : ""}</ul>
