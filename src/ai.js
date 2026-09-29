@@ -1,11 +1,20 @@
-// AI 채팅: Gemini(Google AI Studio) · Groq · Cohere · Xiaomi MiMo · 여러 개 나란히 비교.
-// 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY)에만 있고 브라우저로 나가지 않아요.
+// AI 채팅: Gemini(Google AI Studio) · Groq · Cohere · Xiaomi MiMo · Zhipu GLM · OpenRouter · Kilo · 여러 개 나란히 비교.
+// 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY, ZHIPU_API_KEY, OPENROUTER_API_KEY, KILO_API_KEY)에만 있고 브라우저로 나가지 않아요.
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
 const MIMO_URL = "https://api.xiaomimimo.com/v1/chat/completions";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const COHERE_URL = "https://api.cohere.com/v2/chat";
-const KEY = { gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY", cohere: "COHERE_API_KEY", mimo: "MIMO_API_KEY" };
+// OpenAI 모양 API 셋 더 (무료 자동 라우팅·GLM). 회사 이름 → 주소·키·붙일 헤더·본문 추가
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const ZHIPU_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
+const KILO_URL = "https://api.kilo.ai/api/openrouter/chat/completions";
+const OPENAI_LIKE = {
+  openrouter: { url: OPENROUTER_URL, name: "OpenRouter", headers: { "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" } },
+  zhipu: { url: ZHIPU_URL, name: "GLM", body: { thinking: { type: "disabled" } } },   // 생각 모드를 끄지 않으면 본문이 빈 채로 와요
+  kilo: { url: KILO_URL, name: "Kilo", headers: { "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" } },
+};
+const KEY = { gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY", cohere: "COHERE_API_KEY", mimo: "MIMO_API_KEY", openrouter: "OPENROUTER_API_KEY", zhipu: "ZHIPU_API_KEY", kilo: "KILO_API_KEY" };
 
 // 혼잡(503)·한도(429)·폐지(404)면 다음 모델로 넘어가요
 const MODELS = {
@@ -17,7 +26,14 @@ const MODELS = {
   cohere: { label: "Cohere Command A", desc: "한국어 정리가 깔끔해요", provider: "cohere", chain: ["command-a-03-2025", "command-a-plus-05-2026"] },
   mimo: { label: "MiMo Flash", desc: "생각 과정을 보여줘요", provider: "mimo", chain: ["mimo-v2.6-flash", "mimo-v2.5"] },
   "mimo-pro": { label: "MiMo Pro", desc: "추론이 강한 큰 모델", provider: "mimo", chain: ["mimo-v2.6-pro", "mimo-v2.5-pro"] },
+  // 무료 자동 라우팅 둘 + GLM (4.6 은 무료 키가 429 라서 4.5 Flash 만)
+  zhipu: { label: "GLM 4.5 Flash", desc: "Zhipu · 무료 · 중국어권 모델이지만 한국어도 돼요", provider: "zhipu", chain: ["glm-4.5-flash"] },
+  openrouter: { label: "OpenRouter · 무료 자동", desc: "그때그때 되는 무료 모델로 보내요", provider: "openrouter", chain: ["openrouter/free"] },
+  kilo: { label: "Kilo · 무료 자동", desc: "Kilo 가 고른 무료 모델", provider: "kilo", chain: ["kilo-auto/free"] },
 };
+// 한 번에 답 받는 순서 (뒤의 셋은 느리거나 JSON 모드가 없어서 마지막)
+const JSON_ORDER = ["gemini", "groq", "cohere", "mimo", "zhipu", "openrouter", "kilo"];
+export const TEXT_ORDER = ["groq", "gemini", "cohere", "mimo", "zhipu", "openrouter", "kilo"];
 const COMPARE = ["gemini", "groq", "cohere"]; // "all" = 이 셋을 나란히 (MiMo는 따로 골라요)
 const DAILY_LIMIT = 200;             // 사람당 하루 질문 수
 // 413 = Groq "한 번에 너무 큼(분당 토큰 초과)" → 다음 모델/회사로
@@ -196,8 +212,8 @@ async function contextPrompt(env, user, b, message) {
 // Gemini(JSON 모드) → Groq → Cohere → MiMo 순서. 키가 하나도 없으면 503.
 // 한 회사 안에서는 붐빌 때만 다음 모델로, 그 회사가 아예 안 되면(키·요청 오류) 다음 회사로 넘어가요.
 export async function aiJson(env, system, prompt) {
-  const JSON_RUN = { gemini: geminiJson, groq: groqJson, cohere: cohereJson, mimo: mimoJson };
-  const groups = ["gemini", "groq", "cohere", "mimo"].filter((p) => hasKey(env, p));
+  const JSON_RUN = { gemini: geminiJson, groq: groqJson, cohere: cohereJson, mimo: mimoJson, zhipu: openaiJson("zhipu"), openrouter: openaiJson("openrouter"), kilo: openaiJson("kilo") };
+  const groups = JSON_ORDER.filter((p) => hasKey(env, p));
   if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
   let lastErr = null;
   for (const p of groups) {
@@ -273,6 +289,22 @@ async function cohereJson(env, model, system, prompt) {
   return { data: parseJsonText(text, "Cohere"), used: model };
 }
 
+// OpenAI 모양 API(Zhipu · OpenRouter · Kilo)에서 JSON 한 덩어리 받기. JSON 모드가 보장되지 않아서 코드 펜스를 벗기고 { } 만 골라 파싱해요
+const openaiJson = (provider) => async (env, model, system, prompt) => {
+  const p = OPENAI_LIKE[provider];
+  const res = await fetch(p.url, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${env[KEY[provider]]}`, ...(p.headers || {}) },
+    body: JSON.stringify({ model, ...(p.body || {}), messages: [{ role: "system", content: system + "\n반드시 JSON 객체 하나만 출력해. 설명이나 코드 펜스 없이." }, { role: "user", content: prompt }], max_tokens: 8192, temperature: 0.3 }),
+  });
+  if (!res.ok) throw await providerError(res, p.name);
+  const j = await res.json();
+  if (j.error) throw Object.assign(new Error(`${p.name} 오류: ${String(j.error.message || "").slice(0, 120)}`), { retry: true });
+  const text = j.choices?.[0]?.message?.content || "";
+  if (!text) { const e = new Error(`${p.name}가 빈 답을 보냈어요.`); e.retry = true; throw e; }
+  return { data: parseJsonText(text.replace(/<think>[\s\S]*?<\/think>/g, ""), p.name), used: j.model && j.model !== model ? `${model} → ${j.model}` : model };
+};
+
 // Qwen은 생각 과정을 따로 빼 달라고 해야 본문에 <think>가 안 섞여요 (gpt-oss는 원래 따로 줘요)
 const groqExtra = (model) => (model.startsWith("qwen/") ? { reasoning_format: "parsed" } : {});
 
@@ -343,16 +375,18 @@ async function gemini(env, model, system, history, message, emit) {
 }
 
 // OpenAI 모양 스트림 (MiMo · Groq 둘 다): 생각 과정은 reasoning_content(MiMo) 또는 reasoning(Groq)으로 와요
-async function openaiStream(url, key, name, payload, emit) {
+async function openaiStream(url, key, name, payload, emit, headers = {}) {
   const res = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+    headers: { "content-type": "application/json", authorization: `Bearer ${key}`, ...headers },
     body: JSON.stringify({ ...payload, stream: true }),
   });
   if (!res.ok) throw await providerError(res, name);
-  let text = "";
+  let text = "", routed = null;
   for await (const chunk of sse(res)) {
     if (chunk.error) { const e = new Error(`${name} 오류: ${String(chunk.error.message || "").slice(0, 120)}`); e.retry = !text; throw e; }
+    // 자동 라우팅(openrouter/free 등)은 실제로 어느 모델이 답했는지 chunk.model 로 알려줘요
+    if (chunk.model && chunk.model !== payload.model && chunk.model !== routed) { routed = chunk.model; await emit("status", `${name} → ${routed}`); }
     const d = chunk.choices?.[0]?.delta || {};
     const think = d.reasoning_content || d.reasoning;
     if (think) await emit("reasoning", think);
@@ -394,4 +428,28 @@ async function cohere(env, model, system, history, message, emit) {
   return text;
 }
 
-const RUN = { gemini, mimo, groq, cohere };
+// Zhipu · OpenRouter · Kilo: 전부 OpenAI 모양 스트림
+const openaiLike = (provider) => (env, model, system, history, message, emit) => {
+  const p = OPENAI_LIKE[provider];
+  return openaiStream(p.url, env[KEY[provider]], p.name, { model, ...(p.body || {}), messages: chatMessages(system, history, message), max_tokens: 4096, temperature: 0.7 }, emit, p.headers);
+};
+
+const RUN = { gemini, mimo, groq, cohere, zhipu: openaiLike("zhipu"), openrouter: openaiLike("openrouter"), kilo: openaiLike("kilo") };
+
+// ---------- 글 한 번에 받기 (대화방 AI용) ----------
+// 스트리밍 함수를 그대로 쓰되 글자는 모아서 한 번에 돌려줘요. messages = [{ role: 'user'|'assistant', content }], 마지막은 user.
+// 회사 순서는 order 로 (기본 Groq → Gemini → Cohere → MiMo → Zhipu → OpenRouter → Kilo). 붐비면 다음 모델, 그 회사가 아예 안 되면 다음 회사로.
+export async function aiText(env, system, messages, order = TEXT_ORDER) {
+  const groups = order.filter((p) => MODELS[p] && hasKey(env, p));
+  if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
+  const history = messages.slice(0, -1), last = messages[messages.length - 1]?.content || "";
+  const quiet = async () => {};
+  let lastErr = null;
+  for (const p of groups) {
+    for (const model of MODELS[p].chain) {
+      try { return { text: await RUN[p](env, model, system, history, last, quiet), used: model }; }
+      catch (e) { lastErr = e; if (!e.retry) break; }
+    }
+  }
+  throw lastErr || new Error("AI 답을 받지 못했어요.");
+}

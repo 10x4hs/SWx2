@@ -74,6 +74,9 @@ GEMINI_API_KEY=AQ....
 GROQ_API_KEY=gsk_...
 COHERE_API_KEY=...
 MIMO_API_KEY=sk-...        # 선택
+ZHIPU_API_KEY=...          # 선택
+OPENROUTER_API_KEY=sk-or-... # 선택
+KILO_API_KEY=...           # 선택
 INVITE_CODE=...
 PASSWORDLESS=1             # 로컬 전용
 ```
@@ -83,10 +86,13 @@ PASSWORDLESS=1             # 로컬 전용
 | `GEMINI_API_KEY` | https://aistudio.google.com → Get API key | 채팅(Gemini Flash/Pro), 노트 정리 1순위. 무료, 카드 없음. 새 키는 `AQ.` 로 시작 |
 | `GROQ_API_KEY` | https://console.groq.com/keys | 채팅(GPT-OSS 120B → 20B → Qwen), 정리 2순위. 아주 빠름. 무료는 분당 약 8천 토큰이라 긴 정리는 다음 순서로 넘겨요 |
 | `COHERE_API_KEY` | https://dashboard.cohere.com/api-keys | 채팅(Command A), 정리 3순위, **비슷한 노트 찾기(임베딩 `embed-multilingual-v3.0`)**. 무료(Trial) 키는 한 달 호출 수가 제한돼요 |
-| `MIMO_API_KEY` | 샤오미 MiMo 개발자 플랫폼 (`api.xiaomimimo.com`) | 채팅(MiMo, 따로 선택), 정리 마지막 순서. 추론 과정 표시 |
+| `MIMO_API_KEY` | 샤오미 MiMo 개발자 플랫폼 (`api.xiaomimimo.com`) | 채팅(MiMo, 따로 선택), 정리 4순위. 추론 과정 표시 |
+| `ZHIPU_API_KEY` | https://open.bigmodel.cn → API Keys | 채팅(GLM 4.5 Flash, 따로 선택), 정리 5순위. 무료지만 느려요(수십 초). 4.6 은 무료 키가 429 |
+| `OPENROUTER_API_KEY` | https://openrouter.ai/keys | 채팅(`openrouter/free` — 그때그때 되는 무료 모델로 자동), 정리 6순위. 실제로 답한 모델은 상태 줄에 보여요 |
+| `KILO_API_KEY` | https://app.kilo.ai → API Keys | 채팅(`kilo-auto/free` 자동), 정리 마지막 순서. 유료 모델은 크레딧 오류라 무료 자동만 |
 
 - 채팅의 **전체 비교** = Gemini · Groq · Cohere 세 답을 나란히. 키가 없는 모델은 건너뛰어요.
-- 노트 정리/생성(JSON)은 Gemini → Groq → Cohere → MiMo 순서로 되는 곳을 써요.
+- 노트 정리/생성(JSON)은 Gemini → Groq → Cohere → MiMo → Zhipu → OpenRouter → Kilo 순서로 되는 곳을 써요. 대화방 AI(`aiText`)는 Groq → Gemini → Cohere → MiMo → Zhipu → OpenRouter → Kilo. 뒤의 셋은 JSON 모드가 없어서 코드 펜스를 벗기고 `{ }` 만 골라 읽어요.
 - `COHERE_API_KEY` 가 없거나 임베딩이 실패하면 '비슷한 노트 후보' 없이 예전처럼 정리해요.
 
 키는 브라우저로 나가지 않고 Worker 비밀값에만 있어요. 사람당 하루 200개 질문 제한(`src/ai.js` 의 `DAILY_LIMIT`).
@@ -106,6 +112,25 @@ PASSWORDLESS=1             # 로컬 전용
 - **주간 회고**: `GET /api/review/week?week=2026-W40` (ISO 주, 월~일, 기본 이번 주) → `{ week, from, to, members: [{ user_id, plans_done, plans_total, focus_mins, english_mins, study_mins, diary_days, active_days, score_avg, cheers }], mine }` — 숫자는 셋 다, 회고 글(`mine`)은 나만
   - `POST /api/review/week/ai { week }` → `{ review: { body, created_at } }`. AI가 **내 기록만**(계획 제목·완료, 실행 기록, 영어, 하루 점수, 노트 제목)으로 4~8줄 회고를 써요. **일기는 읽지도 않아요.** 기록이 없는 주는 400, AI 키가 없으면 503, 30초 안에 다시 누르면 429
   - 일요일 22:00 (한국 시간, 크론 `0 13 * * SUN`)에 그 주 활동이 있는 사람 것을 미리 만들어 둬요. 그날 직접 만든 게 있으면 덮어쓰지 않아요
+
+## 대화방 · 창고 (셋이 같이 쓰는 방 하나)
+
+`#/room` · `src/room.js`, `src/library.js` · 표는 `migrations/0009_room.sql`. 방은 셋 다 들어 있는 `all` 하나와 둘만의 1:1 방 `dm:<uidA>:<uidB>`(두 아이디를 정렬). 실시간은 폴링(보일 때 3초, 숨기면 30초)이고 `since` 로 새 것만 받아요. `all` 은 **셋이 다 보는 것**, dm 방은 아이디가 든 둘만(남의 dm 방은 403). 모든 `/room*` 은 `room` 을 받고(GET 은 쿼리, 쓰기는 body), 없으면 `all` 이에요.
+
+- **메시지**: `GET /api/room?room=&since=<ms>&limit=50` → `{ room, messages, ai_name, unread, rooms, now }`. `since` 없으면 최근 50개(오래된 것부터), 있으면 그 뒤 것만. `unread` 는 그 방, `rooms` 는 내가 들어갈 수 있는 방 전부의 안 읽음(`{ all: n, "dm:..": n }`). 메시지는 `{ id, room, user_id, kind, body, ref_id, reply_to, created_at }` 이고 kind 는 `text`(사람) · `ai`(AI, user_id null) · `share`(창고 항목, `item:{id,kind,title,thumb,url,video_id}` 가 같이 붙음 — 항목을 지웠으면 `item: null`) · `system`(이름 바꿈 알림)
+  - `POST /api/room { room?, body, reply_to? }` → 201 `{ message, ai?, ai_error? }` (본문 1~2000자). 내 메시지는 먼저 저장되고, AI 이름이나 `@ai` 를 불렀으면 AI 답을 만들어 같은 방에 저장하고 `ai` 로 같이 줘요 (dm 방에서도 부를 수 있어요). AI 가 실패해도 201 이고 `ai_error` 문자열만 와요 (20초 넘으면 시간 초과)
+  - `POST /api/room/ai { message_id }` → `{ ai }` AI 답 다시 시도. AI 를 부른 사람 메시지에만(아니면 400), 한 사람이 30초 안에 다시 누르면 429, 실패는 502/504
+  - `DELETE /api/room/:id` → 내 것만 (남의 것·AI·system 은 403, 없으면 404). 수정은 없어요
+  - `PUT /api/room/read { room?, at? }` → `{ room, unread, rooms }` 여기까지 읽음(뒤로는 안 감, 방마다 따로). `GET /api/room/unread?room=` → `{ room, unread, rooms, total }` Dock 배지는 `total`, 방 목록 배지는 `rooms`. 안 읽음 = 마지막으로 읽은 시각 뒤에 온 **남의** 메시지 수(AI·system 포함)
+  - `GET /api/room/settings` → `{ ai_name }` · `PUT /api/room/settings { ai_name }` → `{ ai_name, message }`. 2~12자, `@`·띄어쓰기 불가. 셋 중 누구나 바꿀 수 있고(방 공통) `all` 방에 system 메시지가 남아요
+- **AI 가 보는 것**: 부른 그 방의 최근 40개 메시지(이름 붙여서, dm 이면 그 둘의 것만) + 창고 목록(종류 · 제목 · 넣은 사람). **개인 노트·일기·계획·기록은 절대 보내지 않아요.** 회사 순서는 Groq → Gemini → Cohere → MiMo (`aiText` in `src/ai.js`). 기본 이름은 '마피아'
+- **창고** `#/room/library`: 책 · 링크 · 영상(`kind`: `book | link | video`)
+  - `POST /api/library/preview { url?, title?, kind? }` → 저장 없이 `{ kind, url, title, author, thumb, description, isbn, video_id, candidates?, warning? }`. 유튜브(watch · youtu.be · shorts · music)는 oEmbed 로 제목·채널·썸네일, 주소는 `https://www.youtube.com/watch?v=<id>` 로 통일. 일반 주소는 `<title>` · og:title/image/description 을 앞 200KB 만 3초 안에 읽어요. 제목만 주면 책 검색(Google Books → 안 되면 Open Library) 후보 3개. 바깥 서비스가 죽어도 200 + `warning` 이고 제목만으로 저장할 수 있어요
+  - `GET /api/library?kind=&q=` → `{ items:[{ …item, marks:[{user_id,state,note}], my:{state,note}|null }] }` 최신순. `q` 는 제목·저자·설명 부분 일치
+  - `POST /api/library { kind, url?, title, author?, thumb?, description?, isbn?, note?, share? }` → 201 `{ item, message? }`. 제목 200자, 주소 http(s) 2000자, 썸네일은 https 만. 같은 주소가 있으면 409 `{ error, item }`. `share: true` 면 `room`(기본 `all`)에 share 메시지도 (`message`), `share: "dm:..."` 처럼 방 아이디를 바로 줘도 돼요 — 들어갈 수 없는 방이면 저장 없이 403
+  - `PUT /api/library/:id/mark { state|null, note? }` → `{ mark }`. state 는 `todo | doing | done`(읽을래요 · 읽는 중 · 다 읽었어요). state 만 보내면 메모는 그대로, `state: null` 이고 메모도 없으면 표시를 지워요(`{ mark: null }`). 메모만 남기는 것(state null + note)도 돼요
+  - `POST /api/library/:id/share { room? }` → 201 `{ message }` (item 포함, 기본 `all`) · `DELETE /api/library/:id` → 넣은 사람만 (403), 지워도 방의 share 메시지는 남고 카드만 비어요
+- 사설 주소 차단: Workers 는 DNS 를 못 풀어서 `localhost` · `127.x` · `10.x` · `192.168.x` · `172.16~31.x` · `169.254.x` · `::1` · `.internal` 은 호스트 이름 문자열로만 막아요 (아래 보안 메모)
 
 ## 영어 (ENGLISH-OS 연동)
 
@@ -140,15 +165,17 @@ API=http://localhost:8787 EN_USER=t_en ENGLISH_OS=/볼트사본 npm run english:
 
 ```
 src/worker.js          API (인증·계획·기록·노트·그래프·검색)
-src/ai.js              AI 채팅 (Gemini·MiMo 스트리밍, 기록 참고, 대화 저장)
+src/ai.js              AI 채팅 (Gemini·Groq·Cohere·MiMo·GLM·OpenRouter·Kilo 스트리밍, 기록 참고, 대화 저장) · aiJson/aiText 공용 호출
 src/brain.js           AI 정리·생성 (주제·태그·링크 써넣기, MOC 목차, 개념 노트 만들기)
 src/calendar.js        캘린더 (한 달 요약 · 하루 한 페이지)
 src/english.js         영어 기록 · 표현 · 복습 카드
 src/together.js        같이 하기 (지금 공부 중 · 응원 · 주간 회고)
+src/room.js            대화방 (all 방 + 1:1 dm 방 · 이름 부르면 답하는 AI · 방마다 안 읽음)
+src/library.js         공통 창고 (책·링크·영상 · 미리보기 메타데이터 · 표시/메모)
 migrations/            D1 스키마
 public/                정적 프론트엔드 (빌드 없음, ES 모듈)
   js/app.js            셸 · 라우팅 · ⌘K · 집중 타이머
-  js/views/*.js        오늘 · 계획 · 노트 · 그래프 · 우리 셋 · 로그인
+  js/views/*.js        오늘 · 계획 · 노트 · 그래프 · 우리 셋 · 대화방 · 로그인
   vendor/              marked, DOMPurify
   css/tokens.css       디자인 토큰 (DESIGN.md 참고)
   js/ringhud.js        홈 링 차트 (시간 호 + 달성 호 + 숫자 행)
@@ -167,6 +194,8 @@ legacy/                이전 단일 파일 버전
   - 로컬(`PASSWORDLESS=1`)은 비밀번호를 안 쓰니 이 표시도 무시해요 (`must_change_pw` 는 항상 false). `npm test` 는 요청에 `x-trio-strict: 1` 헤더를 붙여 배포본처럼 검사해요 — 이 헤더는 검사를 **더 엄격하게만** 하고, 배포본에서는 원래 켜져 있어서 아무 차이가 없어요
 - 세션: 무작위 토큰의 SHA-256만 DB에 저장, HttpOnly · SameSite=Lax 쿠키(https에서는 Secure)
 - 쓰기 요청은 `x-trio` 헤더 필수(CSRF 방지), 노트 HTML은 DOMPurify로 정리
+- 창고 미리보기(`/api/library/preview`)는 서버가 남의 주소를 대신 여는 기능이에요. http(s) 만, 3초 타임아웃, 앞 200KB 만 읽고, 사설 주소는 호스트 이름 문자열로 막아요 (Workers 는 DNS 를 못 풀어서 이름이 사설 IP 로 풀리는 경우까지는 못 잡아요 — Cloudflare 가 내부 주소 연결을 따로 막는 것에 의지). 썸네일은 https 주소만 저장해요
+- 대화방: dm 방(`dm:<uidA>:<uidB>`)은 아이디가 든 둘만 읽고 쓸 수 있어요(서버가 403). AI 는 부른 그 방의 메시지 40개와 창고 목록만 프롬프트에 넣어요 — dm 에서 부르면 셋째 사람 메시지는 안 봐요. 개인 노트·일기·계획은 코드상 조회 자체를 안 해요 (`src/room.js` `buildPrompt`)
 
 ## 크레딧
 

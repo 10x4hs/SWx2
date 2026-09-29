@@ -51,6 +51,8 @@ const GLYPH = {
   ai: `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><defs><linearGradient id="ai-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--c-amber)"/><stop offset=".5" stop-color="var(--c-rose)"/><stop offset="1" stop-color="var(--c-blue)"/></linearGradient></defs><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z" fill="url(#ai-g)"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill="url(#ai-g)"/></svg>`,
   // 영어: 무채색 말풍선 + 청록 "En"
   english: `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 4.5h13a2 2 0 0 1 2 2v8.2a2 2 0 0 1-2 2h-7.3L7 20v-3.3H5.5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2z"/><text x="12" y="13.9" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif" font-size="8.6" font-weight="800" letter-spacing="-.2" fill="var(--c-teal)" stroke="none">En</text></svg>`,
+  // 대화: 무채색 말풍선 둘(겹침) + 앞 말풍선에 초록 점 하나 (셋이 같이 쓰는 방)
+  room: `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 4.5h9a2.5 2.5 0 0 1 2.5 2.5v5a2.5 2.5 0 0 1-2.5 2.5H16" stroke-opacity=".5"/><path d="M4.5 9.5A2.5 2.5 0 0 1 7 7h7a2.5 2.5 0 0 1 2.5 2.5v5A2.5 2.5 0 0 1 14 17h-4l-3.5 3v-3A2.5 2.5 0 0 1 4.5 14.5z" fill="var(--tile)"/><circle cx="10.5" cy="12" r="1.5" fill="var(--c-green)" stroke="none"/></svg>`,
   // 타이머: 살구색 스톱워치
   timer: g('<circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V9.5M10 3h4M18.5 7l1.3-1.3"/>', 2),
 };

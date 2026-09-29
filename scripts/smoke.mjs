@@ -257,6 +257,106 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   r = await call("a", "POST", "/auth/password", { current: "newpassword1", next: "password1" }); ok(r.status === 200, "new password works (changed back)");
 }
 
+// ---- 대화방 · 창고 (v6) ----
+r = await call("a", "GET", "/room"); ok(r.status === 200 && Array.isArray(r.data.messages) && typeof r.data.ai_name === "string" && typeof r.data.now === "number", "room: list shape · ai_name=" + r.data.ai_name);
+const roomT0 = r.data.now;
+r = await call("a", "POST", "/room", { body: "" }); ok(r.status === 400, "room: empty body 400");
+r = await call("a", "POST", "/room", { body: "오늘 뭐 공부해?" }); ok(r.status === 201 && r.data.message.kind === "text" && !("ai" in r.data) && !("ai_error" in r.data), "room: plain message, no ai key");
+const rm1 = r.data.message;
+r = await call("a", "POST", "/room", { body: "@ai 한 줄로 인사해 줘" });
+ok(r.status === 201 && r.data.message.body.startsWith("@ai"), "room: mention stored (ai " + (r.data.ai ? "answered" : r.data.ai_error ? "error: " + r.data.ai_error.slice(0, 40) : "skipped") + ")");
+const rm2 = r.data.message, rmAi = r.data.ai;
+if (!process.env.SKIP_AI) ok(!!rmAi && rmAi.kind === "ai" && rmAi.user_id === null && rmAi.reply_to === rm2.id, "room: ai reply saved: " + (rmAi?.body || r.data.ai_error || "").replace(/\s+/g, " ").slice(0, 60));
+r = await call("b", "GET", "/room?since=" + rm1.created_at); ok(r.status === 200 && r.data.messages.every((m) => m.created_at > rm1.created_at) && r.data.messages.some((m) => m.id === rm2.id), "room: since returns only newer (" + r.data.messages.length + ")");
+r = await call("b", "GET", "/room/unread"); const unreadB = r.data.unread; ok(unreadB >= 2, "room: b unread counts a's messages: " + unreadB);
+r = await call("a", "GET", "/room/unread"); ok(r.data.unread === (rmAi ? 1 : 0), "room: a's own messages not counted (unread=" + r.data.unread + ")");
+r = await call("b", "PUT", "/room/read", {}); ok(r.status === 200 && r.data.unread === 0, "room: read resets unread");
+r = await call("b", "POST", "/room/ai", { message_id: rm1.id }); ok(r.status === 400, "room: retry on non-mention 400");
+r = await call("b", "POST", "/room/ai", { message_id: "nope" }); ok(r.status === 404, "room: retry on missing 404");
+r = await call("b", "DELETE", "/room/" + rm1.id); ok(r.status === 403, "room: delete other's 403");
+r = await call("a", "DELETE", "/room/" + rm1.id); ok(r.status === 200, "room: delete own");
+r = await call("a", "DELETE", "/room/" + rm1.id); ok(r.status === 404, "room: delete again 404");
+r = await call("a", "PUT", "/room/settings", { ai_name: "a" }); ok(r.status === 400, "room: ai_name too short 400");
+r = await call("a", "PUT", "/room/settings", { ai_name: "@마피아" }); ok(r.status === 400, "room: ai_name with @ 400");
+r = await call("a", "PUT", "/room/settings", { ai_name: "   " }); ok(r.status === 400, "room: ai_name blank 400");
+const prevAiName = (await call("a", "GET", "/room/settings")).data.ai_name;
+r = await call("a", "PUT", "/room/settings", { ai_name: "테스트봇" + tag.slice(-2) });
+ok(r.status === 200 && r.data.message.kind === "system" && r.data.message.body.includes("테스트A") && r.data.message.body.includes(r.data.ai_name), "room: settings → system message: " + r.data.message.body);
+r = await call("b", "GET", "/room"); ok(r.data.ai_name === "테스트봇" + tag.slice(-2), "room: ai_name visible to b");
+const sysMsgId = r.data.messages.find((m) => m.kind === "system")?.id;
+r = await call("a", "DELETE", "/room/" + sysMsgId); ok(r.status === 403, "room: cannot delete system message");
+r = await call("a", "PUT", "/room/settings", { ai_name: prevAiName }); ok(r.status === 200, "room: ai_name restored to " + prevAiName);
+
+// 1:1 방: 두 사람만, 셋째는 403. 안 읽음은 방마다
+mk("t_d" + tag, "테스트D", "password3"); r = await call("d", "POST", "/auth/login", { username: "t_d" + tag }); ok(r.status === 200, "room: third user login");
+const uidA = (await call("a", "GET", "/me")).data.user.id, uidB = (await call("b", "GET", "/me")).data.user.id;
+const dm = uidA < uidB ? `dm:${uidA}:${uidB}` : `dm:${uidB}:${uidA}`, dmRev = uidA < uidB ? `dm:${uidB}:${uidA}` : `dm:${uidA}:${uidB}`;
+r = await call("a", "POST", "/room", { room: "dm:x:y", body: "hi" }); ok(r.status === 400, "room: bad room id 400");
+r = await call("a", "POST", "/room", { room: dmRev, body: "hi" }); ok(r.status === 400, "room: unsorted dm id 400");
+r = await call("a", "POST", "/room", { room: `dm:${uidA}:${uidA}`, body: "hi" }); ok(r.status === 400, "room: dm with self 400");
+r = await call("a", "POST", "/room", { room: [uidA, "00000000-0000-4000-8000-000000000000"].sort().join(":").replace(/^/, "dm:"), body: "hi" }); ok(r.status === 404, "room: dm with unknown member 404");
+r = await call("a", "POST", "/room", { room: dm, body: "둘만 얘기하자" }); ok(r.status === 201 && r.data.message.room === dm, "room: dm message posted");
+const dm1 = r.data.message;
+r = await call("d", "GET", "/room?room=" + dm); ok(r.status === 403, "room: third user cannot read dm");
+r = await call("d", "POST", "/room", { room: dm, body: "나도" }); ok(r.status === 403, "room: third user cannot post in dm");
+r = await call("d", "PUT", "/room/read", { room: dm }); ok(r.status === 403, "room: third user cannot mark dm read");
+r = await call("b", "GET", "/room?room=" + dm); ok(r.status === 200 && r.data.room === dm && r.data.messages.some((m) => m.id === dm1.id) && r.data.unread === 1, "room: b reads dm, unread=1");
+r = await call("b", "GET", "/room"); ok(!r.data.messages.some((m) => m.id === dm1.id), "room: dm message not in 'all'");
+r = await call("b", "GET", "/room/unread"); ok(r.data.rooms[dm] === 1 && r.data.unread === r.data.rooms.all && typeof r.data.total === "number", "room: unread per room · " + JSON.stringify(r.data.rooms));
+r = await call("d", "GET", "/room/unread"); ok(!(dm in r.data.rooms) && "all" in r.data.rooms, "room: third user's rooms exclude others' dm");
+r = await call("b", "PUT", "/room/read", { room: dm }); ok(r.status === 200 && r.data.rooms[dm] === 0, "room: read per room resets only that room");
+r = await call("b", "POST", "/room", { body: "그룹에도 하나" }); ok(r.status === 201 && r.data.message.room === "all", "room: default room is 'all'");
+const grp1 = r.data.message;
+r = await call("b", "POST", "/room/ai", { message_id: dm1.id }); ok(r.status === 400, "room: dm retry rule same (non-mention 400)");
+
+// 창고
+r = await call("a", "POST", "/library/preview", {}); ok(r.status === 400, "library: preview needs url or title");
+r = await call("a", "POST", "/library/preview", { url: "http://127.0.0.1:1/" }); ok(r.status === 400, "library: preview blocks private host");
+r = await call("a", "POST", "/library/preview", { url: "ftp://example.com/x" }); ok(r.status === 400, "library: preview blocks non-http");
+r = await call("a", "POST", "/library/preview", { url: "https://youtu.be/dQw4w9WgXcQ?t=3" });
+ok(r.status === 200 && r.data.kind === "video" && r.data.video_id === "dQw4w9WgXcQ" && r.data.thumb.startsWith("https://i.ytimg.com/") && (r.data.title || r.data.warning), "library: youtube preview · " + (r.data.title || r.data.warning));
+r = await call("a", "POST", "/library/preview", { title: "Clean Code" }); ok(r.status === 200 && r.data.kind === "book" && (r.data.candidates.length >= 1 || r.data.warning), "library: book preview · " + (r.data.author || r.data.warning));
+// 진짜 창고와 겹치지 않게 이 실행만의 영상 아이디 (11자, 저장은 oEmbed 를 안 불러요)
+const vid = ("t" + tag + "00000").slice(0, 11);
+r = await call("a", "POST", "/library", { kind: "video", url: `https://www.youtube.com/watch?v=${vid}&t=9`, title: "테스트 영상 " + tag, share: true });
+ok(r.status === 201 && r.data.item?.video_id === vid && r.data.item.url === `https://www.youtube.com/watch?v=${vid}` && r.data.item.thumb?.includes("hqdefault") && r.data.message?.kind === "share", "library: create video (url canonical) + share message");
+if (r.status !== 201) { console.log("FAIL library: create failed (" + r.status + " " + (r.data?.error || "") + ") — 뒤 창고 검사를 건너뜀"); process.exitCode = 1; }
+const li1 = r.data.item, shareMsg = r.data.message;
+r = await call("b", "POST", "/library", { kind: "link", url: `https://youtu.be/${vid}`, title: "중복" }); ok(r.status === 409 && r.data.item?.id === li1?.id, "library: duplicate url 409 with existing item");
+r = await call("a", "POST", "/library", { kind: "book", title: "테스트 책 " + tag, author: "저자", note: "읽고 싶어요" }); ok(r.status === 201 && r.data.item.my?.note === "읽고 싶어요" && r.data.item.my.state === null, "library: create book with note");
+const li2 = r.data.item;
+r = await call("a", "POST", "/library", { kind: "zine", title: "x" }); ok(r.status === 400, "library: bad kind 400");
+r = await call("a", "POST", "/library", { kind: "link", title: "x", thumb: "http://a.b/c.png" }); ok(r.status === 400, "library: http thumb 400");
+r = await call("b", "PUT", "/library/" + li1.id + "/mark", { state: "todo" }); ok(r.status === 200 && r.data.mark.state === "todo", "library: mark upsert todo");
+r = await call("b", "PUT", "/library/" + li1.id + "/mark", { state: "done", note: "봤어요" }); ok(r.data.mark.state === "done" && r.data.mark.note === "봤어요", "library: mark update done+note");
+r = await call("b", "PUT", "/library/" + li1.id + "/mark", { state: "doing" }); ok(r.data.mark.state === "doing" && r.data.mark.note === "봤어요", "library: state change keeps note");
+r = await call("b", "PUT", "/library/" + li1.id + "/mark", { state: "bad" }); ok(r.status === 400, "library: bad state 400");
+r = await call("b", "GET", "/library?kind=video"); const gi = r.data.items.find((i) => i.id === li1.id);
+ok(r.status === 200 && gi && gi.marks.length === 1 && gi.my?.state === "doing" && !r.data.items.some((i) => i.kind !== "video"), "library: list kind filter + marks + my");
+r = await call("a", "GET", "/library?q=" + encodeURIComponent("테스트 책")); ok(r.data.items.some((i) => i.id === li2.id) && !r.data.items.some((i) => i.id === li1.id), "library: q search");
+r = await call("a", "GET", "/library?q=" + encodeURIComponent(tag)); ok(r.data.items.length >= 2 && r.data.items[0].id === li2.id, "library: newest first");
+r = await call("b", "PUT", "/library/" + li1.id + "/mark", { state: null }); ok(r.status === 200 && r.data.mark === null, "library: mark null deletes");
+r = await call("b", "GET", "/library?kind=video"); ok(r.data.items.find((i) => i.id === li1.id).marks.length === 0, "library: mark gone from list");
+r = await call("b", "POST", "/library/" + li2.id + "/share"); ok(r.status === 201 && r.data.message.kind === "share" && r.data.message.item?.id === li2.id, "library: share by other member");
+const shareMsg2 = r.data.message;
+r = await call("a", "POST", "/library/" + li2.id + "/share", { room: dm }); ok(r.status === 201 && r.data.message.room === dm, "library: share into dm room");
+const shareDm = r.data.message;
+r = await call("d", "POST", "/library/" + li2.id + "/share", { room: dm }); ok(r.status === 403, "library: third user cannot share into others' dm");
+r = await call("d", "POST", "/library", { kind: "link", title: "x", share: dm }); ok(r.status === 403, "library: create+share into forbidden dm 403 (nothing saved)");
+r = await call("b", "GET", "/room?room=" + dm); ok(r.data.messages.find((m) => m.id === shareDm.id)?.item?.id === li2.id, "room: dm share carries item");
+r = await call("a", "GET", "/room"); const sm = r.data.messages.find((m) => m.id === shareMsg.id);
+ok(sm && sm.item && sm.item.id === li1.id && sm.item.kind === "video" && sm.item.url === li1.url && "thumb" in sm.item, "room: share message carries item");
+r = await call("b", "DELETE", "/library/" + li1.id); ok(r.status === 403, "library: delete by non-owner 403");
+r = await call("a", "DELETE", "/library/" + li1.id); ok(r.status === 200, "library: delete own");
+r = await call("a", "GET", "/room"); ok(r.data.messages.find((m) => m.id === shareMsg.id)?.item === null, "room: share message item:null after delete");
+r = await call("a", "DELETE", "/library/" + li2.id); ok(r.status === 200, "library: delete book");
+// 정리: 이 시험이 만든 방 메시지 지우기 (AI·system 은 내 것이 아니라 API 로는 못 지워요 → 아래 D1 청소)
+for (const id of [rm2.id, shareMsg.id, dm1.id, shareDm.id]) await call("a", "DELETE", "/room/" + id);
+for (const id of [shareMsg2.id, grp1.id]) await call("b", "DELETE", "/room/" + id);
+execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM room_messages WHERE created_at >= ${roomT0} AND user_id IS NULL`], { stdio: "ignore" });
+r = await call("a", "GET", "/room?since=" + (roomT0 - 1)); const dmLeft = (await call("a", "GET", "/room?room=" + dm + "&since=" + (roomT0 - 1))).data.messages.length;
+ok(r.data.messages.length === 0 && dmLeft === 0, "room: test messages cleaned up");
+
 // ---- AI ----
 r = await call("a", "GET", "/ai/models"); ok(r.data.models.length >= 5, "ai models: " + r.data.models.filter((m) => m.available).map((m) => m.id).join(","));
 async function ask(model, message, chat_id) {
@@ -278,6 +378,16 @@ if (!process.env.SKIP_AI) {
   a = await ask("gemini", "방금 설명을 5단어 이내로 줄여 줘", meta.chat_id);
   ok(a.out("gemini").length > 0, "ai follow-up in same chat");
   r = await call("a", "GET", "/ai/chats/" + meta.chat_id); ok(r.data.messages.length >= 4, "chat saved: " + r.data.messages.length + " messages");
+  // 새 회사 셋 (Zhipu · OpenRouter · Kilo): 한 마디씩. 한도(429)면 PASS 로 표시만, 서버에 키가 없으면 건너뜀
+  const avail = Object.fromEntries((await call("a", "GET", "/ai/models")).data.models.map((m) => [m.id, m.available]));
+  for (const m of ["zhipu", "openrouter", "kilo"]) {
+    if (!avail[m]) { console.log(`SKIP ai ${m}: 서버에 키가 없어요 (.dev.vars 를 읽은 뒤 다시 시작해야 해요)`); continue; }
+    const x = await ask(m, "한 단어로 인사해 줘");
+    const err = x.ev.find((e) => e.type === "error" && e.model === m), done = x.ev.find((e) => e.type === "done" && e.model === m);
+    const limited = err && /한도|429|붐벼/.test(err.message);
+    ok(x.out(m).length > 0 || limited, `ai ${m} answered: ${(x.out(m) || err?.message || "").replace(/\s+/g, " ").slice(0, 60)}${limited ? " (한도 → PASS 표시만)" : ""}${done?.used ? " · " + done.used : ""}`);
+    const mm = x.ev.find((e) => e.type === "meta"); if (mm?.chat_id) await call("a", "DELETE", "/ai/chats/" + mm.chat_id);
+  }
   r = await call("b", "GET", "/ai/chats/" + meta.chat_id); ok(r.status === 404, "chat private to owner");
   // AI 두뇌: 대화 → 개념 노트 + 목차, 전체 정리 → 주제·태그·링크를 노트에 써넣기
   r = await call("a", "POST", "/ai/generate", { chat_id: meta.chat_id });
@@ -298,6 +408,13 @@ if (!process.env.SKIP_AI) {
   r = await call("a", "GET", "/review/week?week=2027-W10"); ok(r.data.mine?.body === lines.join("\n"), "review ai saved as mine");
   r = await call("b", "GET", "/review/week?week=2027-W10"); ok(r.data.mine === null, "review text private to owner");
   r = await call("a", "POST", "/review/week/ai", { week: "2027-W10" }); ok(r.status === 429, "review ai: regenerate too fast → 429");
+  // 대화방 AI: 이름을 부르면 kind 'ai' 메시지가 같이 와요 (방 안의 것만 봄)
+  const aiName = (await call("a", "GET", "/room/settings")).data.ai_name;
+  r = await call("a", "POST", "/room", { body: `@${aiName} 안녕, 한 줄로 인사해줘` });
+  ok(r.status === 201 && r.data.ai?.kind === "ai" && r.data.ai.body.length > 0, "room ai: " + (r.data.ai?.body || r.data.ai_error || "").replace(/\s+/g, " ").slice(0, 60));
+  r = await call("a", "POST", "/room/ai", { message_id: r.data.message.id }); ok(r.status === 200 && r.data.ai?.kind === "ai", "room ai: retry makes another reply");
+  r = await call("a", "POST", "/room/ai", { message_id: r.data.ai.reply_to }); ok(r.status === 429, "room ai: retry too fast → 429");
+  execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", "DELETE FROM room_messages WHERE created_at >= " + roomT0], { stdio: "ignore" });
 } else {
   console.log("SKIP ai chat · brain · weekly review ai (SKIP_AI=1)");
 }

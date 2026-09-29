@@ -9,6 +9,7 @@ import * as aiView from "./views/ai.js";
 import * as homeView from "./views/home.js";
 import * as englishView from "./views/english.js";
 import * as calendarView from "./views/calendar.js";
+import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
 
@@ -54,6 +55,7 @@ async function enter(user) {
   if (ctx.me.must_change_pw) { openPassword({ force: true }); return; }
   route();
   refreshSide();
+  refreshUnread();
 }
 // 어떤 API든 "비밀번호부터 바꿔 주세요"(403)를 받으면 같은 창
 window.addEventListener("trio:must-change", () => { if (ctx.me) { ctx.me.must_change_pw = true; openPassword({ force: true }); } });
@@ -66,7 +68,7 @@ window.addEventListener("trio:me", (e) => {
 });
 
 // ---------- shell ----------
-// 검색 | 홈 · 캘린더 · 계획 | 노트 · 영어 · AI | 타이머 · 프로필
+// 검색 | 홈 · 캘린더 · 계획 | 노트 · 영어 · AI · 대화 | 타이머 · 프로필
 // 오늘 · 일기 · 기록은 캘린더 안으로(그날 페이지 · 연 잔디), 그래프는 노트 안의 탭으로 들어갔어요.
 const NAV = [
   { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
@@ -75,13 +77,14 @@ const NAV = [
   { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리 · 그래프" },
   { key: "english", hash: "#/english", label: "영어", tip: "영어 · 6개월 프리토킹" },
   { key: "ai", hash: "#/ai", label: "AI 튜터", tip: "AI 튜터 · 묻고 노트로 정리" },
+  { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const NAV_SPLIT = 3;
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 function renderShell() {
   // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점.
-  const item = (n) => `<a class="rail-btn" href="${n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}</a>`;
+  const item = (n) => `<a class="rail-btn" href="${n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
   app.innerHTML = `
     <div class="shell">
       <aside class="rail dock glass" aria-label="메뉴">
@@ -226,6 +229,22 @@ async function refreshSide() {
   } catch {}
 }
 
+// ---------- Dock 배지: 대화방 안 읽은 개수 ----------
+// 로그인해 있으면 60초마다. 대화방이 열려 있을 땐 그 화면이 스스로 폴링하니 여기선 쉬어요.
+async function refreshUnread() {
+  const el = $("#room-badge");
+  if (!ctx.me || !el) return;
+  if (lastView === "room") { el.hidden = true; return; }
+  try {
+    const r = await api.roomUnread();
+    const n = Number(r.total ?? r.unread) || 0; // 우리 셋 + 1:1 전부 합친 수
+    el.textContent = n > 9 ? "9+" : String(n);
+    el.hidden = n === 0;
+  } catch {}
+}
+setInterval(() => { if (ctx.me && document.visibilityState === "visible") refreshUnread(); }, 60_000);
+window.addEventListener("trio:changed", (e) => { if (e.detail?.kind === "room") refreshUnread(); });
+
 // ---------- routing ----------
 // 예전 주소는 캘린더의 그날로 옮겨요 (뒤로 가기에 남지 않게 replaceState)
 const OLD_DAY = /^#\/(?:today|diary|records)(?:\/(\d{4}-\d{2}-\d{2}))?\/?$/;
@@ -247,9 +266,11 @@ function parseRoute() {
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null };
   if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
+  if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
+  if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, plans: plansView, notes: notesView, graph: graphView, ai: aiView, english: englishView, calendar: calendarView };
+const VIEWS = { home: homeView, plans: plansView, notes: notesView, graph: graphView, ai: aiView, english: englishView, calendar: calendarView, room: roomView };
 let lastView = null;
 
 function route() {
@@ -262,6 +283,7 @@ function route() {
   if (lastView === "ai" && r.view === "ai") return; // the chat view follows its own hash changes
   if (lastView === "calendar" && r.view === "calendar" && calendarView.update) { calendarView.update(r); return; } // 날짜만 바뀌면 달력은 그대로
   if (lastView === "english" && r.view === "english" && englishView.update) { englishView.update(r); return; } // 영어 탭 전환은 판을 다시 만들지 않아요
+  if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>
   const host = document.createElement("div");
@@ -306,6 +328,8 @@ function openPalette() {
     { grp: "명령", t: "오늘 데일리 노트 열기", s: ymd(today()), run: () => notesView.openDaily(ctx, ymd(today())) },
     { grp: "명령", t: "새 노트", s: "빈 노트", run: () => notesView.createNote(ctx, "") },
     { grp: "명령", t: "AI에게 묻기", s: "Gemini · MiMo", run: () => ctx.go("#/ai") },
+    { grp: "이동", t: "대화방", s: "셋이 같이 · @마피아", run: () => ctx.go("#/room/chat") },
+    { grp: "이동", t: "창고", s: "책 · 링크 · 영상", run: () => ctx.go("#/room/library") },
     { grp: "명령", t: "집중 타이머 시작", s: "25분", run: () => timer.start(25) },
   ];
   const draw = () => {

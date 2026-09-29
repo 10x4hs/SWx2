@@ -96,6 +96,22 @@ export const api = {
   cards: () => request("GET", "/english/cards"),
   reviewCard: (b) => request("POST", "/english/cards/review", b),
 
+  // 대화방 (셋이 같이 쓰는 방 하나) · 창고 (책 · 링크 · 영상)
+  // room: 'all'(우리 셋) 또는 'dm:<id>:<id>'(두 사람, id 정렬). 안 주면 'all'.
+  room: (since, limit, room) => request("GET", "/room?" + qs({ since, limit, room })),
+  sendRoom: (b) => request("POST", "/room", b),
+  retryRoomAi: (message_id, room) => request("POST", "/room/ai", { message_id, room }),
+  deleteRoomMessage: (id, room) => request("DELETE", "/room/" + encodeURIComponent(id) + "?" + qs({ room })),
+  readRoom: (at, room) => request("PUT", "/room/read", { at, room }),
+  roomUnread: () => request("GET", "/room/unread"),
+  roomSettings: (b) => request("PUT", "/room/settings", b),
+  libraryPreview: (b) => request("POST", "/library/preview", b),
+  library: (kind, q) => request("GET", "/library?" + qs({ kind, q })),
+  addLibrary: (b) => request("POST", "/library", b),
+  markLibrary: (id, b) => request("PUT", "/library/" + encodeURIComponent(id) + "/mark", b),
+  shareLibrary: (id) => request("POST", "/library/" + encodeURIComponent(id) + "/share"),
+  deleteLibrary: (id) => request("DELETE", "/library/" + encodeURIComponent(id)),
+
   aiModels: () => request("GET", "/ai/models"),
   chats: () => request("GET", "/ai/chats"),
   chat: (id) => request("GET", "/ai/chats/" + id),
