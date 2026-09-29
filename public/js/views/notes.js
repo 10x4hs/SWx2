@@ -4,6 +4,7 @@ import { $, esc, debounce, toast, initial, nowTime, ymd, parseYmd, DOW } from ".
 import { icon } from "../icons.js";
 import { renderMarkdown, outline } from "../md.js";
 import { createEditor } from "../notes/editor.js";
+import { mountAiPick, aiPrefs } from "../ai-pick.js";
 
 let live = null; // the mounted notes view, so route changes can swap notes without remounting
 
@@ -67,6 +68,7 @@ export function mount(root, ctx, r) {
             <button class="btn sm ai-btn" type="button" id="ai-organize" title="내 노트 전부에 주제·#태그·[[링크]]를 달고 주제별 목차를 만들어요">${icon.spark(14)}AI 정리</button>
             <button class="btn sm ai-btn" type="button" id="ai-make" title="주제를 적으면 서로 연결된 개념 노트를 만들어요">${icon.plus(14)}AI로 만들기</button>
           </div>
+          <div id="nl-pick"></div>
           <form class="ai-make" id="ai-make-form" hidden>
             <input class="input" id="ai-topic" placeholder="무엇에 대한 노트? 예: 삼각함수 기초" maxlength="500" aria-label="만들 노트 주제">
             <button class="btn sm accent" type="submit">만들기</button>
@@ -176,7 +178,7 @@ export function mount(root, ctx, r) {
       onOpenTitle: (t) => { save.flush(); const hit = S.notes.find((n) => n.title.toLowerCase() === t.toLowerCase()); if (hit) ctx.go("#/notes/" + hit.id); else openByTitle(ctx, t); },
       onOpenTag: (t) => ctx.go("#/notes/tag/" + encodeURIComponent(t)),
       onError: (e) => toast(e.message || "실패했어요.", "err"),
-      onAsk: async (question, context) => { const r = await api.askAi({ note_id: S.cur.id, question, context }); return { text: r.text, model: r.model }; },
+      onAsk: async (question, context) => { const p = aiPrefs(); const r = await api.askAi({ note_id: S.cur.id, question, context, model: p.model || undefined, web: p.web }); return { text: r.text, model: r.model + (r.steps?.length ? ` · ${r.steps.filter((s) => s.name === "web_search").length ? "웹 검색" : "노트 확인"} ${r.steps.length}회` : "") }; },
       onNewPage: (title) => newPage(title, false),
     });
     drawOutline();
@@ -252,14 +254,14 @@ export function mount(root, ctx, r) {
     const aiOne = $("#ed-ai", root);
     if (aiOne) aiOne.addEventListener("click", () => aiRun(aiOne, "정리 중…", async () => {
       save.flush(); await chain;
-      const id = S.cur.id, r = await api.organize(id);
+      const id = S.cur.id, r = await api.organize(id, aiPrefs().model || undefined);
       toast(`주제 '${r.topics[0] || "?"}'로 정리했어요.`);
       ctx.refreshSide(); ctx.changed("notes"); await loadList(); if (S.cur?.id === id) await open(id);
     }));
     const aiSplit = $("#ed-split-ai", root);
     if (aiSplit) aiSplit.addEventListener("click", () => aiRun(aiSplit, "쪼개는 중…", async () => {
       save.flush(); await chain;
-      const r = await api.generate({ note_id: S.cur.id });
+      const r = await api.generate({ note_id: S.cur.id, model: aiPrefs().model || undefined });
       afterGenerate(r);
     }));
     const del = $("#ed-del", root);
@@ -386,7 +388,7 @@ export function mount(root, ctx, r) {
   }
   $("#ai-organize", root).addEventListener("click", (e) => aiRun(e.currentTarget, "정리 중…", async () => {
     save.flush(); await chain;
-    const r = await api.organize();
+    const r = await api.organize(undefined, aiPrefs().model || undefined);
     toast(`노트 ${r.updated}개를 주제 ${r.topics.length}개(${r.topics.join(", ")})로 정리했어요.`);
     ctx.refreshSide(); ctx.changed("notes"); await loadList(); if (S.cur) await open(S.cur.id);
   }));
@@ -396,9 +398,10 @@ export function mount(root, ctx, r) {
     const topic = $("#ai-topic", root).value.trim();
     if (!topic) return $("#ai-topic", root).focus();
     const btn = e.currentTarget.querySelector("button");
-    aiRun(btn, "만드는 중…", async () => { const r = await api.generate({ topic }); $("#ai-topic", root).value = ""; $("#ai-make-form", root).hidden = true; afterGenerate(r); });
+    aiRun(btn, aiPrefs().web ? "검색하고 만드는 중…" : "만드는 중…", async () => { const p = aiPrefs(); const r = await api.generate({ topic, model: p.model || undefined, web: p.web }); $("#ai-topic", root).value = ""; $("#ai-make-form", root).hidden = true; afterGenerate(r); });
   });
 
+  mountAiPick($("#nl-pick", root));
   $("#new", root).addEventListener("click", () => createNote(ctx, ""));
   $("#daily", root).addEventListener("click", () => openDaily(ctx, ymd(new Date())));
   $("#filter", root).addEventListener("input", (e) => { S.filter = e.target.value.trim(); drawList(); });

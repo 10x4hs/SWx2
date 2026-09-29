@@ -1,6 +1,8 @@
 // AI 채팅: Gemini(Google AI Studio) · Groq · Cohere · Xiaomi MiMo · Zhipu GLM · OpenRouter · Kilo · Ollama · 여러 개 나란히 비교.
 // 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY, ZHIPU_API_KEY, OPENROUTER_API_KEY, KILO_API_KEY, OLLAMA_API_KEY)에만 있고 브라우저로 나가지 않아요.
 
+import { toolPrompt, parseToolCall, runAgentTool, toolSummary, webSearch, searchQuery } from "./agent.js";
+
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
 const MIMO_URL = "https://api.xiaomimimo.com/v1/chat/completions";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -37,6 +39,9 @@ const MODELS = {
 // 한 번에 답 받는 순서 (뒤의 셋은 느리거나 JSON 모드가 없어서 마지막)
 const JSON_ORDER = ["gemini", "groq", "cohere", "mimo", "zhipu", "openrouter", "kilo", "ollama"];
 export const TEXT_ORDER = ["groq", "gemini", "cohere", "mimo", "zhipu", "openrouter", "kilo", "ollama"];
+// 사용자가 고른 모델을 맨 앞에 (없거나 모르는 id 면 기본 순서). 그 모델이 막히면 뒤의 것들로 넘어가요.
+export const orderFrom = (prefer, base = TEXT_ORDER) => (prefer && MODELS[prefer] ? [prefer, ...base.filter((p) => p !== prefer)] : base);
+export const modelLabel = (id) => MODELS[id]?.label || id;
 const COMPARE = ["gemini", "groq", "cohere"]; // "all" = 이 셋을 나란히 (MiMo는 따로 골라요)
 const DAILY_LIMIT = 200;             // 사람당 하루 질문 수
 // 413 = Groq "한 번에 너무 큼(분당 토큰 초과)" → 다음 모델/회사로
@@ -115,7 +120,10 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
       env.DB.prepare("UPDATE chats SET updated_at = ?, model = ? WHERE id = ?").bind(now(), modelId, chat.id),
     ]);
 
-    const system = b.use_context === false ? basePrompt(user) : await contextPrompt(env, user, b, message);
+    let system = b.use_context === false ? basePrompt(user) : await contextPrompt(env, user, b, message);
+    const web = b.web === true && live.length === 1; // 웹 검색·노트 도구는 모델 하나일 때만 (비교 모드는 글만)
+    const TOOLS = ["web_search", "read_page", "search_notes", "read_note", "my_plans"];
+    if (web) system += "\n\n" + toolPrompt(TOOLS, 4);
 
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
@@ -129,7 +137,9 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
         // 모델마다 자기 답만 이어서 기억해요 (비교 모드에서 서로 섞이지 않게)
         const history = past.filter((m) => m.role === "user" || m.model === t).slice(-16);
         try {
-          const r = await runModel(env, t, system, history, message, (kind, text) => send({ type: kind, model: t, text }));
+          const r = web
+            ? await runToolLoop(env, user, t, system, history, message, TOOLS, b.periods, (o) => send({ ...o, model: t }))
+            : await runModel(env, t, system, history, message, (kind, text) => send({ type: kind, model: t, text }));
           await send({ type: "done", model: t, used: r.used, fallback: r.used !== MODELS[t].chain[0] }); // fallback = 첫 모델이 아닌 걸로 답함
           return { t, text: r.text };
         } catch (e) {
@@ -148,6 +158,34 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
 
     return new Response(readable, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", "x-accel-buffering": "no" } });
   });
+}
+
+// 도구 바퀴(채팅용): 한 바퀴 글을 모아 두고, 도구 호출이면 실행 결과를 넣어 다시, 아니면 모아 둔 글을 한 번에 보내요
+async function runToolLoop(env, user, t, system, history, message, tools, periods, send) {
+  const convo = [...history];
+  let msg = message, used = null;
+  if (tools.includes("web_search")) { // 먼저 한 번 검색해 두어요
+    const q = searchQuery(message); const result = await webSearch(q, 6);
+    await send({ type: "tool", name: "web_search", args: { q }, summary: toolSummary("web_search", { q }, result), auto: true });
+    msg = `${message}\n\n[미리 검색한 결과 web_search "${q}"]\n${JSON.stringify(result).slice(0, 7000)}\n\n위 결과를 근거로 답해. 더 자세한 내용이 필요하면 read_page 로 그 주소를 읽고, 다른 검색어가 필요하면 web_search 를 한 번 더 써. 답 끝에 '출처:' 로 쓴 링크를 적어.`;
+  }
+  for (let i = 0; i < 5; i++) {
+    let buf = "", think = "";
+    const r = await runModel(env, t, system, convo, msg, async (kind, text) => { if (kind === "delta") buf += text; else if (kind === "reasoning") think += text; else await send({ type: kind, text }); });
+    used = r.used;
+    const call = i < 4 ? parseToolCall(r.text) : null;
+    if (!call || !tools.includes(call.name)) {
+      if (think) await send({ type: "reasoning", text: think });
+      const clean = r.text.replace(/<<tool>>[\s\S]*?<<\/tool>>/g, "").trim();
+      await send({ type: "delta", text: clean });
+      return { text: clean, used };
+    }
+    const result = await runAgentTool(env, user, call.name, call.args, { periods: Object.values(periods || {}) });
+    await send({ type: "tool", name: call.name, args: call.args, summary: toolSummary(call.name, call.args, result) });
+    convo.push({ role: "user", content: msg }, { role: "assistant", content: `<<tool>>${JSON.stringify(call)}<</tool>>` });
+    msg = `[도구 결과 ${call.name}]\n${JSON.stringify(result).slice(0, 9000)}\n\n이 결과를 참고해서 계속해. (도구가 더 필요하면 한 줄만, 아니면 최종 답을 써.)`;
+  }
+  return { text: "", used };
 }
 
 // ---------- prompts ----------
@@ -214,9 +252,10 @@ async function contextPrompt(env, user, b, message) {
 // ---------- JSON 한 번에 받기 (노트 정리·생성용) ----------
 // Gemini(JSON 모드) → Groq → Cohere → MiMo 순서. 키가 하나도 없으면 503.
 // 한 회사 안에서는 붐빌 때만 다음 모델로, 그 회사가 아예 안 되면(키·요청 오류) 다음 회사로 넘어가요.
-export async function aiJson(env, system, prompt) {
+export async function aiJson(env, system, prompt, prefer = null) {
   const JSON_RUN = { gemini: geminiJson, groq: groqJson, cohere: cohereJson, mimo: mimoJson, zhipu: openaiJson("zhipu"), openrouter: openaiJson("openrouter"), kilo: openaiJson("kilo"), ollama: openaiJson("ollama") };
-  const groups = JSON_ORDER.filter((p) => hasKey(env, p));
+  const pv = prefer && MODELS[prefer] ? MODELS[prefer].provider : null; // 고른 모델의 회사를 맨 앞에
+  const groups = orderFrom(pv, JSON_ORDER).filter((p) => hasKey(env, p));
   if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
   let lastErr = null;
   for (const p of groups) {

@@ -27,3 +27,11 @@
 - 왼쪽 ⋮⋮ 를 끌어 블록 순서 바꾸기.
 - 노트 목록(찾기 패널) 접기: `.notes.list-hidden`, localStorage `trio-nl`.
 - 페이지 이동 렉: 목록·노트를 동시에 받기(직렬 → 병렬), 본 노트 캐시(`noteCache`)로 먼저 그리고 새로 받기, `[[링크]]` 클릭은 목록에서 id 를 찾아 resolve 요청 생략.
+
+## v7.2 / v15 (밤) — AI 도구 계층 · 계획 AI · 푸시 알림
+- `src/agent.js`: 텍스트 프로토콜 도구 바퀴(`<<tool>>{json}<</tool>>`). 모델이 어느 회사든 같은 방식. 웹 모드는 첫 질문으로 **먼저 검색**해서 결과를 넣어 줘요(모델이 검색을 건너뛰고 지어내는 걸 막음). 검색: Bing RSS(안정) → DDG html → DDG lite. 페이지: Jina Reader → 태그 제거.
+- 모델 선택: `orderFrom(prefer)` 로 고른 모델을 맨 앞에. `aiJson(…, prefer)` 는 그 회사를 맨 앞에. 클라이언트 `ai-pick.js` 가 localStorage `trio-ai-pick` 에 {model, web} 저장, 노트·편집기·계획·채팅이 같이 써요.
+- 노드 만들기: 사용자가 적은 주제를 그래프 그룹 이름으로(AI 가 바꿔 부르지 않게), 웹 켜면 검색 결과를 재료로.
+- 계획 AI: `/ai/plan` → 답 + ```plan JSON → 카드에서 체크 → `addPlan` 여러 번.
+- 푸시: 내용 없는 웹 푸시(VAPID ES256, WebCrypto). SW `push` → `/api/room/unread` → 알림. 창이 보이면 알림 대신 `room-ping` 으로 즉시 새로 받기.
+- 그래프: 글자 11px, 파스텔 팔레트, 유리 구슬.

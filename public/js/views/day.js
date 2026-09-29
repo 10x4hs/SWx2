@@ -1,6 +1,7 @@
 // 그날 한 페이지 — 캘린더 오른쪽에 붙어요 (예전 "오늘" 화면 전부 + 그날 한 공부 + 하루 기록 저장).
 // 할 일(시간 없는 목표) · 시간표 · 하루 점수 · 실행 기록 · 일기 · 그날 한 공부. 앞으로 올 날은 할 일 · 시간표만.
 // 전부 나만 봐요. 할 일 옆 ▶ 를 누르면 집중 타이머가 그 할 일 이름으로 시작하고, 끝나면 그 할 일에 집중 시간이 쌓여요.
+import { mountCommand } from "../ai-command.js";
 import { api } from "../api.js";
 import {
   $, esc, pad, hm, toMin, toTime, nowTime, ymd, parseYmd, addDays, today,
@@ -40,6 +41,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         <label class="icon-btn sm dp-pick" aria-label="날짜 고르기">${icon.calendar(15)}<input type="date" id="dp-date" value="${day}"></label>
       </div>
     </header>
+    <div id="dp-aic"></div>
     ${future ? `<p class="dp-note">앞으로 올 날이에요. 할 일과 시간표를 미리 적어 두면 그날 홈 차트에 그대로 나와요.</p>` : ""}
     <div id="dp-carry"></div>
     <div class="dp-cols">
@@ -324,9 +326,10 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   const tick = setInterval(() => { if (isToday && S.plans) drawGrid(); }, 60_000);
   load();
   loadExtras();
+  const stopAic = mountCommand(el.querySelector("#dp-aic"), { day: () => day, onDone: () => changed("plans") });
 
   return () => {
-    alive = false;
+    alive = false; stopAic?.();
     window.removeEventListener("trio:changed", onChanged);
     el.removeEventListener("change", onElChange);
     el.removeEventListener("click", onElClick);

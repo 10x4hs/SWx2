@@ -66,6 +66,12 @@ r = await call("a", "POST", "/notes", { title: "부모 없음", parent_id: "nope
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: pg }); ok(r.status === 400, "page: self parent → 400");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status === 200 && r.data.note.parent_id === null, "page: move to top");
 r = await call("a", "POST", "/ai/ask", { note_id: n1, question: "" }); ok(r.status === 400, "ai/ask: empty question → 400");
+r = await call("a", "POST", "/ai/plan", { messages: [] }); ok(r.status === 400, "ai/plan: no messages → 400");
+r = await call("a", "POST", "/ai/command", { text: "" }); ok(r.status === 400, "ai/command: empty → 400");
+r = await call("a", "GET", "/push/key"); ok(r.status === 200 && ("key" in r.data), "push/key: returns key or null");
+r = await call("a", "POST", "/push/subscribe", { endpoint: "http://bad", keys: {} }); ok(r.status === 400, "push/subscribe: non-https endpoint → 400");
+r = await call("a", "POST", "/push/subscribe", { endpoint: "https://push.example.test/sub/abc", keys: { p256dh: "x", auth: "y" } }); ok(r.status === 200, "push/subscribe: saved");
+r = await call("a", "DELETE", "/push/subscribe", { endpoint: "https://push.example.test/sub/abc" }); ok(r.status === 200, "push/subscribe: removed");
 if (jar.b) {
   r = await call("b", "GET", "/notes/" + n1); ok(r.status === 404, "private note hidden from b");
   await call("a", "PUT", "/notes/" + n1, { shared: true });

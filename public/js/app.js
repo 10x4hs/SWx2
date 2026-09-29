@@ -6,6 +6,7 @@ import * as plansView from "./views/plans.js";
 import * as notesView from "./views/notes.js";
 import * as graphView from "./views/graph.js";
 import * as aiView from "./views/ai.js";
+import * as plannerView from "./views/planner.js";
 import * as homeView from "./views/home.js";
 import * as englishView from "./views/english.js";
 import * as calendarView from "./views/calendar.js";
@@ -263,6 +264,7 @@ function parseRoute() {
   if (a === "graph") return { view: "graph", nav: "notes" }; // 그래프는 노트 안의 탭
   if (a === "team" || !a || a === "home") return { view: "home", nav: "home" };
   if (a === "ai") return { view: "ai", nav: "ai", id: b || null };
+  if (a === "planner") return { view: "planner", nav: "ai", scope: b || null };
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null };
   if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
@@ -270,7 +272,7 @@ function parseRoute() {
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, plans: plansView, notes: notesView, graph: graphView, ai: aiView, english: englishView, calendar: calendarView, room: roomView };
+const VIEWS = { home: homeView, plans: plansView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, english: englishView, calendar: calendarView, room: roomView };
 let lastView = null;
 
 function route() {
@@ -324,6 +326,7 @@ function openPalette() {
     { grp: "이동", t: "이번 달 계획", s: "월간 체크리스트", run: () => ctx.go("#/plans/month") },
     { grp: "이동", t: "이번 주 계획", s: "주간 체크리스트", run: () => ctx.go("#/plans/week") },
     { grp: "이동", t: "그래프 보기", s: "노트 · 그래프 탭", run: () => ctx.go("#/graph") },
+    { grp: "이동", t: "계획 AI", s: "대화로 이번 주 계획 짜기", run: () => ctx.go("#/planner") },
     { grp: "이동", t: "우리 셋 주간 회고", s: "홈 · 5쪽", run: () => { try { localStorage.setItem("trio-home-page", "4"); } catch {} ctx.go("#/"); } },
     { grp: "명령", t: "오늘 데일리 노트 열기", s: ymd(today()), run: () => notesView.openDaily(ctx, ymd(today())) },
     { grp: "명령", t: "새 노트", s: "빈 노트", run: () => notesView.createNote(ctx, "") },

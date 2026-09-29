@@ -26,10 +26,34 @@ export function mountChat(el, env) {
         <div class="rm-compose-box">
           <textarea id="rm-ta" rows="1" placeholder="메시지… Enter 보냄 · Shift+Enter 줄바꿈" aria-label="메시지 입력" maxlength="2000"></textarea>
           <button class="btn ghost sm rm-call" type="button" id="rm-call" title="AI 이름을 넣어 불러요">${icon.spark(13)}AI 부르기</button>
+          <button class="btn ghost sm rm-bell" type="button" id="rm-bell" hidden title="새 메시지가 오면 이 기기에 알림을 보내요">🔔 알림 켜기</button>
           <button class="btn accent sm" type="submit" id="rm-send">보내기</button>
         </div>
       </form>
     </div>`;
+
+  // ---------- 푸시 알림 켜기 (기기마다 한 번) ----------
+  (async () => {
+    const bell = el.querySelector("#rm-bell");
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
+    let key = null; try { key = (await api.pushKey()).key; } catch {}
+    if (!key) return;
+    const reg = await navigator.serviceWorker.ready.catch(() => null); if (!reg) return;
+    const cur = await reg.pushManager.getSubscription().catch(() => null);
+    const draw = (on) => { bell.hidden = false; bell.textContent = on ? "🔔 알림 켜짐" : "🔔 알림 켜기"; bell.dataset.on = on ? "1" : ""; bell.title = on ? "이 기기에 새 메시지 알림이 와요 · 누르면 꺼요" : "새 메시지가 오면 이 기기에 알림을 보내요"; };
+    draw(!!cur && Notification.permission === "granted");
+    if (cur && Notification.permission === "granted") { try { await api.pushSubscribe(cur.toJSON()); } catch {} } // 서버에 다시 등록(비밀번호 초기화 등으로 지워졌을 수 있어요)
+    const toKey = (b64) => { const s = atob(b64.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (b64.length % 4)) % 4)); return Uint8Array.from(s, (c) => c.charCodeAt(0)); };
+    bell.addEventListener("click", async () => {
+      try {
+        if (bell.dataset.on) { const sub = await reg.pushManager.getSubscription(); if (sub) { await api.pushUnsubscribe({ endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe(); } draw(false); toast("이 기기의 알림을 껐어요."); return; }
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") return toast("브라우저에서 알림을 허용해 주어야 해요.", "err");
+        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(key) });
+        await api.pushSubscribe(sub.toJSON()); draw(true); toast("새 메시지가 오면 이 기기로 알림이 와요.");
+      } catch (e) { toast(e.message || "알림을 켜지 못했어요.", "err"); }
+    });
+  })();
   const list = $("#rm-list", el), msgsEl = $("#rm-msgs", el), pill = $("#rm-newpill", el), typing = $("#rm-typing", el), ta = $("#rm-ta", el), chip = $("#rm-chip", el), chipBtn = $("#rm-chip-btn", el);
 
   const me = () => ctx.me.id;
@@ -146,6 +170,8 @@ export function mountChat(el, env) {
   }
   const onVis = () => { if (document.visibilityState === "visible") { poll(); markRead(); } };
   document.addEventListener("visibilitychange", onVis);
+  const onPing = () => { if (S.alive) { clearTimeout(S.timer); poll(); } }; // 푸시가 "새 메시지" 라고 깨우면 바로 받아요
+  window.addEventListener("room-ping", onPing);
 
   // ---------- 보내기 ----------
   const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 160) + "px"; };
@@ -223,7 +249,7 @@ export function mountChat(el, env) {
 
   poll(true);
   return {
-    stop() { S.alive = false; clearTimeout(S.timer); document.removeEventListener("visibilitychange", onVis); },
+    stop() { S.alive = false; clearTimeout(S.timer); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("room-ping", onPing); },
     refresh() { poll(); },
     // 방 바꾸기: 목록 · 읽음 상태를 비우고 처음부터
     setRoom() { clearTimeout(S.timer); S.msgs.clear(); S.since = null; S.unreadFrom = null; S.aiErr = null; S.pendingRead = false; pill.hidden = true; typing.hidden = true; msgsEl.innerHTML = `<p class="faint rm-loading">불러오는 중…</p>`; poll(true); },

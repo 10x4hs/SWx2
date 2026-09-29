@@ -15,7 +15,9 @@ if (!username || !name) {
 // 비밀번호를 비우면 무작위 값으로 채워요 (PASSWORDLESS=1 이면 아이디만으로 들어가요)
 const password = given || randomBytes(18).toString("base64url");
 if (!/^[a-z0-9_]{3,20}$/.test(username)) { console.error("아이디는 영문 소문자·숫자·_ 3~20자예요."); process.exit(1); }
-if (password.length < 8) { console.error("비밀번호는 8자 이상이어야 해요."); process.exit(1); }
+// 임시 비밀번호라 짧아도 돼요(첫 로그인 때 8자 이상으로 바꿔야 해요). 4자 미만만 막아요.
+if (password.length < 4) { console.error("비밀번호는 4자 이상이어야 해요."); process.exit(1); }
+if (password.length < 8) console.warn("짧은 임시 비밀번호예요 — 그 사람은 첫 로그인 때 8자 이상으로 바꿔야 해요.");
 const color = /^#[0-9a-fA-F]{6}$/.test(flags.color || "") ? flags.color : null;
 
 const salt = randomBytes(16);

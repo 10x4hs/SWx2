@@ -7,6 +7,7 @@ import { registerCalendar } from "./calendar.js";
 import { registerTogether, weeklyReviewCron } from "./together.js";
 import { registerRoom } from "./room.js";
 import { registerLibrary } from "./library.js";
+import { registerPush } from "./push.js";
 
 const COLORS = ["#E8552B", "#4C6FFF", "#14A38B"]; // Golden Gate orange, bay blue, cypress green
 const SESSION_DAYS = 30;
@@ -720,4 +721,5 @@ registerEnglish(on, { json, body, fail, uid, now });
 registerCalendar(on, { json, fail });
 registerTogether(on, { json, body, fail, now, kstDay });
 registerRoom(on, { json, body, fail, uid, now });
+registerPush(on, { json, body, fail, uid, now });
 registerLibrary(on, { json, body, fail, uid, now });

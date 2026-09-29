@@ -7,6 +7,7 @@
 //   GET/PUT /room/settings { ai_name }  AI 이름 (방 공통, 2~12자) → 'all' 에 system 메시지
 // 방 권한: 'all' 은 셋 다, dm 방은 아이디가 들어 있는 둘만 (아니면 403). room 을 안 주면 'all'.
 // AI는 그 방의 최근 40개 메시지와 창고 목록만 봐요. 개인 노트·일기·계획은 절대 안 보내요.
+import { pushUsers } from "./push.js";
 import { aiText, TEXT_ORDER } from "./ai.js";
 
 const AI_ORDER = TEXT_ORDER;   // Groq → Gemini → Cohere → MiMo → Zhipu → OpenRouter → Kilo
@@ -81,6 +82,13 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
   const markRead = (env, userId, room, at) =>
     env.DB.prepare("INSERT INTO room_reads (user_id, room, last_read_at) VALUES (?, ?, ?) ON CONFLICT(user_id, room) DO UPDATE SET last_read_at = MAX(last_read_at, excluded.last_read_at)").bind(userId, room, at).run();
 
+  // 방의 다른 사람들 (푸시 알림 대상): 'all' 은 나 빼고 모두, dm 은 상대 한 명
+  async function roomMembers(env, room, me) {
+    const m = DM_RE.exec(room);
+    if (m) return [m[1], m[2]].filter((id) => id !== me);
+    const { results } = await env.DB.prepare("SELECT id FROM users WHERE id != ?").bind(me).all();
+    return results.map((u) => u.id);
+  }
   // 내가 들어갈 수 있는 모든 방의 안 읽음: 'all' + 다른 멤버마다 dm 방 하나
   async function unreadRooms(env, userId) {
     const { results: users } = await env.DB.prepare("SELECT id FROM users WHERE id != ?").bind(userId).all();
@@ -146,7 +154,7 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     return json({ room, messages, ai_name, unread: rooms[room] || 0, rooms, now: now() });
   });
 
-  on("POST", "/room", async ({ req, env, user }) => {
+  on("POST", "/room", async ({ req, env, user, ec }) => {
     const b = await body(req);
     const room = roomOf(b.room, user);
     await ensurePeer(env, room, user);
@@ -156,6 +164,7 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     const reply_to = typeof b.reply_to === "string" && b.reply_to.length <= 64 ? b.reply_to : null;
     const message = await postRoomMessage(env, { id: uid(), room, user_id: user.id, kind: "text", body: text, ref_id: null, reply_to, created_at: now() });
     await markRead(env, user.id, room, message.created_at);   // 내가 보낸 건 읽은 것으로
+    pushUsers(env, ec, await roomMembers(env, room, user.id), { room }); // 다른 사람 기기에 알림
     const out = { message };
     if (mentionsAi(text, await getAiName(env))) {
       try { out.ai = await replyTo(env, message); }

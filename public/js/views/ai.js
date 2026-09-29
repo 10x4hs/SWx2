@@ -4,8 +4,9 @@ import { $, esc, toast, ymd, today, nowTime, periodKey, debounce } from "../util
 import { icon } from "../icons.js";
 import { renderMarkdown } from "../md.js";
 import { openByTitle } from "./notes.js";
+import { aiPrefs, setAiPrefs, globe, stepsHTML } from "../ai-pick.js";
 
-const MODEL_KEY = "trio-ai-model", CTX_KEY = "trio-ai-context", PREFILL_KEY = "trio-ai-prefill";
+const MODEL_KEY = "trio-ai-model", CTX_KEY = "trio-ai-context", PREFILL_KEY = "trio-ai-prefill", LAST_KEY = "trio-ai-last";
 const store = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const LABEL = { gemini: "Gemini", "gemini-pro": "Gemini Pro", mimo: "MiMo", "mimo-pro": "MiMo Pro", groq: "Groq", cohere: "Cohere" };
 const COMPARE = ["gemini", "groq", "cohere"]; // 서버가 /ai/models 의 all.targets 로 알려주면 그걸 써요
@@ -34,8 +35,11 @@ function takePrefill() {
 }
 
 export function mount(root, ctx, r) {
-  const S = { chats: [], models: [], model: store.get(MODEL_KEY, "all"), useCtx: store.get(CTX_KEY, "1") === "1", chatId: r.id || null, turns: [], busy: false, abort: null };
   const prefill = r.id ? null : takePrefill();
+  // 다른 화면에 갔다 와도 보던 대화로 (#/ai/new 는 새 대화)
+  const startId = r.id === "new" ? null : r.id || (prefill ? null : store.get(LAST_KEY, "") || null);
+  const S = { chats: [], models: [], model: store.get(MODEL_KEY, "all"), useCtx: store.get(CTX_KEY, "1") === "1", chatId: startId, turns: [], busy: false, abort: null };
+  if (startId && !r.id) history.replaceState(null, "", "#/ai/" + startId);
   let ctxOverride = !!prefill;
   if (prefill) S.useCtx = false; // 이 대화만 내 기록을 보내지 않아요 (저장된 설정은 그대로)
 
@@ -44,7 +48,7 @@ export function mount(root, ctx, r) {
       <aside class="chat-list" aria-label="대화 목록">
         <div class="top">
           <div class="row" style="justify-content:space-between"><h1 class="h2">AI 튜터</h1>
-            <a class="btn sm accent" href="#/ai">${icon.plus(14)}새 대화</a></div>
+            <a class="btn sm accent" href="#/ai/new">${icon.plus(14)}새 대화</a></div>
         </div>
         <ul id="cl"></ul>
       </aside>
@@ -56,6 +60,8 @@ export function mount(root, ctx, r) {
             <input type="checkbox" id="use-ctx" ${S.useCtx ? "checked" : ""}><span></span>내 기록 참고
           </label>
           <select class="select" id="model" aria-label="AI 모델"></select>
+          <button type="button" class="ai-web" id="use-web" aria-pressed="${aiPrefs().web}" title="웹 검색 켜기 · 최신 정보를 찾아보고 답해요 (모델 하나일 때)">${globe(13)}<span>웹</span></button>
+          <a class="btn sm ghost" href="#/planner" title="대화로 계획 짜기">${icon.plans(14)}계획 AI</a>
           <button class="btn sm ai-btn" type="button" id="to-notes" hidden title="이 대화에서 배운 내용을 서로 연결된 개념 노트로 만들어요">${icon.spark(14)}노트로 정리</button>
         </header>
         <div class="convo-body" id="body"><div class="convo-inner" id="turns"></div></div>
@@ -105,6 +111,7 @@ export function mount(root, ctx, r) {
     const html = a.text ? renderMarkdown(a.text) : a.error ? "" : `<p class="typing"><span></span><span></span><span></span></p>`;
     return `<article class="ans ${a.done ? "done" : "live"}" data-turn="${i}" data-model="${model}">
       <header><span class="chip">${esc(LABEL[model] || model)}</span>${a.status ? `<span class="faint" style="font-size:12px">${esc(a.status)}</span>` : ""}</header>
+      ${stepsHTML(a.steps)}
       ${a.reasoning ? `<details class="think"${a.text ? "" : " open"}><summary>생각 과정</summary><div>${esc(a.reasoning.slice(-4000))}</div></details>` : ""}
       ${a.error ? `<p class="ans-err">${esc(a.error)}</p>` : ""}
       <div class="md">${html}</div>
@@ -121,7 +128,7 @@ export function mount(root, ctx, r) {
         <div class="hello">
           <span class="serif">Ask anything</span>
           <h2 class="h1">${esc(ctx.me.display_name)}님, 무엇이 궁금한가요?</h2>
-          <p class="muted">${S.useCtx ? "오늘 계획과 목표, 관련 노트를 함께 읽고 답해요." : "내 기록 없이 일반 질문으로 답해요."} ${S.model === "all" ? `${compareTargets().map((m) => LABEL[m] || m).join(" · ")} 답을 나란히 비교해요.` : ""}</p>
+          <p class="muted">${S.useCtx ? "오늘 계획과 목표, 관련 노트를 함께 읽고 답해요." : "내 기록 없이 일반 질문으로 답해요."} ${aiPrefs().web && S.model !== "all" ? "웹 검색을 켜 두어서 최신 정보를 찾아보고 답해요." : ""} ${S.model === "all" ? `${compareTargets().map((m) => LABEL[m] || m).join(" · ")} 답을 나란히 비교해요.` : ""}</p>
           <div class="sugg">${SUGGEST.map((s) => `<button type="button" class="sugg-btn" data-sugg="${esc(s)}">${esc(s)}</button>`).join("")}</div>
         </div>`;
       return;
@@ -140,7 +147,7 @@ export function mount(root, ctx, r) {
   const redraw = debounce(() => { const stick = nearBottom(); drawTurns(); if (stick) toBottom(); }, 40);
 
   async function openChat(id) {
-    S.chatId = id; S.turns = [];
+    S.chatId = id; S.turns = []; store.set(LAST_KEY, id || "");
     $("#chat", root).classList.toggle("has-chat", !!id);
     $("#to-notes", root).hidden = !id;
     if (!id) { $("#convo-title", root).textContent = "새 대화"; drawTurns(); drawList(); q.focus(); return; }
@@ -150,7 +157,7 @@ export function mount(root, ctx, r) {
       $("#convo-title", root).textContent = chat.title;
       if (S.models.some((m) => m.id === chat.model && m.available)) { S.model = chat.model; $("#model", root).value = chat.model; }
       drawTurns(); drawList(); toBottom();
-    } catch (e) { toast(e.message, "err"); ctx.go("#/ai"); }
+    } catch (e) { store.set(LAST_KEY, ""); if (e.status !== 404) toast(e.message, "err"); ctx.go("#/ai/new"); }
   }
 
   function compareTargets() { return S.models.find((m) => m.id === "all")?.targets || COMPARE; }
@@ -162,7 +169,7 @@ export function mount(root, ctx, r) {
     S.busy = true; setBusy(true);
     const turn = { q: text, target: S.model, answers: {} };
     const targets = S.model === "all" ? compareTargets() : [S.model];
-    targets.forEach((m) => (turn.answers[m] = { text: "", reasoning: "", done: false }));
+    targets.forEach((m) => (turn.answers[m] = { text: "", reasoning: "", done: false, steps: [] }));
     S.turns.push(turn);
     q.value = ""; autosize();
     drawTurns(); toBottom();
@@ -170,19 +177,20 @@ export function mount(root, ctx, r) {
     S.abort = new AbortController();
     try {
       await streamChat({
-        chat_id: S.chatId, message: text, model: S.model, use_context: S.useCtx,
+        chat_id: S.chatId, message: text, model: S.model, use_context: S.useCtx, web: aiPrefs().web && S.model !== "all",
         day: ymd(t), time: nowTime(),
         periods: { day: periodKey("day", t), week: periodKey("week", t), month: periodKey("month", t), year: periodKey("year", t) },
       }, (ev) => {
         const a = ev.model && turn.answers[ev.model];
         if (ev.type === "meta") {
           const fresh = !S.chatId;
-          S.chatId = ev.chat_id;
+          S.chatId = ev.chat_id; store.set(LAST_KEY, ev.chat_id);
           $("#convo-title", root).textContent = ev.title;
           for (const m of ev.skipped || []) { if (turn.answers[m]) Object.assign(turn.answers[m], { done: true, error: "이 모델의 키가 설정되지 않았어요." }); }
           if (fresh) { history.replaceState(null, "", "#/ai/" + ev.chat_id); loadList(); }
         } else if (a && ev.type === "delta") { a.text += ev.text; a.status = ""; }
         else if (a && ev.type === "reasoning") a.reasoning += ev.text;
+        else if (a && ev.type === "tool") { a.steps.push(ev); a.status = `${ev.name === "web_search" ? "웹 검색" : ev.name === "read_page" ? "페이지 읽기" : "노트 확인"} 중…`; }
         else if (a && ev.type === "status") a.status = ev.text;
         else if (a && ev.type === "done") { a.done = true; a.status = ev.used && ev.fallback !== false && !ev.used.includes("3.8-flash") && !ev.used.includes("2.6-flash") ? ev.used : ""; } // 대신 답한 모델만 표시
         else if (a && ev.type === "error") { a.done = true; a.error = ev.message; }
@@ -228,6 +236,7 @@ export function mount(root, ctx, r) {
   q.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (!S.busy) send(q.value); } });
   q.addEventListener("input", autosize);
   $("#model", root).addEventListener("change", (e) => { S.model = e.target.value; store.set(MODEL_KEY, S.model); if (!S.turns.length) drawTurns(); });
+  $("#use-web", root).addEventListener("click", (e) => { const on = e.currentTarget.getAttribute("aria-pressed") !== "true"; e.currentTarget.setAttribute("aria-pressed", String(on)); setAiPrefs({ web: on }); if (!S.turns.length) drawTurns(); });
   $("#use-ctx", root).addEventListener("change", (e) => { S.useCtx = e.target.checked; store.set(CTX_KEY, S.useCtx ? "1" : "0"); if (!S.turns.length) drawTurns(); });
   root.addEventListener("click", async (e) => {
     const sg = e.target.closest("[data-sugg]");
@@ -235,7 +244,7 @@ export function mount(root, ctx, r) {
     const del = e.target.closest("[data-delchat]");
     if (del) {
       if (!del.dataset.armed) { del.dataset.armed = "1"; del.classList.add("armed"); setTimeout(() => { delete del.dataset.armed; del.classList.remove("armed"); }, 2500); toast("한 번 더 누르면 대화를 지워요."); return; }
-      try { await api.deleteChat(del.dataset.delchat); if (S.chatId === del.dataset.delchat) ctx.go("#/ai"); await loadList(); } catch (ex) { toast(ex.message, "err"); }
+      try { await api.deleteChat(del.dataset.delchat); if (store.get(LAST_KEY, "") === del.dataset.delchat) store.set(LAST_KEY, ""); if (S.chatId === del.dataset.delchat) ctx.go("#/ai/new"); await loadList(); } catch (ex) { toast(ex.message, "err"); }
       return;
     }
     const ans = e.target.closest(".ans");
@@ -279,9 +288,10 @@ export function mount(root, ctx, r) {
 
   const onHash = () => {
     const m = location.hash.match(/^#\/ai(?:\/([^/]+))?$/);
-    if (m && (m[1] || null) !== S.chatId && !S.busy) {
+    const want = m ? (m[1] === "new" ? null : m[1] || null) : undefined;
+    if (m && want !== S.chatId && !S.busy) {
       if (ctxOverride) { ctxOverride = false; S.useCtx = store.get(CTX_KEY, "1") === "1"; $("#use-ctx", root).checked = S.useCtx; } // 다른 대화로 가면 원래 설정으로
-      openChat(m[1] || null);
+      openChat(want);
     }
   };
   window.addEventListener("hashchange", onHash);

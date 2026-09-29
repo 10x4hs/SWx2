@@ -5,7 +5,7 @@
 // - /english/data.json: network-first
 // VERSION 은 deploy.sh 가 배포마다 새로 찍어요 → 새 SW 설치 → 옛 캐시 삭제 → 열린 탭에 "updated" 메시지.
 
-const VERSION = "v20260929221541";
+const VERSION = "v20260929225714";
 const STATIC_CACHE = `dsm-static-${VERSION}`;
 const API_CACHE = `dsm-api-${VERSION}`;
 const KEEP = new Set([STATIC_CACHE, API_CACHE]);
@@ -171,3 +171,26 @@ function reply(event, msg) {
   if (event.ports && event.ports[0]) event.ports[0].postMessage(msg);
   else if (event.source) event.source.postMessage(msg);
 }
+
+// ---------- 푸시 알림 (대화방) ----------
+// 서버는 내용 없이 깨우기만 보내요 → 여기서 /api/room/unread 를 읽어 "새 메시지 N개" 알림을 띄워요. 앱 창이 보이는 중이면 띄우지 않아요.
+self.addEventListener("push", (event) => {
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (wins.some((w) => w.visibilityState === "visible" && w.focused)) { for (const w of wins) w.postMessage({ type: "room-ping" }); return; }
+    let n = 0, rooms = {};
+    try { const r = await fetch("/api/room/unread", { headers: { "x-trio": "1" }, credentials: "include" }); if (r.ok) { const j = await r.json(); n = j.unread || 0; rooms = j.rooms || {}; } } catch {}
+    if (!n) return;
+    const dm = Object.keys(rooms).filter((k) => k.startsWith("dm:") && rooms[k]).length;
+    await self.registration.showNotification("Dsm-mafia 대화방", { body: `새 메시지 ${n}개${dm ? " · 1:1 메시지 포함" : ""}`, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "room", renotify: true, data: { url: "/#/room/chat" } });
+  })());
+});
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/#/room";
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const w of wins) { if ("focus" in w) { await w.focus(); w.postMessage({ type: "open-room" }); return; } }
+    await self.clients.openWindow(url);
+  })());
+});

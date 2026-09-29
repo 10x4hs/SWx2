@@ -23,5 +23,5 @@
       "migrations_dir": "migrations"
     }
   ],
-  "vars": { "MAX_USERS": "3", "PASSWORDLESS": "0" } // 배포본은 비밀번호 필수. 로컬은 .dev.vars 의 PASSWORDLESS=1 이 덮어써요
+  "vars": { "MAX_USERS": "3", "PASSWORDLESS": "0", "VAPID_PUBLIC_KEY": "BM5EpcANa6q_5MpqXGMuxMIwwNlNfPCUoxf10NSsSEg6dBxu3pSZVgohkTtdDZ3fFHORgFThI9gEOTcRPR0T-h4" } // 배포본은 비밀번호 필수. 로컬은 .dev.vars 의 PASSWORDLESS=1 이 덮어써요
 }
