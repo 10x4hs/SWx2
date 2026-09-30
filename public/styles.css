@@ -2939,3 +2939,22 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .block .drag-tag { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font: 600 11px var(--mono); padding: 3px 7px; border-radius: 7px; background: var(--ink); color: var(--paper-solid); pointer-events: none; white-space: nowrap; }
 .block input, .block button { cursor: pointer; }
 .block .bk-rs { pointer-events: none; }
+
+/* v19.3: 우클릭 메뉴 (계획표 · 체크리스트 · 목표) */
+.cm { position: fixed; z-index: 90; min-width: 220px; max-width: 300px; padding: 6px; border-radius: 14px; display: grid; gap: 1px;
+  background: var(--glass-3); border: 1px solid var(--lg-edge-hi); box-shadow: var(--lg-top), 0 20px 44px -16px rgba(0, 0, 0, .6); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); animation: cm-in .12s var(--ease); }
+@keyframes cm-in { from { opacity: 0; transform: scale(.97); } }
+.cm-t { font: 600 11.5px var(--font); color: var(--ink-3); padding: 6px 10px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-i { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; text-align: left; border: 0; background: transparent; color: var(--ink); font: 500 13.5px var(--font); padding: 8px 10px; border-radius: 9px; cursor: pointer; }
+.cm-i small { font-size: 11.5px; color: var(--ink-3); }
+.cm-i:hover, .cm-i:focus-visible { background: var(--hover); outline: none; }
+.cm-i.danger { color: var(--p-max); }
+.cm-sep { height: 1px; margin: 4px 6px; background: var(--lg-edge); }
+.cm-prio { display: flex; gap: 4px; padding: 6px 6px; flex-wrap: wrap; }
+.cm-prio .prio { opacity: 1; padding: 5px 8px; }
+.cm-prio .prio[data-p]:not(.on) { background: transparent; }
+.cm-prio .prio.on { outline: 1.5px solid currentColor; outline-offset: 1px; }
+.cm-x { border: 0; background: transparent; color: var(--ink-3); cursor: pointer; font-size: 12px; padding: 4px 6px; border-radius: 6px; } .cm-x:hover { color: var(--ink); background: var(--hover); }
+.slot-pop.editing { border-color: color-mix(in srgb, var(--r-week) 45%, var(--lg-edge-hi)); }
+.slot-pop .sp-t { flex: 1 1 100%; font: 600 12px var(--font); color: var(--ink-2); padding: 0 2px 2px; }
+.cm-prio .prio[data-p="max"]:not(.on) { color: var(--p-max); border-color: color-mix(in srgb, var(--p-max) 55%, transparent); box-shadow: none; } .cm-prio .prio.on[data-p="max"] { background: var(--p-max); color: #fff; }

@@ -112,7 +112,7 @@ export function mount(root, ctx) {
     return `<div class="hc${wide ? " wide" : ""}">
       ${go("#/checklist", prioDonut(items, { size: wide ? 360 : 260 }), "hc-donut")}
       <div class="hc-side">
-        <div class="hc-h"><b>오늘 체크리스트</b>${own ? `<span class="faint">도넛을 누르면 적기</span>` : ""}</div>
+        <div class="hc-h"><b>체크리스트</b>${own ? `<span class="faint">도넛을 누르면 적기</span>` : ""}</div>
         <div class="hc-bars">${rows.length ? rows.map((r) => `<div class="pb" style="--pc:${PRIO_COLOR[r.k]}"><span class="pb-l">${PRIO_LABEL[r.k]}</span><span class="pb-t" style="--w:${(r.n / max) * 100}%"><i style="--f:${(r.d / r.n) * 100}%"></i></span><span class="pb-n">${r.d}/${r.n}</span></div>`).join("") : `<p class="faint">${own ? "아직 오늘 할 일이 없어요. 도넛을 눌러 적어 보세요." : "오늘 할 일이 없어요."}</p>`}</div>
         ${own && left.length ? `<ul class="hc-left">${left.map((p) => `<li><i style="background:${PRIO_COLOR[p.priority || "none"]}"></i>${p.start ? `<em>${esc(p.start)}</em>` : ""}<span>${esc(p.text)}</span></li>`).join("")}</ul>` : ""}
         <div class="hc-week" aria-label="이번 주 체크리스트">${c.week.map((d) => go(`#/checklist/${d.ymd}`, `<span class="hw-bar${d.today ? " today" : ""}${d.future ? " future" : ""}" style="--h:${d.total ? Math.max(8, (d.total / wkMax) * 100) : 4}%;--f:${d.total ? (d.done / d.total) * 100 : 0}%"><i></i></span><span class="hw-d">${"일월화수목금토"[d.date.getDay()]}</span><span class="hw-n">${d.total ? `${d.done}/${d.total}` : ""}</span>`, "hw")).join("")}</div>
@@ -212,12 +212,14 @@ export function mount(root, ctx) {
         year: period(year, K.year, left),
         month: period(month, K.month, daysLeft(K.month)),
         week: period(week, K.week, daysLeft(K.week)),
-        day: { blocks, value: sc.exec || 0, total: sc.count, time: dayPassed, detail: sc.count ? `실행 ${sc.doneCount}/${sc.count}` + (blocks.length ? ` · 시간표 ${blocks.length}개` : "") : "" },
+        // 오늘 = 하루 계획표(시간 있는 일정)만 · 체크리스트는 따로
+        day: { blocks, value: blocks.length ? blocks.filter((b) => b.done).length / blocks.length : 0, total: blocks.length, time: dayPassed, detail: blocks.length ? `계획 ${blocks.filter((b) => b.done).length}/${blocks.length} 끝냄` : "" },
       };
       // 체크리스트 링 (가장 안쪽): 오늘 할 일마다 칸, 색 = 우선순위
-      const ckSegs = day.slice().sort((a, b) => (PR_RANK[b.priority] || 0) - (PR_RANK[a.priority] || 0)).map((p) => ({ done: !!p.done, title: p.text || "비공개", color: PRIO_COLOR[p.priority || "none"] }));
-      const ckDone = day.filter((p) => p.done).length;
-      val.check = { segs: ckSegs, value: day.length ? ckDone / day.length : 0, total: day.length, time: dayPassed, detail: day.length ? `${ckDone}/${day.length} 끝냄` + prioStats(day).filter((r) => r.k === "max" || r.k === "xhigh").map((r) => ` · ${PRIO_LABEL[r.k]} ${r.d}/${r.n}`).join("") : "" };
+      const ckItems = day.filter((p) => !p.start); // 체크리스트 = 시간 없는 할 일 (시간 있는 건 하루 계획표)
+      const ckSegs = ckItems.slice().sort((a, b) => (PR_RANK[b.priority] || 0) - (PR_RANK[a.priority] || 0)).map((p) => ({ done: !!p.done, title: p.text || "비공개", color: PRIO_COLOR[p.priority || "none"] }));
+      const ckDone = ckItems.filter((p) => p.done).length;
+      val.check = { segs: ckSegs, value: ckItems.length ? ckDone / ckItems.length : 0, total: ckItems.length, time: dayPassed, detail: ckItems.length ? `${ckDone}/${ckItems.length} 끝냄` + prioStats(ckItems).filter((r) => r.k === "max" || r.k === "xhigh").map((r) => ` · ${PRIO_LABEL[r.k]} ${r.d}/${r.n}`).join("") : "" };
       S.items = [...RINGS, { key: "check", label: "체크리스트", en: "CHECK", color: "var(--r-check)" }].map((r) => ({ ...r, ...val[r.key] }));
       S.score = sc.score ?? null;
 
@@ -226,7 +228,7 @@ export function mount(root, ctx) {
       S.data = {
         month: { scope: "month", title: `${t.getMonth() + 1}월 한 달`, color: "var(--r-month)", goals: month, time: elapsed(K.month), dLeft: daysLeft(K.month), days: monthDays.map(stat) },
         week: { scope: "week", title: `${+K.week.slice(7).replace("W", "")}주차 한 주`, color: "var(--r-week)", goals: week, time: elapsed(K.week), dLeft: daysLeft(K.week), days: weekDays.map(stat) },
-        check: { items: day, week: weekDays.map(stat) },
+        check: { items: day.filter((p) => !p.start), week: weekDays.map((d) => { const list = of(periodKey("day", d)).filter((p) => !p.start); return { date: d, ymd: ymd(d), total: list.length, done: done(list), future: d > t, today: periodKey("day", d) === K.day }; }) },
         day: { color: "var(--r-day)", blocks, time: dayPassed, score: S.score, count: sc.count, doneCount: sc.doneCount, now: nowTime(), mine: mine() },
       };
       if (assemble) S.first = true;

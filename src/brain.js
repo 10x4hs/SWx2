@@ -326,7 +326,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
       `## 사용자 말\n${text}`,
       "다음 JSON 하나로만 답해:",
       '{"actions":[{"name":"add_plan","args":{"date":"YYYY-MM-DD","text":"할 일","start":"HH:MM","mins":60,"priority":"high","scope":"day|week|month|year"}},{"name":"update_plan","args":{"id":"…","start":"HH:MM","mins":90,"date":"YYYY-MM-DD","text":"…","done":true}},{"name":"delete_plan","args":{"id":"…"}}],"reply":"무엇을 했는지 한 문장","question":null}',
-      "규칙: 실행할 게 있으면 actions 에 넣어 (여러 개 가능, 필요한 필드만). 시간 없는 할 일은 start·mins 를 빼. 우선순위(priority)는 사용자가 말할 때만: low·medium·high·xhigh·max ('급해/최우선'=max, '중요'=high, '보통'=medium, '나중에/여유'=low). 시각은 5분 단위로 맞춰. 모호해서 실행할 수 없을 때만 actions 를 비우고 question 에 짧게 물어. 계획과 상관없는 말이면 actions 는 비우고 reply 에 짧게 답해. '짜 줘 · 추천해 줘 · 만들어 줘' 는 묻지 말고 3~6개를 짧고 구체적으로 바로 넣어 (기존 것과 겹치지 않게). '다 끝냈어 · 체크해 줘' 는 해당 id 들에 done:true.",
+      "규칙: 실행할 게 있으면 actions 에 넣어 (여러 개 가능, 필요한 필드만). 시각이 있는 일정은 하루 계획표(start·mins), 시각 없는 '할 일'은 체크리스트(start·mins 를 빼) — 둘은 따로예요. 우선순위(priority)는 사용자가 말할 때만: low·medium·high·xhigh·max ('급해/최우선'=max, '중요'=high, '보통'=medium, '나중에/여유'=low). 시각은 5분 단위로 맞춰. 모호해서 실행할 수 없을 때만 actions 를 비우고 question 에 짧게 물어. 계획과 상관없는 말이면 actions 는 비우고 reply 에 짧게 답해. '짜 줘 · 추천해 줘 · 만들어 줘' 는 묻지 말고 3~6개를 짧고 구체적으로 바로 넣어 (기존 것과 겹치지 않게). '다 끝냈어 · 체크해 줘' 는 해당 id 들에 done:true.",
     ].filter(Boolean).join("\n\n");
     let data, used;
     try { ({ data, used } = await aiJson(env, system, prompt, typeof b.model === "string" ? b.model : null)); }

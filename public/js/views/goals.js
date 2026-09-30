@@ -6,6 +6,7 @@ import { $, esc, toast, today, ymd, periodKey, periodStart, periodEnd, shiftPeri
 import { icon } from "../icons.js";
 import { PRIOS } from "./day.js";
 import { mountCommand } from "../ai-command.js";
+import { openMenu, closeMenu } from "../ctxmenu.js";
 
 const SCOPES = [{ k: "week", label: "이번 주", short: "주" }, { k: "month", label: "이번 달", short: "월" }, { k: "year", label: "올해", short: "년" }];
 const RANK = { max: 5, xhigh: 4, high: 3, medium: 2, low: 1 };
@@ -139,11 +140,23 @@ export function mount(root, ctx, r) {
   });
 
   $("#gl-back", root).addEventListener("click", () => window.trioBack?.());
+  // 우클릭 → 이름 고치기 · 이룸 · 우선순위 · 삭제
+  root.addEventListener("contextmenu", (e) => {
+    const li = e.target.closest(".gl-item"); if (!li || !S.list) return;
+    const p = S.list.find((x) => x.id === li.dataset.id); if (!p) return;
+    openMenu(e, { title: p.text, items: [{ k: "edit", label: "이름 고치기" }, { k: "done", label: p.done ? "이룸 되돌리기" : "이룸" }, { k: "prio", prio: p.priority || "" }, { sep: true }, { k: "del", label: "삭제", danger: true }],
+      onPick: async (k, v) => {
+        if (k === "edit") { li.querySelector("[data-edit]")?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); return; }
+        if (k === "done") { const old = p.done; p.done = p.done ? 0 : 1; drawList(); try { await api.updatePlan(p.id, { done: !!p.done }); changed(); } catch (err) { p.done = old; drawList(); toast(err.message, "err"); } return; }
+        if (k === "prio") { const old = p.priority; p.priority = v || null; drawList(); try { await api.updatePlan(p.id, { priority: p.priority }); changed(); } catch (err) { p.priority = old; drawList(); toast(err.message, "err"); } return; }
+        if (k === "del") { const keep = S.list; S.list = S.list.filter((x) => x.id !== p.id); drawList(); try { await api.deletePlan(p.id); changed(); } catch (err) { S.list = keep; drawList(); toast(err.message, "err"); } }
+      } });
+  });
   // AI: 이 기간 목표로 알아들어요 ("SQL 조인 끝내기 넣어 줘" · "이번 달 목표 4개 짜 줘" · "다 끝낸 거 체크해 줘")
   const HINTS = { week: ["이번 주 목표 3개 짜 줘", "SQL 조인 끝내기 넣어 줘 (중요)", "끝낸 목표 체크해 줘"], month: ["이번 달 목표 4개 추천해 줘", "자격증 1회독 넣어 줘 (급해)", "끝낸 목표 체크해 줘"], year: ["올해 목표 3개 짜 줘", "정보처리기사 합격 넣어 줘", "끝낸 목표 체크해 줘"] };
   const stopAi = mountCommand($("#gl-ai", root), { hints: HINTS[S.scope], day: () => ymd(periodStart(S.key)), page: () => ({ scope: S.scope, period: S.key }), onDone: () => load() });
   inst = { update(rr) { const sc = SCOPES.some((x) => x.k === rr.scope) ? rr.scope : "week"; const k = keyFrom(sc, rr.key); if (sc !== S.scope || k !== S.key) { S.scope = sc; S.key = k; load(); } } };
   load();
   setTimeout(() => $("#gl-add input", root)?.focus(), 80);
-  return () => { inst = null; stopAi?.(); };
+  return () => { inst = null; stopAi?.(); closeMenu(); };
 }

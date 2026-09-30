@@ -1,4 +1,4 @@
-// 체크리스트 — 하루 할 일을 적고 체크하는 페이지. 주소: #/checklist[/YYYY-MM-DD] (없으면 오늘). 홈의 '오늘' 링을 누르면 여기로 와요.
+// 체크리스트 — 시간 없이 "해야 할 일"만 (시간 정해진 일정은 캘린더의 하루 계획표에서, 둘은 따로예요). 주소: #/checklist[/YYYY-MM-DD] (없으면 오늘). 홈의 '오늘' 링을 누르면 여기로 와요.
 // 위: 날짜 · 우선순위 색 도넛 차트. 가운데: 목록(체크 · 시간 · 우선순위 · 두 번 눌러 고치기 · 지우기). 아래: 입력 한 줄(여러 줄 붙여넣기 = 여러 개).
 import { api } from "../api.js";
 import { $, esc, toast, ymd, parseYmd, addDays, today, DOW, hm, toMin, nowTime } from "../util.js";
@@ -7,6 +7,7 @@ import { PRIOS } from "./day.js";
 import { prioDonut, prioLegend } from "../charts/prio.js";
 import { keepDraft } from "../draft.js";
 import { mountCommand } from "../ai-command.js";
+import { openMenu, closeMenu } from "../ctxmenu.js";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const RANK = { max: 5, xhigh: 4, high: 3, medium: 2, low: 1 };
@@ -36,8 +37,6 @@ export function mount(root, ctx, r) {
       <ul class="gl-list" id="ck-list"><li class="faint gl-load">불러오는 중…</li></ul>
       <form class="gl-add ck-add" id="ck-add" autocomplete="off">
         <input class="input" name="text" maxlength="200" placeholder="해야 할 일 · Enter (여러 줄 붙여넣기 가능)" aria-label="할 일 추가">
-        <input class="input ck-at" type="time" name="at" step="300" aria-label="시각 (선택, 5분 단위)" title="시각 (선택)">
-        <select class="select sm" name="mins" aria-label="걸리는 시간" hidden>${[5, 10, 15, 20, 30, 45, 60, 90, 120, 180].map((m) => `<option value="${m}" ${m === 30 ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
         <select class="select sm" name="priority" aria-label="우선순위"><option value="">우선순위</option>${PRIOS.map((p) => `<option value="${p.k}">${p.label}</option>`).join("")}</select>
       </form>
     </div>`;
@@ -60,44 +59,41 @@ export function mount(root, ctx, r) {
   function drawList() {
     const ul = $("#ck-list", root); if (!S.list) return;
     const nowM = S.day === ymd(today()) ? toMin(nowTime()) : -1;
-    const list = S.list.slice().sort((a, b) => (a.done - b.done) || (a.start || "99:99").localeCompare(b.start || "99:99") || (RANK[b.priority] || 0) - (RANK[a.priority] || 0) || (a.sort || 0) - (b.sort || 0));
+    const list = S.list.slice().sort((a, b) => (a.done - b.done) || (RANK[b.priority] || 0) - (RANK[a.priority] || 0) || (a.sort || 0) - (b.sort || 0));
     ul.innerHTML = list.length ? list.map((p) => {
-      const late = !p.done && p.start && nowM >= 0 && toMin(p.start) + (p.mins || 0) < nowM;
+      const late = false;
       return `<li class="gl-item${p.done ? " done" : ""}${late ? " late" : ""}" data-id="${esc(p.id)}" data-p="${p.priority || ""}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 끝냄">
-        ${p.start ? `<span class="t-when">${esc(p.start)}${p.mins ? ` · ${hm(p.mins)}` : ""}</span>` : ""}
         <span class="gl-text" data-edit="${esc(p.id)}" title="두 번 눌러 고치기">${esc(p.text)}</span>
         <button type="button" class="prio" data-prio="${esc(p.id)}" data-p="${p.priority || ""}">${p.priority ? PRIOS.find((x) => x.k === p.priority).label : "우선순위"}</button>
         <button type="button" class="icon-btn sm gl-del" data-del="${esc(p.id)}" aria-label="지우기">${icon.x(14)}</button>
       </li>`;
-    }).join("") : `<li class="gl-empty"><p>${S.day >= ymd(today()) ? "오늘 할 일을 적어 보세요." : "이날은 할 일이 없었어요."}</p><p class="faint">아래에 적고 Enter. 여러 줄을 붙여 넣으면 한 번에 들어가요.</p></li>`;
+    }).join("") : `<li class="gl-empty"><p>${S.day >= ymd(today()) ? "해야 할 일을 적어 보세요." : "이날은 할 일이 없었어요."}</p><p class="faint">시간이 정해진 일정은 캘린더의 하루 계획표에 적어요.</p></li>`;
     drawChart();
   }
   async function load() {
     const day = S.day; S.list = null; drawHead(); $("#ck-list", root).innerHTML = `<li class="faint gl-load">불러오는 중…</li>`;
-    try { const { plans } = await api.plans(["D:" + day]); if (day !== S.day) return; S.list = plans || []; drawList(); }
+    try { const { plans } = await api.plans(["D:" + day]); if (day !== S.day) return; S.list = (plans || []).filter((p) => !p.start); drawList(); } // 시간 있는 일정은 하루 계획표 쪽
     catch (e) { toast(e.message, "err"); }
   }
   const changed = () => { S.selfAt = Date.now(); ctx.changed?.("plans"); };
   async function addMany(texts) {
-    const at = /^\d{2}:\d{2}$/.test(form.at.value) ? form.at.value : null, mins = +form.mins.value, priority = form.priority.value || null;
+    const priority = form.priority.value || null;
     let n = 0;
     for (const [i, raw] of texts.entries()) {
       const text = raw.replace(/^\s*(?:[-*•]|\d+[.)]|\[[ xX]?\])\s*/, "").trim(); if (!text) continue; // "- 할 일" · "1. 할 일" · "[ ] 할 일" 도 받아요
-      const start = at && i === 0 ? at : null; // 시각은 첫 줄에만
-      try { const { plan } = await api.addPlan({ scope: "day", period: "D:" + S.day, text: text.slice(0, 200), ...(start ? { start, mins } : {}), ...(priority ? { priority } : {}) }); S.list.push(plan); n++; }
+      try { const { plan } = await api.addPlan({ scope: "day", period: "D:" + S.day, text: text.slice(0, 200), ...(priority ? { priority } : {}) }); S.list.push(plan); n++; }
       catch (e) { toast(e.message, "err"); break; }
     }
     if (n) { drawList(); changed(); if (n > 1) toast(`${n}개를 넣었어요.`); form.priority.value = ""; } // 우선순위는 한 번 쓰고 비워요 (다음 일에 딸려 가지 않게)
     return n;
   }
 
-  form.at.addEventListener("input", () => { form.mins.hidden = !form.at.value; });
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = form.text.value.trim(); if (!text || S.busy || !S.list) return form.text.focus();
     S.busy = true;
-    try { if (await addMany([text])) { form.text.value = ""; draft.clear(); form.at.value = ""; form.mins.hidden = true; } }
+    try { if (await addMany([text])) { form.text.value = ""; draft.clear(); } }
     finally { S.busy = false; form.text.focus(); }
   });
   form.text.addEventListener("paste", async (e) => {
@@ -137,14 +133,27 @@ export function mount(root, ctx, r) {
     inp.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.isComposing) finish(true); if (ev.key === "Escape") finish(false); });
     inp.addEventListener("blur", () => finish(true));
   });
+  // 우클릭 → 편집 · 끝냄 · 우선순위 · 내일로 · 삭제
+  root.addEventListener("contextmenu", (e) => {
+    const li = e.target.closest(".gl-item"); if (!li || !S.list) return;
+    const p = S.list.find((x) => x.id === li.dataset.id); if (!p) return;
+    openMenu(e, { title: p.text, items: [{ k: "edit", label: "이름 고치기" }, { k: "done", label: p.done ? "끝냄 되돌리기" : "끝냄" }, { k: "prio", prio: p.priority || "" }, { sep: true }, { k: "later", label: "내일로 미루기" }, { k: "del", label: "삭제", danger: true }],
+      onPick: async (k, v) => {
+        if (k === "edit") { li.querySelector("[data-edit]")?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); return; }
+        if (k === "done") { const old = p.done; p.done = p.done ? 0 : 1; drawList(); try { await api.updatePlan(p.id, { done: !!p.done }); changed(); } catch (err) { p.done = old; drawList(); toast(err.message, "err"); } return; }
+        if (k === "prio") { const old = p.priority; p.priority = v || null; drawList(); try { await api.updatePlan(p.id, { priority: p.priority }); changed(); } catch (err) { p.priority = old; drawList(); toast(err.message, "err"); } return; }
+        if (k === "later") { try { await api.updatePlan(p.id, { period: "D:" + ymd(addDays(parseYmd(S.day), 1)) }); S.list = S.list.filter((x) => x.id !== p.id); drawList(); changed(); toast("내일로 미뤘어요."); } catch (err) { toast(err.message, "err"); } return; }
+        if (k === "del") { const keep = S.list; S.list = S.list.filter((x) => x.id !== p.id); drawList(); try { await api.deletePlan(p.id); changed(); } catch (err) { S.list = keep; drawList(); toast(err.message, "err"); } }
+      } });
+  });
   const onChanged = (e) => { if (e.detail?.kind === "plans" && !S.busy && Date.now() - (S.selfAt || 0) > 1500) load(); }; // AI 비서 등 다른 곳에서 바꾸면 다시 (내가 방금 바꾼 건 빼고)
   window.addEventListener("trio:changed", onChanged);
 
   $("#ck-back", root).addEventListener("click", () => window.trioBack?.());
   // AI: 이날 할 일로 알아들어요 ("오늘 할 일 5개 짜 줘" · "9시 반에 영어 수업" · "끝난 거 체크해 줘")
-  const stopAi = mountCommand($("#ck-ai", root), { hints: ["오늘 할 일 5개 짜 줘 (시험 공부 위주)", "9시 반에 영어 수업 넣어 줘", "단어 50개 외우기 급해로 넣어 줘", "끝난 거 체크해 줘"], day: () => S.day, onDone: () => { S.selfAt = 0; load(); } });
+  const stopAi = mountCommand($("#ck-ai", root), { hints: ["해야 할 일 5개 짜 줘 (시험 공부 위주)", "단어 50개 외우기 급해로 넣어 줘", "메일 답장 · 방 청소 넣어 줘", "끝난 거 체크해 줘"], day: () => S.day, onDone: () => { S.selfAt = 0; load(); } });
   inst = { update(rr) { const d = DAY_RE.test(rr.day || "") ? rr.day : ymd(today()); if (d !== S.day) { S.day = d; load(); } } };
   load();
   setTimeout(() => form.text.focus(), 80);
-  return () => { inst = null; stopAi?.(); window.removeEventListener("trio:changed", onChanged); };
+  return () => { inst = null; stopAi?.(); closeMenu(); window.removeEventListener("trio:changed", onChanged); };
 }

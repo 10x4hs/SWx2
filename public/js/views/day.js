@@ -8,6 +8,7 @@ import {
   DOW, isoWeek, dayOfYear, daysInYear, dayScore, pct, toast, focusOf, englishOf, studyMins, periodKey,
 } from "../util.js";
 import { MOODS } from "../diary.js";
+import { openMenu, closeMenu } from "../ctxmenu.js";
 import { icon } from "../icons.js";
 import { BLOCKS } from "../english/data.js";
 
@@ -191,17 +192,22 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       </div>`;
     }).join("");
     // 추가 창: 칸을 늘리지 않고 누른 시각 위치에 떠요 (블록 위로)
-    const pop = S.editSlot ? `<form class="slot-add slot-pop" data-slot-form="${S.editSlot}" autocomplete="off" style="top:${Math.max(0, ((toMin(S.editSlot) - startH * 60) / 60) * HOUR_PX + 2)}px">
+    // 추가 창 · 고치기 창(우클릭 → 편집)은 같은 모양. 고칠 땐 값이 채워지고 버튼이 '저장'
+    const ed = S.editId ? plans.find((x) => x.id === S.editId) : null;
+    const MINS = [5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180, 240];
+    const mins0 = ed ? ed.mins || 30 : S.editMins, minsList = MINS.includes(mins0) ? MINS : [...MINS, mins0].sort((a, b) => a - b);
+    const pop = S.editSlot ? `<form class="slot-add slot-pop${ed ? " editing" : ""}" data-slot-form="${S.editSlot}" ${ed ? `data-edit-id="${esc(ed.id)}"` : ""} autocomplete="off" style="top:${Math.max(0, ((toMin(S.editSlot) - startH * 60) / 60) * HOUR_PX + 2)}px">
+        ${ed ? `<span class="sp-t">계획 고치기</span>` : ""}
         <input class="input slot-at" type="time" name="at" step="300" value="${S.editSlot}" aria-label="시작 시각 (5분 단위)">
-        <input class="input" name="text" maxlength="200" placeholder="${S.editSlot}에 할 일" aria-label="${S.editSlot}에 할 일" autofocus>
-        <select class="select" name="mins" aria-label="걸리는 시간">${[5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180].map((m) => `<option value="${m}" ${m === S.editMins ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
-        ${prioSelect("priority", S.editPrio || "")}
-        <button class="btn accent sm" type="submit">추가</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
+        <input class="input" name="text" maxlength="200" placeholder="${S.editSlot}에 할 일" aria-label="할 일" value="${ed ? esc(ed.text) : ""}" autofocus>
+        <select class="select" name="mins" aria-label="걸리는 시간">${minsList.map((m) => `<option value="${m}" ${m === mins0 ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
+        ${prioSelect("priority", ed ? ed.priority || "" : S.editPrio || "")}
+        <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
     const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${((nowM - startH * 60) / 60) * HOUR_PX}px" aria-hidden="true"></div>` : "";
     $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine + pop;
     S.gridStartH = startH;
     const f = $("[data-slot-form]", el);
-    if (f) { const i = f.text; i.focus(); i.value = S.editText || ""; i.setSelectionRange(i.value.length, i.value.length); }
+    if (f) { const i = f.text; i.focus(); if (!S.editId) i.value = S.editText || ""; i.setSelectionRange(i.value.length, i.value.length); }
     $("#dp-tt-sum", el).textContent = timed.length ? `${timed.length}개 · ${hm(timed.reduce((a, p) => a + (p.mins || 0), 0))}` : "";
   }
 
@@ -319,7 +325,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   }
   async function onElClick(e) {
     const slot = e.target.closest("[data-slot]");
-    if (slot) { S.editSlot = slotAt(slot, e.clientY); S.editText = ""; drawGrid(); return; }
+    if (slot) { S.editSlot = slotAt(slot, e.clientY); S.editText = ""; S.editId = null; drawGrid(); return; }
     const pr = e.target.closest("[data-prio]");
     if (pr) {
       const p = S.plans.find((x) => x.id === pr.dataset.prio); if (!p) return;
@@ -328,7 +334,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       try { await api.updatePlan(p.id, { priority: nx }); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); }
       return;
     }
-    if (e.target.closest("[data-slot-close]")) { S.editSlot = null; drawGrid(); return; }
+    if (e.target.closest("[data-slot-close]")) { S.editSlot = null; S.editId = null; drawGrid(); return; }
     const play = e.target.closest("[data-play]");
     if (play) { const p = S.plans.find((x) => x.id === play.dataset.play); if (p) ctx.timer?.startFor(p); return; }
     const del = e.target.closest("[data-del]");
@@ -364,6 +370,14 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     e.preventDefault();
     const text = f.text.value.trim(), start = /^\d{2}:\d{2}$/.test(f.at?.value || "") ? f.at.value : f.dataset.slotForm, mins = +f.mins.value, priority = f.priority?.value || null;
     if (!text || !S.plans) return f.text.focus();
+    if (f.dataset.editId) { // 우클릭 → 편집 → 저장
+      const p = S.plans.find((x) => x.id === f.dataset.editId); if (!p) return;
+      const old = { text: p.text, start: p.start, mins: p.mins, priority: p.priority };
+      Object.assign(p, { text, start, mins, priority }); S.editSlot = null; S.editId = null; drawAll();
+      try { await api.updatePlan(p.id, { text, start, mins, priority }); changed("plans"); toast("계획을 고쳤어요."); }
+      catch (ex) { Object.assign(p, old); drawAll(); toast(ex.message, "err"); }
+      return;
+    }
     S.editMins = mins; S.editPrio = priority || "";
     try {
       await addPlan({ text, start, mins, ...(priority ? { priority } : {}) });
@@ -373,7 +387,23 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       drawGrid();
     } catch (ex) { toast(ex.message, "err"); }
   });
-  el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; drawGrid(); } });
+  el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; S.editId = null; drawGrid(); } });
+  // 우클릭 → 편집 · 끝냄 · 우선순위 · 다음 날로 · 삭제
+  el.addEventListener("contextmenu", (e) => {
+    const b = e.target.closest("#dp-grid .block"); if (!b) return;
+    const p = S.plans?.find((x) => x.id === b.dataset.id); if (!p) return;
+    openMenu(e, {
+      title: `${p.start}–${toTime(toMin(p.start) + (p.mins || 30))} · ${p.text}`,
+      items: [{ k: "edit", label: "편집", hint: "이름 · 시각 · 길이" }, { k: "done", label: p.done ? "끝냄 되돌리기" : "끝냄" }, { k: "prio", prio: p.priority || "" }, { sep: true }, { k: "later", label: "다음 날로 미루기" }, { k: "del", label: "삭제", danger: true }],
+      onPick: async (k, v) => {
+        if (k === "edit") { S.editId = p.id; S.editSlot = p.start; drawGrid(); return; }
+        if (k === "done") return toggle(p.id, !p.done);
+        if (k === "prio") { const old = p.priority; p.priority = v || null; drawAll(); try { await api.updatePlan(p.id, { priority: p.priority }); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); } return; }
+        if (k === "later") { try { await api.updatePlan(p.id, { period: "D:" + ymd(addDays(date, 1)) }); S.plans = S.plans.filter((x) => x.id !== p.id); drawAll(); toast("다음 날로 미뤘어요."); changed("plans"); } catch (ex) { toast(ex.message, "err"); } return; }
+        if (k === "del") { const keep = S.plans; S.plans = S.plans.filter((x) => x.id !== p.id); drawAll(); try { await api.deletePlan(p.id); changed("plans"); toast("삭제했어요."); } catch (ex) { S.plans = keep; drawAll(); toast(ex.message, "err"); } }
+      },
+    });
+  });
 
   // ---------- 블록 끌기: 가운데를 잡으면 옮기기, 위·아래 모서리를 잡으면 늘리기/줄이기 (5분 단위) ----------
   const PX5 = HOUR_PX / 12;
@@ -439,7 +469,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   const stopAic = mountCommand(el.querySelector("#dp-aic"), { day: () => day, onDone: () => changed("plans") });
 
   return () => {
-    alive = false; stopAic?.();
+    alive = false; stopAic?.(); closeMenu();
     window.removeEventListener("trio:changed", onChanged);
     el.removeEventListener("change", onElChange);
     el.removeEventListener("click", onElClick);
