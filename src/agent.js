@@ -145,8 +145,8 @@ const periodOf = (scope, date) => scope === "week" ? isoWeekKey(date) : scope ==
 const normHM = (v) => { if (typeof v !== "string") return null; const m = /^(\d{1,2}):(\d{2})$/.exec(v.trim()); if (!m) return null; const t = `${pad2(+m[1])}:${m[2]}`; return HM_RE.test(t) ? t : null; };
 async function dayPlans(env, user, date) {
   if (!DATE_RE.test(date || "")) return { error: "date 는 YYYY-MM-DD 예요." };
-  const { results } = await env.DB.prepare("SELECT id, text, done, start, mins FROM plans WHERE user_id = ? AND scope = 'day' AND period = ? ORDER BY start IS NULL, start, sort").bind(user.id, "D:" + date).all();
-  return { date, plans: results.map((p) => ({ id: p.id, text: p.text, done: !!p.done, start: p.start, mins: p.mins })) };
+  const { results } = await env.DB.prepare("SELECT id, text, done, missed, start, mins FROM plans WHERE user_id = ? AND scope = 'day' AND period = ? ORDER BY start IS NULL, start, sort").bind(user.id, "D:" + date).all();
+  return { date, plans: results.map((p) => ({ id: p.id, text: p.text, done: !!p.done, missed: !!p.missed, start: p.start, mins: p.mins })) };
 }
 async function addPlan(env, user, a) {
   const scope = ["day", "week", "month", "year"].includes(a.scope) ? a.scope : "day";
@@ -172,10 +172,13 @@ async function updatePlan(env, user, a) {
   const mins = a.mins !== undefined && p.scope === "day" ? (a.mins === null ? null : Math.min(1440, Math.max(5, Math.round(+a.mins) || 60))) : p.mins;
   let period = p.period;
   if (a.date && DATE_RE.test(a.date) && p.scope === "day") period = "D:" + a.date;
-  const done = a.done === undefined ? p.done : a.done ? 1 : 0;
+  let done = a.done === undefined ? p.done : a.done ? 1 : 0;
+  let missed = a.missed === undefined ? (a.done ? 0 : p.missed || 0) : a.missed ? 1 : 0;
+  if (missed && a.missed) done = 0;
+  if (period !== p.period && a.missed === undefined) missed = 0;
   const priority = a.priority === undefined ? p.priority ?? null : ["low", "medium", "high", "xhigh", "max"].includes(a.priority) ? a.priority : null;
-  await env.DB.prepare("UPDATE plans SET text = ?, start = ?, mins = ?, period = ?, done = ?, done_at = ?, priority = ?, updated_at = ? WHERE id = ?").bind(text, start, mins, period, done, done ? p.done_at || Date.now() : null, priority, Date.now(), p.id).run();
-  return { ok: true, plan: { id: p.id, text, start, mins, period, done: !!done } };
+  await env.DB.prepare("UPDATE plans SET text = ?, start = ?, mins = ?, period = ?, done = ?, done_at = ?, missed = ?, priority = ?, updated_at = ? WHERE id = ?").bind(text, start, mins, period, done, done ? p.done_at || Date.now() : null, missed, priority, Date.now(), p.id).run();
+  return { ok: true, plan: { id: p.id, text, start, mins, period, done: !!done, missed: !!missed } };
 }
 async function deletePlan(env, user, a) {
   const r = await env.DB.prepare("DELETE FROM plans WHERE id = ? AND user_id = ?").bind(String(a.id || ""), user.id).run();
@@ -186,7 +189,7 @@ export const WRITE_TOOLS = new Set(["add_plan", "update_plan", "delete_plan"]);
 export const TOOL_DOCS = {
   day_plans: { desc: "그날 계획(할 일·시간표)을 id 와 함께 봐요", args: '{"date":"2026-09-29"}' },
   add_plan: { desc: "계획을 새로 넣어요. 시간이 있으면 start(24시간 HH:MM)·mins(분), 없으면 할 일. scope 는 day(기본)·week·month", args: '{"date":"2026-09-29","text":"영어 수업","start":"21:30","mins":60}' },
-  update_plan: { desc: "계획을 고쳐요(시간 옮기기·이름 바꾸기·끝냄 표시). id 는 day_plans 로 확인", args: '{"id":"…","start":"22:00","done":true}' },
+  update_plan: { desc: "계획을 고쳐요(시간 옮기기·이름 바꾸기·끝냄 done · 못함 missed 표시). id 는 day_plans 로 확인", args: '{"id":"…","start":"22:00","done":true}' },
   delete_plan: { desc: "계획을 지워요. id 는 day_plans 로 확인", args: '{"id":"…"}' },
   web_search: { desc: "웹에서 최신 정보를 찾아요", args: '{"q":"검색어"}' },
   read_page: { desc: "웹 페이지 본문을 읽어요 (검색 결과 url 을 넣어요)", args: '{"url":"https://…"}' },
@@ -218,7 +221,7 @@ export const toolSummary = (name, args, r) => {
   if (name === "my_plans") return `${r.plans.length}개`;
   if (name === "day_plans") return `${r.date} · ${r.plans.length}개`;
   if (name === "add_plan") return `${r.plan.date}${r.plan.start ? " " + r.plan.start : ""} ${r.plan.text}`;
-  if (name === "update_plan") return `${r.plan.text}${r.plan.start ? " → " + r.plan.start : ""}${r.plan.done ? " ✓" : ""}`;
+  if (name === "update_plan") return `${r.plan.text}${r.plan.start ? " → " + r.plan.start : ""}${r.plan.done ? " ✓" : ""}${r.plan.missed ? " ✗ 못함" : ""}`;
   if (name === "delete_plan") return "지웠어요";
   return "";
 };

@@ -298,14 +298,16 @@ on("PATCH", "/plans/:id", async ({ req, env, user, params }) => {
   const b = await body(req);
   const next = { ...p };
   if (b.text !== undefined) next.text = str(b.text, 200, "내용");
-  if (b.done !== undefined) { next.done = b.done ? 1 : 0; next.done_at = b.done ? now() : null; }
-  if (b.period !== undefined) { checkPeriod(p.scope, b.period); next.period = b.period; }
+  if (b.done !== undefined) { next.done = b.done ? 1 : 0; next.done_at = b.done ? now() : null; if (b.done) next.missed = 0; }
+  // 못함(빨간 표시) — 켜면 끝냄은 꺼져요
+  if (b.missed !== undefined) { next.missed = b.missed ? 1 : 0; if (b.missed) { next.done = 0; next.done_at = null; } }
+  if (b.period !== undefined) { checkPeriod(p.scope, b.period); if (b.period !== p.period && b.missed === undefined) next.missed = 0; next.period = b.period; } // 다른 날로 미루면 못함 표시는 지워요
   if (p.scope === "day") checkSlot(b, next);
   if (b.color !== undefined) next.color = tone(b.color);
   if (b.priority !== undefined) next.priority = prio(b.priority);
   next.updated_at = now();
-  await env.DB.prepare("UPDATE plans SET text = ?, done = ?, done_at = ?, period = ?, start = ?, mins = ?, color = ?, priority = ?, updated_at = ? WHERE id = ?")
-    .bind(next.text, next.done, next.done_at, next.period, next.start, next.mins, next.color, next.priority ?? null, next.updated_at, p.id).run();
+  await env.DB.prepare("UPDATE plans SET text = ?, done = ?, done_at = ?, missed = ?, period = ?, start = ?, mins = ?, color = ?, priority = ?, updated_at = ? WHERE id = ?")
+    .bind(next.text, next.done, next.done_at, next.missed ? 1 : 0, next.period, next.start, next.mins, next.color, next.priority ?? null, next.updated_at, p.id).run();
   return json({ plan: next });
 });
 
@@ -320,7 +322,7 @@ on("POST", "/plans/carry", async ({ req, env, user }) => {
   const b = await body(req);
   checkPeriod(b.scope, b.from);
   checkPeriod(b.scope, b.to);
-  const r = await env.DB.prepare("UPDATE plans SET period = ?, updated_at = ? WHERE user_id = ? AND scope = ? AND period = ? AND done = 0")
+  const r = await env.DB.prepare("UPDATE plans SET period = ?, missed = 0, updated_at = ? WHERE user_id = ? AND scope = ? AND period = ? AND done = 0")
     .bind(b.to, now(), user.id, b.scope, b.from).run();
   return json({ moved: r.meta.changes || 0 });
 });
@@ -674,7 +676,7 @@ function scoreOf(plans, goal) {
 }
 async function snapshotDay(env, u, day, auto) {
   const [plans, logs] = await env.DB.batch([
-    env.DB.prepare("SELECT text, done, start, mins, priority, done_at FROM plans WHERE user_id = ? AND period = ? ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at").bind(u.id, "D:" + day),
+    env.DB.prepare("SELECT text, done, missed, start, mins, priority, done_at FROM plans WHERE user_id = ? AND period = ? ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at").bind(u.id, "D:" + day),
     env.DB.prepare("SELECT at, text, kind, mins FROM logs WHERE user_id = ? AND day = ? ORDER BY at, created_at").bind(u.id, day),
   ]);
   const P = plans.results, L = logs.results;
@@ -694,7 +696,7 @@ async function aiScoreDay(env, u, day) {
   const r = await env.DB.prepare("SELECT data, score FROM day_records WHERE user_id = ? AND day = ?").bind(u.id, day).first();
   if (!r || r.data === "{}") return null;
   const d = JSON.parse(r.data);
-  const lines = (d.plans || []).map((p) => `- [${p.done ? "x" : " "}] ${p.start ? p.start + (p.mins ? `(${p.mins}분) ` : " ") : "(시간 없음) "}${p.text}${p.priority ? ` · 우선순위 ${PRIO_KO[p.priority]}` : ""}`).join("\n");
+  const lines = (d.plans || []).map((p) => `- [${p.done ? "x" : p.missed ? "못함" : " "}] ${p.start ? p.start + (p.mins ? `(${p.mins}분) ` : " ") : "(시간 없음) "}${p.text}${p.priority ? ` · 우선순위 ${PRIO_KO[p.priority]}` : ""}`).join("\n");
   let ai = null, note = "", model = null;
   try {
     const out = await aiJson(env,

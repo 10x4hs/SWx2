@@ -3025,3 +3025,32 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .blocks .block { background-clip: padding-box; }
 .dp-scroll { overflow-x: hidden; }
 @media (hover: hover) { .block.edge-r:not(.dragging):hover { left: auto !important; right: 0 !important; } }
+
+/* v20.2: 못함(빨간 ✕) — 체크 옆 작은 빨간 동그라미. 누르면 계획이 빨갛게 · 짧은 계획은 뒤 계획 앞까지 한 줄로 */
+:root { --fail: #ff453a; }
+:root[data-theme="light"] { --fail: #e5362c; }
+.miss-btn { flex: none; display: grid; place-items: center; width: 18px; height: 18px; padding: 0; margin: 0; border-radius: 50%; cursor: pointer;
+  color: var(--fail); background: transparent; border: 1.5px solid color-mix(in srgb, var(--fail) 55%, transparent); transition: background .15s, color .15s, opacity .15s, transform .15s; }
+.miss-btn:hover { background: color-mix(in srgb, var(--fail) 16%, transparent); transform: scale(1.06); }
+.miss-btn[aria-pressed="true"] { background: var(--fail); border-color: var(--fail); color: #fff; }
+.block .miss-btn { margin-top: 2px; }
+.block.thin .miss-btn { margin-top: 0; width: 15px; height: 15px; }
+.block.thin .check { width: 15px; height: 15px; }
+/* 블록에서는 올렸을 때만(못함이면 늘) 보여요 — 좁은 칸 글자 자리를 안 뺏게 */
+@media (hover: hover) {
+  .block .miss-btn[aria-pressed="false"] { display: none; }
+  .block:hover .miss-btn[aria-pressed="false"] { display: grid; }
+  .gl-item .miss-btn[aria-pressed="false"] { opacity: .35; }
+  .gl-item:hover .miss-btn { opacity: 1; }
+}
+.block.fail { background: color-mix(in srgb, var(--fail) 18%, var(--glass-3)); border-color: color-mix(in srgb, var(--fail) 40%, transparent); border-left-color: var(--fail) !important; color: var(--ink); }
+.block.fail .when, .block.fail .when-i { color: color-mix(in srgb, var(--fail) 70%, var(--ink-2)); }
+.block.fail [data-edit] { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--fail) 70%, transparent); text-decoration-thickness: 1.5px; }
+.gl-item.fail { background: color-mix(in srgb, var(--fail) 12%, var(--lg-fill)); border-color: color-mix(in srgb, var(--fail) 35%, transparent); }
+.gl-item.fail .gl-text { color: color-mix(in srgb, var(--fail) 55%, var(--ink)); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--fail) 60%, transparent); }
+/* 아주 짧은 칸(15~20px): 작은 글씨 한 줄, 체크도 작게 */
+.block.micro { padding: 0 6px 0 7px; gap: 5px; border-radius: 6px; }
+.block.micro .txt { font-size: 11px; line-height: 1; }
+.block.micro .check, .block.micro .miss-btn { width: 12px; height: 12px; border-width: 1.3px; }
+.block.micro .when-i { font-size: 9.5px; }
+.block.micro .bk-rs { height: 5px; }

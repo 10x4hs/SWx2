@@ -3,7 +3,7 @@
 import { api } from "../api.js";
 import { $, esc, toast, ymd, parseYmd, addDays, today, DOW, hm, toMin, nowTime } from "../util.js";
 import { icon } from "../icons.js";
-import { PRIOS } from "./day.js";
+import { PRIOS, missBtn } from "./day.js";
 import { prioDonut, prioLegend } from "../charts/prio.js";
 import { keepDraft } from "../draft.js";
 import { mountCommand } from "../ai-command.js";
@@ -56,14 +56,20 @@ export function mount(root, ctx, r) {
     $("#ck-donut", root).innerHTML = prioDonut(items, { size: 188 });
     $("#ck-legend", root).innerHTML = items.length ? prioLegend(items) + `<p class="faint ck-tip">진한 색 = 끝낸 몫 · 우선순위를 누르면 바뀌어요</p>` : `<p class="faint ck-tip">할 일을 적고 우선순위를 고르면 색으로 쌓여요.</p>`;
   }
+  // 못함 표시 켜기/끄기 — 켜면 끝냄은 꺼져요
+  async function setMissed(p, on) {
+    const old = { done: p.done, missed: p.missed };
+    p.missed = on ? 1 : 0; if (on) p.done = 0; drawList();
+    try { await api.updatePlan(p.id, { missed: on }); changed(); } catch (err) { Object.assign(p, old); drawList(); toast(err.message, "err"); }
+  }
   function drawList() {
     const ul = $("#ck-list", root); if (!S.list) return;
     const nowM = S.day === ymd(today()) ? toMin(nowTime()) : -1;
     const list = S.list.slice().sort((a, b) => (a.done - b.done) || (RANK[b.priority] || 0) - (RANK[a.priority] || 0) || (a.sort || 0) - (b.sort || 0));
     ul.innerHTML = list.length ? list.map((p) => {
       const late = false;
-      return `<li class="gl-item${p.done ? " done" : ""}${late ? " late" : ""}" data-id="${esc(p.id)}" data-p="${p.priority || ""}">
-        <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 끝냄">
+      return `<li class="gl-item${p.done ? " done" : ""}${p.missed ? " fail" : ""}${late ? " late" : ""}" data-id="${esc(p.id)}" data-p="${p.priority || ""}">
+        <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 끝냄">${missBtn(p)}
         <span class="gl-text" data-edit="${esc(p.id)}" title="두 번 눌러 고치기">${esc(p.text)}</span>
         <button type="button" class="prio" data-prio="${esc(p.id)}" data-p="${p.priority || ""}">${p.priority ? PRIOS.find((x) => x.k === p.priority).label : "우선순위"}</button>
         <button type="button" class="icon-btn sm gl-del" data-del="${esc(p.id)}" aria-label="지우기">${icon.x(14)}</button>
@@ -104,10 +110,12 @@ export function mount(root, ctx, r) {
   root.addEventListener("change", async (e) => {
     const t = e.target.closest("[data-toggle]"); if (!t || !S.list) return;
     const p = S.list.find((x) => x.id === t.dataset.toggle); if (!p) return;
-    const v = t.checked; p.done = v ? 1 : 0; drawList();
-    try { await api.updatePlan(p.id, { done: v }); changed(); } catch (err) { p.done = v ? 0 : 1; drawList(); toast(err.message, "err"); }
+    const v = t.checked, wm = p.missed; p.done = v ? 1 : 0; if (v) p.missed = 0; drawList();
+    try { await api.updatePlan(p.id, { done: v }); changed(); } catch (err) { p.done = v ? 0 : 1; p.missed = wm; drawList(); toast(err.message, "err"); }
   });
   root.addEventListener("click", async (e) => {
+    const mb = e.target.closest("[data-miss]");
+    if (mb && S.list) { const p = S.list.find((x) => x.id === mb.dataset.miss); if (p) setMissed(p, !p.missed); return; }
     const pr = e.target.closest("[data-prio]");
     if (pr) {
       const p = S.list.find((x) => x.id === pr.dataset.prio); if (!p) return;
@@ -137,10 +145,11 @@ export function mount(root, ctx, r) {
   root.addEventListener("contextmenu", (e) => {
     const li = e.target.closest(".gl-item"); if (!li || !S.list) return;
     const p = S.list.find((x) => x.id === li.dataset.id); if (!p) return;
-    openMenu(e, { title: p.text, items: [{ k: "edit", label: "이름 고치기" }, { k: "done", label: p.done ? "끝냄 되돌리기" : "끝냄" }, { k: "prio", prio: p.priority || "" }, { sep: true }, { k: "later", label: "내일로 미루기" }, { k: "del", label: "삭제", danger: true }],
+    openMenu(e, { title: p.text, items: [{ k: "edit", label: "이름 고치기" }, { k: "done", label: p.done ? "끝냄 되돌리기" : "끝냄" }, { k: "miss", label: p.missed ? "못함 되돌리기" : "못함", danger: !p.missed }, { k: "prio", prio: p.priority || "" }, { sep: true }, { k: "later", label: "내일로 미루기" }, { k: "del", label: "삭제", danger: true }],
       onPick: async (k, v) => {
         if (k === "edit") { li.querySelector("[data-edit]")?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); return; }
-        if (k === "done") { const old = p.done; p.done = p.done ? 0 : 1; drawList(); try { await api.updatePlan(p.id, { done: !!p.done }); changed(); } catch (err) { p.done = old; drawList(); toast(err.message, "err"); } return; }
+        if (k === "done") { const old = p.done, wm = p.missed; p.done = p.done ? 0 : 1; if (p.done) p.missed = 0; drawList(); try { await api.updatePlan(p.id, { done: !!p.done }); changed(); } catch (err) { p.done = old; p.missed = wm; drawList(); toast(err.message, "err"); } return; }
+        if (k === "miss") return setMissed(p, !p.missed);
         if (k === "prio") { const old = p.priority; p.priority = v || null; drawList(); try { await api.updatePlan(p.id, { priority: p.priority }); changed(); } catch (err) { p.priority = old; drawList(); toast(err.message, "err"); } return; }
         if (k === "later") { try { await api.updatePlan(p.id, { period: "D:" + ymd(addDays(parseYmd(S.day), 1)) }); S.list = S.list.filter((x) => x.id !== p.id); drawList(); changed(); toast("내일로 미뤘어요."); } catch (err) { toast(err.message, "err"); } return; }
         if (k === "del") { const keep = S.list; S.list = S.list.filter((x) => x.id !== p.id); drawList(); try { await api.deletePlan(p.id); changed(); } catch (err) { S.list = keep; drawList(); toast(err.message, "err"); } }

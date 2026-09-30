@@ -36,6 +36,11 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "max" }); ok(r.status === 200 && r.data.plan.priority === "max", "plan priority: update to max");
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "urgent" }); ok(r.status === 400, "plan priority: unknown value → 400");
   r = await call("a", "PATCH", "/plans/" + ppid, { start: "14:35", mins: 5 }); ok(r.status === 200 && r.data.plan.start === "14:35" && r.data.plan.mins === 5, "plan: 5-minute slot");
+  // 못함(빨간 표시): 켜면 끝냄은 꺼지고, 끝냄을 켜면 못함이 꺼지고, 다른 날로 미루면 지워져요
+  r = await call("a", "PATCH", "/plans/" + ppid, { done: true }); r = await call("a", "PATCH", "/plans/" + ppid, { missed: true }); ok(r.status === 200 && r.data.plan.missed === 1 && r.data.plan.done === 0, "missed: on clears done");
+  r = await call("a", "GET", "/plans?periods=" + r.data.plan.period); ok(r.data.plans.find((x) => x.id === ppid)?.missed === 1, "missed: saved");
+  r = await call("a", "PATCH", "/plans/" + ppid, { done: true }); ok(r.data.plan.done === 1 && r.data.plan.missed === 0, "missed: done clears missed");
+  r = await call("a", "PATCH", "/plans/" + ppid, { missed: true }); r = await call("a", "PATCH", "/plans/" + ppid, { period: "D:2031-01-02" }); ok(r.data.plan.missed === 0, "missed: moving to another day clears it");
   r = await call("a", "PUT", "/records/self", { day: "2026-09-28", self: 150 }); ok(r.status === 400, "self score: out of range → 400");
   r = await call("a", "PUT", "/records/self", { day: "2026-09-28", self: 85 }); ok(r.status === 200 && r.data.self === 85, "self score: saved 85");
   r = await call("a", "GET", "/records/recent?to=2026-09-28&days=7"); ok(r.status === 200 && Array.isArray(r.data.days) && r.data.days.every((d) => "ai_score" in d), "records/recent: returns AI score field");

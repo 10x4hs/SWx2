@@ -14,7 +14,10 @@ import { BLOCKS } from "../english/data.js";
 
 const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게)
 const STEP = 5;     // 시간표는 5분 단위
-const MIN_H = 22;   // 짧은 계획도 글자가 보이는 최소 높이(px)
+const MIN_H = 22;   // 짧은 계획도 글자가 보이는 높이(px) — 바로 뒤에 다른 계획이 있으면 그 앞까지만
+const FLOOR = 14;   // 그래도 이만큼은 (한 줄 글자가 보이는 최소 · 10분 = 16px 이라 10분 이상은 원래 자리에 딱 맞아요)
+// 못함 버튼 — 체크(끝냄) 옆의 빨간 ✕. 누르면 계획이 빨갛게 바뀌어요 (체크리스트도 같이 써요)
+export const missBtn = (p) => `<button type="button" class="miss-btn" data-miss="${esc(p.id)}" aria-pressed="${p.missed ? "true" : "false"}" aria-label="${esc(p.text)} 못함" title="${p.missed ? "못함 되돌리기" : "못 했어요 (빨간색 표시)"}"><svg viewBox="0 0 12 12" width="8" height="8" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>`;
 // 우선순위 (색은 styles.css 의 --p-*)
 export const PRIOS = [
   { k: "low", label: "Low" }, { k: "medium", label: "Medium" }, { k: "high", label: "High" }, { k: "xhigh", label: "XHigh" }, { k: "max", label: "Max" },
@@ -154,6 +157,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
 
   function status(p) {
     if (p.done) return "done";
+    if (p.missed) return "fail";
     if (!p.start) return isPast ? "miss" : "";
     const end = toMin(p.start) + (p.mins || 0);
     return isPast || (isToday && end <= toMin(nowTime())) ? "miss" : "";
@@ -173,29 +177,37 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       hours += `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}" data-h="${h}"><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
     }
     // 겹치면 옆으로 나눠요 — 서로 이어진 묶음마다 칸 수를 같이 쓰고, 오른쪽이 비면 넓게 펴요.
-    // 짧은 계획(5 · 10분)도 글자가 보이게 최소 높이(MIN_H)를 주고, 겹침은 그 보이는 높이로 따져요.
-    const items = timed.map((p) => { const s = toMin(p.start), e = s + (p.mins || 30), h = Math.max(MIN_H, ((e - s) / 60) * HOUR_PX - 2); return { p, s, e, h, ve: s + ((h + 2) / HOUR_PX) * 60 }; });
+    // 겹침은 실제 시각으로 따져요(10분 뒤에 바로 이어지는 계획은 나란히가 아니라 위아래로). 짧은 계획은 뒤 계획 앞까지 높이를 늘려 글자를 보여요.
+    const px = (m) => (m / 60) * HOUR_PX;
+    const items = timed.map((p) => { const s = toMin(p.start), e = s + (p.mins || 30), real = px(e - s) - 2; return { p, s, e, real, ce: Math.max(e, s + ((FLOOR + 2) / HOUR_PX) * 60) }; }); // ce = 겹침을 따질 끝 (10분 미만만 조금 늘려서)
     const placed = [];
-    let group = [], groupEnd = -1;
+    let group = [], groupEnd = -1, gid = 0;
     const flush = () => {
       const cols = [];
-      for (const it of group) { let c = cols.findIndex((end) => end <= it.s); if (c < 0) { c = cols.length; cols.push(it.ve); } else cols[c] = it.ve; it.c = c; }
+      for (const it of group) { let c = cols.findIndex((end) => end <= it.s); if (c < 0) { c = cols.length; cols.push(it.ce); } else cols[c] = it.ce; it.c = c; it.g = gid; }
       for (const it of group) {
         it.n = cols.length; it.span = 1;
-        while (it.c + it.span < it.n && !group.some((o) => o !== it && o.c === it.c + it.span && o.s < it.ve && it.s < o.ve)) it.span++;
+        while (it.c + it.span < it.n && !group.some((o) => o !== it && o.c === it.c + it.span && o.s < it.ce && it.s < o.ce)) it.span++;
       }
-      placed.push(...group); group = [];
+      placed.push(...group); group = []; gid++;
     };
-    for (const it of items) { if (group.length && it.s >= groupEnd) flush(); group.push(it); groupEnd = Math.max(groupEnd, it.ve); }
+    for (const it of items) { if (group.length && it.s >= groupEnd) flush(); group.push(it); groupEnd = Math.max(groupEnd, it.ce); }
     if (group.length) flush();
+    // 보이는 높이: 원래 길이 → 짧으면 MIN_H 까지, 단 같은 줄(칸)에서 바로 뒤 계획이 시작하기 전까지만
+    const sameLane = (a, b) => a.g !== b.g || (a.c < b.c + b.span && b.c < a.c + a.span);
+    for (const it of placed) {
+      const next = placed.filter((o) => o.s > it.s && sameLane(it, o)).reduce((m, o) => Math.min(m, o.s), Infinity);
+      const room = next === Infinity ? Infinity : px(next - it.s) - 2;
+      it.h = Math.max(Math.max(it.real, FLOOR), Math.min(Math.max(it.real, MIN_H), room));
+    }
     const blocks = placed.map(({ p, s, e, h, c, n, span }) => {
       const top = ((s - startH * 60) / 60) * HOUR_PX + 1, w = 100 / n, frac = span / n;
       // 크기에 맞춰: tiny(한 줄 · 작은 글씨) · thin(한 줄 + 시각) · narrow(좁으면 버튼은 숨기고 우클릭 메뉴로)
-      const size = h < 30 ? " thin tiny" : h < 50 ? " thin" : "";
+      const size = h < 21 ? " thin tiny micro" : h < 30 ? " thin tiny" : h < 50 ? " thin" : "";
       const narrow = (frac < 0.5 ? " narrow xnarrow" : frac < 1 ? " narrow" : "") + (frac < 1 && c + span === n ? " edge-r" : "");
       const tip = `${p.start}–${toTime(e)} · ${p.text}${p.priority ? ` · ${p.priority}` : ""}`;
       return `<div class="block ${status(p)}${size}${narrow}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tip)}" style="top:${top}px;height:${h}px;left:calc(${c * w}% + ${c ? 2 : 0}px);right:auto;width:calc(${w * span}% - ${n > 1 ? 2 : 0}px)" data-id="${esc(p.id)}">
-        <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">
+        <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">${missBtn(p)}
         <div class="txt">${h < 50 ? `<span class="when-i">${esc(p.start)}</span>` : ""}<span data-edit="${esc(p.id)}">${esc(p.text)}</span>${h >= 50 ? `<span class="when">${esc(p.start)}–${toTime(e)} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
         ${playBtn(p)}
         <button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button>
@@ -303,7 +315,8 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   async function toggle(id, done) {
     const p = S.plans.find((x) => x.id === id);
     if (!p) return;
-    p.done = done ? 1 : 0; drawAll();
+    const wasMissed = p.missed;
+    p.done = done ? 1 : 0; if (done) p.missed = 0; drawAll();
     try {
       await api.updatePlan(id, { done });
       if (done && isToday) {
@@ -311,7 +324,15 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         S.logs.push(log); S.logs.sort((a, b) => a.at.localeCompare(b.at)); drawStudy();
       }
       changed("plans");
-    } catch (e) { p.done = done ? 0 : 1; drawAll(); toast(e.message, "err"); }
+    } catch (e) { p.done = done ? 0 : 1; p.missed = wasMissed; drawAll(); toast(e.message, "err"); }
+  }
+  // 못함 표시 켜기/끄기 — 켜면 끝냄은 꺼져요
+  async function setMissed(id, on) {
+    const p = S.plans.find((x) => x.id === id); if (!p) return;
+    const old = { done: p.done, missed: p.missed };
+    p.missed = on ? 1 : 0; if (on) p.done = 0; drawAll();
+    try { await api.updatePlan(id, { missed: on }); changed("plans"); }
+    catch (e) { Object.assign(p, old); drawAll(); toast(e.message, "err"); }
   }
   function editInline(t, save) {
     const old = t.textContent;
@@ -342,6 +363,8 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     if (e.target.id === "dp-date" && e.target.value) ctx.go("#/calendar/" + e.target.value);
   }
   async function onElClick(e) {
+    const mb = e.target.closest("[data-miss]");
+    if (mb && S.plans) { const p = S.plans.find((x) => x.id === mb.dataset.miss); if (p) setMissed(p.id, !p.missed); return; }
     const slot = e.target.closest("[data-slot]");
     if (slot) { S.editSlot = slotAt(slot, e.clientY); S.editText = ""; S.editId = null; drawGrid(); return; }
     const pr = e.target.closest("[data-prio]");
@@ -412,10 +435,11 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const p = S.plans?.find((x) => x.id === b.dataset.id); if (!p) return;
     openMenu(e, {
       title: `${p.start}–${toTime(toMin(p.start) + (p.mins || 30))} · ${p.text}`,
-      items: [{ k: "edit", label: "편집", hint: "이름 · 시각 · 길이" }, { k: "done", label: p.done ? "끝냄 되돌리기" : "끝냄" }, { k: "prio", prio: p.priority || "" }, { sep: true }, { k: "later", label: "다음 날로 미루기" }, { k: "del", label: "삭제", danger: true }],
+      items: [{ k: "edit", label: "편집", hint: "이름 · 시각 · 길이" }, { k: "done", label: p.done ? "끝냄 되돌리기" : "끝냄" }, { k: "miss", label: p.missed ? "못함 되돌리기" : "못함", danger: !p.missed }, { k: "prio", prio: p.priority || "" }, { sep: true }, { k: "later", label: "다음 날로 미루기" }, { k: "del", label: "삭제", danger: true }],
       onPick: async (k, v) => {
         if (k === "edit") { S.editId = p.id; S.editSlot = p.start; drawGrid(); return; }
         if (k === "done") return toggle(p.id, !p.done);
+        if (k === "miss") return setMissed(p.id, !p.missed);
         if (k === "prio") { const old = p.priority; p.priority = v || null; drawAll(); try { await api.updatePlan(p.id, { priority: p.priority }); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); } return; }
         if (k === "later") { try { await api.updatePlan(p.id, { period: "D:" + ymd(addDays(date, 1)) }); S.plans = S.plans.filter((x) => x.id !== p.id); drawAll(); toast("다음 날로 미뤘어요."); changed("plans"); } catch (ex) { toast(ex.message, "err"); } return; }
         if (k === "del") { const keep = S.plans; S.plans = S.plans.filter((x) => x.id !== p.id); drawAll(); try { await api.deletePlan(p.id); changed("plans"); toast("삭제했어요."); } catch (ex) { S.plans = keep; drawAll(); toast(ex.message, "err"); } }
