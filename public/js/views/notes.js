@@ -6,6 +6,7 @@ import { icon } from "../icons.js";
 import { renderMarkdown, outline } from "../md.js";
 import { createEditor } from "../notes/editor.js";
 import { mountAiPick, aiPrefs } from "../ai-pick.js";
+import { attachImages } from "../imgattach.js";
 
 let live = null; // the mounted notes view, so route changes can swap notes without remounting
 
@@ -71,8 +72,10 @@ export function mount(root, ctx, r) {
           </div>
           <div id="nl-pick"></div>
           <form class="ai-make" id="ai-make-form" hidden>
-            <input class="input" id="ai-topic" placeholder="무엇에 대한 노트? 예: 삼각함수 기초" maxlength="500" aria-label="만들 노트 주제">
+            <input class="input" id="ai-topic" placeholder="주제 · 링크 · 사진(붙여넣기) 예: 삼각함수 기초" maxlength="500" aria-label="만들 노트 주제">
+            <button class="icon-btn sm" type="button" id="ai-topic-img" aria-label="이미지 붙이기" title="교재 · 필기 사진으로 노트 만들기 (붙여넣기 · 끌어다 놓기도 돼요)">${icon.image(15)}</button>
             <button class="btn sm accent" type="submit">만들기</button>
+            <div class="att-tray" id="ai-topic-att" hidden></div>
           </form>
           <input class="input" id="filter" placeholder="제목·내용으로 거르기" aria-label="노트 거르기">
           <div id="tagbar"></div>
@@ -179,7 +182,7 @@ export function mount(root, ctx, r) {
       onOpenTitle: (t) => { save.flush(); const hit = S.notes.find((n) => n.title.toLowerCase() === t.toLowerCase()); if (hit) ctx.go("#/notes/" + hit.id); else openByTitle(ctx, t); },
       onOpenTag: (t) => ctx.go("#/notes/tag/" + encodeURIComponent(t)),
       onError: (e) => toast(e.message || "실패했어요.", "err"),
-      onAsk: async (question, context) => { const p = aiPrefs(); const r = await api.askAi({ note_id: S.cur.id, question, context, model: p.model || undefined, web: p.web }); return { text: r.text, model: r.model + (r.steps?.length ? ` · ${r.steps.filter((s) => s.name === "web_search").length ? "웹 검색" : "노트 확인"} ${r.steps.length}회` : "") }; },
+      onAsk: async (question, context, images) => { const p = aiPrefs(); const r = await api.askAi({ note_id: S.cur.id, question, context, images, model: p.model || undefined, web: p.web }); return { text: r.text, model: r.model + stepNote(r.steps) }; },
       onNewPage: (title) => newPage(title, false),
     });
     drawOutline();
@@ -396,14 +399,15 @@ export function mount(root, ctx, r) {
   $("#ai-make", root).addEventListener("click", () => { const f = $("#ai-make-form", root); f.hidden = !f.hidden; if (!f.hidden) $("#ai-topic", root).focus(); });
   $("#ai-make-form", root).addEventListener("submit", (e) => {
     e.preventDefault();
-    const topic = $("#ai-topic", root).value.trim();
-    if (!topic) return $("#ai-topic", root).focus();
-    const btn = e.currentTarget.querySelector("button");
-    aiRun(btn, aiPrefs().web ? "검색하고 만드는 중…" : "만드는 중…", async () => { const p = aiPrefs(); const r = await api.generate({ topic, model: p.model || undefined, web: p.web }); $("#ai-topic", root).value = ""; topicDraft.clear(); $("#ai-make-form", root).hidden = true; afterGenerate(r); });
+    const topic = $("#ai-topic", root).value.trim(), images = topicAtt.list();
+    if (!topic && !images.length) return $("#ai-topic", root).focus();
+    const btn = e.currentTarget.querySelector("button[type=submit]");
+    aiRun(btn, images.length ? "사진 읽고 만드는 중…" : "찾아보고 만드는 중…", async () => { const p = aiPrefs(); const r = await api.generate({ topic, images, model: p.model || undefined, web: p.web }); $("#ai-topic", root).value = ""; topicDraft.clear(); topicAtt.clear(); $("#ai-make-form", root).hidden = true; afterGenerate(r); });
   });
 
   mountAiPick($("#nl-pick", root));
   const topicDraft = keepDraft($("#ai-topic", root), "ai-topic");
+  const topicAtt = attachImages({ tray: $("#ai-topic-att", root), button: $("#ai-topic-img", root), paste: [$("#ai-topic", root)], drop: [$("#ai-make-form", root)] });
   $("#new", root).addEventListener("click", () => createNote(ctx, ""));
   $("#daily", root).addEventListener("click", () => openDaily(ctx, ymd(new Date())));
   $("#filter", root).addEventListener("input", (e) => { S.filter = e.target.value.trim(); drawList(); });
@@ -413,4 +417,12 @@ export function mount(root, ctx, r) {
   loadList(); open(r.id);
 
   return () => { save.flush(); closeSuggest(); ED?.destroy(); ED = null; live = null; };
+}
+
+// "· 웹 검색 2 · 페이지 1 · 이미지 1" 처럼 AI 가 무엇을 찾아봤는지
+function stepNote(steps) {
+  if (!steps?.length) return "";
+  const KO = { web_search: "웹 검색", read_page: "페이지", read_image: "이미지", search_notes: "노트 찾기", read_note: "노트" }, n = {};
+  for (const s of steps) n[s.name] = (n[s.name] || 0) + 1;
+  return " · " + Object.entries(n).map(([k, v]) => `${KO[k] || k} ${v}`).join(" · ");
 }

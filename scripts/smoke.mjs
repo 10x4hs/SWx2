@@ -80,6 +80,14 @@ r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status ===
 r = await call("a", "POST", "/ai/ask", { note_id: n1, question: "" }); ok(r.status === 400, "ai/ask: empty question → 400");
 r = await call("a", "POST", "/ai/plan", { messages: [] }); ok(r.status === 400, "ai/plan: no messages → 400");
 r = await call("a", "POST", "/ai/command", { text: "" }); ok(r.status === 400, "ai/command: empty → 400");
+// 이미지 붙이기: 형식이 틀리거나 너무 많으면 AI 를 부르기 전에 400
+const BAD_IMG = ["data:text/plain;base64,QUJD"];
+r = await call("a", "POST", "/ai/command", { text: "넣어 줘", images: BAD_IMG }); ok(r.status === 400, "images: ai/command bad type → 400");
+r = await call("a", "POST", "/ai/ask", { note_id: n1, question: "뭐야", images: BAD_IMG }); ok(r.status === 400, "images: ai/ask bad type → 400");
+r = await call("a", "POST", "/ai/generate", { topic: "x", images: BAD_IMG }); ok(r.status === 400, "images: ai/generate bad type → 400");
+r = await call("a", "POST", "/ai/plan", { messages: [{ role: "user", content: "계획" }], images: BAD_IMG }); ok(r.status === 400, "images: ai/plan bad type → 400");
+r = await call("a", "POST", "/ai/chat", { message: "뭐야", images: Array(5).fill("data:image/png;base64,iVBORw0KGgo=") }); ok(r.status === 400, "images: ai/chat more than 4 → 400");
+r = await call("a", "POST", "/ai/generate", { topic: "" }); ok(r.status === 400, "ai/generate: no topic and no image → 400");
 r = await call("a", "GET", "/push/key"); ok(r.status === 200 && ("key" in r.data), "push/key: returns key or null");
 r = await call("a", "POST", "/push/subscribe", { endpoint: "http://bad", keys: {} }); ok(r.status === 400, "push/subscribe: non-https endpoint → 400");
 r = await call("a", "POST", "/push/subscribe", { endpoint: "https://push.example.test/sub/abc", keys: { p256dh: "x", auth: "y" } }); ok(r.status === 200, "push/subscribe: saved");
@@ -440,6 +448,17 @@ if (!process.env.SKIP_AI) {
   r = await call("a", "GET", "/review/week?week=2027-W10"); ok(r.data.mine?.body === lines.join("\n"), "review ai saved as mine");
   r = await call("b", "GET", "/review/week?week=2027-W10"); ok(r.data.mine === null, "review text private to owner");
   r = await call("a", "POST", "/review/week/ai", { week: "2027-W10" }); ok(r.status === 429, "review ai: regenerate too fast → 429");
+  // 이미지: 빨간 8x8 PNG → 이미지 읽기 단계가 먼저 돌고 답에 색이 나와요
+  const { deflateSync, crc32 } = await import("node:zlib");
+  const chunk = (t, d) => { const len = Buffer.alloc(4); len.writeUInt32BE(d.length); const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(Buffer.concat([Buffer.from(t), d])) >>> 0); return Buffer.concat([len, Buffer.from(t), d, crc]); };
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(8, 0); ihdr.writeUInt32BE(8, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const rows = Buffer.concat(Array.from({ length: 8 }, () => Buffer.concat([Buffer.from([0]), Buffer.from(Array(8).fill([255, 0, 0]).flat())])));
+  const RED = "data:image/png;base64," + Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(rows)), chunk("IEND", Buffer.alloc(0))]).toString("base64");
+  r = await call("a", "POST", "/ai/ask", { note_id: n1, question: "이 이미지는 무슨 색이야? 한 단어로", images: [RED] });
+  ok(r.status === 200 && r.data.steps?.[0]?.name === "read_image" && /빨|red|적색/i.test(r.data.text), "images: ai/ask reads image → " + String(r.data.text || r.data.error).replace(/\s+/g, " ").slice(0, 40));
+  // 에이전트: 글에 링크가 있으면 먼저 읽어요 (AI 비서도)
+  r = await call("a", "POST", "/ai/command", { text: "https://example.com 이 페이지 제목이 뭐야? 계획은 넣지 마", today: "2027-03-01", day: "2027-03-01" });
+  ok(r.status === 200 && r.data.steps?.some((x) => x.name === "read_page") && !r.data.changed, "agent: ai/command reads link → " + String(r.data.text || r.data.error).replace(/\s+/g, " ").slice(0, 50));
   // 대화방 AI: 이름을 부르면 kind 'ai' 메시지가 같이 와요 (방 안의 것만 봄)
   const aiName = (await call("a", "GET", "/room/settings")).data.ai_name;
   r = await call("a", "POST", "/room", { body: `@${aiName} 안녕, 한 줄로 인사해줘` });

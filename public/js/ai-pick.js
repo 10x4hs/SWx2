@@ -13,7 +13,7 @@ export async function aiModels() { if (!cache) cache = api.aiModels().then((r) =
 export function mountAiPick(host, opts = {}) {
   const p = aiPrefs();
   host.classList.add("ai-pick");
-  host.innerHTML = `<select class="select sm" aria-label="AI 모델" title="어느 AI 로 할지"><option value="">자동 (되는 모델)</option></select>${opts.web === false ? "" : `<button type="button" class="ai-web" aria-pressed="${p.web}" title="웹 검색 켜기 · 최신 정보를 찾아보고 답해요">${globe()}<span>웹</span></button>`}`;
+  host.innerHTML = `<select class="select sm" aria-label="AI 모델" title="어느 AI 로 할지"><option value="">자동 (되는 모델)</option></select>${opts.web === false ? "" : `<button type="button" class="ai-web" aria-pressed="${p.web}" title="웹 먼저 찾기 · 켜면 먼저 웹을 검색하고 답해요 (꺼도 AI 가 필요하면 스스로 검색해요)">${globe()}<span>웹</span></button>`}`;
   const sel = host.querySelector("select"), web = host.querySelector(".ai-web");
   aiModels().then((models) => {
     sel.innerHTML = `<option value="">자동 (되는 모델)</option>` + models.map((m) => `<option value="${esc(m.id)}" ${m.id === p.model ? "selected" : ""} ${m.available ? "" : "disabled"}>${esc(m.label)}${m.available ? "" : " (키 없음)"}</option>`).join("");
@@ -25,8 +25,8 @@ export function mountAiPick(host, opts = {}) {
 }
 export const globe = (z = 13) => `<svg width="${z}" height="${z}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>`;
 // 도구 실행 기록을 작은 칩으로
-export const TOOL_KO = { web_search: "웹 검색", read_page: "페이지 읽기", search_notes: "노트 찾기", read_note: "노트 읽기", my_plans: "내 계획" };
+export const TOOL_KO = { web_search: "웹 검색", read_page: "페이지 읽기", search_notes: "노트 찾기", read_note: "노트 읽기", my_plans: "내 계획", read_image: "이미지 읽기", day_plans: "계획 보기", add_plan: "계획 넣기", update_plan: "계획 고치기", delete_plan: "계획 지우기" };
 export function stepsHTML(steps) {
   if (!steps?.length) return "";
-  return `<div class="ai-steps">${steps.map((s) => `<span class="ai-step" title="${esc(JSON.stringify(s.args || {}))}">${s.name === "web_search" ? globe(11) : "·"} ${esc(TOOL_KO[s.name] || s.name)}${s.args?.q ? `: <b>${esc(String(s.args.q).slice(0, 40))}</b>` : s.args?.url ? `: <b>${esc(String(s.args.url).replace(/^https?:\/\//, "").slice(0, 40))}</b>` : s.args?.title ? `: <b>${esc(s.args.title)}</b>` : ""}${s.summary ? `<small> · ${esc(String(s.summary).slice(0, 60))}</small>` : ""}</span>`).join("")}</div>`;
+  return `<div class="ai-steps">${steps.map((s) => `<span class="ai-step" title="${esc(JSON.stringify(s.args || {}))}">${s.name === "web_search" || s.name === "read_page" ? globe(11) : s.name === "read_image" ? "🖼" : "·"} ${esc(TOOL_KO[s.name] || s.name)}${s.args?.q ? `: <b>${esc(String(s.args.q).slice(0, 40))}</b>` : s.args?.url ? `: <b>${esc(String(s.args.url).replace(/^https?:\/\//, "").slice(0, 40))}</b>` : s.args?.title ? `: <b>${esc(s.args.title)}</b>` : ""}${s.summary ? `<small> · ${esc(String(s.summary).slice(0, 60))}</small>` : ""}</span>`).join("")}</div>`;
 }

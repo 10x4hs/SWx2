@@ -100,7 +100,37 @@ async function myPlans(env, user, periods) {
 }
 
 // 질문 → 검색어: 첫 문장에서 군말을 조금 걷어내요
-export const searchQuery = (text) => String(text).replace(/\[미리 검색한[\s\S]*$/, "").replace(/(웹에서|검색해서|찾아서|알려줘|알려 줘|해줘|해 줘|설명해|뭐야|무엇|인가요|일까|\?)/g, " ").replace(/\s+/g, " ").trim().slice(0, 100) || String(text).slice(0, 100);
+// 문장마다 시키는 말(찾아봐서 · 알려 줘 · 한 줄로 · 계획은 넣지 마 …)을 걷어내고 알맹이만 남겨요
+const FILLER = /(웹에서|인터넷에서|구글에서|네이버에서|검색해\s?서|검색해\s?(줘|봐|주세요)?|찾아\s?(봐서|보고|봐|서)?\s?(줘|주세요|줄래)?|알아\s?(봐서|보고|봐|서)?\s?(줘|주세요|줄래)?|알려\s?(줘|주세요|줄래)|설명해\s?(줘|주세요)?|정리해\s?(줘|주세요)?|요약해\s?(줘|주세요)?|말해\s?줘|해\s?(줘|주세요)|한\s?(줄|문장)로|짧게|간단히|자세히|최대한|좀|뭐야|뭔가요|뭐예요|무엇인가요|무엇|인가요|일까요?|있어\?|계획은?\s?넣지\s?마\S*|넣지\s?마\S*)/g;
+export const searchQuery = (text) => {
+  const base = String(text).replace(/\[(미리 검색한|미리 찾아본|첨부 이미지)[\s\S]*$/, "").replace(URL_RE, " ");
+  const parts = base.split(/[.?!。\n]+/).map((x) => x.replace(FILLER, " ").replace(/[?"'“”]/g, " ").replace(/\s+/g, " ").trim()).filter((x) => x.length > 1);
+  return parts.slice(0, 2).join(" ").slice(0, 100) || base.trim().slice(0, 100);
+};
+
+// 웹을 먼저 찾아봐야 하는 말인지 — 웹 토글을 안 켜도 이런 말이면 스스로 한 번 검색하고 시작해요.
+// (그 밖의 질문도 도구는 늘 열려 있어서, 모델이 필요하다고 보면 web_search · read_page 를 직접 불러요)
+const WEB_HINT = /(검색|찾아\s?봐|찾아\s?줘|알아\s?봐|조사|최신|요즘|최근\s?(소식|뉴스|동향)|뉴스|속보|가격|환율|주가|시세|날씨|출시|발표|업데이트\s?내용|공식\s?(사이트|문서)|레퍼런스|출처|자료\s?찾|latest|news|price|docs?\b)/i;
+export const needsWeb = (text) => WEB_HINT.test(String(text).replace(/\[(미리|첨부)[\s\S]*$/, "").slice(0, 800));
+export const URL_RE = /https?:\/\/[^\s<>"'`)\]]+/g;
+
+// 도구 바퀴 전에 미리 해 두는 조사: 글 속 링크는 바로 읽고, web 이 true(토글) 거나 "auto" 인데 웹이 필요한 말이면 한 번 검색해요.
+// → { note: 질문 뒤에 붙일 자료 글, steps: [{ name, args, summary, auto }] }
+export async function autoResearch(text, web = "auto") {
+  const raw = String(text || "").replace(/\[(미리|첨부)[\s\S]*$/, "");
+  const urls = [...new Set(raw.match(URL_RE) || [])].map((u) => u.replace(/[.,!?。]+$/, "")).slice(0, 2);
+  const doSearch = web === true || (web === "auto" && needsWeb(raw));
+  const q = doSearch ? searchQuery(raw) : "";
+  const [pages, found] = await Promise.all([
+    Promise.all(urls.map((url) => readPage(url, 6000).then((r) => ({ url, r })))),
+    q ? webSearch(q, 6) : null,
+  ]);
+  const steps = [], parts = [];
+  for (const { url, r } of pages) { steps.push({ name: "read_page", args: { url }, summary: toolSummary("read_page", { url }, r), auto: true }); parts.push(`### 링크 ${url}\n${r.error || JSON.stringify(r).slice(0, 6000)}`); }
+  if (found) { steps.push({ name: "web_search", args: { q }, summary: toolSummary("web_search", { q }, found), auto: true }); parts.push(`### web_search "${q}"\n${JSON.stringify(found).slice(0, 6500)}`); }
+  if (!parts.length) return { note: "", steps };
+  return { steps, note: `[미리 찾아본 자료]\n${parts.join("\n\n")}\n\n위 자료를 근거로 답해. 더 필요하면 read_page 로 그 주소를 읽거나 다른 검색어로 web_search 를 더 써. 웹 자료를 썼으면 답 끝에 '출처:' 로 링크를 적어.` };
+}
 
 // ---------- 계획 바꾸기 도구 (AI 비서) ----------
 const pad2 = (n) => String(n).padStart(2, "0");
@@ -197,7 +227,8 @@ export function toolPrompt(tools, maxSteps) {
   return [
     `## 도구\n필요하면 답 대신 아래 형식 **한 줄만** 출력해 (다른 말 없이). 결과가 [도구 결과] 로 돌아오면 그걸 보고 이어서 해. 최대 ${maxSteps}번까지 쓸 수 있고, 충분하면 바로 최종 답을 써.`,
     ...tools.map((t) => `- ${t} — ${TOOL_DOCS[t].desc}. 예: <<tool>>{"name":"${t}","args":${TOOL_DOCS[t].args}}<</tool>>`),
-    "최신 정보·수치·날짜·사실 확인이 필요하면 web_search → 필요하면 read_page. 내 공부 내용과 관련되면 search_notes. 답에 웹 출처를 썼으면 끝에 '출처:' 로 링크를 적어.",
+    "일하는 방식: 먼저 무엇을 알아야 하는지 생각하고 → 도구로 찾고 → 결과가 부족하면 검색어를 바꿔 다시 찾거나 read_page 로 원문을 읽고 → 충분할 때 답해. 기억만으로 최신 정보·수치·날짜·버전·가격을 말하지 마.",
+    "최신 정보·사실 확인이 필요하면 web_search → 믿을 만한 결과의 read_page. 내 공부 내용과 관련되면 search_notes → read_note. 답에 웹 출처를 썼으면 끝에 '출처:' 로 링크를 적어.",
   ].join("\n");
 }
 
@@ -212,19 +243,17 @@ export function parseToolCall(text) {
 
 // system: 역할 프롬프트 · messages: [{role, content}] (마지막이 user) · tools: 쓸 도구 이름들 · prefer: 모델 id (없으면 기본 순서)
 // onStep({ name, args, summary }) 로 도구 실행을 알려줘요. 돌려주는 값: { text, model, steps }
-export async function runAgent(env, user, { system, messages, tools = Object.keys(TOOL_DOCS), prefer = null, maxSteps = 4, onStep = null, periods = [], preSearch = false }) {
+export async function runAgent(env, user, { system, messages, tools = Object.keys(TOOL_DOCS), prefer = null, maxSteps = 4, onStep = null, periods = [], preSearch = "auto", researchOn = null }) {
   const order = orderFrom(prefer, TEXT_ORDER);
   const sys = tools.length ? `${system}\n\n${toolPrompt(tools, maxSteps)}` : system;
   const convo = messages.map((m) => ({ role: m.role, content: m.content }));
   const steps = [];
   let used = null;
-  // 웹 모드면 첫 질문으로 먼저 한 번 검색해 두어요 (모델이 검색을 건너뛰고 지어내지 않게)
-  if (preSearch && tools.includes("web_search")) {
-    const q = searchQuery(convo[convo.length - 1]?.content || "");
-    const result = await webSearch(q, 6);
-    const step = { name: "web_search", args: { q }, summary: toolSummary("web_search", { q }, result), auto: true };
-    steps.push(step); if (onStep) await onStep(step);
-    convo[convo.length - 1] = { role: "user", content: `${convo[convo.length - 1].content}\n\n[미리 검색한 결과 web_search "${q}"]\n${JSON.stringify(result).slice(0, 7000)}\n\n위 결과를 근거로 답해. 더 자세한 내용이 필요하면 read_page 로 그 주소를 읽고, 다른 검색어가 필요하면 web_search 를 한 번 더 써. 답 끝에 '출처:' 로 쓴 링크를 적어.` };
+  // 링크는 먼저 읽고, 웹 모드(preSearch true)거나 웹이 필요한 말("auto")이면 먼저 한 번 검색해 두어요 (모델이 검색을 건너뛰고 지어내지 않게)
+  if (tools.includes("web_search")) {
+    const pre = await autoResearch(researchOn ?? (convo[convo.length - 1]?.content || ""), preSearch);
+    for (const step of pre.steps) { steps.push(step); if (onStep) await onStep(step); }
+    if (pre.note) convo[convo.length - 1] = { role: "user", content: `${convo[convo.length - 1].content}\n\n${pre.note}` };
   }
   for (let i = 0; i <= maxSteps; i++) {
     const r = await aiText(env, sys, convo, order);

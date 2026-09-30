@@ -6,6 +6,7 @@ import { $, esc, toast, ymd, today, nowTime, periodKey, planHash } from "../util
 import { icon } from "../icons.js";
 import { renderMarkdown } from "../md.js";
 import { mountAiPick, aiPrefs, stepsHTML } from "../ai-pick.js";
+import { attachImages, splitImageNote } from "../imgattach.js";
 
 const SCOPES = [["day", "오늘"], ["week", "이번 주"], ["month", "이번 달"]];
 const STARTERS = {
@@ -32,7 +33,9 @@ export function mount(root, ctx, r) {
         <div class="pl-inner" id="pl-inner"></div>
       </div>
       <form class="pl-compose" id="pl-form">
+        <div class="att-tray" id="pl-att" hidden></div>
         <div class="pl-box glass">
+          <button class="icon-btn att-btn" type="button" id="pl-img" aria-label="이미지 붙이기" title="시간표 · 시험 공지 · 과제 사진을 넣으면 그걸 보고 계획을 짜요">${icon.image(18)}</button>
           <textarea id="pl-q" rows="1" maxlength="4000" placeholder="무엇을 계획할까요? 시간·목표·시험일을 적어 주면 더 정확해요" aria-label="계획 요청"></textarea>
           <button class="send" type="submit" id="pl-send" aria-label="보내기">${icon.arrowRight(18)}</button>
         </div>
@@ -42,6 +45,7 @@ export function mount(root, ctx, r) {
   const inner = $("#pl-inner", root), body = $("#pl-body", root), q = $("#pl-q", root);
   mountAiPick($("#pl-pick", root));
   const draft = keepDraft(q, "planner");
+  const att = attachImages({ tray: $("#pl-att", root), button: $("#pl-img", root), paste: [q], drop: [$("#pl-form", root)] });
 
   function hero() {
     const l = SCOPES.find(([k]) => k === S.scope)[1];
@@ -63,7 +67,7 @@ export function mount(root, ctx, r) {
   function draw() {
     if (!S.msgs.length) { inner.innerHTML = hero(); return; }
     inner.innerHTML = S.msgs.map((m, i) => m.role === "user"
-      ? `<div class="ask"><div class="bubble glass">${esc(m.content)}</div></div>`
+      ? `<div class="ask"><div class="bubble glass">${esc(splitImageNote(m.content).q)}${splitImageNote(m.content).n ? ` <small class="faint">🖼 ${splitImageNote(m.content).n}장</small>` : ""}</div></div>`
       : `<article class="pl-ans glass ${m.pending ? "live" : ""}">
           <header><span class="orb mini" aria-hidden="true"><span class="orb-glass"></span></span><span class="chip">${esc(m.model || "AI")}</span>${m.pending ? `<span class="faint">${esc(m.status || "생각하는 중…")}</span>` : ""}</header>
           ${stepsHTML(m.steps)}
@@ -75,20 +79,23 @@ export function mount(root, ctx, r) {
   const toBottom = () => { body.scrollTop = body.scrollHeight; };
 
   async function send(text) {
-    text = text.trim(); if (!text || S.busy) return;
+    text = text.trim(); const images = att.list(); if ((!text && !images.length) || S.busy) return;
+    text = text || "이 이미지를 보고 계획을 짜 줘";
     S.busy = true; $("#pl-send", root).disabled = true;
-    S.msgs.push({ role: "user", content: text });
+    const mine = { role: "user", content: text + (images.length ? `\n\n[첨부 이미지 ${images.length}장 — 읽는 중]` : "") };
+    S.msgs.push(mine); att.clear();
     const ans = { role: "assistant", content: "", pending: true, steps: [], model: "" };
     S.msgs.push(ans); q.value = ""; draft.clear(); autosize(); draw(); toBottom();
     const t = today(), pref = aiPrefs();
     try {
       const r = await api.planAi({
-        messages: S.msgs.filter((m) => !m.pending && (m.role === "user" || m.content)).map((m) => ({ role: m.role, content: m.content })),
+        messages: S.msgs.filter((m) => !m.pending && (m.role === "user" || m.content)).map((m) => ({ role: m.role, content: m === mine ? text : m.content })), images,
         scope: S.scope, model: pref.model || undefined, web: pref.web,
         periods: { day: periodKey("day", t), week: periodKey("week", t), month: periodKey("month", t), year: periodKey("year", t) }, day: ymd(t), time: nowTime(),
       });
+      mine.content = r.image_note ? `${text}\n\n${r.image_note}` : text; // 다음 질문에서도 사진 내용을 기억하게
       Object.assign(ans, { content: r.text, model: r.model, steps: r.steps || [], plan: r.plan, pending: false, changed: !!r.changed });
-    } catch (e) { Object.assign(ans, { error: e.message, pending: false }); }
+    } catch (e) { mine.content = text; Object.assign(ans, { error: e.message, pending: false }); }
     finally { S.busy = false; $("#pl-send", root).disabled = false; persist(); draw(); toBottom(); if (ans.changed) window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "plans" } })); }
   }
   async function addPlan(i) {

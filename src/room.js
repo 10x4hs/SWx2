@@ -9,10 +9,11 @@
 // AI는 그 방의 최근 40개 메시지와 창고 목록만 봐요. 개인 노트·일기·계획은 절대 안 보내요.
 import { pushUsers } from "./push.js";
 import { hubNotify, hubConnect } from "./hub.js";
-import { aiText, TEXT_ORDER } from "./ai.js";
+import { TEXT_ORDER } from "./ai.js";
+import { runAgent } from "./agent.js";
 
 const AI_ORDER = TEXT_ORDER;   // Groq → Gemini → Cohere → MiMo → Zhipu → OpenRouter → Kilo
-const AI_TIMEOUT = 20e3;      // AI 답 기다리는 최대 시간
+const AI_TIMEOUT = 45e3;      // AI 답 기다리는 최대 시간 (웹 검색 · 페이지 읽기를 하면 조금 더 걸려요)
 const RETRY_GAP = 30e3;       // 다시 시도는 사람마다 30초에 한 번
 const CONTEXT_MSGS = 40;      // AI가 보는 최근 메시지 수
 const CONTEXT_ITEMS = 80;     // AI가 보는 창고 항목 수
@@ -125,7 +126,7 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
       ? items.results.map((i) => `- ${KIND[i.kind] || i.kind} · ${i.title} · ${i.display_name || "떠난 멤버"}`).join("\n")
       : "(아직 비어 있어요)";
     const where = room === ALL ? "세 사람이 다 있는 방" : "두 사람만 있는 1:1 방";
-    const system = `너는 세 사람의 공부방 '대화방'에 있는 AI 친구 ${name}. 짧고 친근한 한국어, 마크다운 최소, 필요하면 목록. 방 안의 대화와 창고 목록만 알고, 개인 노트·일기·계획은 볼 수 없다고 솔직히 말해.`;
+    const system = `너는 세 사람의 공부방 '대화방'에 있는 AI 친구 ${name}. 짧고 친근한 한국어, 마크다운 최소, 필요하면 목록. 방 안의 대화와 창고 목록, 그리고 웹(검색 · 페이지 읽기 도구)만 쓸 수 있고, 개인 노트·일기·계획은 볼 수 없다고 솔직히 말해. 웹 자료를 쓰면 끝에 출처 링크를 짧게.`;
     const prompt = `## 창고 목록\n${shelf}\n\n## 최근 대화 (${where}, 오래된 것부터)\n${lines.join("\n")}\n\n마지막 메시지에서 너(${name})를 불렀어. ${name}으로서 답만 써. 이름 접두어 없이.`;
     return { system, prompt };
   }
@@ -135,9 +136,10 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     const name = await getAiName(env);
     const { system, prompt } = await buildPrompt(env, name, msg.room, msg.created_at);
     let timer;
-    const timeout = new Promise((_, rej) => { timer = setTimeout(() => rej(Object.assign(new Error("AI 답이 20초 안에 오지 않았어요."), { status: 504 })), AI_TIMEOUT); });
+    const timeout = new Promise((_, rej) => { timer = setTimeout(() => rej(Object.assign(new Error("AI 답이 45초 안에 오지 않았어요."), { status: 504 })), AI_TIMEOUT); });
     try {
-      const { text } = await Promise.race([aiText(env, system, [{ role: "user", content: prompt }], AI_ORDER), timeout]);
+      // 대화방 AI 도 에이전트처럼: 부른 메시지에 링크가 있으면 읽고, 조사가 필요한 말이면 웹을 찾아보고, 필요하면 스스로 더 검색해요
+      const { text } = await Promise.race([runAgent(env, null, { system, messages: [{ role: "user", content: prompt }], tools: ["web_search", "read_page"], maxSteps: 3, preSearch: "auto", researchOn: msg.body }), timeout]);
       const clean = text.trim().slice(0, 4000);
       if (!clean) { const e = new Error("AI가 빈 답을 보냈어요."); e.status = 502; throw e; }
       return await postRoomMessage(env, { id: uid(), room: msg.room, user_id: null, kind: "ai", body: clean, ref_id: null, reply_to: msg.id, created_at: now() });

@@ -2958,3 +2958,28 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .slot-pop.editing { border-color: color-mix(in srgb, var(--r-week) 45%, var(--lg-edge-hi)); }
 .slot-pop .sp-t { flex: 1 1 100%; font: 600 12px var(--font); color: var(--ink-2); padding: 0 2px 2px; }
 .cm-prio .prio[data-p="max"]:not(.on) { color: var(--p-max); border-color: color-mix(in srgb, var(--p-max) 55%, transparent); box-shadow: none; } .cm-prio .prio.on[data-p="max"] { background: var(--p-max); color: #fff; }
+
+/* v20: 이미지 붙이기 — 사진 버튼 · 미리보기 줄 · 끌어다 놓기 · 저장된 질문의 "AI 가 읽은 내용" */
+.att-btn, .aic-img { flex: none; color: var(--ink-3); }
+.att-btn:hover, .aic-img:hover { color: var(--ink); }
+.composer-box { padding-left: 8px; }
+.composer-box .att-btn { align-self: flex-end; margin-bottom: 1px; }
+.aic-img { display: grid; place-items: center; width: 28px; height: 28px; border: 0; background: none; border-radius: 50%; cursor: pointer; }
+.aic-img:hover { background: var(--lg-fill, rgba(127,127,127,.1)); }
+.att-tray { display: flex; flex-wrap: wrap; gap: 8px; max-width: 860px; margin: 0 auto 8px; }
+.att-tray[hidden] { display: none; }
+.aic-att { margin: 8px 4px 0; }
+.ask-att, #ai-topic-att { flex-basis: 100%; margin: 6px 0 0; }
+.att { position: relative; width: 64px; height: 64px; border-radius: 14px; overflow: hidden; border: 1px solid var(--glass-edge); box-shadow: var(--e-1, 0 1px 3px rgba(0,0,0,.12)); background: var(--glass); }
+.att img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.att button { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border: 0; border-radius: 50%; font-size: 10px; line-height: 20px; padding: 0; color: #fff; background: rgba(0,0,0,.55); backdrop-filter: blur(6px); cursor: pointer; }
+.drop-on { outline: 2px dashed var(--accent, var(--ink-3)); outline-offset: 4px; border-radius: 22px; }
+.ai-make { flex-wrap: wrap; }
+.ask .ask-imgs { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; margin-bottom: 6px; }
+.ask .ask-imgs img { width: 120px; height: 120px; object-fit: cover; border-radius: 16px; border: 1px solid var(--glass-edge); }
+.ask { flex-direction: column; align-items: flex-end; }
+.ask-note { max-width: min(560px, 90%); margin-top: 6px; font-size: 12.5px; color: var(--ink-2); }
+.ask-note summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-edge); }
+.ask-note summary::-webkit-details-marker { display: none; }
+.ask-note .md { margin-top: 8px; padding: 10px 14px; border-radius: 14px; background: var(--glass); border: 1px solid var(--glass-edge); max-height: 280px; overflow: auto; }
+.aic-a a { color: inherit; text-decoration: underline; text-underline-offset: 2px; opacity: .8; }

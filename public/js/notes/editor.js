@@ -5,6 +5,7 @@
 import { renderInline, renderMarkdown } from "../md.js";
 import { esc } from "../util.js";
 import { icon } from "../icons.js";
+import { shrink, imageFiles, pickImages, MAX_IMAGES } from "../imgattach.js";
 
 const AI_START = "<!-- ai:start -->", AI_END = "<!-- ai:end -->", MOC_MARK = "<!-- ai:moc -->";
 const TYPES = {
@@ -156,7 +157,7 @@ export function createEditor(host, opts) {
       case "raw": el.innerHTML = `<div class="bx" data-plain="1">${esc(b.text)}</div>`; break;
       case "page": el.contentEditable = "false"; el.dataset.page = b.text; el.innerHTML = `<a class="bx-page" href="#"><span class="pg-ic">📄</span><span class="pg-t">${esc(b.text)}</span><span class="faint">페이지</span></a>`; break;
       case "ai": el.contentEditable = "false"; el.dataset.md = b.text; el.innerHTML = `<div class="bx-ai"><div class="ai-head">${icon.spark(12)} AI${b.model ? `<span class="faint"> · ${esc(b.model)}</span>` : ""}${RO ? "" : `<span class="ai-acts"><button type="button" data-ai-plain>본문으로</button><button type="button" data-ai-del>지우기</button></span>`}</div><div class="md ai-md">${renderMarkdown(b.text)}</div></div>`; break;
-      case "ask": el.contentEditable = "false"; el.innerHTML = `<form class="bx-ask" data-ask><span class="ai-ic">${icon.spark(13)}</span><input class="ask-in" placeholder="무엇이 궁금해요? 이 노트를 보면서 답해요 · Enter" maxlength="2000" aria-label="AI에게 물어볼 것" value="${esc(b.text || "")}"><button type="submit" class="btn sm accent">묻기</button><button type="button" class="icon-btn sm" data-ask-x aria-label="닫기">✕</button><div class="ask-busy" hidden>${icon.spark(13)} 생각하는 중…</div></form>`; break;
+      case "ask": el.contentEditable = "false"; el.innerHTML = `<form class="bx-ask" data-ask><span class="ai-ic">${icon.spark(13)}</span><input class="ask-in" placeholder="무엇이 궁금해요? 이 노트를 보면서 답해요 · Enter" maxlength="2000" aria-label="AI에게 물어볼 것" value="${esc(b.text || "")}"><button type="button" class="icon-btn sm" data-ask-img aria-label="이미지 붙이기" title="이미지 붙이기 · 붙여넣기(⌘V)도 돼요">${icon.image(14)}</button><button type="submit" class="btn sm accent">묻기</button><button type="button" class="icon-btn sm" data-ask-x aria-label="닫기">✕</button><div class="ask-busy" hidden>${icon.spark(13)} 생각하는 중… 필요하면 웹도 찾아봐요</div><div class="att-tray ask-att" hidden></div></form>`; break;
       case "newpage": el.contentEditable = "false"; el.innerHTML = `<form class="bx-ask" data-newpage><span class="ai-ic">📄</span><input class="ask-in" placeholder="새 페이지 제목 · Enter" maxlength="120" aria-label="새 페이지 제목"><button type="submit" class="btn sm accent">만들기</button><button type="button" class="icon-btn sm" data-ask-x aria-label="닫기">✕</button></form>`; break;
       default: el.innerHTML = renderInline(b.text) || ""; el.dataset.ph = placeholder(b);
     }
@@ -325,6 +326,8 @@ export function createEditor(host, opts) {
     if (RO) return;
     if (el.dataset.type === "todo" && e.clientX < el.getBoundingClientRect().left + 30) { e.preventDefault(); if (el.dataset.checked) delete el.dataset.checked; else el.dataset.checked = "1"; changed(); return; }
     if (e.target.closest("[data-ask-x]")) { remove(el, false); return; }
+    if (e.target.closest("[data-ask-img]")) { const f = e.target.closest("form"); pickImages().then((fs) => addAskImgs(f, fs)); return; }
+    const ax = e.target.closest(".ask-att [data-att-x]"); if (ax) { const f = ax.closest("form"); (askImgs.get(f) || []).splice(+ax.dataset.attX, 1); drawAskImgs(f); return; }
     if (e.target.closest("[data-ai-del]")) { remove(el); return; }
     if (e.target.closest("[data-ai-plain]")) { const nb = parseBlocks(el.dataset.md || ""); const els = (nb.length ? nb : [{ type: "p", text: "" }]).map(mkEl); el.replaceWith(...els); placeCaret(els[els.length - 1]); changed(); return; }
   });
@@ -337,15 +340,25 @@ export function createEditor(host, opts) {
     if (TEXTY.has(last.dataset.type) && !last.textContent.trim()) placeCaret(last); else insertAfter(last, { type: "p", text: "" });
   });
   // AI 묻기 · 새 페이지
+  // 물어보기 칸의 이미지 (폼마다 따로)
+  const askImgs = new WeakMap();
+  const drawAskImgs = (f) => { const t = f.querySelector(".ask-att"), list = askImgs.get(f) || []; t.hidden = !list.length; t.innerHTML = list.map((u, i) => `<span class="att"><img src="${esc(u)}" alt=""><button type="button" data-att-x="${i}" aria-label="이미지 빼기">✕</button></span>`).join(""); };
+  async function addAskImgs(f, files) {
+    const list = askImgs.get(f) || []; askImgs.set(f, list);
+    for (const file of files.slice(0, Math.max(0, MAX_IMAGES - list.length))) { try { list.push(await shrink(file)); } catch (err) { opts.onError?.(err); } }
+    drawAskImgs(f);
+  }
+  doc.addEventListener("paste", (e) => { if (!e.target.matches?.(".ask-in")) return; const fs = imageFiles(e.clipboardData); if (!fs.length) return; e.preventDefault(); e.stopPropagation(); addAskImgs(e.target.closest("form"), fs); }, true);
   doc.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target, el = f.closest(".blk");
     if (f.matches("[data-ask]")) {
-      const q = f.querySelector(".ask-in").value.trim(); if (!q) return;
+      const images = askImgs.get(f) || [];
+      const q = f.querySelector(".ask-in").value.trim() || (images.length ? "이 이미지 내용을 정리해 줘" : ""); if (!q) return;
       f.querySelector(".ask-busy").hidden = false; f.querySelector("button[type=submit]").disabled = true;
       try {
         const ctxMd = serializeBlocks(readAll());
-        const r = await opts.onAsk(q, ctxMd); const md = typeof r === "string" ? r : r.text;
+        const r = await opts.onAsk(q, ctxMd, images); const md = typeof r === "string" ? r : r.text;
         replaceEl(el, { type: "ai", text: `**Q.** ${q}\n\n${md}`, model: typeof r === "string" ? "" : r.model }, null);
       } catch (err) { if (f.isConnected) { f.querySelector(".ask-busy").hidden = true; f.querySelector("button[type=submit]").disabled = false; } opts.onError?.(err); }
     } else if (f.matches("[data-newpage]")) {

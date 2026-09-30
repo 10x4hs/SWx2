@@ -5,6 +5,9 @@ import { api } from "./api.js";
 import { esc, toast, ymd, today, nowTime } from "./util.js";
 import { icon } from "./icons.js";
 import { aiPrefs, stepsHTML } from "./ai-pick.js";
+import { attachImages } from "./imgattach.js";
+
+const WRITE = new Set(["add_plan", "update_plan", "delete_plan"]);
 
 const HINTS_DAY = ["9시 반에 영어 수업 등록해 줘", "내일 오후 3시에 수학 2시간 넣어 줘", "영어 수업 10시로 옮겨 줘", "오늘 할 일로 단어 50개 외우기", "끝난 건 끝냄으로 표시해 줘"];
 
@@ -15,30 +18,38 @@ export function mountCommand(host, opts = {}) {
   host.innerHTML = `
     <form class="aic-box" autocomplete="off">
       <span class="aic-orb" aria-hidden="true"></span>
+      <button class="aic-img" type="button" aria-label="이미지 붙이기" title="이미지 붙이기 · 시간표 · 공지 사진을 넣으면 일정으로 옮겨요 (붙여넣기 · 끌어다 놓기도 돼요)">${icon.image(15)}</button>
       <input class="aic-in" maxlength="500" aria-label="AI 비서에게 시키기" placeholder="AI에게 시키기 · 예: ${esc(HINTS[0])}">
       <button class="aic-go" type="submit" aria-label="실행">${icon.arrowRight(15)}</button>
     </form>
+    <div class="att-tray aic-att" hidden></div>
     <div class="aic-out" hidden aria-live="polite"></div>`;
   const form = host.querySelector("form"), input = host.querySelector(".aic-in"), out = host.querySelector(".aic-out");
   const draft = keepDraft(input, "aic");
+  const att = attachImages({ tray: host.querySelector(".aic-att"), button: host.querySelector(".aic-img"), paste: [input], drop: [host] });
   const rot = setInterval(() => { if (document.activeElement !== input && !input.value) { hintI = (hintI + 1) % HINTS.length; input.placeholder = "AI에게 시키기 · 예: " + HINTS[hintI]; } }, 4000);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const text = input.value.trim(); if (!text || busy) return;
+    const text = input.value.trim(), images = att.list(); if ((!text && !images.length) || busy) return;
+    const shown = text || `이미지 ${images.length}장`;
     busy = true; host.classList.add("busy"); out.hidden = false;
-    out.innerHTML = `<p class="aic-q">${esc(text)}</p><p class="aic-a faint">${icon.spark(12)} 하는 중…</p>`;
-    input.value = ""; draft.clear();
+    out.innerHTML = `<p class="aic-q">${esc(shown)}</p><p class="aic-a faint">${icon.spark(12)} ${images.length ? "이미지 읽는 중…" : "하는 중… 필요하면 웹도 찾아봐요"}</p>`;
+    input.value = ""; draft.clear(); att.clear();
     try {
       const p = aiPrefs();
       const ctxPage = opts.page ? opts.page() : {}; // 목표 페이지: { scope: "week", period: "W:2026-W40" }
-      const r = await api.aiCommand({ text, day: opts.day ? opts.day() : ymd(today()), today: ymd(today()), time: nowTime(), model: p.model || undefined, web: p.web, history, ...ctxPage });
-      history = [...history, { role: "user", content: text }, { role: "assistant", content: r.text }].slice(-8);
-      out.innerHTML = `<p class="aic-q">${esc(text)}</p><p class="aic-a">${r.changed ? "✓ " : ""}${esc(r.text)}</p>${stepsHTML(r.steps?.filter((s) => s.ok === false))}<p class="aic-m faint">${esc(r.model || "")}</p>`;
+      const r = await api.aiCommand({ text, images, day: opts.day ? opts.day() : ymd(today()), today: ymd(today()), time: nowTime(), model: p.model || undefined, web: p.web, history, ...ctxPage });
+      history = [...history, { role: "user", content: shown }, { role: "assistant", content: r.text }].slice(-8);
+      // 찾아본 것(웹 · 링크 · 이미지 · 노트)과 못 한 것만 칩으로 — 넣은 계획은 답 글에 이미 있어요
+      out.innerHTML = `<p class="aic-q">${esc(shown)}</p><p class="aic-a">${r.changed ? "✓ " : ""}${linkify(r.text)}</p>${stepsHTML(r.steps?.filter((s) => !WRITE.has(s.name) || s.ok === false))}<p class="aic-m faint">${esc(r.model || "")}</p>`;
       if (r.changed) { window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "plans" } })); opts.onDone?.(true); }
       if (r.question) input.focus();
-    } catch (err) { out.innerHTML = `<p class="aic-q">${esc(text)}</p><p class="aic-a ans-err">${esc(err.message)}</p>`; toast(err.message, "err"); }
+    } catch (err) { out.innerHTML = `<p class="aic-q">${esc(shown)}</p><p class="aic-a ans-err">${esc(err.message)}</p>`; toast(err.message, "err"); }
     finally { busy = false; host.classList.remove("busy"); }
   });
   input.addEventListener("keydown", (e) => { if (e.key === "Escape") { out.hidden = true; input.blur(); } });
   return () => clearInterval(rot);
 }
+
+// 답 속 링크(출처)는 눌러서 열 수 있게
+const linkify = (t) => esc(t).replace(/https?:\/\/[^\s<>"')]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\//, "").slice(0, 48)}</a>`);

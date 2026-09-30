@@ -28,6 +28,7 @@ export const icon = {
   home: (z) => s('<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/>', z),
   diary: (z) => s('<path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6z"/><path d="M6 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2M9 8h6M9 12h6"/>', z),
   spark: (z) => s('<path d="M12 3l1.8 4.9L19 9.7l-5.2 1.9L12 16.5l-1.8-4.9L5 9.7l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>', z),
+  image: (z) => s('<rect x="3" y="4.5" width="18" height="15" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M20.5 16.5 15.5 11.5 6 19.5"/>', z),
   later: (z) => s('<path d="M5 12h12M13 7l5 5-5 5"/><path d="M20 5v14"/>', z),
 };
 

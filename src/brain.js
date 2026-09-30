@@ -1,7 +1,8 @@
 // AI 두뇌: 내 노트를 옵시디언처럼 정리하고(주제·#태그·[[링크]]·목차 노트), 새 개념 노트를 만들어요.
 // AI가 쓰는 부분은 노트 끝의 표시된 구역에만 들어가고, 다시 돌리면 그 구역만 바뀌어요.
-import { aiJson, aiText, orderFrom, TEXT_ORDER } from "./ai.js";
-import { runAgent, webSearch, WRITE_TOOLS, runAgentTool, toolSummary } from "./agent.js";
+import { aiJson } from "./ai.js";
+import { runAgent, WRITE_TOOLS, runAgentTool, toolSummary, autoResearch } from "./agent.js";
+import { cleanImages, withImages } from "./vision.js";
 
 const AI_START = "<!-- ai:start -->", AI_END = "<!-- ai:end -->", MOC_MARK = "<!-- ai:moc -->";
 const AI_BLOCK_RE = /\n*<!-- ai:start -->[\s\S]*?<!-- ai:end -->\n*/g;
@@ -132,7 +133,8 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
   // ---------- 편집기 안 AI: 이 노트를 보면서 바로 묻기 (답은 마크다운, 노트에 끼워 넣기 좋게 짧게) ----------
   on("POST", "/ai/ask", async ({ req, env, user }) => {
     const b = await body(req);
-    const question = String(b.question || "").trim().slice(0, 2000);
+    const images = cleanImages(b.images, fail);
+    const question = String(b.question || "").trim().slice(0, 2000) || (images.length ? "이 이미지 내용을 노트에 넣기 좋게 정리해 줘." : "");
     if (!question) fail(400, "무엇을 물어볼지 적어 주세요.");
     let note = null;
     if (typeof b.note_id === "string" && b.note_id) note = await env.DB.prepare("SELECT title, body FROM notes WHERE id = ? AND user_id = ?").bind(b.note_id, user.id).first();
@@ -145,12 +147,10 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     ].filter(Boolean).join("\n\n");
     try {
       const prefer = typeof b.model === "string" ? b.model : null;
-      if (b.web === true) {
-        const r = await runAgent(env, user, { system, messages: [{ role: "user", content: question }], tools: ["web_search", "read_page", "search_notes", "read_note"], prefer, maxSteps: 3, preSearch: true });
-        return json({ text: r.text, model: r.model, steps: r.steps });
-      }
-      const { text, used } = await aiText(env, system, [{ role: "user", content: question }], orderFrom(prefer, TEXT_ORDER));
-      return json({ text: String(text || "").trim(), model: used, steps: [] });
+      // 늘 에이전트로: 필요하면 스스로 웹 검색 · 페이지 읽기 · 내 노트 찾기 (웹 토글이 켜져 있으면 먼저 한 번 검색하고 시작)
+      const vis = await withImages(env, question, images);
+      const r = await runAgent(env, user, { system, messages: [{ role: "user", content: vis.text }], tools: ["web_search", "read_page", "search_notes", "read_note"], prefer, maxSteps: 4, preSearch: b.web === true ? true : "auto" });
+      return json({ text: r.text, model: r.model, steps: [vis.step, ...r.steps].filter(Boolean) });
     } catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
   });
 
@@ -218,6 +218,8 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     const b = await body(req);
     let source = "", ask_for = "";
     let userTopic = "";
+    const images = cleanImages(b.images, fail);
+    const gsteps = [];
     if (b.chat_id) {
       const chat = await env.DB.prepare("SELECT id, title FROM chats WHERE id = ? AND user_id = ?").bind(b.chat_id, user.id).first();
       if (!chat) fail(404, "대화를 찾을 수 없어요.");
@@ -232,13 +234,18 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
       ask_for = `아래 노트("${n.title}")의 내용을 개념 하나당 노트 하나로 쪼개서 정리해. 원래 노트 제목은 쓰지 마.`;
     } else {
       const topic = String(b.topic || "").trim().slice(0, 500);
-      if (!topic) fail(400, "무엇에 대한 노트를 만들지 적어 주세요.");
-      userTopic = topic.slice(0, 40);
-      ask_for = `"${topic}"에 대해 공부용 개념 노트를 만들어. topic 은 "${userTopic}" 그대로 써.`;
-      if (b.web === true) { // 웹 검색으로 최신 내용을 조금 보태요
-        const r = await webSearch(topic, 6);
-        if (r.results.length) source = "## 웹 검색 결과 (참고만, 출처는 body 끝에 '출처:' 로)\n" + r.results.map((x) => `- ${x.title} — ${x.snippet} (${x.url})`).join("\n");
-      }
+      if (!topic && !images.length) fail(400, "무엇에 대한 노트를 만들지 적어 주세요.");
+      // 사진(교재 · 필기 · 화면 캡처)만 붙이면 그 내용으로, 주제와 같이 붙이면 둘 다 보고 만들어요
+      userTopic = topic && !/^https?:\/\//.test(topic) ? topic.replace(/https?:\/\/\S+/g, "").trim().slice(0, 40) : "";
+      ask_for = topic ? `"${topic}"에 대해 공부용 개념 노트를 만들어.${userTopic ? ` topic 은 "${userTopic}" 그대로 써.` : ""}` : "첨부한 이미지의 내용을 공부용 개념 노트로 정리해.";
+      // 링크가 있으면 읽고, 웹 토글이 켜졌거나 조사가 필요한 말이면 검색해서 최신 내용을 보태요 (출처는 body 끝에)
+      const [vis, pre] = await Promise.all([
+        withImages(env, topic, images).catch((e) => fail(e.status || 503, e.message)),
+        topic ? autoResearch(topic, b.web === true ? true : "auto") : { note: "", steps: [] },
+      ]);
+      if (vis.step) gsteps.push(vis.step);
+      gsteps.push(...pre.steps);
+      source = [vis.note, pre.note ? pre.note.replace(/위 자료를 근거로[\s\S]*$/, "웹 자료는 참고만 하고, 쓴 출처는 body 끝에 '출처:' 로 적어.") : ""].filter(Boolean).join("\n\n");
     }
 
     const { results: mine } = await env.DB.prepare("SELECT id, title, body FROM notes WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200").bind(user.id).all();
@@ -284,14 +291,15 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     }
     if (writes.length) await env.DB.batch(writes);
     const moc_id = await rebuildMoc(env, user, topic);
-    return json({ topic, notes: out, moc_id, model: used }, 201);
+    return json({ topic, notes: out, moc_id, model: used, steps: gsteps }, 201);
   });
 
   // ---------- AI 비서: "9시 반에 영어 수업 등록해 줘" 같은 말을 계획으로 바로 ----------
   // body: { text, day(보고 있는 날), today, time, model?, web?, history?:[{role,content}] } → { text, model, steps, changed }
   on("POST", "/ai/command", async ({ req, env, user }) => {
     const b = await body(req);
-    const text = String(b.text || "").trim().slice(0, 2000);
+    const images = cleanImages(b.images, fail);
+    const text = String(b.text || "").trim().slice(0, 2000) || (images.length ? "이 이미지에 있는 일정·할 일을 넣어 줘." : "");
     if (!text) fail(400, "무엇을 할지 적어 주세요.");
     const isDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
     const today = isDate(b.today) ? b.today : new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
@@ -318,20 +326,36 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     const scopeKo = { week: "이번 주", month: "이번 달", year: "올해" }[pageScope] || "";
     let goals = [];
     if (pagePeriod) goals = (await env.DB.prepare("SELECT id, text, done, priority FROM plans WHERE user_id = ? AND period = ? ORDER BY sort").bind(user.id, pagePeriod).all()).results;
-    const prompt = [
+    // 사진(시간표 · 공지 · 시험 범위 캡처)은 글로 옮겨 붙이고, 링크는 읽고, 조사가 필요한 말이면 먼저 검색해 둬요
+    let vis, pre;
+    try { [vis, pre] = await Promise.all([withImages(env, text, images), autoResearch(text, b.web === true ? true : "auto")]); }
+    catch (e) { fail(e.status || 503, e.message || "이미지를 읽지 못했어요."); }
+    const steps = [vis.step, ...pre.steps].filter(Boolean).map((x) => ({ ...x, ok: true }));
+    let found = [vis.note, pre.note ? pre.note.replace(/위 자료를 근거로[\s\S]*$/, "") : ""].filter(Boolean).join("\n\n");
+    const makePrompt = () => [
       history.length ? "## 앞선 대화\n" + history.map((m) => `${m.role === "user" ? "사용자" : "비서"}: ${m.content}`).join("\n") : "",
       pagePeriod ? `## 지금 보고 있는 페이지: ${scopeKo} 목표 (${pagePeriod}) — 날짜 없이 말한 건 기본으로 이 기간 목표로 넣어 (add_plan 에 "scope":"${pageScope}", "date":"${day}"). 시간은 넣지 마.\n` + (goals.length ? goals.map((g) => `- id=${g.id} ${g.text}${g.priority ? ` · ${g.priority}` : ""}${g.done ? " ✓" : ""}`).join("\n") : "(아직 목표 없음)") : "## 지금 보고 있는 페이지: 하루 (체크리스트 · 계획표)",
       "## 이미 있는 하루 계획 (id 로 고치거나 지워)",
       ...lists.map((l) => `### ${l.date}(${dow(l.date)})\n` + (l.plans.length ? l.plans.map((p) => `- id=${p.id} ${p.start ? p.start + (p.mins ? `(${p.mins}분)` : "") + " " : "(시간 없음) "}${p.text}${p.done ? " ✓" : ""}`).join("\n") : "(없음)")),
       `## 사용자 말\n${text}`,
+      found ? `## 찾아본 자료 (이미지 · 링크 · 웹)\n${found.slice(0, 16000)}` : "",
       "다음 JSON 하나로만 답해:",
-      '{"actions":[{"name":"add_plan","args":{"date":"YYYY-MM-DD","text":"할 일","start":"HH:MM","mins":60,"priority":"high","scope":"day|week|month|year"}},{"name":"update_plan","args":{"id":"…","start":"HH:MM","mins":90,"date":"YYYY-MM-DD","text":"…","done":true}},{"name":"delete_plan","args":{"id":"…"}}],"reply":"무엇을 했는지 한 문장","question":null}',
-      "규칙: 실행할 게 있으면 actions 에 넣어 (여러 개 가능, 필요한 필드만). 시각이 있는 일정은 하루 계획표(start·mins), 시각 없는 '할 일'은 체크리스트(start·mins 를 빼) — 둘은 따로예요. 우선순위(priority)는 사용자가 말할 때만: low·medium·high·xhigh·max ('급해/최우선'=max, '중요'=high, '보통'=medium, '나중에/여유'=low). 시각은 5분 단위로 맞춰. 모호해서 실행할 수 없을 때만 actions 를 비우고 question 에 짧게 물어. 계획과 상관없는 말이면 actions 는 비우고 reply 에 짧게 답해. '짜 줘 · 추천해 줘 · 만들어 줘' 는 묻지 말고 3~6개를 짧고 구체적으로 바로 넣어 (기존 것과 겹치지 않게). '다 끝냈어 · 체크해 줘' 는 해당 id 들에 done:true.",
+      '{"research":[{"name":"web_search","args":{"q":"검색어"}},{"name":"read_page","args":{"url":"https://…"}},{"name":"search_notes","args":{"q":"…"}}],"actions":[{"name":"add_plan","args":{"date":"YYYY-MM-DD","text":"할 일","start":"HH:MM","mins":60,"priority":"high","scope":"day|week|month|year"}},{"name":"update_plan","args":{"id":"…","start":"HH:MM","mins":90,"date":"YYYY-MM-DD","text":"…","done":true}},{"name":"delete_plan","args":{"id":"…"}}],"reply":"무엇을 했는지 한 문장","question":null}',
+      "규칙: 실행할 게 있으면 actions 에 넣어 (여러 개 가능, 필요한 필드만). 시각이 있는 일정은 하루 계획표(start·mins), 시각 없는 '할 일'은 체크리스트(start·mins 를 빼) — 둘은 따로예요. 우선순위(priority)는 사용자가 말할 때만: low·medium·high·xhigh·max ('급해/최우선'=max, '중요'=high, '보통'=medium, '나중에/여유'=low). 시각은 5분 단위로 맞춰. 모호해서 실행할 수 없을 때만 actions 를 비우고 question 에 짧게 물어. 계획과 상관없는 말이면 actions 는 비우고 reply 에 짧게 답해. '짜 줘 · 추천해 줘 · 만들어 줘' 는 묻지 말고 3~6개를 짧고 구체적으로 바로 넣어 (기존 것과 겹치지 않게). '다 끝냈어 · 체크해 줘' 는 해당 id 들에 done:true. 계획을 짜려면 바깥 정보(시험 일정 · 강의 목록 · 공식 문서 · 최신 소식)가 필요한데 '찾아본 자료'에 없으면 actions 는 비우고 research 에 도구를 1~3개 넣어 — 결과를 붙여서 다시 물어볼게. 자료가 충분하면 research 는 빈 배열. 계획이 아닌 질문이면 자료를 근거로 reply 에 답하고 출처 링크를 짧게 붙여.",
     ].filter(Boolean).join("\n\n");
     let data, used;
-    try { ({ data, used } = await aiJson(env, system, prompt, typeof b.model === "string" ? b.model : null)); }
-    catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
-    const steps = [], done = [];
+    const READ = new Set(["web_search", "read_page", "search_notes", "read_note"]);
+    // 에이전트 바퀴: AI 가 research 를 내면 그 도구를 돌려 결과를 붙이고 다시 물어요 (최대 2번)
+    for (let round = 0; ; round++) {
+      try { ({ data, used } = await aiJson(env, system, makePrompt(), typeof b.model === "string" ? b.model : null)); }
+      catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
+      const want = (Array.isArray(data?.research) ? data.research : []).filter((r) => r && READ.has(r.name)).slice(0, 3);
+      const acting = Array.isArray(data?.actions) && data.actions.some((a) => a && WRITE_TOOLS.has(a.name));
+      if (!want.length || acting || round >= 2) break;
+      const got = await Promise.all(want.map(async (r) => { const args = r.args && typeof r.args === "object" ? r.args : {}; const res = await runAgentTool(env, user, r.name, args); steps.push({ name: r.name, args, summary: toolSummary(r.name, args, res), ok: !res.error }); return `### ${r.name} ${JSON.stringify(args)}\n${JSON.stringify(res).slice(0, 6000)}`; }));
+      found = [found, ...got].filter(Boolean).join("\n\n");
+    }
+    const done = [];
     for (const act of (Array.isArray(data?.actions) ? data.actions : []).slice(0, 12)) {
       if (!act || !WRITE_TOOLS.has(act.name)) continue;
       const r = await runAgentTool(env, user, act.name, act.args && typeof act.args === "object" ? act.args : {});
@@ -348,8 +372,9 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
       return `‘${s0.summary}’ 로 고쳤어요.`;
     });
     const fails = steps.filter((x) => !x.ok).map((x) => x.summary);
-    const reply = [say.join(" "), fails.length ? `못 한 것: ${fails.join(", ")}` : "", !steps.length ? (data?.question || data?.reply || "무엇을 할지 조금 더 알려 주세요.") : ""].filter(Boolean).join(" ");
-    return json({ text: reply, model: used, steps, changed: done.length > 0, question: !steps.length && data?.question ? data.question : null });
+    const wrote = steps.some((x) => WRITE_TOOLS.has(x.name));
+    const reply = [say.join(" "), fails.length ? `못 한 것: ${fails.join(", ")}` : "", !wrote ? (data?.question || data?.reply || "무엇을 할지 조금 더 알려 주세요.") : ""].filter(Boolean).join(" ");
+    return json({ text: reply, model: used, steps, changed: done.length > 0, question: !wrote && data?.question ? data.question : null });
   });
   // ---------- 계획 AI: 대화로 계획을 짜고, 마지막에 ```plan JSON 으로 넣을 항목을 제안해요 ----------
   // body: { messages:[{role,content}], model?, web?, scope: 'day'|'week'|'month', period: 'D:2026-09-29' 같은 키, periods:{day,week,month,year}, day, time }
@@ -357,6 +382,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     const b = await body(req);
     const msgs = (Array.isArray(b.messages) ? b.messages : []).filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim()).slice(-16).map((m) => ({ role: m.role, content: m.content.slice(0, 6000) }));
     if (!msgs.length || msgs[msgs.length - 1].role !== "user") fail(400, "무엇을 계획할지 적어 주세요.");
+    const images = cleanImages(b.images, fail);
     const scope = ["day", "week", "month"].includes(b.scope) ? b.scope : "week";
     const periods = b.periods && typeof b.periods === "object" ? Object.values(b.periods).filter((x) => typeof x === "string" && /^[DWMY]:[\d\-W]+$/.test(x)) : [];
     const { results: plans } = periods.length ? await env.DB.prepare(`SELECT scope, period, text, done, start, mins FROM plans WHERE user_id = ? AND period IN (${periods.map(() => "?").join(",")}) ORDER BY scope, start, created_at`).bind(user.id, ...periods).all() : { results: [] };
@@ -373,11 +399,14 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
       `사용자가 "넣어 줘/등록해 줘/지워 줘/옮겨 줘" 처럼 바로 실행을 시키면 제안 카드 대신 add_plan·update_plan·delete_plan 도구로 직접 해 (오늘 날짜는 ${b.day || ""}, 시간은 24시간 HH:MM). 그때는 plan 코드 블록을 붙이지 마.`,
     ].filter(Boolean).join("\n\n");
     try {
-      const r = await runAgent(env, user, { system, messages: msgs, tools: ["search_notes", "read_note", "day_plans", "add_plan", "update_plan", "delete_plan", ...(b.web === true ? ["web_search", "read_page"] : [])], prefer: typeof b.model === "string" ? b.model : null, maxSteps: b.web === true ? 3 : 2, periods, preSearch: b.web === true });
+      const vis = await withImages(env, msgs[msgs.length - 1].content, images);
+      if (vis.note) msgs[msgs.length - 1] = { role: "user", content: vis.text };
+      const r0 = await runAgent(env, user, { system, messages: msgs, tools: ["web_search", "read_page", "search_notes", "read_note", "day_plans", "add_plan", "update_plan", "delete_plan"], prefer: typeof b.model === "string" ? b.model : null, maxSteps: 4, periods, preSearch: b.web === true ? true : "auto" });
+      const r = { ...r0, steps: [vis.step, ...r0.steps].filter(Boolean) };
       let plan = null;
       const m = /```plan\s*([\s\S]*?)```/.exec(r.text);
       if (m) { try { const j = JSON.parse(m[1]); const items = (Array.isArray(j.items) ? j.items : []).map((x) => ({ text: String(x?.text || "").trim().slice(0, 120), start: /^\d{2}:\d{2}$/.test(x?.start || "") ? x.start : null, mins: Number.isFinite(+x?.mins) && +x.mins > 0 ? Math.min(600, Math.round(+x.mins)) : null })).filter((x) => x.text); if (items.length) plan = { scope, items }; } catch {} }
-      return json({ text: r.text.replace(/```plan[\s\S]*?```/g, "").trim(), model: r.model, steps: r.steps, plan, changed: r.steps.some((s) => WRITE_TOOLS.has(s.name)) });
+      return json({ image_note: vis.note || undefined, text: r.text.replace(/```plan[\s\S]*?```/g, "").trim(), model: r.model, steps: r.steps, plan, changed: r.steps.some((s) => WRITE_TOOLS.has(s.name)) });
     } catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
   });
 }

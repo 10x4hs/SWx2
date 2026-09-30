@@ -6,6 +6,7 @@ import { icon } from "../icons.js";
 import { renderMarkdown } from "../md.js";
 import { openByTitle } from "./notes.js";
 import { aiPrefs, setAiPrefs, globe, stepsHTML } from "../ai-pick.js";
+import { attachImages, splitImageNote } from "../imgattach.js";
 
 const MODEL_KEY = "trio-ai-model", CTX_KEY = "trio-ai-context", PREFILL_KEY = "trio-ai-prefill", LAST_KEY = "trio-ai-last";
 const store = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
@@ -61,23 +62,26 @@ export function mount(root, ctx, r) {
             <input type="checkbox" id="use-ctx" ${S.useCtx ? "checked" : ""}><span></span>내 기록 참고
           </label>
           <select class="select" id="model" aria-label="AI 모델"></select>
-          <button type="button" class="ai-web" id="use-web" aria-pressed="${aiPrefs().web}" title="웹 검색 켜기 · 최신 정보를 찾아보고 답해요 (모델 하나일 때)">${globe(13)}<span>웹</span></button>
+          <button type="button" class="ai-web" id="use-web" aria-pressed="${aiPrefs().web}" title="웹 먼저 찾기 · 켜면 질문마다 먼저 웹을 검색하고 답해요 (꺼도 AI 가 필요하면 스스로 검색해요)">${globe(13)}<span>웹</span></button>
           <a class="btn sm ghost" href="#/planner" title="대화로 계획 짜기">${icon.plans(14)}계획 AI</a>
           <button class="btn sm ai-btn" type="button" id="to-notes" hidden title="이 대화에서 배운 내용을 서로 연결된 개념 노트로 만들어요">${icon.spark(14)}노트로 정리</button>
         </header>
         <div class="convo-body" id="body"><div class="convo-inner" id="turns"></div></div>
         <form class="composer" id="composer">
+          <div class="att-tray" id="att" hidden></div>
           <div class="composer-box">
+            <button class="icon-btn att-btn" type="button" id="att-btn" aria-label="이미지 붙이기" title="이미지 붙이기 · 붙여넣기(⌘V) · 끌어다 놓기도 돼요">${icon.image(18)}</button>
             <textarea id="q" rows="1" maxlength="4000" placeholder="궁금한 걸 물어보세요. [[노트 제목]]을 쓰면 그 노트를 읽고 답해요." aria-label="질문"></textarea>
             <button class="send" type="submit" id="send" aria-label="보내기">${icon.arrowRight(18)}</button>
           </div>
-          <p class="composer-hint"><kbd>Enter</kbd> 보내기 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 줄바꿈 · AI 답은 틀릴 수 있어요</p>
+          <p class="composer-hint"><kbd>Enter</kbd> 보내기 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 줄바꿈 · 사진은 붙여넣기 · AI 가 필요하면 웹을 찾아봐요 · 답은 틀릴 수 있어요</p>
         </form>
       </section>
     </div>`;
 
   const q = $("#q", root), body = $("#body", root);
   const draft = keepDraft(q, "ai"); // 나갔다 와도 쓰던 질문이 남게
+  const att = attachImages({ tray: $("#att", root), button: $("#att-btn", root), paste: [q], drop: [$("#composer", root)] });
 
   // ---------- chat list ----------
   function drawList() {
@@ -109,6 +113,12 @@ export function mount(root, ctx, r) {
     }
     return turns;
   }
+  function askHTML(t) {
+    const { q: text, note, n } = splitImageNote(t.q);
+    const thumbs = t.images?.length ? `<div class="ask-imgs">${t.images.map((u) => `<img src="${esc(u)}" alt="첨부 이미지">`).join("")}</div>` : "";
+    const chip = note ? `<details class="ask-note"><summary>${icon.image(12)} 이미지 ${n}장 · AI 가 읽은 내용</summary><div class="md">${renderMarkdown(note)}</div></details>` : "";
+    return `${thumbs}<div class="bubble">${esc(text)}</div>${!thumbs && chip ? chip : ""}`;
+  }
   function answerHTML(model, a, i) {
     const html = a.text ? renderMarkdown(a.text) : a.error ? "" : `<p class="typing"><span></span><span></span><span></span></p>`;
     return `<article class="ans ${a.done ? "done" : "live"}" data-turn="${i}" data-model="${model}">
@@ -130,7 +140,7 @@ export function mount(root, ctx, r) {
         <div class="hello">
           <span class="serif">Ask anything</span>
           <h2 class="h1">${esc(ctx.me.display_name)}님, 무엇이 궁금한가요?</h2>
-          <p class="muted">${S.useCtx ? "오늘 계획과 목표, 관련 노트를 함께 읽고 답해요." : "내 기록 없이 일반 질문으로 답해요."} ${aiPrefs().web && S.model !== "all" ? "웹 검색을 켜 두어서 최신 정보를 찾아보고 답해요." : ""} ${S.model === "all" ? `${compareTargets().map((m) => LABEL[m] || m).join(" · ")} 답을 나란히 비교해요.` : ""}</p>
+          <p class="muted">${S.useCtx ? "오늘 계획과 목표, 관련 노트를 함께 읽고 답해요." : "내 기록 없이 일반 질문으로 답해요."} ${aiPrefs().web ? "웹 먼저 찾기를 켜 두어서 질문마다 먼저 검색해요." : "필요하면 AI 가 스스로 웹을 찾아보고 답해요."} 사진을 붙여넣어도 돼요. ${S.model === "all" ? `${compareTargets().map((m) => LABEL[m] || m).join(" · ")} 답을 나란히 비교해요.` : ""}</p>
           <div class="sugg">${SUGGEST.map((s) => `<button type="button" class="sugg-btn" data-sugg="${esc(s)}">${esc(s)}</button>`).join("")}</div>
         </div>`;
       return;
@@ -138,7 +148,7 @@ export function mount(root, ctx, r) {
     el.innerHTML = S.turns.map((t, i) => {
       const models = Object.keys(t.answers);
       return `<div class="turn">
-        <div class="ask"><div class="bubble">${esc(t.q)}</div></div>
+        <div class="ask">${askHTML(t)}</div>
         <div class="answers ${models.length > 1 ? `cols n${models.length}` : ""}">${models.map((m) => answerHTML(m, t.answers[m], i)).join("")}</div>
       </div>`;
     }).join("");
@@ -167,19 +177,20 @@ export function mount(root, ctx, r) {
   // ---------- send ----------
   async function send(text) {
     text = text.trim();
-    if (!text || S.busy) return;
+    const images = att.list();
+    if ((!text && !images.length) || S.busy) return;
     S.busy = true; setBusy(true);
-    const turn = { q: text, target: S.model, answers: {} };
+    const turn = { q: text || "이 이미지를 보고 설명해 줘.", images, target: S.model, answers: {} };
     const targets = S.model === "all" ? compareTargets() : [S.model];
     targets.forEach((m) => (turn.answers[m] = { text: "", reasoning: "", done: false, steps: [] }));
     S.turns.push(turn);
-    q.value = ""; draft.clear(); autosize();
+    q.value = ""; draft.clear(); att.clear(); autosize();
     drawTurns(); toBottom();
     const t = today();
     S.abort = new AbortController();
     try {
       await streamChat({
-        chat_id: S.chatId, message: text, model: S.model, use_context: S.useCtx, web: aiPrefs().web && S.model !== "all",
+        chat_id: S.chatId, message: text, images, model: S.model, use_context: S.useCtx, web: aiPrefs().web,
         day: ymd(t), time: nowTime(),
         periods: { day: periodKey("day", t), week: periodKey("week", t), month: periodKey("month", t), year: periodKey("year", t) },
       }, (ev) => {
@@ -192,9 +203,10 @@ export function mount(root, ctx, r) {
           if (fresh) { history.replaceState(null, "", "#/ai/" + ev.chat_id); loadList(); }
         } else if (a && ev.type === "delta") { a.text += ev.text; a.status = ""; }
         else if (a && ev.type === "reasoning") a.reasoning += ev.text;
-        else if (a && ev.type === "tool") { a.steps.push(ev); a.status = `${ev.name === "web_search" ? "웹 검색" : ev.name === "read_page" ? "페이지 읽기" : "노트 확인"} 중…`; }
+        else if (a && ev.type === "reset") a.text = "";   // 글을 쓰다가 도구를 부르면 그 글은 지우고 이어서
+        else if (a && ev.type === "tool") { a.steps.push(ev); a.status = ""; }
         else if (a && ev.type === "status") a.status = ev.text;
-        else if (a && ev.type === "done") { a.done = true; a.status = ev.used && ev.fallback !== false && !ev.used.includes("3.8-flash") && !ev.used.includes("2.6-flash") ? ev.used : ""; } // 대신 답한 모델만 표시
+        else if (a && ev.type === "done") { if (ev.changed) window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "plans" } })); a.done = true; a.status = ev.used && ev.fallback !== false && !ev.used.includes("3.8-flash") && !ev.used.includes("2.6-flash") ? ev.used : ""; } // 대신 답한 모델만 표시
         else if (a && ev.type === "error") { a.done = true; a.error = ev.message; }
         redraw();
       }, S.abort.signal);

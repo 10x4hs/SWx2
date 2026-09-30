@@ -1,7 +1,8 @@
 // AI 채팅: Gemini(Google AI Studio) · Groq · Cohere · Xiaomi MiMo · Zhipu GLM · OpenRouter · Kilo · Ollama · 여러 개 나란히 비교.
 // 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY, ZHIPU_API_KEY, OPENROUTER_API_KEY, KILO_API_KEY, OLLAMA_API_KEY)에만 있고 브라우저로 나가지 않아요.
 
-import { toolPrompt, parseToolCall, runAgentTool, toolSummary, webSearch, searchQuery } from "./agent.js";
+import { toolPrompt, parseToolCall, runAgentTool, toolSummary, autoResearch, WRITE_TOOLS } from "./agent.js";
+import { cleanImages, withImages } from "./vision.js";
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
 const MIMO_URL = "https://api.xiaomimimo.com/v1/chat/completions";
@@ -93,7 +94,8 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
   // 질문 보내기 → text/event-stream 으로 답을 흘려보내요
   on("POST", "/ai/chat", async ({ req, env, ec, user }) => {
     const b = await body(req);
-    const message = str(b.message, 4000, "질문");
+    const images = cleanImages(b.images, fail);
+    const message = images.length && !String(b.message || "").trim() ? "이 이미지를 보고 설명해 줘." : str(b.message, 4000, "질문");
     const modelId = b.model === "all" || MODELS[b.model] ? b.model : "all";
     const targets = modelId === "all" ? COMPARE : [modelId];
     const missing = targets.filter((t) => !available(env, t));
@@ -121,9 +123,9 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
     ]);
 
     let system = b.use_context === false ? basePrompt(user) : await contextPrompt(env, user, b, message);
-    const web = b.web === true && live.length === 1; // 웹 검색·노트 도구는 모델 하나일 때만 (비교 모드는 글만)
-    const TOOLS = ["web_search", "read_page", "search_notes", "read_note", "my_plans"];
-    if (web) system += "\n\n" + toolPrompt(TOOLS, 4);
+    // 모든 모델이 에이전트처럼: 웹 검색 · 페이지 읽기 · 노트 · 계획 도구가 늘 열려 있어요. 계획 고치기는 모델 하나일 때만 (비교 모드에서 셋이 같은 일을 넣지 않게)
+    const TOOLS = ["web_search", "read_page", "search_notes", "read_note", "my_plans", ...(live.length === 1 ? ["day_plans", "add_plan", "update_plan", "delete_plan"] : [])];
+    system += "\n\n" + toolPrompt(TOOLS, 4) + (live.length === 1 ? `\n계획을 넣거나 고쳐 달라고 하면 add_plan 등으로 직접 해. 오늘은 ${typeof b.day === "string" ? b.day : ""}, 시간은 24시간 HH:MM.` : "");
 
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
@@ -133,14 +135,22 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
 
     const task = (async () => {
       await send({ type: "meta", chat_id: chat.id, title: chat.title, targets: live, skipped: missing });
+      // 이미지 읽기 · 링크 읽기 · (필요하면) 웹 검색은 한 번만 해서 모든 모델이 같이 써요
+      const each = (o) => Promise.all(live.map((t) => send({ ...o, model: t })));
+      let ask = message;
+      try {
+        if (images.length) await each({ type: "status", text: "이미지 읽는 중…" });
+        const [vis, pre] = await Promise.all([withImages(env, message, images), autoResearch(message, b.web === true ? true : "auto")]);
+        for (const st of [vis.step, ...pre.steps].filter(Boolean)) await each({ type: "tool", ...st });
+        ask = [vis.text, pre.note].filter(Boolean).join("\n\n");
+        if (vis.note) await env.DB.prepare("UPDATE chat_messages SET content = ? WHERE id = ?").bind(`${message}\n\n${vis.note}`, userMsg.id).run();
+      } catch (e) { await each({ type: "error", message: e.message || "이미지를 읽지 못했어요." }); await send({ type: "end" }); open = false; try { await writer.close(); } catch {} return; }
       const results = await Promise.all(live.map(async (t) => {
         // 모델마다 자기 답만 이어서 기억해요 (비교 모드에서 서로 섞이지 않게)
         const history = past.filter((m) => m.role === "user" || m.model === t).slice(-16);
         try {
-          const r = web
-            ? await runToolLoop(env, user, t, system, history, message, TOOLS, b.periods, (o) => send({ ...o, model: t }))
-            : await runModel(env, t, system, history, message, (kind, text) => send({ type: kind, model: t, text }));
-          await send({ type: "done", model: t, used: r.used, fallback: r.used !== MODELS[t].chain[0] }); // fallback = 첫 모델이 아닌 걸로 답함
+          const r = await runToolLoop(env, user, t, system, history, ask, TOOLS, b.periods, (o) => send({ ...o, model: t }));
+          await send({ type: "done", model: t, used: r.used, fallback: r.used !== MODELS[t].chain[0], changed: r.changed }); // fallback = 첫 모델이 아닌 걸로 답함
           return { t, text: r.text };
         } catch (e) {
           await send({ type: "error", model: t, message: e.message || "답을 받지 못했어요." });
@@ -160,33 +170,44 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
   });
 }
 
-// 도구 바퀴(채팅용): 한 바퀴 글을 모아 두고, 도구 호출이면 실행 결과를 넣어 다시, 아니면 모아 둔 글을 한 번에 보내요
+// 도구 바퀴(채팅용): 글은 바로바로 흘려보내되, 첫 글자가 도구 줄(<<tool>> · ```tool · {)로 시작하면 모아 두고 실행해요.
+// 글을 흘려보낸 뒤에 도구 줄이 나오면 { type: "reset" } 으로 화면의 그 답을 지우고 이어서 해요.
 async function runToolLoop(env, user, t, system, history, message, tools, periods, send) {
   const convo = [...history];
-  let msg = message, used = null;
-  if (tools.includes("web_search")) { // 먼저 한 번 검색해 두어요
-    const q = searchQuery(message); const result = await webSearch(q, 6);
-    await send({ type: "tool", name: "web_search", args: { q }, summary: toolSummary("web_search", { q }, result), auto: true });
-    msg = `${message}\n\n[미리 검색한 결과 web_search "${q}"]\n${JSON.stringify(result).slice(0, 7000)}\n\n위 결과를 근거로 답해. 더 자세한 내용이 필요하면 read_page 로 그 주소를 읽고, 다른 검색어가 필요하면 web_search 를 한 번 더 써. 답 끝에 '출처:' 로 쓴 링크를 적어.`;
-  }
-  for (let i = 0; i < 5; i++) {
-    let buf = "", think = "";
-    const r = await runModel(env, t, system, convo, msg, async (kind, text) => { if (kind === "delta") buf += text; else if (kind === "reasoning") think += text; else await send({ type: kind, text }); });
+  let msg = message, used = null, changed = false;
+  for (let i = 0; i < 6; i++) {
+    let buf = "", think = "", mode = null; // null = 아직 모름 · "stream" = 흘려보내는 중 · "hold" = 도구 줄 같아서 모으는 중
+    const r = await runModel(env, t, system, convo, msg, async (kind, text) => {
+      if (kind === "reasoning") { think += text; return; }
+      if (kind !== "delta") { await send({ type: kind, text }); return; }
+      buf += text;
+      if (mode === "stream") { await send({ type: "delta", text }); return; }
+      if (mode === null) {
+        const head = buf.trimStart();
+        if (head.length < 8 && !/\n/.test(head)) return;
+        mode = /^(<<|```tool|\{\s*"name")/.test(head) ? "hold" : "stream";
+        if (mode === "stream") { if (think) { await send({ type: "reasoning", text: think }); think = ""; } await send({ type: "delta", text: buf }); }
+      }
+    });
     used = r.used;
-    const call = i < 4 ? parseToolCall(r.text) : null;
+    const call = i < 5 ? parseToolCall(r.text) : null;
     if (!call || !tools.includes(call.name)) {
       if (think) await send({ type: "reasoning", text: think });
       const clean = r.text.replace(/<<tool>>[\s\S]*?<<\/tool>>/g, "").trim();
-      await send({ type: "delta", text: clean });
-      return { text: clean, used };
+      if (mode !== "stream") await send({ type: "delta", text: clean });
+      return { text: clean, used, changed };
     }
+    if (mode === "stream") await send({ type: "reset" });
+    await send({ type: "status", text: `${TOOL_KO[call.name] || call.name} 중…` });
     const result = await runAgentTool(env, user, call.name, call.args, { periods: Object.values(periods || {}) });
+    if (WRITE_TOOLS.has(call.name) && !result.error) changed = true;
     await send({ type: "tool", name: call.name, args: call.args, summary: toolSummary(call.name, call.args, result) });
     convo.push({ role: "user", content: msg }, { role: "assistant", content: `<<tool>>${JSON.stringify(call)}<</tool>>` });
     msg = `[도구 결과 ${call.name}]\n${JSON.stringify(result).slice(0, 9000)}\n\n이 결과를 참고해서 계속해. (도구가 더 필요하면 한 줄만, 아니면 최종 답을 써.)`;
   }
-  return { text: "", used };
+  return { text: "", used, changed };
 }
+const TOOL_KO = { web_search: "웹 검색", read_page: "페이지 읽기", search_notes: "노트 찾기", read_note: "노트 읽기", my_plans: "계획 보기", day_plans: "계획 보기", add_plan: "계획 넣기", update_plan: "계획 고치기", delete_plan: "계획 지우기" };
 
 // ---------- prompts ----------
 function basePrompt(user) {
