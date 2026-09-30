@@ -2921,3 +2921,21 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .back-btn:hover { background: var(--lg-fill-hi); border-color: var(--lg-edge-hi); }
 .gl-top { flex-wrap: wrap; }
 .gl #gl-ai, .ck #ck-ai { margin: -6px 0 -4px; }
+
+/* v19.2: 하루 계획표 — 추가 창은 떠 있는 유리 창(칸 높이 그대로) · 블록 끌어 옮기기 · 위/아래 모서리로 길이 조절 */
+.day-grid { position: relative; }
+.slot-pop { position: absolute; left: 56px; right: 0; z-index: 8; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border-radius: 14px;
+  background: var(--glass-3); border: 1px solid var(--lg-edge-hi); box-shadow: var(--lg-top), 0 18px 40px -14px rgba(0, 0, 0, .6); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.slot-pop .slot-at { flex: none; width: 108px; }
+.slot-pop [name=text] { flex: 1 1 180px; min-width: 0; }
+.slot-pop .select { flex: none; width: auto; }
+.block { cursor: grab; touch-action: none; user-select: none; }
+.block.dragging { cursor: grabbing; z-index: 6; opacity: .92; box-shadow: 0 14px 30px -10px rgba(0, 0, 0, .6); transition: none; }
+.block .bk-rs { position: absolute; left: 10px; right: 10px; height: 8px; cursor: ns-resize; z-index: 2; }
+.block .bk-rs.top { top: -3px; } .block .bk-rs.bot { bottom: -3px; }
+.block .bk-rs::after { content: ""; position: absolute; left: 50%; top: 50%; width: 28px; height: 3px; margin: -1.5px 0 0 -14px; border-radius: 3px; background: currentColor; opacity: 0; transition: opacity .15s; }
+.block:hover .bk-rs::after, .block.dragging .bk-rs::after { opacity: .45; }
+.block.thin .bk-rs { height: 6px; }
+.block .drag-tag { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font: 600 11px var(--mono); padding: 3px 7px; border-radius: 7px; background: var(--ink); color: var(--paper-solid); pointer-events: none; white-space: nowrap; }
+.block input, .block button { cursor: pointer; }
+.block .bk-rs { pointer-events: none; }

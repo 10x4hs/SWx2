@@ -167,15 +167,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     for (let h = startH; h < 24; h++) {
       const past = isPast || (isToday && (h + 1) * 60 <= nowM);
       const slot = `${pad(h)}:00`, cur = isToday && Math.floor(nowM / 60) === h;
-      const editing = S.editSlot && S.editSlot.slice(0, 2) === pad(h);
-      hours += editing
-        ? `<div class="hour editing${cur ? " cur" : ""}"><span>${slot}</span><form class="slot-add" data-slot-form="${S.editSlot}" autocomplete="off">
-            <input class="input slot-at" type="time" name="at" step="300" value="${S.editSlot}" aria-label="시작 시각 (5분 단위)">
-            <input class="input" name="text" maxlength="200" placeholder="${S.editSlot}에 할 일" aria-label="${S.editSlot}에 할 일" autofocus>
-            <select class="select" name="mins" aria-label="걸리는 시간">${[5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180].map((m) => `<option value="${m}" ${m === S.editMins ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
-            ${prioSelect("priority", S.editPrio || "")}
-            <button class="btn accent sm" type="submit">추가</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form></div>`
-        : `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}" data-h="${h}"><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
+      hours += `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}" data-h="${h}"><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
     }
     // 겹치면 옆으로 나눠요
     const cols = [], placed = [];
@@ -189,16 +181,25 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       let n = 1;
       for (const y of placed) if (y.p !== p && y.s < e && s < y.e) n = Math.max(n, y.c + 1, c + 1);
       const top = ((s - startH * 60) / 60) * HOUR_PX + 1, h = Math.max(14, ((e - s) / 60) * HOUR_PX - 2), w = 100 / n;
-      return `<div class="block ${status(p)}${h < 30 ? " thin" : ""}" data-p="${p.priority || ""}" style="top:${top}px;height:${h}px;left:calc(${c * w}% + ${c ? 3 : 0}px);right:auto;width:calc(${w}% - ${n > 1 ? 3 : 0}px)" data-id="${esc(p.id)}">
+      return `<div class="block ${status(p)}${h < 30 ? " thin" : ""}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" style="top:${top}px;height:${h}px;left:calc(${c * w}% + ${c ? 3 : 0}px);right:auto;width:calc(${w}% - ${n > 1 ? 3 : 0}px)" data-id="${esc(p.id)}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">
         <div class="txt"><span data-edit="${esc(p.id)}">${esc(p.text)}</span>${h >= 30 ? `<span class="when">${esc(p.start)}–${toTime(e)} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
         ${playBtn(p)}
         <button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button>
         <button class="icon-btn sm" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button>
+        <i class="bk-rs top" data-rs="top" title="끌어서 시작 시각 바꾸기" aria-hidden="true"></i><i class="bk-rs bot" data-rs="bot" title="끌어서 길이 바꾸기" aria-hidden="true"></i>
       </div>`;
     }).join("");
+    // 추가 창: 칸을 늘리지 않고 누른 시각 위치에 떠요 (블록 위로)
+    const pop = S.editSlot ? `<form class="slot-add slot-pop" data-slot-form="${S.editSlot}" autocomplete="off" style="top:${Math.max(0, ((toMin(S.editSlot) - startH * 60) / 60) * HOUR_PX + 2)}px">
+        <input class="input slot-at" type="time" name="at" step="300" value="${S.editSlot}" aria-label="시작 시각 (5분 단위)">
+        <input class="input" name="text" maxlength="200" placeholder="${S.editSlot}에 할 일" aria-label="${S.editSlot}에 할 일" autofocus>
+        <select class="select" name="mins" aria-label="걸리는 시간">${[5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180].map((m) => `<option value="${m}" ${m === S.editMins ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
+        ${prioSelect("priority", S.editPrio || "")}
+        <button class="btn accent sm" type="submit">추가</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
     const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${((nowM - startH * 60) / 60) * HOUR_PX}px" aria-hidden="true"></div>` : "";
-    $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine;
+    $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine + pop;
+    S.gridStartH = startH;
     const f = $("[data-slot-form]", el);
     if (f) { const i = f.text; i.focus(); i.value = S.editText || ""; i.setSelectionRange(i.value.length, i.value.length); }
     $("#dp-tt-sum", el).textContent = timed.length ? `${timed.length}개 · ${hm(timed.reduce((a, p) => a + (p.mins || 0), 0))}` : "";
@@ -373,6 +374,52 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     } catch (ex) { toast(ex.message, "err"); }
   });
   el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; drawGrid(); } });
+
+  // ---------- 블록 끌기: 가운데를 잡으면 옮기기, 위·아래 모서리를 잡으면 늘리기/줄이기 (5분 단위) ----------
+  const PX5 = HOUR_PX / 12;
+  const edgeOf = (b, y) => { const r = b.getBoundingClientRect(), k = Math.min(8, r.height / 4); return y - r.top <= k ? "top" : r.bottom - y <= k ? "bot" : "move"; };
+  // 가장자리에 올리면 커서를 위아래 화살표로
+  el.addEventListener("mousemove", (e) => { const b = e.target.closest?.("#dp-grid .block"); if (!b || drag) return; b.style.cursor = e.target.closest("button, input") ? "" : edgeOf(b, e.clientY) === "move" ? "" : "ns-resize"; });
+  let drag = null, justDragged = 0;
+  el.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest?.("#dp-grid .block"); if (!b || e.button !== 0) return;
+    if (e.target.closest("button, input, select, a, [data-edit].editing")) return;
+    const mode = edgeOf(b, e.clientY); // 위·아래 가장자리 8px 안이면 길이 조절, 아니면 옮기기
+    drag = { b, id: b.dataset.id, mode, y0: e.clientY, s: +b.dataset.s, e: +b.dataset.e, ns: +b.dataset.s, ne: +b.dataset.e, moved: false };
+    b.setPointerCapture?.(e.pointerId);
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const d = Math.round((e.clientY - drag.y0) / PX5) * STEP;
+    if (!drag.moved && Math.abs(e.clientY - drag.y0) < 4) return;
+    drag.moved = true; drag.b.classList.add("dragging");
+    let ns = drag.s, ne = drag.e;
+    if (drag.mode === "move") { const len = drag.e - drag.s; ns = Math.max(0, Math.min(1440 - len, drag.s + d)); ne = ns + len; }
+    else if (drag.mode === "top") ns = Math.max(0, Math.min(drag.e - STEP, drag.s + d));
+    else ne = Math.min(1440, Math.max(drag.s + STEP, drag.e + d));
+    drag.ns = ns; drag.ne = ne;
+    const sh = S.gridStartH ?? 6;
+    drag.b.style.top = ((ns - sh * 60) / 60) * HOUR_PX + 1 + "px";
+    drag.b.style.height = Math.max(14, ((ne - ns) / 60) * HOUR_PX - 2) + "px";
+    let tag = drag.b.querySelector(".drag-tag"); if (!tag) { tag = document.createElement("span"); tag.className = "drag-tag"; drag.b.appendChild(tag); }
+    tag.textContent = `${toTime(ns)}–${toTime(ne)} · ${hm(ne - ns)}`;
+    e.preventDefault();
+  });
+  const endDrag = async () => {
+    if (!drag) return; const g = drag; drag = null;
+    g.b.classList.remove("dragging");
+    if (!g.moved || (g.ns === g.s && g.ne === g.e)) { if (g.moved) drawGrid(); return; }
+    justDragged = Date.now();
+    const p = S.plans.find((x) => x.id === g.id); if (!p) return;
+    const old = { start: p.start, mins: p.mins };
+    p.start = toTime(g.ns); p.mins = g.ne - g.ns; drawAll();
+    try { await api.updatePlan(p.id, { start: p.start, mins: p.mins }); changed("plans"); toast(`${p.text} · ${p.start}–${toTime(g.ne)}`); }
+    catch (ex) { Object.assign(p, old); drawAll(); toast(ex.message, "err"); }
+  };
+  el.addEventListener("pointerup", endDrag);
+  el.addEventListener("pointercancel", () => { if (drag) { drag = null; drawGrid(); } });
+  // 끌고 난 직후의 클릭(체크 · 추가 창 열기)은 무시
+  el.addEventListener("click", (e) => { if (Date.now() - justDragged < 250) { e.stopPropagation(); e.preventDefault(); } }, true);
 
   // 마우스 위치 → 5분 단위 시각 ("+ 14:35에 추가")
   function slotAt(btn, y) {
