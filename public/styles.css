@@ -2983,3 +2983,45 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .ask-note summary::-webkit-details-marker { display: none; }
 .ask-note .md { margin-top: 8px; padding: 10px 14px; border-radius: 14px; background: var(--glass); border: 1px solid var(--glass-edge); max-height: 280px; overflow: auto; }
 .aic-a a { color: inherit; text-decoration: underline; text-underline-offset: 2px; opacity: .8; }
+
+/* v20.1: 하루 계획표 — 페이지 대신 계획표 칸만 스크롤 · 짧은 계획도 글자가 보이게 · 겹치면 깔끔하게 나란히 */
+@media (min-width: 1101px) {
+  .cal-layout { align-items: start; }
+  #cal-day { position: sticky; top: 12px; max-height: calc(100dvh - 24px); display: flex; flex-direction: column; overflow: hidden; }
+  #cal-day > * { flex: none; }
+  #cal-day > .dp-tt { flex: 1 1 auto; min-height: 300px; display: flex; flex-direction: column; overflow: hidden; }
+  #cal-day .aic-out { max-height: 28vh; overflow-y: auto; }
+}
+.dp-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; margin: 0 -8px; padding: 0 8px 4px; }
+@media (max-width: 1100px) { .dp-scroll { max-height: 68dvh; } }
+
+.block { gap: 7px; }
+.block .txt { word-break: keep-all; overflow-wrap: anywhere; overflow: hidden; }
+.block .txt [data-edit] { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.block .check { flex: none; }
+/* 한 줄짜리(짧은 계획): 시각 + 이름을 한 줄로, 넘치면 … */
+.block.thin { padding: 0 6px 0 8px; align-items: center; gap: 6px; }
+.block.thin .txt { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; font-size: 12.5px; line-height: 1.2; }
+.block.thin .txt [data-edit] { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.block .when-i { flex: none; font: 600 10.5px var(--mono); color: var(--ink-3); }
+.block.done .when-i { color: inherit; opacity: .75; }
+.block.tiny { border-radius: 7px; }
+.block.tiny .txt { font-size: 11.5px; }
+.block.tiny .check { width: 13px; height: 13px; }
+.block.tiny .icon-btn, .block.tiny .dp-play { display: none; }
+/* 겹쳐서 좁아지면 버튼은 숨기고(우클릭 메뉴에 다 있어요) 글자에 자리를 줘요 */
+.block.narrow .icon-btn, .block.narrow .dp-play { display: none; }
+.block.narrow { padding-right: 6px; }
+.block.xnarrow { padding-left: 7px; gap: 5px; }
+.block.xnarrow .when-i { display: none; }
+.block.xnarrow:not(.thin) .check { width: 14px; height: 14px; }
+.block.narrow:not(.thin) .when { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 좁은 칸에 올리면 잠깐 넓혀서 전체 이름을 보여 줘요 */
+@media (hover: hover) {
+  .block:hover { z-index: 4; }
+  .block.narrow:not(.dragging):hover, .block.tiny:not(.dragging):hover { min-width: min(240px, 100%); box-shadow: 0 10px 26px -12px rgba(0, 0, 0, .55); }
+  .block.narrow:not(.dragging):hover { min-width: 220px; }
+}
+.blocks .block { background-clip: padding-box; }
+.dp-scroll { overflow-x: hidden; }
+@media (hover: hover) { .block.edge-r:not(.dragging):hover { left: auto !important; right: 0 !important; } }

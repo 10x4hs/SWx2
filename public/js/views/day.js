@@ -14,6 +14,7 @@ import { BLOCKS } from "../english/data.js";
 
 const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게)
 const STEP = 5;     // 시간표는 5분 단위
+const MIN_H = 22;   // 짧은 계획도 글자가 보이는 최소 높이(px)
 // 우선순위 (색은 styles.css 의 --p-*)
 export const PRIOS = [
   { k: "low", label: "Low" }, { k: "medium", label: "Medium" }, { k: "high", label: "High" }, { k: "xhigh", label: "XHigh" }, { k: "max", label: "Max" },
@@ -39,6 +40,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   const wk = isoWeek(date);
   let alive = true;
   const changed = (kind) => onChange?.(kind);
+  const scroller = () => $("#dp-scroll", el); // 계획표만 따로 스크롤되는 칸
 
   el.innerHTML = `
     <header class="cd-head">
@@ -59,7 +61,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     <section class="cd-sec dp-tt" aria-labelledby="dp-tt-t">
       <div class="cd-sh"><h3 id="dp-tt-t">하루 계획표</h3><span class="row" style="gap:8px"><span class="faint" id="dp-tt-sum"></span><a class="faint dp-more" href="#/checklist/${day}">체크리스트 ›</a></span></div>
       <p class="dp-hint">빈 시각을 누르면 5분 단위로 바로 적을 수 있어요. Enter 추가 · Esc 닫기.</p>
-      <div class="day-grid" id="dp-grid"></div>
+      <div class="dp-scroll" id="dp-scroll"><div class="day-grid" id="dp-grid"></div></div>
     </section>`;
 
   // ---------- data ----------
@@ -170,21 +172,31 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       const slot = `${pad(h)}:00`, cur = isToday && Math.floor(nowM / 60) === h;
       hours += `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}" data-h="${h}"><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
     }
-    // 겹치면 옆으로 나눠요
-    const cols = [], placed = [];
-    for (const p of timed) {
-      const s = toMin(p.start), e = s + (p.mins || 30);
-      let c = cols.findIndex((end) => end <= s);
-      if (c < 0) { c = cols.length; cols.push(e); } else cols[c] = e;
-      placed.push({ p, s, e, c });
-    }
-    const blocks = placed.map(({ p, s, e, c }) => {
-      let n = 1;
-      for (const y of placed) if (y.p !== p && y.s < e && s < y.e) n = Math.max(n, y.c + 1, c + 1);
-      const top = ((s - startH * 60) / 60) * HOUR_PX + 1, h = Math.max(14, ((e - s) / 60) * HOUR_PX - 2), w = 100 / n;
-      return `<div class="block ${status(p)}${h < 30 ? " thin" : ""}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" style="top:${top}px;height:${h}px;left:calc(${c * w}% + ${c ? 3 : 0}px);right:auto;width:calc(${w}% - ${n > 1 ? 3 : 0}px)" data-id="${esc(p.id)}">
+    // 겹치면 옆으로 나눠요 — 서로 이어진 묶음마다 칸 수를 같이 쓰고, 오른쪽이 비면 넓게 펴요.
+    // 짧은 계획(5 · 10분)도 글자가 보이게 최소 높이(MIN_H)를 주고, 겹침은 그 보이는 높이로 따져요.
+    const items = timed.map((p) => { const s = toMin(p.start), e = s + (p.mins || 30), h = Math.max(MIN_H, ((e - s) / 60) * HOUR_PX - 2); return { p, s, e, h, ve: s + ((h + 2) / HOUR_PX) * 60 }; });
+    const placed = [];
+    let group = [], groupEnd = -1;
+    const flush = () => {
+      const cols = [];
+      for (const it of group) { let c = cols.findIndex((end) => end <= it.s); if (c < 0) { c = cols.length; cols.push(it.ve); } else cols[c] = it.ve; it.c = c; }
+      for (const it of group) {
+        it.n = cols.length; it.span = 1;
+        while (it.c + it.span < it.n && !group.some((o) => o !== it && o.c === it.c + it.span && o.s < it.ve && it.s < o.ve)) it.span++;
+      }
+      placed.push(...group); group = [];
+    };
+    for (const it of items) { if (group.length && it.s >= groupEnd) flush(); group.push(it); groupEnd = Math.max(groupEnd, it.ve); }
+    if (group.length) flush();
+    const blocks = placed.map(({ p, s, e, h, c, n, span }) => {
+      const top = ((s - startH * 60) / 60) * HOUR_PX + 1, w = 100 / n, frac = span / n;
+      // 크기에 맞춰: tiny(한 줄 · 작은 글씨) · thin(한 줄 + 시각) · narrow(좁으면 버튼은 숨기고 우클릭 메뉴로)
+      const size = h < 30 ? " thin tiny" : h < 50 ? " thin" : "";
+      const narrow = (frac < 0.5 ? " narrow xnarrow" : frac < 1 ? " narrow" : "") + (frac < 1 && c + span === n ? " edge-r" : "");
+      const tip = `${p.start}–${toTime(e)} · ${p.text}${p.priority ? ` · ${p.priority}` : ""}`;
+      return `<div class="block ${status(p)}${size}${narrow}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tip)}" style="top:${top}px;height:${h}px;left:calc(${c * w}% + ${c ? 2 : 0}px);right:auto;width:calc(${w * span}% - ${n > 1 ? 2 : 0}px)" data-id="${esc(p.id)}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">
-        <div class="txt"><span data-edit="${esc(p.id)}">${esc(p.text)}</span>${h >= 30 ? `<span class="when">${esc(p.start)}–${toTime(e)} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
+        <div class="txt">${h < 50 ? `<span class="when-i">${esc(p.start)}</span>` : ""}<span data-edit="${esc(p.id)}">${esc(p.text)}</span>${h >= 50 ? `<span class="when">${esc(p.start)}–${toTime(e)} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
         ${playBtn(p)}
         <button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button>
         <button class="icon-btn sm" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button>
@@ -205,6 +217,12 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
     const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${((nowM - startH * 60) / 60) * HOUR_PX}px" aria-hidden="true"></div>` : "";
     $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine + pop;
+    // 처음 열 때는 지금 시각(오늘) 또는 첫 계획 근처로 계획표 칸만 스크롤해 둬요
+    if (!S.scrolled) {
+      S.scrolled = true;
+      const at = isToday ? nowM - 60 : timed.length ? toMin(timed[0].start) - 30 : 8 * 60;
+      scroller().scrollTop = Math.max(0, ((at - startH * 60) / 60) * HOUR_PX);
+    }
     S.gridStartH = startH;
     const f = $("[data-slot-form]", el);
     if (f) { const i = f.text; i.focus(); if (!S.editId) i.value = S.editText || ""; i.setSelectionRange(i.value.length, i.value.length); }
@@ -415,12 +433,15 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const b = e.target.closest?.("#dp-grid .block"); if (!b || e.button !== 0) return;
     if (e.target.closest("button, input, select, a, [data-edit].editing")) return;
     const mode = edgeOf(b, e.clientY); // 위·아래 가장자리 8px 안이면 길이 조절, 아니면 옮기기
-    drag = { b, id: b.dataset.id, mode, y0: e.clientY, s: +b.dataset.s, e: +b.dataset.e, ns: +b.dataset.s, ne: +b.dataset.e, moved: false };
+    drag = { b, id: b.dataset.id, mode, y0: e.clientY, sc0: scroller().scrollTop, s: +b.dataset.s, e: +b.dataset.e, ns: +b.dataset.s, ne: +b.dataset.e, moved: false };
     b.setPointerCapture?.(e.pointerId);
   });
   el.addEventListener("pointermove", (e) => {
     if (!drag) return;
-    const d = Math.round((e.clientY - drag.y0) / PX5) * STEP;
+    // 계획표 칸 위 · 아래 끝 가까이 끌면 칸이 저절로 스크롤돼요 (페이지는 그대로)
+    const sc = scroller(), r = sc.getBoundingClientRect();
+    if (e.clientY < r.top + 36) sc.scrollTop -= 14; else if (e.clientY > r.bottom - 36) sc.scrollTop += 14;
+    const d = Math.round((e.clientY - drag.y0 + sc.scrollTop - drag.sc0) / PX5) * STEP;
     if (!drag.moved && Math.abs(e.clientY - drag.y0) < 4) return;
     drag.moved = true; drag.b.classList.add("dragging");
     let ns = drag.s, ne = drag.e;
@@ -430,7 +451,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     drag.ns = ns; drag.ne = ne;
     const sh = S.gridStartH ?? 6;
     drag.b.style.top = ((ns - sh * 60) / 60) * HOUR_PX + 1 + "px";
-    drag.b.style.height = Math.max(14, ((ne - ns) / 60) * HOUR_PX - 2) + "px";
+    drag.b.style.height = Math.max(MIN_H, ((ne - ns) / 60) * HOUR_PX - 2) + "px";
     let tag = drag.b.querySelector(".drag-tag"); if (!tag) { tag = document.createElement("span"); tag.className = "drag-tag"; drag.b.appendChild(tag); }
     tag.textContent = `${toTime(ns)}–${toTime(ne)} · ${hm(ne - ns)}`;
     e.preventDefault();
