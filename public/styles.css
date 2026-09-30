@@ -2912,3 +2912,12 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 /* 홈 슬라이드 안의 HTML 차트(CheckList)도 눌리게 — 차트 영역은 원래 SVG 링에만 클릭을 열어 뒀어요 */
 .pg-slide .hc, .pg-slide .hc * { pointer-events: auto; }
 .hc-h .faint { font-size: 12.5px; }
+
+/* v19.1: All 의 체크리스트 링 (칸 색 = 우선순위) · 뒤로 가기 버튼 */
+:root { --r-check: oklch(0.80 0.09 50); } :root[data-theme="light"] { --r-check: oklch(0.64 0.11 50); }
+.rh .rh-ring[data-ring="check"] .rh-seg:not(.done) { stroke: color-mix(in srgb, var(--sc, var(--c)) 22%, transparent); }
+.rh .rh-ring[data-ring="check"] .rh-seg.done { stroke: var(--sc, var(--c)); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--sc, var(--c)) 55%, transparent)); }
+.back-btn { width: 34px; height: 34px; border-radius: 11px; background: var(--lg-fill); border: 1px solid var(--lg-edge); box-shadow: var(--lg-top); color: var(--ink); }
+.back-btn:hover { background: var(--lg-fill-hi); border-color: var(--lg-edge-hi); }
+.gl-top { flex-wrap: wrap; }
+.gl #gl-ai, .ck #ck-ai { margin: -6px 0 -4px; }

@@ -119,7 +119,7 @@ async function dayPlans(env, user, date) {
   return { date, plans: results.map((p) => ({ id: p.id, text: p.text, done: !!p.done, start: p.start, mins: p.mins })) };
 }
 async function addPlan(env, user, a) {
-  const scope = ["day", "week", "month"].includes(a.scope) ? a.scope : "day";
+  const scope = ["day", "week", "month", "year"].includes(a.scope) ? a.scope : "day";
   const date = DATE_RE.test(a.date || "") ? a.date : null;
   if (!date) return { error: "date(YYYY-MM-DD) 가 필요해요." };
   const text = String(a.text || "").trim().slice(0, 200);

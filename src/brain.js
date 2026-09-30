@@ -310,15 +310,23 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     // 보고 있는 날 · 오늘 · 내일 계획을 id 와 함께 미리 보여 주고, AI 는 JSON 으로 "할 일 목록"만 내요 → 서버가 직접 실행 (말만 하고 안 하는 일이 없게)
     const addD = (d, n) => { const x = new Date(d + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
     const dates = [...new Set([day, today, addD(today, 1)])];
+    // "…짜 줘 / 추천해 줘" 는 여러 개를 바로 넣어요 (3~6개, 짧고 구체적으로)
     const lists = await Promise.all(dates.map((d) => runAgentTool(env, user, "day_plans", { date: d })));
+    // 목표 페이지(주 · 월 · 년)에서 부르면 그 기간 목표도 id 와 함께 보여 주고, 기본은 그 기간 목표로 넣어요
+    const pageScope = ["week", "month", "year"].includes(b.scope) ? b.scope : null;
+    const pagePeriod = pageScope && typeof b.period === "string" && /^[WMY]:[\d\-W]+$/.test(b.period) ? b.period : null;
+    const scopeKo = { week: "이번 주", month: "이번 달", year: "올해" }[pageScope] || "";
+    let goals = [];
+    if (pagePeriod) goals = (await env.DB.prepare("SELECT id, text, done, priority FROM plans WHERE user_id = ? AND period = ? ORDER BY sort").bind(user.id, pagePeriod).all()).results;
     const prompt = [
       history.length ? "## 앞선 대화\n" + history.map((m) => `${m.role === "user" ? "사용자" : "비서"}: ${m.content}`).join("\n") : "",
-      "## 이미 있는 계획 (id 로 고치거나 지워)",
+      pagePeriod ? `## 지금 보고 있는 페이지: ${scopeKo} 목표 (${pagePeriod}) — 날짜 없이 말한 건 기본으로 이 기간 목표로 넣어 (add_plan 에 "scope":"${pageScope}", "date":"${day}"). 시간은 넣지 마.\n` + (goals.length ? goals.map((g) => `- id=${g.id} ${g.text}${g.priority ? ` · ${g.priority}` : ""}${g.done ? " ✓" : ""}`).join("\n") : "(아직 목표 없음)") : "## 지금 보고 있는 페이지: 하루 (체크리스트 · 계획표)",
+      "## 이미 있는 하루 계획 (id 로 고치거나 지워)",
       ...lists.map((l) => `### ${l.date}(${dow(l.date)})\n` + (l.plans.length ? l.plans.map((p) => `- id=${p.id} ${p.start ? p.start + (p.mins ? `(${p.mins}분)` : "") + " " : "(시간 없음) "}${p.text}${p.done ? " ✓" : ""}`).join("\n") : "(없음)")),
       `## 사용자 말\n${text}`,
       "다음 JSON 하나로만 답해:",
-      '{"actions":[{"name":"add_plan","args":{"date":"YYYY-MM-DD","text":"할 일","start":"HH:MM","mins":60,"priority":"high"}},{"name":"update_plan","args":{"id":"…","start":"HH:MM","mins":90,"date":"YYYY-MM-DD","text":"…","done":true}},{"name":"delete_plan","args":{"id":"…"}}],"reply":"무엇을 했는지 한 문장","question":null}',
-      "규칙: 실행할 게 있으면 actions 에 넣어 (여러 개 가능, 필요한 필드만). 시간 없는 할 일은 start·mins 를 빼. 우선순위(priority)는 사용자가 말할 때만: low·medium·high·xhigh·max ('급해/최우선'=max, '중요'=high, '보통'=medium, '나중에/여유'=low). 시각은 5분 단위로 맞춰. 모호해서 실행할 수 없을 때만 actions 를 비우고 question 에 짧게 물어. 계획과 상관없는 말이면 actions 는 비우고 reply 에 짧게 답해.",
+      '{"actions":[{"name":"add_plan","args":{"date":"YYYY-MM-DD","text":"할 일","start":"HH:MM","mins":60,"priority":"high","scope":"day|week|month|year"}},{"name":"update_plan","args":{"id":"…","start":"HH:MM","mins":90,"date":"YYYY-MM-DD","text":"…","done":true}},{"name":"delete_plan","args":{"id":"…"}}],"reply":"무엇을 했는지 한 문장","question":null}',
+      "규칙: 실행할 게 있으면 actions 에 넣어 (여러 개 가능, 필요한 필드만). 시간 없는 할 일은 start·mins 를 빼. 우선순위(priority)는 사용자가 말할 때만: low·medium·high·xhigh·max ('급해/최우선'=max, '중요'=high, '보통'=medium, '나중에/여유'=low). 시각은 5분 단위로 맞춰. 모호해서 실행할 수 없을 때만 actions 를 비우고 question 에 짧게 물어. 계획과 상관없는 말이면 actions 는 비우고 reply 에 짧게 답해. '짜 줘 · 추천해 줘 · 만들어 줘' 는 묻지 말고 3~6개를 짧고 구체적으로 바로 넣어 (기존 것과 겹치지 않게). '다 끝냈어 · 체크해 줘' 는 해당 id 들에 done:true.",
     ].filter(Boolean).join("\n\n");
     let data, used;
     try { ({ data, used } = await aiJson(env, system, prompt, typeof b.model === "string" ? b.model : null)); }
@@ -334,6 +342,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     const md = (d) => d ? `${+d.slice(5, 7)}월 ${+d.slice(8, 10)}일` : "";
     const say = done.map((s0) => {
       const a0 = s0.args || {};
+      if (s0.name === "add_plan" && ["week", "month", "year"].includes(a0.scope)) return `${{ week: "이번 주", month: "이번 달", year: "올해" }[a0.scope]} 목표 ‘${a0.text}’ 넣었어요.`;
       if (s0.name === "add_plan") return `${md(a0.date)} ${hm(a0.start, a0.start ? a0.mins || 60 : 0)} ‘${a0.text}’ 넣었어요.`.replace(/\s+/g, " ").trim();
       if (s0.name === "delete_plan") return "계획 하나를 지웠어요.";
       return `‘${s0.summary}’ 로 고쳤어요.`;

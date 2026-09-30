@@ -2,9 +2,10 @@
 // 주소: #/goals/week · #/goals/month · #/goals/year (뒤에 기간 키를 붙이면 그 기간: #/goals/week/2026-W41)
 // 한 화면에 하나만: 큰 제목 · 진행 막대 한 줄 · 목표 목록 · 맨 아래 입력 한 줄. 체크 · 우선순위 · 두 번 눌러 고치기 · 지우기.
 import { api } from "../api.js";
-import { $, esc, toast, today, periodKey, periodStart, periodEnd, shiftPeriod, elapsed, pct, addDays } from "../util.js";
+import { $, esc, toast, today, ymd, periodKey, periodStart, periodEnd, shiftPeriod, elapsed, pct, addDays } from "../util.js";
 import { icon } from "../icons.js";
 import { PRIOS } from "./day.js";
+import { mountCommand } from "../ai-command.js";
 
 const SCOPES = [{ k: "week", label: "이번 주", short: "주" }, { k: "month", label: "이번 달", short: "월" }, { k: "year", label: "올해", short: "년" }];
 const RANK = { max: 5, xhigh: 4, high: 3, medium: 2, low: 1 };
@@ -25,6 +26,7 @@ export function mount(root, ctx, r) {
   root.innerHTML = `
     <div class="gl">
       <header class="gl-top">
+        <button type="button" class="icon-btn back-btn" id="gl-back" aria-label="뒤로">${icon.left(18)}</button>
         <nav class="seg" role="tablist" aria-label="기간">${SCOPES.map((x) => `<a role="tab" data-scope="${x.k}" href="#/goals/${x.k}">${x.short}</a>`).join("")}</nav>
         <div class="gl-nav">
           <a class="icon-btn sm" id="gl-prev" aria-label="이전">${icon.left(16)}</a>
@@ -38,6 +40,7 @@ export function mount(root, ctx, r) {
         <p class="gl-range faint" id="gl-range"></p>
         <div class="gl-prog" id="gl-prog" aria-live="polite"></div>
       </section>
+      <div id="gl-ai"></div>
       <ul class="gl-list" id="gl-list"><li class="faint gl-load">불러오는 중…</li></ul>
       <form class="gl-add" id="gl-add" autocomplete="off">
         <input class="input" name="text" maxlength="200" placeholder="목표 추가 · Enter" aria-label="목표 추가">
@@ -135,8 +138,12 @@ export function mount(root, ctx, r) {
     finally { S.busy = false; f.text.focus(); }
   });
 
+  $("#gl-back", root).addEventListener("click", () => window.trioBack?.());
+  // AI: 이 기간 목표로 알아들어요 ("SQL 조인 끝내기 넣어 줘" · "이번 달 목표 4개 짜 줘" · "다 끝낸 거 체크해 줘")
+  const HINTS = { week: ["이번 주 목표 3개 짜 줘", "SQL 조인 끝내기 넣어 줘 (중요)", "끝낸 목표 체크해 줘"], month: ["이번 달 목표 4개 추천해 줘", "자격증 1회독 넣어 줘 (급해)", "끝낸 목표 체크해 줘"], year: ["올해 목표 3개 짜 줘", "정보처리기사 합격 넣어 줘", "끝낸 목표 체크해 줘"] };
+  const stopAi = mountCommand($("#gl-ai", root), { hints: HINTS[S.scope], day: () => ymd(periodStart(S.key)), page: () => ({ scope: S.scope, period: S.key }), onDone: () => load() });
   inst = { update(rr) { const sc = SCOPES.some((x) => x.k === rr.scope) ? rr.scope : "week"; const k = keyFrom(sc, rr.key); if (sc !== S.scope || k !== S.key) { S.scope = sc; S.key = k; load(); } } };
   load();
   setTimeout(() => $("#gl-add input", root)?.focus(), 80);
-  return () => { inst = null; };
+  return () => { inst = null; stopAi?.(); };
 }

@@ -36,7 +36,7 @@ export function mount(root, ctx) {
   const t = today();
   const K = { year: periodKey("year", t), month: periodKey("month", t), week: periodKey("week", t), day: periodKey("day", t) };
   const left = daysInYear(t.getFullYear()) - dayOfYear(t);
-  const HREF = { year: "#/goals/year", month: "#/goals/month", week: "#/goals/week", day: `#/calendar/${ymd(t)}` }; // 링 → 그 기간 목표 페이지 · 오늘 → 시간 순 하루 계획표
+  const HREF = { year: "#/goals/year", month: "#/goals/month", week: "#/goals/week", day: `#/calendar/${ymd(t)}`, check: "#/checklist" }; // 링 → 그 기간 목표 페이지 · 오늘 → 시간 순 하루 계획표
   const S = { who: ctx.me.id, items: null, data: null, score: null, hover: null, tip: null, wide: null, first: true,
     pres: null, presAt: 0, cheers: { received: [], sent: [] }, cheering: false,
     wk: { off: 0, cache: {}, busy: false, error: null } };
@@ -157,7 +157,8 @@ export function mount(root, ctx) {
     const k = Math.min(r.width / vb.width, r.height / vb.height), ox = r.left + (r.width - vb.width * k) / 2, oy = r.top + (r.height - vb.height * k) / 2;
     const x0 = 2 * 260 + 64; // ringhud.js 의 숫자 열 시작점
     hudAi.style.left = ox + (x0 - 18) * k - host.left + "px";
-    hudAi.style.top = oy + 196 * k - host.top + "px";
+    const rowsEnd = svg.querySelectorAll(".rh-row").length > 4 ? 16 + 4 * 46 + 60 : 196; // 마지막 줄 아래
+    hudAi.style.top = oy + rowsEnd * k - host.top + "px";
     hudAi.style.width = Math.max(300, (vb.width - x0 + 18) * k) + "px";
   }
   function fitArrows(slide) {
@@ -213,7 +214,11 @@ export function mount(root, ctx) {
         week: period(week, K.week, daysLeft(K.week)),
         day: { blocks, value: sc.exec || 0, total: sc.count, time: dayPassed, detail: sc.count ? `실행 ${sc.doneCount}/${sc.count}` + (blocks.length ? ` · 시간표 ${blocks.length}개` : "") : "" },
       };
-      S.items = RINGS.map((r) => ({ ...r, ...val[r.key] }));
+      // 체크리스트 링 (가장 안쪽): 오늘 할 일마다 칸, 색 = 우선순위
+      const ckSegs = day.slice().sort((a, b) => (PR_RANK[b.priority] || 0) - (PR_RANK[a.priority] || 0)).map((p) => ({ done: !!p.done, title: p.text || "비공개", color: PRIO_COLOR[p.priority || "none"] }));
+      const ckDone = day.filter((p) => p.done).length;
+      val.check = { segs: ckSegs, value: day.length ? ckDone / day.length : 0, total: day.length, time: dayPassed, detail: day.length ? `${ckDone}/${day.length} 끝냄` + prioStats(day).filter((r) => r.k === "max" || r.k === "xhigh").map((r) => ` · ${PRIO_LABEL[r.k]} ${r.d}/${r.n}`).join("") : "" };
+      S.items = [...RINGS, { key: "check", label: "체크리스트", en: "CHECK", color: "var(--r-check)" }].map((r) => ({ ...r, ...val[r.key] }));
       S.score = sc.score ?? null;
 
       // 한 달 · 한 주: 날마다 끝낸 수 / 전체 수

@@ -6,9 +6,10 @@ import { esc, toast, ymd, today, nowTime } from "./util.js";
 import { icon } from "./icons.js";
 import { aiPrefs, stepsHTML } from "./ai-pick.js";
 
-const HINTS = ["9시 반에 영어 수업 등록해 줘", "내일 오후 3시에 수학 2시간 넣어 줘", "영어 수업 10시로 옮겨 줘", "오늘 할 일로 단어 50개 외우기", "끝난 건 끝냄으로 표시해 줘"];
+const HINTS_DAY = ["9시 반에 영어 수업 등록해 줘", "내일 오후 3시에 수학 2시간 넣어 줘", "영어 수업 10시로 옮겨 줘", "오늘 할 일로 단어 50개 외우기", "끝난 건 끝냄으로 표시해 줘"];
 
 export function mountCommand(host, opts = {}) {
+  const HINTS = opts.hints || HINTS_DAY;
   let history = [], busy = false, hintI = 0;
   host.classList.add("aic");
   host.innerHTML = `
@@ -29,7 +30,8 @@ export function mountCommand(host, opts = {}) {
     input.value = ""; draft.clear();
     try {
       const p = aiPrefs();
-      const r = await api.aiCommand({ text, day: opts.day ? opts.day() : ymd(today()), today: ymd(today()), time: nowTime(), model: p.model || undefined, web: p.web, history });
+      const ctxPage = opts.page ? opts.page() : {}; // 목표 페이지: { scope: "week", period: "W:2026-W40" }
+      const r = await api.aiCommand({ text, day: opts.day ? opts.day() : ymd(today()), today: ymd(today()), time: nowTime(), model: p.model || undefined, web: p.web, history, ...ctxPage });
       history = [...history, { role: "user", content: text }, { role: "assistant", content: r.text }].slice(-8);
       out.innerHTML = `<p class="aic-q">${esc(text)}</p><p class="aic-a">${r.changed ? "✓ " : ""}${esc(r.text)}</p>${stepsHTML(r.steps?.filter((s) => s.ok === false))}<p class="aic-m faint">${esc(r.model || "")}</p>`;
       if (r.changed) { window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "plans" } })); opts.onDone?.(true); }

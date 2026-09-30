@@ -6,6 +6,7 @@ import { icon } from "../icons.js";
 import { PRIOS } from "./day.js";
 import { prioDonut, prioLegend } from "../charts/prio.js";
 import { keepDraft } from "../draft.js";
+import { mountCommand } from "../ai-command.js";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const RANK = { max: 5, xhigh: 4, high: 3, medium: 2, low: 1 };
@@ -19,7 +20,7 @@ export function mount(root, ctx, r) {
   root.innerHTML = `
     <div class="ck">
       <header class="gl-top">
-        <span class="eyebrow">체크리스트</span>
+        <span class="row" style="gap:8px"><button type="button" class="icon-btn back-btn" id="ck-back" aria-label="뒤로">${icon.left(18)}</button><span class="eyebrow">체크리스트</span></span>
         <div class="gl-nav">
           <a class="icon-btn sm" id="ck-prev" aria-label="전날">${icon.left(16)}</a>
           <a class="btn sm ghost" id="ck-now">오늘</a>
@@ -31,6 +32,7 @@ export function mount(root, ctx, r) {
         <div class="ck-when"><span class="ck-rel" id="ck-rel"></span><h1 class="gl-title" id="ck-title"></h1></div>
         <div class="ck-chart"><div id="ck-donut"></div><div class="ck-legend" id="ck-legend"></div></div>
       </section>
+      <div id="ck-ai"></div>
       <ul class="gl-list" id="ck-list"><li class="faint gl-load">불러오는 중…</li></ul>
       <form class="gl-add ck-add" id="ck-add" autocomplete="off">
         <input class="input" name="text" maxlength="200" placeholder="해야 할 일 · Enter (여러 줄 붙여넣기 가능)" aria-label="할 일 추가">
@@ -138,8 +140,11 @@ export function mount(root, ctx, r) {
   const onChanged = (e) => { if (e.detail?.kind === "plans" && !S.busy && Date.now() - (S.selfAt || 0) > 1500) load(); }; // AI 비서 등 다른 곳에서 바꾸면 다시 (내가 방금 바꾼 건 빼고)
   window.addEventListener("trio:changed", onChanged);
 
+  $("#ck-back", root).addEventListener("click", () => window.trioBack?.());
+  // AI: 이날 할 일로 알아들어요 ("오늘 할 일 5개 짜 줘" · "9시 반에 영어 수업" · "끝난 거 체크해 줘")
+  const stopAi = mountCommand($("#ck-ai", root), { hints: ["오늘 할 일 5개 짜 줘 (시험 공부 위주)", "9시 반에 영어 수업 넣어 줘", "단어 50개 외우기 급해로 넣어 줘", "끝난 거 체크해 줘"], day: () => S.day, onDone: () => { S.selfAt = 0; load(); } });
   inst = { update(rr) { const d = DAY_RE.test(rr.day || "") ? rr.day : ymd(today()); if (d !== S.day) { S.day = d; load(); } } };
   load();
   setTimeout(() => form.text.focus(), 80);
-  return () => { inst = null; window.removeEventListener("trio:changed", onChanged); };
+  return () => { inst = null; stopAi?.(); window.removeEventListener("trio:changed", onChanged); };
 }

@@ -307,7 +307,10 @@ function route() {
   cleanup = VIEWS[r.view].mount(host, ctx, r) || null;
   requestAnimationFrame(() => scrambleIn(host));
 }
-window.addEventListener("hashchange", route);
+window.addEventListener("hashchange", () => { navDepth++; route(); });
+// 뒤로 가기 (페이지 왼쪽 위 ‹): 앱 안에서 왔으면 이전 화면, 바로 들어왔으면 홈
+let navDepth = 0;
+window.trioBack = () => { if (navDepth > 0 && history.length > 1) history.back(); else ctx.go("#/"); };
 
 // ---------- command palette ----------
 let paletteOpen = false;
