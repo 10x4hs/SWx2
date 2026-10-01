@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 470">
+  <defs><marker id="ah-sam3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <rect class="dg-box" rx="12" x="20" y="40" width="150" height="72"/>
+  <text class="dg-t b" x="95" y="70" text-anchor="middle">개념 프롬프트</text>
+  <text class="dg-s" x="95" y="94" text-anchor="middle">"사람" · 예시 박스</text>
+
+  <rect class="dg-box" rx="12" x="20" y="200" width="150" height="72"/>
+  <text class="dg-t b" x="95" y="230" text-anchor="middle">영상 프레임 t</text>
+  <text class="dg-s" x="95" y="254" text-anchor="middle">1008×1008</text>
+
+  <rect class="dg-box c-teal" rx="12" x="200" y="40" width="150" height="72"/>
+  <text class="dg-t b" x="275" y="70" text-anchor="middle">텍스트 인코더</text>
+  <text class="dg-s" x="275" y="94" text-anchor="middle">+ 예시 인코더</text>
+
+  <rect class="dg-box c-teal" rx="12" x="200" y="200" width="150" height="72"/>
+  <text class="dg-t b" x="275" y="230" text-anchor="middle">이미지 인코더</text>
+  <text class="dg-s" x="275" y="254" text-anchor="middle">PE · 둘이 같이 씀</text>
+
+  <rect class="dg-box c-amber" rx="12" x="390" y="25" width="210" height="130"/>
+  <text class="dg-t b" x="495" y="52" text-anchor="middle">검출기 (DETR식)</text>
+  <rect class="dg-box" rx="10" x="405" y="66" width="180" height="36"/>
+  <text class="dg-t" x="495" y="90" text-anchor="middle">존재 토큰: 있나?</text>
+  <rect class="dg-box" rx="10" x="405" y="108" width="180" height="36"/>
+  <text class="dg-t" x="495" y="132" text-anchor="middle">쿼리들: 어디에?</text>
+
+  <rect class="dg-box c-blue" rx="12" x="390" y="200" width="210" height="72"/>
+  <text class="dg-t b" x="495" y="230" text-anchor="middle">추적기 (SAM 2식)</text>
+  <text class="dg-s" x="495" y="254" text-anchor="middle">이전 마스크를 이어 가요</text>
+
+  <rect class="dg-box" rx="12" x="390" y="310" width="210" height="56"/>
+  <text class="dg-t b" x="495" y="335" text-anchor="middle">기억 창고</text>
+  <text class="dg-s" x="495" y="355" text-anchor="middle">지난 프레임 모습 저장</text>
+
+  <rect class="dg-box c-green" rx="12" x="630" y="100" width="155" height="100"/>
+  <text class="dg-t b" x="707" y="130" text-anchor="middle">짝 맞추기</text>
+  <text class="dg-s" x="707" y="154" text-anchor="middle">IoU로 같은 물체 찾기</text>
+  <text class="dg-s" x="707" y="176" text-anchor="middle">새 물체는 새 ID</text>
+
+  <rect class="dg-box c-rose" rx="12" x="630" y="240" width="155" height="80"/>
+  <text class="dg-t b" x="707" y="270" text-anchor="middle">출력</text>
+  <text class="dg-s" x="707" y="294" text-anchor="middle">모든 사람 마스크+ID</text>
+
+  <path class="dg-a" d="M170,76 L198,76" fill="none" marker-end="url(#ah-sam3)"/>
+  <path class="dg-a" d="M170,236 L198,236" fill="none" marker-end="url(#ah-sam3)"/>
+  <path class="dg-a" d="M350,76 L388,76" fill="none" marker-end="url(#ah-sam3)"/>
+  <path class="dg-a" d="M350,226 C370,226 370,130 388,130" fill="none" marker-end="url(#ah-sam3)"/>
+  <path class="dg-a" d="M350,242 L388,242" fill="none" marker-end="url(#ah-sam3)"/>
+  <path class="dg-a" d="M600,90 C615,90 615,130 628,130" fill="none" marker-end="url(#ah-sam3)"/>
+  <path class="dg-a" d="M600,236 C615,236 615,170 628,170" fill="none" marker-end="url(#ah-sam3)"/>
+  <path class="dg-a" d="M707,200 L707,238" fill="none" marker-end="url(#ah-sam3)"/>
+  <path class="dg-a dash" d="M707,320 C707,340 650,338 602,338" fill="none" marker-end="url(#ah-sam3)"/>
+  <path class="dg-a dash" d="M495,310 L495,274" fill="none" marker-end="url(#ah-sam3)"/>
+
+  <rect class="dg-zone" rx="16" x="20" y="385" width="760" height="75"/>
+  <text class="dg-t b" x="40" y="415">최종 점수 = "있나?" 점수 × 각 쿼리의 "여기 맞나?" 점수</text>
+  <text class="dg-s" x="40" y="441">없는 개념이면 존재 점수가 낮아서 엉뚱한 마스크가 줄어요 · 검출은 ID 무관, 추적은 ID 구분</text>
+</svg>

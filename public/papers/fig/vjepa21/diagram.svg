@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 460">
+  <defs><marker id="ah-vjepa21" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+  <text class="dg-t b" x="400" y="30" text-anchor="middle">V-JEPA 2.1: 픽셀 대신 특징을 맞히고, 보이는 곳도 채점해요</text>
+
+  <rect class="dg-box" rx="12" x="15" y="60" width="110" height="70"/>
+  <text class="dg-t" x="70" y="90" text-anchor="middle">입력 영상</text>
+  <text class="dg-s" x="70" y="113" text-anchor="middle">이미지도 OK</text>
+
+  <rect class="dg-box c-rose" rx="12" x="155" y="60" width="115" height="70"/>
+  <text class="dg-t" x="212" y="90" text-anchor="middle">일부 가리기</text>
+  <text class="dg-s" x="212" y="113" text-anchor="middle">마스킹</text>
+
+  <rect class="dg-box c-blue" rx="12" x="300" y="60" width="130" height="70"/>
+  <text class="dg-t b" x="365" y="90" text-anchor="middle">x-인코더</text>
+  <text class="dg-s" x="365" y="113" text-anchor="middle">보이는 조각만</text>
+
+  <rect class="dg-box c-violet" rx="12" x="460" y="60" width="120" height="70"/>
+  <text class="dg-t b" x="520" y="90" text-anchor="middle">예측기</text>
+  <text class="dg-s" x="520" y="113" text-anchor="middle">특징을 예측</text>
+
+  <rect class="dg-box" rx="12" x="300" y="170" width="130" height="70"/>
+  <text class="dg-t b" x="365" y="200" text-anchor="middle">y-인코더</text>
+  <text class="dg-s" x="365" y="223" text-anchor="middle">원본 전체 · EMA</text>
+
+  <text class="dg-s" x="440" y="155" text-anchor="middle">인코더 4개 층에서 채점 = 깊은 자기지도</text>
+
+  <path class="dg-a" d="M125,95 L155,95" fill="none" marker-end="url(#ah-vjepa21)"/>
+  <path class="dg-a" d="M270,95 L300,95" fill="none" marker-end="url(#ah-vjepa21)"/>
+  <path class="dg-a" d="M430,95 L460,95" fill="none" marker-end="url(#ah-vjepa21)"/>
+  <path class="dg-a" d="M580,95 L630,95" fill="none" marker-end="url(#ah-vjepa21)"/>
+  <path class="dg-a" d="M70,130 L70,205 L300,205" fill="none" marker-end="url(#ah-vjepa21)"/>
+  <path class="dg-a dash" d="M430,205 L630,205" fill="none" marker-end="url(#ah-vjepa21)"/>
+  <text class="dg-s" x="530" y="195" text-anchor="middle">정답 특징(학습 멈춤)</text>
+
+  <rect class="dg-zone" rx="16" x="630" y="55" width="160" height="190"/>
+  <rect class="dg-box c-rose" rx="12" x="640" y="65" width="140" height="70"/>
+  <text class="dg-t" x="710" y="95" text-anchor="middle">가린 곳 채점</text>
+  <text class="dg-s" x="710" y="118" text-anchor="middle">기존 V-JEPA</text>
+  <rect class="dg-box c-green" rx="12" x="640" y="150" width="140" height="85"/>
+  <text class="dg-t b" x="710" y="182" text-anchor="middle">보이는 곳도</text>
+  <text class="dg-s" x="710" y="205" text-anchor="middle">2.1의 새 손실</text>
+  <text class="dg-s" x="710" y="224" text-anchor="middle">가까울수록 크게</text>
+
+  <rect class="dg-zone" rx="16" x="15" y="270" width="775" height="175"/>
+  <text class="dg-s" x="32" y="294">무엇을 맞히나요? — 픽셀 공간 vs 표현 공간</text>
+
+  <rect class="dg-box c-amber" rx="12" x="30" y="308" width="360" height="122"/>
+  <text class="dg-t b" x="210" y="340" text-anchor="middle">VideoMAE: 픽셀 복원</text>
+  <text class="dg-s" x="210" y="370" text-anchor="middle">가린 곳의 색깔 값을 그대로 그려 내요</text>
+  <text class="dg-s" x="210" y="396" text-anchor="middle">잔무늬 하나하나까지 맞히느라 힘이 나뉘어요</text>
+
+  <rect class="dg-box c-teal" rx="12" x="415" y="308" width="360" height="122"/>
+  <text class="dg-t b" x="595" y="340" text-anchor="middle">V-JEPA: 특징 예측</text>
+  <text class="dg-s" x="595" y="370" text-anchor="middle">가린 곳의 뜻(요약 벡터)을 맞혀요</text>
+  <text class="dg-s" x="595" y="396" text-anchor="middle">못 맞힐 세부는 버리고 움직임·의미에 집중</text>
+</svg>
