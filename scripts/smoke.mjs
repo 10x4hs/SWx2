@@ -1,5 +1,17 @@
 // API smoke test against a running `wrangler dev` (default http://127.0.0.1:8787).
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
+// 로컬 D1 을 다른 프로세스(wrangler d1 execute)로 만지는 몇 초 사이에 wrangler dev 가 쉬던 연결을 닫아요.
+// 그 연결을 다시 쓰면 ECONNRESET 이 나서, 연결이 끊긴 경우에만 한 번 더 보내요 (앱 응답 오류는 그대로 둬요).
+const rawFetch = globalThis.fetch;
+globalThis.fetch = async (url, opts) => {
+  try { return await rawFetch(url, opts); }
+  catch (e) {
+    const code = e?.cause?.code || "";
+    if (!/ECONNRESET|UND_ERR_SOCKET|EPIPE/.test(code) && !/other side closed/.test(String(e?.cause?.message || ""))) throw e;
+    await new Promise((r) => setTimeout(r, 300));
+    return rawFetch(url, opts);
+  }
+};
 const jar = {};
 async function call(who, method, path, body, headers = {}) {
   const r = await fetch(BASE + "/api" + path, {
@@ -14,6 +26,22 @@ const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); if (!
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
 
 import { execFileSync } from "node:child_process";
+// ---------- 도구 줄 해석 · 거짓 "넣었어요" 검사 (모델 없이, 고정 입력) ----------
+{
+  const { parseToolCall, stripToolLines, CLAIM_RE } = await import("../src/agent.js");
+  const T = (name) => ({ name, args: {} });
+  const calls = [
+    ['<<tool>>{"name":"a","args":{}}<</tool>>', "a"], ['<<tool>{"name":"day_plans","args":{"date":"2026-10-01"}}<</tool>>', "day_plans"],
+    ['<<tool>>{"name":"add_plan","args":{"text":"논문 {x}"}}<</tool>', "add_plan"], ['<tool>{"name":"b","args":{}}</tool>', "b"],
+    ['<<tool>>{"name":"c","args":{"q":"x"}}', "c"], ['```tool\n{"name":"d","args":{}}\n```', "d"],
+    ['<dots_function_call> <invoke="add_plan"> <parameter name="date">2026-10-01</parameter> </invoke> </dots_function_call>', "add_plan"],
+    ["그냥 글이에요", null],
+  ];
+  ok(calls.every(([t, n]) => (parseToolCall(t)?.name ?? null) === n), "agent: tool lines parsed even with missing brackets / xml");
+  ok(calls.filter(([, n]) => n).every(([t]) => stripToolLines("앞 " + t + " 뒤") === "앞  뒤" || stripToolLines("앞 " + t + " 뒤") === "앞 뒤"), "agent: tool lines stripped from visible text");
+  ok(["추가했어", "일정이 추가됐어", "이미 추가되어 있어", "넣어 뒀어", "등록했어요"].every((t) => CLAIM_RE.test(t)) && !CLAIM_RE.test("오늘은 10월 1일이야"), "agent: claim detector");
+  void T;
+}
 const tag = Date.now().toString(36).slice(-5);
 const mk = (u, n, pw) => execFileSync("node", ["scripts/add-user.mjs", u, n, pw], { stdio: "ignore" });
 // 로컬 D1 에 직접 묻기 (서버를 거치지 않고 저장된 값 확인)
@@ -530,6 +558,105 @@ if (!process.env.SKIP_AI) {
   r = await call("a", "GET", "/notes/" + er); ok(r.status === 200, "papers notes: english zone untouched");
   await call("a", "DELETE", "/notes/" + er);
   execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", "DELETE FROM paper_checks; DELETE FROM paper_notes; DELETE FROM paper_tokens;"], { stdio: "ignore" });
+}
+
+// ---------- MCP (/mcp) ----------
+{
+  const tok = (name) => execFileSync("node", ["scripts/mcp-token.mjs", "t_a" + tag, name], { encoding: "utf8" }).match(/Bearer ([A-Za-z0-9_-]+)/)[1];
+  const TA = tok("smoke-a"), TB = tok("smoke-b");
+  const mcp = async (t, method, params, id = 1) => {
+    const res = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", ...(t ? { authorization: "Bearer " + t } : {}) }, body: JSON.stringify({ jsonrpc: "2.0", id, method, params }) });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  };
+  const tool = async (t, name, args = {}) => { const r = await mcp(t, "tools/call", { name, arguments: args }); return { err: !!r.data?.result?.isError, text: r.data?.result?.content?.[0]?.text || "" }; };
+  r = await mcp(null, "initialize", {}); ok(r.status === 401, "mcp: no token → 401");
+  r = await mcp("x".repeat(43), "initialize", {}); ok(r.status === 401, "mcp: wrong token → 401");
+  r = await mcp(TA, "initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "smoke", version: "1" } });
+  ok(r.data?.result?.protocolVersion === "2025-03-26" && r.data.result.serverInfo?.name === "dsm-mafia", "mcp: initialize echoes supported protocol");
+  { const res = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + TA }, body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) }); ok(res.status === 202, "mcp: notification → 202"); }
+  r = await mcp(TA, "tools/list"); ok(r.data?.result?.tools?.length >= 14 && r.data.result.tools.every((t) => t.inputSchema?.type === "object"), "mcp: tools/list with schemas");
+  r = await mcp(TA, "nope/method"); ok(r.data?.error?.code === -32601, "mcp: unknown method → -32601");
+  let t = await tool(TA, "whoami"); ok(t.text.includes("smoke-a") && t.text.includes("테스트A"), "mcp: whoami knows user + agent");
+  t = await tool(TA, "paper_read", { paper: "YOLOv10", part: "deep" }); ok(!t.err && t.text.includes("목차"), "mcp: paper_read deep toc");
+  t = await tool(TA, "paper_read", { paper: "nope" }); ok(t.err, "mcp: unknown paper → isError");
+  t = await tool(TA, "task_add", { title: "스모크 작업", assignee: "smoke-b" }); const tid = (t.text.match(/\[([0-9a-f]{8})\]/) || [])[1]; ok(!!tid, "mcp: task_add");
+  t = await tool(TB, "task_claim", { id: tid }); ok(!t.err, "mcp: other agent claims");
+  t = await tool(TA, "task_claim", { id: tid }); ok(t.err && t.text.includes("smoke-b"), "mcp: claimed task is protected");
+  t = await tool(TA, "task_update", { id: tid, note: "메모만" }); ok(!t.err, "mcp: others can still leave a note");
+  t = await tool(TB, "task_update", { id: tid, status: "done", result: "끝" }); ok(!t.err, "mcp: owner finishes");
+  t = await tool(TA, "task_get", { id: tid }); ok(t.text.includes("smoke-b: 맡음") && t.text.includes("smoke-a: 메모만") && t.text.includes("done"), "mcp: log records who did what");
+  t = await tool(TA, "note_write", { title: "t mcp 노트 " + tag, body: "첫 줄", mode: "create" }); ok(!t.err, "mcp: note create");
+  t = await tool(TB, "note_write", { title: "t mcp 노트 " + tag, body: "둘째 줄" }); t = await tool(TA, "note_read", { title: "t mcp 노트 " + tag });
+  ok(t.text.includes("첫 줄") && t.text.includes("둘째 줄") && t.text.includes("smoke-b"), "mcp: append keeps body + signs agent");
+  t = await tool(TA, "note_write", { title: "t mcp 노트 " + tag, body: "x", mode: "create" }); ok(t.err, "mcp: create on existing title → isError");
+  execFileSync("node", ["scripts/mcp-token.mjs", "t_a" + tag, "smoke-b", "--revoke"], { stdio: "ignore" });
+  r = await mcp(TB, "tools/list"); ok(r.status === 401, "mcp: revoked token → 401");
+  // 웹 화면에서 각자 토큰 받기 (친구들도)
+  r = await call("b", "POST", "/mcp/tokens", { name: "Bad Name!" }); ok(r.status === 400, "mcp tokens: bad name → 400");
+  r = await call("b", "POST", "/mcp/tokens", { name: "b-laptop" }); const TBB = r.data?.token;
+  ok(r.status === 201 && TBB?.length >= 40 && r.data.url.endsWith("/mcp"), "mcp tokens: friend creates own token");
+  r = await call("b", "GET", "/mcp/tokens"); ok(r.data.tokens.some((t) => t.agent === "b-laptop") && !JSON.stringify(r.data).includes(TBB), "mcp tokens: list never shows the secret");
+  r = await call("a", "GET", "/mcp/tokens"); ok(!r.data.tokens.some((t) => t.agent === "b-laptop"), "mcp tokens: list is per user");
+  t = await tool(TBB, "whoami"); ok(t.text.includes("테스트B") && t.text.includes("b-laptop"), "mcp tokens: friend token acts as friend");
+  r = await call("b", "DELETE", "/mcp/tokens/b-laptop"); ok(r.data?.removed === true, "mcp tokens: revoke");
+  r = await mcp(TBB, "tools/list"); ok(r.status === 401, "mcp tokens: revoked from web → 401");
+}
+
+// ---------- OAuth 2.1 (ChatGPT · claude.ai 커넥터) ----------
+{
+  const { createHash, randomBytes } = await import("node:crypto");
+  const USER = "t_b" + tag, PASS = "";
+  const b64 = (b) => b.toString("base64url");
+
+  // 1) 발견
+  let r = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }) });
+  const wa = r.headers.get("www-authenticate") || ""; ok(r.status === 401 && /resource_metadata="([^"]+)"/.test(wa), "oauth: 401 + WWW-Authenticate resource_metadata");
+  const prm = await (await fetch(wa.match(/resource_metadata="([^"]+)"/)[1])).json(); ok(prm.resource === BASE + "/mcp" && prm.authorization_servers?.[0] === BASE, "oauth: protected resource metadata");
+  const as = await (await fetch(prm.authorization_servers[0] + "/.well-known/oauth-authorization-server")).json(); ok(as.code_challenge_methods_supported.includes("S256") && as.registration_endpoint, "oauth: authorization server metadata");
+  // 2) 등록
+  const REDIRECT = "https://chatgpt.com/connector_platform_oauth_redirect";
+  r = await fetch(as.registration_endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ client_name: "ChatGPT", redirect_uris: [REDIRECT], token_endpoint_auth_method: "client_secret_post", grant_types: ["authorization_code", "refresh_token"] }) });
+  const cl = await r.json(); ok(r.status === 201 && cl.client_id && cl.client_secret, "oauth: dynamic client registration");
+  r = await fetch(as.registration_endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ client_name: "evil", redirect_uris: ["http://evil.example/cb"] }) }); ok(r.status === 400, "oauth: register rejects non-https redirect");
+  // 3) 로그인 · 허용 (브라우저 흉내)
+  const verifier = b64(randomBytes(32)), challenge = b64(createHash("sha256").update(verifier).digest());
+  const params = { response_type: "code", client_id: cl.client_id, redirect_uri: REDIRECT, state: "st123", code_challenge: challenge, code_challenge_method: "S256", scope: "mcp", resource: BASE + "/mcp" };
+  r = await fetch(as.authorization_endpoint + "?" + new URLSearchParams(params), { redirect: "manual" }); const h1 = await r.text();
+  ok(r.status === 200 && h1.includes("로그인") && r.headers.get("x-frame-options") === "DENY", "oauth: authorize shows login page (no framing)");
+  r = await fetch(as.authorization_endpoint + "?" + new URLSearchParams({ ...params, redirect_uri: "https://evil.example/cb" }), { redirect: "manual" }); ok(r.status === 400, "oauth: authorize rejects unregistered redirect");
+  r = await fetch(as.authorization_endpoint, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: BASE }, body: new URLSearchParams({ ...params, action: "login", username: USER, password: PASS }) });
+  const cookie = (r.headers.get("set-cookie") || "").split(";")[0]; const h2 = await r.text();
+  ok(r.status === 200 && h2.includes("허용") && cookie.startsWith("trio_session="), "oauth: login → consent page + session cookie");
+  r = await fetch(as.authorization_endpoint, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "https://evil.example", cookie }, body: new URLSearchParams({ ...params, action: "allow" }) });
+  ok(r.status === 403, "oauth: allow from another site → 403");
+  r = await fetch(as.authorization_endpoint, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: BASE, cookie }, body: new URLSearchParams({ ...params, action: "allow" }) });
+  const loc = new URL(r.headers.get("location")); const code = loc.searchParams.get("code");
+  ok(r.status === 302 && loc.origin + loc.pathname === REDIRECT && loc.searchParams.get("state") === "st123" && code, "oauth: allow → redirect with code + state");
+  // 4) 토큰
+  const tok = (b) => fetch(as.token_endpoint, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: cl.client_id, client_secret: cl.client_secret, ...b }) }).then(async (x) => ({ s: x.status, d: await x.json() }));
+  let t = await tok({ grant_type: "authorization_code", code, redirect_uri: REDIRECT, code_verifier: "wrong" + verifier }); ok(t.s === 400 && t.d.error === "invalid_grant", "oauth: wrong PKCE verifier rejected");
+  // (틀린 verifier 시도로 코드가 이미 쓰였으므로) 새 코드 받기
+  r = await fetch(as.authorization_endpoint, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: BASE, cookie }, body: new URLSearchParams({ ...params, action: "allow" }) });
+  const code2 = new URL(r.headers.get("location")).searchParams.get("code");
+  t = await tok({ grant_type: "authorization_code", code: code2, redirect_uri: REDIRECT, code_verifier: verifier }); ok(t.s === 200 && t.d.access_token && t.d.refresh_token && t.d.token_type === "Bearer", "oauth: code + PKCE → tokens");
+  const T1 = t.d;
+  let t2 = await tok({ grant_type: "authorization_code", code: code2, redirect_uri: REDIRECT, code_verifier: verifier }); ok(t2.s === 400, "oauth: code replay rejected");
+  r = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + T1.access_token }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) });
+  ok(r.status === 401, "oauth: code replay also revokes tokens from that code");
+  // 다시 정상 흐름
+  r = await fetch(as.authorization_endpoint, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: BASE, cookie }, body: new URLSearchParams({ ...params, action: "allow" }) });
+  t = await tok({ grant_type: "authorization_code", code: new URL(r.headers.get("location")).searchParams.get("code"), redirect_uri: REDIRECT, code_verifier: verifier }); const T = t.d;
+  r = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + T.access_token }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "whoami", arguments: {} } }) });
+  const who = (await r.json()).result?.content?.[0]?.text || ""; ok(r.status === 200 && who.includes("@" + USER) && who.includes("chatgpt"), "oauth: OAuth token works on /mcp as the user (agent=chatgpt)");
+  t = await tok({ grant_type: "refresh_token", refresh_token: T.refresh_token }); ok(t.s === 200 && t.d.access_token !== T.access_token, "oauth: refresh → new tokens");
+  t2 = await tok({ grant_type: "refresh_token", refresh_token: T.refresh_token }); ok(t2.s === 400, "oauth: old refresh token rejected (rotation)");
+  r = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + T.access_token }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) }); ok(r.status === 401, "oauth: old access token dead after refresh");
+  r = await fetch(as.token_endpoint, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: t.d.refresh_token, client_id: cl.client_id, client_secret: "nope" }) }); ok(r.status === 401, "oauth: wrong client secret → 401");
+  // 앱에서 끊기
+  r = await fetch(BASE + "/api/mcp/tokens", { headers: { cookie } }); const list = await r.json(); ok(list.oauth?.some((o) => o.client_name === "ChatGPT"), "oauth: grant listed in MCP panel API");
+  r = await fetch(BASE + "/api/mcp/oauth/" + cl.client_id, { method: "DELETE", headers: { cookie, "x-trio": "1" } }); ok((await r.json()).removed, "oauth: revoke from app");
+  r = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + t.d.access_token }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) }); ok(r.status === 401, "oauth: revoked grant → 401");
+  
 }
 
 r = await call("a", "POST", "/auth/logout"); r = await call("a", "GET", "/me"); ok(r.status === 401, "logout");

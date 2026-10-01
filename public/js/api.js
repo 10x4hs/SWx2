@@ -112,6 +112,10 @@ export const api = {
   paperExplain: (paper, text) => request("POST", "/papers/explain", { paper, text }),
   paperAsk: (paper, messages) => request("POST", "/papers/ask?stream=0", { paper, messages }),
   papersObsidian: () => request("POST", "/papers/obsidian"),
+  mcpTokens: () => request("GET", "/mcp/tokens"),
+  mcpCreate: (name) => request("POST", "/mcp/tokens", { name }),
+  mcpRevoke: (name) => request("DELETE", "/mcp/tokens/" + encodeURIComponent(name)),
+  mcpRevokeOAuth: (client) => request("DELETE", "/mcp/oauth/" + encodeURIComponent(client)),
 
   // 대화방 (셋이 같이 쓰는 방 하나) · 창고 (책 · 링크 · 영상)
   // room: 'all'(우리 셋) 또는 'dm:<id>:<id>'(두 사람, id 정렬). 안 주면 'all'.

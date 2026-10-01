@@ -12,6 +12,7 @@ import * as checklistView from "./views/checklist.js";
 import * as homeView from "./views/home.js";
 import * as englishView from "./views/english.js";
 import * as papersView from "./views/papers.js";
+import { openMcpPanel } from "./mcp-panel.js";
 import * as calendarView from "./views/calendar.js";
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
@@ -139,6 +140,7 @@ function renderMeRow() {
       <div class="me-head"><span class="av" style="--c:${esc(ctx.me.color)}">${esc(initial(ctx.me.display_name))}</span><span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small></span></div>
       <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
       <button type="button" role="menuitem" id="pw-btn">${icon.lock(16)}비밀번호 바꾸기</button>
+      <button type="button" role="menuitem" id="mcp-btn">${icon.share(16)}MCP 연결 (AI 에이전트)</button>
       <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
     </div>`;
   const menu = $("#me-menu"), btn = $("#me-btn");
@@ -154,6 +156,7 @@ function renderMeRow() {
     renderMeRow();
   });
   $("#pw-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openPassword(); });
+  $("#mcp-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openMcpPanel(ctx); });
   $("#logout-btn").addEventListener("click", async () => { await api.logout().catch(() => {}); showAuth(); });
 }
 
