@@ -4,7 +4,37 @@
 // 도구: web_search(웹 검색) · read_page(페이지 읽기) · search_notes(내 노트 찾기) · read_note(내 노트 읽기) · my_plans(내 계획 보기)
 import { aiText, TEXT_ORDER, orderFrom } from "./ai.js";
 
-const TOOL_RE = /<<tool>>\s*([\s\S]*?)\s*<<\/tool>>/;
+// 모델이 꺾쇠를 하나 빼먹는 일이 잦아요(<<tool>…, …<</tool>, <tool>…</tool>) — 다 알아봐요
+const TOOL_RE = /<{1,2}\s*tool\s*>{1,2}\s*([\s\S]*?)\s*<{1,2}\s*\/\s*tool\s*>{1,2}/;
+export const TOOL_RE_G = new RegExp(TOOL_RE.source, "g");
+// 닫는 태그가 아예 없을 때: 여는 태그 뒤 첫 { … } 덩어리(괄호 짝 맞춰서)
+function openOnly(text) {
+  const i = text.search(/<{1,2}\s*tool\s*>{1,2}/);
+  if (i < 0) return null;
+  const j = text.indexOf("{", i);
+  if (j < 0) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let k = j; k < text.length; k++) {
+    const ch = text[k];
+    if (inStr) { if (esc) esc = false; else if (ch === "\\") esc = true; else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') inStr = true; else if (ch === "{") depth++; else if (ch === "}" && --depth === 0) return text.slice(j, k + 1);
+  }
+  return null;
+}
+// 화면에 보일 글에서 도구 줄을 모두 지워요 (꺾쇠 빠진 줄 · 닫는 태그 없는 줄 · ```tool 펜스 포함)
+export function stripToolLines(text) {
+  let t = String(text || "").replace(TOOL_RE_G, "").replace(new RegExp(FENCE_RE.source, "g"), "")
+    .replace(/<(\w+_)?function_calls?>[\s\S]*?<\/(\w+_)?function_calls?>/g, "").replace(/<invoke[\s\S]*?<\/invoke>/g, "");
+  for (let guard = 0; guard < 8; guard++) {
+    const i = t.search(/<{1,2}\s*tool\s*>{1,2}/);
+    if (i < 0) break;
+    const json = openOnly(t.slice(i));
+    if (!json) { t = t.slice(0, i) + t.slice(i).replace(/<{1,2}\s*tool\s*>{1,2}/, ""); continue; }
+    const j = t.indexOf(json, i) + json.length;
+    t = t.slice(0, i) + t.slice(j).replace(/^\s*<{1,2}\s*\/\s*tool\s*>{0,2}/, "");
+  }
+  return t.trim();
+}
 const FENCE_RE = /```tool\s*([\s\S]*?)```/;
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128 Safari/537.36 Dsm-mafia/1.0";
 const clip = (s, n) => (s.length > n ? s.slice(0, n) + " …" : s);
@@ -143,7 +173,7 @@ function isoWeekKey(ymd) {
 }
 const periodOf = (scope, date) => scope === "week" ? isoWeekKey(date) : scope === "month" ? `M:${date.slice(0, 7)}` : scope === "year" ? `Y:${date.slice(0, 4)}` : `D:${date}`;
 const normHM = (v) => { if (typeof v !== "string") return null; const m = /^(\d{1,2}):(\d{2})$/.exec(v.trim()); if (!m) return null; const t = `${pad2(+m[1])}:${m[2]}`; return HM_RE.test(t) ? t : null; };
-async function dayPlans(env, user, date) {
+export async function dayPlans(env, user, date) {
   if (!DATE_RE.test(date || "")) return { error: "date 는 YYYY-MM-DD 예요." };
   const { results } = await env.DB.prepare("SELECT id, text, done, missed, start, mins FROM plans WHERE user_id = ? AND scope = 'day' AND period = ? ORDER BY start IS NULL, start, sort").bind(user.id, "D:" + date).all();
   return { date, plans: results.map((p) => ({ id: p.id, text: p.text, done: !!p.done, missed: !!p.missed, start: p.start, mins: p.mins })) };
@@ -185,6 +215,8 @@ async function deletePlan(env, user, a) {
   return r.meta?.changes ? { ok: true } : { error: "그 id 의 계획이 없어요." };
 }
 export const WRITE_TOOLS = new Set(["add_plan", "update_plan", "delete_plan"]);
+// "넣었어요 / 이미 들어가 있어요" 처럼 계획을 바꿨다고(또는 이미 있다고) 말하는 답 — 이번 요청에서 도구를 안 불렀다면 거짓일 수 있어요
+export const CLAIM_RE = /(넣었|넣어\s*(?:뒀|놨|드렸)|등록했|등록됐|추가했|추가해\s*(?:뒀|놨|드렸)|추가되어|추가됐|추가돼|추가된\s*상태|추가\s*완료|저장했|저장됐|들어가\s*있|들어갔|넣어져|옮겼|바꿨|변경했|지웠|삭제했|표시했)/;
 
 export const TOOL_DOCS = {
   day_plans: { desc: "그날 계획(할 일·시간표)을 id 와 함께 봐요", args: '{"date":"2026-09-29"}' },
@@ -237,7 +269,16 @@ export function toolPrompt(tools, maxSteps) {
 
 export function parseToolCall(text) {
   const m = TOOL_RE.exec(text) || FENCE_RE.exec(text);
-  let raw = m ? m[1] : null;
+  let raw = m ? m[1] : openOnly(text);
+  // 일부 무료 모델은 XML 꼴로 불러요: <invoke name="add_plan"> (또는 <invoke="add_plan">) <parameter name="date">…</parameter> </invoke>
+  if (!raw) {
+    const x = /<invoke\s*(?:name\s*)?=\s*"([\w-]+)"\s*>([\s\S]*?)<\/invoke>/.exec(text);
+    if (x) {
+      const args = {};
+      for (const pm of x[2].matchAll(/<parameter\s+name\s*=\s*"([\w-]+)"\s*>([\s\S]*?)<\/parameter>/g)) { const v = pm[2].trim(); args[pm[1]] = /^-?\d+$/.test(v) ? +v : v; }
+      return { name: x[1], args };
+    }
+  }
   if (!raw) { const t = text.trim(); if (/^\{[\s\S]*"name"[\s\S]*\}$/.test(t) && t.length < 600) raw = t; }
   if (!raw) return null;
   try { const j = JSON.parse(raw); if (j && typeof j.name === "string") return { name: j.name, args: j.args && typeof j.args === "object" ? j.args : {} }; } catch {}
@@ -264,16 +305,16 @@ export async function runAgent(env, user, { system, messages, tools = Object.key
     const call = i < maxSteps ? parseToolCall(r.text) : null;
     if (!call || !tools.includes(call.name)) {
       // 도구 없이 "넣었어요/옮겼어요" 라고만 하면 한 번 되돌려 실제로 부르게 해요
-      const claims = tools.some((t) => WRITE_TOOLS.has(t)) && !steps.some((s) => WRITE_TOOLS.has(s.name)) && /(넣었|등록했|추가했|옮겼|바꿨|지웠|삭제했|표시했)/.test(r.text);
+      const claims = tools.some((t) => WRITE_TOOLS.has(t)) && !steps.some((s) => WRITE_TOOLS.has(s.name)) && CLAIM_RE.test(r.text);
       if (claims && i < maxSteps) { convo.push({ role: "assistant", content: r.text }, { role: "user", content: "아직 도구를 실제로 부르지 않았어. 말만 하지 말고 지금 필요한 도구 줄(<<tool>>…<</tool>>)을 한 줄만 출력해." }); continue; }
-      return { text: r.text.replace(TOOL_RE, "").trim(), model: used, steps };
+      return { text: stripToolLines(r.text), model: used, steps };
     }
     const result = await runAgentTool(env, user, call.name, call.args, { periods });
     const step = { name: call.name, args: call.args, summary: toolSummary(call.name, call.args, result) };
     steps.push(step); if (onStep) await onStep(step);
     convo.push({ role: "assistant", content: `<<tool>>${JSON.stringify(call)}<</tool>>` });
-    convo.push({ role: "user", content: `[도구 결과 ${call.name}]\n${JSON.stringify(result).slice(0, 9000)}\n\n이 결과를 참고해서 계속해. (도구가 더 필요하면 한 줄만, 아니면 최종 답을 써.)` });
+    convo.push({ role: "user", content: `[도구 결과 ${call.name}]\n${JSON.stringify(result).slice(0, 9000)}\n\n이 결과를 참고해서 계속해. (도구가 더 필요하면 한 줄만, 아니면 최종 답을 써. 최종 답에는 이번에 도구로 실제로 한 일과 그 결과만 써 — 앞 대화나 다른 날의 계획을 다시 나열하지 마.)` });
   }
   const r = await aiText(env, sys, convo, order);
-  return { text: r.text.replace(TOOL_RE, "").trim(), model: r.used, steps };
+  return { text: stripToolLines(r.text), model: r.used, steps };
 }

@@ -1,7 +1,7 @@
 // AI 채팅: Gemini(Google AI Studio) · Groq · Cohere · Xiaomi MiMo · Zhipu GLM · OpenRouter · Kilo · Ollama · 여러 개 나란히 비교.
 // 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY, ZHIPU_API_KEY, OPENROUTER_API_KEY, KILO_API_KEY, OLLAMA_API_KEY)에만 있고 브라우저로 나가지 않아요.
 
-import { toolPrompt, parseToolCall, runAgentTool, toolSummary, autoResearch, WRITE_TOOLS } from "./agent.js";
+import { toolPrompt, parseToolCall, runAgentTool, toolSummary, autoResearch, WRITE_TOOLS, CLAIM_RE, dayPlans, stripToolLines } from "./agent.js";
 import { cleanImages, withImages } from "./vision.js";
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
@@ -126,6 +126,14 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
     // 모든 모델이 에이전트처럼: 웹 검색 · 페이지 읽기 · 노트 · 계획 도구가 늘 열려 있어요. 계획 고치기는 모델 하나일 때만 (비교 모드에서 셋이 같은 일을 넣지 않게)
     const TOOLS = ["web_search", "read_page", "search_notes", "read_note", "my_plans", ...(live.length === 1 ? ["day_plans", "add_plan", "update_plan", "delete_plan"] : [])];
     system += "\n\n" + toolPrompt(TOOLS, 4) + (live.length === 1 ? `\n계획을 넣거나 고쳐 달라고 하면 add_plan 등으로 직접 해. 오늘은 ${typeof b.day === "string" ? b.day : ""}, 시간은 24시간 HH:MM.` : "");
+    // 지금 DB 에 실제로 있는 오늘 · 내일 계획을 사실로 넣어 줘요 — 앞 대화의 "넣었어요"를 믿고 상태를 지어내지 않게
+    if (live.length === 1) {
+      const d0 = /^\d{4}-\d{2}-\d{2}$/.test(b.day || "") ? b.day : new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+      const d1 = new Date(Date.parse(d0 + "T00:00:00Z") + 864e5).toISOString().slice(0, 10);
+      const [p0, p1] = await Promise.all([dayPlans(env, user, d0), dayPlans(env, user, d1)]);
+      const fmt = (r) => (r.plans?.length ? r.plans.map((x) => `  - ${x.start ? x.start + " " : ""}${x.text}${x.done ? " (끝냄)" : ""}`).join("\n") : "  (없음)");
+      system += `\n\n[지금 실제로 저장된 계획 — 이것만 사실이야. 앞 대화에서 '넣었다'고 한 말과 달라도 이걸 믿어. 여기 없는 건 아직 안 들어간 거야]\n${d0} (오늘)\n${fmt(p0)}\n${d1} (내일)\n${fmt(p1)}\n계획을 넣으라고 하면 날짜·항목마다 add_plan 을 한 번씩 불러. 다른 날짜는 day_plans 로 확인해.`;
+    }
 
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
@@ -174,10 +182,18 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
 // 글을 흘려보낸 뒤에 도구 줄이 나오면 { type: "reset" } 으로 화면의 그 답을 지우고 이어서 해요.
 async function runToolLoop(env, user, t, system, history, message, tools, periods, send) {
   const convo = [...history];
-  let msg = message, used = null, changed = false;
+  let msg = message, used = null, changed = false, nudges = 0;
+  const acted = [];   // 이번 요청에서 실제로 실행한 도구 (계획 바꾸기 · 확인)
+  const canWrite = tools.some((x) => WRITE_TOOLS.has(x));
+  // 답 끝에 실제 실행 내역을 한 줄로 — 화면에도 보이고, 다음 턴의 모델도 "말로만 한 것"과 구분해요
+  const footer = () => {
+    const w = acted.filter((a) => WRITE_TOOLS.has(a.name));
+    return w.length ? `\n\n_실행: ${w.map((a) => `${TOOL_KO[a.name]} ${a.ok ? "✓" : "✗"} ${a.summary}`).join(" · ")}_` : "";
+  };
   for (let i = 0; i < 6; i++) {
     let buf = "", think = "", mode = null; // null = 아직 모름 · "stream" = 흘려보내는 중 · "hold" = 도구 줄 같아서 모으는 중
     const r = await runModel(env, t, system, convo, msg, async (kind, text) => {
+      if (kind === "reset") { if (mode === "stream") await send({ type: "reset" }); buf = ""; think = ""; mode = null; return; } // 체인의 다음 모델로 넘어감
       if (kind === "reasoning") { think += text; return; }
       if (kind !== "delta") { await send({ type: kind, text }); return; }
       buf += text;
@@ -185,27 +201,46 @@ async function runToolLoop(env, user, t, system, history, message, tools, period
       if (mode === null) {
         const head = buf.trimStart();
         if (head.length < 8 && !/\n/.test(head)) return;
-        mode = /^(<<|```tool|\{\s*"name")/.test(head) ? "hold" : "stream";
+        mode = /^(<{1,2}\s*tool|```tool|\{\s*"name")/.test(head) ? "hold" : "stream";
         if (mode === "stream") { if (think) { await send({ type: "reasoning", text: think }); think = ""; } await send({ type: "delta", text: buf }); }
       }
     });
     used = r.used;
     const call = i < 5 ? parseToolCall(r.text) : null;
     if (!call || !tools.includes(call.name)) {
+      let clean = stripToolLines(r.text);
+      if (!/[가-힣A-Za-z]{2}/.test(clean)) clean = ""; // ">" · "[[tool_calls]]" 같은 깨진 답은 빈 답으로
+      // 계획을 넣었다 · 이미 있다고 말하는데 이번 요청에서 계획 도구를 하나도 안 불렀으면: 되돌려서 실제로 부르게 해요 (최대 2번)
+      const claims = canWrite && CLAIM_RE.test(clean) && !acted.some((a) => WRITE_TOOLS.has(a.name) || a.name === "day_plans" || a.name === "my_plans");
+      if (claims && nudges < 2 && i < 5) {
+        nudges++;
+        if (mode === "stream") await send({ type: "reset" });
+        await send({ type: "status", text: "실제로 넣는 중…" });
+        convo.push({ role: "user", content: msg }, { role: "assistant", content: clean });
+        msg = "방금 답은 이번 요청에서 도구를 실제로 부르지 않고 넣었다(또는 이미 있다)고 말했어. 앞 대화의 답은 믿지 마. 이미 있다고 생각하면 day_plans 로 확인하고, 없으면 add_plan 을 날짜·항목마다 한 번씩 불러. 지금은 도구 줄(<<tool>>…<</tool>>) 한 줄만 출력해.";
+        continue;
+      }
       if (think) await send({ type: "reasoning", text: think });
-      const clean = r.text.replace(/<<tool>>[\s\S]*?<<\/tool>>/g, "").trim();
-      if (mode !== "stream") await send({ type: "delta", text: clean });
-      return { text: clean, used, changed };
+      const warn = claims ? "\n\n⚠️ _실제로는 계획을 넣지 못했어요. 한 번 더 말해 주시거나 다른 모델로 바꿔 주세요._"
+        : !clean && !footer() ? "⚠️ _답을 받지 못했어요 (모델이 붐비거나 빈 답을 보냈어요). 잠시 뒤 다시 보내 주시거나 다른 모델로 바꿔 주세요._" : "";
+      const tail = footer() + warn;
+      if (mode !== "stream") await send({ type: "delta", text: clean + tail });
+      else if (tail) await send({ type: "delta", text: tail });
+      return { text: clean + tail, used, changed };
     }
     if (mode === "stream") await send({ type: "reset" });
     await send({ type: "status", text: `${TOOL_KO[call.name] || call.name} 중…` });
     const result = await runAgentTool(env, user, call.name, call.args, { periods: Object.values(periods || {}) });
     if (WRITE_TOOLS.has(call.name) && !result.error) changed = true;
-    await send({ type: "tool", name: call.name, args: call.args, summary: toolSummary(call.name, call.args, result) });
+    const summary = toolSummary(call.name, call.args, result);
+    acted.push({ name: call.name, ok: !result.error, summary });
+    await send({ type: "tool", name: call.name, args: call.args, summary });
     convo.push({ role: "user", content: msg }, { role: "assistant", content: `<<tool>>${JSON.stringify(call)}<</tool>>` });
-    msg = `[도구 결과 ${call.name}]\n${JSON.stringify(result).slice(0, 9000)}\n\n이 결과를 참고해서 계속해. (도구가 더 필요하면 한 줄만, 아니면 최종 답을 써.)`;
+    msg = `[도구 결과 ${call.name}]\n${JSON.stringify(result).slice(0, 9000)}\n\n이 결과를 참고해서 계속해. (도구가 더 필요하면 한 줄만, 아니면 최종 답을 써. 최종 답에는 이번에 도구로 실제로 한 일과 그 결과만 써 — 앞 대화나 다른 날의 계획을 다시 나열하지 마.)`;
   }
-  return { text: "", used, changed };
+  const end = footer().trim() || "⚠️ _도구를 여러 번 부르다 끝내지 못했어요. 한 번 더 말해 주세요._";
+  await send({ type: "delta", text: end });
+  return { text: end, used, changed };
 }
 const TOOL_KO = { web_search: "웹 검색", read_page: "페이지 읽기", search_notes: "노트 찾기", read_note: "노트 읽기", my_plans: "계획 보기", day_plans: "계획 보기", add_plan: "계획 넣기", update_plan: "계획 고치기", delete_plan: "계획 지우기" };
 
@@ -384,7 +419,8 @@ async function runModel(env, id, system, history, message, emit) {
       } catch (e) {
         lastErr = e;
         if (!e.retry) throw e;           // 이미 글자를 보냈거나 되돌릴 수 없는 오류
-        await emit("status", `${model} 혼잡 → 다음 모델로`);
+        await emit("reset", "");          // 앞 모델이 흘려보낸 글자는 버려요
+        await emit("status", `${model} ${e.guard ? "엉뚱한 답(안전 검사 모델)" : "혼잡"} → 다음 모델로`);
       }
     }
   }
@@ -456,6 +492,8 @@ async function openaiStream(url, key, name, payload, emit, headers = {}) {
     if (d.content) { text += d.content; await emit("delta", d.content); }
   }
   if (!text) { const e = new Error(`${name}가 빈 답을 보냈어요.`); e.retry = true; throw e; }
+  // 무료 자동 선택(openrouter/free 등)이 대화 모델이 아니라 안전 분류 모델(Llama Guard 류)로 가면 "User Safety: safe" 같은 판정만 와요
+  if (/^\s*(?:(?:User|Response|Prompt)\s+Safety\s*:|(?:safe|unsafe)\s*(?:\n|$))/i.test(text) && text.length < 300) { const e = new Error(`${name}가 대화가 아닌 안전 판정만 보냈어요.`); e.retry = true; e.guard = true; throw e; }
   return text;
 }
 
