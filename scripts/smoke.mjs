@@ -475,6 +475,63 @@ if (!process.env.SKIP_AI) {
   console.log("SKIP ai chat · brain · weekly review ai (SKIP_AI=1)");
 }
 
+// ---------- 논문 스프린트 ----------
+{
+  const D = { "x-papers-now": "2026-10-02" };
+  const aId = (await call("a", "GET", "/me")).data.user.id;
+  const mine = (d) => d.members.find((m) => m.user_id === aId); // 이름은 겹칠 수 있어서 id 로
+  r = await call("a", "PUT", "/papers/check", { paper: "yolov10", step: "read", done: true }, D);
+  ok(r.status === 200 && mine(r.data)?.checks.yolov10?.read > 0, "papers: check read");
+  r = await call("a", "PUT", "/papers/check", { paper: "nope", step: "read", done: true }, D); ok(r.status === 400, "papers: unknown paper → 400");
+  r = await call("a", "PUT", "/papers/check", { paper: "yolov10", step: "sleep", done: true }, D); ok(r.status === 400, "papers: unknown step → 400");
+  r = await call("a", "POST", "/papers/quiz", { paper: "yolov10", correct: 3 }, D); ok(r.status === 200 && !r.data.passed && !mine(r.data).checks.yolov10?.quiz, "papers: quiz 3/5 does not check");
+  r = await call("a", "POST", "/papers/quiz", { paper: "yolov10", correct: 5 }, D); ok(r.data.passed && mine(r.data).checks.yolov10.quiz_score === 5, "papers: quiz 5/5 checks with score");
+  r = await call("a", "POST", "/papers/quiz", { paper: "yolov10", correct: 4 }, D); ok(mine(r.data).checks.yolov10.quiz_score === 5, "papers: quiz keeps best score");
+  r = await call("b", "GET", "/papers/progress", null, D); ok(r.status === 200 && mine(r.data)?.done === 2 && r.data.total === 48, "papers: friend sees my progress");
+  r = await call("a", "PUT", "/papers/note", { paper: "yolov10", text: "NMS 없이 학습 때만 여러 상자" }, D); ok(r.status === 200, "papers: note saved");
+  r = await call("b", "GET", "/papers/progress", null, D); ok(mine(r.data).notes.yolov10?.startsWith("NMS"), "papers: friend sees my note");
+  r = await call("b", "PUT", "/papers/note", { paper: "yolov10", text: "x".repeat(301) }, D); ok(r.status === 400, "papers: note too long → 400");
+  r = await call("a", "POST", "/papers/explain", { paper: "yolov10", text: "짧아요" }, D); ok(r.status === 400, "papers: explain too short → 400");
+  // 옵시디언 토큰
+  r = await call("a", "POST", "/papers/obsidian", null, D);
+  const tok = (r.data.url || "").split("#t=")[1];
+  ok(r.status === 200 && tok && r.data.markdown.includes("<iframe"), "papers: obsidian note with token");
+  r = await call("x", "GET", "/papers/t/" + tok, null, D); ok(r.status === 200 && r.data.me && mine(r.data)?.checks.yolov10?.read, "papers: token reads progress without login");
+  r = await call("x", "PUT", "/papers/t/" + tok + "/check", { paper: "bytetrack", step: "read", done: true }, D); ok(r.status === 200 && mine(r.data).checks.bytetrack?.read, "papers: token can check own step");
+  r = await call("a", "POST", "/papers/obsidian", null, D);
+  r = await call("x", "GET", "/papers/t/" + tok, null, D); ok(r.status === 404, "papers: old token revoked after re-issue");
+  r = await call("x", "GET", "/papers/t/short", null, D); ok(r.status === 404, "papers: malformed token → 404");
+  // 끝난 뒤 (10-06)
+  const E = { "x-papers-now": "2026-10-06" };
+  r = await call("a", "PUT", "/papers/check", { paper: "sam", step: "read", done: true }, E); ok(r.status === 410, "papers: writes closed after 10-05 → 410");
+  r = await call("a", "GET", "/papers/progress", null, E); ok(r.status === 200 && r.data.ended === true, "papers: progress still readable, ended flag");
+  r = await call("a", "PUT", "/papers/check", { paper: "yolov10", step: "read", done: false }, D); ok(r.status === 200 && !mine(r.data).checks.yolov10?.read, "papers: uncheck");
+  if (!process.env.SKIP_AI) {
+    { // 스트리밍(SSE): delta 가 여러 번 오고 end 로 끝나요
+      const res = await fetch(BASE + "/api/papers/ask", { method: "POST", headers: { "content-type": "application/json", "x-trio": "1", cookie: jar.a, ...D }, body: JSON.stringify({ paper: "yolov10", messages: [{ role: "user", content: "IoU 가 뭐예요? 한 문장으로" }] }) });
+      const raw = await res.text(), evs = raw.split("\n\n").filter((x) => x.startsWith("data: ")).map((x) => JSON.parse(x.slice(6)));
+      const end = evs.find((e) => e.type === "end");
+      ok(res.headers.get("content-type")?.includes("text/event-stream") && evs.filter((e) => e.type === "delta").length > 1 && end?.text?.length > 0, `papers ask stream: ${evs.length} events → ${(end?.text || evs.find((e) => e.type === "error")?.message || "").replace(/\s+/g, " ").slice(0, 50)}`);
+    }
+    r = await call("a", "POST", "/papers/ask?stream=0", { paper: "yolov10", messages: [{ role: "user", content: "NMS 가 뭐예요? 한 문장으로" }] }, D);
+    ok(r.status === 200 && r.data.text?.length > 0, "papers ask: " + (r.data.text || r.data.error || "").replace(/\s+/g, " ").slice(0, 60));
+    r = await call("a", "POST", "/papers/explain", { paper: "yolov10", text: "YOLOv10은 겹치는 상자를 지우는 NMS 후처리 때문에 배포가 느려지는 문제를 풀었어요. 학습 때는 한 물체에 여러 예측을 연결하는 one-to-many 헤드와 하나만 연결하는 one-to-one 헤드를 같이 학습하고, 두 헤드의 매칭 기준을 맞춰요. 추론 때는 one-to-one 헤드만 써서 NMS 가 필요 없어요. COCO 에서 비슷한 정확도로 지연이 줄었어요. 우리 RKNN 보드에서는 CPU 후처리가 줄어들어 좋아요." }, D);
+    ok(r.status === 200 && r.data.score >= 50, "papers explain: good answer scores ≥ 50 → " + (r.data.score ?? r.data.error));
+  }
+  // 노트의 '📄 논문 공부' 구역: 10-05 까지는 그대로, 10-06 에 뿌리 · 넣어 준 페이지 · 그 아래 직접 만든 페이지까지 지우고 영어 구역은 남겨요
+  r = await call("a", "POST", "/notes", { title: "t 논문 뿌리 " + tag, body: "<!-- papers:board -->\n" }); const pr = r.data.note.id;
+  r = await call("a", "POST", "/notes", { title: "t 영어 뿌리 " + tag, body: "#영어\n" }); const er = r.data.note.id;
+  d1(`INSERT INTO study_seed_notes (note_id, user_id, kind, created_at) VALUES ('${pr}', '${aId}', 'papers', 1), ('${er}', '${aId}', 'english', 1)`);
+  r = await call("a", "POST", "/notes", { title: "t 내가 만든 하위 " + tag, body: "메모", parent_id: pr }); const kid = r.data.note.id;
+  r = await call("a", "POST", "/papers/cleanup", null, D); ok(r.status === 200 && r.data.deleted === 0, "papers notes: kept during sprint");
+  r = await call("a", "POST", "/papers/cleanup", null, E); ok(r.status === 200 && r.data.deleted >= 2, "papers notes: cleanup after 10-05 deletes " + r.data.deleted);
+  r = await call("a", "GET", "/notes/" + pr); ok(r.status === 404, "papers notes: root gone");
+  r = await call("a", "GET", "/notes/" + kid); ok(r.status === 404, "papers notes: child page gone too");
+  r = await call("a", "GET", "/notes/" + er); ok(r.status === 200, "papers notes: english zone untouched");
+  await call("a", "DELETE", "/notes/" + er);
+  execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", "DELETE FROM paper_checks; DELETE FROM paper_notes; DELETE FROM paper_tokens;"], { stdio: "ignore" });
+}
+
 r = await call("a", "POST", "/auth/logout"); r = await call("a", "GET", "/me"); ok(r.status === 401, "logout");
 
 execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", "DELETE FROM users WHERE username LIKE 't\\_%' ESCAPE '\\'"], { stdio: "ignore" });

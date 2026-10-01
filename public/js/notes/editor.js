@@ -8,6 +8,7 @@ import { icon } from "../icons.js";
 import { shrink, imageFiles, pickImages, MAX_IMAGES } from "../imgattach.js";
 
 const AI_START = "<!-- ai:start -->", AI_END = "<!-- ai:end -->", MOC_MARK = "<!-- ai:moc -->";
+const PAPERS_MARK = "<!-- papers:board -->"; // 논문 스프린트 현황판 (셋 진도 · 체크) — 앱이 그 자리에 판을 그려요
 const TYPES = {
   p: { label: "본문", hint: "그냥 글", key: "" },
   h1: { label: "제목 1", hint: "가장 큰 제목", key: "#" },
@@ -26,7 +27,7 @@ const TYPES = {
 const MENU = ["p", "h1", "h2", "h3", "bullet", "number", "todo", "quote", "code", "divider", "link", "page", "ai"];
 const LISTY = new Set(["bullet", "number", "todo"]);
 const TEXTY = new Set(["p", "h1", "h2", "h3", "bullet", "number", "todo", "quote"]);
-const WIDGET = new Set(["divider", "page", "ai", "ask", "newpage", "meta"]);
+const WIDGET = new Set(["divider", "page", "ai", "ask", "newpage", "meta", "papers"]);
 
 // ---------- 마크다운 → 블록 ----------
 export function parseBlocks(md) {
@@ -36,6 +37,7 @@ export function parseBlocks(md) {
     const l = lines[i];
     if (!l.trim()) continue;
     if (l.startsWith(MOC_MARK)) { out.push({ type: "meta", text: MOC_MARK }); continue; }
+    if (l.trim() === PAPERS_MARK) { out.push({ type: "papers" }); continue; }
     if (l.startsWith(AI_START)) {
       const buf = []; let j = i + 1;
       while (j < lines.length && !lines[j].startsWith(AI_END)) buf.push(lines[j++]);
@@ -78,6 +80,7 @@ export function serializeBlocks(blocks) {
     let s;
     switch (b.type) {
       case "meta": s = b.text; break;
+      case "papers": s = PAPERS_MARK; break;
       case "h1": s = "# " + t; break;
       case "h2": s = "## " + t; break;
       case "h3": s = "### " + t; break;
@@ -122,6 +125,17 @@ function inlineToMd(node) {
   return out.replace(/\n$/, "");
 }
 
+// 논문 현황판: 같은 로그인으로 /papers/embed 를 끼워 넣어요 (10.5 가 지나면 판이 "끝났어요"로 바뀌고, 10.6 에 이 구역이 지워져요)
+function papersBoard() {
+  const theme = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  return `<div class="bx-papers"><iframe src="/papers/embed#mode=note&theme=${theme}" title="논문 스프린트 현황판" loading="lazy" height="560"></iframe></div>`;
+}
+// 판이 자기 높이를 알려 주면 그만큼 늘려요 (안쪽 스크롤 없이)
+window.addEventListener("message", (e) => {
+  if (e.origin !== location.origin || e.data?.type !== "papers-embed-height") return;
+  document.querySelectorAll(".bx-papers iframe").forEach((f) => { if (f.contentWindow === e.source) f.height = String(Math.max(200, Math.min(4000, Math.ceil(e.data.h)))); });
+});
+
 // ---------- 편집기 ----------
 // opts: notes(제목 목록) · onChange() · onOpenTitle(title) · onOpenTag(tag) · onAsk(question, context) → Promise<markdown|{text,model}> · onNewPage(title) → Promise<note|null> · readOnly
 export function createEditor(host, opts) {
@@ -153,6 +167,7 @@ export function createEditor(host, opts) {
     switch (b.type) {
       case "meta": el.contentEditable = "false"; el.dataset.md = b.text; el.hidden = true; break;
       case "divider": el.contentEditable = "false"; el.innerHTML = `<hr>`; break;
+      case "papers": el.contentEditable = "false"; el.innerHTML = papersBoard(); break;
       case "code": el.innerHTML = `<div class="code-top" contenteditable="false"><input class="code-lang" value="${esc(b.lang || "")}" placeholder="언어" aria-label="코드 언어" ${RO ? "readonly" : ""}></div><div class="bx" data-plain="1">${esc(b.text)}</div>`; break;
       case "raw": el.innerHTML = `<div class="bx" data-plain="1">${esc(b.text)}</div>`; break;
       case "page": el.contentEditable = "false"; el.dataset.page = b.text; el.innerHTML = `<a class="bx-page" href="#"><span class="pg-ic">📄</span><span class="pg-t">${esc(b.text)}</span><span class="faint">페이지</span></a>`; break;
@@ -177,6 +192,7 @@ export function createEditor(host, opts) {
       case "ai": return { type: "ai", text: el.dataset.md || "" };
       case "page": return { type: "page", text: el.dataset.page || "" };
       case "divider": return { type: "divider" };
+      case "papers": return { type: "papers" };
       case "ask": case "newpage": return null;
       case "code": return { type: "code", lang: el.querySelector(".code-lang")?.value.trim() || "", text: (el.querySelector(".bx")?.innerText || "").replace(/\n$/, "") };
       case "raw": return { type: "raw", text: (el.querySelector(".bx")?.innerText || "").replace(/\n$/, "") };

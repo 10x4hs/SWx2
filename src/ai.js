@@ -502,15 +502,18 @@ const RUN = { gemini, mimo, groq, cohere, zhipu: openaiLike("zhipu"), openrouter
 // ---------- 글 한 번에 받기 (대화방 AI용) ----------
 // 스트리밍 함수를 그대로 쓰되 글자는 모아서 한 번에 돌려줘요. messages = [{ role: 'user'|'assistant', content }], 마지막은 user.
 // 회사 순서는 order 로 (기본 Groq → Gemini → Cohere → MiMo → Zhipu → OpenRouter → Kilo). 붐비면 다음 모델, 그 회사가 아예 안 되면 다음 회사로.
-export async function aiText(env, system, messages, order = TEXT_ORDER) {
+// onToken(text) 을 주면 글자가 나오는 대로 불러요 (스트리밍). 모델이 바뀌어 다시 시작하면 onToken("", { reset: true }) 로 알려요.
+export async function aiText(env, system, messages, order = TEXT_ORDER, onToken = null) {
   const groups = order.filter((p) => MODELS[p] && hasKey(env, p));
   if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
   const history = messages.slice(0, -1), last = messages[messages.length - 1]?.content || "";
   const quiet = async () => {};
-  let lastErr = null;
+  let lastErr = null, started = false;
   for (const p of groups) {
     for (const model of MODELS[p].chain) {
-      try { return { text: await RUN[p](env, model, system, history, last, quiet), used: model }; }
+      // RUN 의 emit(kind, text) 중 delta 만 밖으로 (status · reasoning 은 조용히)
+      const tok = onToken ? async (kind, t) => { if (kind !== "delta") return; started = true; await onToken(t); } : quiet;
+      try { if (started && onToken) await onToken("", { reset: true }); started = false; return { text: await RUN[p](env, model, system, history, last, tok), used: model }; }
       catch (e) { lastErr = e; if (!e.retry) break; }
     }
   }

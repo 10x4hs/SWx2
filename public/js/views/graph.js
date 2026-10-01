@@ -4,6 +4,19 @@
 import { api } from "../api.js";
 import { $, esc, toast } from "../util.js";
 import { openByTitle } from "./notes.js";
+import { loadIndex } from "../papers/data.js";
+
+// 논문 스프린트 노드(#논문스프린트): 두 번 누르면 노트 대신 공부 페이지로 (제목 → 논문 id)
+let paperIds = null;
+loadIndex().then((idx) => { paperIds = new Map(idx.papers.map((p) => [p.title.toLowerCase(), p.id])); }).catch(() => {});
+const paperHash = (n) => {
+  if (!n || n.tag || n.ghost || !paperIds) return null;
+  const tagged = String(n.tags || "").split(",").includes("논문스프린트");
+  if (!tagged) return null;
+  if (n.title === "📄 논문 공부") return "#/papers";
+  const id = paperIds.get(String(n.title).toLowerCase());
+  return id ? "#/papers/" + id : null;
+};
 
 // 주제 색: 차분한 파스텔 (유리 구슬이라 너무 진하면 촌스러워요)
 const PALETTE = ["#E9B872", "#8CC5B0", "#93A9E8", "#E39AA8", "#B9A3E6", "#84C6CC", "#D9C27A", "#E0A184", "#A7B6CB", "#B3CF8C"];
@@ -58,6 +71,7 @@ export function mount(root, ctx) {
       <div class="obs-sel glass" id="selbar" hidden>
         <span class="dot" id="sel-dot"></span><b id="sel-title"></b><span class="faint">→ 연결할 노트를 누르세요</span>
         <button type="button" class="btn sm ghost" id="sel-open">열기</button>
+        <button type="button" class="btn sm ghost" id="sel-note" hidden>노트 열기</button>
         <button type="button" class="btn sm ghost danger-btn" id="sel-del" hidden>지우기</button>
         <button type="button" class="icon-btn sm" id="sel-x" aria-label="선택 취소">✕</button>
       </div>
@@ -275,13 +289,18 @@ export function mount(root, ctx) {
     sel = n && !n.tag ? n : null;
     selbar.hidden = !sel;
     $("#sel-del", root).hidden = !(sel && !sel.ghost && sel.user_id === ctx.me.id);
-    if (sel) { $("#sel-title", root).textContent = sel.title; $("#sel-dot", root).style.setProperty("--c", sel.color); hint.textContent = "다른 점을 누르면 이어져요 · 빈 곳 우클릭으로 이어진 새 노트 · 다시 누르면 취소 · 두 번 누르면 열기"; }
+    const isPaper = !!(sel && paperHash(sel));
+    $("#sel-open", root).textContent = isPaper ? "공부 페이지" : "열기";
+    $("#sel-note", root).hidden = !isPaper;
+    if (sel) { $("#sel-title", root).textContent = sel.title; $("#sel-dot", root).style.setProperty("--c", sel.color); hint.textContent = isPaper ? "두 번 누르면 공부 페이지(설명 · 그림 · 퀴즈) · 내 정리 노트는 '노트 열기'" : "다른 점을 누르면 이어져요 · 빈 곳 우클릭으로 이어진 새 노트 · 다시 누르면 취소 · 두 번 누르면 열기"; }
     else hint.textContent = "우클릭으로 새 노트·지우기 · 점을 누르고 다른 점을 누르면 연결 · 두 번 누르면 열기 · 선 위 ✕ 로 끊기";
     kick();
   }
   function openNode(n) {
     select(null); pop.hidden = true;
-    if (n.tag) ctx.go("#/notes/tag/" + encodeURIComponent(n.title.slice(1)));
+    const ph = paperHash(n);
+    if (ph) ctx.go(ph); // 논문 노드 → 공부 페이지 (노트 자체는 선택 띠의 '노트 열기'로)
+    else if (n.tag) ctx.go("#/notes/tag/" + encodeURIComponent(n.title.slice(1)));
     else if (n.ghost) openByTitle(ctx, n.title);
     else ctx.go("#/notes/" + n.id);
   }
@@ -356,6 +375,7 @@ export function mount(root, ctx) {
     finally { busy = false; }
   });
   $("#sel-open", root).addEventListener("click", () => sel && openNode(sel));
+  $("#sel-note", root).addEventListener("click", () => { if (sel && !sel.ghost) { const n = sel; select(null); ctx.go("#/notes/" + n.id); } });
   const onKey = (e) => { if (e.key === "Escape" && (sel || !pop.hidden || !newpop.hidden || !menu.hidden)) { select(null); pop.hidden = true; closeNew(); closeMenu(); } };
   document.addEventListener("keydown", onKey);
 

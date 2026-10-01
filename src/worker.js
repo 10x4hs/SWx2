@@ -3,6 +3,7 @@
 import { registerAi, aiJson } from "./ai.js";
 import { registerBrain } from "./brain.js";
 import { registerEnglish } from "./english.js";
+import { registerPapers, cleanupPaperNotes } from "./papers.js";
 import { registerCalendar } from "./calendar.js";
 import { registerTogether, weeklyReviewCron } from "./together.js";
 import { registerRoom } from "./room.js";
@@ -56,6 +57,8 @@ export default {
       return;
     }
     ec.waitUntil(autoSaveYesterday(env).then((r) => console.log("자동 저장", r.day, r.saved + "명")));
+    // 논문 스프린트가 끝났으면(10-06~) 노트의 논문 구역을 지워요
+    ec.waitUntil(cleanupPaperNotes(env, kstDay(0)).then((r) => r.deleted && console.log("논문 구역 정리", r.deleted + "개")));
   },
 };
 
@@ -772,6 +775,7 @@ on("GET", "/records/days", async ({ env, q, user, ec }) => {
 registerAi(on, { json, body, fail, str, uid, now });
 registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_NOTE });
 registerEnglish(on, { json, body, fail, uid, now });
+registerPapers(on, { json, body, fail, now });
 registerCalendar(on, { json, fail });
 registerTogether(on, { json, body, fail, now, kstDay });
 registerRoom(on, { json, body, fail, uid, now });

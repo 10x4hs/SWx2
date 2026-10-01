@@ -11,6 +11,7 @@ import * as goalsView from "./views/goals.js";
 import * as checklistView from "./views/checklist.js";
 import * as homeView from "./views/home.js";
 import * as englishView from "./views/english.js";
+import * as papersView from "./views/papers.js";
 import * as calendarView from "./views/calendar.js";
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
@@ -81,10 +82,14 @@ const NAV = [
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
   { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리 · 그래프" },
   { key: "english", hash: "#/english", label: "영어", tip: "영어 · 6개월 프리토킹" },
+  { key: "papers", hash: "#/papers", label: "논문", tip: "논문 스프린트 · 10.1–10.5 · 16편", until: "2026-10-05" },
   { key: "ai", hash: "#/ai", label: "AI 튜터", tip: "AI 튜터 · 묻고 노트로 정리" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const NAV_SPLIT = 2;
+// until 이 지난 메뉴는 Dock 에서 빠져요 (한국 시간 기준) — 주소로 들어가면 결과는 볼 수 있어요
+const kstNow = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const navLive = () => NAV.filter((n) => !n.until || kstNow() <= n.until);
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 function renderShell() {
@@ -96,9 +101,9 @@ function renderShell() {
         <button class="rail-btn" type="button" id="open-palette" aria-label="검색 · 명령 (${isMac ? "⌘" : "Ctrl"} K)" data-tip="검색 · ${isMac ? "⌘" : "Ctrl"}K">${appIcon("search")}</button>
         <i class="dock-sep" aria-hidden="true"></i>
         <nav class="rail-nav">
-          ${NAV.slice(0, NAV_SPLIT).map(item).join("")}
+          ${navLive().slice(0, NAV_SPLIT).map(item).join("")}
           <i class="dock-sep" aria-hidden="true"></i>
-          ${NAV.slice(NAV_SPLIT).map(item).join("")}
+          ${navLive().slice(NAV_SPLIT).map(item).join("")}
         </nav>
         <div class="rail-foot">
           <button class="rail-btn" type="button" id="timer-btn" aria-label="집중 타이머" data-tip="집중 타이머 · 25분" aria-expanded="false">${appIcon("timer")}<span id="timer-mini"></span></button>
@@ -276,11 +281,12 @@ function parseRoute() {
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null };
   if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
+  if (a === "papers") return { view: "papers", nav: "papers", id: b || null };
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, calendar: calendarView, room: roomView };
+const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, calendar: calendarView, room: roomView };
 let lastView = null;
 
 function route() {
@@ -296,6 +302,7 @@ function route() {
   if (lastView === "checklist" && r.view === "checklist") { checklistView.update(r); return; } // 주·월·년 탭은 판을 그대로 // 날짜만 바뀌면 편집기만 바꿔요
   if (lastView === "calendar" && r.view === "calendar" && calendarView.update) { calendarView.update(r); return; } // 날짜만 바뀌면 달력은 그대로
   if (lastView === "english" && r.view === "english" && englishView.update) { englishView.update(r); return; } // 영어 탭 전환은 판을 다시 만들지 않아요
+  if (lastView === "papers" && r.view === "papers") { papersView.update(r); return; } // 현황판 ↔ 논문 페이지
   if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>
