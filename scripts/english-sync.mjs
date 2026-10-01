@@ -9,7 +9,8 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const VAULT = process.env.ENGLISH_OS || "/Users/prime/Documents/ENGLISH-OS";
+// 볼트는 STUDY-OS 의 "영어 공부/" 구역으로 옮겼어요 (scripts/papers/vault-restructure.py). 옛 위치도 찾아봐요.
+const VAULT = process.env.ENGLISH_OS || ["/Users/prime/Documents/STUDY-OS/영어 공부", "/Users/prime/Documents/ENGLISH-OS"].find((p) => existsSync(p)) || "/Users/prime/Documents/STUDY-OS/영어 공부";
 const API = (process.env.API || "https://dsm-mafia.dsm-mafia.workers.dev").replace(/\/+$/, "");
 const USER = process.env.EN_USER, PASS = process.env.EN_PASS;
 const DRY = process.argv.includes("--dry-run");
