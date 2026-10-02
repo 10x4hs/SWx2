@@ -3,7 +3,7 @@
 // 읽는 법은 어디서나 같아요: 진한 색 = 이룬 목표/끝낸 일 · 옅은 색 = 이미 지난 시간 · 회색 = 남은 것 · 흰 눈금 = 지금.
 // 링이나 칸을 누르면 그 기간의 계획(또는 그날)으로 들어가요.
 import { api } from "../api.js";
-import { $, $$, esc, ymd, today, periodKey, periodStart, periodEnd, elapsed, dayScore, pct, nowTime, toast, daysInYear, dayOfYear, initial, addDays, isoWeek, avatar } from "../util.js";
+import { $, $$, esc, ymd, today, periodKey, periodStart, periodEnd, elapsed, dayScore, pct, nowTime, toast, daysInYear, dayOfYear, initial, addDays, isoWeek, avatar, hm } from "../util.js";
 import { ringHud, ringRows, gapText, RINGS } from "../ringhud.js";
 import { periodChart } from "../charts/period.js";
 import { dayClock } from "../charts/day.js";
@@ -24,7 +24,7 @@ const LEGEND = {
   month: ["진한 색 = 이룬 목표 · 다 한 날", "옅을수록 = 덜 한 날 · 지난 시간", "회색 = 남은 목표 · 빈 날"],
   week: ["진한 색 = 이룬 목표 · 다 한 날", "옅을수록 = 덜 한 날 · 지난 시간", "회색 = 남은 목표 · 빈 날"],
   day: ["진한 색 = 끝낸 일", "옅은 색 = 이미 지난 시간", "회색 = 아직 안 한 일"],
-  check: ["진한 색 = 끝낸 할 일", "옅은 색 = 남은 할 일", "색 = 우선순위 (Max → Low)"],
+  check: ["진한 색 = 끝낸 할 일", "옅은 색 = 남은 할 일", "색 = 우선순위 (1순위 → 5순위)"],
 };
 const HINT = { all: "링을 누르면 그 기간 목표 · 오늘은 하루 계획표", check: "도넛 · 요일을 누르면 체크리스트로", month: "누르면 이번 달 목표", week: "누르면 이번 주 목표", day: "누르면 시간 순 하루 계획표" };
 const COLOR = { all: "var(--r-week)", check: "var(--p-max)", month: "var(--r-month)", week: "var(--r-week)", day: "var(--r-day)", team: "var(--m0)" };
@@ -114,11 +114,11 @@ export function mount(root, ctx) {
     const wkMax = Math.max(1, ...c.week.map((d) => d.total));
     const go = (h, inner, cls = "") => (own ? `<a class="${cls}" href="${h}">${inner}</a>` : `<span class="${cls}">${inner}</span>`);
     return `<div class="hc${wide ? " wide" : ""}">
-      ${go("#/checklist", prioDonut(items, { size: wide ? 360 : 260 }), "hc-donut")}
+      ${go("#/checklist", prioDonut(items, { size: wide ? 360 : 260, time: true }), "hc-donut")}
       <div class="hc-side">
         <div class="hc-h"><b>체크리스트</b>${own ? `<span class="faint">도넛을 누르면 적기</span>` : ""}</div>
         <div class="hc-bars">${rows.length ? rows.map((r) => `<div class="pb" style="--pc:${PRIO_COLOR[r.k]}"><span class="pb-l">${PRIO_LABEL[r.k]}</span><span class="pb-t" style="--w:${(r.n / max) * 100}%"><i style="--f:${(r.d / r.n) * 100}%"></i></span><span class="pb-n">${r.d}/${r.n}</span></div>`).join("") : `<p class="faint">${own ? "아직 오늘 할 일이 없어요. 도넛을 눌러 적어 보세요." : "오늘 할 일이 없어요."}</p>`}</div>
-        ${own && left.length ? `<ul class="hc-left">${left.map((p) => `<li><i style="background:${PRIO_COLOR[p.priority || "none"]}"></i>${p.start ? `<em>${esc(p.start)}</em>` : ""}<span>${esc(p.text)}</span></li>`).join("")}</ul>` : ""}
+        ${own && left.length ? `<ul class="hc-left">${left.map((p) => `<li><i style="background:${PRIO_COLOR[p.priority || "none"]}"></i>${p.start ? `<em>${esc(p.start)}</em>` : ""}<span>${esc(p.text)}</span>${p.mins ? `<b class="hc-mins">${esc(hm(p.mins))}</b>` : ""}</li>`).join("")}</ul>` : ""}
         <div class="hc-week" aria-label="이번 주 체크리스트">${c.week.map((d) => go(`#/checklist/${d.ymd}`, `<span class="hw-bar${d.today ? " today" : ""}${d.future ? " future" : ""}" style="--h:${d.total ? Math.max(8, (d.total / wkMax) * 100) : 4}%;--f:${d.total ? (d.done / d.total) * 100 : 0}%"><i></i></span><span class="hw-d">${"일월화수목금토"[d.date.getDay()]}</span><span class="hw-n">${d.total ? `${d.done}/${d.total}` : ""}</span>`, "hw")).join("")}</div>
       </div>
     </div>`;
