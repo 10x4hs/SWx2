@@ -1,7 +1,7 @@
 // 노트: 옵시디언처럼 [[위키링크]] · 백링크 · #태그 · 편집/분할/보기
 import { keepDraft } from "../draft.js";
 import { api } from "../api.js";
-import { $, esc, debounce, toast, initial, nowTime, ymd, parseYmd, DOW } from "../util.js";
+import { $, esc, debounce, toast, initial, nowTime, ymd, parseYmd, DOW, avatar } from "../util.js";
 import { icon } from "../icons.js";
 import { renderMarkdown, outline } from "../md.js";
 import { createEditor } from "../notes/editor.js";
@@ -153,7 +153,7 @@ export function mount(root, ctx, r) {
         ${S.crumbs.length ? `<nav class="crumbs" aria-label="상위 페이지">${S.crumbs.map((c) => `<a href="#/notes/${c.id}">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b></nav>` : ""}
         <input class="ed-title" id="ed-title" value="${esc(n.title)}" aria-label="노트 제목" ${own ? "" : "readonly"} maxlength="120">
         <div class="row faint" style="font-size:12px;gap:10px">
-          <span class="row" style="gap:6px"><span class="av sm" style="--c:${esc(u?.color || "#999")}">${esc(initial(u?.display_name))}</span>${esc(u?.display_name || "")}</span>
+          <span class="row" style="gap:6px">${avatar({ ...(u || {}), color: u?.color || "#999" }, "sm")}${esc(u?.display_name || "")}</span>
           <span>${fmt(n.created_at)} 작성</span>
           <span id="ed-tags" class="row" style="gap:4px">${S.tags.map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join("")}</span>
         </div>

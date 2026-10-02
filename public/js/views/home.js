@@ -3,7 +3,7 @@
 // 읽는 법은 어디서나 같아요: 진한 색 = 이룬 목표/끝낸 일 · 옅은 색 = 이미 지난 시간 · 회색 = 남은 것 · 흰 눈금 = 지금.
 // 링이나 칸을 누르면 그 기간의 계획(또는 그날)으로 들어가요.
 import { api } from "../api.js";
-import { $, $$, esc, ymd, today, periodKey, periodStart, periodEnd, elapsed, dayScore, pct, nowTime, toast, daysInYear, dayOfYear, initial, addDays, isoWeek } from "../util.js";
+import { $, $$, esc, ymd, today, periodKey, periodStart, periodEnd, elapsed, dayScore, pct, nowTime, toast, daysInYear, dayOfYear, initial, addDays, isoWeek, avatar } from "../util.js";
 import { ringHud, ringRows, gapText, RINGS } from "../ringhud.js";
 import { periodChart } from "../charts/period.js";
 import { dayClock } from "../charts/day.js";
@@ -12,6 +12,7 @@ import { teamWeek } from "../charts/team.js";
 import { scramble } from "../fx.js";
 import { mountCommand } from "../ai-command.js";
 import { prioDonut, prioStats, PRIO_COLOR, PRIO_LABEL } from "../charts/prio.js";
+import { mountPad } from "../home-pad.js";
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
 const daysLeft = (key) => Math.max(0, Math.ceil((periodEnd(key) - Date.now()) / 864e5));
@@ -57,6 +58,7 @@ export function mount(root, ctx) {
           <h1 class="stage-hi" id="hi">${greet(new Date().getHours())}, <b></b></h1>
           <div class="hud-cheer" id="cheer" aria-live="polite"></div>
         </div>
+        <div class="hud-pad" id="pad"></div>
         <div class="hud-tr mono" id="clock"></div>
         <div class="stage-chart v9" id="chart">
           <button type="button" class="pg-arrow prev" data-page-prev>‹</button>
@@ -74,7 +76,7 @@ export function mount(root, ctx) {
         <div class="hud-bc" id="focus-line"></div>
         <div class="hud-br">
           <div class="who-switch" role="tablist" aria-label="누구의 현황을 볼까요">
-            ${ctx.users.map((u) => `<button type="button" role="tab" data-who="${u.id}" style="--c:${esc(u.color)}"><span class="av sm" style="--c:${esc(u.color)}">${esc(initial(u.display_name))}</span>${esc(u.username.toUpperCase())}</button>`).join("")}
+            ${ctx.users.map((u) => `<button type="button" role="tab" data-who="${u.id}" style="--c:${esc(u.color)}">${avatar(u, "sm")}${esc(u.username.toUpperCase())}</button>`).join("")}
           </div>
         </div>
       </div>
@@ -83,6 +85,8 @@ export function mount(root, ctx) {
 
   const chart = $("#chart", root), view = $("#pg-view", root);
   const mine = () => S.who === ctx.me.id;
+  // 인사말 아래: 오늘의 다짐(셋이 봐요) · 메모장(나만). 친구 칩을 누르면 오른쪽 아래 사람 고르기와 같아요
+  const pad = mountPad($("#pad", root), ctx, { onPickWho: (id) => root.querySelector(`[data-who="${CSS.escape(id)}"]`)?.click() });
   const target = (key) => (mine() ? HREF[key] : "#/"); // 다른 사람은 차트만 (눌러도 안내만)
   // 한 달 · 한 주 차트는 어디를 눌러도 그 기간 페이지로 (달은 달치만 · 주는 주치만)
   const dayTarget = (d) => (pageKey() === "month" ? "#/goals/month" : pageKey() === "week" ? "#/goals/week" : `#/calendar/${d}`);
@@ -269,7 +273,7 @@ export function mount(root, ctx) {
     if (e.target.closest("#wk-ai-btn")) { makeReview(); return; }
     if (e.target.closest("#cheer-btn")) { sendCheer(); return; }
     const b = e.target.closest("[data-who]");
-    if (b && b.dataset.who !== S.who) { S.who = b.dataset.who; S.hover = null; load(true); return; }
+    if (b && b.dataset.who !== S.who) { S.who = b.dataset.who; S.hover = null; pad.setWho(S.who); load(true); return; }
     const d = e.target.closest("svg [data-day]");
     if ((d || e.target.closest("svg [data-ring]")) && !mine()) { toast("서로는 차트만 볼 수 있어요. 계획 내용은 본인만 봐요."); return; }
     if (d) { ctx.go(dayTarget(d.dataset.day)); return; }
@@ -313,7 +317,7 @@ export function mount(root, ctx) {
       const txt = `공부 중 · ${mins}분째`;
       if (!live) { live = document.createElement("span"); live.className = "ws-live"; b.append(live); }
       live.innerHTML = `<i aria-hidden="true"></i>${txt}`;
-      b.title = `${u?.display_name || ""} · ${txt}`;
+      b.title = `${u?.display_name || ""}${u?.bio ? " — " + u.bio : ""} · ${txt}`; // 한 줄 소개도 같이
       b.setAttribute("aria-label", `${u?.display_name || ""} 현황 보기 · ${txt}`);
     });
   }
@@ -392,5 +396,8 @@ export function mount(root, ctx) {
   const tick = setInterval(() => { load(false); loadTogether(); if (pageKey() === "team") loadWeek(true); }, 60_000);
   const onChanged = () => { load(false); loadTogether(); };
   window.addEventListener("trio:changed", onChanged);
-  return () => { alive = false; stopAi?.(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); };
+  // 프로필(이름 · 사진)을 바꾸면 오른쪽 아래 사람 고르기도 바로 새 모습으로
+  const onMe = () => { $$("[data-who]", root).forEach((btn) => { const u = ctx.user(btn.dataset.who); const old = btn.querySelector(".av"); if (u && old) old.outerHTML = avatar(u, "sm"); }); pad.refresh?.(); };
+  window.addEventListener("trio:me", onMe);
+  return () => { alive = false; stopAi?.(); pad.destroy(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); window.removeEventListener("trio:me", onMe); };
 }

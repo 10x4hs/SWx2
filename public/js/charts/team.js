@@ -1,6 +1,6 @@
 // 홈 5쪽 "우리 셋" — 한 주를 셋이 나란히. 숫자는 셋 다(공부 시간 · 계획 달성), 회고 글은 나만.
 // 막대 색 = 멤버 색(--m0~2). 진한 막대 = 한 것, 회색 = 남은 계획. UI(탭·버튼)는 무채색.
-import { esc, hm, initial, pct } from "../util.js";
+import { esc, hm, initial, pct, avatar } from "../util.js";
 import { icon } from "../icons.js";
 import { renderMarkdown } from "../md.js";
 
@@ -28,7 +28,7 @@ export function teamWeek({ data, users, meId, off, weekNo, from, to, busy, error
       const sw = ((m.study_mins || 0) / maxStudy) * 100, pr = m.plans_total ? m.plans_done / m.plans_total : 0;
       const facts = [m.active_days ? `공부한 날 ${m.active_days}일` : "", m.score_avg != null ? `평균 ${Math.round(m.score_avg)}점` : "", m.diary_days ? `일기 ${m.diary_days}일` : "", m.cheers ? `👏 ${m.cheers}` : ""].filter(Boolean).join(" · ");
       return `<div class="wk-row" style="--c:var(--m${i % 3})">
-        <span class="wk-who"><span class="av sm" style="--c:var(--m${i % 3})">${esc(initial(u.display_name))}</span><b>${esc(u.username.toUpperCase())}</b>${u.id === meId ? "<small>나</small>" : ""}</span>
+        <span class="wk-who">${avatar({ ...u, color: `var(--m${i % 3})` }, "sm")}<b>${esc(u.username.toUpperCase())}</b>${u.id === meId ? "<small>나</small>" : ""}</span>
         <div class="wk-bars">
           <div class="wk-bar" title="공부 시간 = 집중 ${hm(m.focus_mins)} + 영어 ${hm(m.english_mins)}"><span>공부</span><i><b style="width:${sw.toFixed(1)}%"></b></i><em>${m.study_mins ? hm(m.study_mins) : "—"}</em></div>
           <div class="wk-bar plan" title="이번 주에 끝낸 계획 ${m.plans_done}개 / 전체 ${m.plans_total}개"><span>계획</span><i><b style="width:${(pr * 100).toFixed(1)}%"></b></i><em>${m.plans_total ? `${m.plans_done}/${m.plans_total} · ${pct(pr)}%` : "—"}</em></div>

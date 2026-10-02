@@ -1,6 +1,6 @@
 // 논문 공부 페이지 (#/papers/<id>)
 // 한눈에 → 그림 → 핵심 아이디어 → 결과 → 우리 파이프라인 → 영상 → 용어 → [읽기 완료] → 퀴즈 → 3분 설명(AI 채점) → 한 줄 정리 → AI 튜터 → 원문
-import { $, $$, esc, initial, toast } from "../util.js";
+import { $, $$, esc, initial, toast, avatar } from "../util.js";
 import { api } from "../api.js";
 import { icon } from "../icons.js";
 import { renderMarkdown } from "../md.js";
@@ -353,10 +353,10 @@ export function mountPaper(root, ctx, id) {
     const mine = me()?.notes?.[id] || "";
     const others = prog.members.map((m, i) => ({ m, i })).filter(({ m }) => m.user_id !== ctx.me.id);
     box.innerHTML = `
-      <form class="pp-note-me" id="pp-note-form"><span class="av sm" style="--c:${ctx.me.color}">${esc(initial(ctx.me.display_name))}</span>
+      <form class="pp-note-me" id="pp-note-form">${avatar(ctx.me, "sm")}
         <input class="input" id="pp-note-in" maxlength="300" placeholder="예: NMS 를 없애려고 학습 때만 상자 여러 개로 가르친다" value="${esc(mine)}" ${ended() ? "disabled" : ""}>
         <button class="btn ghost sm" type="submit" ${ended() ? "disabled" : ""}>저장</button></form>
-      ${others.map(({ m, i }) => `<div class="pp-note"><span class="av sm" style="--c:${colorOf(m.user_id, i)}">${esc(initial(m.name))}</span>${m.notes?.[id] ? `<span>${esc(m.notes[id])}</span>` : `<span class="faint">${esc(m.name)} — 아직 안 썼어요</span>`}</div>`).join("")}`;
+      ${others.map(({ m, i }) => `<div class="pp-note">${avatar({ ...(ctx.user?.(m.user_id) || {}), display_name: m.name, color: colorOf(m.user_id, i) }, "sm")}${m.notes?.[id] ? `<span>${esc(m.notes[id])}</span>` : `<span class="faint">${esc(m.name)} — 아직 안 썼어요</span>`}</div>`).join("")}`;
     const inp = $("#pp-note-in", box);
     inp.addEventListener("input", () => { notesDirty = true; });
     $("#pp-note-form", box).addEventListener("submit", async (e) => {

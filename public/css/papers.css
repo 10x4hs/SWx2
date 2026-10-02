@@ -464,3 +464,80 @@ iframe.pp-vid-frame { cursor: auto; }
 .mcp-tools ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
 .mcp-oauth-how { font-size: 13px; line-height: 1.6; color: var(--ink-2); padding: 10px 12px; border-radius: 12px; background: var(--glass-2); border: 1px solid var(--line); }
 .mcp-oauth-how code { font-size: 12px; }
+
+/* ---------- 홈: 오늘의 다짐 · 메모장 (js/home-pad.js) — 위쪽, 시계 왼쪽 ---------- */
+.hud-layer > .hud-pad { top: 34px; right: 190px; width: clamp(240px, 30%, 340px); z-index: 6; display: grid; gap: 8px; justify-items: stretch; }
+.hud-pad:empty { display: none; }
+.pad-pledge { display: grid; gap: 8px; }
+.pad-edit { position: relative; display: flex; align-items: center; border-bottom: 1px solid var(--line-2); transition: border-color var(--d-base); }
+.pad-edit:hover { border-bottom-color: var(--ink-3); }
+.pad-edit:focus-within { border-bottom-color: var(--ink); }
+.pad-input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 600 18px/1.4 var(--font-display); letter-spacing: -.015em; padding: 6px 22px 6px 0; }
+.pad-input::placeholder { color: var(--ink-3); font-weight: 500; }
+.pad-ok { position: absolute; right: 0; top: 50%; transform: translateY(-50%) scale(.8); color: var(--up); opacity: 0; transition: opacity .2s, transform .2s var(--ease); pointer-events: none; }
+.pad-ok.on { opacity: 1; transform: translateY(-50%) scale(1); }
+.pad-text { margin: 0; display: flex; align-items: center; gap: 8px; font: 600 18px/1.4 var(--font-display); letter-spacing: -.015em; color: var(--ink); padding: 6px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.pad-text.empty { color: var(--ink-3); font-weight: 500; }
+.pad-text .av { flex: none; }
+.pad-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pad-row:empty { display: none; }
+.pad-friends { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.pad-friend { display: inline-flex; align-items: center; gap: 6px; max-width: 150px; padding: 3px 10px 3px 3px; border-radius: 99px; border: 1px solid var(--line); background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); color: var(--ink-2); font-size: 12px; cursor: pointer; transition: border-color var(--d-base), color var(--d-base); }
+.pad-friend:hover { border-color: color-mix(in srgb, var(--c) 60%, var(--line)); color: var(--ink); }
+.pad-friend .av { width: 20px; height: 20px; font-size: 9.5px; flex: none; }
+.pad-friend.none { opacity: .55; }
+.pad-friend-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pad-memo-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 99px; border: 1px solid var(--line); background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); color: var(--ink-2); font: 600 12px/1 var(--font); cursor: pointer; }
+.pad-memo-btn .num { font-weight: 500; color: var(--ink-3); }
+.pad-memo-btn:hover, .pad-memo-btn.on { color: var(--ink); border-color: var(--line-2); }
+.pad-memo-btn.on { background: var(--glass-3); }
+.pad-memo { width: 100%; display: grid; gap: 0; padding: 0; border-radius: 18px; overflow: hidden; animation: pad-in .18s var(--ease); background: var(--paper-solid); backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: var(--e-4), 0 0 0 1px var(--line-2); }
+:root[data-theme="dark"] .pad-memo { background: #1C1C1F; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pad-memo { background: #1C1C1F; } }
+@keyframes pad-in { from { opacity: 0; transform: translateY(-4px); } }
+.pad-memo-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 8px 14px; font-size: 13px; border-bottom: 1px solid var(--line); }
+.pad-scope { font: 600 10.5px/1 var(--font); padding: 3px 7px; border-radius: 99px; background: var(--track); color: var(--ink-3); }
+.pad-status { margin-left: auto; font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.pad-retry { border: 0; background: transparent; color: var(--err); font: 600 11.5px/1 var(--font); cursor: pointer; padding: 0; }
+.pad-paper { display: block; width: 100%; min-height: 220px; max-height: 52vh; resize: vertical; border: 0; outline: 0; margin: 0; padding: 4px 16px 4px 18px; color: var(--ink); font: 15px/28px var(--font);
+  background: repeating-linear-gradient(to bottom, transparent 0 27px, color-mix(in srgb, var(--ink) 9%, transparent) 27px 28px) local, linear-gradient(to right, transparent 10px, color-mix(in srgb, var(--c-rose) 35%, transparent) 10px 11px, transparent 11px) local; background-position: 0 4px; }
+.pad-paper::placeholder { color: var(--ink-3); }
+.pad-memo-foot { display: flex; align-items: center; gap: 10px; padding: 8px 10px 10px 14px; border-top: 1px solid var(--line); font-size: 11.5px; white-space: nowrap; }
+/* 화면이 좁아져도 위쪽 자리 그대로, 폭만 줄여요 (인사말 · 시계와 안 부딪히게) */
+@media (max-width: 1180px) and (min-width: 861px) { .hud-layer > .hud-pad { right: 150px; width: clamp(220px, 30%, 320px); } .pad-friend { max-width: 110px; } }
+/* 넓은 화면에선 링 차트(SVG)가 위쪽까지 덮어요 — 인사말 · 응원 버튼이 클릭을 받게 차트보다 위 층으로 */
+.hud-layer > .hud-tl { z-index: 6; }
+@media (max-width: 860px) { .hud-pad { order: 1; width: 100% !important; } .pad-paper { min-height: 180px; } }
+@media (prefers-reduced-motion: reduce) { .pad-memo { animation: none; } .pad-ok { transition: none; } }
+
+/* ---------- 프로필 바꾸기 (js/profile-edit.js) · 메뉴 머리 ---------- */
+.me-menu .me-head { width: 100%; text-align: left; border-radius: 12px; position: relative; padding-right: 28px; }
+.me-menu .me-head:hover { background: var(--hover); }
+.me-head .me-bio { color: var(--ink-2); font-size: 11.5px; line-height: 1.35; white-space: normal; }
+.me-head .me-edit { position: absolute; right: 8px; top: 12px; color: var(--ink-3); opacity: 0; transition: opacity var(--d-base); }
+.me-head:hover .me-edit, .me-head:focus-visible .me-edit { opacity: 1; }
+.prof-dialog { width: min(420px, 100%); }
+.prof-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; background: var(--glass-2); border: 1px solid var(--line); margin-bottom: 4px; }
+.prof-av { width: 52px; height: 52px; font-size: 20px; flex: none; }
+.prof-id { display: grid; gap: 2px; min-width: 0; }
+.prof-id b { font-size: 16px; } .prof-id small { color: var(--ink-3); font-size: 12px; }
+.prof-bio-pv { font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+.prof-bio-pv:empty { display: none; }
+.prof-range { width: 100%; accent-color: var(--ink); }
+.prof-note { font-size: 12px; margin: 0; }
+.me-menu .me-head > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.me-menu .me-head > .me-edit { display: block; }
+.prof-av { border-radius: 50% !important; }
+
+/* ---------- 프로필 사진 동그라미 (util.avatar) ---------- */
+.av.pic { background: var(--pic) center / cover no-repeat; color: transparent; border-color: color-mix(in srgb, var(--c, var(--me)) 70%, transparent); overflow: hidden; }
+.av.pic.full { box-shadow: inset 0 0 0 2px var(--c); background-blend-mode: normal; }
+.av.pic.part { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 50%, transparent); }
+.av.pic.none { opacity: .45; filter: grayscale(1); }
+.prof-pick { position: relative; border: 0; background: transparent; padding: 0; cursor: pointer; border-radius: 50%; flex: none; }
+.prof-pick .av { width: 56px; height: 56px; font-size: 22px; display: grid; }
+.prof-cam { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--on-ink); box-shadow: 0 0 0 2px var(--paper-solid); }
+.prof-pick:hover .av { filter: brightness(.92); }
+.prof-pic-acts { display: flex; gap: 10px; margin-top: 2px; }
+.pad-retry-like { border: 0; background: transparent; padding: 0; color: var(--ink-3); font: 600 12px/1 var(--font); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.pad-retry-like:hover { color: var(--ink); }

@@ -1,6 +1,6 @@
 // Dsm-mafia — app shell: auth, routing, sidebar, command palette, focus timer.
 import { api } from "./api.js";
-import { $, $$, esc, initial, debounce, ymd, today, nowTime, toast, pad, planHash } from "./util.js";
+import { $, $$, esc, initial, debounce, ymd, today, nowTime, toast, pad, planHash, avatar } from "./util.js";
 import { icon, appIcon } from "./icons.js";
 import * as notesView from "./views/notes.js";
 import * as graphView from "./views/graph.js";
@@ -13,6 +13,7 @@ import * as homeView from "./views/home.js";
 import * as englishView from "./views/english.js";
 import * as papersView from "./views/papers.js";
 import { openMcpPanel } from "./mcp-panel.js";
+import { openProfile } from "./profile-edit.js";
 import * as calendarView from "./views/calendar.js";
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
@@ -135,9 +136,10 @@ function renderMeRow() {
   // 내 프로필 → 작은 메뉴 (테마 · 로그아웃)
   el.innerHTML = `
     <button class="rail-btn me-btn" type="button" id="me-btn" aria-haspopup="menu" aria-expanded="false" aria-label="내 메뉴 · ${esc(ctx.me.display_name)}" data-tip="${esc(ctx.me.display_name)} · 설정">
-      <span class="av" style="--c:${esc(ctx.me.color)}">${esc(initial(ctx.me.display_name))}</span></button>
+      ${avatar(ctx.me, "")}</button>
     <div class="me-menu glass" id="me-menu" role="menu" hidden>
-      <div class="me-head"><span class="av" style="--c:${esc(ctx.me.color)}">${esc(initial(ctx.me.display_name))}</span><span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small></span></div>
+      <button type="button" role="menuitem" class="me-head" id="me-head" title="프로필 바꾸기">${avatar(ctx.me, "")}<span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small>${ctx.me.bio ? `<small class="me-bio">${esc(ctx.me.bio)}</small>` : ""}</span><span class="me-edit" aria-hidden="true">${icon.edit(14)}</span></button>
+      <button type="button" role="menuitem" id="prof-btn">${icon.edit(16)}프로필 바꾸기</button>
       <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
       <button type="button" role="menuitem" id="pw-btn">${icon.lock(16)}비밀번호 바꾸기</button>
       <button type="button" role="menuitem" id="mcp-btn">${icon.share(16)}MCP 연결 (AI 에이전트)</button>
@@ -157,6 +159,8 @@ function renderMeRow() {
   });
   $("#pw-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openPassword(); });
   $("#mcp-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openMcpPanel(ctx); });
+  const prof = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openProfile(ctx); };
+  $("#me-head").addEventListener("click", prof); $("#prof-btn").addEventListener("click", prof);
   $("#logout-btn").addEventListener("click", async () => { await api.logout().catch(() => {}); showAuth(); });
 }
 

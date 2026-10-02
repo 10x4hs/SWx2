@@ -1,5 +1,5 @@
 // 논문 현황판 (#/papers): 오늘 할 논문 · 우리 셋 진도 · 5일 지도 · 파이프라인 지도 · 옵시디언에 넣기
-import { $, esc, initial, toast } from "../util.js";
+import { $, esc, initial, toast, avatar } from "../util.js";
 import { api } from "../api.js";
 import { icon } from "../icons.js";
 import { loadIndex, onProgress, refreshProgress, kstToday, dayDiff, stageOf, stageVar, paperMeta, stepsDone, paperDone, memberStats, STEP_KEYS } from "./data.js";
@@ -20,7 +20,7 @@ export function mountBoard(root, ctx) {
   function whoDone(id) {
     return `<span class="pp-who">${prog.members.map((m, i) => {
       const n = stepsDone(m, id);
-      return `<span class="av sm ${n === 3 ? "full" : n ? "part" : "none"}" style="--c:${colorOf(m.user_id, i)}" title="${esc(m.name)} · ${n}/3">${esc(initial(m.name))}</span>`;
+      return avatar({ ...(ctx.user?.(m.user_id) || {}), display_name: m.name, color: colorOf(m.user_id, i) }, `sm ${n === 3 ? "full" : n ? "part" : "none"}`, `${m.name} · ${n}/3`);
     }).join("")}</span>`;
   }
   function paperCard(p, { big = false, late = false } = {}) {
@@ -77,7 +77,7 @@ export function mountBoard(root, ctx) {
         return `<i class="n${n}" title="${esc(paperMeta(idx, id).title)} · ${n}/3"></i>`;
       }).join("")}</span>`).join("");
       return `<div class="pp-mem" style="--c:${c}">
-        <span class="av" style="--c:${c}">${esc(initial(m.name))}</span>
+        ${avatar({ ...(ctx.user?.(m.user_id) || {}), display_name: m.name, color: c }, "")}
         <span class="pp-mem-main">
           <span class="pp-mem-top"><b>${esc(m.name)}${m.user_id === ctx.me.id ? ` <span class="faint">(나)</span>` : ""}</b>
             <span class="num"><b>${Math.round(s.pct * 100)}%</b> <span class="faint">${s.papersDone}/16편</span></span></span>

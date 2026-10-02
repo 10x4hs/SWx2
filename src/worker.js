@@ -6,6 +6,7 @@ import { registerEnglish } from "./english.js";
 import { registerPapers, cleanupPaperNotes } from "./papers.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth, oauthTokenUser } from "./oauth.js";
+import { registerHomePad } from "./homepad.js";
 import { registerCalendar } from "./calendar.js";
 import { registerTogether, weeklyReviewCron } from "./together.js";
 import { registerRoom } from "./room.js";
@@ -206,13 +207,13 @@ async function requireUser(req, env) {
   const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
   if (!m) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.must_change_pw FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
+    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.must_change_pw FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
   ).bind(await sha256(m[1]), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
   return { ...row, must_change_pw: mustChange(req, env, row) };
 }
 // must_change_pw 는 requireUser / login 에서 이미 true·false 로 바뀐 값이에요
-const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, must_change_pw: u.must_change_pw === true });
+const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, must_change_pw: u.must_change_pw === true });
 
 // ---------- auth ----------
 // 가입은 기본으로 꺼져 있어요. 계정은 scripts/add-user.mjs 로 만들어요 (ALLOW_SIGNUP=1 이면 켜짐)
@@ -301,12 +302,25 @@ on("PATCH", "/me", async ({ req, env, user }) => {
   const display = b.display_name !== undefined ? str(b.display_name, 12, "이름") : user.display_name;
   const goal = b.day_goal !== undefined ? Math.max(30, Math.min(960, Math.round(Number(b.day_goal) || 240))) : user.day_goal;
   const color = typeof b.color === "string" && /^#[0-9a-fA-F]{6}$/.test(b.color) ? b.color : user.color;
-  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ? WHERE id = ?").bind(display, goal, color, user.id).run();
-  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color } });
+  let bio = user.bio || null;
+  if (b.bio !== undefined) {
+    if (b.bio !== null && typeof b.bio !== "string") fail(400, "한 줄 소개 형식이 올바르지 않아요.");
+    bio = String(b.bio || "").replace(/\s+/g, " ").trim() || null;
+    if (bio && bio.length > 40) fail(400, "한 줄 소개는 40자까지예요.");
+  }
+  // 프로필 사진: 브라우저가 줄여 보낸 data URL 만 (jpeg · png · webp, 80KB 까지). null 이면 지워요
+  let avatar = user.avatar || null;
+  if (b.avatar !== undefined) {
+    if (b.avatar === null || b.avatar === "") avatar = null;
+    else if (typeof b.avatar === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(b.avatar) && b.avatar.length <= 80_000) avatar = b.avatar;
+    else fail(400, "사진은 앱에서 고른 이미지만 올릴 수 있어요 (80KB 까지).");
+  }
+  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ? WHERE id = ?").bind(display, goal, color, bio, avatar, user.id).run();
+  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar } });
 });
 
 on("GET", "/users", async ({ env }) => {
-  const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal FROM users ORDER BY created_at").all();
+  const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal, bio, avatar FROM users ORDER BY created_at").all();
   return json({ users: results });
 });
 
@@ -842,6 +856,7 @@ registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_NOTE });
 registerEnglish(on, { json, body, fail, uid, now });
 registerPapers(on, { json, body, fail, now });
 registerMcpTokens(on, { json, body, fail, now });
+registerHomePad(on, { json, body, fail, now });
 registerCalendar(on, { json, fail });
 registerTogether(on, { json, body, fail, now, kstDay });
 registerRoom(on, { json, body, fail, uid, now });

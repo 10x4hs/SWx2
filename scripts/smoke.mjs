@@ -1,15 +1,16 @@
 // API smoke test against a running `wrangler dev` (default http://127.0.0.1:8787).
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
-// 로컬 D1 을 다른 프로세스(wrangler d1 execute)로 만지는 몇 초 사이에 wrangler dev 가 쉬던 연결을 닫아요.
-// 그 연결을 다시 쓰면 ECONNRESET 이 나서, 연결이 끊긴 경우에만 한 번 더 보내요 (앱 응답 오류는 그대로 둬요).
+// 로컬 D1 을 다른 프로세스(wrangler d1 execute)로 만지는 몇 초 사이에 wrangler dev 가 쉬던 keep-alive 연결을 닫아요.
+// 요청마다 새 연결을 쓰게 하고(connection: close), 그래도 끊기면 GET 만 한 번 더 보내요 — 쓰기 요청은 두 번 가면 안 되니까요.
 const rawFetch = globalThis.fetch;
-globalThis.fetch = async (url, opts) => {
-  try { return await rawFetch(url, opts); }
+globalThis.fetch = async (url, opts = {}) => {
+  const o = { ...opts, headers: { ...(opts.headers || {}), connection: "close" } };
+  try { return await rawFetch(url, o); }
   catch (e) {
-    const code = e?.cause?.code || "";
-    if (!/ECONNRESET|UND_ERR_SOCKET|EPIPE/.test(code) && !/other side closed/.test(String(e?.cause?.message || ""))) throw e;
+    const code = e?.cause?.code || "", dropped = /ECONNRESET|UND_ERR_SOCKET|EPIPE/.test(code) || /other side closed/.test(String(e?.cause?.message || ""));
+    if (!dropped || (o.method && o.method !== "GET")) throw e;
     await new Promise((r) => setTimeout(r, 300));
-    return rawFetch(url, opts);
+    return rawFetch(url, o);
   }
 };
 const jar = {};
@@ -600,6 +601,40 @@ if (!process.env.SKIP_AI) {
   t = await tool(TBB, "whoami"); ok(t.text.includes("테스트B") && t.text.includes("b-laptop"), "mcp tokens: friend token acts as friend");
   r = await call("b", "DELETE", "/mcp/tokens/b-laptop"); ok(r.data?.removed === true, "mcp tokens: revoke");
   r = await mcp(TBB, "tools/list"); ok(r.status === 401, "mcp tokens: revoked from web → 401");
+}
+
+// ---------- 프로필 바꾸기 ----------
+{
+  r = await call("a", "PATCH", "/me", { display_name: "테스트A2", bio: "  논문   16편  ", day_goal: 300 });
+  ok(r.status === 200 && r.data.user.display_name === "테스트A2" && r.data.user.bio === "논문 16편" && r.data.user.day_goal === 300, "profile: name + bio (tidied) + goal saved");
+  r = await call("b", "GET", "/users"); ok(r.data.users.some((u) => u.display_name === "테스트A2" && u.bio === "논문 16편"), "profile: friends see new name + bio");
+  r = await call("a", "PATCH", "/me", { bio: "x".repeat(41) }); ok(r.status === 400, "profile: bio over 40 → 400");
+  r = await call("a", "PATCH", "/me", { display_name: "x".repeat(13) }); ok(r.status === 400, "profile: name over 12 → 400");
+  r = await call("a", "PATCH", "/me", { display_name: "테스트A", bio: "" }); ok(r.data.user.bio === null, "profile: empty bio clears");
+  r = await call("a", "GET", "/me"); ok(r.data.user.display_name === "테스트A" && "bio" in r.data.user, "profile: /me returns bio");
+  // 프로필 사진: 앱이 줄여 보낸 data URL 만, 80KB 까지, null 로 지우기
+  const PIC = "data:image/jpeg;base64," + Buffer.from("x".repeat(600)).toString("base64");
+  r = await call("a", "PATCH", "/me", { avatar: PIC }); ok(r.status === 200 && r.data.user.avatar === PIC, "profile: photo saved");
+  r = await call("b", "GET", "/users"); ok(r.data.users.some((u) => u.display_name === "테스트A" && u.avatar === PIC), "profile: friends get the photo");
+  r = await call("a", "GET", "/me"); ok(r.data.user.avatar === PIC, "profile: /me returns photo");
+  r = await call("a", "PATCH", "/me", { avatar: "https://evil.example/x.jpg" }); ok(r.status === 400, "profile: non-data-URL photo → 400");
+  r = await call("a", "PATCH", "/me", { avatar: "data:text/html;base64,PHNjcmlwdD4=" }); ok(r.status === 400, "profile: non-image data URL → 400");
+  r = await call("a", "PATCH", "/me", { avatar: "data:image/jpeg;base64," + "A".repeat(80_001) }); ok(r.status === 400, "profile: photo over 80KB → 400");
+  r = await call("a", "PATCH", "/me", { display_name: "테스트A" }); ok(r.data.user.avatar === PIC, "profile: other edits keep the photo");
+  r = await call("a", "PATCH", "/me", { avatar: null }); ok(r.status === 200 && r.data.user.avatar === null, "profile: null removes photo");
+}
+
+// ---------- 홈: 오늘의 다짐(셋이 봐요) · 메모장(나만) ----------
+{
+  const aId = (await call("a", "GET", "/me")).data.user.id;
+  r = await call("a", "PUT", "/home/pledge", { text: "  논문   2편 끝내고 잔다  " }); ok(r.status === 200 && r.data.text === "논문 2편 끝내고 잔다", "pad: pledge saved (spaces tidied)");
+  r = await call("b", "GET", "/home/pad"); ok(r.data.pledges.some((p) => p.user_id === aId && p.body === "논문 2편 끝내고 잔다"), "pad: friend sees my pledge");
+  r = await call("a", "PUT", "/home/pledge", { text: "x".repeat(121) }); ok(r.status === 400, "pad: pledge over 120 chars → 400");
+  r = await call("a", "PUT", "/home/memo", { text: "나만 보는 메모" }); ok(r.status === 200 && r.data.saved_at > 0, "pad: memo saved");
+  r = await call("a", "GET", "/home/pad"); ok(r.data.memo === "나만 보는 메모" && r.data.streak >= 1, "pad: memo + streak back");
+  r = await call("b", "GET", "/home/pad"); ok(r.data.memo !== "나만 보는 메모", "pad: friend can't read my memo");
+  r = await call("a", "PUT", "/home/memo", { text: 5 }); ok(r.status === 400, "pad: memo must be text");
+  r = await call("a", "PUT", "/home/pledge", { text: "" }); r = await call("b", "GET", "/home/pad"); ok(!r.data.pledges.some((p) => p.user_id === aId), "pad: empty pledge removes it");
 }
 
 // ---------- OAuth 2.1 (ChatGPT · claude.ai 커넥터) ----------
