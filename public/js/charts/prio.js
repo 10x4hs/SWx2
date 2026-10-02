@@ -1,6 +1,7 @@
 // 체크리스트 차트 — 우선순위 색 유리 도넛. 단계마다 호 하나(할 일 수만큼 길이), 끝낸 몫은 진하게 · 남은 몫은 옅게.
 // 가운데: 끝낸 수 / 전체 · 비율. 범례: 단계마다 끝낸 수/전체 막대.
 import { esc } from "../util.js";
+const hmShort = (m) => { const h = Math.floor(m / 60), r = m % 60; return h ? (r ? `${h}시간 ${r}분` : `${h}시간`) : `${r}분`; };
 
 export const PRIO_ORDER = ["max", "xhigh", "high", "medium", "low", "none"];
 export const PRIO_LABEL = { max: "1순위", xhigh: "2순위", high: "3순위", medium: "4순위", low: "5순위", none: "없음" }; // 1순위 = 가장 급함
@@ -10,8 +11,15 @@ export function prioStats(items) {
   return PRIO_ORDER.map((k) => { const list = items.filter((p) => (p.priority || "none") === k); return { k, n: list.length, d: list.filter((p) => p.done).length }; }).filter((r) => r.n);
 }
 
-// items = [{ priority, done }] · size = 지름(px)
-export function prioDonut(items, { size = 200, label = "끝냄" } = {}) {
+// 가운데 큰 글자용: 분 → "6<시간>" · "2<시간> 45<분>" (단위는 작은 글씨)
+function timeTspans(mins) {
+  const h = Math.floor(mins / 60), m = mins % 60, u = (t) => `<tspan class="pd-unit">${t}</tspan>`;
+  return [h ? `${h}${u("시간")}` : "", m ? `${h ? " " : ""}${m}${u("분")}` : ""].join("");
+}
+
+// items = [{ priority, done, mins }] · size = 지름(px)
+// time: true 면 가운데에 예상 시간 합계(크게) + 끝낸 수(작게). 시간이 하나도 없으면 예전처럼 끝낸 수/전체
+export function prioDonut(items, { size = 200, label = "끝냄", time = false } = {}) {
   const rows = prioStats(items), total = items.length, done = items.filter((p) => p.done).length;
   const C = 100, R = 78, SW = 16, L = 2 * Math.PI * R, gap = rows.length > 1 ? 2.2 : 0;
   let at = 0, arcs = "";
@@ -23,6 +31,17 @@ export function prioDonut(items, { size = 200, label = "끝냄" } = {}) {
     at += len + gap;
   }
   const pctv = total ? Math.round((done / total) * 100) : 0;
+  const mins = items.reduce((a, p) => a + (p.mins || 0), 0), left = items.filter((p) => !p.done).reduce((a, p) => a + (p.mins || 0), 0);
+  const center = () => {
+    if (time && mins) { // 걸리는 시간 합계 · 그 아래 끝낸 수 · 남은 시간
+      const both = mins >= 60 && mins % 60;
+      return `<text x="${C}" y="${C - 2}" text-anchor="middle" class="pd-big pd-time${both ? " both" : ""}">${timeTspans(mins)}</text>
+    <text x="${C}" y="${C + 20}" text-anchor="middle" class="pd-cap">${done}/${total} ${esc(label)} · ${pctv}%</text>
+    <text x="${C}" y="${C + 36}" text-anchor="middle" class="pd-cap pd-left">${left ? `남음 ${esc(hmShort(left))}` : "다 끝냄"}</text>`;
+    }
+    return `<text x="${C}" y="${C + 4}" text-anchor="middle" class="pd-big">${total ? `${done}<tspan class="pd-of">/${total}</tspan>` : "–"}</text>
+    <text x="${C}" y="${C + 26}" text-anchor="middle" class="pd-cap">${total ? `${pctv}% ${esc(label)}` : "할 일 없음"}</text>`;
+  };
   return `<svg class="pd" viewBox="0 0 200 200" width="${size}" height="${size}" role="img" aria-label="체크리스트 ${done}/${total} ${label}">
     <defs><linearGradient id="pd-sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".30"/><stop offset=".45" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#fff" stop-opacity=".08"/></linearGradient>
       <radialGradient id="pd-disc" cx="50%" cy="30%" r="75%"><stop offset="0" stop-color="#fff" stop-opacity=".10"/><stop offset=".7" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity=".06"/></radialGradient></defs>
@@ -30,8 +49,7 @@ export function prioDonut(items, { size = 200, label = "끝냄" } = {}) {
     <circle cx="${C}" cy="${C}" r="${R}" class="pd-track" stroke-width="${SW}"/>
     <g transform="rotate(-90 ${C} ${C})">${arcs}</g>
     <circle cx="${C}" cy="${C}" r="${R}" class="pd-sheen" stroke="url(#pd-sheen)" stroke-width="${SW}"/>
-    <text x="${C}" y="${C + 4}" text-anchor="middle" class="pd-big">${total ? `${done}<tspan class="pd-of">/${total}</tspan>` : "–"}</text>
-    <text x="${C}" y="${C + 26}" text-anchor="middle" class="pd-cap">${total ? `${pctv}% ${esc(label)}` : "할 일 없음"}</text>
+    ${center()}
   </svg>`;
 }
 

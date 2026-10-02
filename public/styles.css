@@ -3075,3 +3075,16 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .cm-o[data-p="medium"] .cm-dot { background: var(--p-medium); } .cm-o[data-p="low"] .cm-dot { background: var(--p-low); }
 .cm-o[data-p] .cm-ol { font-weight: 700; font-variant-numeric: tabular-nums; }
 @media (max-width: 720px) { .gl-item .prio.hrs.none { opacity: 1; } .cm-drop { min-width: 200px; } .cm-o { padding: 10px 11px; font-size: 15px; } }
+/* v23.1: 체크리스트 예상 시간 합계 · 시간 직접 입력 */
+.ck-sum { margin: 2px 0 0; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; font-size: 13px; color: var(--ink-2); min-height: 1.2em; }
+.ck-sum-t { font: 700 20px var(--font); color: var(--ink); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.ck-sum-d { color: var(--ink-2); } .ck-sum-l { color: var(--ink-3); } .ck-sum-l.ok { color: var(--p-medium); }
+.ck-sum-d::before, .ck-sum-l::before, .ck-sum .faint::before { content: "·"; margin-right: 10px; color: var(--ink-3); }
+.hrs-in { flex: none; width: 150px; padding: 3px 8px; font: 500 12px var(--mono); border-radius: 999px; min-height: 0; height: 24px; }
+.ck-add .ck-mins-in { flex: none; width: 170px; font-size: 12.5px; padding: 8px 10px; border: 0; background: transparent; box-shadow: none; }
+.ck-add .ck-mins-in:focus { box-shadow: none; background: transparent; }
+.ck-add .ck-submit { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); opacity: 0; pointer-events: none; } /* 글자 입력칸이 둘이라 Enter 제출에 필요한 숨은 버튼 */
+/* v23.2: 체크리스트 도넛 가운데 = 걸리는 시간 합계 */
+.pd-time { font-size: 38px; } .pd-time.both { font-size: 30px; }
+.pd-unit { font-size: .5em; fill: var(--ink-2); letter-spacing: 0; font-weight: 600; }
+.pd-left { fill: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
