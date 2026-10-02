@@ -158,6 +158,36 @@ PASSWORDLESS=1             # 로컬 전용
   - `POST /api/library/:id/share { room? }` → 201 `{ message }` (item 포함, 기본 `all`) · `DELETE /api/library/:id` → 넣은 사람만 (403), 지워도 방의 share 메시지는 남고 카드만 비어요
 - 사설 주소 차단: Workers 는 DNS 를 못 풀어서 `localhost` · `127.x` · `10.x` · `192.168.x` · `172.16~31.x` · `169.254.x` · `::1` · `.internal` 은 호스트 이름 문자열로만 막아요 (아래 보안 메모)
 
+## MCP 서버 (`/mcp`) — 어떤 MCP 클라이언트든
+
+앱을 MCP(Model Context Protocol) 서버로도 열어 뒀어요. Cloudflare 에서 앱과 같이 돌아서 내 컴퓨터를 켜 둘 필요가 없어요.
+주소 `https://dsm-mafia.dsm-mafia.workers.dev/mcp` · Streamable HTTP(POST, JSON 응답) · `Authorization: Bearer <토큰>`. 코드 `src/mcp.js`, 표 `migrations/0018_mcp.sql`.
+
+- **토큰** (연결마다 하나, 원문은 저장 안 하고 SHA-256 만): `node scripts/mcp-token.mjs <아이디> <연결 이름> --remote [--out ~/.config/dsm-mafia/mcp.json]` · 목록 `--list` · 끊기 `--revoke`. 연결 이름이 작업판에 "누가 했는지"로 남아요.
+- **도구 14개**: `whoami` · 논문 `papers_overview` `paper_read`(summary · deep[+section] · terms) `paper_check` · 노트 `notes_search` `note_read` `note_write`(create · append · replace, 덧붙일 땐 연결 이름으로 서명) · 계획 `plans_list` `plan_add` · **작업판** `tasks_list` `task_get` `task_add` `task_claim` `task_update`
+- **작업판**: 한 사람의 여러 에이전트가 같이 보는 할 일. 올리기 → 맡기(다른 에이전트가 하는 중이면 막혀요, `force` 로만) → 기록(누구나) → 끝(맡은 쪽만 상태 변경, `result` 에 결과·노트 제목). 서버가 `initialize` 의 `instructions` 로 이 순서를 알려 줘요.
+- 도구는 앱 API 를 안에서 그대로 불러서 검증·권한이 웹과 같아요(`internalCall`). 논문 스프린트가 끝나면 `paper_check` 는 앱과 똑같이 막혀요.
+- 연결 예: Claude Code `claude mcp add --transport http dsm-mafia https://dsm-mafia.dsm-mafia.workers.dev/mcp --header "Authorization: Bearer $TOKEN"` · Cursor/VS Code `mcp.json` 의 `{"url": "…/mcp", "headers": {"Authorization": "Bearer …"}}` · stdio 만 되는 앱은 `npx mcp-remote …/mcp --header "Authorization: Bearer …"`
+- 테스트: `scripts/smoke.mjs` 의 MCP 구역(토큰 없음/틀림 401 · initialize · 알림 202 · 도구 · 작업판 보호 · 노트 서명 · 끊은 토큰 401)
+
+## 논문 스프린트 (2026-10-01 → 10-05)
+
+셋이 16편(탐지 · 인코더 · 분할 · 추적 · 영상 · RGB·열화상 융합 · 증류 · INT8/RKNN)을 5일 안에 "편당 3분 설명"까지. 설계: `docs/plans/2026-10-01-papers-sprint-design.md`.
+
+- **현황판** `#/papers`: D-day · 오늘 할 논문 · 우리 셋 진도(칸 하나 = 논문 하나, 진할수록 많이) · 5일 지도 · 파이프라인 지도 · **옵시디언에 넣기**
+- **공부 페이지** `#/papers/<id>`: 한눈에(비유) → 그림(직접 그린 설명 그림 + 원문 그림, 누르면 크게) → 핵심 아이디어 → 결과 → 우리 파이프라인 → 영상(누르면 재생) → 용어 → **읽기 체크** → **퀴즈 5문제**(4개 맞히면 체크) → **3분 설명**(AI 채점 70점 또는 직접 체크, 3분 타이머, 핵심어 표시) → 한 줄 정리(셋이 봄) → **AI 튜터**(그 논문 자료를 다 읽은 AI) → 원문(arXiv · 한국어 번역 PDF 6편 · 코드)
+- 자료: `public/papers/index.json`(목록 · 일정 · 파이프라인), `public/papers/content/<id>.json`, `public/papers/fig/<id>/`. 규칙 `scripts/papers/CONTENT_SPEC.md`, 점검 `node scripts/papers/check.mjs`, 그림 자르기 `scripts/papers/fig.py`(PyMuPDF)
+- 기록: D1 `paper_checks` · `paper_notes` · `paper_tokens` (`migrations/0016_papers.sql`), API `src/papers.js`
+  - `GET /api/papers/progress` · `PUT /api/papers/check { paper, step, done }` · `POST /api/papers/quiz { paper, correct }` · `PUT /api/papers/note { paper, text }` · `POST /api/papers/explain { paper, text }` · `POST /api/papers/ask { paper, messages }` · `POST /api/papers/obsidian`
+  - 로그인 없는 옵시디언 판: `GET /api/papers/t/:token` · `PUT /api/papers/t/:token/check` (토큰은 SHA-256 만 저장, 새로 받으면 옛 것은 무효)
+  - **10-06(한국 시간)부터** 쓰기는 410, Dock 에서 '논문'이 빠지고 판은 "끝났어요" + 결과만. 로컬 테스트는 `x-papers-now: YYYY-MM-DD` 헤더(PASSWORDLESS=1 일 때만)
+- **앱 노트(옵시디언식)에 넣은 공부 구역** — `node scripts/study-notes-seed.mjs [--remote] [--dry-run] [--only=papers|english]` 가 셋의 노트에 각각 넣어요(이미 넣었으면 건너뛰고, 같은 제목 노트는 안 덮어써요, `study_seed_notes` · `migrations/0017_study_seeds.sql`)
+  - `📄 논문 공부`: 맨 위 `<!-- papers:board -->` 블록 = 셋 진도 · 체크 판(편집기가 `/papers/embed#mode=note` 를 끼워 넣음, 로그인 그대로) + 날짜별 16편 하위 페이지(내가 이해한 것 · 헷갈린 점 · 3분 설명 연습 · 핵심어 · [[연결]] · #논문스프린트 #단계). 하위 페이지 내용은 각자만 봐요. **10-06 00:05 크론이 이 구역(아래에 직접 만든 페이지까지)을 지워요** (`cleanupPaperNotes`)
+  - `🇺🇸 영어`: ENGLISH-OS 자료 노트(폴더 = 페이지). 경로 링크 → 제목 링크, 콜아웃 → 굵은 머리, 표 → 목록, dataview → 영어 탭 안내. 개인 기록(매일 기록 · 내가 막힌 표현 · 내 진도) · 서식 · 첨부는 빼요 — 영어 탭에 있어요
+- **진짜 옵시디언**: 앱의 '옵시디언 파일'(현황판 오른쪽 위) → `📊 논문 현황.md` (개인 토큰이 든 `<iframe>` = `public/papers/embed.html`). 각자 볼트에 넣으면 거기서 체크하고 셋 진도를 봐요.
+  - 내 볼트는 `python3 scripts/papers/vault-restructure.py [--dry-run] [--note 받은파일.md]` 로 `~/Documents/STUDY-OS` (🏠 홈 · 논문 공부/ · 영어 공부/) 로 바꿨어요. 백업은 `~/Documents/_backup/`.
+  - 정리 플러그인 `scripts/papers/obsidian-plugin/` (볼트에 `papers-sprint` 로 설치): 10-06 에 `논문 공부/` 를 시스템 휴지통으로, 홈의 논문 칸을 지우고 스스로 꺼져요.
+
 ## 영어 (ENGLISH-OS 연동)
 
 옵시디언 볼트 `ENGLISH-OS`(6개월 영어 프로그램 2026-09-28 → 2027-03-28, 650시간)를 앱 안에서 매일 쓰는 페이지예요.
@@ -169,7 +199,7 @@ PASSWORDLESS=1             # 로컬 전용
 **볼트를 고쳤으면** 다시 만들어 주세요. 표를 못 읽으면 어느 파일이 문제인지 알려 주고 멈춰요.
 
 ```bash
-npm run english:import                          # 기본 볼트: /Users/prime/Documents/ENGLISH-OS
+npm run english:import                          # 기본 볼트: ~/Documents/STUDY-OS/영어 공부 (없으면 옛 ENGLISH-OS)
 ENGLISH_OS=/다른/볼트 npm run english:import     # 볼트 위치가 다르면
 ```
 
@@ -195,6 +225,8 @@ src/ai.js              AI 채팅 (Gemini·Groq·Cohere·MiMo·GLM·OpenRouter·K
 src/brain.js           AI 정리·생성 (주제·태그·링크 써넣기, MOC 목차, 개념 노트 만들기)
 src/calendar.js        캘린더 (한 달 요약 · 하루 한 페이지)
 src/english.js         영어 기록 · 표현 · 복습 카드
+src/mcp.js             MCP 서버 (/mcp · 토큰 · 도구 14개 · 에이전트 작업판)
+src/papers.js          논문 스프린트 체크 · 한 줄 정리 · AI 튜터/채점 · 옵시디언 토큰
 src/together.js        같이 하기 (지금 공부 중 · 응원 · 주간 회고)
 src/room.js            대화방 (all 방 + 1:1 dm 방 · 이름 부르면 답하는 AI · 방마다 안 읽음)
 src/library.js         공통 창고 (책·링크·영상 · 미리보기 메타데이터 · 표시/메모)

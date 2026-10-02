@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 470">
+  <defs><marker id="ah-mspecgene" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <!-- 1단계: 사전학습 -->
+  <rect class="dg-zone" rx="16" x="10" y="8" width="780" height="218"/>
+  <text class="dg-s" x="26" y="30">1단계 · 라벨 없이 미리 배우기 (자기지도 사전학습)</text>
+
+  <rect class="dg-box" rx="12" x="24" y="44" width="160" height="92"/>
+  <text class="dg-t b" x="104" y="72" text-anchor="middle">RGBT550K</text>
+  <text class="dg-s" x="104" y="96" text-anchor="middle">RGB·열화상 쌍</text>
+  <text class="dg-s" x="104" y="118" text-anchor="middle">약 55만 쌍, 라벨 없음</text>
+
+  <rect class="dg-box c-amber" rx="12" x="210" y="44" width="176" height="92"/>
+  <text class="dg-t b" x="298" y="72" text-anchor="middle">GMM-CMSS 가리기</text>
+  <text class="dg-s" x="298" y="96" text-anchor="middle">조각 90%를 가려요</text>
+  <text class="dg-s" x="298" y="118" text-anchor="middle">중요한 곳 → 배경 순서</text>
+
+  <rect class="dg-box c-blue" rx="12" x="412" y="44" width="166" height="92"/>
+  <text class="dg-t b" x="495" y="72" text-anchor="middle">공유 인코더</text>
+  <text class="dg-s" x="495" y="96" text-anchor="middle">ViT 하나가</text>
+  <text class="dg-s" x="495" y="118" text-anchor="middle">두 영상을 다 봐요</text>
+
+  <rect class="dg-box" rx="12" x="604" y="44" width="172" height="92"/>
+  <text class="dg-t b" x="690" y="72" text-anchor="middle">두 디코더</text>
+  <text class="dg-s" x="690" y="96" text-anchor="middle">가린 조각 복원</text>
+  <text class="dg-s" x="690" y="118" text-anchor="middle">RGB용 · 열화상용</text>
+
+  <path class="dg-a" fill="none" d="M184,90 L208,90" marker-end="url(#ah-mspecgene)"/>
+  <path class="dg-a" fill="none" d="M386,90 L410,90" marker-end="url(#ah-mspecgene)"/>
+  <path class="dg-a" fill="none" d="M578,90 L602,90" marker-end="url(#ah-mspecgene)"/>
+
+  <text class="dg-s" x="26" y="170">CMSS = 두 영상 조각이 얼마나 비슷하고 밋밋한지 재는 점수 (하늘은 높고, 사람은 낮아요)</text>
+  <text class="dg-s" x="26" y="196">처음엔 정보 많은 물체 쪽을 보여 주고, 점점 배경만 보여 줘서 쉬운 문제 → 어려운 문제</text>
+
+  <!-- 2단계: 미세조정 -->
+  <rect class="dg-zone" rx="16" x="10" y="238" width="780" height="224"/>
+  <text class="dg-s" x="26" y="260">2단계 · 실제 작업에 맞추기 (미세조정)</text>
+
+  <rect class="dg-box" rx="12" x="24" y="280" width="120" height="50"/>
+  <text class="dg-t b" x="84" y="311" text-anchor="middle">RGB</text>
+  <rect class="dg-box" rx="12" x="24" y="366" width="120" height="50"/>
+  <text class="dg-t b" x="84" y="397" text-anchor="middle">열화상</text>
+
+  <rect class="dg-box c-blue" rx="12" x="180" y="296" width="180" height="104"/>
+  <text class="dg-t b" x="270" y="326" text-anchor="middle">같은 인코더</text>
+  <text class="dg-s" x="270" y="352" text-anchor="middle">1단계에서 배운 것</text>
+  <text class="dg-s" x="270" y="376" text-anchor="middle">두 영상을 따로 통과</text>
+
+  <path class="dg-a" fill="none" d="M144,305 L160,305 L160,330 L178,330" marker-end="url(#ah-mspecgene)"/>
+  <path class="dg-a" fill="none" d="M144,391 L160,391 L160,366 L178,366" marker-end="url(#ah-mspecgene)"/>
+
+  <rect class="dg-box c-green" rx="12" x="392" y="312" width="160" height="72"/>
+  <text class="dg-t b" x="472" y="342" text-anchor="middle">이어 붙이기</text>
+  <text class="dg-s" x="472" y="366" text-anchor="middle">채널 방향 concat</text>
+  <path class="dg-a" fill="none" d="M360,348 L390,348" marker-end="url(#ah-mspecgene)"/>
+
+  <rect class="dg-box" rx="12" x="590" y="272" width="186" height="44"/>
+  <text class="dg-t" x="683" y="300" text-anchor="middle">탐지 (ViTDet)</text>
+  <rect class="dg-box" rx="12" x="590" y="326" width="186" height="44"/>
+  <text class="dg-t" x="683" y="354" text-anchor="middle">분할 (UperNet)</text>
+  <rect class="dg-box" rx="12" x="590" y="380" width="186" height="44"/>
+  <text class="dg-t" x="683" y="408" text-anchor="middle">매칭 (LoFTR)</text>
+
+  <path class="dg-a" fill="none" d="M552,348 L570,348 L570,294 L588,294" marker-end="url(#ah-mspecgene)"/>
+  <path class="dg-a" fill="none" d="M552,348 L588,348" marker-end="url(#ah-mspecgene)"/>
+  <path class="dg-a" fill="none" d="M552,348 L570,348 L570,402 L588,402" marker-end="url(#ah-mspecgene)"/>
+
+  <text class="dg-s" x="400" y="448" text-anchor="middle">손으로 만든 복잡한 융합 모듈 없이 '붙이기'만 — RGB용 탐지·분할 방법을 그대로 가져다 써요</text>
+</svg>

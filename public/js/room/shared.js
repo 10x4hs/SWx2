@@ -1,5 +1,5 @@
 // 대화방 · 창고가 같이 쓰는 작은 도구들: 종류 아이콘 · 이름표 · 시간 글자 · URL 찾기 · 두 번 눌러 지우기
-import { esc } from "../util.js";
+import { esc, avatar as avatarHtml } from "../util.js";
 
 export const store = {
   get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
@@ -94,5 +94,5 @@ export function armDelete(btn, run, { label = "한 번 더 누르면 지워요" 
 
 // 큐브 자르기: 이름 첫 글자
 export const avatar = (user, cls = "") => user
-  ? `<span class="av ${cls}" style="--c:${esc(user.color || "var(--m0)")}" title="${esc(user.display_name)}">${esc((String(user.display_name || "?").trim()[0] || "?").toUpperCase())}</span>`
+  ? avatarHtml({ ...user, color: user.color || "var(--m0)" }, cls, user.display_name)
   : `<span class="av ${cls}" style="--c:var(--ink-3)" title="나간 사람">?</span>`;

@@ -1,0 +1,45 @@
+{
+  "title": "논문 스프린트",
+  "start": "2026-10-01",
+  "until": "2026-10-05",
+  "goal": "편당 3분 — 무슨 문제를, 어떤 아이디어로 풀었고, 우리 파이프라인 어디에 쓰이는지",
+  "steps": [
+    { "key": "read", "label": "읽기", "hint": "쉬운 설명 · 그림 · 영상" },
+    { "key": "quiz", "label": "퀴즈", "hint": "5문제 중 4개" },
+    { "key": "explain", "label": "3분 설명", "hint": "AI 채점 70점 또는 직접 체크" }
+  ],
+  "stages": [
+    { "n": 1, "key": "fusion", "label": "RGB·열화상 융합", "short": "융합", "color": "rose", "why": "밤·연기·역광에서도 보이게 두 카메라를 합쳐요" },
+    { "n": 2, "key": "encoder", "label": "시각 인코더", "short": "인코더", "color": "violet", "why": "사진을 '의미 있는 숫자'로 바꾸는 눈" },
+    { "n": 3, "key": "detect", "label": "탐지 · 분할", "short": "탐지", "color": "blue", "why": "무엇이 어디 있는지 상자·마스크로" },
+    { "n": 4, "key": "track", "label": "객체 추적", "short": "추적", "color": "teal", "why": "프레임이 바뀌어도 같은 물체에 같은 ID" },
+    { "n": 5, "key": "temporal", "label": "영상 · 시간", "short": "시간", "color": "green", "why": "움직임과 행동을 시간 축으로 이해" },
+    { "n": 6, "key": "adapt", "label": "적응 · 증류", "short": "증류", "color": "amber", "why": "적은 데이터로 맞추고, 큰 모델을 작게" },
+    { "n": 7, "key": "deploy", "label": "INT8 · RKNN 배포", "short": "배포", "color": "sand", "why": "보드 NPU 에서 실시간으로 돌게" }
+  ],
+  "days": [
+    { "day": "2026-10-01", "label": "10.1 수", "theme": "찾고, 따라가기", "papers": ["yolov10", "bytetrack"] },
+    { "day": "2026-10-02", "label": "10.2 목", "theme": "추적 마무리 · 무엇이든 자르기", "papers": ["fdta", "sam", "sam3"] },
+    { "day": "2026-10-03", "label": "10.3 금", "theme": "좋은 눈(인코더)과 그 지식 옮기기", "papers": ["dino", "dinov3", "rtdetrv4", "cradiov4"] },
+    { "day": "2026-10-04", "label": "10.4 토", "theme": "영상과 시간 · 적게 고쳐 맞추기", "papers": ["videomae", "vjepa21", "adaptformer"] },
+    { "day": "2026-10-05", "label": "10.5 일", "theme": "두 카메라 합치기 · 보드에 올리기", "papers": ["cmx", "mspecgene", "intquant", "iptqvit"] }
+  ],
+  "papers": [
+    { "id": "yolov10", "title": "YOLOv10", "year": 2024, "field": "객체 탐지", "stage": 3, "ko_pdf": "yolov10-ko.pdf" },
+    { "id": "rtdetrv4", "title": "RT-DETRv4", "year": 2025, "field": "객체 탐지", "stage": 3, "ko_pdf": "rtdetrv4-ko.pdf" },
+    { "id": "dino", "title": "DINO", "year": 2021, "field": "시각 인코더", "stage": 2, "ko_pdf": "dino-ko.pdf" },
+    { "id": "dinov3", "title": "DINOv3", "year": 2025, "field": "시각 인코더", "stage": 2 },
+    { "id": "sam", "title": "SAM", "year": 2023, "field": "영역 분할", "stage": 3 },
+    { "id": "sam3", "title": "SAM 3", "year": 2025, "field": "영역 분할", "stage": 3 },
+    { "id": "bytetrack", "title": "ByteTrack", "year": 2022, "field": "객체 추적", "stage": 4 },
+    { "id": "fdta", "title": "FDTA", "year": 2026, "field": "객체 추적", "stage": 4 },
+    { "id": "videomae", "title": "VideoMAE", "year": 2022, "field": "영상 · 시간 모델링", "stage": 5, "ko_pdf": "videomae-ko.pdf" },
+    { "id": "vjepa21", "title": "V-JEPA 2.1", "year": 2026, "field": "영상 · 시간 모델링", "stage": 5 },
+    { "id": "cmx", "title": "CMX", "year": 2023, "field": "RGB·열화상 융합", "stage": 1 },
+    { "id": "mspecgene", "title": "M-SpecGene", "year": 2025, "field": "RGB·열화상 융합", "stage": 1, "ko_pdf": "mspecgene-ko.pdf" },
+    { "id": "adaptformer", "title": "AdaptFormer", "year": 2022, "field": "미세조정 · 증류", "stage": 6 },
+    { "id": "cradiov4", "title": "C-RADIOv4", "year": 2026, "field": "미세조정 · 증류", "stage": 6, "ko_pdf": "cradiov4-ko.pdf" },
+    { "id": "intquant", "title": "Integer-only Quantization", "year": 2018, "field": "양자화 · 배포", "stage": 7 },
+    { "id": "iptqvit", "title": "IPTQ-ViT", "year": 2026, "field": "양자화 · 배포", "stage": 7 }
+  ]
+}

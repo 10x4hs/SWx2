@@ -3,6 +3,10 @@
 import { registerAi, aiJson } from "./ai.js";
 import { registerBrain } from "./brain.js";
 import { registerEnglish } from "./english.js";
+import { registerPapers, cleanupPaperNotes } from "./papers.js";
+import { handleMcp, registerMcpTokens } from "./mcp.js";
+import { handleOAuth, oauthTokenUser } from "./oauth.js";
+import { registerHomePad } from "./homepad.js";
 import { registerCalendar } from "./calendar.js";
 import { registerTogether, weeklyReviewCron } from "./together.js";
 import { registerRoom } from "./room.js";
@@ -26,7 +30,10 @@ const DAY_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const TONES = ["ink", "graphite", "slate", "steel", "silver", "sand", "ivory", "champagne"];
 const PRIORITIES = ["low", "medium", "high", "xhigh", "max"];
-const prio = (v) => (v === null || v === "" ? null : PRIORITIES.includes(v) ? v : fail(400, "우선순위는 low · medium · high · xhigh · max 중 하나예요."));
+// 우선순위: 저장은 low~max, 화면 · AI · MCP 는 1(가장 급함)~5(여유) 도 써요 → 같은 값으로 바꿔요
+const PRIO_NUM = { 1: "max", 2: "xhigh", 3: "high", 4: "medium", 5: "low" };
+const prioIn = (v) => (PRIO_NUM[String(v).trim()] || (typeof v === "string" ? v.trim().toLowerCase() : v));
+const prio = (v0, v = prioIn(v0)) => (v0 === null || v0 === "" ? null : PRIORITIES.includes(v) ? v : fail(400, "우선순위는 1(가장 급함)~5(여유) 또는 low · medium · high · xhigh · max 중 하나예요."));
 const tone = (v) => (v === null ? null : TONES.includes(v) ? v : fail(400, "고를 수 없는 색이에요."));
 
 class HttpError extends Error {
@@ -38,6 +45,16 @@ const fail = (status, message, extra) => { throw new HttpError(status, message, 
 export default {
   async fetch(req, env, ec) {
     const url = new URL(req.url);
+    // OAuth 2.1 (ChatGPT · claude.ai 커넥터처럼 OAuth 로만 붙는 MCP 앱)
+    if (url.pathname.startsWith("/.well-known/") || url.pathname.startsWith("/oauth/")) {
+      try { const r = await handleOAuth(req, env, url, { sessionUser, loginWith }); if (r) return r; }
+      catch (e) { console.error("oauth", e); return json({ error: "server_error", error_description: "서버에서 문제가 생겼어요." }, 500); }
+    }
+    // MCP (어떤 MCP 클라이언트든): Bearer 토큰(직접 만든 토큰 또는 OAuth)으로 로그인, 앱 API 를 안에서 그대로 불러요
+    if (url.pathname === "/mcp") {
+      try { return await handleMcp(req, env, ec, { tokenUser, internal: internalCall }); }
+      catch (e) { console.error("mcp", e); return json({ jsonrpc: "2.0", id: null, error: { code: -32603, message: "서버에서 문제가 생겼어요." } }, 500); }
+    }
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
     try {
       return await route(req, env, url, ec);
@@ -56,6 +73,8 @@ export default {
       return;
     }
     ec.waitUntil(autoSaveYesterday(env).then((r) => console.log("자동 저장", r.day, r.saved + "명")));
+    // 논문 스프린트가 끝났으면(10-06~) 노트의 논문 구역을 지워요
+    ec.waitUntil(cleanupPaperNotes(env, kstDay(0)).then((r) => r.deleted && console.log("논문 구역 정리", r.deleted + "개")));
   },
 };
 
@@ -81,6 +100,59 @@ async function route(req, env, url, ec) {
     return r.handler(ctx);
   }
   fail(404, "없는 주소예요.");
+}
+
+// MCP 토큰 → { user, agent }. 직접 만든 토큰(api_tokens) 먼저, 아니면 OAuth 접근 토큰. 쓸 때마다 last_used_at 만 고쳐요
+async function tokenUser(env, token) {
+  const h = await sha256(token);
+  const row = await env.DB.prepare(
+    "SELECT t.token_hash, t.agent, u.id, u.username, u.display_name, u.color, u.day_goal FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?"
+  ).bind(h).first();
+  const shape = (u, agent) => ({ agent, user: { id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, must_change_pw: false } });
+  if (row) {
+    await env.DB.prepare("UPDATE api_tokens SET last_used_at = ? WHERE token_hash = ?").bind(now(), row.token_hash).run();
+    return shape(row, row.agent);
+  }
+  const o = await oauthTokenUser(env, h);
+  if (!o) return null;
+  const u = await env.DB.prepare("SELECT id, username, display_name, color, day_goal FROM users WHERE id = ?").bind(o.user_id).first();
+  return u ? shape(u, o.agent) : null;
+}
+// OAuth 화면용: 앱에 이미 로그인돼 있으면 그 사람 (아니면 null)
+async function sessionUser(req, env) {
+  try { return await requireUser(req, env); } catch { return null; }
+}
+// OAuth 화면용 로그인: 앱의 /auth/login 을 그대로 써요(잠금 · 비밀번호 규칙 같음). 성공하면 세션 쿠키도 같이
+async function loginWith(env, req, username, password) {
+  const r = routes.find((x) => x.method === "POST" && x.re.test("/auth/login"));
+  const url = new URL("/api/auth/login", req.url);
+  try {
+    const res = await r.handler({ req: new Request(url, { method: "POST", headers: { "content-type": "application/json", "x-trio": "1" }, body: JSON.stringify({ username, password }) }), env, url, params: {}, q: url.searchParams });
+    const d = await res.json().catch(() => ({}));
+    if (res.status !== 200) return { error: d.error || "로그인하지 못했어요." };
+    return { user: d.user, cookie: res.headers.get("set-cookie") };
+  } catch (e) {
+    if (e instanceof HttpError) return { error: e.message };
+    throw e;
+  }
+}
+// 앱 API 를 HTTP 없이 안에서 부르기 (MCP 도구가 웹 화면과 같은 검증 · 권한을 쓰게)
+async function internalCall(env, ec, origin, user, method, path, payload) {
+  const url = new URL("/api" + path, origin), p = url.pathname.slice(4);
+  for (const r of routes) {
+    if (r.method !== method) continue;
+    const m = p.match(r.re);
+    if (!m) continue;
+    const req = new Request(url, { method, headers: { "content-type": "application/json", "x-trio": "1" }, body: payload === undefined ? undefined : JSON.stringify(payload) });
+    try {
+      const res = await r.handler({ req, env, ec, url, params: m.groups || {}, q: url.searchParams, user });
+      return { status: res.status, data: await res.json().catch(() => null) };
+    } catch (e) {
+      if (e instanceof HttpError) return { status: e.status, data: { error: e.message } };
+      throw e;
+    }
+  }
+  return { status: 404, data: { error: "없는 주소예요." } };
 }
 
 const MUST_CHANGE_OPEN = (path) => path === "/me" || path === "/users" || path.startsWith("/auth/");
@@ -138,13 +210,13 @@ async function requireUser(req, env) {
   const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
   if (!m) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.must_change_pw FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
+    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.must_change_pw FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
   ).bind(await sha256(m[1]), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
   return { ...row, must_change_pw: mustChange(req, env, row) };
 }
 // must_change_pw 는 requireUser / login 에서 이미 true·false 로 바뀐 값이에요
-const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, must_change_pw: u.must_change_pw === true });
+const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, must_change_pw: u.must_change_pw === true });
 
 // ---------- auth ----------
 // 가입은 기본으로 꺼져 있어요. 계정은 scripts/add-user.mjs 로 만들어요 (ALLOW_SIGNUP=1 이면 켜짐)
@@ -233,12 +305,25 @@ on("PATCH", "/me", async ({ req, env, user }) => {
   const display = b.display_name !== undefined ? str(b.display_name, 12, "이름") : user.display_name;
   const goal = b.day_goal !== undefined ? Math.max(30, Math.min(960, Math.round(Number(b.day_goal) || 240))) : user.day_goal;
   const color = typeof b.color === "string" && /^#[0-9a-fA-F]{6}$/.test(b.color) ? b.color : user.color;
-  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ? WHERE id = ?").bind(display, goal, color, user.id).run();
-  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color } });
+  let bio = user.bio || null;
+  if (b.bio !== undefined) {
+    if (b.bio !== null && typeof b.bio !== "string") fail(400, "한 줄 소개 형식이 올바르지 않아요.");
+    bio = String(b.bio || "").replace(/\s+/g, " ").trim() || null;
+    if (bio && bio.length > 40) fail(400, "한 줄 소개는 40자까지예요.");
+  }
+  // 프로필 사진: 브라우저가 줄여 보낸 data URL 만 (jpeg · png · webp, 80KB 까지). null 이면 지워요
+  let avatar = user.avatar || null;
+  if (b.avatar !== undefined) {
+    if (b.avatar === null || b.avatar === "") avatar = null;
+    else if (typeof b.avatar === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(b.avatar) && b.avatar.length <= 80_000) avatar = b.avatar;
+    else fail(400, "사진은 앱에서 고른 이미지만 올릴 수 있어요 (80KB 까지).");
+  }
+  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ? WHERE id = ?").bind(display, goal, color, bio, avatar, user.id).run();
+  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar } });
 });
 
 on("GET", "/users", async ({ env }) => {
-  const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal FROM users ORDER BY created_at").all();
+  const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal, bio, avatar FROM users ORDER BY created_at").all();
   return json({ users: results });
 });
 
@@ -691,7 +776,7 @@ async function snapshotDay(env, u, day, auto) {
   return { day, data, score: sc.score, done: sc.doneCount, total: sc.count, auto: auto ? 1 : 0, saved_at: at };
 }
 // 자정의 AI 채점: 그날 계획(우선순위·시간·끝냄)·집중 시간을 보고 0~100 점 + 한 줄 평. AI 가 안 되면 계산식 점수를 그대로 써요.
-const PRIO_KO = { low: "Low", medium: "Medium", high: "High", xhigh: "XHigh", max: "Max" };
+const PRIO_KO = { low: "5순위(여유)", medium: "4순위(나중에)", high: "3순위(보통)", xhigh: "2순위(중요)", max: "1순위(가장 급함)" };
 async function aiScoreDay(env, u, day) {
   const r = await env.DB.prepare("SELECT data, score FROM day_records WHERE user_id = ? AND day = ?").bind(u.id, day).first();
   if (!r || r.data === "{}") return null;
@@ -700,7 +785,7 @@ async function aiScoreDay(env, u, day) {
   let ai = null, note = "", model = null;
   try {
     const out = await aiJson(env,
-      "너는 공부 앱의 하루 채점관이야. 하루 계획과 실행을 보고 0~100 점과 한국어 한 줄 평(40자 안팎, 다정하지만 솔직하게)을 줘. 우선순위가 높은 일(Max·XHigh·High)을 끝냈는지를 가장 크게 보고, 계획이 너무 적거나 비현실적이면 감점. 공부 시간도 반영.",
+      "너는 공부 앱의 하루 채점관이야. 하루 계획과 실행을 보고 0~100 점과 한국어 한 줄 평(40자 안팎, 다정하지만 솔직하게)을 줘. 우선순위가 높은 일(1순위·2순위·3순위)을 끝냈는지를 가장 크게 보고, 계획이 너무 적거나 비현실적이면 감점. 공부 시간도 반영.",
       `날짜: ${day}\n하루 목표 공부 시간: ${d.goal || 240}분\n집중 기록: ${d.focus || 0}분\n계산식 점수(참고): ${r.score ?? "없음"}\n계획:\n${lines || "(없음)"}\n\nJSON 으로만: {"score": 0~100 정수, "note": "한 줄 평"}`);
     const v = Math.round(Number(out.data?.score));
     if (v >= 0 && v <= 100) { ai = v; note = String(out.data?.note || "").slice(0, 120); model = out.used || null; }
@@ -772,6 +857,9 @@ on("GET", "/records/days", async ({ env, q, user, ec }) => {
 registerAi(on, { json, body, fail, str, uid, now });
 registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_NOTE });
 registerEnglish(on, { json, body, fail, uid, now });
+registerPapers(on, { json, body, fail, now });
+registerMcpTokens(on, { json, body, fail, now });
+registerHomePad(on, { json, body, fail, now });
 registerCalendar(on, { json, fail });
 registerTogether(on, { json, body, fail, now, kstDay });
 registerRoom(on, { json, body, fail, uid, now });

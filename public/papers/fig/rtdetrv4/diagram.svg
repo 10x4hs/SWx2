@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 460">
+  <defs><marker id="ah-rtdetrv4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <!-- 학습 때만 쓰는 영역 -->
+  <rect class="dg-zone" rx="16" x="20" y="16" width="760" height="170"/>
+  <text class="dg-s" x="38" y="40">학습할 때만 쓰는 부분 (배포할 때는 떼어 내요)</text>
+
+  <rect class="dg-box c-violet" rx="12" x="40" y="60" width="180" height="84"/>
+  <text class="dg-t b" x="130" y="94" text-anchor="middle">선생님 모델</text>
+  <text class="dg-s" x="130" y="118" text-anchor="middle">DINOv3 (얼려 둠)</text>
+
+  <rect class="dg-box c-blue" rx="12" x="300" y="60" width="210" height="84"/>
+  <text class="dg-t b" x="405" y="94" text-anchor="middle">DSI: 특징 맞추기</text>
+  <text class="dg-s" x="405" y="118" text-anchor="middle">F5 방향을 선생님과 같게</text>
+
+  <rect class="dg-box c-amber" rx="12" x="590" y="60" width="170" height="84"/>
+  <text class="dg-t b" x="675" y="94" text-anchor="middle">GAM: 세기 조절</text>
+  <text class="dg-s" x="675" y="118" text-anchor="middle">기울기 비율을 보고</text>
+
+  <path class="dg-a dash" fill="none" d="M220,102 L296,102" marker-end="url(#ah-rtdetrv4)"/>
+  <path class="dg-a dash" fill="none" d="M590,102 L514,102" marker-end="url(#ah-rtdetrv4)"/>
+
+  <!-- 탐지기 본체 -->
+  <rect class="dg-box" rx="12" x="20" y="270" width="90" height="70"/>
+  <text class="dg-t b" x="65" y="300" text-anchor="middle">이미지</text>
+  <text class="dg-s" x="65" y="322" text-anchor="middle">입력</text>
+
+  <rect class="dg-box" rx="12" x="135" y="270" width="110" height="70"/>
+  <text class="dg-t b" x="190" y="300" text-anchor="middle">백본</text>
+  <text class="dg-s" x="190" y="322" text-anchor="middle">S3 · S4 · S5</text>
+
+  <rect class="dg-box c-green" rx="12" x="270" y="270" width="110" height="70"/>
+  <text class="dg-t b" x="325" y="300" text-anchor="middle">AIFI</text>
+  <text class="dg-s" x="325" y="322" text-anchor="middle">F5 만들기</text>
+
+  <rect class="dg-box" rx="12" x="405" y="270" width="110" height="70"/>
+  <text class="dg-t b" x="460" y="300" text-anchor="middle">CCFF</text>
+  <text class="dg-s" x="460" y="322" text-anchor="middle">크기별 섞기</text>
+
+  <rect class="dg-box" rx="12" x="540" y="270" width="110" height="70"/>
+  <text class="dg-t b" x="595" y="300" text-anchor="middle">디코더</text>
+  <text class="dg-s" x="595" y="322" text-anchor="middle">질의 고르기</text>
+
+  <rect class="dg-box c-teal" rx="12" x="675" y="270" width="105" height="70"/>
+  <text class="dg-t b" x="727" y="300" text-anchor="middle">상자</text>
+  <text class="dg-s" x="727" y="322" text-anchor="middle">NMS 없음</text>
+
+  <path class="dg-a" fill="none" d="M110,305 L131,305" marker-end="url(#ah-rtdetrv4)"/>
+  <path class="dg-a" fill="none" d="M245,305 L266,305" marker-end="url(#ah-rtdetrv4)"/>
+  <path class="dg-a" fill="none" d="M380,305 L401,305" marker-end="url(#ah-rtdetrv4)"/>
+  <path class="dg-a" fill="none" d="M515,305 L536,305" marker-end="url(#ah-rtdetrv4)"/>
+  <path class="dg-a" fill="none" d="M650,305 L671,305" marker-end="url(#ah-rtdetrv4)"/>
+
+  <!-- 학습 경로 연결 -->
+  <path class="dg-a dash" fill="none" d="M65,270 L110,148" marker-end="url(#ah-rtdetrv4)"/>
+  <path class="dg-a dash" fill="none" d="M340,266 L390,148" marker-start="url(#ah-rtdetrv4)" marker-end="url(#ah-rtdetrv4)"/>
+  <text class="dg-s" x="378" y="222">F5 비교 · 배운 신호는 AIFI·백본으로</text>
+
+  <!-- 요약 -->
+  <text class="dg-t b" x="400" y="392" text-anchor="middle">배포할 때는 아래 줄만 남아요</text>
+  <text class="dg-s" x="400" y="420" text-anchor="middle">크기 · 속도는 원래 탐지기와 똑같고, 정확도만 올라가요</text>
+</svg>

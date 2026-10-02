@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>논문 현황</title>
+<style>
+  /* 옵시디언 노트 안 <iframe> 용 현황판 — 앱 토큰(DESIGN.md)을 줄여서 그대로 */
+  :root {
+    color-scheme: light;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Pretendard Variable", "Apple SD Gothic Neo", system-ui, sans-serif;
+    --ink: #1D1D1F; --ink-2: #424245; --ink-3: #6E6E73; --line: rgba(0,0,0,.08); --line-2: rgba(0,0,0,.14);
+    --track: rgba(118,118,128,.12); --hover: rgba(118,118,128,.1); --card: rgba(255,255,255,.6); --on-ink: #fff; --bg: #F6F6F8;
+    --c-amber: #D9822B; --c-green: #2FA56B; --c-blue: #3F7BE0; --c-rose: #D2568F; --c-violet: #8A6AD8; --c-teal: #2A9DA8; --t-sand: #A3977F;
+    --m0: var(--c-blue); --m1: var(--c-amber); --m2: var(--c-violet); --down: var(--c-rose);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark;
+    --ink: #F5F5F7; --ink-2: rgba(245,245,247,.74); --ink-3: rgba(245,245,247,.52); --line: rgba(255,255,255,.09); --line-2: rgba(255,255,255,.16);
+    --track: rgba(118,118,128,.24); --hover: rgba(255,255,255,.06); --card: rgba(255,255,255,.04); --on-ink: #111; --bg: #1B1B1E;
+    --c-amber: #F2A65A; --c-green: #7DD3A0; --c-blue: #7AA7F5; --c-rose: #E88AB4; --c-violet: #B39DF0; --c-teal: #6CC7CF; --t-sand: #B5A98F; } }
+  :root[data-theme="dark"] { color-scheme: dark;
+    --ink: #F5F5F7; --ink-2: rgba(245,245,247,.74); --ink-3: rgba(245,245,247,.52); --line: rgba(255,255,255,.09); --line-2: rgba(255,255,255,.16);
+    --track: rgba(118,118,128,.24); --hover: rgba(255,255,255,.06); --card: rgba(255,255,255,.04); --on-ink: #111; --bg: #1B1B1E;
+    --c-amber: #F2A65A; --c-green: #7DD3A0; --c-blue: #7AA7F5; --c-rose: #E88AB4; --c-violet: #B39DF0; --c-teal: #6CC7CF; --t-sand: #B5A98F; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+  body { padding: 18px; }
+  a { color: inherit; }
+  .num { font-variant-numeric: tabular-nums; }
+  .faint { color: var(--ink-3); }
+  header { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .eyebrow { font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
+  h1 { margin: 2px 0 0; font: 700 34px/1 var(--font); letter-spacing: -.035em; }
+  .sub { margin: 4px 0 0; color: var(--ink-2); font-size: 13.5px; }
+  .open { font-size: 12.5px; font-weight: 600; text-decoration: none; padding: 7px 11px; border-radius: 9px; border: 1px solid var(--line-2); }
+  .open:hover { background: var(--hover); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; }
+  .card h2 { margin: 0 0 10px; font-size: 14.5px; font-weight: 650; display: flex; justify-content: space-between; gap: 8px; }
+  .mem { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: center; margin: 7px 0; }
+  .av { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--c); color: var(--c); font: 700 11px/1 var(--font); }
+  .av.full { background: var(--c); color: var(--on-ink); } .av.part { background: color-mix(in srgb, var(--c) 18%, transparent); } .av.none { opacity: .38; }
+  .av.sm { width: 18px; height: 18px; font-size: 9px; }
+  .mem > span:nth-child(2) { display: grid; gap: 5px; min-width: 0; }
+  .bar { display: block; height: 10px; border-radius: 6px; background: var(--track); overflow: hidden; }
+  .bar i { display: block; min-width: 3px; height: 100%; background: var(--c); border-radius: 6px; transition: width .5s cubic-bezier(.22,1,.36,1); }
+  .pct { font-weight: 700; min-width: 76px; text-align: right; }
+  .pct small { color: var(--ink-3); font-weight: 500; }
+  .behind { color: var(--down); font-size: 11.5px; font-weight: 600; }
+  .day { margin: 14px 0 6px; display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+  .day b { font-size: 13.5px; } .day.today b::after { content: "오늘"; margin-left: 6px; font-size: 10.5px; padding: 2px 6px; border-radius: 99px; background: var(--ink); color: var(--on-ink); }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 9px 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); margin-bottom: 6px; }
+  .row.done { background: color-mix(in srgb, var(--st) 10%, var(--card)); }
+  .row.late { border-color: color-mix(in srgb, var(--down) 45%, var(--line)); }
+  .t { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .t i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--st); }
+  .t b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .t a { text-decoration: none; } .t a:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  .t .faint { font-size: 12px; white-space: nowrap; }
+  .steps { display: flex; gap: 4px; }
+  .steps label { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 99px; background: var(--track); font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; user-select: none; }
+  .steps input { position: absolute; opacity: 0; pointer-events: none; }
+  .steps label::before { content: ""; width: 12px; height: 12px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px var(--ink-3); }
+  .steps label.on { background: var(--ink); color: var(--on-ink); }
+  .steps label.on::before { box-shadow: none; background: var(--on-ink); -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="black" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>') center/100% no-repeat; }
+  .steps label:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .steps.ro label { cursor: default; }
+  .who { display: flex; } .who .av + .av { margin-left: -4px; } .who .av { box-shadow: 0 0 0 2px var(--bg); }
+  .msg { padding: 28px 18px; text-align: center; color: var(--ink-2); }
+  .msg b { display: block; font-size: 18px; color: var(--ink); margin-bottom: 6px; }
+  .foot { margin-top: 14px; font-size: 12px; color: var(--ink-3); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  /* 앱 노트 안 (mode=note): 바탕은 노트 판을 비치게, 여백은 작게 */
+  html.note, html.note body { background: transparent; }
+  html.note body { padding: 2px 0 6px; }
+  html.note h1 { font-size: 28px; }
+  html.note .card, html.note .row { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr auto; } .who { display: none; } .steps label { padding: 5px 7px; } }
+</style>
+</head>
+<body>
+<div id="app"><p class="msg faint">불러오는 중…</p></div>
+<script type="module">
+  const app = document.getElementById("app");
+  const hp = new URLSearchParams(location.hash.slice(1));
+  const token = hp.get("t") || "";
+  const NOTE = !token && hp.get("mode") === "note"; // 앱 노트 안: 로그인 그대로, 링크는 앱 화면에서 열기
+  if (NOTE) document.documentElement.classList.add("note");
+  const TGT = NOTE ? 'target="_top"' : 'target="_blank" rel="noopener"';
+  if (hp.get("theme")) document.documentElement.dataset.theme = hp.get("theme");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const ini = (n) => (String(n || "").trim()[0] || "?").toUpperCase();
+  const STEPS = [["read", "읽기"], ["quiz", "퀴즈"], ["explain", "3분 설명"]];
+  const stVar = (c) => (c === "sand" ? "var(--t-sand)" : `var(--c-${c})`);
+  const diff = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 864e5);
+  let idx = null, prog = null, busy = false;
+
+  async function api(method, path, body) {
+    const url = NOTE ? (path === "/check" ? "/api/papers/check" : "/api/papers/progress") : "/api/papers/t/" + encodeURIComponent(token) + path;
+    const r = await fetch(url, { method, credentials: "same-origin", headers: { "content-type": "application/json", "x-trio": "1" }, body: body ? JSON.stringify(body) : undefined });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(d.error || "불러오지 못했어요."); e.status = r.status; throw e; }
+    return d;
+  }
+  const n = (m, id) => STEPS.filter(([k]) => m?.checks?.[id]?.[k]).length;
+  const color = (i) => `var(--m${i % 3})`;
+
+  function paint() {
+    const today = prog.today, me = prog.members.find((m) => m.user_id === prog.me), ended = prog.ended;
+    const left = diff(today, idx.until);
+    const big = ended ? "스프린트 끝" : today < idx.start ? `D-${diff(today, idx.start)}` : left === 0 ? "마지막 날" : `D-${left}`;
+    const dueIds = idx.days.filter((d) => d.day < today).flatMap((d) => d.papers);
+    const team = prog.members.map((m, i) => {
+      const done = idx.papers.reduce((s, p) => s + n(m, p.id), 0), pct = Math.round((done / prog.total) * 100);
+      const behind = Math.max(0, dueIds.length * 3 - dueIds.reduce((s, id) => s + n(m, id), 0));
+      const papers = idx.papers.filter((p) => n(m, p.id) === 3).length;
+      return `<div class="mem" style="--c:${color(i)}"><span class="av">${esc(ini(m.name))}</span>
+        <span><span style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><b>${esc(m.name)}${m.user_id === prog.me ? ' <span class="faint">(나)</span>' : ""}</b>${behind && !ended ? `<span class="behind">밀린 칸 ${behind}</span>` : ""}</span>
+        <span class="bar"><i style="width:${pct}%"></i></span></span>
+        <span class="pct num">${pct}% <small>${papers}/16편</small></span></div>`;
+    }).join("");
+    const days = idx.days.map((d) => `<div class="day ${d.day === today ? "today" : ""}"><b>${esc(d.label)}</b><span class="faint">${esc(d.theme)}</span></div>` + d.papers.map((id) => {
+      const p = idx.papers.find((x) => x.id === id), st = idx.stages.find((s) => s.n === p.stage), k = n(me, id);
+      return `<div class="row ${k === 3 ? "done" : ""} ${d.day < today && k < 3 ? "late" : ""}" style="--st:${stVar(st.color)}">
+        <span class="t"><i></i><a href="/#/papers/${id}" ${TGT}><b>${esc(p.title)}</b></a><span class="faint">${esc(st.short)} · ${p.year}</span></span>
+        <span class="steps ${ended ? "ro" : ""}">${STEPS.map(([s, l]) => { const on = !!me?.checks?.[id]?.[s]; return `<label class="${on ? "on" : ""}"><input type="checkbox" data-p="${id}" data-s="${s}" ${on ? "checked" : ""} ${ended ? "disabled" : ""}>${l}</label>`; }).join("")}</span>
+        <span class="who">${prog.members.map((m, i) => { const q = n(m, id); return `<span class="av sm ${q === 3 ? "full" : q ? "part" : "none"}" style="--c:${color(i)}" title="${esc(m.name)} ${q}/3">${esc(ini(m.name))}</span>`; }).join("")}</span>
+      </div>`;
+    }).join("")).join("");
+    app.innerHTML = `
+      <header><div><div class="eyebrow">논문 스프린트 · 10.1 – 10.5 · ${esc(me?.name || "")}</div><h1 class="num">${big}</h1>
+        <p class="sub">${ended ? "끝났어요. 이 노트는 지워도 돼요." : esc(idx.goal)}</p></div>
+        <a class="open" href="/#/papers" ${TGT}>${NOTE ? "공부하러 가기 ›" : "앱에서 공부하기 ↗"}</a></header>
+      <section class="card"><h2>우리 셋 <span class="faint num">${prog.total}칸 = 16편 × 3단계</span></h2>${team}</section>
+      <section>${days}</section>
+      <div class="foot"><span>${ended ? "결과만 볼 수 있어요" : "체크하면 셋에게 바로 보여요 · 30초마다 새로 고침"}</span><span class="num" id="at"></span></div>`;
+    document.getElementById("at").textContent = "갱신 " + new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  app.addEventListener("change", async (e) => {
+    const cb = e.target.closest("input[data-p]");
+    if (!cb || busy) return;
+    busy = true;
+    const lab = cb.parentElement; lab.classList.toggle("on", cb.checked);
+    try { prog = await api("PUT", "/check", { paper: cb.dataset.p, step: cb.dataset.s, done: cb.checked }); paint(); }
+    catch (err) { cb.checked = !cb.checked; lab.classList.toggle("on", cb.checked); alert(err.message); }
+    finally { busy = false; }
+  });
+
+  async function load() {
+    try {
+      if (!token && !NOTE) throw Object.assign(new Error("노트의 주소가 잘렸어요. 앱에서 '옵시디언에 넣기'로 다시 받아 주세요."), { status: 404 });
+      [idx, prog] = await Promise.all([idx || fetch("/papers/index.json", { cache: "no-cache" }).then((r) => r.json()), api("GET", "")]);
+      if (!busy) paint();
+    } catch (e) {
+      app.innerHTML = `<div class="msg"><b>${e.status === 404 ? "이 판은 열 수 없어요" : e.status === 401 ? "로그인이 필요해요" : "연결이 안 돼요"}</b>${esc(e.message)}</div>`;
+    }
+  }
+  // 노트 안에 끼워졌으면 내 높이를 알려서 안쪽 스크롤이 없게
+  if (window.parent !== window) new ResizeObserver(() => parent.postMessage({ type: "papers-embed-height", h: document.documentElement.scrollHeight }, location.origin)).observe(document.body);
+  load();
+  setInterval(() => { if (!document.hidden && !busy) load(); }, 30000);
+</script>
+</body>
+</html>

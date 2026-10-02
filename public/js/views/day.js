@@ -18,13 +18,9 @@ const MIN_H = 22;   // 짧은 계획도 글자가 보이는 높이(px) — 바�
 const FLOOR = 14;   // 그래도 이만큼은 (한 줄 글자가 보이는 최소 · 10분 = 16px 이라 10분 이상은 원래 자리에 딱 맞아요)
 // 못함 버튼 — 체크(끝냄) 옆의 빨간 ✕. 누르면 계획이 빨갛게 바뀌어요 (체크리스트도 같이 써요)
 export const missBtn = (p) => `<button type="button" class="miss-btn" data-miss="${esc(p.id)}" aria-pressed="${p.missed ? "true" : "false"}" aria-label="${esc(p.text)} 못함" title="${p.missed ? "못함 되돌리기" : "못 했어요 (빨간색 표시)"}"><svg viewBox="0 0 12 12" width="8" height="8" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>`;
-// 우선순위 (색은 styles.css 의 --p-*)
-export const PRIOS = [
-  { k: "low", label: "Low" }, { k: "medium", label: "Medium" }, { k: "high", label: "High" }, { k: "xhigh", label: "XHigh" }, { k: "max", label: "Max" },
-];
-const PRIO_RANK = { max: 5, xhigh: 4, high: 3, medium: 2, low: 1 };
-const prioSelect = (name = "priority", cur = "") => `<select class="select sm prio-sel" name="${name}" aria-label="우선순위"><option value="">우선순위</option>${PRIOS.map((p) => `<option value="${p.k}" ${cur === p.k ? "selected" : ""}>${p.label}</option>`).join("")}</select>`;
-const prioPill = (p) => `<button type="button" class="prio" data-prio="${esc(p.id)}" data-p="${p.priority || ""}" title="우선순위 바꾸기 (누를 때마다 다음 단계)">${p.priority ? PRIOS.find((x) => x.k === p.priority)?.label : "우선순위"}</button>`;
+// 우선순위 1~5순위 · 예상 시간 — public/js/prio.js (색은 styles.css 의 --p-*). 다른 화면이 여기서 PRIOS 를 가져가요
+import { PRIOS, PRIO_RANK, prioSelect, prioPill, openPrioDrop, hoursPill, openHoursDrop } from "../prio.js";
+export { PRIOS };
 const longDate = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`;
 function relDay(k, tk) {
   const n = Math.round((parseYmd(k) - parseYmd(tk)) / 864e5);
@@ -122,7 +118,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const note = $("#dp-sc-note", el);
     if (note) note.innerHTML = ai != null ? `${icon.spark(12)} <b>AI</b> ${esc(S.record.ai_note || "")}` : isToday ? `${icon.spark(12)} 자정이 지나면 AI가 오늘을 보고 점수와 한 줄 평을 기록해요.` : `<span class="faint">이날은 AI 점수가 아직 없어요.</span>`;
     // 우선순위 색 차트: 단계마다 끝낸 수 / 전체 (진한 색 = 끝낸 몫)
-    const rows = [...PRIOS.map((p) => p.k).reverse(), "none"].map((k) => {
+    const rows = [...PRIOS.map((p) => p.k), "none"].map((k) => {
       const list = S.plans.filter((p) => (p.priority || "none") === k); return { k, n: list.length, d: list.filter((p) => p.done).length };
     }).filter((r) => r.n);
     const max = Math.max(1, ...rows.map((r) => r.n));
@@ -253,7 +249,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
       <li class="todo ${p.done ? "done" : ""}" data-id="${esc(p.id)}" data-p="${p.priority || ""}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 끝냄">
         ${p.start ? `<span class="t-when">${esc(p.start)}${p.mins ? ` · ${hm(p.mins)}` : ""}</span>` : ""}<span class="txt" data-edit="${esc(p.id)}">${esc(p.text)}</span>
-        ${prioPill(p)}${focusTag(p)}${playBtn(p)}
+        ${prioPill(p)}${p.start ? "" : hoursPill(p)}${focusTag(p)}${playBtn(p)}
         <span class="acts"><button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button><button class="icon-btn sm danger" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button></span>
       </li>`).join("")
       : "";
@@ -368,11 +364,23 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const slot = e.target.closest("[data-slot]");
     if (slot) { S.editSlot = slotAt(slot, e.clientY); S.editText = ""; S.editId = null; drawGrid(); return; }
     const pr = e.target.closest("[data-prio]");
-    if (pr) {
+    if (pr) { // 아래로 펼쳐지는 1~5순위 고르기
       const p = S.plans.find((x) => x.id === pr.dataset.prio); if (!p) return;
-      const order = ["", ...PRIOS.map((x) => x.k)], nx = order[(order.indexOf(p.priority || "") + 1) % order.length] || null, old = p.priority;
-      p.priority = nx; drawAll();
-      try { await api.updatePlan(p.id, { priority: nx }); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); }
+      openPrioDrop(pr, p.priority || "", async (v) => {
+        const nx = v || null, old = p.priority; if (nx === (old || null)) return;
+        p.priority = nx; drawAll();
+        try { await api.updatePlan(p.id, { priority: nx }); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); }
+      });
+      return;
+    }
+    const hb = e.target.closest("[data-hours]");
+    if (hb) { // 예상 시간 (시각 없는 할 일만)
+      const p = S.plans.find((x) => x.id === hb.dataset.hours); if (!p) return;
+      openHoursDrop(hb, p.mins || null, async (m) => {
+        const old = p.mins; if (m === (old || null)) return;
+        p.mins = m; drawAll();
+        try { await api.updatePlan(p.id, { mins: m }); changed("plans"); } catch (ex) { p.mins = old; drawAll(); toast(ex.message, "err"); }
+      });
       return;
     }
     if (e.target.closest("[data-slot-close]")) { S.editSlot = null; S.editId = null; drawGrid(); return; }

@@ -6,6 +6,13 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&a
 export const pad = (n) => String(n).padStart(2, "0");
 export const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 export const pct = (x) => Math.round(clamp(x) * 100);
+// 사람 동그라미: 사진(avatar · data URL)이 있으면 사진, 없으면 이름 첫 글자. 모든 화면이 이걸 써요
+export const avatar = (u, cls = "", title = "") => {
+  const color = esc(u?.color || "var(--m0)"), t = title ? ` title="${esc(title)}"` : "";
+  const pic = typeof u?.avatar === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(u.avatar) ? u.avatar : null;
+  if (pic) return `<span class="av pic ${cls}" style="--c:${color};--pic:url(${pic})"${t} role="img" aria-label="${esc(u?.display_name || "")}"></span>`;
+  return `<span class="av ${cls}" style="--c:${color}"${t}>${esc(initial(u?.display_name))}</span>`;
+};
 export const initial = (name) => (String(name || "").trim()[0] || "?").toUpperCase();
 
 export function debounce(fn, ms) {

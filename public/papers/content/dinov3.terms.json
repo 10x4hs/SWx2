@@ -1,0 +1,404 @@
+{
+  "id": "dinov3",
+  "terms": [
+    {
+      "term": "DINOv3",
+      "match": [
+        "DINOv3"
+      ],
+      "easy": "메타가 2025년에 낸 범용 시각 인코더예요. 라벨 없이 67억 파라미터짜리 ViT를 키우고, Gram 앵커링으로 패치 특징이 망가지지 않게 붙잡았어요.",
+      "more": "얼린 백본 위에 가벼운 헤드만 얹어도 분할, 탐지, 깊이, 3D에서 최고 수준이 나와요. 작은 모델은 7B 교사를 증류해서 만들어요. 이 프로젝트에서는 시각 인코더 후보예요.",
+      "example": "ADE20k 분할 mIoU: DINOv2 ViT-g 49.5 → DINOv3 ViT-7B 55.9 (얼린 인코더 + 선형층)"
+    },
+    {
+      "term": "DINOv2",
+      "match": [
+        "DINOv2"
+      ],
+      "easy": "DINOv3의 전 버전으로, 정제한 데이터로 11억 파라미터까지 키워 처음으로 CLIP급이 된 자기지도 모델이에요.",
+      "more": "DINOv3는 DINOv2의 학습 목표(DINO + iBOT)를 이어받되 모델과 데이터를 훨씬 키우고 Gram 앵커링을 더했어요. 논문의 거의 모든 표에서 비교 기준이에요."
+    },
+    {
+      "term": "DINO 손실",
+      "match": [
+        "DINO 손실",
+        "DINO 헤드"
+      ],
+      "easy": "사진 한 장 단위로, 학생이 교사의 확률 분포를 따라 하게 하는 자기 증류 손실이에요.",
+      "more": "DINOv3는 이 이미지 수준 DINO 손실에 패치 수준 iBOT 손실과 Koleo 정규화를 더해서 학습해요. 붕괴를 막는 방법은 원조 DINO의 센터링 대신 Sinkhorn-Knopp를 써요."
+    },
+    {
+      "term": "iBOT 손실",
+      "match": [
+        "iBOT"
+      ],
+      "easy": "일부 패치를 가려 놓고, 가려진 패치의 특징을 교사처럼 맞히게 하는 패치 단위 자기지도 손실이에요.",
+      "more": "DINO 손실이 사진 전체를 보는 반면 iBOT은 패치 하나하나를 봐서 밀집 특징을 키워 줘요. 둘을 같이 쓰는 게 DINOv2부터 이어진 조합이에요."
+    },
+    {
+      "term": "Koleo 정규화",
+      "match": [
+        "Koleo",
+        "L_Koleo"
+      ],
+      "easy": "한 배치 안의 특징들이 공간에 고르게 퍼지도록, 가까이 붙은 특징을 서로 밀어내는 정규화예요.",
+      "more": "DINOv3는 0.1 가중치로 더해요. 특징이 한쪽에 몰려 붕괴하는 걸 막는 역할을 해요."
+    },
+    {
+      "term": "Sinkhorn-Knopp",
+      "match": [
+        "Sinkhorn-Knopp"
+      ],
+      "easy": "배치 전체의 출력이 칸마다 고르게 쓰이도록 행과 열을 반복해서 맞추는 계산이에요.",
+      "more": "원조 DINO는 센터링을 썼지만 DINOv3는 DINO 손실과 iBOT 손실 둘 다 Sinkhorn-Knopp로 교사 분포를 만들어요."
+    },
+    {
+      "term": "Gram 행렬",
+      "match": [
+        "Gram 행렬",
+        "Gram"
+      ],
+      "easy": "한 사진의 패치 특징끼리 모두 내적해 만든 P×P 표로, 패치 i와 j가 얼마나 닮았는지를 적어 둔 거예요.",
+      "more": "특징 값 자체가 아니라 패치들 사이의 관계 구조를 담아요. DINOv3는 이 표를 깨끗했던 과거 모델과 맞춰서 패치 지도를 지켜요.",
+      "example": "패치 196개면 196×196 표"
+    },
+    {
+      "term": "Gram 앵커링",
+      "match": [
+        "Gram 앵커링",
+        "앵커링",
+        "L_Gram"
+      ],
+      "easy": "패치 지도가 깨끗했던 예전 체크포인트(Gram 교사)의 Gram 행렬에 지금 모델의 Gram 행렬을 맞추게 해서 밀집 특징이 망가지는 걸 막는 기법이에요.",
+      "more": "손실은 두 Gram 행렬의 차이를 제곱해 더한 값이에요. 특징 값은 자유롭게 두고 관계만 붙잡아서 분류 성능은 해치지 않아요. 100만 번 뒤에 늦게 넣어도 이미 나빠진 패치 특징을 고쳐 냈어요.",
+      "example": "ADE20k mIoU 50.3 → 55.7"
+    },
+    {
+      "term": "Gram 교사 / 고해상도 정제 (L_HRef)",
+      "match": [
+        "Gram 교사",
+        "L_HRef"
+      ],
+      "easy": "Gram 앵커링에서 기준 표를 만들어 주는 교사 모델이에요. 2배 해상도 이미지를 넣고 특징 지도를 절반으로 줄여 더 매끈한 기준 표를 쓰면 더 좋아요.",
+      "more": "고해상도 특징을 다운샘플한 Gram 행렬로 목표를 바꾼 정제 손실이 L_HRef예요. 해상도를 키워 만든 매끈한 패치 일관성을 학생에게 증류하는 셈이에요.",
+      "example": "Gram 교사에 2배 해상도를 쓰면 ADE20k +2 mIoU"
+    },
+    {
+      "term": "밀집 특징 (dense feature)",
+      "match": [
+        "밀집 특징",
+        "dense feature",
+        "밀집 과제",
+        "밀집 성능"
+      ],
+      "easy": "사진 전체 한 줄 요약이 아니라, 패치마다 하나씩 나오는 특징 지도예요. 분할, 탐지, 깊이에 써요.",
+      "more": "DINOv3의 핵심 문제는 오래 학습할수록 분류는 오르는데 밀집 특징은 약 20만 반복 뒤부터 나빠진다는 거였어요. 패치가 자기 위치 정보를 잃고 [CLS]와 비슷해지는 현상이 보였어요."
+    },
+    {
+      "term": "스케일링 (모델·데이터 키우기)",
+      "match": [
+        "LVD-1689M",
+        "ViT-7B"
+      ],
+      "easy": "LVD-1689M은 인스타그램 공개 사진 약 170억 장에서 계층 k-means로 골고루 뽑은 17억 장 데이터이고, ViT-7B는 67억 파라미터 ViT예요.",
+      "more": "임베딩 차원 4096, 패치 16, RoPE, 레지스터 4개, SwiGLU FFN을 써요. 학습률 스케줄 없이 상수 값으로 100만 번 반복해서, 성능이 오르는 동안 계속 학습할 수 있게 했어요.",
+      "example": "H100 61,440 GPU시간, 47 MWh"
+    },
+    {
+      "term": "계층 k-means / 데이터 정제",
+      "match": [
+        "계층 k-means",
+        "k-means"
+      ],
+      "easy": "비슷한 사진끼리 여러 단계로 묶은 뒤, 묶음마다 골고루 뽑아서 데이터가 한쪽에 쏠리지 않게 하는 방법이에요.",
+      "more": "DINOv3는 군집 기반 샘플링, 검색 기반 정제, 공개 데이터셋을 섞어서 써요. 어느 한 정제법도 모든 벤치마크에서 최고가 아니고, 혼합이 모든 열에서 1등이에요."
+    },
+    {
+      "term": "RoPE",
+      "match": [
+        "RoPE"
+      ],
+      "easy": "패치 위치를 회전 방식으로 알려 주는 위치 표현으로, 입력 해상도가 바뀌어도 잘 버텨요.",
+      "more": "DINOv3는 가로·세로 축 방향 RoPE에 박스 지터링(위치 좌표를 조금 흔드는 증강)을 써요. 해상도 일반화에 좋지만, RKNN 같은 NPU 변환에서 잘 되는지는 확인이 필요해요."
+    },
+    {
+      "term": "레지스터 토큰",
+      "match": [
+        "레지스터 토큰",
+        "레지스터"
+      ],
+      "easy": "입력에 일부러 끼워 넣는 여분의 토큰으로, 모델이 계산용 메모장처럼 쓰게 해서 패치 지도가 깨끗해져요.",
+      "more": "Darcet 등이 발견한 고노름 패치 이상치(배경의 정보 없는 패치가 비정상적으로 큰 노름을 가짐)를 줄여 줘요. DINOv3는 레지스터 4개를 써요. 어텐션 편향이나 값 게이팅보다 성능이 좋아 채택됐어요.",
+      "example": "ADE20k 기준 비교: 레지스터 4개 86.6 / 53.0, 값 게이팅 86.3 / 52.2"
+    },
+    {
+      "term": "SwiGLU",
+      "match": [
+        "SwiGLU"
+      ],
+      "easy": "FFN 안에서 한 갈래로 나온 값이 다른 갈래를 곱해 걸러 주는 게이트형 활성화 함수예요.",
+      "more": "DINOv2와 DINOv3 모두 이 FFN을 써요. 7B에서는 FFN 은닉 크기가 8192예요."
+    },
+    {
+      "term": "집합 증류 (agglomerative distillation)",
+      "match": [
+        "집합(agglomerative) 증류",
+        "agglomerative",
+        "집합 증류"
+      ],
+      "easy": "여러 종류의 교사 모델을 한 학생 백본으로 합치는 증류예요.",
+      "more": "AM-RADIO는 SAM, CLIP, DINOv2를 합치고, PE는 SAM 2를 증류해 PEspatial을 만들어요. DINOv3가 이들을 이기는 건 외부 마스크 모델 없이 자기 자신의 초기 체크포인트만 교사로 썼기 때문이라 의미가 커요."
+    },
+    {
+      "term": "다중 학생 증류",
+      "match": [
+        "다중 학생",
+        "병렬 증류"
+      ],
+      "easy": "고정한 7B 교사 한 개의 출력을 여러 학생 모델이 함께 받아 한 번에 여러 크기의 모델을 만드는 방식이에요.",
+      "more": "교사 추론을 모든 GPU가 나눠 하고 결과를 all-gather한 뒤, 학생별 GPU 그룹이 각자 학습해요. 그래서 학생 수가 늘어도 교사 추론 비용은 한 번만 들어요. ViT-S부터 H+, ConvNeXt T/S/B/L까지 만들어요."
+    },
+    {
+      "term": "ViT-H+ / ViT-S+",
+      "match": [
+        "ViT-H+",
+        "ViT-S+"
+      ],
+      "easy": "DINOv3가 증류로 만든 모델 가족의 크기 이름이에요. +는 중간 크기 변형이에요.",
+      "more": "ViT-H+는 파라미터가 약 10배 적은데도 7B와 성능이 가까워요. ViT-S는 21M, ViT-S+는 29M 파라미터예요.",
+      "example": "ViT-S 12 GFLOPs, ViT-S+ 16 GFLOPs (256px)"
+    },
+    {
+      "term": "ConvNeXt (CNX)",
+      "match": [
+        "ConvNeXt-Tiny",
+        "ConvNeXt",
+        "CNX-T",
+        "CNX-Tiny"
+      ],
+      "easy": "ViT 시대의 설계 요소를 가져와 현대화한 합성곱 신경망이에요. T/S/B/L은 크기 이름이에요.",
+      "more": "DINOv3의 ConvNeXt 학생은 OOD와 밀집 과제에서 ImageNet-22k 지도 ConvNeXt를 크게 앞서요. 어텐션이 없는 합성곱 구조라 INT8 양자화와 NPU 배포에 유리할 것으로 기대돼요.",
+      "example": "ConvNeXt-Tiny: 29M 파라미터, 256px에서 5 GFLOPs, ADE20k 42.7 (지도 ConvNeXt-T 24.8)"
+    },
+    {
+      "term": "GFLOPs",
+      "match": [
+        "GFLOPs"
+      ],
+      "easy": "모델이 한 장을 처리하는 데 드는 계산량을 10억 단위로 센 값이에요.",
+      "more": "7B는 256px에서 3550 GFLOPs나 들어서, 대부분의 응용에는 작은 학생 모델이 현실적이에요."
+    },
+    {
+      "term": "고해상도 적응",
+      "match": [
+        "고해상도 적응",
+        "Pre-HR",
+        "Post-HR"
+      ],
+      "easy": "본 학습이 끝난 뒤 512, 768px 같은 큰 해상도 조각으로 짧게 더 학습해서 큰 사진에도 잘 맞추는 단계예요.",
+      "more": "Gram 앵커링이 없으면 이 단계에서 밀집 성능이 크게 떨어졌어요. 적용하면 4096px 같은 큰 사진에서도 특징 지도가 안정적이에요."
+    },
+    {
+      "term": "SSL (자기지도 학습)",
+      "match": [
+        "SSL"
+      ],
+      "easy": "사람이 붙인 정답 없이 데이터 자체로 문제를 만들어 배우는 방법을 줄여 부르는 말이에요.",
+      "more": "이 논문에서는 마스킹·JEPA 계열과 판별 계열로 나눠요. DINOv3는 이미지끼리 구분하는 신호로 배우는 판별 계열이에요."
+    },
+    {
+      "term": "JEPA / 마스킹 계열",
+      "match": [
+        "JEPA",
+        "V-JEPA",
+        "I-JEPA"
+      ],
+      "easy": "가려진 부분을 픽셀 대신 학습된 잠재 공간에서 예측해서 더 높은 수준의 특징을 얻는 자기지도 방식이에요.",
+      "more": "MAE는 픽셀을 복원하고, I-JEPA와 V-JEPA는 잠재 표현을 예측해요. DINOv3와는 다른 계열이에요."
+    },
+    {
+      "term": "CLIP / SigLIP / PE",
+      "match": [
+        "SigLIP 2",
+        "SigLIP",
+        "CLIP",
+        "PEcore",
+        "Perception Encoder"
+      ],
+      "easy": "사진과 글(캡션)을 짝지어 배우는 약지도 모델들이에요. SigLIP은 시그모이드 손실을 써요.",
+      "more": "SigLIP 2와 Perception Encoder(PE)가 현재 가장 강한 약지도 모델이에요. DINOv3는 분류에서 이들과 대등해지면서 밀집 과제에서는 크게 앞서요."
+    },
+    {
+      "term": "AM-RADIO / PEspatial",
+      "match": [
+        "AM-RADIOv2.5",
+        "AM-RADIOv2",
+        "AM-RADIO",
+        "PEspatial"
+      ],
+      "easy": "SAM 같은 다른 모델의 지식을 합쳐 만든 모델들이에요. 밀집 과제에서 강했어요.",
+      "more": "밀집 과제에서 강한 건 마스크 라벨 모델 SAM을 증류했기 때문이에요. DINOv3는 이런 지도 모델 없이 이들을 이겨요.",
+      "example": "ADE20k mIoU: AM-RADIOv2.5 53.0 vs DINOv3 55.9"
+    },
+    {
+      "term": "Web-DINO / Franca",
+      "match": [
+        "Web-DINO",
+        "Franca"
+      ],
+      "easy": "DINOv3와 같은 시기에 자기지도 모델을 키운 경쟁 연구들이에요.",
+      "more": "Web-DINO는 정제 없이 7B까지 키웠지만 밀집 예측은 실망스러웠고, Franca는 공개 데이터로 학습했어요. 표에서 같이 비교돼요."
+    },
+    {
+      "term": "TTA (test-time augmentation)",
+      "match": [
+        "TTA"
+      ],
+      "easy": "테스트할 때 사진을 여러 방식으로 변형해 여러 번 예측하고 결과를 합치는 기법이에요.",
+      "more": "COCO 탐지 66.1 mAP는 TTA를 쓴 값이고, 단일 스케일은 65.6이에요. 비교할 때 둘을 구분해서 봐야 해요.",
+      "example": "COCO mAP 66.1 (TTA) vs 65.6 (단일 스케일)"
+    },
+    {
+      "term": "ADE20k",
+      "match": [
+        "ADE20k"
+      ],
+      "easy": "장면 속 150개 클래스를 픽셀마다 분할하는 의미 분할 벤치마크예요.",
+      "more": "학습 2만 장, 검증 2천 장이에요. DINOv3의 대표 밀집 지표이고, 얼린 7B + 선형층으로 55.9, ViT-Adapter + Mask2Former로 63.0 mIoU예요."
+    },
+    {
+      "term": "Mask2Former / ViT-Adapter / Plain-DETR",
+      "match": [
+        "Mask2Former",
+        "ViT-Adapter",
+        "Plain-DETR"
+      ],
+      "easy": "분할과 탐지용 디코더 구조들이에요. DINOv3 위에 붙여서 얼린 백본의 성능을 보여 줘요.",
+      "more": "분할에는 ViT-Adapter + Mask2Former, 탐지에는 1억 파라미터짜리 Plain-DETR 디코더만 학습해요. Plain-DETR은 Objects365로 디코더를 먼저 사전학습해요."
+    },
+    {
+      "term": "Depth Anything V2 (DAv2) / DPT",
+      "match": [
+        "DAv2",
+        "Depth Anything V2",
+        "Depth Anything",
+        "DPT"
+      ],
+      "easy": "한 장의 사진에서 깊이를 추정하는 모델이에요. DPT는 ViT 특징을 깊이 지도로 바꿔 주는 헤드예요.",
+      "more": "DAv2는 합성 이미지로 학습하는데, DINOv2가 시뮬레이션과 실제 사이의 간극을 넘는 특징을 주기 때문에 가능해요. 논문은 DAv2의 백본을 DINOv3로 바꾸고 얼려서 모든 깊이 데이터셋에서 최고를 냈어요."
+    },
+    {
+      "term": "깊이 지표 (RMSE, ARel, δ1)",
+      "match": [
+        "RMSE",
+        "ARel",
+        "δ1"
+      ],
+      "easy": "깊이 추정이 정답과 얼마나 가까운지 재는 값이에요. RMSE와 ARel은 낮을수록, δ1은 높을수록 좋아요.",
+      "more": "δ1은 예측이 정답의 일정 비율 이내인 픽셀의 비율이에요. NYUv2, KITTI, ETH3D, ScanNet, DIODE 같은 데이터셋에서 보고해요.",
+      "example": "NYUv2: ARel 4.3, δ1 98.0"
+    },
+    {
+      "term": "VGGT",
+      "match": [
+        "VGGT"
+      ],
+      "easy": "여러 장의 사진에서 카메라 자세와 3D 구조를 한 번에 추정하는 모델이에요.",
+      "more": "논문은 VGGT의 백본을 ViT-L 크기의 DINOv3로 바꿔서 카메라 자세, 다중 시점, 매칭이 모두 개선되는 것을 보여 줘요."
+    },
+    {
+      "term": "NAVI / SPair (3D 대응)",
+      "match": [
+        "NAVI",
+        "SPair",
+        "Probe3D"
+      ],
+      "easy": "서로 다른 시점의 사진에서 같은 키포인트를 찾는 대응 추정 벤치마크예요. NAVI는 같은 물체 인스턴스, SPair는 같은 클래스의 다른 인스턴스를 봐요.",
+      "more": "Probe3D 프로토콜로 패치 특징의 다중 시점 일관성을 재고, 대응 재현율(recall)을 보고해요. 학습 없이 특징만 써서 평가해요.",
+      "example": "DINOv3: NAVI 64.4, SPair 58.7"
+    },
+    {
+      "term": "DAVIS-L / 비모수 평가",
+      "match": [
+        "DAVIS-L",
+        "DAVIS",
+        "비모수"
+      ],
+      "easy": "영상의 첫 프레임 마스크를 다음 프레임으로 옮기는 추적 평가예요. 비모수는 따로 학습하지 않고 특징만 쓴다는 뜻이에요.",
+      "more": "DINOv3는 DAVIS-L에서 83.3 J&F로 DINOv2보다 6.7 높아요. 물체 발견(VOC07 CorLoc 66.1)도 원조 DINO보다 5점 높아요."
+    },
+    {
+      "term": "어텐티브 프로브",
+      "match": [
+        "어텐티브 프로브"
+      ],
+      "easy": "얼린 특징 위에 작은 트랜스포머를 얹어 학습하는 평가 방식으로, 영상 분류에 써요.",
+      "more": "프레임별 패치 특징 위에 4층 트랜스포머를 얹고 UCF101, SSv2, K400 top-1을 재요. 여러 층의 셀프 어텐션을 학습하므로 모델 간 차이가 덜 보여요."
+    },
+    {
+      "term": "선형 프로빙 (IN1k 선형)",
+      "match": [
+        "선형 프로빙",
+        "IN1k 선형",
+        "선형 분류기",
+        "IN1k"
+      ],
+      "easy": "인코더를 얼리고 맨 위에 선형층 하나만 학습해서 특징의 품질을 재는 방법이에요. IN1k는 ImageNet-1k의 줄임말이에요.",
+      "more": "이 논문은 DINOv3를 항상 얼린 채로 평가해요. 미세조정 없이도 강하다는 걸 보이는 게 목적이에요."
+    },
+    {
+      "term": "ImageNet 전이 벤치마크 (ReaL, R, A, Sketch, C)",
+      "match": [
+        "IN-ReaL",
+        "ReaL",
+        "IN-R",
+        "ImageNet-C",
+        "ObjectNet",
+        "Sketch"
+      ],
+      "easy": "ImageNet으로 학습한 분류기를 다른 분포의 테스트셋에서 시험하는 일반화 평가들이에요.",
+      "more": "V2와 ReaL은 과적합 검사, R과 Sketch는 스타일 변화, A와 ObjectNet은 어려운 예, C는 손상에 대한 강건성(낮을수록 좋음)을 봐요. DINOv3는 SSL 최초로 약지도·지도 모델과 대등해졌어요.",
+      "example": "ObjectNet 66.4 → 79.0, ImageNet-C 19.6"
+    },
+    {
+      "term": "OOD / COCO-O",
+      "match": [
+        "OOD",
+        "COCO-O",
+        "유효 강건성"
+      ],
+      "easy": "OOD는 학습 때 못 본 분포를 말해요. COCO-O는 같은 클래스에 6가지 분포 변화를 준 탐지용 OOD 테스트셋이에요.",
+      "more": "COCO-O mAP와 유효 강건성(ER)으로 학습 분포 밖에서도 잘 맞히는지를 재요. 얼린 7B에서 COCO-O 66.4로 새 최고를 냈어요."
+    },
+    {
+      "term": "인스턴스 검색 (Oxford-H, Paris-H, Met, AmsterTime)",
+      "match": [
+        "Oxford-H",
+        "Paris-H",
+        "AmsterTime"
+      ],
+      "easy": "[CLS] 특징의 코사인 유사도로 데이터베이스를 정렬해 같은 건물이나 작품을 찾는 평가예요.",
+      "more": "Oxford와 Paris는 랜드마크, Met은 메트로폴리탄 미술품, AmsterTime은 현대 거리뷰와 역사 사진을 맞춰요. DINOv3는 Met +10.8, AmsterTime +7.6으로 압도해요.",
+      "example": "Oxford-H 60.7, Paris-H 87.1"
+    },
+    {
+      "term": "dino.txt (텍스트 정렬)",
+      "match": [
+        "dino.txt",
+        "텍스트 정렬"
+      ],
+      "easy": "얼린 DINOv3 인코더 위에 트랜스포머 2층을 얹고 텍스트 인코더와 맞춰서 제로샷 능력을 더하는 방식이에요.",
+      "more": "[CLS]와 평균 풀링한 패치 임베딩을 이어 붙여서 텍스트와 대조 학습해요. 사진 전체뿐 아니라 패치 수준 의미도 텍스트와 연결돼요."
+    },
+    {
+      "term": "tCO2eq (탄소 배출) / MWh",
+      "match": [
+        "tCO2eq",
+        "MWh",
+        "PUE"
+      ],
+      "easy": "학습 때 쓴 전력(MWh)과 그에 따른 이산화탄소 환산 배출량(tCO2eq)이에요. PUE는 데이터센터의 전력 효율 지표예요.",
+      "more": "7B 사전학습은 H100 61,440 GPU시간, 47 MWh, 18 tCO2eq이고 프로젝트 전체는 약 2600 tCO2eq예요."
+    }
+  ]
+}

@@ -105,6 +105,20 @@ export const api = {
   deletePhrase: (id) => request("DELETE", "/english/phrases/" + encodeURIComponent(id)),
   cards: () => request("GET", "/english/cards"),
   reviewCard: (b) => request("POST", "/english/cards/review", b),
+  papersProgress: () => request("GET", "/papers/progress"),
+  paperCheck: (paper, step, done) => request("PUT", "/papers/check", { paper, step, done }),
+  paperNote: (paper, text) => request("PUT", "/papers/note", { paper, text }),
+  paperQuiz: (paper, correct) => request("POST", "/papers/quiz", { paper, correct }),
+  paperExplain: (paper, text) => request("POST", "/papers/explain", { paper, text }),
+  paperAsk: (paper, messages) => request("POST", "/papers/ask?stream=0", { paper, messages }),
+  papersObsidian: () => request("POST", "/papers/obsidian"),
+  homePad: (day) => request("GET", "/home/pad" + (day ? "?day=" + day : "")),
+  savePledge: (text, day) => request("PUT", "/home/pledge", { text, day }),
+  saveMemo: (text) => request("PUT", "/home/memo", { text }),
+  mcpTokens: () => request("GET", "/mcp/tokens"),
+  mcpCreate: (name) => request("POST", "/mcp/tokens", { name }),
+  mcpRevoke: (name) => request("DELETE", "/mcp/tokens/" + encodeURIComponent(name)),
+  mcpRevokeOAuth: (client) => request("DELETE", "/mcp/oauth/" + encodeURIComponent(client)),
 
   // 대화방 (셋이 같이 쓰는 방 하나) · 창고 (책 · 링크 · 영상)
   // room: 'all'(우리 셋) 또는 'dm:<id>:<id>'(두 사람, id 정렬). 안 주면 'all'.
@@ -148,6 +162,30 @@ export async function streamChat(payload, onEvent, signal) {
     if (res.status === 403 && data.must_change_password) { window.dispatchEvent(new CustomEvent("trio:must-change")); throw new ApiError(403, "", data); }
     throw new ApiError(res.status, data.error || "질문을 보내지 못했어요.");
   }
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = "";
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const block = buf.slice(0, i); buf = buf.slice(i + 2);
+        const line = block.split("\n").find((l) => l.startsWith("data: "));
+        if (line) { try { onEvent(JSON.parse(line.slice(6))); } catch {} }
+      }
+    }
+  } catch (e) { if (e.name !== "AbortError") throw e; }
+}
+
+// 논문 튜터 답을 글자 단위로 받아요. onEvent({type:"delta"|"reset"|"end"|"error", …})
+export async function streamPaperAsk(paper, messages, onEvent, signal) {
+  let res;
+  try {
+    res = await fetch("/api/papers/ask", { method: "POST", credentials: "same-origin", signal, headers: { "content-type": "application/json", "x-trio": "1" }, body: JSON.stringify({ paper, messages }) });
+  } catch (e) { if (e.name === "AbortError") return; throw new ApiError(0, "서버에 연결할 수 없어요."); }
+  if (!res.ok) { const data = await res.json().catch(() => ({})); throw new ApiError(res.status, data.error || "질문을 보내지 못했어요.", data); }
   const reader = res.body.getReader(), dec = new TextDecoder();
   let buf = "";
   try {

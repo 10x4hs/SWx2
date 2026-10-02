@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 460">
+  <defs><marker id="ah-intquant" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <rect class="dg-zone" rx="16" x="20" y="14" width="760" height="292"/>
+  <text class="dg-s" x="40" y="40">실수 값 r (float32) — 보정으로 찾은 범위 [−1.0, 2.0]</text>
+
+  <!-- float number line -->
+  <path class="dg-a" d="M80,90 H560" fill="none"/>
+  <path class="dg-a dash" d="M560,90 H650" fill="none"/>
+  <path class="dg-a" d="M80,82 V98" fill="none"/>
+  <path class="dg-a" d="M240,82 V98" fill="none"/>
+  <path class="dg-a" d="M344,82 V98" fill="none"/>
+  <path class="dg-a" d="M560,82 V98" fill="none"/>
+  <text class="dg-t" x="80" y="72" text-anchor="middle">−1.0</text>
+  <text class="dg-t b" x="240" y="72" text-anchor="middle">0.0</text>
+  <text class="dg-t b" x="344" y="72" text-anchor="middle">0.65</text>
+  <text class="dg-t" x="560" y="72" text-anchor="middle">2.0</text>
+  <text class="dg-t" x="650" y="72" text-anchor="middle">2.6</text>
+  <circle class="dg-box c-blue" cx="240" cy="90" r="6"/>
+  <circle class="dg-box c-amber" cx="344" cy="90" r="6"/>
+  <circle class="dg-box c-rose" cx="650" cy="90" r="6"/>
+
+  <!-- mapping arrows -->
+  <path class="dg-a dash" d="M80,100 V238" fill="none" marker-end="url(#ah-intquant)"/>
+  <path class="dg-a dash" d="M240,100 V238" fill="none" marker-end="url(#ah-intquant)"/>
+  <path class="dg-a dash" d="M344,100 V238" fill="none" marker-end="url(#ah-intquant)"/>
+  <path class="dg-a dash" d="M560,100 V238" fill="none" marker-end="url(#ah-intquant)"/>
+  <path class="dg-a" d="M646,102 L566,236" fill="none" marker-end="url(#ah-intquant)"/>
+  <text class="dg-s" x="622" y="160">범위 밖 값은</text>
+  <text class="dg-s" x="622" y="178">255로 잘려요(clamp)</text>
+  <text class="dg-s" x="252" y="170">나누고 반올림</text>
+
+  <!-- int number line -->
+  <text class="dg-s" x="92" y="222">정수 q (uint8, 0~255)</text>
+  <path class="dg-a" d="M80,250 H560" fill="none"/>
+  <path class="dg-a" d="M80,242 V258" fill="none"/>
+  <path class="dg-a" d="M240,242 V258" fill="none"/>
+  <path class="dg-a" d="M344,242 V258" fill="none"/>
+  <path class="dg-a" d="M560,242 V258" fill="none"/>
+  <circle class="dg-box c-blue" cx="240" cy="250" r="6"/>
+  <circle class="dg-box c-amber" cx="344" cy="250" r="6"/>
+  <text class="dg-t" x="80" y="278" text-anchor="middle">0</text>
+  <text class="dg-t b" x="240" y="278" text-anchor="middle">85 = Z</text>
+  <text class="dg-t b" x="344" y="278" text-anchor="middle">140</text>
+  <text class="dg-t" x="560" y="278" text-anchor="middle">255</text>
+  <text class="dg-s" x="240" y="298" text-anchor="middle">실수 0 은 오차 없이 Z 로 가요</text>
+  <text class="dg-s" x="580" y="298">한 칸 간격 S ≈ 0.0118</text>
+
+  <!-- formula boxes -->
+  <rect class="dg-box c-blue" rx="12" x="20" y="322" width="370" height="122"/>
+  <text class="dg-t b" x="40" y="352">두 방향 공식</text>
+  <text class="dg-t" x="40" y="382">실수 → 정수: q = 반올림(r ÷ S) + Z</text>
+  <text class="dg-t" x="40" y="410">정수 → 실수: r = S × (q − Z)</text>
+  <text class="dg-s" x="40" y="432">S = 간격(scale), Z = 영점(zero-point)</text>
+
+  <rect class="dg-box c-amber" rx="12" x="410" y="322" width="370" height="122"/>
+  <text class="dg-t b" x="430" y="352">직접 계산해 보기</text>
+  <text class="dg-t" x="430" y="382">S = 3 ÷ 255 ≈ 0.0118, Z = 1 ÷ S = 85</text>
+  <text class="dg-t" x="430" y="410">r = 0.65 → 0.65 ÷ S ≈ 55.25 → q = 140</text>
+  <text class="dg-s" x="430" y="432">되돌리면 (3 ÷ 255) × 55 ≈ 0.647 (오차 약 0.003)</text>
+</svg>

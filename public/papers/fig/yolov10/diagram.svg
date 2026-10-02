@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480">
+  <defs><marker id="ah-yolov10" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <!-- 입력 -->
+  <rect class="dg-box" rx="12" x="20" y="170" width="110" height="60"/>
+  <text class="dg-t b" x="75" y="197" text-anchor="middle">입력 영상</text>
+  <text class="dg-s" x="75" y="217" text-anchor="middle">사진 한 장</text>
+
+  <!-- 특징 추출 -->
+  <rect class="dg-box" rx="12" x="160" y="150" width="160" height="100"/>
+  <text class="dg-t b" x="240" y="192" text-anchor="middle">특징 뽑기</text>
+  <text class="dg-s" x="240" y="214" text-anchor="middle">Backbone + PAN</text>
+  <text class="dg-s" x="240" y="232" text-anchor="middle">(두 머리가 함께 씀)</text>
+
+  <path class="dg-a" fill="none" d="M130,200 L156,200" marker-end="url(#ah-yolov10)"/>
+
+  <!-- 두 헤드 -->
+  <rect class="dg-box c-amber" rx="12" x="360" y="60" width="200" height="70"/>
+  <text class="dg-t b" x="460" y="89" text-anchor="middle">일대다 헤드</text>
+  <text class="dg-s" x="460" y="112" text-anchor="middle">물체 1개 ↔ 정답 여러 개</text>
+
+  <rect class="dg-box c-blue" rx="12" x="360" y="270" width="200" height="70"/>
+  <text class="dg-t b" x="460" y="299" text-anchor="middle">일대일 헤드</text>
+  <text class="dg-s" x="460" y="322" text-anchor="middle">물체 1개 ↔ 정답 1개</text>
+
+  <path class="dg-a" fill="none" d="M320,180 C340,180 340,95 356,95" marker-end="url(#ah-yolov10)"/>
+  <path class="dg-a" fill="none" d="M320,220 C340,220 340,305 356,305" marker-end="url(#ah-yolov10)"/>
+
+  <!-- 일관된 매칭 기준 -->
+  <rect class="dg-box c-violet" rx="12" x="375" y="167" width="170" height="66"/>
+  <text class="dg-t b" x="460" y="195" text-anchor="middle">같은 채점 기준</text>
+  <text class="dg-s" x="460" y="217" text-anchor="middle">1등 후보가 똑같아요</text>
+  <path class="dg-a dash" fill="none" d="M460,167 L460,134" marker-end="url(#ah-yolov10)"/>
+  <path class="dg-a dash" fill="none" d="M460,233 L460,266" marker-end="url(#ah-yolov10)"/>
+
+  <!-- 오른쪽 결과 -->
+  <rect class="dg-box" rx="12" x="600" y="60" width="180" height="70"/>
+  <text class="dg-t b" x="690" y="89" text-anchor="middle">풍부한 학습 신호</text>
+  <text class="dg-s" x="690" y="112" text-anchor="middle">학습 때만 · 배포 땐 버려요</text>
+  <path class="dg-a dash" fill="none" d="M560,95 L596,95" marker-end="url(#ah-yolov10)"/>
+
+  <rect class="dg-box c-green" rx="12" x="600" y="270" width="180" height="70"/>
+  <text class="dg-t b" x="690" y="299" text-anchor="middle">상자 바로 출력</text>
+  <text class="dg-s" x="690" y="322" text-anchor="middle">NMS 없이 끝나요</text>
+  <path class="dg-a" fill="none" d="M560,305 L596,305" marker-end="url(#ah-yolov10)"/>
+
+  <!-- 비교 줄 -->
+  <rect class="dg-zone" rx="16" x="20" y="370" width="760" height="94"/>
+  <text class="dg-s" x="40" y="392">추론(배포) 때 흐름 비교</text>
+  <text class="dg-t" x="40" y="420">기존 YOLO: 모델 → 겹친 상자 여러 개 → NMS 후처리 → 결과</text>
+  <text class="dg-t b" x="40" y="448">YOLOv10: 모델(일대일 헤드) → 결과  ·  후처리 단계가 사라져요</text>
+</svg>

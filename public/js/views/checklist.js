@@ -1,16 +1,17 @@
 // 체크리스트 — 시간 없이 "해야 할 일"만 (시간 정해진 일정은 캘린더의 하루 계획표에서, 둘은 따로예요). 주소: #/checklist[/YYYY-MM-DD] (없으면 오늘). 홈의 '오늘' 링을 누르면 여기로 와요.
-// 위: 날짜 · 우선순위 색 도넛 차트. 가운데: 목록(체크 · 시간 · 우선순위 · 두 번 눌러 고치기 · 지우기). 아래: 입력 한 줄(여러 줄 붙여넣기 = 여러 개).
+// 위: 날짜 · 우선순위 색 도넛 차트. 가운데: 목록(체크 · 우선순위 1~5 · 예상 시간 · 두 번 눌러 고치기 · 지우기). 아래: 입력 한 줄 + 우선순위 · 시간 고르기(여러 줄 붙여넣기 = 여러 개).
+// 우선순위 · 시간 알약을 누르면 아래로 펼쳐져서 골라요. 예상 시간은 그날 점수의 '계획 시간'에도 들어가요.
 import { api } from "../api.js";
 import { $, esc, toast, ymd, parseYmd, addDays, today, DOW, hm, toMin, nowTime } from "../util.js";
 import { icon } from "../icons.js";
-import { PRIOS, missBtn } from "./day.js";
+import { missBtn } from "./day.js";
+import { PRIO_RANK as RANK, prioSelect, prioPill, openPrioDrop, hoursSelect, hoursPill, openHoursDrop, parseMins, sumMins, MINS_HINT } from "../prio.js";
 import { prioDonut, prioLegend } from "../charts/prio.js";
 import { keepDraft } from "../draft.js";
 import { mountCommand } from "../ai-command.js";
 import { openMenu, closeMenu } from "../ctxmenu.js";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
-const RANK = { max: 5, xhigh: 4, high: 3, medium: 2, low: 1 };
 const rel = (d) => { const t = ymd(today()); if (d === t) return "오늘"; if (d === ymd(addDays(today(), 1))) return "내일"; if (d === ymd(addDays(today(), -1))) return "어제"; return ""; };
 
 let inst = null;
@@ -30,14 +31,16 @@ export function mount(root, ctx, r) {
         </div>
       </header>
       <section class="ck-head">
-        <div class="ck-when"><span class="ck-rel" id="ck-rel"></span><h1 class="gl-title" id="ck-title"></h1></div>
+        <div class="ck-when"><span class="ck-rel" id="ck-rel"></span><h1 class="gl-title" id="ck-title"></h1><p class="ck-sum" id="ck-sum" aria-live="polite"></p></div>
         <div class="ck-chart"><div id="ck-donut"></div><div class="ck-legend" id="ck-legend"></div></div>
       </section>
       <div id="ck-ai"></div>
       <ul class="gl-list" id="ck-list"><li class="faint gl-load">불러오는 중…</li></ul>
       <form class="gl-add ck-add" id="ck-add" autocomplete="off">
         <input class="input" name="text" maxlength="200" placeholder="해야 할 일 · Enter (여러 줄 붙여넣기 가능)" aria-label="할 일 추가">
-        <select class="select sm" name="priority" aria-label="우선순위"><option value="">우선순위</option>${PRIOS.map((p) => `<option value="${p.k}">${p.label}</option>`).join("")}</select>
+        ${prioSelect("priority", "", "select sm")}
+        ${hoursSelect("mins", null, "select sm")}<input class="input ck-mins-in" name="mins_text" placeholder="${MINS_HINT}" aria-label="예상 시간 직접 입력" autocomplete="off" inputmode="decimal" hidden>
+        <button type="submit" class="ck-submit" tabindex="-1" aria-hidden="true">추가</button>
       </form>
     </div>`;
   const form = $("#ck-add", root), draft = keepDraft(form.text, "checklist");
@@ -51,10 +54,19 @@ export function mount(root, ctx, r) {
     $("#ck-now", root).href = "#/checklist"; $("#ck-now", root).hidden = S.day === ymd(today());
     $("#ck-cal", root).href = "#/calendar/" + S.day;
   }
+  // 위쪽 합계: 예상 시간을 모두 더해서 (끝낸 몫 · 남은 몫 · 시간 안 적은 할 일 수)
+  function drawSum() {
+    const el = $("#ck-sum", root), items = S.list || [];
+    const total = sumMins(items), done = sumMins(items.filter((p) => p.done)), noTime = items.filter((p) => !p.mins).length;
+    if (!items.length) { el.innerHTML = ""; return; }
+    if (!total) { el.innerHTML = `<span class="faint">예상 시간을 고르면 여기에 합계가 떠요</span>`; return; }
+    el.innerHTML = `<b class="ck-sum-t">총 ${esc(hm(total))}</b><span class="ck-sum-d">${done ? `끝냄 ${esc(hm(done))}` : "아직 끝낸 시간 없음"}</span>${total - done ? `<span class="ck-sum-l">남음 ${esc(hm(total - done))}</span>` : `<span class="ck-sum-l ok">다 끝냈어요</span>`}${noTime ? `<span class="faint">시간 없는 할 일 ${noTime}개</span>` : ""}`;
+  }
   function drawChart() {
+    drawSum();
     const items = S.list || [];
-    $("#ck-donut", root).innerHTML = prioDonut(items, { size: 188 });
-    $("#ck-legend", root).innerHTML = items.length ? prioLegend(items) + `<p class="faint ck-tip">진한 색 = 끝낸 몫 · 우선순위를 누르면 바뀌어요</p>` : `<p class="faint ck-tip">할 일을 적고 우선순위를 고르면 색으로 쌓여요.</p>`;
+    $("#ck-donut", root).innerHTML = prioDonut(items, { size: 188, time: true });
+    $("#ck-legend", root).innerHTML = items.length ? prioLegend(items) + `<p class="faint ck-tip">진한 색 = 끝낸 몫 · 1순위가 가장 급해요 · 알약을 누르면 펼쳐져요</p>` : `<p class="faint ck-tip">할 일을 적고 우선순위(1~5)와 예상 시간을 고르면 색으로 쌓여요.</p>`;
   }
   // 못함 표시 켜기/끄기 — 켜면 끝냄은 꺼져요
   async function setMissed(p, on) {
@@ -71,7 +83,7 @@ export function mount(root, ctx, r) {
       return `<li class="gl-item${p.done ? " done" : ""}${p.missed ? " fail" : ""}${late ? " late" : ""}" data-id="${esc(p.id)}" data-p="${p.priority || ""}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 끝냄">${missBtn(p)}
         <span class="gl-text" data-edit="${esc(p.id)}" title="두 번 눌러 고치기">${esc(p.text)}</span>
-        <button type="button" class="prio" data-prio="${esc(p.id)}" data-p="${p.priority || ""}">${p.priority ? PRIOS.find((x) => x.k === p.priority).label : "우선순위"}</button>
+        ${prioPill(p)}${hoursPill(p)}
         <button type="button" class="icon-btn sm gl-del" data-del="${esc(p.id)}" aria-label="지우기">${icon.x(14)}</button>
       </li>`;
     }).join("") : `<li class="gl-empty"><p>${S.day >= ymd(today()) ? "해야 할 일을 적어 보세요." : "이날은 할 일이 없었어요."}</p><p class="faint">시간이 정해진 일정은 캘린더의 하루 계획표에 적어요.</p></li>`;
@@ -85,16 +97,26 @@ export function mount(root, ctx, r) {
   const changed = () => { S.selfAt = Date.now(); ctx.changed?.("plans"); };
   async function addMany(texts) {
     const priority = form.priority.value || null;
+    let mins = +form.mins.value || null;
+    if (form.mins.value === "custom") { // 직접 적은 시간
+      const t = form.mins_text.value.trim();
+      if (t) { mins = parseMins(t); if (mins === null) { toast(`시간을 못 읽었어요. ${MINS_HINT}`, "err"); form.mins_text.focus(); form.mins_text.select(); return 0; } }
+    }
     let n = 0;
     for (const [i, raw] of texts.entries()) {
       const text = raw.replace(/^\s*(?:[-*•]|\d+[.)]|\[[ xX]?\])\s*/, "").trim(); if (!text) continue; // "- 할 일" · "1. 할 일" · "[ ] 할 일" 도 받아요
-      try { const { plan } = await api.addPlan({ scope: "day", period: "D:" + S.day, text: text.slice(0, 200), ...(priority ? { priority } : {}) }); S.list.push(plan); n++; }
+      try { const { plan } = await api.addPlan({ scope: "day", period: "D:" + S.day, text: text.slice(0, 200), ...(priority ? { priority } : {}), ...(mins ? { mins } : {}) }); S.list.push(plan); n++; }
       catch (e) { toast(e.message, "err"); break; }
     }
-    if (n) { drawList(); changed(); if (n > 1) toast(`${n}개를 넣었어요.`); form.priority.value = ""; } // 우선순위는 한 번 쓰고 비워요 (다음 일에 딸려 가지 않게)
+    if (n) { drawList(); changed(); if (n > 1) toast(`${n}개를 넣었어요.`); form.priority.value = ""; form.mins.value = ""; minsMode(false); } // 우선순위 · 시간은 한 번 쓰고 비워요 (다음 일에 딸려 가지 않게)
     return n;
   }
 
+  // 시간 고르기에서 "직접 입력…" 을 고르면 그 자리에 입력칸이 열려요. Esc · 빈 채로 나가면 다시 고르기로
+  function minsMode(custom) { form.mins.hidden = custom; form.mins_text.hidden = !custom; if (!custom) form.mins_text.value = ""; }
+  form.mins.addEventListener("change", () => { if (form.mins.value === "custom") { minsMode(true); form.mins_text.focus(); } });
+  form.mins_text.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); form.mins.value = ""; minsMode(false); form.mins.focus(); } });
+  form.mins_text.addEventListener("blur", () => { if (!form.mins_text.value.trim()) { form.mins.value = ""; minsMode(false); } });
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = form.text.value.trim(); if (!text || S.busy || !S.list) return form.text.focus();
@@ -117,11 +139,23 @@ export function mount(root, ctx, r) {
     const mb = e.target.closest("[data-miss]");
     if (mb && S.list) { const p = S.list.find((x) => x.id === mb.dataset.miss); if (p) setMissed(p, !p.missed); return; }
     const pr = e.target.closest("[data-prio]");
-    if (pr) {
+    if (pr) { // 아래로 펼쳐지는 1~5순위 고르기
       const p = S.list.find((x) => x.id === pr.dataset.prio); if (!p) return;
-      const order = ["", ...PRIOS.map((x) => x.k)], nx = order[(order.indexOf(p.priority || "") + 1) % order.length] || null, old = p.priority;
-      p.priority = nx; drawList();
-      try { await api.updatePlan(p.id, { priority: nx }); changed(); } catch (err) { p.priority = old; drawList(); toast(err.message, "err"); }
+      openPrioDrop(pr, p.priority || "", async (v) => {
+        const nx = v || null, old = p.priority; if (nx === (old || null)) return;
+        p.priority = nx; drawList();
+        try { await api.updatePlan(p.id, { priority: nx }); changed(); } catch (err) { p.priority = old; drawList(); toast(err.message, "err"); }
+      });
+      return;
+    }
+    const hb = e.target.closest("[data-hours]");
+    if (hb) { // 예상 시간 고르기
+      const p = S.list.find((x) => x.id === hb.dataset.hours); if (!p) return;
+      openHoursDrop(hb, p.mins || null, async (m) => {
+        const old = p.mins; if (m === (old || null)) return;
+        p.mins = m; drawList();
+        try { await api.updatePlan(p.id, { mins: m }); changed(); } catch (err) { p.mins = old; drawList(); toast(err.message, "err"); }
+      });
       return;
     }
     const del = e.target.closest("[data-del]");

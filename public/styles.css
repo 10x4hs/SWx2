@@ -3054,3 +3054,38 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .block.micro .check, .block.micro .miss-btn { width: 12px; height: 12px; border-width: 1.3px; }
 .block.micro .when-i { font-size: 9.5px; }
 .block.micro .bk-rs { height: 5px; }
+
+/* v23: 우선순위 1~5순위 · 예상 시간 — 알약을 누르면 아래로 펼쳐지는 고르기 (.cm-drop) */
+.prio[aria-expanded="true"] { opacity: 1; outline: 1.5px solid color-mix(in srgb, currentColor 55%, transparent); outline-offset: 1px; }
+.prio.hrs { font-family: var(--mono); letter-spacing: 0; }
+.prio.hrs:not(.none) { color: var(--ink-2); border-color: var(--lg-edge-hi); background: rgba(255, 255, 255, .06); opacity: 1; }
+.gl-item .prio.hrs.none { opacity: 0; } .gl-item:hover .prio.hrs.none, .todo:hover .prio.hrs.none, .prio.hrs.none:focus-visible { opacity: 1; }
+.gl-add .hours-sel, .gl-add .prio-sel { min-width: 0; }
+.cm-drop { min-width: 168px; max-width: 240px; padding: 5px; gap: 1px; max-height: min(60vh, 420px); overflow: auto; transform-origin: top left; }
+.cm-drop.up { transform-origin: bottom left; }
+.cm-o { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; color: var(--ink); font: 500 13.5px var(--font); padding: 7px 9px; border-radius: 9px; cursor: pointer; }
+.cm-o small { margin-left: auto; font-size: 11.5px; color: var(--ink-3); }
+.cm-o .cm-ck { flex: none; color: var(--ink-2); }
+.cm-o small + .cm-ck { margin-left: 2px; }
+.cm-o:hover, .cm-o:focus-visible { background: var(--hover); outline: none; }
+.cm-o.on { background: color-mix(in srgb, var(--hover) 60%, transparent); }
+.cm-o.clear { color: var(--ink-3); } .cm-o.clear .cm-ol { font-weight: 500; }
+.cm-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-3); box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 10%, transparent); }
+.cm-o[data-p="max"] .cm-dot { background: var(--p-max); } .cm-o[data-p="xhigh"] .cm-dot { background: var(--p-xhigh); } .cm-o[data-p="high"] .cm-dot { background: var(--p-high); }
+.cm-o[data-p="medium"] .cm-dot { background: var(--p-medium); } .cm-o[data-p="low"] .cm-dot { background: var(--p-low); }
+.cm-o[data-p] .cm-ol { font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 720px) { .gl-item .prio.hrs.none { opacity: 1; } .cm-drop { min-width: 200px; } .cm-o { padding: 10px 11px; font-size: 15px; } }
+/* v23.1: 체크리스트 예상 시간 합계 · 시간 직접 입력 */
+.ck-sum { margin: 2px 0 0; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; font-size: 13px; color: var(--ink-2); min-height: 1.2em; }
+.ck-sum-t { font: 700 20px var(--font); color: var(--ink); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.ck-sum-d { color: var(--ink-2); } .ck-sum-l { color: var(--ink-3); } .ck-sum-l.ok { color: var(--p-medium); }
+.ck-sum-d::before, .ck-sum-l::before, .ck-sum .faint::before { content: "·"; margin-right: 10px; color: var(--ink-3); }
+.hrs-in { flex: none; width: 150px; padding: 3px 8px; font: 500 12px var(--mono); border-radius: 999px; min-height: 0; height: 24px; }
+.ck-add .ck-mins-in { flex: none; width: 170px; font-size: 12.5px; padding: 8px 10px; border: 0; background: transparent; box-shadow: none; }
+.ck-add .ck-mins-in:focus { box-shadow: none; background: transparent; }
+.ck-add .ck-submit { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); opacity: 0; pointer-events: none; } /* 글자 입력칸이 둘이라 Enter 제출에 필요한 숨은 버튼 */
+/* v23.2: 체크리스트 도넛 가운데 = 걸리는 시간 합계 */
+.pd-time { font-size: 38px; } .pd-time.both { font-size: 30px; }
+.pd-unit { font-size: .5em; fill: var(--ink-2); letter-spacing: 0; font-weight: 600; }
+.pd-left { fill: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
+.hc-left li .hc-mins { margin-left: auto; flex: none; font: 600 11.5px var(--mono); color: var(--ink-3); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--lg-edge); }

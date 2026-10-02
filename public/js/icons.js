@@ -10,6 +10,10 @@ export const icon = {
   plus: (z) => s('<path d="M12 5v14M5 12h14"/>', z),
   x: (z) => s('<path d="M6 6l12 12M18 6L6 18"/>', z),
   left: (z) => s('<path d="M15 18l-6-6 6-6"/>', z),
+  download: (z) => s('<path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/>', z),
+  check: (z) => s('<path d="M5 12.5l4.5 4.5L19 7.5"/>', z),
+  external: (z) => s('<path d="M14 5h5v5M19 5l-8 8M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/>', z),
+  send: (z) => s('<path d="M5 12h13M13 6.5l5.5 5.5-5.5 5.5"/>', z),
   right: (z) => s('<path d="M9 18l6-6-6-6"/>', z),
   trash: (z) => s('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>', z),
   edit: (z) => s('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>', z),
@@ -54,6 +58,8 @@ const GLYPH = {
   english: `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 4.5h13a2 2 0 0 1 2 2v8.2a2 2 0 0 1-2 2h-7.3L7 20v-3.3H5.5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2z"/><text x="12" y="13.9" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif" font-size="8.6" font-weight="800" letter-spacing="-.2" fill="var(--c-teal)" stroke="none">En</text></svg>`,
   // 대화: 무채색 말풍선 둘(겹침) + 앞 말풍선에 초록 점 하나 (셋이 같이 쓰는 방)
   room: `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 4.5h9a2.5 2.5 0 0 1 2.5 2.5v5a2.5 2.5 0 0 1-2.5 2.5H16" stroke-opacity=".5"/><path d="M4.5 9.5A2.5 2.5 0 0 1 7 7h7a2.5 2.5 0 0 1 2.5 2.5v5A2.5 2.5 0 0 1 14 17h-4l-3.5 3v-3A2.5 2.5 0 0 1 4.5 14.5z" fill="var(--tile)"/><circle cx="10.5" cy="12" r="1.5" fill="var(--c-green)" stroke="none"/></svg>`,
+  // 논문: 무채색 종이 + 접힌 모서리, 첫 줄만 로즈(형광펜으로 그은 줄)
+  papers: `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h8l4 4v11.5a1.5 1.5 0 0 1-1.5 1.5h-10.5A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1.5-1.5z" fill="var(--tile)"/><path d="M14.5 3.5v4h4" stroke-opacity=".55"/><path d="M8.5 11.5h7" stroke="var(--c-rose)" stroke-width="2.6" stroke-opacity=".85"/><path d="M8.5 15h7M8.5 18h4.5" stroke-opacity=".6"/></svg>`,
   // 타이머: 살구색 스톱워치
   timer: g('<circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V9.5M10 3h4M18.5 7l1.3-1.3"/>', 2),
 };

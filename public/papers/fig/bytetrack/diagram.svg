@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480">
+  <defs><marker id="ah-bytetrack" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <!-- 탐지기 출력 -->
+  <rect class="dg-box" rx="12" x="40" y="24" width="200" height="60"/>
+  <text class="dg-t b" x="140" y="50" text-anchor="middle">탐지기 출력</text>
+  <text class="dg-s" x="140" y="72" text-anchor="middle">상자 + 점수 (매 프레임)</text>
+
+  <!-- 기존 트랙 + 칼만 -->
+  <rect class="dg-box c-violet" rx="12" x="300" y="24" width="240" height="60"/>
+  <text class="dg-t b" x="420" y="50" text-anchor="middle">기존 트랙</text>
+  <text class="dg-s" x="420" y="72" text-anchor="middle">칼만 필터로 다음 위치 예측</text>
+
+  <!-- 높은 / 낮은 점수 상자 -->
+  <rect class="dg-box c-blue" rx="12" x="40" y="150" width="200" height="64"/>
+  <text class="dg-t b" x="140" y="176" text-anchor="middle">높은 점수 상자</text>
+  <text class="dg-s" x="140" y="200" text-anchor="middle">점수 &gt; τ (기본 0.6)</text>
+
+  <rect class="dg-box c-amber" rx="12" x="40" y="310" width="200" height="64"/>
+  <text class="dg-t b" x="140" y="336" text-anchor="middle">낮은 점수 상자</text>
+  <text class="dg-s" x="140" y="360" text-anchor="middle">가려짐·흐림 후보 + 배경</text>
+
+  <!-- 1차 / 2차 매칭 -->
+  <rect class="dg-box c-blue" rx="12" x="300" y="150" width="240" height="64"/>
+  <text class="dg-t b" x="420" y="176" text-anchor="middle">1차 매칭</text>
+  <text class="dg-s" x="420" y="200" text-anchor="middle">IoU(또는 Re-ID) + 헝가리안</text>
+
+  <rect class="dg-box c-amber" rx="12" x="300" y="310" width="240" height="64"/>
+  <text class="dg-t b" x="420" y="336" text-anchor="middle">2차 매칭</text>
+  <text class="dg-s" x="420" y="360" text-anchor="middle">남은 트랙 × 낮은 상자 · IoU만</text>
+
+  <!-- 성공 결과 -->
+  <rect class="dg-box c-green" rx="12" x="600" y="150" width="180" height="64"/>
+  <text class="dg-t b" x="690" y="176" text-anchor="middle">ID 이어 가기</text>
+  <text class="dg-s" x="690" y="200" text-anchor="middle">위치 갱신</text>
+
+  <rect class="dg-box c-green" rx="12" x="600" y="310" width="180" height="64"/>
+  <text class="dg-t b" x="690" y="336" text-anchor="middle">되찾기 성공</text>
+  <text class="dg-s" x="690" y="360" text-anchor="middle">가려진 사람도 같은 ID</text>
+
+  <!-- 남은 것들 -->
+  <rect class="dg-box" rx="12" x="20" y="408" width="240" height="56"/>
+  <text class="dg-t b" x="140" y="430" text-anchor="middle">남은 높은 상자</text>
+  <text class="dg-s" x="140" y="452" text-anchor="middle">새 ID로 트랙 시작</text>
+
+  <rect class="dg-box" rx="12" x="280" y="408" width="240" height="56"/>
+  <text class="dg-t b" x="400" y="430" text-anchor="middle">남은 낮은 상자</text>
+  <text class="dg-s" x="400" y="452" text-anchor="middle">배경으로 보고 버려요</text>
+
+  <rect class="dg-box" rx="12" x="540" y="408" width="240" height="56"/>
+  <text class="dg-t b" x="660" y="430" text-anchor="middle">끝내 놓친 트랙</text>
+  <text class="dg-s" x="660" y="452" text-anchor="middle">30프레임 동안 보관 후 삭제</text>
+
+  <!-- 화살표 -->
+  <path class="dg-a" fill="none" d="M140,84 L140,148" marker-end="url(#ah-bytetrack)"/>
+  <path class="dg-a" fill="none" d="M52,84 L52,100 L16,100 L16,342 L38,342" marker-end="url(#ah-bytetrack)"/>
+  <path class="dg-a" fill="none" d="M420,84 L420,148" marker-end="url(#ah-bytetrack)"/>
+  <path class="dg-a" fill="none" d="M240,182 L298,182" marker-end="url(#ah-bytetrack)"/>
+  <path class="dg-a" fill="none" d="M240,342 L298,342" marker-end="url(#ah-bytetrack)"/>
+  <path class="dg-a" fill="none" d="M420,214 L420,308" marker-end="url(#ah-bytetrack)"/>
+  <text class="dg-s" x="430" y="266">짝 못 찾은 트랙만</text>
+  <path class="dg-a" fill="none" d="M540,182 L598,182" marker-end="url(#ah-bytetrack)"/>
+  <path class="dg-a" fill="none" d="M540,342 L598,342" marker-end="url(#ah-bytetrack)"/>
+  <path class="dg-a dash" fill="none" d="M300,206 L276,206 L276,392 L140,392 L140,406" marker-end="url(#ah-bytetrack)"/>
+  <path class="dg-a dash" fill="none" d="M400,374 L400,406" marker-end="url(#ah-bytetrack)"/>
+  <path class="dg-a dash" fill="none" d="M520,374 L520,390 L660,390 L660,406" marker-end="url(#ah-bytetrack)"/>
+</svg>

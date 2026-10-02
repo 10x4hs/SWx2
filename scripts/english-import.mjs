@@ -5,7 +5,8 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const VAULT = process.env.ENGLISH_OS || "/Users/prime/Documents/ENGLISH-OS";
+// 볼트는 STUDY-OS 의 "영어 공부/" 구역으로 옮겼어요 (scripts/papers/vault-restructure.py). 옛 위치도 찾아봐요.
+const VAULT = process.env.ENGLISH_OS || ["/Users/prime/Documents/STUDY-OS/영어 공부", "/Users/prime/Documents/ENGLISH-OS"].find((p) => existsSync(p)) || "/Users/prime/Documents/STUDY-OS/영어 공부";
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "english", "data.json");
 
 const F = {

@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs><marker id="ah-cmx" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <!-- 위: 왜 두 카메라를 합칠까 -->
+  <rect class="dg-zone" rx="16" x="10" y="8" width="780" height="140"/>
+  <text class="dg-s" x="26" y="30">왜 RGB + 열화상? — 열화상은 빛이 아니라 물체가 내는 열을 찍어요</text>
+
+  <rect class="dg-box c-violet" rx="12" x="26" y="42" width="240" height="94"/>
+  <text class="dg-t b" x="146" y="68" text-anchor="middle">밤·어두운 골목</text>
+  <text class="dg-s" x="146" y="94" text-anchor="middle">RGB: 사람과 배경이 같은 검정</text>
+  <text class="dg-s" x="146" y="118" text-anchor="middle">열화상: 체온 때문에 밝게 보여요</text>
+
+  <rect class="dg-box c-rose" rx="12" x="280" y="42" width="240" height="94"/>
+  <text class="dg-t b" x="400" y="68" text-anchor="middle">전조등·역광 눈부심</text>
+  <text class="dg-s" x="400" y="94" text-anchor="middle">RGB: 하얗게 번져 사람이 묻혀요</text>
+  <text class="dg-s" x="400" y="118" text-anchor="middle">열화상: 빛에 덜 흔들려요</text>
+
+  <rect class="dg-box c-teal" rx="12" x="534" y="42" width="240" height="94"/>
+  <text class="dg-t b" x="654" y="68" text-anchor="middle">연기·옅은 안개</text>
+  <text class="dg-s" x="654" y="94" text-anchor="middle">RGB: 뿌옇게 가려져요</text>
+  <text class="dg-s" x="654" y="118" text-anchor="middle">열화상: 열 윤곽이 남아 있어요</text>
+
+  <!-- 아래: CMX 흐름 -->
+  <rect class="dg-zone" rx="16" x="10" y="160" width="780" height="282"/>
+  <text class="dg-s" x="26" y="182">CMX는 이렇게 합쳐요 — 따로 보고, 서로 고쳐 주고, 대화한 뒤 합치기</text>
+
+  <rect class="dg-box" rx="12" x="26" y="196" width="110" height="52"/>
+  <text class="dg-t b" x="81" y="228" text-anchor="middle">RGB 사진</text>
+  <rect class="dg-box" rx="12" x="26" y="356" width="110" height="52"/>
+  <text class="dg-t b" x="81" y="388" text-anchor="middle">열화상</text>
+
+  <rect class="dg-box c-blue" rx="12" x="166" y="190" width="200" height="64"/>
+  <text class="dg-t b" x="266" y="216" text-anchor="middle">RGB 인코더</text>
+  <text class="dg-s" x="266" y="240" text-anchor="middle">4단계로 특징 뽑기</text>
+
+  <rect class="dg-box c-blue" rx="12" x="166" y="350" width="200" height="64"/>
+  <text class="dg-t b" x="266" y="376" text-anchor="middle">열화상 인코더</text>
+  <text class="dg-s" x="266" y="400" text-anchor="middle">4단계로 특징 뽑기</text>
+
+  <rect class="dg-box c-amber" rx="12" x="176" y="276" width="180" height="52"/>
+  <text class="dg-t b" x="266" y="298" text-anchor="middle">CM-FRM</text>
+  <text class="dg-s" x="266" y="318" text-anchor="middle">단계마다 서로 고쳐 주기</text>
+
+  <path class="dg-a" fill="none" d="M136,222 L164,222" marker-end="url(#ah-cmx)"/>
+  <path class="dg-a" fill="none" d="M136,382 L164,382" marker-end="url(#ah-cmx)"/>
+  <path class="dg-a dash" fill="none" d="M266,256 L266,274" marker-start="url(#ah-cmx)" marker-end="url(#ah-cmx)"/>
+  <path class="dg-a dash" fill="none" d="M266,330 L266,348" marker-start="url(#ah-cmx)" marker-end="url(#ah-cmx)"/>
+
+  <rect class="dg-box c-green" rx="12" x="400" y="248" width="170" height="108"/>
+  <text class="dg-t b" x="485" y="276" text-anchor="middle">FFM</text>
+  <text class="dg-s" x="485" y="302" text-anchor="middle">① 교차 어텐션으로</text>
+  <text class="dg-s" x="485" y="322" text-anchor="middle">전체 문맥 주고받기</text>
+  <text class="dg-s" x="485" y="342" text-anchor="middle">② 하나로 합치기</text>
+
+  <path class="dg-a" fill="none" d="M366,222 L384,222 L384,280 L398,280" marker-end="url(#ah-cmx)"/>
+  <path class="dg-a" fill="none" d="M366,382 L384,382 L384,324 L398,324" marker-end="url(#ah-cmx)"/>
+
+  <rect class="dg-box" rx="12" x="596" y="270" width="80" height="64"/>
+  <text class="dg-t b" x="636" y="308" text-anchor="middle">디코더</text>
+  <path class="dg-a" fill="none" d="M570,302 L594,302" marker-end="url(#ah-cmx)"/>
+
+  <rect class="dg-box c-violet" rx="12" x="696" y="262" width="84" height="80"/>
+  <text class="dg-t b" x="738" y="294" text-anchor="middle">분할 지도</text>
+  <text class="dg-s" x="738" y="318" text-anchor="middle">사람·차·길</text>
+  <path class="dg-a" fill="none" d="M676,302 L694,302" marker-end="url(#ah-cmx)"/>
+
+  <text class="dg-s" x="400" y="432" text-anchor="middle">한쪽이 흐릿하거나 잡음이 많으면 다른 쪽이 보정해 줘요 (양방향)</text>
+</svg>
