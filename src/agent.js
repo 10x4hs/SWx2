@@ -178,6 +178,14 @@ export async function dayPlans(env, user, date) {
   const { results } = await env.DB.prepare("SELECT id, text, done, missed, start, mins FROM plans WHERE user_id = ? AND scope = 'day' AND period = ? ORDER BY start IS NULL, start, sort").bind(user.id, "D:" + date).all();
   return { date, plans: results.map((p) => ({ id: p.id, text: p.text, done: !!p.done, missed: !!p.missed, start: p.start, mins: p.mins })) };
 }
+// 우선순위: AI 는 1(가장 급함)~5(여유) 로 말하고, 예전 이름(low~max)도 받아요. 저장은 low~max
+const PRIO_NUM = { 1: "max", 2: "xhigh", 3: "high", 4: "medium", 5: "low" };
+function normPrio(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const k = PRIO_NUM[String(v).trim()] || String(v).trim().toLowerCase();
+  return ["low", "medium", "high", "xhigh", "max"].includes(k) ? k : null;
+}
+
 async function addPlan(env, user, a) {
   const scope = ["day", "week", "month", "year"].includes(a.scope) ? a.scope : "day";
   const date = DATE_RE.test(a.date || "") ? a.date : null;
@@ -190,7 +198,7 @@ async function addPlan(env, user, a) {
   if (mins != null && !(mins >= 5 && mins <= 1440)) mins = 60;
   if (start && mins == null) mins = 60;
   const id = crypto.randomUUID(), t = Date.now(), period = periodOf(scope, date);
-  const priority = ["low", "medium", "high", "xhigh", "max"].includes(a.priority) ? a.priority : null;
+  const priority = normPrio(a.priority);
   await env.DB.prepare("INSERT INTO plans (id, user_id, scope, period, text, done, start, mins, color, priority, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?, NULL, ?, ?, ?, ?)").bind(id, user.id, scope, period, text, start, mins, priority, t, t, t).run();
   return { ok: true, plan: { id, scope, period, date, text, start, mins, priority } };
 }
@@ -206,7 +214,7 @@ async function updatePlan(env, user, a) {
   let missed = a.missed === undefined ? (a.done ? 0 : p.missed || 0) : a.missed ? 1 : 0;
   if (missed && a.missed) done = 0;
   if (period !== p.period && a.missed === undefined) missed = 0;
-  const priority = a.priority === undefined ? p.priority ?? null : ["low", "medium", "high", "xhigh", "max"].includes(a.priority) ? a.priority : null;
+  const priority = a.priority === undefined ? p.priority ?? null : normPrio(a.priority);
   await env.DB.prepare("UPDATE plans SET text = ?, start = ?, mins = ?, period = ?, done = ?, done_at = ?, missed = ?, priority = ?, updated_at = ? WHERE id = ?").bind(text, start, mins, period, done, done ? p.done_at || Date.now() : null, missed, priority, Date.now(), p.id).run();
   return { ok: true, plan: { id: p.id, text, start, mins, period, done: !!done, missed: !!missed } };
 }

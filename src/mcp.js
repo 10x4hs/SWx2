@@ -31,8 +31,8 @@ const TOOLS = [
     inputSchema: S({ title: str("노트 제목 ([ ] | # 은 못 써요)"), body: str("마크다운 본문"), mode: str("create | append | replace", { enum: ["create", "append", "replace"] }), parent_title: str("create 일 때 상위 페이지 제목 (선택)") }, ["title", "body"]) },
   // ---- 계획 ----
   { name: "plans_list", description: "그날의 계획(시간표 · 체크리스트). day 없으면 오늘.", inputSchema: S({ day: str("YYYY-MM-DD") }) },
-  { name: "plan_add", description: "그날 계획 넣기. start(HH:MM)와 mins 를 주면 시간표, 없으면 체크리스트.",
-    inputSchema: S({ text: str("할 일"), day: str("YYYY-MM-DD (기본 오늘)"), start: str("HH:MM"), mins: { type: "integer", minimum: 5, maximum: 720 }, priority: str("low | medium | high | xhigh | max", { enum: ["low", "medium", "high", "xhigh", "max"] }) }, ["text"]) },
+  { name: "plan_add", description: "그날 계획 넣기. start(HH:MM)와 mins 를 주면 시간표, start 없으면 체크리스트(mins 만 주면 예상 시간).",
+    inputSchema: S({ text: str("할 일"), day: str("YYYY-MM-DD (기본 오늘)"), start: str("HH:MM"), mins: { type: "integer", minimum: 5, maximum: 720 }, priority: { type: ["integer", "string"], description: "우선순위 1(가장 급함) ~ 5(여유). 예전 이름 low|medium|high|xhigh|max 도 돼요" } }, ["text"]) },
   // ---- 공용 작업판 ----
   { name: "tasks_list", description: "에이전트 공용 작업판. status=open(기본: todo · doing · blocked) | all | todo | doing | blocked | done.", inputSchema: S({ status: str("open | all | todo | doing | blocked | done") }) },
   { name: "task_get", description: "작업 하나의 전체 내용과 진행 기록.", inputSchema: S({ id: str("작업 id (앞 6글자 이상)") }, ["id"]) },
@@ -253,14 +253,15 @@ const CALL = {
     const day = DAY.test(a.day || "") ? a.day : kstDay();
     const { plans } = await api(c, "GET", "/plans?periods=D:" + day);
     if (!plans.length) return `${day} 계획이 없어요.`;
-    const fmt = (p) => `- [${p.done ? "x" : " "}] ${p.start ? `${p.start} (${p.mins || "?"}분) ` : ""}${p.text}${p.priority ? ` · ${p.priority}` : ""}`;
+    const PRIO_N = { max: 1, xhigh: 2, high: 3, medium: 4, low: 5 };
+    const fmt = (p) => `- [${p.done ? "x" : " "}] ${p.start ? `${p.start} (${p.mins || "?"}분) ` : p.mins ? `(예상 ${p.mins}분) ` : ""}${p.text}${p.priority ? ` · ${PRIO_N[p.priority]}순위` : ""}`;
     const timed = plans.filter((p) => p.start), todo = plans.filter((p) => !p.start);
     return [`# ${day}`, timed.length ? "## 시간표" : "", ...timed.map(fmt), todo.length ? "## 체크리스트" : "", ...todo.map(fmt)].filter(Boolean).join("\n");
   },
 
   async plan_add(a, c) {
     const day = DAY.test(a.day || "") ? a.day : kstDay();
-    const r = await api(c, "POST", "/plans", { scope: "day", period: "D:" + day, text: a.text, ...(a.start ? { start: a.start, mins: a.mins || 30 } : {}), ...(a.priority ? { priority: a.priority } : {}) });
+    const r = await api(c, "POST", "/plans", { scope: "day", period: "D:" + day, text: a.text, ...(a.start ? { start: a.start, mins: a.mins || 30 } : a.mins ? { mins: a.mins } : {}), ...(a.priority ? { priority: a.priority } : {}) });
     return `${day}에 넣었어요: ${r.plan.start ? r.plan.start + " " : ""}${r.plan.text}`;
   },
 

@@ -3,7 +3,7 @@
 import { esc } from "../util.js";
 
 export const PRIO_ORDER = ["max", "xhigh", "high", "medium", "low", "none"];
-export const PRIO_LABEL = { max: "Max", xhigh: "XHigh", high: "High", medium: "Medium", low: "Low", none: "없음" };
+export const PRIO_LABEL = { max: "1순위", xhigh: "2순위", high: "3순위", medium: "4순위", low: "5순위", none: "없음" }; // 1순위 = 가장 급함
 export const PRIO_COLOR = { max: "var(--p-max)", xhigh: "var(--p-xhigh)", high: "var(--p-high)", medium: "var(--p-medium)", low: "var(--p-low)", none: "var(--ink-3)" };
 
 export function prioStats(items) {

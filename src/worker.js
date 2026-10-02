@@ -30,7 +30,10 @@ const DAY_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const TONES = ["ink", "graphite", "slate", "steel", "silver", "sand", "ivory", "champagne"];
 const PRIORITIES = ["low", "medium", "high", "xhigh", "max"];
-const prio = (v) => (v === null || v === "" ? null : PRIORITIES.includes(v) ? v : fail(400, "우선순위는 low · medium · high · xhigh · max 중 하나예요."));
+// 우선순위: 저장은 low~max, 화면 · AI · MCP 는 1(가장 급함)~5(여유) 도 써요 → 같은 값으로 바꿔요
+const PRIO_NUM = { 1: "max", 2: "xhigh", 3: "high", 4: "medium", 5: "low" };
+const prioIn = (v) => (PRIO_NUM[String(v).trim()] || (typeof v === "string" ? v.trim().toLowerCase() : v));
+const prio = (v0, v = prioIn(v0)) => (v0 === null || v0 === "" ? null : PRIORITIES.includes(v) ? v : fail(400, "우선순위는 1(가장 급함)~5(여유) 또는 low · medium · high · xhigh · max 중 하나예요."));
 const tone = (v) => (v === null ? null : TONES.includes(v) ? v : fail(400, "고를 수 없는 색이에요."));
 
 class HttpError extends Error {
@@ -773,7 +776,7 @@ async function snapshotDay(env, u, day, auto) {
   return { day, data, score: sc.score, done: sc.doneCount, total: sc.count, auto: auto ? 1 : 0, saved_at: at };
 }
 // 자정의 AI 채점: 그날 계획(우선순위·시간·끝냄)·집중 시간을 보고 0~100 점 + 한 줄 평. AI 가 안 되면 계산식 점수를 그대로 써요.
-const PRIO_KO = { low: "Low", medium: "Medium", high: "High", xhigh: "XHigh", max: "Max" };
+const PRIO_KO = { low: "5순위(여유)", medium: "4순위(나중에)", high: "3순위(보통)", xhigh: "2순위(중요)", max: "1순위(가장 급함)" };
 async function aiScoreDay(env, u, day) {
   const r = await env.DB.prepare("SELECT data, score FROM day_records WHERE user_id = ? AND day = ?").bind(u.id, day).first();
   if (!r || r.data === "{}") return null;
@@ -782,7 +785,7 @@ async function aiScoreDay(env, u, day) {
   let ai = null, note = "", model = null;
   try {
     const out = await aiJson(env,
-      "너는 공부 앱의 하루 채점관이야. 하루 계획과 실행을 보고 0~100 점과 한국어 한 줄 평(40자 안팎, 다정하지만 솔직하게)을 줘. 우선순위가 높은 일(Max·XHigh·High)을 끝냈는지를 가장 크게 보고, 계획이 너무 적거나 비현실적이면 감점. 공부 시간도 반영.",
+      "너는 공부 앱의 하루 채점관이야. 하루 계획과 실행을 보고 0~100 점과 한국어 한 줄 평(40자 안팎, 다정하지만 솔직하게)을 줘. 우선순위가 높은 일(1순위·2순위·3순위)을 끝냈는지를 가장 크게 보고, 계획이 너무 적거나 비현실적이면 감점. 공부 시간도 반영.",
       `날짜: ${day}\n하루 목표 공부 시간: ${d.goal || 240}분\n집중 기록: ${d.focus || 0}분\n계산식 점수(참고): ${r.score ?? "없음"}\n계획:\n${lines || "(없음)"}\n\nJSON 으로만: {"score": 0~100 정수, "note": "한 줄 평"}`);
     const v = Math.round(Number(out.data?.score));
     if (v >= 0 && v <= 100) { ai = v; note = String(out.data?.note || "").slice(0, 120); model = out.used || null; }

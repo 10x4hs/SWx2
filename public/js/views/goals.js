@@ -4,12 +4,12 @@
 import { api } from "../api.js";
 import { $, esc, toast, today, ymd, periodKey, periodStart, periodEnd, shiftPeriod, elapsed, pct, addDays } from "../util.js";
 import { icon } from "../icons.js";
-import { PRIOS } from "./day.js";
+import { PRIO_RANK, prioSelect, prioPill, openPrioDrop } from "../prio.js";
 import { mountCommand } from "../ai-command.js";
 import { openMenu, closeMenu } from "../ctxmenu.js";
 
 const SCOPES = [{ k: "week", label: "이번 주", short: "주" }, { k: "month", label: "이번 달", short: "월" }, { k: "year", label: "올해", short: "년" }];
-const RANK = { max: 5, xhigh: 4, high: 3, medium: 2, low: 1 };
+const RANK = PRIO_RANK;
 const md = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일`;
 const keyFrom = (scope, raw) => {
   const pre = { week: "W", month: "M", year: "Y" }[scope];
@@ -45,7 +45,7 @@ export function mount(root, ctx, r) {
       <ul class="gl-list" id="gl-list"><li class="faint gl-load">불러오는 중…</li></ul>
       <form class="gl-add" id="gl-add" autocomplete="off">
         <input class="input" name="text" maxlength="200" placeholder="목표 추가 · Enter" aria-label="목표 추가">
-        <select class="select sm" name="priority" aria-label="우선순위"><option value="">우선순위</option>${PRIOS.map((p) => `<option value="${p.k}">${p.label}</option>`).join("")}</select>
+        ${prioSelect("priority", "", "select sm")}
       </form>
     </div>`;
 
@@ -80,7 +80,7 @@ export function mount(root, ctx, r) {
       <li class="gl-item${p.done ? " done" : ""}" data-id="${esc(p.id)}" data-p="${p.priority || ""}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 이룸">
         <span class="gl-text" data-edit="${esc(p.id)}" title="두 번 눌러 고치기">${esc(p.text)}</span>
-        <button type="button" class="prio" data-prio="${esc(p.id)}" data-p="${p.priority || ""}">${p.priority ? PRIOS.find((x) => x.k === p.priority).label : "우선순위"}</button>
+        ${prioPill(p)}
         <button type="button" class="icon-btn sm gl-del" data-del="${esc(p.id)}" aria-label="지우기">${icon.x(14)}</button>
       </li>`).join("") : `<li class="gl-empty"><p>아직 목표가 없어요.</p><p class="faint">아래에 적고 Enter. 홈 링이 목표 수만큼 칸으로 나뉘어요.</p></li>`;
     drawProg();
@@ -101,11 +101,13 @@ export function mount(root, ctx, r) {
   });
   root.addEventListener("click", async (e) => {
     const pr = e.target.closest("[data-prio]");
-    if (pr) {
+    if (pr) { // 아래로 펼쳐지는 1~5순위 고르기
       const p = S.list.find((x) => x.id === pr.dataset.prio); if (!p) return;
-      const order = ["", ...PRIOS.map((x) => x.k)], nx = order[(order.indexOf(p.priority || "") + 1) % order.length] || null, old = p.priority;
-      p.priority = nx; drawList();
-      try { await api.updatePlan(p.id, { priority: nx }); changed(); } catch (err) { p.priority = old; drawList(); toast(err.message, "err"); }
+      openPrioDrop(pr, p.priority || "", async (v) => {
+        const nx = v || null, old = p.priority; if (nx === (old || null)) return;
+        p.priority = nx; drawList();
+        try { await api.updatePlan(p.id, { priority: nx }); changed(); } catch (err) { p.priority = old; drawList(); toast(err.message, "err"); }
+      });
       return;
     }
     const del = e.target.closest("[data-del]");

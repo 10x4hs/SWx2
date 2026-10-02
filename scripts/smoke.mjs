@@ -64,6 +64,19 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
 { const ppid = r.data.plan.id;
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "max" }); ok(r.status === 200 && r.data.plan.priority === "max", "plan priority: update to max");
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "urgent" }); ok(r.status === 400, "plan priority: unknown value → 400");
+  // 1~5순위 (1 = 가장 급함) 로도 받아요 — 저장은 예전 값 그대로
+  r = await call("a", "PATCH", "/plans/" + ppid, { priority: "1" }); ok(r.status === 200 && r.data.plan.priority === "max", "plan priority: '1' → max");
+  r = await call("a", "PATCH", "/plans/" + ppid, { priority: 5 }); ok(r.status === 200 && r.data.plan.priority === "low", "plan priority: 5 → low");
+  r = await call("a", "PATCH", "/plans/" + ppid, { priority: 3 }); ok(r.status === 200 && r.data.plan.priority === "high", "plan priority: 3 → high");
+  r = await call("a", "PATCH", "/plans/" + ppid, { priority: 0 }); ok(r.status === 400, "plan priority: 0 → 400");
+  r = await call("a", "PATCH", "/plans/" + ppid, { priority: "" }); ok(r.status === 200 && r.data.plan.priority === null, "plan priority: '' clears");
+  // 체크리스트 예상 시간: 시각 없이 mins 만
+  r = await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-28", text: "예상 시간 있는 할 일", mins: 120, priority: 2 });
+  ok(r.status === 201 && r.data.plan.start === null && r.data.plan.mins === 120 && r.data.plan.priority === "xhigh", "checklist: mins without start + priority 2");
+  { const hid = r.data.plan.id;
+    r = await call("a", "PATCH", "/plans/" + hid, { mins: null }); ok(r.status === 200 && r.data.plan.mins === null, "checklist: mins null clears");
+    r = await call("a", "PATCH", "/plans/" + hid, { mins: 3 }); ok(r.status === 400, "checklist: mins 3 → 400");
+    await call("a", "DELETE", "/plans/" + hid); }
   r = await call("a", "PATCH", "/plans/" + ppid, { start: "14:35", mins: 5 }); ok(r.status === 200 && r.data.plan.start === "14:35" && r.data.plan.mins === 5, "plan: 5-minute slot");
   // 못함(빨간 표시): 켜면 끝냄은 꺼지고, 끝냄을 켜면 못함이 꺼지고, 다른 날로 미루면 지워져요
   r = await call("a", "PATCH", "/plans/" + ppid, { done: true }); r = await call("a", "PATCH", "/plans/" + ppid, { missed: true }); ok(r.status === 200 && r.data.plan.missed === 1 && r.data.plan.done === 0, "missed: on clears done");

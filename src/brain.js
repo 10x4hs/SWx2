@@ -4,6 +4,7 @@ import { aiJson } from "./ai.js";
 import { runAgent, WRITE_TOOLS, runAgentTool, toolSummary, autoResearch } from "./agent.js";
 import { cleanImages, withImages } from "./vision.js";
 
+const PRIO_N = { max: 1, xhigh: 2, high: 3, medium: 4, low: 5 }; // 저장값 → AI 에게 보여 주는 1~5순위
 const AI_START = "<!-- ai:start -->", AI_END = "<!-- ai:end -->", MOC_MARK = "<!-- ai:moc -->";
 const AI_BLOCK_RE = /\n*<!-- ai:start -->[\s\S]*?<!-- ai:end -->\n*/g;
 const MOC_PREFIX = "MOC · ";
@@ -334,14 +335,14 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     let found = [vis.note, pre.note ? pre.note.replace(/위 자료를 근거로[\s\S]*$/, "") : ""].filter(Boolean).join("\n\n");
     const makePrompt = () => [
       history.length ? "## 앞선 대화\n" + history.map((m) => `${m.role === "user" ? "사용자" : "비서"}: ${m.content}`).join("\n") : "",
-      pagePeriod ? `## 지금 보고 있는 페이지: ${scopeKo} 목표 (${pagePeriod}) — 날짜 없이 말한 건 기본으로 이 기간 목표로 넣어 (add_plan 에 "scope":"${pageScope}", "date":"${day}"). 시간은 넣지 마.\n` + (goals.length ? goals.map((g) => `- id=${g.id} ${g.text}${g.priority ? ` · ${g.priority}` : ""}${g.done ? " ✓" : ""}`).join("\n") : "(아직 목표 없음)") : "## 지금 보고 있는 페이지: 하루 (체크리스트 · 계획표)",
+      pagePeriod ? `## 지금 보고 있는 페이지: ${scopeKo} 목표 (${pagePeriod}) — 날짜 없이 말한 건 기본으로 이 기간 목표로 넣어 (add_plan 에 "scope":"${pageScope}", "date":"${day}"). 시간은 넣지 마.\n` + (goals.length ? goals.map((g) => `- id=${g.id} ${g.text}${g.priority ? ` · ${PRIO_N[g.priority]}순위` : ""}${g.done ? " ✓" : ""}`).join("\n") : "(아직 목표 없음)") : "## 지금 보고 있는 페이지: 하루 (체크리스트 · 계획표)",
       "## 이미 있는 하루 계획 (id 로 고치거나 지워)",
       ...lists.map((l) => `### ${l.date}(${dow(l.date)})\n` + (l.plans.length ? l.plans.map((p) => `- id=${p.id} ${p.start ? p.start + (p.mins ? `(${p.mins}분)` : "") + " " : "(시간 없음) "}${p.text}${p.done ? " ✓" : ""}${p.missed ? " ✗못함" : ""}`).join("\n") : "(없음)")),
       `## 사용자 말\n${text}`,
       found ? `## 찾아본 자료 (이미지 · 링크 · 웹)\n${found.slice(0, 16000)}` : "",
       "다음 JSON 하나로만 답해:",
-      '{"research":[{"name":"web_search","args":{"q":"검색어"}},{"name":"read_page","args":{"url":"https://…"}},{"name":"search_notes","args":{"q":"…"}}],"actions":[{"name":"add_plan","args":{"date":"YYYY-MM-DD","text":"할 일","start":"HH:MM","mins":60,"priority":"high","scope":"day|week|month|year"}},{"name":"update_plan","args":{"id":"…","start":"HH:MM","mins":90,"date":"YYYY-MM-DD","text":"…","done":true,"missed":false}},{"name":"delete_plan","args":{"id":"…"}}],"reply":"무엇을 했는지 한 문장","question":null}',
-      "규칙: 실행할 게 있으면 actions 에 넣어 (여러 개 가능, 필요한 필드만). 시각이 있는 일정은 하루 계획표(start·mins), 시각 없는 '할 일'은 체크리스트(start·mins 를 빼) — 둘은 따로예요. 우선순위(priority)는 사용자가 말할 때만: low·medium·high·xhigh·max ('급해/최우선'=max, '중요'=high, '보통'=medium, '나중에/여유'=low). 시각은 5분 단위로 맞춰. 모호해서 실행할 수 없을 때만 actions 를 비우고 question 에 짧게 물어. 계획과 상관없는 말이면 actions 는 비우고 reply 에 짧게 답해. '짜 줘 · 추천해 줘 · 만들어 줘' 는 묻지 말고 3~6개를 짧고 구체적으로 바로 넣어 (기존 것과 겹치지 않게). '다 끝냈어 · 체크해 줘' 는 해당 id 들에 done:true, '못 했어 · 못함으로 표시해 줘' 는 missed:true (되돌리면 missed:false). 계획을 짜려면 바깥 정보(시험 일정 · 강의 목록 · 공식 문서 · 최신 소식)가 필요한데 '찾아본 자료'에 없으면 actions 는 비우고 research 에 도구를 1~3개 넣어 — 결과를 붙여서 다시 물어볼게. 자료가 충분하면 research 는 빈 배열. 계획이 아닌 질문이면 자료를 근거로 reply 에 답하고 출처 링크를 짧게 붙여.",
+      '{"research":[{"name":"web_search","args":{"q":"검색어"}},{"name":"read_page","args":{"url":"https://…"}},{"name":"search_notes","args":{"q":"…"}}],"actions":[{"name":"add_plan","args":{"date":"YYYY-MM-DD","text":"할 일","start":"HH:MM","mins":60,"priority":"1~5","scope":"day|week|month|year"}},{"name":"update_plan","args":{"id":"…","start":"HH:MM","mins":90,"date":"YYYY-MM-DD","text":"…","done":true,"missed":false}},{"name":"delete_plan","args":{"id":"…"}}],"reply":"무엇을 했는지 한 문장","question":null}',
+      "규칙: 실행할 게 있으면 actions 에 넣어 (여러 개 가능, 필요한 필드만). 시각이 있는 일정은 하루 계획표(start·mins), 시각 없는 '할 일'은 체크리스트(start 를 빼) — 둘은 따로예요. 우선순위(priority)는 사용자가 말할 때만, 1~5 숫자로: 1=가장 급함('급해/최우선/1순위'), 2=중요, 3=보통, 4=나중에, 5=여유. 시각 없는 할 일에 '2시간쯤/세 시간 걸려' 처럼 걸리는 시간을 말하면 start 없이 mins 만 넣어 (예상 시간). 시각은 5분 단위로 맞춰. 모호해서 실행할 수 없을 때만 actions 를 비우고 question 에 짧게 물어. 계획과 상관없는 말이면 actions 는 비우고 reply 에 짧게 답해. '짜 줘 · 추천해 줘 · 만들어 줘' 는 묻지 말고 3~6개를 짧고 구체적으로 바로 넣어 (기존 것과 겹치지 않게). '다 끝냈어 · 체크해 줘' 는 해당 id 들에 done:true, '못 했어 · 못함으로 표시해 줘' 는 missed:true (되돌리면 missed:false). 계획을 짜려면 바깥 정보(시험 일정 · 강의 목록 · 공식 문서 · 최신 소식)가 필요한데 '찾아본 자료'에 없으면 actions 는 비우고 research 에 도구를 1~3개 넣어 — 결과를 붙여서 다시 물어볼게. 자료가 충분하면 research 는 빈 배열. 계획이 아닌 질문이면 자료를 근거로 reply 에 답하고 출처 링크를 짧게 붙여.",
     ].filter(Boolean).join("\n\n");
     let data, used;
     const READ = new Set(["web_search", "read_page", "search_notes", "read_note"]);
