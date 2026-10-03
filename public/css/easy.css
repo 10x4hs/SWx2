@@ -245,3 +245,20 @@
 .ez-rv-from { font: 600 12.5px var(--font); color: var(--ink-3); letter-spacing: .03em; }
 .ez-rv .qz { margin-top: 10px; }
 .ez-rv-sum { display: grid; gap: 8px; margin: 18px 0; } .ez-rv-sum div { display: flex; justify-content: space-between; padding: 10px 14px; border-radius: 10px; background: var(--paper); font-size: 15px; }
+/* 쉽게 읽기 AI 튜터: 오른쪽 아래 버튼 → 옆 패널 (넓은 화면은 본문 옆, 좁은 화면은 아래에서 올라와요) */
+.ez-ai-fab { position: fixed; right: 26px; bottom: 26px; z-index: 40; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border: 0; border-radius: 999px; background: var(--ink); color: var(--bg); font: 650 14.5px var(--font); cursor: pointer; box-shadow: 0 10px 30px -8px rgba(0,0,0,.45); transition: transform .2s var(--ease); }
+.ez-ai-fab:hover { transform: translateY(-2px); }
+.ez-ai-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 30%, transparent); }
+.ez-ai-fab.pulse { animation: ez-pulse 1.2s var(--ease) infinite; } @keyframes ez-pulse { 50% { transform: scale(1.06); } }
+.ezw.ai-open .ez-ai-fab { display: none; }
+.ez-ai { position: fixed; right: 20px; top: 84px; bottom: 20px; width: min(400px, calc(100vw - 40px)); z-index: 45; display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line-2); border-radius: 18px; box-shadow: 0 24px 60px -20px rgba(0,0,0,.5); overflow: hidden; }
+.ez-ai[hidden] { display: none; }
+.ez-ai-head { display: flex; align-items: baseline; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); } .ez-ai-head b { font-size: 15px; } .ez-ai-head span { font-size: 12.5px; color: var(--ink-3); flex: 1; }
+.ez-ai .ppc { flex: 1; min-height: 0; display: flex; flex-direction: column; border: 0; background: transparent; box-shadow: none; margin: 0; }
+.ez-ai .ppc-head { display: none; }
+.ez-ai .ppc-log { flex: 1; min-height: 0; overflow: auto; max-height: none; }
+.ez-ask { margin-left: 12px; border: 1px solid var(--line-2); background: var(--bg); color: var(--ink-2); font: 600 11.5px var(--font); padding: 3px 9px; border-radius: 99px; cursor: pointer; vertical-align: middle; opacity: .75; }
+.ez-ask:hover { opacity: 1; border-color: var(--c); color: var(--c); }
+@media (min-width: 1280px) { .ezw.ai-open { margin-right: 420px; } }
+@media (max-width: 720px) { .ez-ai { left: 10px; right: 10px; width: auto; top: auto; height: 72vh; bottom: 10px; } .ez-ai-fab { right: 14px; bottom: 84px; } }
+.ezw.ez-portal { background: none; padding: 0; margin: 0; max-width: none; border-radius: 0; font-size: 15px; line-height: 1.6; }

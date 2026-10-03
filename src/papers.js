@@ -195,8 +195,15 @@ export function registerPapers(on, { json, body, fail, now }) {
     if (!clean.length || clean[clean.length - 1].role !== "user") fail(400, "질문을 적어 주세요.");
     const c = await content(env, url, paper);
     const system = `너는 이 논문 하나를 셋에게 가르치는 튜터야. 학생들은 딥러닝 기초만 알아. 규칙: 쉬운 한국어 해요체, 짧은 문단, 비유 먼저, 용어는 풀어서, 필요하면 숫자 예시. 자료에 없는 수치는 지어내지 말고 "원문에서 확인해요"라고 해. 목표는 10월 5일까지 이 논문을 3분 안에 설명하게 만드는 것. 우리 프로젝트: RGB+열화상 카메라 → 탐지·추적 → Rockchip NPU(RKNN) INT8 배포.\n\n[논문 자료]\n${brief(c)}`;
+    // 쉽게 읽기 화면에서 물으면: 중3~고1 눈높이로 (용어는 그 자리에서 풀고, 수식 없이)
+    let sys = system;
+    if (b.level === "easy") {
+      let ez = null;
+      try { const r = await env.ASSETS.fetch(new Request(new URL(`/papers/content/${paper}.easy.json`, url))); if (r.ok) ez = await r.json(); } catch {}
+      sys = system + `\n\n[지금은 '쉽게 읽기' 화면이에요] 학생은 중학교 3학년~고등학교 1학년 눈높이예요. 행렬 · 미분 · 로그 · 신경망 용어를 몰라요. 규칙: 수식 없이 말로, 처음 쓰는 용어는 그 자리에서 한 줄로 풀어요, 일상 비유를 먼저, 3~6문장 안에서 짧게. 답 끝에 학생이 스스로 떠올려 볼 짧은 질문 하나를 '한번 생각해 봐요:' 로 붙여요 (스스로 설명하면 오래 기억나요).${ez?.recap ? `\n쉽게 읽기 정리: ${ez.recap.text}` : ""}${ez?.words ? `\n이 페이지 낱말: ${ez.words.map((w) => w.term + "=" + w.easy).join(" · ")}` : ""}`.replace(/\*\*/g, "");
+    }
     if (q.get("stream") === "0") {
-      try { const r = await aiText(env, system, clean); return json({ text: r.text, used: r.used }); }
+      try { const r = await aiText(env, sys, clean); return json({ text: r.text, used: r.used }); }
       catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
     }
     // 스트리밍(SSE): data: {type: "delta"|"reset"|"end"|"error", …}
@@ -206,7 +213,7 @@ export function registerPapers(on, { json, body, fail, now }) {
     const send = async (o) => { if (!open) return; try { await writer.write(enc.encode(`data: ${JSON.stringify(o)}\n\n`)); } catch { open = false; } };
     ec.waitUntil((async () => {
       try {
-        const r = await aiText(env, system, clean, undefined, (t, meta) => (meta?.reset ? send({ type: "reset" }) : send({ type: "delta", text: t })));
+        const r = await aiText(env, sys, clean, undefined, (t, meta) => (meta?.reset ? send({ type: "reset" }) : send({ type: "delta", text: t })));
         await send({ type: "end", text: r.text, used: r.used });
       } catch (e) { await send({ type: "error", message: e.message || "AI 답을 받지 못했어요." }); }
       open = false; try { await writer.close(); } catch {}

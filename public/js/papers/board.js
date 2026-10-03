@@ -52,6 +52,8 @@ export function mountBoard(root, ctx) {
         ${todayRow && !ended ? (() => { const next = todayRow.papers.find((id) => !paperDone(meRow(), id)) || todayRow.papers[0]; return `<a class="btn accent sm" href="#/papers/${next}">오늘 공부 시작 ›</a>`; })() : ""}
       </div>
     </header>
+    <a class="pp-easy pp-easy-board" href="#/papers/easy"><span class="pp-easy-k">처음이라면 여기부터 · 16편</span><b>쉽게 읽기 <small>중3 ~ 고1 눈높이 · AI 튜터 · 간격 복습</small></b>
+      <span class="pp-easy-d">짐작하기 → 그림으로 원리 보기 → 책 덮고 말해 보기 → 1·3·7일 뒤 섞어서 복습. 모르는 건 오른쪽 아래 AI에게 바로 물어봐요.</span><span class="pp-easy-go" aria-hidden="true">→</span></a>
     <p class="pp-goal"><span class="faint">끝났다는 기준</span> ${esc(idx.goal)}</p>`;
   }
 

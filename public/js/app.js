@@ -351,6 +351,8 @@ function openPalette() {
     { grp: "이동", t: "내일 계획 세우기", s: ymd(new Date(Date.now() + 864e5)), run: () => ctx.go("#/calendar/" + ymd(new Date(Date.now() + 864e5))) },
     { grp: "이동", t: "한 해 잔디", s: "캘린더 · 연 · 일기 | 기록", run: () => ctx.go("#/calendar/year") },
     { grp: "이동", t: "오늘 체크리스트", s: "할 일 적기 · 우선순위 차트", run: () => ctx.go("#/checklist") },
+    { grp: "이동", t: "쉽게 읽기 (논문 16편)", s: "중3~고1 눈높이 · AI 튜터 · 복습", run: () => ctx.go("#/papers/easy") },
+    { grp: "이동", t: "섞어서 복습 (쉽게 읽기)", s: "오늘 복습할 차례", run: () => ctx.go("#/papers/easy/review") },
     { grp: "이동", t: "이번 주 목표", s: "목표 · 주", run: () => ctx.go("#/goals/week") },
     { grp: "이동", t: "이번 달 목표", s: "목표 · 월", run: () => ctx.go("#/goals/month") },
     { grp: "이동", t: "올해 목표", s: "목표 · 년", run: () => ctx.go("#/goals/year") },

@@ -183,10 +183,10 @@ export async function streamChat(payload, onEvent, signal) {
 }
 
 // 논문 튜터 답을 글자 단위로 받아요. onEvent({type:"delta"|"reset"|"end"|"error", …})
-export async function streamPaperAsk(paper, messages, onEvent, signal) {
+export async function streamPaperAsk(paper, messages, onEvent, signal, level) {
   let res;
   try {
-    res = await fetch("/api/papers/ask", { method: "POST", credentials: "same-origin", signal, headers: { "content-type": "application/json", "x-trio": "1" }, body: JSON.stringify({ paper, messages }) });
+    res = await fetch("/api/papers/ask", { method: "POST", credentials: "same-origin", signal, headers: { "content-type": "application/json", "x-trio": "1" }, body: JSON.stringify({ paper, messages, ...(level ? { level } : {}) }) });
   } catch (e) { if (e.name === "AbortError") return; throw new ApiError(0, "서버에 연결할 수 없어요."); }
   if (!res.ok) { const data = await res.json().catch(() => ({})); throw new ApiError(res.status, data.error || "질문을 보내지 못했어요.", data); }
   const reader = res.body.getReader(), dec = new TextDecoder();

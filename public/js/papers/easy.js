@@ -8,6 +8,7 @@
 //   ⑥ 1 → 3 → 7일 간격 복습, 여러 논문 문제를 섞어서(간격 · 교차 연습)
 import { api } from "../api.js";
 import { toast } from "../util.js";
+import { chatMarkup, mountChat } from "./chat.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -128,10 +129,25 @@ function wireProgress(root) {
 }
 
 // ---------- 한 편 ----------
+const EASY_QUICK = ["처음부터 아주 쉽게 3문장으로", "방금 읽은 걸 다른 비유로", "이게 왜 필요한지 예를 들어 줘", "헷갈리는 말 하나 풀어 줘", "확인 문제 하나 더 내 줘"];
 export function mountEasy(host, ctx, id) {
   let stops = [], alive = true;
   host.innerHTML = `<div class="ezw">${bar()}<main class="ez"><p class="ez-loading">불러오는 중…</p></main></div>`;
-  const root = $(".ezw", host), main = $(".ez", root);
+  // AI 버튼 · 패널은 앱 화면 틀 밖(body)에 붙여요 — 틀 안에 있으면 잘려서 안 보여요
+  const portal = document.createElement("div"); portal.className = "ezw ez-portal";
+  portal.innerHTML = `<button type="button" class="ez-ai-fab" id="ez-ai-fab" aria-expanded="false" aria-controls="ez-ai"><span class="ez-ai-dot"></span>AI에게 물어보기</button>
+    <aside class="ez-ai" id="ez-ai" aria-label="AI 튜터 (쉽게)" hidden><div class="ez-ai-head"><b>AI 튜터</b><span>중3 ~ 고1 눈높이로 답해요</span><button type="button" class="ez-link" id="ez-ai-x">닫기</button></div>
+      ${chatMarkup("mini", { quick: EASY_QUICK, sub: "쉽게 읽기 모드", empty: "모르는 걸 바로 물어봐요. 본문 글자를 드래그하면 그 문장을 인용해서 물어볼 수 있어요. 장 제목 옆 '물어보기'를 눌러도 돼요.", ph: "예: 인코더가 정확히 뭐예요?" })}</aside>`;
+  document.body.append(portal); stops.push(() => portal.remove());
+  const root = $(".ezw", host), main = $(".ez", root), panel = $("#ez-ai", portal), fab = $("#ez-ai-fab", portal);
+  const openAi = (on = true) => { panel.hidden = !on; fab.setAttribute("aria-expanded", on ? "true" : "false"); root.classList.toggle("ai-open", on); if (on) setTimeout(() => $(".ppc-in", panel)?.focus({ preventScroll: true }), 50); };
+  // 패널 입력창에 글을 넣고 바로 보내기
+  const askAi = (text) => { openAi(true); const ta = $(".ppc-in", panel); ta.value = text; $("[data-ppc-form]", panel).requestSubmit(); };
+  fab.addEventListener("click", () => openAi(panel.hidden));
+  $("#ez-ai-x", portal).addEventListener("click", () => openAi(false));
+  stops.push(mountChat(portal, id, main, null, { level: "easy" }));
+  const onSelc = () => { const t = getSelection()?.toString().trim(); fab.classList.toggle("pulse", !!(t && t.length >= 4 && main.contains(getSelection().anchorNode) && panel.hidden)); };
+  document.addEventListener("selectionchange", onSelc); stops.push(() => document.removeEventListener("selectionchange", onSelc));
   (async () => {
     let d, idx, st;
     try { [d, idx, st] = await Promise.all([easyOf(id), idxP(), api.easyState().catch(() => null)]); }
@@ -153,7 +169,7 @@ export function mountEasy(host, ctx, id) {
         ${d.words?.length ? `<div class="ez-pre"><p class="ez-pre-k">먼저 알아 둘 말</p><p class="ez-pre-s" style="margin:0">처음 보는 말 몇 개만 미리 익혀 두면, 본문에서는 원리에만 집중할 수 있어요.</p>
           <div class="ez-words-pre">${d.words.slice(0, 4).map((w) => `<div><b>${esc(w.term)}</b><span>${inline(w.easy)}</span></div>`).join("")}</div></div>` : ""}
       </section>
-      ${d.sections.map((s, k) => `<section class="ez-sec" id="ez-s${k + 1}"><p class="ez-n">${String(k + 1).padStart(2, "0")}</p><h2>${inline(s.title)}</h2>${s.body.map((b) => { try { return B[b.t] ? B[b.t](b, b.t === "quiz" ? qn++ : 0) : ""; } catch { return ""; } }).join("")}</section>`).join("")}
+      ${d.sections.map((s, k) => `<section class="ez-sec" id="ez-s${k + 1}"><p class="ez-n">${String(k + 1).padStart(2, "0")}<button type="button" class="ez-ask" data-ask="${k}" title="이 장을 AI에게 물어보기">AI에게 물어보기</button></p><h2>${inline(s.title)}</h2>${s.body.map((b) => { try { return B[b.t] ? B[b.t](b, b.t === "quiz" ? qn++ : 0) : ""; } catch { return ""; } }).join("")}</section>`).join("")}
       <section class="ez-sec" id="ez-recall-sec"><div class="ez-recall" id="ez-recall">
         <p class="ez-n">책 덮고 말해 보기</p><h2>보지 않고, 친구에게 설명하듯 3줄로 써 보세요.</h2>
         <p class="ez-recall-s">"${esc(d.title)}는 무엇을 하고, 어떻게, 얼마나 좋아졌나?" 스스로 떠올리는 순간이 다시 읽기보다 기억에 훨씬 오래 남아요. 다 쓰면 정리와 맞춰 볼게요.</p>
@@ -173,6 +189,8 @@ export function mountEasy(host, ctx, id) {
     });
     // ④ 본문 퀴즈
     main.addEventListener("click", (e) => {
+      const ak = e.target.closest("[data-ask]");
+      if (ak) { const s = d.sections[+ak.dataset.ask]; askAi(`${+ak.dataset.ask + 1}장 "${s.title.replace(/\*\*|\{[abc]:|\}/g, "")}" 을 더 쉽게, 다른 예를 들어 설명해 줘.`); return; }
       const b = e.target.closest(".ez-sec [data-c]"); if (!b || b.disabled) return;
       const q = b.closest(".qz"), k = +q.dataset.quiz.slice(1);
       answer(q, +b.dataset.c);
@@ -188,7 +206,8 @@ export function mountEasy(host, ctx, id) {
         <h3 class="pp-h3" style="margin:22px 0 6px">${inline(d.recap?.title || "정리")}</h3><p>${inline(d.recap?.text || "")}</p>
         ${points.length ? `<p class="ez-recall-s" style="margin:16px 0 0">${wrote ? "내가 떠올린 것에 체크해 보세요. 빠진 것만 다시 보면 돼요." : "핵심이에요. 다음에는 먼저 써 보고 맞춰 보세요."}</p>
           <ul class="ez-check">${points.map((p, j) => `<li><label><input type="checkbox" data-pt="${j}" ${wrote ? "" : "disabled"}><span>${inline(p)}</span></label></li>`).join("")}</ul>` : ""}
-        <div class="ez-row"><button type="button" class="ez-btn primary" id="ez-save">다 읽었어요 · 복습 예약하기</button></div><div id="ez-saved"></div>`;
+        <div class="ez-row"><button type="button" class="ez-btn primary" id="ez-save">다 읽었어요 · 복습 예약하기</button>${wrote && text ? `<button type="button" class="ez-btn" id="ez-ai-check">AI에게 내 설명 확인받기</button>` : ""}</div><div id="ez-saved"></div>`;
+      $("#ez-ai-check", box)?.addEventListener("click", () => askAi(`내가 책을 덮고 쓴 설명이에요. 맞는 점 1~2개, 틀리거나 빠진 점 1~2개를 중학생 눈높이로 짧게 알려 줘:\n"${text.slice(0, 800)}"`));
       $("#ez-save", box).addEventListener("click", async (ev) => {
         ev.currentTarget.disabled = true;
         const got = wrote ? $$("[data-pt]:checked", box).length : null;
