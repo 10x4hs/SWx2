@@ -224,7 +224,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         ${ed ? `<span class="sp-t">계획 고치기</span>` : ""}
         <input class="input slot-at" type="time" name="at" step="300" value="${S.editSlot}" aria-label="시작 시각 (5분 단위)">
         <input class="input" name="text" maxlength="200" placeholder="${S.editSlot}에 할 일" aria-label="할 일" value="${ed ? esc(ed.text) : ""}" autofocus>
-        <input class="input slot-mins" name="mins" list="dp-mins-list" value="${hm(mins0)}" placeholder="${MINS_HINT}" title="골라도 되고 직접 적어도 돼요 · ${MINS_HINT}" aria-label="걸리는 시간 (직접 입력 가능)" autocomplete="off"><datalist id="dp-mins-list">${minsList.map((m) => `<option value="${hm(m)}">`).join("")}</datalist>
+        <select class="select" name="mins" aria-label="걸리는 시간">${minsList.map((m) => `<option value="${m}" ${m === mins0 ? "selected" : ""}>${hm(m)}</option>`).join("")}<option value="custom">직접 입력…</option></select><input class="input slot-mins" name="mins_text" placeholder="${MINS_HINT}" aria-label="걸리는 시간 직접 입력" autocomplete="off" hidden>
         ${prioSelect("priority", ed ? ed.priority || "" : S.editPrio || "")}
         <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
     const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${((nowM - startH * 60) / 60) * HOUR_PX}px" aria-hidden="true"></div>` : "";
@@ -361,6 +361,9 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const t = e.target.closest("[data-toggle]");
     if (t && S.plans) toggle(t.dataset.toggle, t.checked);
     if (e.target.id === "dp-date" && e.target.value) ctx.go("#/calendar/" + e.target.value);
+    // 계획 창의 시간에서 "직접 입력…" 을 고르면 그 자리에 입력칸이 열려요
+    const f = e.target.name === "mins" && e.target.closest("[data-slot-form]");
+    if (f && f.mins.value === "custom") { f.mins.hidden = true; f.mins_text.hidden = false; f.mins_text.focus(); }
   }
   async function onElClick(e) {
     const mb = e.target.closest("[data-miss]");
@@ -414,7 +417,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     e.preventDefault();
     const f = e.currentTarget, text = f.text.value.trim();
     if (!text || !S.plans) return f.text.focus();
-    if (mins === null) { toast(`시간을 못 읽었어요. ${MINS_HINT}`, "err"); f.mins.focus(); f.mins.select(); return; }
+    if (mins === null) { toast(`시간을 못 읽었어요. ${MINS_HINT}`, "err"); f.mins_text.focus(); f.mins_text.select(); return; }
     try { await addPlan({ text, ...(f.priority?.value ? { priority: f.priority.value } : {}) }); f.text.value = ""; } catch (ex) { toast(ex.message, "err"); }
     f.text.focus();
   });
@@ -422,7 +425,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const f = e.target.closest("[data-slot-form]");
     if (!f) return;
     e.preventDefault();
-    const text = f.text.value.trim(), start = /^\d{2}:\d{2}$/.test(f.at?.value || "") ? f.at.value : f.dataset.slotForm, mins = parseMins(f.mins.value), priority = f.priority?.value || null;
+    const text = f.text.value.trim(), start = /^\d{2}:\d{2}$/.test(f.at?.value || "") ? f.at.value : f.dataset.slotForm, mins = f.mins.value === "custom" ? parseMins(f.mins_text.value) : +f.mins.value, priority = f.priority?.value || null;
     if (!text || !S.plans) return f.text.focus();
     if (f.dataset.editId) { // 우클릭 → 편집 → 저장
       const p = S.plans.find((x) => x.id === f.dataset.editId); if (!p) return;
