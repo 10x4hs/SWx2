@@ -62,10 +62,10 @@
 .ez-fig > .ez-note:first-child { margin: 0 0 16px; }
 
 /* 움직임: 보이면 .in */
-.anim .ez-fig [data-st] { opacity: 0; transform: translateY(8px); transition: opacity .55s var(--ease), transform .55s var(--ease); transition-delay: calc(var(--i, 0) * 110ms); }
-.anim .ez-fig.in [data-st] { opacity: 1; transform: none; }
-.anim .ez-fig .bar i { transform: scaleX(0); transform-origin: left; transition: transform 1.1s var(--ease); transition-delay: calc(var(--i, 0) * 120ms + 150ms); }
-.anim .ez-fig.in .bar i { transform: scaleX(1); }
+:is(.anim .ez-fig, .ez-fig.force) [data-st] { opacity: 0; transform: translateY(8px); transition: opacity .55s var(--ease), transform .55s var(--ease); transition-delay: calc(var(--i, 0) * 110ms); }
+:is(.anim .ez-fig, .ez-fig.force).in [data-st] { opacity: 1; transform: none; }
+:is(.anim .ez-fig, .ez-fig.force) .bar i { transform: scaleX(0); transform-origin: left; transition: transform 1.1s var(--ease); transition-delay: calc(var(--i, 0) * 120ms + 150ms); }
+:is(.anim .ez-fig, .ez-fig.force).in .bar i { transform: scaleX(1); }
 
 /* 원문 그림 */
 .ez-img { margin: 0; }
@@ -117,8 +117,8 @@
 .scl-row { display: grid; grid-template-columns: minmax(96px, 30%) 1fr 48px; gap: 12px; align-items: center; margin-bottom: 14px; font-size: 14px; color: var(--ink-2); }
 .scl-t { position: relative; height: 8px; background: var(--paper-2); border-radius: 99px; }
 .scl-t i { position: absolute; top: 50%; left: var(--x); width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--tc, var(--n)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tc, var(--n)) 22%, transparent); }
-.anim .ez-fig .scl-t i { left: 0; transition: left 1s var(--ease); transition-delay: calc(var(--i, 0) * 120ms + 150ms); }
-.anim .ez-fig.in .scl-t i { left: var(--x); }
+:is(.anim .ez-fig, .ez-fig.force) .scl-t i { left: 0; transition: left 1s var(--ease); transition-delay: calc(var(--i, 0) * 120ms + 150ms); }
+:is(.anim .ez-fig, .ez-fig.force).in .scl-t i { left: var(--x); }
 .scl-t s { position: absolute; top: -6px; bottom: -6px; left: var(--x); width: 0; border-left: 2px dashed var(--ink-3); text-decoration: none; }
 .scl-v { font: 650 13px var(--mono); text-align: right; color: var(--tc, var(--ink-2)); }
 .scl-m { display: grid; grid-template-columns: minmax(96px, 30%) 1fr 48px; gap: 12px; font-size: 12px; color: var(--ink-3); }
@@ -203,8 +203,8 @@
   .ez-recap { padding: 26px 18px; margin: 0 -4px; }
   .ez-brand span { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .ez-fig [data-st], .bar i, .scl-t i { transition: none !important; } }
-@media print { .ezw .ez-bar { display: none; } .anim .ez-fig [data-st] { opacity: 1; transform: none; } .anim .ez-fig .bar i { transform: none; } }
+
+@media print { .ezw .ez-bar { display: none; } :is(.anim .ez-fig, .ez-fig.force) [data-st] { opacity: 1; transform: none; } :is(.anim .ez-fig, .ez-fig.force) .bar i { transform: none; } }
 
 /* ---------- 기억 설계 (EASY_SPEC.md '학습 과학') ---------- */
 .ezw { background: var(--bg); border-radius: 22px; margin: 0 auto; max-width: 900px; padding: 0 20px; }
@@ -304,3 +304,23 @@
 .ez-ai-logo { flex: none; display: block; }
 .ez-ai-fab { padding-left: 14px; } .ez-ai-head { align-items: center; } .ez-ai-head b { margin-left: -2px; }
 .ezw .ez-ai-fab { color: var(--bg); } /* .ezw button { color: inherit } 보다 우선 */
+
+.ez-fig.reset, .ez-fig.reset * { transition: none !important; animation: none !important; } /* 다시 보기: 처음 상태로 순간 이동 */
+/* 목차 */
+.ez-sec, .ez-hero { scroll-margin-top: 72px; }
+.ez-toc { display: none; }
+.ez-toc-btn { margin-right: 4px; }
+.ez-toc-pop { position: absolute; left: 0; right: 0; top: 100%; max-height: 65vh; overflow: auto; background: var(--bg); border-bottom: 1px solid var(--line-2); box-shadow: 0 16px 30px -18px rgba(0,0,0,.5); padding: 8px 12px 12px; }
+.ez-toc-pop[hidden], .ez-toc[hidden] { display: none; }
+.ez-toc ol, .ez-toc-pop ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ez-toc a, .ez-toc-pop a { display: block; padding: 7px 10px; border-radius: 9px; font-size: 13.5px; line-height: 1.45; color: var(--ink-3); text-decoration: none; white-space: pre-wrap; border-left: 2px solid transparent; }
+.ez-toc a:hover, .ez-toc-pop a:hover { background: var(--paper); color: var(--ink); }
+.ez-toc a.on, .ez-toc-pop a.on { color: var(--ink); font-weight: 650; background: var(--paper); border-left-color: var(--c); }
+.ez-toc-h { font: 700 12px var(--font); letter-spacing: .05em; color: var(--ink-3); margin: 0 0 8px 10px; }
+@media (min-width: 1180px) {
+  .ezw.has-toc { max-width: 1160px; display: grid; grid-template-columns: 230px minmax(0, 1fr); column-gap: 36px; }
+  .ezw.has-toc > .ez-bar { grid-column: 1 / -1; }
+  .ezw.has-toc .ez-toc { display: block; position: sticky; top: 76px; align-self: start; max-height: calc(100vh - 110px); overflow: auto; padding: 18px 0 40px; }
+  .ezw.has-toc .ez-toc-btn { display: none; }
+  .ezw.has-toc > .ez { max-width: var(--col); }
+}

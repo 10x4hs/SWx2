@@ -141,7 +141,8 @@ function answer(q, c) {
 }
 
 // ---------- 움직임 ----------
-let motion = store.get("ez-motion") !== "off" && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+// 기본은 켜요. 예전엔 기기의 '동작 줄이기' 설정을 따라 꺼졌는데, 친구들 화면에서 그림이 안 움직이는 원인이었어요 (끄기는 스위치로)
+let motion = store.get("ez-motion") !== "off";
 function wireMotion(root) {
   const timers = new Map(); // 그림마다 돌고 있는 타이머
   const stop = (fig) => { (timers.get(fig) || []).forEach((t) => { clearInterval(t); clearTimeout(t); }); timers.delete(fig); };
@@ -202,10 +203,14 @@ function wireMotion(root) {
     const tick = () => { const n = k % (steps.length + 1); steps.forEach((s, i) => s.classList.toggle("on", i === n)); ars.forEach((a, i) => a.classList.toggle("go", i === n)); k++; };
     tick(); keep(fig, setInterval(tick, 1100));
   }
-  function play(fig) {
+  // force: 움직임이 꺼져 있어도 이 그림만 한 번 재생 (다시 보기)
+  function play(fig, force = false) {
     stop(fig);
-    fig.classList.remove("in"); void fig.offsetWidth; fig.classList.add("in");
-    if (!motion) return;
+    if (!motion && !force) return;
+    fig.classList.toggle("force", force && !motion);
+    // 처음 상태로 순간 이동한 뒤(전환 없이) 다음 프레임에 다시 시작 — 사라지는 효과와 나타나는 효과가 서로 지우지 않게
+    fig.classList.add("reset"); fig.classList.remove("in"); void fig.offsetWidth; fig.classList.remove("reset");
+    requestAnimationFrame(() => requestAnimationFrame(() => fig.classList.add("in")));
     if (fig.dataset.scene) scenePlay(fig);
     if (fig.dataset.grids) gridsPlay(fig);
     if ($("[data-count]", fig)) barsPlay(fig);
@@ -221,7 +226,7 @@ function wireMotion(root) {
     if (fig.dataset.scene) sceneInit(fig);
     if (fig.querySelector(".ez-img")) return;
     const b = document.createElement("button"); b.type = "button"; b.className = "ez-replay"; b.textContent = "↻ 다시 보기"; b.title = "이 그림을 처음부터 다시 움직여요";
-    b.addEventListener("click", () => { const st = scenes.get(fig); if (st) st.user = false; const was = motion; motion = true; play(fig); motion = was; });
+    b.addEventListener("click", () => { const st = scenes.get(fig); if (st) st.user = false; play(fig, true); });
     fig.append(b);
   });
   const set = (on) => {
@@ -352,9 +357,50 @@ export function mountEasy(host, ctx, id) {
     $("#ez-recall-go", main).addEventListener("click", () => { if (!$("#ez-recall-t", main).value.trim()) { toast("한 줄이라도 먼저 써 보세요. 틀려도 괜찮아요."); $("#ez-recall-t", main).focus(); return; } reveal(true); });
     $("#ez-recall-skip", main).addEventListener("click", () => reveal(false));
     wireZoom(main);
-    stops.push(wireMotion(root), wireProgress(root));
+    stops.push(wireMotion(root), wireProgress(root), wireToc(root, main, d));
   })();
   return () => { alive = false; stops.forEach((f) => f?.()); };
+}
+
+// ---------- 목차: 넓은 화면은 왼쪽에 붙어 있고, 좁은 화면은 위 막대의 '목차' 버튼으로 ----------
+function wireToc(root, main, d) {
+  const plain = (t) => String(t || "").replace(/\*\*|\{[abc]:|\}/g, "");
+  const items = [["ez-top", "시작 · 짐작해 보기"], ...d.sections.map((s, k) => [`ez-s${k + 1}`, `${String(k + 1).padStart(2, "0")}  ${plain(s.title)}`]), ["ez-recall-sec", "책 덮고 말해 보기"]];
+  $(".ez-hero", main).id = "ez-top";
+  const list = `<ol>${items.map(([id, t]) => `<li><a href="#" data-to="${id}">${esc(t)}</a></li>`).join("")}</ol>`;
+  const side = document.createElement("nav"); side.className = "ez-toc"; side.setAttribute("aria-label", "목차");
+  side.innerHTML = `<p class="ez-toc-h">목차</p>${list}`;
+  root.classList.add("has-toc"); root.insertBefore(side, main);
+  const btn = document.createElement("button"); btn.type = "button"; btn.className = "ez-link ez-toc-btn"; btn.textContent = "목차"; btn.setAttribute("aria-expanded", "false");
+  const pop = document.createElement("nav"); pop.className = "ez-toc-pop"; pop.hidden = true; pop.setAttribute("aria-label", "목차"); pop.innerHTML = list;
+  $(".ez-bar-in", root).insertBefore(btn, $("#ez-motion", root)); $(".ez-bar", root).append(pop);
+  btn.addEventListener("click", () => { pop.hidden = !pop.hidden; btn.setAttribute("aria-expanded", String(!pop.hidden)); });
+  const go = (e) => {
+    const a = e.target.closest("[data-to]"); if (!a) return;
+    e.preventDefault(); pop.hidden = true; btn.setAttribute("aria-expanded", "false");
+    const el = document.getElementById(a.dataset.to); if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    // 지나가며 늦게 불러온 그림 때문에 페이지 길이가 바뀌면 목표가 밀려요 → 끝난 뒤 두 번 바로잡아요
+    [750, 1500].forEach((ms) => setTimeout(() => { const top = el.getBoundingClientRect().top; if (Math.abs(top - 72) > 12) el.scrollIntoView({ block: "start" }); }, ms));
+  };
+  side.addEventListener("click", go); pop.addEventListener("click", go);
+  // 지금 읽는 장을 목차에서 밝게
+  const mark = (id) => [side, pop].forEach((n) => $$("[data-to]", n).forEach((a) => a.classList.toggle("on", a.dataset.to === id)));
+  const seen = new Map();
+  const io = new IntersectionObserver((ents) => {
+    ents.forEach((e) => seen.set(e.target.id, e.isIntersecting ? e.boundingClientRect.top : null));
+    const cur = [...seen.entries()].filter(([, v]) => v != null).sort((a, b) => Math.abs(a[1]) - Math.abs(b[1]))[0];
+    if (cur) {
+      mark(cur[0]);
+      // 목차 칸만 살짝 굴려요 (scrollIntoView 를 쓰면 본문의 부드러운 이동이 끊겨요)
+      const a = $(`[data-to="${cur[0]}"]`, side);
+      if (a && side.scrollHeight > side.clientHeight) { const t = a.offsetTop - side.clientHeight / 2; side.scrollTo({ top: Math.max(0, t) }); }
+    }
+  }, { rootMargin: "-80px 0px -55% 0px" });
+  items.forEach(([id]) => { const el = document.getElementById(id); if (el) io.observe(el); });
+  const outside = (e) => { if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); } };
+  document.addEventListener("click", outside);
+  return () => { io.disconnect(); document.removeEventListener("click", outside); };
 }
 
 // ---------- 목록 ----------
