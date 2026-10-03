@@ -43,6 +43,7 @@ fi
 
 # 3) 원격 마이그레이션 (이미 적용된 건 알아서 건너뛰어요)
 step "원격 DB 마이그레이션"
+node scripts/updates-check.mjs || true
 npx wrangler d1 migrations apply "$DB" --remote < /dev/null
 
 # 4) 배포 (비밀값을 올리려면 Worker 가 먼저 있어야 해서 배포부터 해요)

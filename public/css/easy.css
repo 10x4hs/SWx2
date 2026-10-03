@@ -303,3 +303,4 @@
 .ez-sw-t { font: 700 12px var(--mono); letter-spacing: .04em; min-width: 26px; }
 .ez-ai-logo { flex: none; display: block; }
 .ez-ai-fab { padding-left: 14px; } .ez-ai-head { align-items: center; } .ez-ai-head b { margin-left: -2px; }
+.ezw .ez-ai-fab { color: var(--bg); } /* .ezw button { color: inherit } 보다 우선 */

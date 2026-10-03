@@ -12,6 +12,7 @@ import * as checklistView from "./views/checklist.js";
 import * as homeView from "./views/home.js";
 import * as englishView from "./views/english.js";
 import * as papersView from "./views/papers.js";
+import * as updatesView from "./views/updates.js";
 import { openMcpPanel } from "./mcp-panel.js";
 import { openProfile } from "./profile-edit.js";
 import * as calendarView from "./views/calendar.js";
@@ -142,10 +143,14 @@ function renderMeRow() {
       <button type="button" role="menuitem" id="prof-btn">${icon.edit(16)}프로필 바꾸기</button>
       <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
       <button type="button" role="menuitem" id="pw-btn">${icon.lock(16)}비밀번호 바꾸기</button>
+      <a role="menuitem" class="me-link" id="upd-btn" href="#/updates">${icon.spark(16)}업데이트 기록<span class="me-badge" id="upd-badge" hidden></span></a>
       <button type="button" role="menuitem" id="mcp-btn">${icon.share(16)}MCP 연결 (AI 에이전트)</button>
       <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
     </div>`;
   const menu = $("#me-menu"), btn = $("#me-btn");
+  // 메뉴는 화면 맨 위층(body)에 붙여요 — Dock 안에 두면 좁은 화면에서 본문 아래로 깔려 눌리지 않았어요
+  document.querySelectorAll("body > #me-menu").forEach((m) => m !== menu && m.remove());
+  document.body.append(menu);
   btn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute("aria-expanded", String(!menu.hidden)); });
   if (!renderMeRow.bound) { // 바깥을 누르면 닫기 (한 번만 걸어요)
     renderMeRow.bound = true;
@@ -158,6 +163,10 @@ function renderMeRow() {
     renderMeRow();
   });
   $("#pw-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openPassword(); });
+  $("#upd-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
+  // 마지막으로 본 뒤 생긴 업데이트 수 → 메뉴에 숫자 · 프로필 버튼에 점
+  const updBadge = () => updatesView.unseenCount().then((n) => { const b = $("#upd-badge"); if (b) { b.hidden = !n; b.textContent = n; } btn.classList.toggle("has-new", n > 0); });
+  updBadge(); window.addEventListener("trio:updates-seen", updBadge);
   $("#mcp-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openMcpPanel(ctx); });
   const prof = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openProfile(ctx); };
   $("#me-head").addEventListener("click", prof); $("#prof-btn").addEventListener("click", prof);
@@ -288,12 +297,13 @@ function parseRoute() {
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null };
   if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
+  if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
   if (a === "papers") return { view: "papers", nav: "papers", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, calendar: calendarView, room: roomView };
+const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, calendar: calendarView, room: roomView, updates: updatesView };
 let lastView = null;
 
 function route() {
@@ -351,6 +361,7 @@ function openPalette() {
     { grp: "이동", t: "내일 계획 세우기", s: ymd(new Date(Date.now() + 864e5)), run: () => ctx.go("#/calendar/" + ymd(new Date(Date.now() + 864e5))) },
     { grp: "이동", t: "한 해 잔디", s: "캘린더 · 연 · 일기 | 기록", run: () => ctx.go("#/calendar/year") },
     { grp: "이동", t: "오늘 체크리스트", s: "할 일 적기 · 우선순위 차트", run: () => ctx.go("#/checklist") },
+    { grp: "이동", t: "업데이트 기록", s: "무엇이 언제 바뀌었나", run: () => ctx.go("#/updates") },
     { grp: "이동", t: "쉽게 읽기 (논문 16편)", s: "중3~고1 눈높이 · AI 튜터 · 복습", run: () => ctx.go("#/papers/easy") },
     { grp: "이동", t: "섞어서 복습 (쉽게 읽기)", s: "오늘 복습할 차례", run: () => ctx.go("#/papers/easy/review") },
     { grp: "이동", t: "이번 주 목표", s: "목표 · 주", run: () => ctx.go("#/goals/week") },
