@@ -4,6 +4,16 @@
   {
    "date": "2026-10-04",
    "kind": "new",
+   "title": "서로의 하루 계획표 보기 (open / not open)",
+   "body": "그날 페이지 위 G · C · H 를 누르면 친구의 하루 계획표를 볼 수 있어요 (보기만). 보여 주기 싫으면 내 프로필 메뉴 DAY PLANS 에서 not open 으로 — 그러면 친구에겐 내 계획이 안 보여요. 기본은 open 이에요.",
+   "href": "#/calendar",
+   "commits": [
+    "9a605b7"
+   ]
+  },
+  {
+   "date": "2026-10-04",
+   "kind": "new",
    "title": "지금 뭐 하는 중 · 휴대폰 계획표",
    "body": "내 프로필 메뉴에서 coding · working · studying 같은 상태를 골라요. coding 이면 쓰는 AI(Claude · Codex · Gemini) 픽셀 캐릭터가 프로필 오른쪽 위에 떠요. 휴대폰에선 계획 추가 창이 아래에서 올라오고, 계획을 꾹 누르면 메뉴가 떠요.",
    "href": "#/",
