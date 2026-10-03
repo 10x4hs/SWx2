@@ -10,6 +10,7 @@ import { api } from "../api.js";
 import { toast } from "../util.js";
 import { chatMarkup, mountChat } from "./chat.js";
 import { fillFigtr } from "./figtr.js";
+import { loadStudyTime, fmtMin } from "./studytime.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -287,7 +288,8 @@ export function mountEasy(host, ctx, id) {
   document.addEventListener("selectionchange", onSelc); stops.push(() => document.removeEventListener("selectionchange", onSelc));
   (async () => {
     let d, idx, st;
-    try { [d, idx, st] = await Promise.all([easyOf(id), idxP(), api.easyState().catch(() => null)]); }
+    let tm = null;
+    try { [d, idx, st, tm] = await Promise.all([easyOf(id), idxP(), api.easyState().catch(() => null), loadStudyTime()]); }
     catch { main.innerHTML = `<p class="ez-err">이 논문의 쉽게 읽기를 불러오지 못했어요. <a href="#/papers/easy">목록으로</a></p>`; return; }
     if (!alive) return;
     const B = blocks(`/papers/fig/${encodeURIComponent(id)}/`);
@@ -299,7 +301,7 @@ export function mountEasy(host, ctx, id) {
     $(".ez-brand span", root).textContent = d.title;
     main.innerHTML = `
       <section class="ez-hero"><p class="ez-kicker">${esc(d.kicker || d.title)}</p><h1>${inline(d.headline)}</h1><p class="ez-lead">${inline(d.lead || "")}</p>
-        <p class="ez-meta"><span>읽는 데 <b>${esc(d.minutes || 15)}분</b></span><span>중3 ~ 고1 눈높이</span>${mine ? `<span>${mine.stage >= 4 ? "복습까지 끝냈어요" : `다음 복습 <b>${md(mine.due_day)}</b>`}</span>` : ""}</p>
+        <p class="ez-meta"><span title="${esc(tm?.method || "")}">예상 <b>${esc(fmtMin(tm?.papers?.[id]?.easy || d.minutes || 15))}</b> (분량을 재서 계산)</span><span>중3 ~ 고1 눈높이</span>${mine ? `<span>${mine.stage >= 4 ? "복습까지 끝냈어요" : `다음 복습 <b>${md(mine.due_day)}</b>`}</span>` : ""}</p>
         ${pre.length ? `<div class="ez-pre" id="ez-pre"><p class="ez-pre-k">읽기 전에 1분</p><p class="ez-pre-h">먼저 짐작해 보세요. 틀려도 괜찮아요.</p>
           <p class="ez-pre-s">답을 모르는 채로 먼저 골라 보면, 읽으면서 답을 만났을 때 더 오래 기억나요. 정답은 본문 속 같은 문제에서 알려 줘요.</p>
           ${pre.map((q, k) => `<div class="qz" data-pre="${k}"><p class="qz-k">짐작 ${k + 1}</p><p class="qz-q">${inline(q.q)}</p><div class="qz-c">${q.choices.map((c, j) => `<button type="button" data-g="${j}" class="${guesses[k] === j ? "pick" : ""}">${inline(c)}</button>`).join("")}</div></div>`).join("")}</div>` : ""}
@@ -412,7 +414,7 @@ export function mountEasyList(host, ctx) {
   host.innerHTML = `<div class="ezw">${bar("중3 ~ 고1 눈높이")}<main class="ez"><p class="ez-loading">불러오는 중…</p></main></div>`;
   const root = $(".ezw", host), main = $(".ez", root);
   (async () => {
-    const [idx, st] = await Promise.all([idxP(), api.easyState().catch(() => ({ items: [], due: [], today: "" }))]);
+    const [idx, st, tm] = await Promise.all([idxP(), api.easyState().catch(() => ({ items: [], due: [], today: "" })), loadStudyTime()]);
     const heads = await Promise.all(idx.papers.map((p) => easyOf(p.id).then((d) => d.headline.replace(/\n/g, " ")).catch(() => null)));
     if (!alive) return;
     const rows = new Map(st.items.map((r) => [r.paper, r])), byStage = {};
@@ -421,11 +423,11 @@ export function mountEasyList(host, ctx) {
     const done = st.items.length;
     main.innerHTML = `<section class="ez-hero"><p class="ez-kicker">엣지 비전 논문 16편</p><h1>어려운 논문을,<br>중학생도 따라올 수 있게.</h1>
       <p class="ez-lead">읽기 전에 짐작하고, 그림으로 원리를 보고, 책을 덮고 직접 말해 본 뒤, 며칠 간격을 두고 섞어서 다시 꺼내요. 기억 연구에서 오래 남는다고 확인된 순서 그대로예요.</p>
-      <p class="ez-meta"><span>읽은 논문 <b>${done}</b> / ${idx.papers.length}</span><span>전문가용 해설은 각 논문의 "자세히 읽기"에 있어요</span></p>
+      <p class="ez-meta"><span>읽은 논문 <b>${done}</b> / ${idx.papers.length}</span>${tm ? `<span title="${esc(tm.method)}">16편 쉽게 읽기 예상 <b>${esc(fmtMin(Object.values(tm.papers).reduce((a, x) => a + x.easy, 0)))}</b></span>` : ""}<span>전문가용 해설은 각 논문의 "자세히 읽기"에 있어요</span></p>
       ${st.due.length ? `<div class="ez-due"><b>오늘 복습할 차례 ${st.due.length}편</b><span>${st.due.map((x) => esc(idx.papers.find((p) => p.id === x)?.title || x)).join(" · ")} — 문제를 섞어서 5분이면 끝나요.</span><a class="ez-btn primary" href="#/papers/easy/review">섞어서 복습하기</a></div>`
         : done ? `<div class="ez-due"><b>오늘은 복습할 차례가 없어요</b><span>다음 복습: ${esc(md(st.items.filter((r) => r.stage < 4).map((r) => r.due_day).sort()[0] || st.today || "2026-10-05"))}. 미리 해 봐도 돼요.</span><a class="ez-btn" href="#/papers/easy/review">미리 복습하기</a></div>` : ""}
     </section>
-    ${stages.map((s) => { const x = idx.stages?.find((t) => t.n === +s); return `<p class="ez-stage">${s}단계${x ? ` · ${esc(x.label)}` : ""}</p><ul class="ez-list">${byStage[s].map((p) => `<li class="${p.head ? "" : "soon"}"><a href="#/papers/${esc(p.id)}/easy"><span class="n">${String(++n).padStart(2, "0")}</span><span><b>${esc(p.title)}</b><span class="h">${esc(p.head || "준비 중이에요")}</span></span><span class="tagc"><span class="tag">${esc(p.field || "")}</span>${STAGE(rows.get(p.id), st.today)}</span></a></li>`).join("")}</ul>`; }).join("")}`;
+    ${stages.map((s) => { const x = idx.stages?.find((t) => t.n === +s); return `<p class="ez-stage">${s}단계${x ? ` · ${esc(x.label)}` : ""}</p><ul class="ez-list">${byStage[s].map((p) => `<li class="${p.head ? "" : "soon"}"><a href="#/papers/${esc(p.id)}/easy"><span class="n">${String(++n).padStart(2, "0")}</span><span><b>${esc(p.title)}</b><span class="h">${esc(p.head || "준비 중이에요")}</span></span><span class="tagc"><span class="tag">${esc(p.field || "")}${tm?.papers?.[p.id] ? ` · ${esc(fmtMin(tm.papers[p.id].easy))}` : ""}</span>${STAGE(rows.get(p.id), st.today)}</span></a></li>`).join("")}</ul>`; }).join("")}`;
     stops.push(wireMotion(root), wireProgress(root));
   })().catch(() => { main.innerHTML = `<p class="ez-err">목록을 불러오지 못했어요.</p>`; });
   return () => { alive = false; stops.forEach((f) => f?.()); };
