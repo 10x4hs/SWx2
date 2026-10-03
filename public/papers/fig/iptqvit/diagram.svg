@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <defs><marker id="ah-iptqvit" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <!-- top: what is easy / hard -->
+  <rect class="dg-zone" rx="16" x="14" y="12" width="772" height="150"/>
+  <text class="dg-s" x="34" y="38">ViT 블록 안의 계산 — 정수로 바꾸기 쉬운 것과 어려운 것</text>
+
+  <rect class="dg-box c-green" rx="12" x="30" y="56" width="170" height="86"/>
+  <text class="dg-t b" x="115" y="88" text-anchor="middle">행렬곱 (Linear)</text>
+  <text class="dg-s" x="115" y="112" text-anchor="middle">정수 곱·덧셈이면 끝</text>
+  <text class="dg-s" x="115" y="130" text-anchor="middle">→ 쉬워요 (2018 방식)</text>
+
+  <rect class="dg-box c-rose" rx="12" x="220" y="56" width="170" height="86"/>
+  <text class="dg-t b" x="305" y="88" text-anchor="middle">Softmax</text>
+  <text class="dg-s" x="305" y="112" text-anchor="middle">지수(e^x)와 나눗셈</text>
+  <text class="dg-s" x="305" y="130" text-anchor="middle">→ 어려워요</text>
+
+  <rect class="dg-box c-rose" rx="12" x="410" y="56" width="170" height="86"/>
+  <text class="dg-t b" x="495" y="88" text-anchor="middle">GELU</text>
+  <text class="dg-s" x="495" y="112" text-anchor="middle">erf 라는 곡선 함수</text>
+  <text class="dg-s" x="495" y="130" text-anchor="middle">→ 어려워요</text>
+
+  <rect class="dg-box c-rose" rx="12" x="600" y="56" width="170" height="86"/>
+  <text class="dg-t b" x="685" y="88" text-anchor="middle">LayerNorm</text>
+  <text class="dg-s" x="685" y="112" text-anchor="middle">평균·제곱근·나눗셈</text>
+  <text class="dg-s" x="685" y="130" text-anchor="middle">→ 어려워요</text>
+
+  <path class="dg-a dash" d="M495,144 V180 H138 V218" fill="none" marker-end="url(#ah-iptqvit)"/>
+  <text class="dg-s" x="310" y="198" text-anchor="middle">오른쪽 3개는 정수로 흉내 내는 근사식이 필요해요</text>
+
+  <!-- bottom: IPTQ-ViT pipeline -->
+  <rect class="dg-box" rx="12" x="20" y="222" width="236" height="100"/>
+  <text class="dg-t b" x="138" y="252" text-anchor="middle">① 후보 근사식 모으기</text>
+  <text class="dg-s" x="138" y="278" text-anchor="middle">기존: 다항식 · 비트 시프트 · 로그</text>
+  <text class="dg-s" x="138" y="300" text-anchor="middle">새로: Poly-GELU · Bit-Softmax</text>
+
+  <rect class="dg-box c-violet" rx="12" x="282" y="222" width="236" height="100"/>
+  <text class="dg-t b" x="400" y="252" text-anchor="middle">② 층마다 점수 Ω 로 고르기</text>
+  <text class="dg-s" x="400" y="278" text-anchor="middle">오차 민감도 + 흔들림 크기</text>
+  <text class="dg-s" x="400" y="300" text-anchor="middle">+ 계산량 → 제일 높은 것</text>
+
+  <rect class="dg-box c-blue" rx="12" x="544" y="222" width="236" height="100"/>
+  <text class="dg-t b" x="662" y="252" text-anchor="middle">③ PTQ 보정</text>
+  <text class="dg-s" x="662" y="278" text-anchor="middle">학습 이미지 일부로 S, Z 결정</text>
+  <text class="dg-s" x="662" y="300" text-anchor="middle">재학습은 하지 않아요</text>
+
+  <path class="dg-a" d="M258,272 H278" fill="none" marker-end="url(#ah-iptqvit)"/>
+  <path class="dg-a" d="M520,272 H540" fill="none" marker-end="url(#ah-iptqvit)"/>
+  <path class="dg-a" d="M662,324 V385 H552" fill="none" marker-end="url(#ah-iptqvit)"/>
+
+  <rect class="dg-box c-teal" rx="12" x="250" y="340" width="300" height="90"/>
+  <text class="dg-t b" x="400" y="372" text-anchor="middle">모든 연산이 정수인 ViT</text>
+  <text class="dg-s" x="400" y="396" text-anchor="middle">DeiT-S W8A8: 79.85% → 79.76%</text>
+  <text class="dg-s" x="400" y="416" text-anchor="middle">양자화에 걸린 시간 약 2.37분</text>
+</svg>

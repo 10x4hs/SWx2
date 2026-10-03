@@ -1,0 +1,214 @@
+{
+  "id": "iptqvit",
+  "title": "IPTQ-ViT",
+  "full_title": "IPTQ-ViT: Post-Training Quantization of Non-linear Functions for Integer-only Vision Transformers",
+  "year": 2026,
+  "venue": "WACV 2026",
+  "field": "양자화·배포",
+  "stage": 7,
+  "one_line": "재학습 없이 ViT 의 Softmax·GELU·LayerNorm 까지 정수로",
+  "analogy": "번역기로 문서를 옮길 때, 쉬운 문장(행렬곱)은 바로 되지만 관용구(Softmax·GELU·LayerNorm)는 그대로 남아 번역이 끝나지 않아요. IPTQ-ViT 는 관용구마다 번역 후보를 몇 개 준비해 두고, 문장마다 '뜻이 가장 덜 틀리고 짧은' 후보를 골라 끼워요. 다시 공부(재학습)하지 않고 사전 맞추기(보정)만 해요.",
+  "problem": "2018년 정수 양자화 방식은 행렬곱이 대부분인 CNN 에서는 잘 통했지만, ViT 에는 Softmax·GELU·LayerNorm 처럼 정수 연산과 맞지 않는 **비선형 함수**가 많아요. 게다가 ViT 활성값은 꼬리가 길고 한쪽으로 쏠려 있어서 양자화에 민감해요. I-ViT·I-BERT 같은 QAT 방법은 근사식 + 재학습으로 풀었지만 좋은 GPU 와 전체 학습 데이터가 필요해요. PTQ 인 FQ-ViT 는 LayerNorm·Softmax 까지는 정수로 했지만 GELU 를 float 로 남겨 완전한 정수 추론이 아니었어요. QAT 용 근사식을 재학습 없이 PTQ 에 그대로 쓰면 Top-1 이 0.08% 까지 무너지기도 했어요(원문 Table 1).",
+  "idea": [
+    {
+      "title": "Data-aware Poly-GELU",
+      "body": "GELU 전체 대신 그 안의 erf 함수만 따로 근사 대상으로 삼아 최적화를 단순하게 만들었어요. 근사 범위도 언어 데이터로 정한 고정값 대신 **실제 영상 데이터의 최솟값~최댓값**으로 잡고 계수를 다시 맞췄어요. 2차 대신 **4차 다항식**을 쓰는데, 차수를 2→3→4 로 올리면 DeiT-S 가 79.24→79.30→79.76% 로 좋아졌어요. (−3, 3) 구간 GELU 오차(L2)는 I-BERT 의 0.0094 에서 0.0051 로 줄었어요(원문 Table 3)."
+    },
+    {
+      "title": "Efficient Bit-Softmax",
+      "body": "Softmax 는 e^x 와 나눗셈이 있어서 정수로 바로 안 돼요. 먼저 최댓값을 빼서 넘침을 막고, e^x 를 2의 거듭제곱으로 바꿔 **정수 부분은 비트 시프트**로 처리해요. 남은 소수 부분을 I-ViT 는 '1 + x/2' 로 대충 근사했지만, 이 논문은 '1 + ln2 × x' 로 더 정확하게 근사하고, ln2 를 2진수 0.1011(= 1/2 + 1/8 + 1/16)로 바꿔 **시프트와 덧셈만** 써요. 예: x = 80 이면 80≫1 + 80≫3 + 80≫4 = 40 + 10 + 5 = 55 로, 실제 80 × 0.693 ≈ 55.45 에 가까워요. 2의 거듭제곱 근사 오차(L2)는 0.1717 → 0.1126 으로 줄었어요(원문 Table 5)."
+    },
+    {
+      "title": "Unified Metric Ω 로 층마다 골라 끼우기",
+      "body": "층마다 후보 근사식(Softmax 4종, GELU 3종, LayerNorm 3종)을 전부 넣어 보고 점수 Ω 가 가장 높은 것을 골라요. Ω 는 **민감도 Q(SQNR)**, **흔들림 P(원래 값과의 차이 제곱합)**, **계산량 C(정수 연산 수)** 를 Softplus 로 크기를 맞춘 뒤 조화평균한 값이에요. SQNR 은 로그 눈금이라 절대 오차 차이를 가릴 수 있어서 P 를 더했어요. 예를 들어 ViT-B 에는 비선형 층이 49개 있고, 이렇게 골라 만든 혼합 모델을 마지막에 PTQ 로 보정해요."
+    }
+  ],
+  "diagram": {
+    "src": "diagram.svg",
+    "caption": "ViT 에서 정수로 바꾸기 어려운 세 연산과, IPTQ-ViT 의 3단계(후보 모으기 → 층별 점수로 고르기 → PTQ 보정)"
+  },
+  "figures": [
+    {
+      "src": "f1.jpg",
+      "caption": "원문 Figure 2 — 전체 흐름. 왼쪽 Search Space 의 후보 근사식을 각 LN·Softmax·GELU 층에 넣어 보고(1단계), 점수가 가장 높은 것을 배정해(2단계) 혼합 모델을 만든 뒤 보정해요(3단계).",
+      "page": 3
+    },
+    {
+      "src": "f2.jpg",
+      "caption": "원문 Figure 1 — ViT-B 11번째 블록 GELU 출력 분포. (b) 언어 모델용 근사식(I-BERT)을 PTQ 에 그대로 쓰면 크게 뒤틀리고, (c) IPTQ-ViT 는 (a) 원본과 비슷해요.",
+      "page": 2
+    },
+    {
+      "src": "f3.jpg",
+      "caption": "원문 Figure 3 — 왼쪽 erf, 오른쪽 GELU 근사 곡선. 확대 상자를 보면 I-BERT(노랑)는 0 근처에서 어긋나고, Ours 는 원래 곡선(빨강)에 더 붙어 있어요.",
+      "page": 4
+    },
+    {
+      "src": "f4.jpg",
+      "caption": "원문 Figure 4 — DeiT-S W8A8 의 양자화 소요 시간(가로)과 Top-1(세로). IPTQ-ViT(별)는 약 2.37분으로 빠르면서 PTQ 방법 중 가장 높아요.",
+      "page": 7
+    }
+  ],
+  "results": [
+    {
+      "label": "ImageNet Top-1 DeiT-S (W8A8)",
+      "value": "79.76%",
+      "note": "FP 79.85% 대비 −0.09%p, 모든 연산을 정수로(IO) · 원문 Table 6"
+    },
+    {
+      "label": "기존 PTQ 대비 분류 정확도 향상",
+      "value": "최대 6.44%p (평균 1.78%p)",
+      "note": "W8A8·W4A8 영상 분류 Top-1 · 원문 초록"
+    },
+    {
+      "label": "COCO 검출 Swin-S (W8A8, Cascade Mask R-CNN)",
+      "value": "box AP 51.8 / mask AP 44.8",
+      "note": "FP 51.8 / 44.7 과 같은 수준, FQ-ViT 보다 box +1.0 · 원문 Table 7"
+    },
+    {
+      "label": "지연시간 DeiT-B (W8A8, 배치 8)",
+      "value": "18.7 → 7.11ms (2.63배)",
+      "note": "RTX 3090 GPU + TVM 측정, NPU 가 아니에요 · 원문 Table 9"
+    }
+  ],
+  "pipeline_role": "⑦ 단계에서 ViT 계열 모델(DINOv3·C-RADIOv4 인코더, RT-DETRv4 의 트랜스포머 부분, SAM 등)을 INT8 로 보드에 올릴 때 부딪히는 벽을 설명해 줘요. ONNX → RKNN 변환에서 행렬곱·conv 는 int8 로 잘 돌지만, Softmax·GELU·LayerNorm 은 보드·툴킷 버전에 따라 float 로 남아 느려지거나 거칠게 양자화돼 정확도가 떨어질 수 있어요. 이 논문은 재학습 없이 보정 이미지만으로 그 부분까지 정수로 만드는 근사식과 층별 선택법을 보여 줘서, 우리가 어느 층을 정수로 바꾸고 어느 층을 float 로 남길지(혼합 정밀도) 판단하는 기준이 돼요. 다만 논문 구현은 GPU·TVM 용이라 RKNN 에서 같은 연산이 지원되는지는 직접 확인해야 해요.",
+  "caveats": [
+    "지연시간은 RTX 3090 GPU 에서 TVM 으로 잰 값이에요. Rockchip NPU 에서의 속도는 논문에 없어요.",
+    "연구용 정수 근사식이 ONNX 표준 연산이나 RKNN 에서 그대로 지원된다는 뜻은 아니에요. 공식 코드는 공개됐지만 여기서 실행해 보지는 않았어요.",
+    "W4A8 에서는 여전히 떨어져요. 예: DeiT-T 는 FP 72.21% → 66.90% 예요(원문 Table 6).",
+    "실험은 ImageNet 분류(ViT·DeiT·Swin)와 Swin 백본 검출 중심이라, DINOv3 같은 큰 인코더나 열화상 데이터에서는 검증되지 않았어요."
+  ],
+  "script_3min": "앞에서 본 2018년 INT8 방식은 CNN 에서는 잘 되는데 ViT 에서는 막혀요. 오늘은 그 벽을 넘는 WACV 2026 논문 IPTQ-ViT 예요.\n\n문제는 ViT 안의 Softmax, GELU, LayerNorm 이에요. 지수 함수, erf 곡선, 제곱근과 나눗셈이 들어 있어서 정수 곱셈과 덧셈만으로는 바로 계산이 안 돼요. I-ViT 나 I-BERT 는 근사식을 만들고 재학습으로 오차를 메웠지만, 좋은 GPU 와 전체 데이터가 필요해요. 그 근사식을 재학습 없이 PTQ 에 그대로 쓰면 정확도가 0.08% 까지 무너지기도 했어요.\n\n아이디어는 세 가지예요. 하나, GELU 는 안에 있는 erf 만 떼어서, 실제 영상 데이터 범위에 맞춘 4차 다항식으로 근사해요. 둘, Softmax 의 지수는 2의 거듭제곱으로 바꿔서 정수 부분은 비트 시프트로, 남은 부분은 1 더하기 ln2 곱하기 x 로 근사하는데, ln2 도 2진수 0.1011 로 바꿔서 시프트와 덧셈만 써요. 셋, 층마다 후보 근사식을 다 넣어 보고 오차 민감도, 흔들림, 계산량을 합친 점수 오메가가 가장 높은 것을 골라요. 마지막으로 보정만 하면 끝이에요.\n\n결과는 DeiT-S W8A8 에서 원래 79.85% 가 79.76% 로 거의 그대로고, 기존 PTQ 보다 최대 6.44%p 좋아졌어요. DeiT-S 양자화는 2.37분이면 끝났고, DeiT-B 는 RTX 3090 에서 18.7ms 가 7.11ms 로 빨라졌어요.\n\n우리에게는 DINOv3 나 RT-DETRv4 같은 트랜스포머를 RKNN 에 올릴 때, 어느 연산이 정수로 안 바뀌어서 느려지거나 틀어지는지 보는 눈을 줘요. 다만 속도는 GPU 측정이라 보드에서는 직접 재 봐야 해요.",
+  "keywords_3min": [
+    "비선형 함수(Softmax·GELU·LayerNorm)",
+    "PTQ(재학습 없음)",
+    "Poly-GELU",
+    "Bit-Softmax(비트 시프트)",
+    "Unified Metric Ω",
+    "완전 정수 추론"
+  ],
+  "quiz": [
+    {
+      "q": "QAT 용 근사식(I-BERT·I-ViT)을 PTQ 에 그대로 쓰면 정확도가 무너진 이유로 논문이 든 것은?",
+      "choices": [
+        "GPU 메모리가 부족해서",
+        "언어 모델용 근사식이 비전 활성값 분포를 뒤틀고, 재학습이 없어 그 오차를 메울 수 없어서",
+        "ViT 에는 행렬곱이 없어서",
+        "8비트로는 가중치를 표현할 수 없어서"
+      ],
+      "answer": 1,
+      "why": "원문 3장은 두 가지를 들어요: 언어 모델용 근사식이 ViT 의 분포를 뒤튼다는 것, 그리고 PTQ 는 재학습이 없어 근사 오차를 보정하기 어렵다는 것이에요."
+    },
+    {
+      "q": "기존 PTQ 방법 FQ-ViT 가 '완전한 정수 추론'이 아니었던 이유는?",
+      "choices": [
+        "Softmax 를 아예 빼 버려서",
+        "LayerNorm 을 float 로 남겨서",
+        "가중치를 4비트로만 해서",
+        "GELU 가 float 로 남아서"
+      ],
+      "answer": 3,
+      "why": "FQ-ViT 는 LayerNorm 과 Softmax 는 정수로 바꿨지만 GELU 를 float 로 남겼어요. IPTQ-ViT 는 GELU 까지 정수로 바꿔요."
+    },
+    {
+      "q": "Unified Metric 에 SQNR 말고 P(흔들림)와 C(계산량)를 함께 넣은 까닭은?",
+      "choices": [
+        "SQNR 은 로그 눈금이라 절대 오차 차이를 가릴 수 있고, 정확하면서도 가벼운 근사식을 고르려고",
+        "SQNR 은 GPU 에서만 계산할 수 있어서",
+        "P 와 C 가 있어야 재학습을 할 수 있어서",
+        "보정 이미지 수를 줄이려고"
+      ],
+      "answer": 0,
+      "why": "SQNR 차이가 작아도 절대 오차는 크게 다를 수 있고, 깊은 층에서는 그 오차가 쌓여요. C 를 넣어 계산이 비싼 근사식이 무조건 뽑히지 않게 해요."
+    },
+    {
+      "q": "Efficient Bit-exp 가 ln2 를 2진수 0.1011 로 바꿔 쓰는 목적은?",
+      "choices": [
+        "지수 함수의 넘침을 막으려고",
+        "음수 입력을 없애려고",
+        "곱셈 없이 비트 시프트와 덧셈만으로 계산하려고",
+        "GELU 와 계수를 같이 쓰려고"
+      ],
+      "answer": 2,
+      "why": "0.1011(2진수) = 1/2 + 1/8 + 1/16 이라서 x≫1 + x≫3 + x≫4 처럼 시프트와 덧셈만으로 ln2 × x 를 흉내 낼 수 있어요. 넘침 방지는 최댓값 빼기가 따로 해요."
+    },
+    {
+      "q": "'DeiT-B 가 18.7ms → 7.11ms 로 빨라졌다'는 결과를 우리 RKNN 보드 계획에 쓸 때 올바른 해석은?",
+      "choices": [
+        "RKNN 에서도 똑같이 2.63배 빨라진다",
+        "RTX 3090 + TVM 측정이라 NPU 에서는 직접 재 봐야 한다",
+        "NPU 는 정수 전용이라 오히려 느려진다",
+        "배치 1 로 돌리면 항상 더 빨라진다"
+      ],
+      "answer": 1,
+      "why": "원문 Table 9 는 배치 8, RTX 3090 GPU, TVM 조건이에요. 하드웨어와 연산 지원이 다른 NPU 에 숫자를 그대로 옮길 수 없어요."
+    }
+  ],
+  "glossary": [
+    {
+      "term": "비선형 함수",
+      "easy": "Softmax·GELU·LayerNorm 처럼 곱셈·덧셈만으로는 계산이 안 되는 함수"
+    },
+    {
+      "term": "GELU / erf",
+      "easy": "ViT MLP 에 쓰는 부드러운 활성 함수. 안에 erf 라는 S자 곡선 함수가 들어 있어요"
+    },
+    {
+      "term": "비트 시프트",
+      "easy": "2진수 자리를 옮겨 2의 거듭제곱으로 곱하거나 나누는 아주 싼 연산 (x≫1 = x ÷ 2)"
+    },
+    {
+      "term": "SQNR",
+      "easy": "신호 크기 대비 양자화 잡음 크기(dB). 낮을수록 오차가 크고 민감한 층이에요"
+    },
+    {
+      "term": "W8A8 / W4A8",
+      "easy": "가중치(W)와 활성값(A)의 비트 수. W4A8 은 가중치 4비트·활성값 8비트"
+    },
+    {
+      "term": "완전 정수 추론 (integer-only)",
+      "easy": "추론 중 float 계산이 하나도 없이 모든 연산을 정수로 하는 것"
+    },
+    {
+      "term": "IntDiv",
+      "easy": "I-ViT 가 제안한 정수 나눗셈. 큰 수를 합으로 나눈 뒤 시프트해 확률을 만들어요"
+    }
+  ],
+  "videos": [
+    {
+      "youtube": "hCK-yD7Azgw",
+      "title": "[WACV2026-Oral] IPTQ-ViT",
+      "channel": "gihwan kim",
+      "lang": "en",
+      "minutes": 8,
+      "note": "제1저자의 WACV 2026 구두 발표 영상이에요. 8분이라 전체 흐름을 먼저 보기 좋아요."
+    },
+    {
+      "youtube": "h46MREayQt8",
+      "title": "[3기 최신반] I-BERT: Integer-only BERT Quantization",
+      "channel": "집현전 자연어처리 모임",
+      "lang": "ko",
+      "minutes": 19,
+      "note": "이 논문 자체 영상은 아니고 기반 개념 영상이에요. IPTQ-ViT 가 비교·개선하는 I-BERT 의 정수 GELU·Softmax 근사를 한국어로 설명해요."
+    },
+    {
+      "youtube": "wrcgWm_nUeE",
+      "title": "EfficientML.ai Lecture 6 - Quantization Part II (MIT 6.5940, Fall 2024)",
+      "channel": "MIT HAN Lab",
+      "lang": "en",
+      "minutes": 69,
+      "note": "기반 개념 영상이에요. PTQ·QAT·보정(calibration) 같은 양자화 기초를 정리할 때 보세요."
+    }
+  ],
+  "links": {
+    "arxiv": "https://arxiv.org/abs/2511.15369",
+    "pdf": "https://arxiv.org/pdf/2511.15369",
+    "code": "https://github.com/gihwan-kim/IPTQ-ViT"
+  },
+  "related": [
+    "intquant",
+    "dinov3",
+    "cradiov4",
+    "rtdetrv4"
+  ]
+}

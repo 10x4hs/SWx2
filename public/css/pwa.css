@@ -1,0 +1,65 @@
+/* PWA: 오프라인 띠 + 홈 화면에 추가 안내. 무채색 유리, 토큰만 사용. */
+
+.pwa-net,
+.pwa-hint {
+  position: fixed; left: 50%; z-index: 100;
+  max-width: calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  box-sizing: border-box;
+  background: var(--glass-3);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-hi), 0 12px 30px -14px rgba(0, 0, 0, .55);
+  color: var(--ink);
+  font: 500 13px/1.35 var(--font);
+  letter-spacing: -.005em;
+  opacity: 0;
+  transform: translate(-50%, -8px);
+  transition: opacity .28s var(--ease, ease), transform .28s var(--ease, ease);
+}
+.pwa-net.on, .pwa-hint.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* 오프라인 띠: 화면 맨 위 가운데, 노치/상태 막대 아래 */
+.pwa-net {
+  top: calc(env(safe-area-inset-top) + 8px);
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px 7px 12px;
+  border-radius: 999px;
+  pointer-events: none; /* 밑의 머리줄 버튼을 가리지 않게 */
+  text-align: center;
+}
+.pwa-net[hidden] { display: none; }
+.pwa-net::before {
+  content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ink-3);
+  box-shadow: 0 0 0 3px var(--hover);
+}
+.pwa-net[data-state="online"]::before { background: var(--ink); }
+
+/* 홈 화면에 추가: 같은 자리, 오프라인 띠가 있으면 그 아래 */
+.pwa-hint {
+  top: calc(env(safe-area-inset-top) + 8px);
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 6px 6px 14px;
+  border-radius: 16px;
+}
+.pwa-net:not([hidden]) ~ .pwa-hint { top: calc(env(safe-area-inset-top) + 48px); }
+.pwa-hint-text { color: var(--ink-2); }
+.pwa-hint-go,
+.pwa-hint-x {
+  appearance: none; border: 0; margin: 0; cursor: pointer;
+  font: inherit; color: inherit; background: transparent;
+  border-radius: 10px; min-height: 30px;
+}
+.pwa-hint-go { padding: 0 12px; background: var(--ink); color: var(--glass-3); font-weight: 600; white-space: nowrap; }
+.pwa-hint-x { width: 30px; color: var(--ink-3); font-size: 18px; line-height: 1; }
+.pwa-hint-x:hover { background: var(--hover); color: var(--ink); }
+.pwa-hint-go:focus-visible,
+.pwa-hint-x:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+@media (max-width: 480px) {
+  .pwa-net, .pwa-hint { font-size: 12.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-net, .pwa-hint { transition: none; transform: translate(-50%, 0); }
+}

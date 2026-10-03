@@ -1,23 +1,25 @@
 {
-  "name": "study-trio",
+  "name": "dsm-mafia",
   "private": true,
   "type": "module",
   "scripts": {
-    "db:init": "wrangler d1 migrations apply study-trio --local",
+    "db:init": "wrangler d1 migrations apply dsm-mafia --local",
     "dev": "wrangler dev",
-    "db:init:remote": "wrangler d1 migrations apply study-trio --remote",
+    "db:init:remote": "wrangler d1 migrations apply dsm-mafia --remote",
     "deploy": "wrangler deploy",
+    "deploy:all": "bash scripts/deploy.sh",
     "seed": "node scripts/seed.mjs",
     "test": "node scripts/smoke.mjs",
-    "db:reset": "rm -rf .wrangler/state && wrangler d1 migrations apply study-trio --local",
-    "user:add": "node scripts/add-user.mjs"
+    "db:reset": "rm -rf .wrangler/state && wrangler d1 migrations apply dsm-mafia --local",
+    "user:add": "node scripts/add-user.mjs",
+    "english:import": "node scripts/english-import.mjs",
+    "english:sync": "node scripts/english-sync.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.142.0"
   },
   "dependencies": {
     "dompurify": "^3.4.16",
-    "marked": "^18.0.14",
-    "three": "^0.186.1"
+    "marked": "^18.0.14"
   }
 }

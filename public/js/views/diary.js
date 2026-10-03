@@ -1,94 +1,72 @@
-// 일기장: 한 해를 잔디처럼. 일기를 쓴 날은 칸이 채워지고, 칸을 누르면 그날 일기를 써요.
+// 일기 페이지 — 캘린더 안의 하루 한 편. 주소: #/calendar/diary/<YYYY-MM-DD> (날짜가 없으면 오늘).
+// 가운데는 큰 편집기(기분 + 글, 자동 저장, 본인만 봄), 옆에는 그날 끝낸 일과 지난 일기 목록.
 import { api } from "../api.js";
-import { $, $$, esc, ymd, today, parseYmd, addDays, pad, toast } from "../util.js";
+import { $, esc, ymd, parseYmd, addDays, today, DOW, toast } from "../util.js";
 import { icon } from "../icons.js";
-import { mountDiary } from "../diary.js";
+import { mountDiary, MOODS } from "../diary.js";
 
-const num = (d) => `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const longDate = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`;
+const shortDate = (s) => { const d = parseYmd(s); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})`; };
+
+let inst = null;
+export function update(r) { inst?.update(r); }
 
 export function mount(root, ctx, r) {
-  const t = today();
-  const sel = r.day ? parseYmd(r.day) : t;
-  const year = sel.getFullYear();
-  let stop = null, written = new Set();
-
+  let day = DAY_RE.test(r.day || "") ? r.day : ymd(today());
+  let stopEditor = null;
   root.innerHTML = `
-    <div class="view diary-view">
-      <header class="vhead">
-        <div class="title">
-          <span class="eyebrow">Diary</span>
-          <h1 class="h1 mono-date">${year}</h1>
-        </div>
-        <div class="row">
-          <span class="faint" id="d-stats" style="font-size:13px"></span>
-          <div class="pager">
-            <a class="icon-btn" href="#/diary/${year - 1}-12-31" aria-label="${year - 1}">${icon.left()}</a>
-            <a class="btn ghost sm" href="#/diary">${t.getFullYear()}</a>
-            <a class="icon-btn" href="#/diary/${year + 1}-01-01" aria-label="${year + 1}">${icon.right()}</a>
-          </div>
+    <div class="dy">
+      <header class="dy-top">
+        <a class="icon-btn sm" id="dy-back" aria-label="캘린더로">${icon.left(16)}</a>
+        <div class="dy-when"><span class="eyebrow">일기</span><h1 class="dy-date" id="dy-date"></h1></div>
+        <div class="pager">
+          <a class="icon-btn sm" id="dy-prev" aria-label="전날 일기">${icon.left(16)}</a>
+          <a class="btn sm ghost" id="dy-today">오늘</a>
+          <a class="icon-btn sm" id="dy-next" aria-label="다음날 일기">${icon.right(16)}</a>
         </div>
       </header>
-      <section class="panel grass-panel" aria-label="${year} 일기 잔디">
-        <div class="grass-scroll"><div class="grass" id="grass"></div></div>
-        <div class="grass-legend"><span><i></i>안 쓴 날</span><span><i class="on"></i>쓴 날</span><span><i class="today"></i>오늘</span></div>
-      </section>
-      <section class="panel diary-sheet" aria-labelledby="d-date">
-        <div class="panel-head">
-          <h2 class="d-date" id="d-date">${num(sel)}</h2>
-          <div class="pager">
-            <a class="icon-btn sm" href="#/diary/${ymd(addDays(sel, -1))}" aria-label="전날">${icon.left(16)}</a>
-            <a class="icon-btn sm" href="#/diary/${ymd(addDays(sel, 1))}" aria-label="다음날">${icon.right(16)}</a>
-          </div>
-        </div>
-        <div id="editor"></div>
-        <p class="faint" style="font-size:12.5px;margin:0">${icon.lock(13)} 일기는 나만 볼 수 있어요. 다른 두 사람에게도, AI에게도 보내지 않아요.</p>
-      </section>
+      <div class="dy-cols">
+        <section class="dy-paper glass" aria-label="일기 쓰기"><div id="dy-editor"></div></section>
+        <aside class="dy-side">
+          <section class="dy-card glass"><h2>이날 계획</h2><ul class="dy-done" id="dy-done"><li class="faint">불러오는 중…</li></ul></section>
+          <section class="dy-card glass"><h2>지난 일기</h2><ul class="dy-list" id="dy-list"><li class="faint">불러오는 중…</li></ul></section>
+        </aside>
+      </div>
     </div>`;
 
-  function drawGrass() {
-    // 첫 주는 1월 1일이 든 주의 월요일부터
-    const jan1 = new Date(year, 0, 1), start = addDays(jan1, -((jan1.getDay() + 6) % 7));
-    const end = new Date(year, 11, 31);
-    const weeks = Math.ceil(((end - start) / 864e5 + 1) / 7);
-    let months = "", cells = "", lastMonth = -1;
-    for (let w = 0; w < weeks; w++) {
-      const monday = addDays(start, w * 7);
-      const m = (monday.getFullYear() < year ? jan1 : monday).getMonth();
-      months += `<span style="grid-column:${w + 2}">${m !== lastMonth && monday <= end ? m + 1 : ""}</span>`;
-      if (m !== lastMonth) lastMonth = m;
-      for (let d = 0; d < 7; d++) {
-        const day = addDays(monday, d), k = ymd(day);
-        if (day.getFullYear() !== year) { cells += `<span class="g out" style="grid-column:${w + 2};grid-row:${d + 2}"></span>`; continue; }
-        const cls = [written.has(k) ? "on" : "", k === ymd(t) ? "today" : "", k === ymd(sel) ? "sel" : "", day > t ? "future" : ""].filter(Boolean).join(" ");
-        cells += `<a class="g ${cls}" href="#/diary/${k}" style="grid-column:${w + 2};grid-row:${d + 2}" title="${num(day)}${written.has(k) ? " · 씀" : ""}" aria-label="${num(day)}${written.has(k) ? ", 일기 있음" : ""}"></a>`;
-      }
-    }
-    const dows = ["1", "", "3", "", "5", "", "7"].map((l, i) => `<span class="dw" style="grid-row:${i + 2}">${l}</span>`).join("");
-    $("#grass", root).style.gridTemplateColumns = `16px repeat(${weeks}, var(--cell))`;
-    $("#grass", root).innerHTML = `<span class="mh"></span>${months}${dows}${cells}`;
-  }
-  function stats() {
-    let streak = 0, d = t;
-    if (!written.has(ymd(d))) d = addDays(d, -1);
-    while (written.has(ymd(d))) { streak++; d = addDays(d, -1); }
-    $("#d-stats", root).textContent = `${written.size}일 기록${streak > 1 ? ` · 연속 ${streak}일` : ""}`;
-  }
-  async function load() {
+  async function loadList() {
     try {
-      const { days } = await api.diaryDays(year);
-      written = new Set(days.filter((x) => x.len > 0 || x.mood).map((x) => x.day));
-      drawGrass(); stats();
+      const { entries } = await api.diaries();
+      $("#dy-list", root).innerHTML = entries.length ? entries.slice(0, 30).map((e) => {
+        const m = MOODS.find((x) => x.v === e.mood);
+        return `<li><a href="#/calendar/diary/${e.day}" ${e.day === day ? 'aria-current="page"' : ""}><b>${esc(shortDate(e.day))}</b>${m ? `<span class="chip">${esc(m.label)}</span>` : ""}<span class="sn">${esc((e.snippet || "").replace(/\s+/g, " ").slice(0, 70)) || "기분만 남김"}</span></a></li>`;
+      }).join("") : `<li class="faint">아직 쓴 일기가 없어요. 오늘 첫 일기를 남겨 보세요.</li>`;
     } catch (e) { toast(e.message, "err"); }
   }
-
-  drawGrass();
-  stop = mountDiary($("#editor", root), ymd(sel), {
-    rows: 12,
-    onSaved: (d) => { const k = ymd(sel); if (d) written.add(k); else written.delete(k); drawGrass(); stats(); },
-  });
-  load();
-  // 고른 날이 보이도록 잔디를 옮겨요
-  requestAnimationFrame(() => { const s = $(".g.sel", root), sc = $(".grass-scroll", root); if (s && sc) sc.scrollLeft = Math.max(0, s.offsetLeft - sc.clientWidth / 2); });
-  if (r.day) setTimeout(() => $("#editor textarea", root)?.focus({ preventScroll: true }), 60);
-  return () => stop?.();
+  async function loadDone() {
+    try {
+      const { plans } = await api.plans(["D:" + day]);
+      const list = (plans || []).slice().sort((a, b) => (a.start || "99").localeCompare(b.start || "99"));
+      $("#dy-done", root).innerHTML = list.length ? list.map((p) => `<li class="${p.done ? "on" : ""}"><span class="ck">${p.done ? "✓" : ""}</span>${p.start ? `<em>${esc(p.start)}</em>` : ""}<span>${esc(p.text)}</span></li>`).join("")
+        : `<li class="faint">이날 적어 둔 계획이 없어요.</li>`;
+    } catch { $("#dy-done", root).innerHTML = `<li class="faint">불러오지 못했어요.</li>`; }
+  }
+  function open(d) {
+    stopEditor?.();
+    day = d;
+    const dt = parseYmd(day);
+    $("#dy-date", root).textContent = longDate(dt);
+    $("#dy-back", root).href = "#/calendar/" + day;
+    $("#dy-prev", root).href = "#/calendar/diary/" + ymd(addDays(dt, -1));
+    $("#dy-next", root).href = "#/calendar/diary/" + ymd(addDays(dt, 1));
+    $("#dy-today", root).href = "#/calendar/diary/" + ymd(today());
+    $("#dy-next", root).toggleAttribute("aria-disabled", day >= ymd(today()));
+    stopEditor = mountDiary($("#dy-editor", root), day, { rows: 18, onSaved: () => { loadList(); ctx.changed?.("diary"); } });
+    loadDone(); loadList();
+    setTimeout(() => root.querySelector(".diary-text")?.focus(), 60);
+  }
+  inst = { update(rr) { const d = DAY_RE.test(rr.day || "") ? rr.day : ymd(today()); if (d !== day) open(d); } };
+  open(day);
+  return () => { stopEditor?.(); inst = null; };
 }

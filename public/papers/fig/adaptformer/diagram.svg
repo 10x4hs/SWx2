@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480">
+  <defs><marker id="ah-adaptformer" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <!-- 입력 -->
+  <rect class="dg-box" rx="12" x="290" y="16" width="220" height="44"/>
+  <text class="dg-t" x="400" y="44" text-anchor="middle">어텐션을 지난 토큰</text>
+  <path class="dg-a" fill="none" d="M400,60 L400,82" marker-end="url(#ah-adaptformer)"/>
+
+  <!-- LayerNorm -->
+  <rect class="dg-box" rx="12" x="330" y="84" width="140" height="40"/>
+  <text class="dg-t" x="400" y="109" text-anchor="middle">LayerNorm</text>
+
+  <!-- 갈라지기 -->
+  <path class="dg-a" fill="none" d="M380,124 L230,178" marker-end="url(#ah-adaptformer)"/>
+  <path class="dg-a" fill="none" d="M420,124 L490,188" marker-end="url(#ah-adaptformer)"/>
+
+  <!-- 왼쪽: 얼린 MLP -->
+  <rect class="dg-box c-blue" rx="12" x="110" y="180" width="240" height="70"/>
+  <text class="dg-t b" x="230" y="210" text-anchor="middle">원래 MLP (얼림)</text>
+  <text class="dg-s" x="230" y="234" text-anchor="middle">학습 안 함 · 모든 작업이 공유</text>
+
+  <!-- 오른쪽: 어댑터 -->
+  <rect class="dg-zone" rx="16" x="420" y="150" width="360" height="176"/>
+  <text class="dg-s" x="556" y="172">새로 붙인 어댑터 (이것만 학습)</text>
+
+  <rect class="dg-box c-amber" rx="12" x="440" y="190" width="100" height="56"/>
+  <text class="dg-t b" x="490" y="214" text-anchor="middle">Down</text>
+  <text class="dg-s" x="490" y="236" text-anchor="middle">768→64</text>
+  <path class="dg-a" fill="none" d="M540,218 L558,218" marker-end="url(#ah-adaptformer)"/>
+
+  <rect class="dg-box c-amber" rx="12" x="560" y="190" width="80" height="56"/>
+  <text class="dg-t b" x="600" y="223" text-anchor="middle">ReLU</text>
+  <path class="dg-a" fill="none" d="M640,218 L658,218" marker-end="url(#ah-adaptformer)"/>
+
+  <rect class="dg-box c-amber" rx="12" x="660" y="190" width="100" height="56"/>
+  <text class="dg-t b" x="710" y="214" text-anchor="middle">Up</text>
+  <text class="dg-s" x="710" y="236" text-anchor="middle">64→768</text>
+  <path class="dg-a" fill="none" d="M710,246 L710,268" marker-end="url(#ah-adaptformer)"/>
+
+  <rect class="dg-box c-amber" rx="12" x="600" y="270" width="160" height="44"/>
+  <text class="dg-t b" x="680" y="297" text-anchor="middle">× s (= 0.1)</text>
+
+  <!-- 합치기 -->
+  <path class="dg-a" fill="none" d="M230,250 L230,330 L380,330 L380,346" marker-end="url(#ah-adaptformer)"/>
+  <path class="dg-a" fill="none" d="M680,314 L680,330 L420,330 L420,346" marker-end="url(#ah-adaptformer)"/>
+  <path class="dg-a dash" fill="none" d="M290,38 L60,38 L60,370 L328,370" marker-end="url(#ah-adaptformer)"/>
+  <text class="dg-s" x="70" y="300">지름길(잔차)</text>
+
+  <rect class="dg-box c-green" rx="12" x="330" y="348" width="140" height="44"/>
+  <text class="dg-t b" x="400" y="376" text-anchor="middle">셋을 더해요 +</text>
+  <path class="dg-a" fill="none" d="M400,392 L400,418" marker-end="url(#ah-adaptformer)"/>
+
+  <rect class="dg-box" rx="12" x="300" y="420" width="200" height="44"/>
+  <text class="dg-t" x="400" y="447" text-anchor="middle">다음 블록으로</text>
+
+  <text class="dg-s" x="150" y="440" text-anchor="middle">Up을 0으로 시작 = 원래 모델 그대로</text>
+  <text class="dg-s" x="645" y="440" text-anchor="middle">학습량: 어댑터+헤드 ≈ 전체의 1.46%</text>
+</svg>

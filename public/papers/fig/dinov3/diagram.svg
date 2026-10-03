@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 460">
+  <defs><marker id="ah-dinov3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <text class="dg-s" x="20" y="30">학습 순서</text>
+  <rect class="dg-box" rx="12" x="20" y="44" width="140" height="80"/>
+  <text class="dg-t b" x="90" y="76" text-anchor="middle">데이터 추리기</text>
+  <text class="dg-s" x="90" y="100" text-anchor="middle">170억→약 17억 장</text>
+
+  <rect class="dg-box c-blue" rx="12" x="175" y="44" width="140" height="80"/>
+  <text class="dg-t b" x="245" y="76" text-anchor="middle">7B 모델 학습</text>
+  <text class="dg-s" x="245" y="100" text-anchor="middle">DINO+iBOT 1M번</text>
+
+  <rect class="dg-box c-rose" rx="12" x="330" y="44" width="140" height="80"/>
+  <text class="dg-t b" x="400" y="76" text-anchor="middle">Gram 앵커링</text>
+  <text class="dg-s" x="400" y="100" text-anchor="middle">패치 지도 되살리기</text>
+
+  <rect class="dg-box" rx="12" x="485" y="44" width="140" height="80"/>
+  <text class="dg-t b" x="555" y="76" text-anchor="middle">고해상도 적응</text>
+  <text class="dg-s" x="555" y="100" text-anchor="middle">512·768px 10k번</text>
+
+  <rect class="dg-box c-green" rx="12" x="640" y="44" width="140" height="80"/>
+  <text class="dg-t b" x="710" y="76" text-anchor="middle">작게 증류</text>
+  <text class="dg-s" x="710" y="100" text-anchor="middle">ViT-S~H+, CNX</text>
+
+  <path class="dg-a" fill="none" d="M160,84 L173,84" marker-end="url(#ah-dinov3)"/>
+  <path class="dg-a" fill="none" d="M315,84 L328,84" marker-end="url(#ah-dinov3)"/>
+  <path class="dg-a" fill="none" d="M470,84 L483,84" marker-end="url(#ah-dinov3)"/>
+  <path class="dg-a" fill="none" d="M625,84 L638,84" marker-end="url(#ah-dinov3)"/>
+  <path class="dg-a dash" fill="none" d="M400,124 L400,158" marker-end="url(#ah-dinov3)"/>
+
+  <rect class="dg-zone" rx="16" x="20" y="160" width="760" height="285"/>
+  <text class="dg-s" x="36" y="184">Gram 앵커링 자세히</text>
+
+  <rect class="dg-box c-blue" rx="12" x="40" y="200" width="200" height="64"/>
+  <text class="dg-t b" x="140" y="227" text-anchor="middle">학생 (지금 모델)</text>
+  <text class="dg-s" x="140" y="250" text-anchor="middle">패치 특징 P개</text>
+
+  <rect class="dg-box c-amber" rx="12" x="40" y="330" width="200" height="64"/>
+  <text class="dg-t b" x="140" y="357" text-anchor="middle">Gram 교사</text>
+  <text class="dg-s" x="140" y="380" text-anchor="middle">초기 모델 · 2배 해상도</text>
+
+  <rect class="dg-box" rx="12" x="300" y="200" width="180" height="64"/>
+  <text class="dg-t" x="390" y="227" text-anchor="middle">유사도 표 (P×P)</text>
+  <text class="dg-s" x="390" y="250" text-anchor="middle">패치끼리 얼마나 닮았나</text>
+
+  <rect class="dg-box" rx="12" x="300" y="330" width="180" height="64"/>
+  <text class="dg-t" x="390" y="357" text-anchor="middle">유사도 표 (P×P)</text>
+  <text class="dg-s" x="390" y="380" text-anchor="middle">깨끗했던 시절의 표</text>
+
+  <rect class="dg-box c-rose" rx="12" x="540" y="255" width="220" height="84"/>
+  <text class="dg-t b" x="650" y="289" text-anchor="middle">두 표를 같게</text>
+  <text class="dg-s" x="650" y="315" text-anchor="middle">차이의 제곱합 줄이기</text>
+
+  <path class="dg-a" fill="none" d="M240,232 L298,232" marker-end="url(#ah-dinov3)"/>
+  <path class="dg-a" fill="none" d="M240,362 L298,362" marker-end="url(#ah-dinov3)"/>
+  <path class="dg-a" fill="none" d="M480,232 C515,232 510,285 538,285" marker-end="url(#ah-dinov3)"/>
+  <path class="dg-a" fill="none" d="M480,362 C515,362 510,310 538,310" marker-end="url(#ah-dinov3)"/>
+
+  <text class="dg-s" x="400" y="428" text-anchor="middle">특징 값은 자유롭게 움직이되, 패치 사이 관계(구조)만 붙잡아 둬요</text>
+</svg>

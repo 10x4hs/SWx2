@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 440">
+  <defs><marker id="ah-fdta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <!-- 입력과 DETR -->
+  <rect class="dg-box" rx="12" x="20" y="180" width="120" height="64"/>
+  <text class="dg-t b" x="80" y="206" text-anchor="middle">영상 프레임</text>
+  <text class="dg-s" x="80" y="228" text-anchor="middle">t-T … t</text>
+
+  <rect class="dg-box c-violet" rx="12" x="170" y="180" width="140" height="64"/>
+  <text class="dg-t b" x="240" y="206" text-anchor="middle">DETR</text>
+  <text class="dg-s" x="240" y="228" text-anchor="middle">상자 + 물체 임베딩</text>
+
+  <!-- FDTA 영역 -->
+  <rect class="dg-zone" rx="16" x="340" y="36" width="260" height="330"/>
+  <text class="dg-s" x="470" y="60" text-anchor="middle">FDTA: 임베딩을 세 방향으로 다듬기</text>
+
+  <rect class="dg-box c-blue" rx="12" x="355" y="74" width="230" height="84"/>
+  <text class="dg-t b" x="470" y="100" text-anchor="middle">공간 어댑터 (SA)</text>
+  <text class="dg-s" x="470" y="122" text-anchor="middle">깊이 단서로 앞뒤 사람 구별</text>
+  <text class="dg-s" x="470" y="142" text-anchor="middle">깊이 선생 모델은 학습 때만</text>
+
+  <rect class="dg-box c-teal" rx="12" x="355" y="170" width="230" height="84"/>
+  <text class="dg-t b" x="470" y="196" text-anchor="middle">시간 어댑터 (TA)</text>
+  <text class="dg-s" x="470" y="218" text-anchor="middle">과거 궤적(최대 T프레임) 읽기</text>
+  <text class="dg-s" x="470" y="238" text-anchor="middle">미래·빈칸은 마스크로 가림</text>
+
+  <rect class="dg-box c-rose" rx="12" x="355" y="266" width="230" height="84"/>
+  <text class="dg-t b" x="470" y="292" text-anchor="middle">ID 어댑터 (IA)</text>
+  <text class="dg-s" x="470" y="314" text-anchor="middle">같은 ID는 당기고, 다른 ID는 밀기</text>
+  <text class="dg-s" x="470" y="334" text-anchor="middle">학습 때만 · 추론 비용 0</text>
+
+  <!-- 출력 -->
+  <rect class="dg-box c-green" rx="12" x="630" y="180" width="150" height="64"/>
+  <text class="dg-t b" x="705" y="206" text-anchor="middle">구별되는 임베딩</text>
+  <text class="dg-s" x="705" y="228" text-anchor="middle">사람1 ≠ 사람2</text>
+
+  <rect class="dg-box" rx="12" x="630" y="290" width="150" height="60"/>
+  <text class="dg-t b" x="705" y="314" text-anchor="middle">ID 예측</text>
+  <text class="dg-s" x="705" y="336" text-anchor="middle">프레임 사이 연결</text>
+
+  <!-- 화살표 -->
+  <path class="dg-a" fill="none" d="M140,212 L168,212" marker-end="url(#ah-fdta)"/>
+  <path class="dg-a" fill="none" d="M310,212 L326,212 L326,116 L353,116" marker-end="url(#ah-fdta)"/>
+  <path class="dg-a" fill="none" d="M470,158 L470,168" marker-end="url(#ah-fdta)"/>
+  <path class="dg-a" fill="none" d="M585,212 L628,212" marker-end="url(#ah-fdta)"/>
+  <path class="dg-a dash" fill="none" d="M585,308 L610,308 L610,236 L628,236" marker-end="url(#ah-fdta)"/>
+  <path class="dg-a" fill="none" d="M705,244 L705,288" marker-end="url(#ah-fdta)"/>
+
+  <!-- 아래 설명 -->
+  <text class="dg-s" x="200" y="400" text-anchor="middle">탐지가 원하는 것: 「사람이다」 (범주 구별)</text>
+  <text class="dg-s" x="600" y="400" text-anchor="middle">추적이 원하는 것: 「3번 사람이다」 (개체 구별)</text>
+  <text class="dg-s" x="400" y="426" text-anchor="middle">점선 = 학습 때만 쓰는 신호</text>
+</svg>

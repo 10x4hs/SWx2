@@ -6,6 +6,13 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&a
 export const pad = (n) => String(n).padStart(2, "0");
 export const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 export const pct = (x) => Math.round(clamp(x) * 100);
+// 사람 동그라미: 사진(avatar · data URL)이 있으면 사진, 없으면 이름 첫 글자. 모든 화면이 이걸 써요
+export const avatar = (u, cls = "", title = "") => {
+  const color = esc(u?.color || "var(--m0)"), t = title ? ` title="${esc(title)}"` : "";
+  const pic = typeof u?.avatar === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(u.avatar) ? u.avatar : null;
+  if (pic) return `<span class="av pic ${cls}" style="--c:${color};--pic:url(${pic})"${t} role="img" aria-label="${esc(u?.display_name || "")}"></span>`;
+  return `<span class="av ${cls}" style="--c:${color}"${t}>${esc(initial(u?.display_name))}</span>`;
+};
 export const initial = (name) => (String(name || "").trim()[0] || "?").toUpperCase();
 
 export function debounce(fn, ms) {
@@ -108,14 +115,18 @@ export function pace(done, time, total) {
   return { cls: "bad", text: `많이 뒤처짐 ${diff}%p` };
 }
 
+// 하루 점수 = 계획 35 + 실행 65 (서버 scoreOf 와 같은 식).
+// 실행 = 끝낸 일의 무게 / 전체 무게 · 무게 = 우선순위(low 1 … max 5, 없으면 2) × 걸리는 시간(없으면 30분)
+export const PRIO_W = { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 };
 export function dayScore(plans, goal) {
   const planned = plans.reduce((s, p) => s + (p.mins || 0), 0);
   const doneMins = plans.filter((p) => p.done).reduce((s, p) => s + (p.mins || 0), 0);
   const count = plans.length, doneCount = plans.filter((p) => p.done).length;
-  const plan = clamp(planned / Math.max(30, goal || 240));
-  // 시간이 없는 할 일도 실행률에 반영: 분 단위가 있으면 분 기준, 없으면 개수 기준
-  const exec = planned ? doneMins / planned : count ? doneCount / count : 0;
-  return { planned, doneMins, count, doneCount, plan, exec, score: count ? Math.round(40 * plan + 60 * exec) : null };
+  const plan = clamp((planned || count * 30) / Math.max(30, goal || 240));
+  const w = (p) => (PRIO_W[p.priority] || 2) * (p.mins || 30);
+  const all = plans.reduce((s, p) => s + w(p), 0), got = plans.filter((p) => p.done).reduce((s, p) => s + w(p), 0);
+  const exec = all ? got / all : 0;
+  return { planned, doneMins, count, doneCount, plan, exec, score: count ? Math.round(35 * plan + 65 * exec) : null };
 }
 
 // 원형 진행 링 (SVG)
@@ -135,6 +146,7 @@ export function ring(value, { size = 120, stroke = 10, time = null, label = "", 
 }
 
 export function toast(msg, kind = "") {
+  if (!msg) return; // 조용한 오류(예: 비밀번호를 먼저 바꿔야 할 때)는 띄우지 않아요
   let host = document.getElementById("toasts");
   const el = document.createElement("div");
   el.className = "toast " + kind;
@@ -147,5 +159,10 @@ export function toast(msg, kind = "") {
 
 export function planHash(p) {
   const v = p.period.slice(2);
-  return p.scope === "day" ? "#/today/" + v : `#/plans/${p.scope}/${v}`;
+  return p.scope === "day" ? "#/calendar/" + v : `#/goals/${p.scope}/${v}`;
 }
+
+// ---------- 공부 시간 = 집중 기록 + 영어 블록 분 (캘린더 · 회고 · 홈이 같은 뜻) ----------
+export const focusOf = (logs = []) => logs.reduce((n, l) => n + (l.kind === "focus" ? l.mins || 0 : 0), 0);
+export const englishOf = (en) => (en ? en.minutes ?? Object.values(en.blocks || {}).reduce((n, m) => n + (+m || 0), 0) : 0);
+export const studyMins = ({ focus = 0, english = 0 } = {}) => Math.max(0, Math.round((+focus || 0) + (+english || 0)));

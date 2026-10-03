@@ -1,15 +1,14 @@
-// 일기 편집기 — 오늘 화면과 일기장에서 같이 써요. 자동 저장, 본인만 봄.
+// 일기 편집기 — 캘린더 그날 페이지에서 써요. 자동 저장, 본인만 봄.
 import { api } from "./api.js";
 import { $, esc, debounce, nowTime, toast } from "./util.js";
 
-export const MOODS = [
+export const MOODS = [ // 기분은 UI라서 무채색 (색은 차트에만)
   { v: 5, label: "최고", color: "var(--t-ink)" },
   { v: 4, label: "좋음", color: "var(--t-graphite)" },
   { v: 3, label: "보통", color: "var(--t-steel)" },
   { v: 2, label: "지침", color: "var(--t-silver)" },
   { v: 1, label: "힘듦", color: "var(--t-sand)" },
 ];
-export const moodOf = (v) => MOODS.find((m) => m.v === v);
 
 const PROMPTS = ["오늘 가장 기억에 남는 순간은?", "오늘 배운 것 한 가지", "내일의 나에게 한마디", "오늘 나를 힘들게 한 것과 버티게 한 것"];
 

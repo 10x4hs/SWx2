@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420">
+  <defs><marker id="ah-videomae" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="dg-ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+  <text class="dg-t b" x="400" y="30" text-anchor="middle">VideoMAE: 90%를 가리고, 남은 조각으로 영상을 복원해요</text>
+
+  <rect class="dg-box" rx="12" x="20" y="50" width="130" height="80"/>
+  <text class="dg-t" x="85" y="85" text-anchor="middle">영상 클립</text>
+  <text class="dg-s" x="85" y="110" text-anchor="middle">16프레임 뽑기</text>
+
+  <rect class="dg-box" rx="12" x="180" y="50" width="130" height="80"/>
+  <text class="dg-t" x="245" y="85" text-anchor="middle">큐브로 자르기</text>
+  <text class="dg-s" x="245" y="110" text-anchor="middle">2×16×16 조각</text>
+
+  <rect class="dg-box c-rose" rx="12" x="340" y="50" width="130" height="80"/>
+  <text class="dg-t b" x="405" y="85" text-anchor="middle">튜브 마스킹</text>
+  <text class="dg-s" x="405" y="110" text-anchor="middle">90% 가리기</text>
+
+  <rect class="dg-box c-blue" rx="12" x="500" y="50" width="130" height="80"/>
+  <text class="dg-t b" x="565" y="85" text-anchor="middle">인코더(ViT)</text>
+  <text class="dg-s" x="565" y="110" text-anchor="middle">보이는 10%만</text>
+
+  <rect class="dg-box" rx="12" x="660" y="50" width="120" height="80"/>
+  <text class="dg-t" x="720" y="85" text-anchor="middle">디코더</text>
+  <text class="dg-s" x="720" y="110" text-anchor="middle">작고 가벼움</text>
+
+  <path class="dg-a" d="M150,90 L180,90" fill="none" marker-end="url(#ah-videomae)"/>
+  <path class="dg-a" d="M310,90 L340,90" fill="none" marker-end="url(#ah-videomae)"/>
+  <path class="dg-a" d="M470,90 L500,90" fill="none" marker-end="url(#ah-videomae)"/>
+  <path class="dg-a" d="M630,90 L660,90" fill="none" marker-end="url(#ah-videomae)"/>
+
+  <rect class="dg-box c-amber" rx="12" x="650" y="175" width="130" height="75"/>
+  <text class="dg-t" x="715" y="206" text-anchor="middle">원본과 비교</text>
+  <text class="dg-s" x="715" y="230" text-anchor="middle">픽셀 MSE 손실</text>
+  <path class="dg-a" d="M720,130 L720,175" fill="none" marker-end="url(#ah-videomae)"/>
+
+  <rect class="dg-box c-green" rx="12" x="500" y="290" width="280" height="110"/>
+  <text class="dg-t b" x="640" y="322" text-anchor="middle">학습 뒤: 디코더는 버려요</text>
+  <text class="dg-s" x="640" y="350" text-anchor="middle">인코더 + 작은 분류 머리</text>
+  <text class="dg-s" x="640" y="375" text-anchor="middle">→ 행동 분류로 미세조정</text>
+  <path class="dg-a dash" d="M565,130 L565,290" fill="none" marker-end="url(#ah-videomae)"/>
+
+  <rect class="dg-zone" rx="16" x="20" y="165" width="460" height="235"/>
+  <text class="dg-s" x="36" y="190">튜브 마스킹 — 시간 →</text>
+
+  <g>
+    <rect class="dg-box c-rose" x="40" y="205" width="24" height="24"/>
+    <rect class="dg-box c-blue" x="64" y="205" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="88" y="205" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="40" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="64" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="88" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="40" y="253" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="64" y="253" width="24" height="24"/>
+    <rect class="dg-box c-blue" x="88" y="253" width="24" height="24"/>
+  </g>
+  <g>
+    <rect class="dg-box c-rose" x="128" y="205" width="24" height="24"/>
+    <rect class="dg-box c-blue" x="152" y="205" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="176" y="205" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="128" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="152" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="176" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="128" y="253" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="152" y="253" width="24" height="24"/>
+    <rect class="dg-box c-blue" x="176" y="253" width="24" height="24"/>
+  </g>
+  <g>
+    <rect class="dg-box c-rose" x="216" y="205" width="24" height="24"/>
+    <rect class="dg-box c-blue" x="240" y="205" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="264" y="205" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="216" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="240" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="264" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="216" y="253" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="240" y="253" width="24" height="24"/>
+    <rect class="dg-box c-blue" x="264" y="253" width="24" height="24"/>
+  </g>
+  <g>
+    <rect class="dg-box c-rose" x="304" y="205" width="24" height="24"/>
+    <rect class="dg-box c-blue" x="328" y="205" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="352" y="205" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="304" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="328" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="352" y="229" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="304" y="253" width="24" height="24"/>
+    <rect class="dg-box c-rose" x="328" y="253" width="24" height="24"/>
+    <rect class="dg-box c-blue" x="352" y="253" width="24" height="24"/>
+  </g>
+  <text class="dg-s" x="76" y="298" text-anchor="middle">t=1</text>
+  <text class="dg-s" x="164" y="298" text-anchor="middle">t=2</text>
+  <text class="dg-s" x="252" y="298" text-anchor="middle">t=3</text>
+  <text class="dg-s" x="340" y="298" text-anchor="middle">t=4</text>
+  <text class="dg-s" x="400" y="235">빨강 = 가림</text>
+  <text class="dg-s" x="400" y="258">파랑 = 보임</text>
+
+  <text class="dg-t" x="36" y="336">모든 프레임에서 같은 자리를 함께 가려요</text>
+  <text class="dg-s" x="36" y="362">옆 프레임에서 베낄 수 없으니,</text>
+  <text class="dg-s" x="36" y="384">움직임과 뜻을 추론해야 복원할 수 있어요</text>
+</svg>
