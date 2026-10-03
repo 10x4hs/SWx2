@@ -107,6 +107,13 @@ async function matchApi(req) {
 }
 
 async function navigate(event) {
+  // 앱은 해시 주소(#/…)라 앱 화면은 항상 "/" 예요. 그 밖의 HTML(논문 쉽게 읽기 · 노트 속 현황판 iframe · OAuth 화면)은
+  // 네트워크로만 받아요. 예전에는 이것들까지 앱 첫 화면("/")으로 덮어 저장해서, 느린 접속에서 앱 대신 그 페이지가 떴어요.
+  const path = new URL(event.request.url).pathname;
+  if (path !== "/" && path !== "/index.html") {
+    try { return (await event.preloadResponse) || (await fetch(event.request)); }
+    catch { return new Response("<!doctype html><meta charset=utf-8><title>Dsm-mafia</title><p style=\"font:15px system-ui;padding:24px\">오프라인이에요. 연결되면 다시 열어 주세요.", { status: 503, headers: { "content-type": "text/html; charset=utf-8" } }); }
+  }
   const cache = await caches.open(STATIC_CACHE);
   const network = (async () => {
     const res = (await event.preloadResponse) || (await fetch(event.request));

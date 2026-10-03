@@ -46,6 +46,7 @@ export function mountBoard(root, ctx) {
         <p class="pp-sub muted">${esc(sub)}</p>
       </div>
       <div class="row pp-head-act">
+        <a class="btn ghost sm" href="/papers/easy" title="중3~고1 눈높이 · 움직이는 그림으로">${icon.spark(15)}쉽게 읽기 16편</a>
         <button class="btn ghost sm" type="button" id="pp-note">${icon.notes(15)}노트에서 보기</button>
         <button class="btn ghost sm" type="button" id="pp-obs" title="진짜 옵시디언 앱에 넣을 .md 파일">${icon.download(15)}옵시디언 파일</button>
         ${todayRow && !ended ? (() => { const next = todayRow.papers.find((id) => !paperDone(meRow(), id)) || todayRow.papers[0]; return `<a class="btn accent sm" href="#/papers/${next}">오늘 공부 시작 ›</a>`; })() : ""}

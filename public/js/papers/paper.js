@@ -57,6 +57,9 @@ export function mountPaper(root, ctx, id) {
 
   function glance() {
     return sec("glance", "한눈에", `
+      <a class="pp-easy" href="/papers/easy?p=${esc(id)}" data-easy>
+        <span class="pp-easy-k">처음이라면 여기부터</span><b>쉽게 읽기 <small>중3 ~ 고1 눈높이 · 15분</small></b>
+        <span class="pp-easy-d">어려운 말은 그 자리에서 풀고, 움직이는 그림으로 원리를 보여 줘요.</span><span class="pp-easy-go" aria-hidden="true">→</span></a>
       <p class="pp-lead">${rich(c.one_line)}</p>
       <div class="pp-callout analogy"><span class="pp-callout-k">쉽게 말하면</span>${paras(String(c.analogy || "").replace(/^\s*쉽게 말하면\s*[—–:,-]?\s*/, ""))}</div>
       <h3 class="pp-h3">무엇이 문제였나</h3>${paras(c.problem)}`);
