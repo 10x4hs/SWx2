@@ -60,6 +60,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     <section class="cd-sec dp-tt" aria-labelledby="dp-tt-t">
       <div class="cd-sh"><h3 id="dp-tt-t">하루 계획표</h3><span class="row" style="gap:8px"><span class="faint" id="dp-tt-sum"></span><a class="faint dp-more" href="#/checklist/${day}">체크리스트 ›</a></span></div>
       <p class="dp-hint">빈 시각을 누르면 5분 단위로 바로 적을 수 있어요. Enter 추가 · Esc 닫기.</p>
+      <div class="dp-allday" id="dp-allday" hidden></div>
       <div class="dp-scroll" id="dp-scroll"><div class="day-grid" id="dp-grid"></div></div>
     </section>`;
 
@@ -164,6 +165,9 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   function drawGrid() {
     const plans = S.plans || [];
     const timed = plans.filter((p) => p.start).sort((a, b) => toMin(a.start) - toMin(b.start));
+    // 시간 없는 일(체크리스트)도 계획표 위에 한 줄로 — 종일 일정이 안 보인다는 헷갈림 방지
+    const loose = plans.filter((p) => !p.start), ad = $("#dp-allday", el);
+    if (ad) { ad.hidden = !loose.length; ad.innerHTML = loose.length ? `<span class="dp-ad-k">시간 없는 일</span>${loose.map((p) => `<a class="dp-ad ${p.done ? "done" : ""}" href="#/checklist/${day}" data-p="${esc(p.priority || "")}" title="체크리스트에서 보기">${esc(p.text)}</a>`).join("")}` : ""; }
     const startH = Math.min(6, timed.length ? Math.floor(toMin(timed[0].start) / 60) : 6);
     const nowM = toMin(nowTime());
     let hours = "";

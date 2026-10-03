@@ -3089,3 +3089,9 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .pd-unit { font-size: .5em; fill: var(--ink-2); letter-spacing: 0; font-weight: 600; }
 .pd-left { fill: var(--ink-2); font-weight: 500; letter-spacing: .02em; }
 .hc-left li .hc-mins { margin-left: auto; flex: none; font: 600 11.5px var(--mono); color: var(--ink-3); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--lg-edge); }
+/* 하루 계획표 위: 시간 없는 일(체크리스트) */
+.dp-allday { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; padding: 8px 10px; border-radius: 12px; background: var(--lg-fill); border: 1px solid var(--lg-edge); }
+.dp-ad-k { font: 600 11.5px var(--font); color: var(--ink-3); margin-right: 2px; }
+.dp-ad { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ink); text-decoration: none; padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.06); border: 1px solid var(--lg-edge); border-left: 3px solid var(--pc, var(--lg-edge)); }
+.dp-ad:hover { border-color: var(--lg-edge-hi); } .dp-ad.done { text-decoration: line-through; color: var(--ink-3); }
+.dp-ad[data-p="max"] { --pc: var(--p-max); } .dp-ad[data-p="xhigh"] { --pc: var(--p-xhigh); } .dp-ad[data-p="high"] { --pc: var(--p-high); } .dp-ad[data-p="medium"] { --pc: var(--p-medium); } .dp-ad[data-p="low"] { --pc: var(--p-low); }
