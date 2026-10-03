@@ -1,5 +1,5 @@
-/* 쉽게 읽기 — 중3~고1 눈높이 스크롤 설명 페이지. 밝은 종이 느낌이 기본, 어두운 화면도 지원 */
-:root {
+/* 쉽게 읽기 (앱 안 #/papers/easy · #/papers/<id>/easy) — 모든 규칙은 .ezw 안에서만. 중3~고1 눈높이 스크롤 설명 페이지. 밝은 종이 느낌이 기본, 어두운 화면도 지원 */
+.ezw {
   color-scheme: light;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
   --mono: "SF Mono", ui-monospace, Menlo, monospace;
@@ -9,24 +9,23 @@
   --col: 680px; --wide: 760px; --r: 14px;
   --ease: cubic-bezier(.2, .7, .2, 1);
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark;
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ezw { color-scheme: dark;
   --bg: #141416; --paper: #1C1D21; --paper-2: #24262B; --ink: #F2F3F5; --ink-2: #C3C7CE; --ink-3: #8D929A; --line: #2A2C31; --line-2: #3A3D44;
   --a: #6FA8F2; --a-soft: rgba(111,168,242,.14); --b: #F0A060; --b-soft: rgba(240,160,96,.14); --c: #6ACB94; --c-soft: rgba(106,203,148,.14); --d: #B39BF2; --d-soft: rgba(179,155,242,.14); --n: #8D929A; --n-soft: rgba(255,255,255,.06);
   --warn: #F0A060; --warn-soft: rgba(240,160,96,.1); --tip: #6FA8F2; --tip-soft: rgba(111,168,242,.1); --key: #6ACB94; --key-soft: rgba(106,203,148,.1); } }
-:root[data-theme="dark"] { color-scheme: dark;
+:root[data-theme="dark"] .ezw { color-scheme: dark;
   --bg: #141416; --paper: #1C1D21; --paper-2: #24262B; --ink: #F2F3F5; --ink-2: #C3C7CE; --ink-3: #8D929A; --line: #2A2C31; --line-2: #3A3D44;
   --a: #6FA8F2; --a-soft: rgba(111,168,242,.14); --b: #F0A060; --b-soft: rgba(240,160,96,.14); --c: #6ACB94; --c-soft: rgba(106,203,148,.14); --d: #B39BF2; --d-soft: rgba(179,155,242,.14); --n: #8D929A; --n-soft: rgba(255,255,255,.06);
   --warn: #F0A060; --warn-soft: rgba(240,160,96,.1); --tip: #6FA8F2; --tip-soft: rgba(111,168,242,.1); --key: #6ACB94; --key-soft: rgba(106,203,148,.1); }
 
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; scroll-padding-top: 72px; }
-html, body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.85 var(--font); -webkit-font-smoothing: antialiased; word-break: keep-all; overflow-wrap: anywhere; }
-a { color: inherit; }
-button { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; border-radius: 6px; }
+.ezw * { box-sizing: border-box; }
+.ezw { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.85 var(--font); -webkit-font-smoothing: antialiased; word-break: keep-all; overflow-wrap: anywhere; }
+.ezw a { color: inherit; }
+.ezw button { font: inherit; color: inherit; }
+.ezw :focus-visible { outline: 2px solid var(--a); outline-offset: 2px; border-radius: 6px; }
 
 /* 위 막대 */
-.ez-bar { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid var(--line); }
+.ez-bar { position: sticky; top: 0; margin: 0 -20px; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid var(--line); }
 .ez-bar-in { max-width: 900px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 16px; }
 .ez-brand { display: flex; align-items: baseline; gap: 12px; text-decoration: none; min-width: 0; }
 .ez-brand b { font-size: 15px; letter-spacing: -.01em; white-space: nowrap; }
@@ -193,7 +192,7 @@ button { font: inherit; color: inherit; }
 
 @media (max-width: 760px) { .ez-fig.wide { margin-left: -8px; margin-right: -8px; } }
 @media (max-width: 600px) {
-  html, body { font-size: 16px; }
+  .ezw { font-size: 16px; }
   .ez { padding: 0 16px 96px; }
   .ez-hero { padding: 40px 0 40px; }
   .ez-sec { padding: 46px 0 40px; }
@@ -205,4 +204,44 @@ button { font: inherit; color: inherit; }
   .ez-brand span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .ez-fig [data-st], .bar i, .scl-t i { transition: none !important; } }
-@media print { .ez-bar { display: none; } .anim .ez-fig [data-st] { opacity: 1; transform: none; } .anim .ez-fig .bar i { transform: none; } }
+@media print { .ezw .ez-bar { display: none; } .anim .ez-fig [data-st] { opacity: 1; transform: none; } .anim .ez-fig .bar i { transform: none; } }
+
+/* ---------- 기억 설계 (EASY_SPEC.md '학습 과학') ---------- */
+.ezw { background: var(--bg); border-radius: 22px; margin: 0 auto; max-width: 900px; padding: 0 20px; }
+.ezw .ez { padding-left: 0; padding-right: 0; }
+.ez-pre { margin: 34px 0 0; padding: 22px; border-radius: 16px; background: var(--paper); }
+.ez-pre-k { font: 700 12.5px var(--font); letter-spacing: .04em; color: var(--d); margin: 0 0 4px; }
+.ez-pre-h { font-size: 18px; font-weight: 720; margin: 0 0 4px; letter-spacing: -.01em; }
+.ez-pre-s { font-size: 14px; color: var(--ink-3); margin: 0 0 16px; }
+.ez-pre .qz { margin: 12px 0 0; background: var(--bg); }
+.ez-pre .qz-c button.pick { border-color: var(--d); background: var(--d-soft); }
+.ez-pre-done { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
+.ez-guess { display: block; margin-top: 8px; font-size: 13.5px; color: var(--ink-3); }
+.ez-words-pre { margin: 18px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.ez-words-pre div { padding: 12px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
+.ez-words-pre b { display: block; font-size: 15px; } .ez-words-pre span { font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
+.ez-recall { margin: 0 -8px; padding: 30px 26px; border-radius: 18px; background: var(--paper); }
+.ez-recall h2 { margin: 0 0 8px; }
+.ez-recall-s { font-size: 15px; color: var(--ink-2); margin: 0 0 16px; }
+.ez-recall textarea { width: 100%; min-height: 128px; resize: vertical; border: 1px solid var(--line-2); border-radius: 12px; background: var(--bg); color: var(--ink); font: 16px/1.7 var(--font); padding: 14px 16px; }
+.ez-recall textarea:focus { outline: none; border-color: var(--a); box-shadow: 0 0 0 3px var(--a-soft); }
+.ez-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.ez-btn { cursor: pointer; }
+.ez-btn:disabled { opacity: .5; cursor: default; }
+.ez-check { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.ez-check label { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); cursor: pointer; font-size: 15px; line-height: 1.6; }
+.ez-check input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--c); }
+.ez-check label:has(input:checked) { border-color: var(--c); background: var(--c-soft); }
+.ez-saved { margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--key-soft); color: var(--ink); font-size: 15px; }
+.ez-my { margin: 14px 0 0; padding: 12px 14px; border-left: 3px solid var(--line-2); color: var(--ink-2); font-size: 14.5px; white-space: pre-wrap; }
+.ez-due { margin: 28px 0 0; padding: 18px 20px; border-radius: 16px; background: var(--d-soft); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.ez-due b { font-size: 16.5px; } .ez-due span { font-size: 14px; color: var(--ink-2); flex: 1 1 220px; }
+.ez-stage-b { font: 600 11.5px var(--font); padding: 2px 8px; border-radius: 99px; background: var(--paper-2); color: var(--ink-3); white-space: nowrap; }
+.ez-stage-b.s1, .ez-stage-b.s2, .ez-stage-b.s3 { background: var(--a-soft); color: var(--a); } .ez-stage-b.s4 { background: var(--c-soft); color: var(--c); } .ez-stage-b.due { background: var(--d-soft); color: var(--d); }
+.ez-list a { grid-template-columns: 36px 1fr auto; } .ez-list .tagc { display: grid; gap: 4px; justify-items: end; }
+.ez-rv { padding: 40px 0 80px; }
+.ez-rv-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; font-size: 14px; color: var(--ink-3); }
+.ez-rv-bar { height: 4px; background: var(--paper-2); border-radius: 99px; overflow: hidden; margin-bottom: 26px; } .ez-rv-bar i { display: block; height: 100%; background: var(--d); transition: width .3s; }
+.ez-rv-from { font: 600 12.5px var(--font); color: var(--ink-3); letter-spacing: .03em; }
+.ez-rv .qz { margin-top: 10px; }
+.ez-rv-sum { display: grid; gap: 8px; margin: 18px 0; } .ez-rv-sum div { display: flex; justify-content: space-between; padding: 10px 14px; border-radius: 10px; background: var(--paper); font-size: 15px; }

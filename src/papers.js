@@ -83,6 +83,43 @@ export function registerPapers(on, { json, body, fail, now }) {
   // ---------- 로그인한 사람 ----------
   on("GET", "/papers/progress", async ({ req, env, user }) => json(await shape(req, env, { me: user.id })));
 
+  // ---------- 쉽게 읽기: 간격 복습 (본인만 · 스프린트가 끝나도 계속 써요) ----------
+  // 복습 간격은 1 → 3 → 7일 (간격 효과: 기억할 기간의 10~20% 쯤 띄울 때 가장 오래 가요 · Cepeda 2008)
+  const GAP = [0, 1, 3, 7];
+  const addDay = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+  const num = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
+  async function easyState(req, env, uid) {
+    const today = kstToday(req, env);
+    const { results } = await env.DB.prepare("SELECT paper, stage, due_day, read_at, recall, recall_total, reviews FROM easy_reads WHERE user_id = ?").bind(uid).all();
+    return { today, items: results, due: results.filter((r) => r.stage < 4 && r.due_day <= today).map((r) => r.paper) };
+  }
+  on("GET", "/papers/easy", async ({ req, env, user }) => json(await easyState(req, env, user.id)));
+  on("PUT", "/papers/easy/read", async ({ req, env, user }) => {
+    const b = await body(req), paper = paperOf(b.paper), today = kstToday(req, env), t = now();
+    const recall = num(b.recall, 20), total = num(b.total, 20);
+    // 처음 읽으면 1일 뒤 복습. 다시 읽어도 단계는 그대로 (복습은 퀴즈로만 올라가요)
+    await env.DB.prepare(`INSERT INTO easy_reads (user_id, paper, stage, due_day, read_at, recall, recall_total, updated_at) VALUES (?, ?, 1, ?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, paper) DO UPDATE SET recall = COALESCE(excluded.recall, recall), recall_total = COALESCE(excluded.recall_total, recall_total), updated_at = excluded.updated_at`)
+      .bind(user.id, paper, addDay(today, GAP[1]), t, recall, total, t).run();
+    return json(await easyState(req, env, user.id));
+  });
+  on("PUT", "/papers/easy/review", async ({ req, env, user }) => {
+    const b = await body(req), today = kstToday(req, env), t = now();
+    const list = Array.isArray(b.results) ? b.results.slice(0, 16) : fail(400, "results 가 필요해요.");
+    const rows = new Map((await env.DB.prepare("SELECT paper, stage FROM easy_reads WHERE user_id = ?").bind(user.id).all()).results.map((r) => [r.paper, r.stage]));
+    const stmts = [];
+    for (const r of list) {
+      const paper = paperOf(r.paper), correct = num(r.correct, 10), total = num(r.total, 10);
+      if (correct == null || !total || correct > total || !rows.has(paper)) continue;
+      // 절반 이상 맞히면 다음 간격으로, 아니면 내일 다시 (틀린 건 빨리 다시 보는 게 좋아요)
+      const st = rows.get(paper), next = correct * 2 >= total ? Math.min(4, st + 1) : st;
+      stmts.push(env.DB.prepare("UPDATE easy_reads SET stage = ?, due_day = ?, reviews = reviews + 1, updated_at = ? WHERE user_id = ? AND paper = ?")
+        .bind(next, next >= 4 ? "9999-12-31" : addDay(today, next === st ? 1 : GAP[next]), t, user.id, paper));
+    }
+    if (stmts.length) await env.DB.batch(stmts);
+    return json(await easyState(req, env, user.id));
+  });
+
   on("PUT", "/papers/check", async ({ req, env, user }) => {
     open(req, env);
     const c = checkBody(await body(req));

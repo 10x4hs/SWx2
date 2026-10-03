@@ -1,26 +1,10 @@
 <!doctype html>
-<html lang="ko">
-<head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="robots" content="noindex">
-<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#141416" media="(prefers-color-scheme: dark)">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>쉽게 읽기</title>
-<link rel="icon" href="/icons/favicon-32.png" type="image/png" sizes="32x32">
-<link rel="stylesheet" href="/papers/easy.css">
-</head>
-<body>
-<header class="ez-bar">
-  <div class="ez-bar-in">
-    <a class="ez-brand" id="ez-brand" href="/papers/easy"><b id="ez-brand-t">쉽게 읽기</b><span>논문을 쉽게 읽기</span></a>
-    <span class="ez-grow"></span>
-    <button type="button" class="ez-link" id="ez-motion" aria-pressed="false">애니메이션 멈추기</button>
-    <button type="button" class="ez-link" id="ez-theme" aria-label="밝게 · 어둡게 바꾸기">어둡게</button>
-  </div>
-  <div class="ez-progress" aria-hidden="true"><i id="ez-progress"></i></div>
-</header>
-<main id="ez" class="ez" tabindex="-1"><p class="ez-loading">불러오는 중…</p></main>
-<script type="module" src="/papers/easy.js"></script>
-</body>
-</html>
+<!-- 예전 단독 페이지 주소 → 앱 안 쉽게 읽기로 -->
+<script>
+  var p = new URLSearchParams(location.search).get("p");
+  location.replace("/#/papers/" + (p && /^[a-z0-9]+$/.test(p) ? p + "/easy" : "easy"));
+</script>
+<p style="font:15px system-ui;padding:24px"><a href="/#/papers/easy">쉽게 읽기로 이동</a></p>

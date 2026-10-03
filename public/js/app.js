@@ -288,7 +288,7 @@ function parseRoute() {
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null };
   if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
-  if (a === "papers") return { view: "papers", nav: "papers", id: b || null };
+  if (a === "papers") return { view: "papers", nav: "papers", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
