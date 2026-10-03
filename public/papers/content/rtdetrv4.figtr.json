@@ -1,0 +1,68 @@
+{
+  "f1.jpg": {
+    "title": "그림 2: RT-DETRv4 개요",
+    "caption": "비전 기반 모델(VFM)로 질 좋은 의미 표현을 뽑고, 이를 깊은 의미 주입기(DSI) 안의 특징 투영기를 거쳐 AIFI 모듈의 가장 깊은 특징 맵(F5)과 맞춰 정렬해요. 더 빠르고 안정적으로 수렴하도록, 기울기 기반 적응 조절(GAM)이 학습 중에 DSI 손실의 비중을 그때그때 조절해요. 제안한 구조는 실시간 검출기의 학습 단계에서만 작동하고(점선 화살표와 파란 블록으로 표시), 추론과 배포 때는 원래 구조를 그대로 두기 때문에 추가 부담 없이 정확도만 높여요.",
+    "labels": [
+      { "en": "Vision Foundation Model", "ko": "비전 기반 모델" },
+      { "en": "Efficient Hybrid Encoder", "ko": "효율적 하이브리드 인코더" },
+      { "en": "GAM", "ko": "GAM(기울기 기반 적응 조절)" },
+      { "en": "Feature Projector", "ko": "특징 투영기" },
+      { "en": "AIFI", "ko": "AIFI(층 내부 특징 상호작용)" },
+      { "en": "DSI", "ko": "DSI(깊은 의미 주입기)" },
+      { "en": "Query Selection & Decoder", "ko": "쿼리 선택 & 디코더" },
+      { "en": "Semantic Propagation", "ko": "의미 전파" },
+      { "en": "Backbone", "ko": "백본" },
+      { "en": "CCFF", "ko": "CCFF(CNN 기반 교차 스케일 특징 융합)" }
+    ],
+    "terms": [
+      { "en": "vision foundation model", "ko": "비전 기반 모델", "easy": "엄청 많은 이미지로 미리 배워 사물의 뜻을 잘 아는 큰 모델" },
+      { "en": "distillation / alignment", "ko": "정렬(지식 전달)", "easy": "큰 모델이 아는 것을 작은 모델 특징이 닮아 가도록 맞추는 것" },
+      { "en": "convergence", "ko": "수렴", "easy": "학습이 점점 안정되어 좋은 값에 자리 잡는 것" },
+      { "en": "inference overhead", "ko": "추론 부담", "easy": "실제로 쓸 때 추가로 드는 계산이나 시간" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 3: 여러 가지 깊은 의미 주입기(DSI) 방식",
+    "caption": "(a) 여러 크기의 백본 특징(S3, S4, S5)을 직접 정렬. (b) 백본 특징과 AIFI 출력 특징(F5)을 함께 정렬하는 혼합 방식. (c) 우리 방법: 가장 높은 수준의 의미를 가진 AIFI 출력 특징(F5)만 골라 정렬해요. 이렇게 하면 기울기가 역전파되어 AIFI 모듈과 백본이 함께 좋아져요.",
+    "labels": [
+      { "en": "DSI", "ko": "DSI(깊은 의미 주입기)" },
+      { "en": "Feature Projector", "ko": "특징 투영기" },
+      { "en": "Backbone", "ko": "백본" },
+      { "en": "AIFI", "ko": "AIFI" },
+      { "en": "Backpropagation", "ko": "역전파" }
+    ],
+    "terms": [
+      { "en": "backpropagation", "ko": "역전파", "easy": "결과의 오차를 거꾸로 전달해 앞쪽 층들까지 고치게 하는 학습 방법" },
+      { "en": "multi-scale features", "ko": "다중 스케일 특징", "easy": "크고 작은 여러 해상도에서 뽑은 특징" },
+      { "en": "high-level semantics", "ko": "고수준 의미", "easy": "'이건 양이다'처럼 물체의 뜻에 가까운 정보" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 1: COCO에서 최신 실시간 물체 검출기들과 비교",
+    "caption": "COCO [20]에서 기존의 뛰어난 실시간 물체 검출기들과 비교했어요. 우리 RT-DETRv4 모델들이 최고 수준의 성능을 내요.",
+    "labels": [
+      { "en": "COCO AP^val", "ko": "COCO 검증 AP" },
+      { "en": "Latency on T4 GPU (ms)", "ko": "T4 GPU에서의 지연 시간(ms)" }
+    ],
+    "terms": [
+      { "en": "AP^val", "ko": "검증 평균 정밀도", "easy": "검증용 사진들에서 물체를 얼마나 정확히 찾았는지 나타낸 점수" },
+      { "en": "real-time detector", "ko": "실시간 검출기", "easy": "영상처럼 빠르게 지나가는 화면에서도 즉시 물체를 찾는 모델" }
+    ]
+  },
+  "f4.jpg": {
+    "title": "그림 5: 학습 중 COCO 검증 AP 변화 (λ 값별 표 포함)",
+    "caption": "학습하는 동안 COCO 검증 AP가 어떻게 변하는지 보여 줘요. 동적으로 조절하는 GAM을 기준 모델, 그리고 DSI 손실에 고정된 λ 값을 쓴 여러 설정과 비교했어요. GAM 전략은 모든 고정 설정보다 꾸준히 더 좋아서, 학습 내내 안정적이고 효과적인 지도 신호를 준다는 것을 보여 줘요.",
+    "labels": [
+      { "en": "λ", "ko": "λ(DSI 손실 가중치)" },
+      { "en": "AP^val", "ko": "검증 AP" },
+      { "en": "Baseline", "ko": "기준 모델" },
+      { "en": "COCO AP^val (%)", "ko": "COCO 검증 AP(%)" },
+      { "en": "Epoch", "ko": "에폭(학습 반복 횟수)" }
+    ],
+    "terms": [
+      { "en": "loss weight (λ)", "ko": "손실 가중치", "easy": "여러 목표 중 이 목표를 얼마나 중요하게 볼지 정하는 숫자" },
+      { "en": "epoch", "ko": "에폭", "easy": "학습 데이터 전체를 한 번 다 훑는 것" },
+      { "en": "supervision", "ko": "지도 신호", "easy": "모델이 무엇을 배워야 하는지 알려 주는 정답 신호" }
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "f1.jpg": {
+    "title": "그림 1.1: 정수 연산만 쓰는 양자화",
+    "caption": "a) 합성곱 층을 정수 연산만으로 추론하는 모습. 입력과 출력은 식 1에 따라 8비트 정수로 표현돼요. 합성곱은 8비트 정수 피연산자와 32비트 정수 누산기를 써요. 편향 더하기는 32비트 정수만 써요(2.4절). ReLU6 비선형 함수는 8비트 정수 연산만 써요. b) 합성곱 층을 양자화를 흉내 내며 학습하는 모습. 모든 변수와 계산은 32비트 부동소수점으로 해요. 가중치 양자화(\"wt quant\")와 활성값 양자화(\"act quant\") 노드를 계산 그래프에 끼워 넣어 변수 양자화의 효과를 흉내 내요(3절). 이렇게 만든 그래프는 a)의 정수 전용 계산 그래프와 거의 같으면서도, 부동소수점 모델용 일반 최적화 알고리즘으로 학습할 수 있어요. c) 우리 양자화 방식은 흔한 CPU의 빠른 정수 연산 회로 덕분에 지연 시간 대비 정확도가 더 좋아져요(4절). 그림은 Qualcomm Snapdragon 835 LITTLE 코어에서 ImageNet [3]으로, 정수 양자화한 MobileNets [10]과 부동소수점 기준 모델을 비교해요.",
+    "labels": [
+      { "en": "output", "ko": "출력" },
+      { "en": "act quant", "ko": "활성값 양자화" },
+      { "en": "biases", "ko": "편향" },
+      { "en": "conv", "ko": "합성곱" },
+      { "en": "input", "ko": "입력" },
+      { "en": "weights", "ko": "가중치" },
+      { "en": "wt quant", "ko": "가중치 양자화" },
+      { "en": "Top 1 Accuracy", "ko": "Top-1 정확도" },
+      { "en": "Float", "ko": "부동소수점" },
+      { "en": "8-bit", "ko": "8비트" },
+      { "en": "Latency (ms)", "ko": "지연 시간 (밀리초)" },
+      { "en": "(a) Integer-arithmetic-only inference", "ko": "(a) 정수 연산만 쓰는 추론" },
+      { "en": "(b) Training with simulated quantization", "ko": "(b) 양자화를 흉내 내는 학습" },
+      { "en": "(c) ImageNet latency-vs-accuracy tradeoff", "ko": "(c) ImageNet 지연 시간 대 정확도 맞교환" }
+    ],
+    "terms": [
+      { "en": "quantization", "ko": "양자화", "easy": "소수 숫자를 적은 비트의 정수로 바꿔 계산을 가볍게 하는 것" },
+      { "en": "accumulator", "ko": "누산기", "easy": "곱한 값들을 계속 더해 담아 두는 큰 그릇" },
+      { "en": "floating point", "ko": "부동소수점", "easy": "소수점 있는 숫자를 컴퓨터가 표현하는 방식" },
+      { "en": "latency", "ko": "지연 시간", "easy": "답이 나올 때까지 기다리는 시간" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 4.1: 부동소수점 대 정수 전용 MobileNets의 지연 시간-정확도 맞교환",
+    "caption": "Snapdragon 835 big 코어에서 ImageNet으로 측정한, 부동소수점 MobileNets와 정수 전용 MobileNets의 지연 시간 대비 정확도 맞교환이에요.",
+    "labels": [
+      { "en": "Top 1 Accuracy", "ko": "Top-1 정확도" },
+      { "en": "Float", "ko": "부동소수점" },
+      { "en": "8-bit", "ko": "8비트" },
+      { "en": "Latency (ms)", "ko": "지연 시간 (밀리초)" }
+    ],
+    "terms": [
+      { "en": "big / LITTLE cores", "ko": "빅 / 리틀 코어", "easy": "휴대폰 칩 안의 힘센 코어와 전기를 아끼는 작은 코어" },
+      { "en": "trade-off", "ko": "맞교환", "easy": "하나를 얻으면 다른 하나를 조금 잃는 관계" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "표 4.4: COCO 물체 검출 속도와 정확도",
+    "caption": "부동소수점 모델과 정수 전용 양자화 모델의 COCO 데이터셋 물체 검출 속도와 정확도예요. 지연 시간(밀리초)은 Qualcomm Snapdragon 835에서 쟀어요.",
+    "labels": [
+      { "en": "DM", "ko": "DM (깊이 배수: 채널 수 비율)" },
+      { "en": "Type", "ko": "종류" },
+      { "en": "mAP", "ko": "mAP (평균 정밀도)" },
+      { "en": "LITTLE (ms)", "ko": "리틀 코어 (밀리초)" },
+      { "en": "big (ms)", "ko": "빅 코어 (밀리초)" },
+      { "en": "floats", "ko": "부동소수점" },
+      { "en": "8 bits", "ko": "8비트" }
+    ],
+    "terms": [
+      { "en": "object detection", "ko": "물체 검출", "easy": "사진 속 물체가 어디 있고 무엇인지 상자로 찾는 일" },
+      { "en": "mAP", "ko": "평균 정밀도", "easy": "검출을 얼마나 정확히 했는지 나타내는 대표 점수" },
+      { "en": "depth multiplier", "ko": "깊이 배수", "easy": "모델 채널 수를 몇 %로 줄일지 정하는 값" }
+    ]
+  }
+}

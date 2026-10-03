@@ -1,0 +1,80 @@
+{
+  "f1.jpg": {
+    "title": "그림 4: CMX 전체 구조와 두 핵심 모듈(CM-FRM, FFM)",
+    "caption": "a) RGB-X 의미 분할을 위한 CMX의 전체 개요. 입력은 RGB와 또 하나의 다른 센서 정보(예: 깊이, 열화상, 편광, 이벤트, LiDAR)예요. b) 교차 센서 특징 보정 모듈(CM-FRM). 색깔 화살표는 두 센서 정보의 흐름을 나타내요. c) 특징 융합 모듈(FFM). 정보를 주고받고 합치는 단계가 두 개 있어요.",
+    "labels": [
+      { "en": "Layer", "ko": "층" },
+      { "en": "Low-level features", "ko": "저수준 특징" },
+      { "en": "Decoder", "ko": "디코더" },
+      { "en": "RGB", "ko": "RGB(컬러 이미지)" },
+      { "en": "Modal X", "ko": "다른 센서 X" },
+      { "en": "Semantic Segmentation", "ko": "의미 분할" },
+      { "en": "a) Overall Framework", "ko": "a) 전체 구조" },
+      { "en": "Next RGB layer", "ko": "다음 RGB 층" },
+      { "en": "Next X layer", "ko": "다음 X 층" },
+      { "en": "MLP along channel axis", "ko": "채널 축 방향 MLP" },
+      { "en": "Channel-wise rectification", "ko": "채널 방향 보정" },
+      { "en": "Spatial-wise rectification", "ko": "공간 방향 보정" },
+      { "en": "b) CM-FRM: Cross-Modal Feature Rectification Module", "ko": "b) CM-FRM: 교차 센서 특징 보정 모듈" },
+      { "en": "Channel Embedding", "ko": "채널 임베딩" },
+      { "en": "RGB Residual", "ko": "RGB 잔차" },
+      { "en": "RGB Interactive", "ko": "RGB 상호작용" },
+      { "en": "X Interactive", "ko": "X 상호작용" },
+      { "en": "X Residual", "ko": "X 잔차" },
+      { "en": "Channel Proj.", "ko": "채널 투영" },
+      { "en": "Add & Norm", "ko": "더하기 & 정규화" },
+      { "en": "Merge", "ko": "병합" },
+      { "en": "DWConv 3×3", "ko": "깊이별 합성곱 3×3" },
+      { "en": "Stage 1", "ko": "1단계" },
+      { "en": "Stage 2", "ko": "2단계" },
+      { "en": "c) FFM: Feature Fusion Module", "ko": "c) FFM: 특징 융합 모듈" },
+      { "en": "RGB Branch", "ko": "RGB 갈래" },
+      { "en": "X Branch", "ko": "X 갈래" },
+      { "en": "FFM integrated only low-level features needed by decoder", "ko": "디코더에 필요한 저수준 특징만 합치는 FFM" },
+      { "en": "To decoder", "ko": "디코더로" },
+      { "en": "Concatenate", "ko": "이어 붙이기" },
+      { "en": "Average Pooling", "ko": "평균 풀링" },
+      { "en": "Max Pooling", "ko": "최대 풀링" },
+      { "en": "Element-wise Add", "ko": "원소별 더하기" },
+      { "en": "Channel-wise Multiplication", "ko": "채널별 곱하기" },
+      { "en": "Spatial-wise Multiplication", "ko": "공간별 곱하기" },
+      { "en": "Cross Product", "ko": "교차 곱" }
+    ],
+    "terms": [
+      { "en": "semantic segmentation", "ko": "의미 분할", "easy": "사진의 픽셀 하나하나에 '사람·도로·차' 같은 이름표를 붙이는 일" },
+      { "en": "rectification", "ko": "보정", "easy": "한 센서의 정보로 다른 센서 특징의 잡음이나 빈틈을 바로잡는 것" },
+      { "en": "pooling", "ko": "풀링", "easy": "여러 값을 평균이나 최댓값 하나로 요약하는 계산" },
+      { "en": "residual", "ko": "잔차", "easy": "원래 정보를 그대로 옆길로 넘겨 나중에 다시 더해 주는 길" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 2: 여러 융합 방식 비교",
+    "caption": "(a) 입력 융합은 센서마다 다른 연산으로 입력을 합쳐요 [15], [16]. (b) 특징 융합은 채널 어텐션으로 특징을 한 방향으로만 합쳐요 [8], [9]. (c) 우리의 상호작용 융합은 양방향 교차 센서 특징 보정과 시퀀스-투-시퀀스 교차 어텐션을 넣어, 센서끼리 폭넓게 주고받게 해요.",
+    "labels": [
+      { "en": "(a) Input fusion", "ko": "(a) 입력 융합" },
+      { "en": "(b) Feature fusion", "ko": "(b) 특징 융합" },
+      { "en": "(c) Interactive fusion", "ko": "(c) 상호작용 융합" }
+    ],
+    "terms": [
+      { "en": "cross-attention", "ko": "교차 어텐션", "easy": "한쪽이 다른 쪽에서 필요한 정보를 골라 가져오는 계산" },
+      { "en": "channel attention", "ko": "채널 어텐션", "easy": "특징의 여러 채널 중 중요한 것에 더 큰 가중치를 주는 방법" },
+      { "en": "bidirectional", "ko": "양방향", "easy": "A→B, B→A 두 방향 모두로 정보가 오가는 것" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 8: RGB만 쓴 결과와 RGB-X 결과 비교",
+    "caption": "RGB만 쓰는 방법과 RGB-X 방법의 결과를 시각화했어요. 둘 다 같은 백본을 써요. 위에서 아래로: RGB-깊이, RGB-열화상, RGB-편광(AoLP), RGB-이벤트, RGB-LiDAR 의미 분할이에요.",
+    "labels": [
+      { "en": "(a) RGB input", "ko": "(a) RGB 입력" },
+      { "en": "(b) Modal X input", "ko": "(b) 다른 센서 X 입력" },
+      { "en": "(c) RGB-only results", "ko": "(c) RGB만 쓴 결과" },
+      { "en": "(d) RGB-X results", "ko": "(d) RGB-X 결과" },
+      { "en": "(e) GT", "ko": "(e) 정답(GT)" }
+    ],
+    "terms": [
+      { "en": "backbone", "ko": "백본", "easy": "이미지에서 특징을 뽑아내는 모델의 기본 뼈대 신경망" },
+      { "en": "AoLP", "ko": "편광각", "easy": "빛이 어느 방향으로 떨리는지를 나타낸 값" },
+      { "en": "ground truth (GT)", "ko": "정답", "easy": "사람이 직접 표시한 올바른 답" }
+    ]
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "f1.jpg": {
+    "title": "그림 1: 거의 모든 검출 상자를 연결하는 우리 방법의 예시",
+    "caption": "거의 모든 검출 상자를 연결하는 우리 방법의 예시예요. (a)는 모든 검출 상자와 그 점수를 보여 줘요. (b)는 점수가 기준값(예: 0.5)보다 높은 검출 상자만 연결하는 기존 방법으로 얻은 트랙렛이에요. 같은 상자 색은 같은 사람(정체)을 뜻해요. (c)는 우리 방법으로 얻은 트랙렛이에요. 점선 상자는 칼만 필터로 예측한 이전 트랙렛의 상자예요. 점수가 낮은 두 검출 상자가 큰 IoU 덕분에 이전 트랙렛과 올바르게 짝지어졌어요.",
+    "labels": [
+      { "en": "Frame t1 / t2 / t3", "ko": "프레임 t1 / t2 / t3" },
+      { "en": "(a) detection boxes", "ko": "(a) 검출 상자" },
+      { "en": "(b) tracklets by associating high score detection boxes", "ko": "(b) 높은 점수 검출 상자만 연결해 얻은 트랙렛" },
+      { "en": "(c) tracklets by associating every detection box", "ko": "(c) 모든 검출 상자를 연결해 얻은 트랙렛" }
+    ],
+    "terms": [
+      { "en": "tracklet", "ko": "트랙렛", "easy": "한 물체를 여러 프레임에 걸쳐 이어 놓은 짧은 궤적 조각" },
+      { "en": "Kalman filter", "ko": "칼만 필터", "easy": "지금까지 움직임을 보고 다음 위치를 예측하는 계산법" },
+      { "en": "IoU", "ko": "IoU(겹침 비율)", "easy": "두 상자가 얼마나 겹치는지를 0~1로 나타낸 값" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 2: 여러 추적기의 MOTA-IDF1-FPS 비교",
+    "caption": "MOT17 테스트 세트에서 여러 추적기의 MOTA-IDF1-FPS를 비교했어요. 가로축은 FPS(실행 속도), 세로축은 MOTA, 원의 반지름은 IDF1이에요. 우리 ByteTrack은 MOT17 테스트 세트에서 30 FPS 속도로 MOTA 80.3, IDF1 77.3을 달성해 이전의 모든 추적기를 앞섰어요. 자세한 내용은 표 4에 있어요.",
+    "labels": [
+      { "en": "MOTA", "ko": "MOTA(다중 물체 추적 정확도)" }
+    ],
+    "terms": [
+      { "en": "MOTA", "ko": "다중 물체 추적 정확도", "easy": "놓친 것·잘못 찾은 것·바뀐 ID를 모두 반영한 추적 점수" },
+      { "en": "IDF1", "ko": "ID F1 점수", "easy": "같은 물체에 같은 번호를 얼마나 꾸준히 붙였는지 보는 점수" },
+      { "en": "FPS", "ko": "초당 프레임 수", "easy": "1초에 영상 몇 장을 처리하는지, 즉 속도" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 3: 검출 점수 기준값에 따른 BYTE와 SORT 성능 비교",
+    "caption": "서로 다른 검출 점수 기준값에서 BYTE와 SORT의 성능을 비교했어요. 결과는 MOT17 검증 세트에서 얻었어요.",
+    "labels": [
+      { "en": "MOTA", "ko": "MOTA(다중 물체 추적 정확도)" },
+      { "en": "IDF1", "ko": "IDF1(ID 일관성 점수)" },
+      { "en": "detection score threshold", "ko": "검출 점수 기준값" }
+    ],
+    "terms": [
+      { "en": "detection score threshold", "ko": "검출 점수 기준값", "easy": "이 점수보다 높아야 '찾았다'고 인정하는 문턱" },
+      { "en": "validation set", "ko": "검증 세트", "easy": "학습에 안 쓰고 성능 확인용으로 남겨 둔 데이터" }
+    ]
+  },
+  "f4.jpg": {
+    "title": "표 2: MOT17·BDD100K 검증 세트에서 데이터 연결 방법 비교",
+    "caption": "MOT17과 BDD100K 검증 세트에서 여러 데이터 연결 방법을 비교했어요. 가장 좋은 결과는 굵은 글씨로 표시했어요.",
+    "labels": [
+      { "en": "Method", "ko": "방법" },
+      { "en": "w/ Re-ID", "ko": "재식별(Re-ID) 사용" },
+      { "en": "IDs↓", "ko": "ID 바뀜 횟수↓" },
+      { "en": "mMOTA↑ / mIDF1↑", "ko": "평균 MOTA↑ / 평균 IDF1↑" },
+      { "en": "BYTE (ours)", "ko": "BYTE (우리 방법)" }
+    ],
+    "terms": [
+      { "en": "data association", "ko": "데이터 연결", "easy": "새 프레임의 검출 상자를 기존 궤적과 짝짓는 일" },
+      { "en": "Re-ID", "ko": "재식별", "easy": "겉모습 특징으로 같은 사람인지 다시 알아보는 기술" }
+    ]
+  }
+}

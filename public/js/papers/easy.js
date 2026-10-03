@@ -9,6 +9,7 @@
 import { api } from "../api.js";
 import { toast } from "../util.js";
 import { chatMarkup, mountChat } from "./chat.js";
+import { fillFigtr } from "./figtr.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -46,7 +47,7 @@ const capOf = (b) => `${b.caption ? `<p class="ez-cap">${inline(b.caption)}</p>`
 function blocks(figBase) {
   return {
     p: (b) => `<p>${inline(b.text)}</p>`,
-    figure: (b) => `<div class="ez-fig${b.wide === false ? "" : " wide"}"><figure class="ez-img" data-st><img src="${figBase}${esc(b.src)}" alt="${esc(b.caption || "")}" loading="lazy" decoding="async"></figure>${capOf(b)}</div>`,
+    figure: (b) => `<div class="ez-fig${b.wide === false ? "" : " wide"}"><figure class="ez-img" data-st><img src="${figBase}${esc(b.src)}" alt="${esc(b.caption || "")}" loading="lazy" decoding="async"></figure>${capOf(b)}<div class="ez-tr" data-tr="${esc(b.src)}" hidden></div></div>`,
     compare: (b) => `<div class="ez-fig"><div class="cmp" style="--n:${Math.min(3, b.items.length)}">${b.items.map((x, i) => `<div class="cmp-i" data-st style="--i:${i};${tc(x.tone)}"><div class="cmp-h">${svg(x.icon)}${inline(x.label)}</div><p>${inline(x.text)}</p></div>`).join("")}</div>${capOf(b)}</div>`,
     flow: (b) => {
       const row = (steps, r = 0) => `<div class="flw flw-row">${steps.map((s, i) => `${i ? `<span class="flw-ar" aria-hidden="true">→</span>` : ""}<div class="flw-s${s.empty ? " empty" : ""}" data-st data-flow="${r * 20 + i}" style="--i:${r * 3 + i};${tc(s.tone)}"><b>${inline(s.label || "")}</b>${s.sub ? `<span>${inline(s.sub)}</span>` : ""}</div>`).join("")}</div>`;
@@ -357,6 +358,7 @@ export function mountEasy(host, ctx, id) {
     $("#ez-recall-go", main).addEventListener("click", () => { if (!$("#ez-recall-t", main).value.trim()) { toast("한 줄이라도 먼저 써 보세요. 틀려도 괜찮아요."); $("#ez-recall-t", main).focus(); return; } reveal(true); });
     $("#ez-recall-skip", main).addEventListener("click", () => reveal(false));
     wireZoom(main);
+    fillFigtr(main, id);
     stops.push(wireMotion(root), wireProgress(root), wireToc(root, main, d));
   })();
   return () => { alive = false; stops.forEach((f) => f?.()); };

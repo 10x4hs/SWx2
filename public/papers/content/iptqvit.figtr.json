@@ -1,0 +1,81 @@
+{
+  "f1.jpg": {
+    "title": "그림 2: IPTQ-ViT 파이프라인 개요",
+    "caption": "1단계에서는 각 비선형 층을 모든 후보 근사 함수로 양자화해 보고, 경우마다 통합 지표를 계산해요. 2단계는 활성 층마다 지표 값이 가장 큰 근사 함수를 정해 줘요. 3단계는 이렇게 섞어 양자화한 모델을 보정해요.",
+    "labels": [
+      { "en": "1. Layer-wise Unified Metric Analysis", "ko": "1. 층별 통합 지표 분석" },
+      { "en": "2. Approximation Function Assignment", "ko": "2. 근사 함수 배정" },
+      { "en": "3. PTQ Calibration", "ko": "3. PTQ 보정" },
+      { "en": "Bit-Shift", "ko": "비트 시프트" },
+      { "en": "Poly", "ko": "다항식" },
+      { "en": "Log", "ko": "로그" },
+      { "en": "Ours", "ko": "우리 방법" },
+      { "en": "i-th LN", "ko": "i번째 LN(레이어 정규화)" },
+      { "en": "i-th Softmax", "ko": "i번째 소프트맥스" },
+      { "en": "i-th GELU", "ko": "i번째 GELU" },
+      { "en": "i-th LN Quant. & Calc.", "ko": "i번째 LN 양자화·계산" },
+      { "en": "i-th Softmax Quant. & Calc.", "ko": "i번째 소프트맥스 양자화·계산" },
+      { "en": "i-th GELU Quant. & Calc.", "ko": "i번째 GELU 양자화·계산" },
+      { "en": "i-th LN Assignment", "ko": "i번째 LN 배정" },
+      { "en": "i-th Softmax Assignment", "ko": "i번째 소프트맥스 배정" },
+      { "en": "i-th GELU Assignment", "ko": "i번째 GELU 배정" },
+      { "en": "Search Space", "ko": "탐색 공간" },
+      { "en": "Vision Transformer", "ko": "비전 트랜스포머" },
+      { "en": "Unified Metric (Ω) Results", "ko": "통합 지표(Ω) 결과" },
+      { "en": "Mixed Quantized Model", "ko": "혼합 양자화 모델" }
+    ],
+    "terms": [
+      { "en": "PTQ (post-training quantization)", "ko": "학습 후 양자화", "easy": "다시 학습하지 않고 다 배운 모델을 바로 가볍게 바꾸는 방법" },
+      { "en": "approximation function", "ko": "근사 함수", "easy": "어려운 계산을 정수로 비슷하게 흉내 내는 간단한 식" },
+      { "en": "calibration", "ko": "보정", "easy": "샘플 데이터를 넣어 보며 숫자 범위를 맞추는 과정" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 1: ViT-B 11번째 블록 GELU의 활성값 분포",
+    "caption": "표 2(I-BERT*)에서 양자화에 가장 민감한 ViT-B의 11번째 블록 GELU 활성값 분포예요. (a) 완전 정밀도, (b) PTQ로 양자화한 I-BERT, (c) 우리 방법, (d) QAT로 양자화한 I-BERT를 토큰을 일부만 뽑아 시각화했어요. (b)와 (d)는 모두 QAT 기반 근사인 i-GELU [12]를 써요. (b)는 큰 불균형을 보여, QAT용으로 설계된 방법을 비전 과제의 PTQ 환경에 쓰면 한계가 있음을 드러내요. 더 많은 결과는 부록 그림 4에 있어요.",
+    "labels": [
+      { "en": "(a) Full-precision", "ko": "(a) 완전 정밀도" },
+      { "en": "(b) I-BERT (CV): PTQ", "ko": "(b) I-BERT (비전): PTQ" },
+      { "en": "(c) IPTQ-ViT", "ko": "(c) IPTQ-ViT" },
+      { "en": "(d) I-BERT (CV): QAT", "ko": "(d) I-BERT (비전): QAT" },
+      { "en": "MLP hidden dim", "ko": "MLP 은닉 차원" },
+      { "en": "Tokens", "ko": "토큰" }
+    ],
+    "terms": [
+      { "en": "QAT (quantization-aware training)", "ko": "양자화 인지 학습", "easy": "양자화를 염두에 두고 처음부터 다시 학습하는 방법" },
+      { "en": "activation", "ko": "활성값", "easy": "층을 지나며 나오는 중간 계산 결과" },
+      { "en": "full-precision", "ko": "완전 정밀도", "easy": "줄이지 않은 원래 소수 숫자 그대로" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 3: erf와 GELU 근사 비교",
+    "caption": "왼쪽: 기준 방법, I-BERT [12], 우리 방법의 erf 근사 비교. 오른쪽: 기준 방법, i-GELU [12], 우리 방법의 GELU 근사 비교.",
+    "labels": [
+      { "en": "Baseline erf", "ko": "기준 erf" },
+      { "en": "I-BERT erf", "ko": "I-BERT erf" },
+      { "en": "Ours erf", "ko": "우리 erf" },
+      { "en": "Baseline GELU", "ko": "기준 GELU" },
+      { "en": "I-BERT GELU", "ko": "I-BERT GELU" },
+      { "en": "Ours GELU", "ko": "우리 GELU" }
+    ],
+    "terms": [
+      { "en": "erf", "ko": "오차 함수", "easy": "S자 모양 곡선 함수로, GELU 계산 안에 들어 있어요" },
+      { "en": "GELU", "ko": "GELU 활성 함수", "easy": "음수는 거의 0으로, 양수는 그대로 통과시키는 부드러운 함수" }
+    ]
+  },
+  "f4.jpg": {
+    "title": "그림 4: DeiT-S W8A8 양자화에 걸리는 시간",
+    "caption": "NVIDIA RTX 3090 GPU 한 장에서 DeiT-S를 W8A8로 양자화할 때 걸리는 시간이에요.",
+    "labels": [
+      { "en": "IPTQ-ViT (Ours)", "ko": "IPTQ-ViT (우리 방법)" },
+      { "en": "QAT Methods", "ko": "QAT 방법들" },
+      { "en": "Top-1 Accuracy (%)", "ko": "Top-1 정확도 (%)" },
+      { "en": "Runtime", "ko": "소요 시간" },
+      { "en": "min / hour / day / days", "ko": "분 / 시간 / 일 / 일" }
+    ],
+    "terms": [
+      { "en": "W8A8", "ko": "가중치 8비트·활성값 8비트", "easy": "가중치와 중간값을 모두 8비트 정수로 바꾼 설정" },
+      { "en": "runtime", "ko": "소요 시간", "easy": "양자화 작업을 끝내는 데 걸린 시간" }
+    ]
+  }
+}

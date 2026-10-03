@@ -1,0 +1,60 @@
+{
+  "f1.jpg": {
+    "title": "그림 2: NMS 없는 학습을 위한 일관된 이중 할당",
+    "caption": "(a) NMS 없는 학습을 위한 일관된 이중 할당. (b) 기본값으로 α_o2m=0.5, β_o2m=6을 쓰는 YOLOv8-S에서, 일대다 결과의 상위 1/5/10 안에 일대일 할당이 들어가는 빈도 [21]. 일관된 경우는 α_o2o=0.5, β_o2o=6이고, 일관되지 않은 경우는 α_o2o=0.5, β_o2o=2예요.",
+    "labels": [
+      { "en": "Dual Label Assignments", "ko": "이중 라벨 할당" },
+      { "en": "One-to-many Head", "ko": "일대다 헤드" },
+      { "en": "Regression", "ko": "회귀(박스 위치)" },
+      { "en": "Classification", "ko": "분류" },
+      { "en": "Backbone", "ko": "백본" },
+      { "en": "PAN", "ko": "PAN(경로 집계 네트워크)" },
+      { "en": "Input", "ko": "입력" },
+      { "en": "One-to-one Head", "ko": "일대일 헤드" },
+      { "en": "Consistent Match. Metric", "ko": "일관된 매칭 지표" },
+      { "en": "Inconsistent", "ko": "일관되지 않음" },
+      { "en": "Consistent", "ko": "일관됨" },
+      { "en": "Frequency", "ko": "빈도" },
+      { "en": "Top-1 / Top-5 / Top-10", "ko": "상위 1 / 상위 5 / 상위 10" }
+    ],
+    "terms": [
+      { "en": "NMS (Non-Maximum Suppression)", "ko": "비최대 억제", "easy": "같은 물체에 겹쳐 그려진 박스 중 가장 좋은 하나만 남기는 후처리" },
+      { "en": "label assignment", "ko": "라벨 할당", "easy": "학습할 때 어떤 예측을 어떤 정답 물체와 짝지을지 정하는 규칙" },
+      { "en": "one-to-many / one-to-one", "ko": "일대다 / 일대일", "easy": "정답 하나에 예측 여러 개를 짝짓느냐, 딱 하나만 짝짓느냐" },
+      { "en": "IoU", "ko": "IoU(겹침 비율)", "easy": "두 박스가 얼마나 겹치는지를 0~1로 나타낸 값" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 1: 지연 시간·모델 크기 대비 정확도 비교",
+    "caption": "지연 시간-정확도(왼쪽)와 크기-정확도(오른쪽) 균형 면에서 다른 모델들과 비교했어요. 지연 시간은 공식 사전학습 모델로 처음부터 끝까지(end-to-end) 측정했어요.",
+    "labels": [
+      { "en": "COCO AP (%)", "ko": "COCO AP(평균 정밀도, %)" },
+      { "en": "Latency (ms)", "ko": "지연 시간(ms)" },
+      { "en": "Number of Parameters (M)", "ko": "파라미터 수(백만 개)" },
+      { "en": "YOLOv10 (Ours)", "ko": "YOLOv10 (우리 모델)" }
+    ],
+    "terms": [
+      { "en": "latency", "ko": "지연 시간", "easy": "사진 한 장을 넣고 결과가 나오기까지 걸리는 시간" },
+      { "en": "AP (Average Precision)", "ko": "평균 정밀도", "easy": "물체를 얼마나 정확히 찾았는지 나타내는 대표 점수" },
+      { "en": "trade-off", "ko": "균형(맞교환)", "easy": "하나를 좋게 하면 다른 하나가 나빠지는 관계" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 3: YOLOv8의 고유 랭크, CIB 블록, PSA 모듈",
+    "caption": "(a) YOLOv8의 단계·모델별 고유 랭크. 백본과 넥의 단계 번호는 모델이 앞으로 계산하는 순서대로 붙였어요. 수치 랭크 r은 y축에서 r/C_o로 정규화했고, 문턱값은 기본으로 λ_max/2로 정했어요. 여기서 C_o는 출력 채널 수, λ_max는 가장 큰 특이값이에요. 깊은 단계와 큰 모델일수록 고유 랭크 값이 낮다는 것을 볼 수 있어요. (b) 작은 역병목 블록(CIB). (c) 부분 셀프 어텐션 모듈(PSA).",
+    "labels": [
+      { "en": "Stage", "ko": "단계" },
+      { "en": "Split", "ko": "나누기" },
+      { "en": "CIB", "ko": "CIB(작은 역병목 블록)" },
+      { "en": "3×3 DW", "ko": "3×3 깊이별 합성곱" },
+      { "en": "MHSA", "ko": "MHSA(멀티헤드 셀프 어텐션)" },
+      { "en": "FFN", "ko": "FFN(피드포워드 신경망)" }
+    ],
+    "terms": [
+      { "en": "intrinsic rank", "ko": "고유 랭크", "easy": "층 안의 정보가 실제로 몇 가지 독립적인 방향으로 이뤄졌는지 — 낮으면 낭비가 많다는 뜻" },
+      { "en": "singular value", "ko": "특이값", "easy": "행렬이 각 방향으로 얼마나 크게 늘리는지 나타내는 수" },
+      { "en": "depthwise convolution", "ko": "깊이별 합성곱", "easy": "채널마다 따로 필터를 돌려 계산량을 줄인 합성곱" },
+      { "en": "self-attention", "ko": "셀프 어텐션", "easy": "이미지의 각 부분이 다른 모든 부분을 살펴보고 중요한 정보를 모으는 계산" }
+    ]
+  }
+}

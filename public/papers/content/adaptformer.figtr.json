@@ -1,0 +1,69 @@
+{
+  "f1.jpg": {
+    "title": "그림 2: 기존 전체 미세조정과 AdaptFormer 미세조정 비교",
+    "caption": "AdaptFormer는 원래의 MLP 블록을 AdaptMLP로 바꾸기만 하는 개념적으로 단순한 방식이에요. AdaptMLP는 두 갈래로 이루어져 있는데, 얼려 둔 갈래(왼쪽)와 학습 가능한 down → up 병목 모듈(오른쪽)이에요.",
+    "labels": [
+      { "en": "Multi-Head Attention", "ko": "멀티헤드 어텐션" },
+      { "en": "LayerNorm", "ko": "레이어 정규화" },
+      { "en": "Up", "ko": "올림(차원 확장)" },
+      { "en": "Down", "ko": "내림(차원 축소)" },
+      { "en": "Trainable", "ko": "학습함" },
+      { "en": "Frozen", "ko": "고정(얼림)" },
+      { "en": "Scaling", "ko": "크기 조절" },
+      { "en": "(a) Full fine-tuning.", "ko": "(a) 전체 미세조정" },
+      { "en": "(b) AdaptFormer fine-tuning", "ko": "(b) AdaptFormer 미세조정" }
+    ],
+    "terms": [
+      { "en": "fine-tuning", "ko": "미세조정", "easy": "이미 배운 모델을 새 일에 맞게 조금 더 가르치는 것" },
+      { "en": "bottleneck", "ko": "병목", "easy": "정보를 좁은 크기로 줄였다가 다시 늘리는 작은 통로" },
+      { "en": "frozen", "ko": "고정", "easy": "학습 중에 값을 바꾸지 않고 그대로 두는 부분" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 1: 파라미터 수와 정확도의 맞교환",
+    "caption": "ViT-Base를 백본으로 쓰고 SSv2 데이터셋에서 top-1 정확도를 보고해요. AdaptFormer는 학습 파라미터를 0.2%만 써도 전체 미세조정보다 더 좋아요. 더 자세한 결과는 표 1에 있어요.",
+    "labels": [
+      { "en": "SSv2 Top-1 Acc (%)", "ko": "SSv2 Top-1 정확도 (%)" },
+      { "en": "< 0.2% parameters", "ko": "파라미터 0.2% 미만" },
+      { "en": "Full-tuning", "ko": "전체 미세조정" },
+      { "en": "Number of tunable parameters (×768×12)", "ko": "학습 가능한 파라미터 수 (×768×12)" }
+    ],
+    "terms": [
+      { "en": "top-1 accuracy", "ko": "top-1 정확도", "easy": "모델의 1순위 답이 정답과 맞는 비율" },
+      { "en": "backbone", "ko": "백본", "easy": "특징을 뽑아 주는 모델의 몸통 부분" },
+      { "en": "trade-off", "ko": "맞교환", "easy": "하나를 얻으면 다른 하나를 조금 잃는 관계" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "표 1: 자기지도 사전학습 모델로 미세조정한 결과",
+    "caption": "학습 가능한 파라미터는 괄호 안에 비율도 함께 적었어요. 또 여러 데이터셋에서의 top-1 정확도를 절대값과, 전체 미세조정 대비 차이값으로 보고해요. †는 학습이 불안정해서 학습률을 0.1배로 썼다는 뜻이에요.",
+    "labels": [
+      { "en": "Method", "ko": "방법" },
+      { "en": "Avg. Params (M)", "ko": "평균 파라미터 수 (백만)" },
+      { "en": "Image", "ko": "이미지" },
+      { "en": "Video", "ko": "비디오" },
+      { "en": "Full-tuning", "ko": "전체 미세조정" },
+      { "en": "Linear", "ko": "선형(마지막 층만 학습)" }
+    ],
+    "terms": [
+      { "en": "self-supervised pre-training", "ko": "자기지도 사전학습", "easy": "정답표 없이 데이터 자체로 먼저 공부시키는 방법" },
+      { "en": "learning rate", "ko": "학습률", "easy": "한 번 배울 때 값을 얼마나 크게 바꿀지 정하는 보폭" }
+    ]
+  },
+  "f4.jpg": {
+    "title": "그림 4·5: 파라미터 수에 따른 성능 추세와 VPT 토큰 수별 정확도",
+    "caption": "그림 4: 학습 가능한 파라미터 수가 늘어날 때의 성능 추세. VPT는 파라미터 수가 과제별 특정 값을 넘으면 정확도가 크게 떨어지지만, AdaptFormer는 파라미터가 늘어나도 튼튼하게 유지돼요. 그림 5: 넣은 토큰 수가 다른 VPT [51]의 테스트 정확도. HMDB51 데이터셋 [55]에서 토큰 수가 8개 이상이면 최적화 과정이 불안정해져요.",
+    "labels": [
+      { "en": "HMDB51 Top-1 Acc (%)", "ko": "HMDB51 Top-1 정확도 (%)" },
+      { "en": "SSv2 Top-1 Acc (%)", "ko": "SSv2 Top-1 정확도 (%)" },
+      { "en": "VADA (ours)", "ko": "VADA (우리 방법)" },
+      { "en": "Number of tunable parameters (K)", "ko": "학습 가능한 파라미터 수 (천 개)" },
+      { "en": "Epoch", "ko": "에폭(학습 반복 횟수)" }
+    ],
+    "terms": [
+      { "en": "VPT (Visual Prompt Tuning)", "ko": "시각 프롬프트 튜닝", "easy": "입력에 학습용 토큰 몇 개를 덧붙여 그것만 학습하는 방법" },
+      { "en": "token", "ko": "토큰", "easy": "트랜스포머가 다루는 작은 정보 조각" },
+      { "en": "epoch", "ko": "에폭", "easy": "학습 데이터를 한 바퀴 다 보는 것" }
+    ]
+  }
+}

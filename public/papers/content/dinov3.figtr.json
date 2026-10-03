@@ -1,0 +1,73 @@
+{
+  "f1.jpg": {
+    "title": "그림 6: 학습이 길어질수록 패치 유사도 지도가 변하는 모습",
+    "caption": "빨간색으로 표시한 패치와 다른 모든 패치 사이의 코사인 유사도가 어떻게 변하는지 보여 줘요. 학습이 진행될수록 모델이 만드는 특징은 위치를 덜 정확히 짚게 되고, 유사도 지도는 더 지저분해져요.",
+    "labels": [
+      { "en": "Image", "ko": "이미지" }
+    ],
+    "terms": [
+      { "en": "cosine similarity", "ko": "코사인 유사도", "easy": "두 특징이 같은 방향을 가리킬수록 1에 가까운 닮음 점수" },
+      { "en": "patch", "ko": "패치", "easy": "이미지를 바둑판처럼 자른 작은 조각" },
+      { "en": "localized", "ko": "국소화된", "easy": "딱 그 자리만 정확히 가리키는" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 5: 코사인 유사도와 정확도의 변화",
+    "caption": "ViT-g(b)와 ViT-7B(c)에서 코사인 유사도(a), 그리고 ImageNet1k 선형 평가(IN1k) 정확도와 VOC 분할 성능이 어떻게 변하는지 보여 줘요. 패치 토큰과 클래스 토큰 사이의 코사인 유사도가 낮을 때 분할 성능이 가장 높아요. 학습이 진행될수록 이 유사도는 커지고, 밀집 예측 작업의 성능은 떨어져요.",
+    "labels": [
+      { "en": "Image", "ko": "이미지" },
+      { "en": "(a) Cosine similarities between the CLS and output patches.", "ko": "(a) CLS 토큰과 출력 패치 사이의 코사인 유사도" },
+      { "en": "Training iterations", "ko": "학습 반복 횟수" }
+    ],
+    "terms": [
+      { "en": "dense task", "ko": "밀집 예측 작업", "easy": "픽셀(패치)마다 답을 내야 하는 일, 예: 분할" },
+      { "en": "linear probing", "ko": "선형 평가", "easy": "특징은 고정하고 간단한 분류기만 붙여 실력을 재는 방법" },
+      { "en": "CLS token", "ko": "클래스 토큰", "easy": "이미지 전체를 요약하는 특별한 칸" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 9·10: 고해상도 그램 앵커링의 효과",
+    "caption": "그림 9: 고해상도 그램(Gram)의 영향에 대한 정량·정성 분석이에요. (a) 고해상도 지도를 더 작게 다운샘플링한 뒤 개선된 코사인 지도와, (b) 그램 교사의 학습 반복 횟수와 해상도를 바꿨을 때 얻는 수치상 개선을 보여 줘요. 그림 10: 그램 앵커링의 정성적 효과예요. 정제 목적 함수 L_HRef를 쓰기 전과 후의 코사인 지도를 시각화해요. 입력 이미지 해상도는 1024 × 1024 픽셀이에요.",
+    "labels": [
+      { "en": "Input", "ko": "입력" },
+      { "en": "Downsamp.", "ko": "다운샘플링" },
+      { "en": "(a) Gram matrices at different input resolutions.", "ko": "(a) 입력 해상도별 그램 행렬" },
+      { "en": "Method", "ko": "방법" },
+      { "en": "Teacher Iteration", "ko": "교사 반복 횟수" },
+      { "en": "Res.", "ko": "해상도" },
+      { "en": "IN1k Linear", "ko": "IN1k 선형 평가" },
+      { "en": "ADE mIoU", "ko": "ADE mIoU (평균 IoU)" },
+      { "en": "NYU RMSE", "ko": "NYU RMSE (깊이 오차)" },
+      { "en": "Baseline", "ko": "기준 모델" },
+      { "en": "(b) Ablation of Gram teachers and resolutions.", "ko": "(b) 그램 교사와 해상도에 대한 제거 실험" },
+      { "en": "original", "ko": "원본" },
+      { "en": "wo/ L_HRef", "ko": "L_HRef 없이" },
+      { "en": "w/ L_HRef", "ko": "L_HRef 사용" }
+    ],
+    "terms": [
+      { "en": "Gram matrix", "ko": "그램 행렬", "easy": "모든 패치 쌍이 서로 얼마나 닮았는지 적은 표" },
+      { "en": "Gram anchoring", "ko": "그램 앵커링", "easy": "패치끼리의 닮음 관계가 망가지지 않게 좋은 시절 교사에 붙잡아 두는 방법" },
+      { "en": "ablation", "ko": "제거 실험", "easy": "한 부분씩 바꾸거나 빼 보며 효과를 확인하는 실험" },
+      { "en": "downsampling", "ko": "다운샘플링", "easy": "큰 이미지를 작게 줄이는 것" }
+    ]
+  },
+  "f4.jpg": {
+    "title": "그림 2: 여러 벤치마크에서 DINOv3 모델군의 성능",
+    "caption": "DINOv3 모델군의 성능을 다른 자기 지도·약지도 모델군과 여러 벤치마크에서 비교해요. DINOv3는 밀집 예측 벤치마크에서 다른 모델들을 크게 앞서며, AM-RADIO(Heinrich et al., 2025)처럼 마스크 주석 사전 지식을 활용하는 모델보다도 뛰어나요.",
+    "labels": [
+      { "en": "mIoU", "ko": "mIoU (평균 IoU)" },
+      { "en": "log-FLOPs", "ko": "로그 연산량(FLOPs)" },
+      { "en": "(a) Semantic segmentation (ADE20k)", "ko": "(a) 의미 분할 (ADE20k)" },
+      { "en": "Recall", "ko": "재현율" },
+      { "en": "(b) 3D keypoint matching (NAVI)", "ko": "(b) 3D 키포인트 매칭 (NAVI)" },
+      { "en": "Accuracy", "ko": "정확도" },
+      { "en": "(c) OOD classif. (ObjectNet)", "ko": "(c) 분포 밖(OOD) 분류 (ObjectNet)" }
+    ],
+    "terms": [
+      { "en": "FLOPs", "ko": "연산량", "easy": "모델이 한 번 계산할 때 하는 곱셈·덧셈 수" },
+      { "en": "OOD", "ko": "분포 밖", "easy": "학습 때 못 본 낯선 종류의 데이터" },
+      { "en": "weakly-supervised", "ko": "약지도", "easy": "정답 대신 글귀 같은 느슨한 힌트로 배우는 것" },
+      { "en": "keypoint matching", "ko": "키포인트 매칭", "easy": "두 사진에서 같은 지점을 찾아 짝짓기" }
+    ]
+  }
+}

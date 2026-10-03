@@ -6,6 +6,7 @@ import { icon } from "../icons.js";
 import { renderMarkdown } from "../md.js";
 import { chatMarkup, mountChat } from "./chat.js";
 import { loadTerms, annotate, mountTermCard } from "./terms.js";
+import { fillFigtr } from "./figtr.js";
 import { loadIndex, loadContent, loadDeep, loadDiagram, onProgress, refreshProgress, setCheck, sendQuiz, getProgress, stageOf, stageVar, paperMeta, dayOfPaper, stepsDone, rich, paras, STEP_KEYS } from "./data.js";
 
 const STEP_LABEL = { read: "읽기", quiz: "퀴즈", explain: "3분 설명" };
@@ -66,7 +67,7 @@ export function mountPaper(root, ctx, id) {
   }
   function figs() {
     const f = (c.figures || []).map((x, i) => `<figure class="pp-fig"><button type="button" class="pp-fig-btn" data-zoom="${i}" aria-label="크게 보기"><img loading="lazy" src="/papers/fig/${id}/${esc(x.src)}" alt="${esc(x.caption)}"></button>
-      <figcaption>${rich(x.caption)}${x.page ? ` <span class="faint">· 원문 ${x.page}쪽</span>` : ""}</figcaption></figure>`).join("");
+      <figcaption>${rich(x.caption)}${x.page ? ` <span class="faint">· 원문 ${x.page}쪽</span>` : ""}<div class="pp-tr" data-tr="${esc(x.src)}" hidden></div></figcaption></figure>`).join("");
     return sec("figs", "그림으로 보기", `
       ${c.diagram ? `<figure class="pp-fig pp-dg-wrap"><div class="pp-dg-box" id="pp-dg"><p class="faint">그림 그리는 중…</p></div><figcaption><span class="pp-tag">우리말 그림</span> ${rich(c.diagram.caption)}</figcaption></figure>` : ""}
       <div class="pp-figs">${f}</div>`);
@@ -235,6 +236,7 @@ export function mountPaper(root, ctx, id) {
       </div>
       <button type="button" class="pp-fab" id="pp-fab" data-jump="tutor" aria-label="AI 튜터로">${icon.spark(18)}</button>`;
     bindHead(); bindBody(); paintStatus();
+    fillFigtr(view, id); // 원문 그림 속 영어 → 한국어
     stopCard?.(); stopCard = mountTermCard(view, () => dict, askAbout);
     applyTerms();
     loadDeep(id).then((d) => { if (!alive) return; paintDeep(d); applyTerms($("#pp-deep", view)); });
