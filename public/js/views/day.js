@@ -19,7 +19,7 @@ const FLOOR = 14;   // 그래도 이만큼은 (한 줄 글자가 보이는 최�
 // 못함 버튼 — 체크(끝냄) 옆의 빨간 ✕. 누르면 계획이 빨갛게 바뀌어요 (체크리스트도 같이 써요)
 export const missBtn = (p) => `<button type="button" class="miss-btn" data-miss="${esc(p.id)}" aria-pressed="${p.missed ? "true" : "false"}" aria-label="${esc(p.text)} 못함" title="${p.missed ? "못함 되돌리기" : "못 했어요 (빨간색 표시)"}"><svg viewBox="0 0 12 12" width="8" height="8" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>`;
 // 우선순위 1~5순위 · 예상 시간 — public/js/prio.js (색은 styles.css 의 --p-*). 다른 화면이 여기서 PRIOS 를 가져가요
-import { PRIOS, PRIO_RANK, prioSelect, prioPill, openPrioDrop, hoursPill, openHoursDrop } from "../prio.js";
+import { PRIOS, PRIO_RANK, prioSelect, prioPill, openPrioDrop, hoursPill, openHoursDrop, parseMins, MINS_HINT } from "../prio.js";
 export { PRIOS };
 const longDate = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`;
 function relDay(k, tk) {
@@ -224,7 +224,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         ${ed ? `<span class="sp-t">계획 고치기</span>` : ""}
         <input class="input slot-at" type="time" name="at" step="300" value="${S.editSlot}" aria-label="시작 시각 (5분 단위)">
         <input class="input" name="text" maxlength="200" placeholder="${S.editSlot}에 할 일" aria-label="할 일" value="${ed ? esc(ed.text) : ""}" autofocus>
-        <select class="select" name="mins" aria-label="걸리는 시간">${minsList.map((m) => `<option value="${m}" ${m === mins0 ? "selected" : ""}>${hm(m)}</option>`).join("")}</select>
+        <input class="input slot-mins" name="mins" list="dp-mins-list" value="${hm(mins0)}" placeholder="${MINS_HINT}" title="골라도 되고 직접 적어도 돼요 · ${MINS_HINT}" aria-label="걸리는 시간 (직접 입력 가능)" autocomplete="off"><datalist id="dp-mins-list">${minsList.map((m) => `<option value="${hm(m)}">`).join("")}</datalist>
         ${prioSelect("priority", ed ? ed.priority || "" : S.editPrio || "")}
         <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
     const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${((nowM - startH * 60) / 60) * HOUR_PX}px" aria-hidden="true"></div>` : "";
@@ -414,6 +414,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     e.preventDefault();
     const f = e.currentTarget, text = f.text.value.trim();
     if (!text || !S.plans) return f.text.focus();
+    if (mins === null) { toast(`시간을 못 읽었어요. ${MINS_HINT}`, "err"); f.mins.focus(); f.mins.select(); return; }
     try { await addPlan({ text, ...(f.priority?.value ? { priority: f.priority.value } : {}) }); f.text.value = ""; } catch (ex) { toast(ex.message, "err"); }
     f.text.focus();
   });
@@ -421,7 +422,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const f = e.target.closest("[data-slot-form]");
     if (!f) return;
     e.preventDefault();
-    const text = f.text.value.trim(), start = /^\d{2}:\d{2}$/.test(f.at?.value || "") ? f.at.value : f.dataset.slotForm, mins = +f.mins.value, priority = f.priority?.value || null;
+    const text = f.text.value.trim(), start = /^\d{2}:\d{2}$/.test(f.at?.value || "") ? f.at.value : f.dataset.slotForm, mins = parseMins(f.mins.value), priority = f.priority?.value || null;
     if (!text || !S.plans) return f.text.focus();
     if (f.dataset.editId) { // 우클릭 → 편집 → 저장
       const p = S.plans.find((x) => x.id === f.dataset.editId); if (!p) return;
