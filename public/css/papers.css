@@ -530,7 +530,7 @@ iframe.pp-vid-frame { cursor: auto; }
 .prof-av { border-radius: 50% !important; }
 
 /* ---------- 프로필 사진 동그라미 (util.avatar) ---------- */
-.av.pic { background: var(--pic) center / cover no-repeat; color: transparent; border-color: color-mix(in srgb, var(--c, var(--me)) 70%, transparent); overflow: hidden; }
+.av.pic { background: var(--pic) center / cover no-repeat; color: transparent; border-color: color-mix(in srgb, var(--c, var(--me)) 70%, transparent); overflow: visible; }
 .av.pic.full { box-shadow: inset 0 0 0 2px var(--c); background-blend-mode: normal; }
 .av.pic.part { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 50%, transparent); }
 .av.pic.none { opacity: .45; filter: grayscale(1); }

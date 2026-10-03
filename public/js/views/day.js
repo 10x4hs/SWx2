@@ -40,6 +40,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   let alive = true;
   const changed = (kind) => onChange?.(kind);
   const scroller = () => $("#dp-scroll", el); // 계획표만 따로 스크롤되는 칸
+  const phone = () => matchMedia("(max-width: 720px)").matches;
 
   el.innerHTML = `
     <header class="cd-head">
@@ -228,7 +229,19 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         ${prioSelect("priority", ed ? ed.priority || "" : S.editPrio || "")}
         <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
     const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${((nowM - startH * 60) / 60) * HOUR_PX}px" aria-hidden="true"></div>` : "";
-    $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine + pop;
+    // 폰: 추가 · 고치기 창은 시간표 위가 아니라 화면 아래에서 올라오는 시트로 (손가락 · 키보드에 안 가려지게)
+    const sheet = phone();
+    $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine + (sheet ? "" : pop);
+    let host = $("#dp-sheet", el);
+    if (sheet && pop) {
+      // <dialog> 맨 위층에 띄워요 — 유리 카드(backdrop-filter) 안에선 position: fixed 가 화면 기준이 안 돼요
+      if (!host) {
+        host = document.createElement("dialog"); host.id = "dp-sheet"; el.append(host);
+        host.addEventListener("cancel", (e) => { e.preventDefault(); S.editSlot = null; S.editId = null; drawGrid(); });
+      }
+      host.innerHTML = `<div class="sheet-back" data-slot-close></div>` + pop.replace('class="slot-add slot-pop', 'class="slot-add slot-pop slot-sheet');
+      if (!host.open) host.showModal();
+    } else if (host) { host.open && host.close(); host.remove(); }
     // 처음 열 때는 지금 시각(오늘) 또는 첫 계획 근처로 계획표 칸만 스크롤해 둬요
     if (!S.scrolled) {
       S.scrolled = true;
@@ -237,7 +250,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     }
     S.gridStartH = startH;
     const f = $("[data-slot-form]", el);
-    if (f) { const i = f.text; i.focus(); if (!S.editId) i.value = S.editText || ""; i.setSelectionRange(i.value.length, i.value.length); }
+    if (f) { const i = f.text; i.focus({ preventScroll: true }); if (!S.editId) i.value = S.editText || ""; i.setSelectionRange(i.value.length, i.value.length); }
     $("#dp-tt-sum", el).textContent = timed.length ? `${timed.length}개 · ${hm(timed.reduce((a, p) => a + (p.mins || 0), 0))}` : "";
   }
 
@@ -469,8 +482,28 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   // 가장자리에 올리면 커서를 위아래 화살표로
   el.addEventListener("mousemove", (e) => { const b = e.target.closest?.("#dp-grid .block"); if (!b || drag) return; b.style.cursor = e.target.closest("button, input") ? "" : edgeOf(b, e.clientY) === "move" ? "" : "ns-resize"; });
   let drag = null, justDragged = 0;
+  // 폰(터치): 끌기 대신 꾹 누르면(0.45초) 우클릭과 같은 메뉴. 손가락이 움직이면 스크롤로 보고 취소
+  let press = null;
+  const cancelPress = () => {
+    if (press?.fired) { // 손을 뗄 때 생기는 click 이 방금 뜬 메뉴 항목을 누르지 않게 한 번 막아요
+      const stop = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+      window.addEventListener("click", stop, { capture: true, once: true }); setTimeout(() => window.removeEventListener("click", stop, true), 400);
+    }
+    if (press) { clearTimeout(press.t); press = null; }
+  };
   el.addEventListener("pointerdown", (e) => {
-    const b = e.target.closest?.("#dp-grid .block"); if (!b || e.button !== 0) return;
+    if (e.pointerType !== "touch") return;
+    const b = e.target.closest?.("#dp-grid .block"); if (!b || e.target.closest("button, input, select, a")) return;
+    const { clientX, clientY } = e;
+    press = { x: clientX, y: clientY, t: setTimeout(() => {
+      press = { fired: true }; navigator.vibrate?.(10);
+      b.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX, clientY }));
+    }, 450) };
+  });
+  el.addEventListener("pointermove", (e) => { if (press && !press.fired && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 8) cancelPress(); });
+  ["pointerup", "pointercancel"].forEach((t) => window.addEventListener(t, cancelPress));
+  el.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest?.("#dp-grid .block"); if (!b || e.button !== 0 || e.pointerType === "touch") return;
     if (e.target.closest("button, input, select, a, [data-edit].editing")) return;
     const mode = edgeOf(b, e.clientY); // 위·아래 가장자리 8px 안이면 길이 조절, 아니면 옮기기
     drag = { b, id: b.dataset.id, mode, y0: e.clientY, sc0: scroller().scrollTop, s: +b.dataset.s, e: +b.dataset.e, ns: +b.dataset.s, ne: +b.dataset.e, moved: false };
@@ -531,6 +564,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
 
   return () => {
     alive = false; stopAic?.(); closeMenu();
+    ["pointerup", "pointercancel"].forEach((t) => window.removeEventListener(t, cancelPress));
     window.removeEventListener("trio:changed", onChanged);
     el.removeEventListener("change", onElChange);
     el.removeEventListener("click", onElClick);

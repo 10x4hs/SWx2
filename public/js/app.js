@@ -15,6 +15,7 @@ import * as papersView from "./views/papers.js";
 import * as updatesView from "./views/updates.js";
 import { openMcpPanel } from "./mcp-panel.js";
 import { openProfile } from "./profile-edit.js";
+import { statusPicker, statusText } from "./status.js";
 import * as calendarView from "./views/calendar.js";
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
@@ -66,6 +67,20 @@ async function enter(user) {
   refreshSide();
   refreshUnread();
   startLive(); // 실시간 대화 신호
+  if (!enter.statusTimer) { // 친구들 상태: 1분마다 · 앱으로 돌아올 때 새로 받아요
+    enter.statusTimer = setInterval(syncStatuses, 60_000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) syncStatuses(); });
+  }
+}
+async function syncStatuses() {
+  if (!ctx.me || document.hidden) return;
+  try {
+    const fresh = (await api.users()).users, key = (us) => JSON.stringify(us.map((u) => [u.id, u.status?.s, u.status?.tools]));
+    if (key(fresh) === key(ctx.users)) return;
+    const by = new Map(fresh.map((u) => [u.id, u.status]));
+    ctx.users = ctx.users.map((u) => ({ ...u, status: by.get(u.id) ?? null }));
+    window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "status" } }));
+  } catch {}
 }
 // 어떤 API든 "비밀번호부터 바꿔 주세요"(403)를 받으면 같은 창
 window.addEventListener("trio:must-change", () => { if (ctx.me) { ctx.me.must_change_pw = true; openPassword({ force: true }); } });
@@ -140,6 +155,7 @@ function renderMeRow() {
       ${avatar(ctx.me, "")}</button>
     <div class="me-menu glass" id="me-menu" role="menu" hidden>
       <button type="button" role="menuitem" class="me-head" id="me-head" title="프로필 바꾸기">${avatar(ctx.me, "")}<span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small>${ctx.me.bio ? `<small class="me-bio">${esc(ctx.me.bio)}</small>` : ""}</span><span class="me-edit" aria-hidden="true">${icon.edit(14)}</span></button>
+      <div class="me-st"><span class="me-st-h">status${ctx.me.status ? ` <b>${esc(statusText(ctx.me.status))}</b>` : ""}</span>${statusPicker(ctx.me.status)}</div>
       <button type="button" role="menuitem" id="prof-btn">${icon.edit(16)}프로필 바꾸기</button>
       <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
       <button type="button" role="menuitem" id="pw-btn">${icon.lock(16)}비밀번호 바꾸기</button>
@@ -171,6 +187,21 @@ function renderMeRow() {
   const prof = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openProfile(ctx); };
   $("#me-head").addEventListener("click", prof); $("#prof-btn").addEventListener("click", prof);
   $("#logout-btn").addEventListener("click", async () => { await api.logout().catch(() => {}); showAuth(); });
+  // 상태 고르기: 누르면 바로 저장. coding 이면 도구(여럿)도 골라요. 메뉴는 열린 채로 다시 그려요
+  menu.querySelector(".me-st").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const b = e.target.closest("[data-st],[data-tool]"); if (!b) return;
+    const cur = ctx.me.status;
+    let next;
+    if (b.dataset.tool) { const t = new Set(cur?.tools || []); t.has(b.dataset.tool) ? t.delete(b.dataset.tool) : t.add(b.dataset.tool); next = { s: "coding", tools: [...t] }; }
+    else next = b.dataset.st && b.dataset.st !== cur?.s ? { s: b.dataset.st, tools: b.dataset.st === "coding" ? ["claude"] : [] } : null;
+    try {
+      const r = await api.updateMe({ status: next });
+      window.dispatchEvent(new CustomEvent("trio:me", { detail: { ...ctx.me, ...r.user } }));
+      window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "status" } }));
+      $("#me-menu").hidden = false; $("#me-btn")?.setAttribute("aria-expanded", "true");
+    } catch (x) { toast(x.message, "err"); }
+  });
 }
 
 // ---------- 비밀번호 바꾸기 (내 것만, 지금 비밀번호 확인) ----------

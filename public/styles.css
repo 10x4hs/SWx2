@@ -3096,3 +3096,64 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .dp-ad { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ink); text-decoration: none; padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.06); border: 1px solid var(--lg-edge); border-left: 3px solid var(--pc, var(--lg-edge)); }
 .dp-ad:hover { border-color: var(--lg-edge-hi); } .dp-ad.done { text-decoration: line-through; color: var(--ink-3); }
 .dp-ad[data-p="max"] { --pc: var(--p-max); } .dp-ad[data-p="xhigh"] { --pc: var(--p-xhigh); } .dp-ad[data-p="high"] { --pc: var(--p-high); } .dp-ad[data-p="medium"] { --pc: var(--p-medium); } .dp-ad[data-p="low"] { --pc: var(--p-low); }
+
+/* ---------- 활동 상태 배지 (프로필 동그라미 오른쪽 위) ---------- */
+.av { position: relative; }
+.av .av-st { position: absolute; gap: 0 !important; top: -3px; right: -4px; display: flex !important; flex-direction: row; align-items: flex-end; pointer-events: none; line-height: 0; }
+.av-st .st-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--st, #8e8e93); box-shadow: 0 0 0 2px var(--page-bg, #fff); }
+.av-st[data-s="coding"] { --st: #34c759; } .av-st[data-s="working"] { --st: #ff9f0a; } .av-st[data-s="studying"] { --st: #0a84ff; }
+.av-st[data-s="reading"] { --st: #bf5af2; } .av-st[data-s="resting"] { --st: #30b0c7; } .av-st[data-s="sleeping"] { --st: #5e5ce6; } .av-st[data-s="away"] { --st: #8e8e93; }
+.av-st.chars { top: -7px; right: -9px; }
+.av-st .px { width: 14px; height: auto; filter: drop-shadow(0 0 1px var(--page-bg, #fff)) drop-shadow(0 1px 1px rgba(0,0,0,.25)); animation: st-bob 2.4s ease-in-out infinite; }
+.av-st .px + .px { margin-left: -4px; animation-delay: .3s; } .av-st .px + .px + .px { animation-delay: .6s; }
+.av.sm .av-st .st-dot { width: 6px; height: 6px; } .av.sm .av-st.chars { top: -5px; right: -6px; } .av.sm .av-st .px { width: 9px; }
+.av.lg .av-st .st-dot { width: 11px; height: 11px; } .av.lg .av-st .px { width: 18px; }
+@keyframes st-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+@media (prefers-reduced-motion: reduce) { .av-st .px { animation: none; } }
+
+/* 내 메뉴 안 상태 고르기 */
+.me-st { padding: 2px 6px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; display: grid; gap: 6px; }
+.me-st-h { font: 600 11px var(--font); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.me-st-h b { text-transform: none; letter-spacing: 0; color: var(--ink); font-weight: 600; margin-left: 4px; }
+.st-pick { display: grid; gap: 6px; }
+.st-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.me-menu .st-chip { padding: 4px 9px; gap: 5px; border-radius: 999px; border: 1px solid var(--line); font: 500 12px var(--font); color: var(--ink-2); min-height: 28px; }
+.me-menu .st-chip[aria-pressed="true"] { background: var(--ink); color: var(--page-bg, #fff); border-color: var(--ink); }
+.me-menu .st-chip.st-clear { color: var(--ink-3); border-style: dashed; }
+.st-chip .px { width: 13px; height: auto; }
+
+/* ---------- 폰 최적화 (하루 계획표 중심) ---------- */
+@media (max-width: 860px) {
+  /* 본문만 스크롤 · Dock 은 화면 아래에 고정 (내릴 때 본문이 Dock 위로 겹치지 않게) */
+  .main { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .rail.dock { position: relative; z-index: 20; }
+}
+@media (max-width: 720px) {
+  /* 계획표: 페이지 안에서 한 번 더 스크롤되는 칸은 화면에 맞게 */
+  .dp-scroll { max-height: calc(100dvh - 210px); }
+  #dp-grid .block { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: pan-y; }
+  #dp-grid .block .check { width: 20px; height: 20px; }
+  #dp-grid .block .icon-btn { display: none; } /* 좁은 블록에선 꾹 눌러 메뉴로 */
+  #dp-grid .block .check, #dp-grid .block .dp-play { flex: none; }
+  .block .txt { font-size: 13px; }
+
+  /* 추가 · 고치기 창 → 아래에서 올라오는 시트 */
+  #dp-sheet { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+  #dp-sheet::backdrop { background: transparent; }
+  #dp-sheet .sheet-back { position: absolute; inset: 0; background: rgba(0, 0, 0, .5); animation: sheet-fade .18s ease-out; }
+  .slot-pop.slot-sheet { position: relative; background: color-mix(in srgb, var(--page-bg) 94%, transparent); inset: auto; top: auto !important; left: 0; right: 0; margin: 0; padding: 16px 16px max(16px, env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; gap: 10px; animation: sheet-up .22s cubic-bezier(.2, .8, .2, 1); }
+  .slot-sheet::before { content: ""; position: absolute; top: 6px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 4px; background: var(--line-2); }
+  .slot-sheet .sp-t { font-size: 14px; }
+  .slot-sheet [name=text] { flex: 1 1 100%; order: -1; }
+  .slot-sheet .input, .slot-sheet .select { font-size: 16px; min-height: 44px; } /* 16px 미만이면 iOS 가 확대해요 */
+  .slot-sheet .slot-at, .slot-sheet .select, .slot-sheet .slot-mins { flex: 1 1 30%; width: auto; }
+  .slot-sheet .btn { flex: 1 1 auto; min-height: 44px; font-size: 15px; }
+  .slot-sheet [data-slot-close].icon-btn { width: 44px; height: 44px; }
+
+  /* 꾹 눌러 뜨는 메뉴: 손가락 크기 */
+  .cm .cm-i { min-height: 44px; font-size: 15px; }
+}
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes sheet-fade { from { opacity: 0; } }
+@media (max-width: 720px) { .slot-sheet select.select { height: 44px; } }
+.me-head .av .av-st .px { width: 16px; }

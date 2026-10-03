@@ -210,13 +210,16 @@ async function requireUser(req, env) {
   const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
   if (!m) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.must_change_pw FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
+    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.must_change_pw FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
   ).bind(await sha256(m[1]), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
   return { ...row, must_change_pw: mustChange(req, env, row) };
 }
 // must_change_pw 는 requireUser / login 에서 이미 true·false 로 바뀐 값이에요
-const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, must_change_pw: u.must_change_pw === true });
+// 활동 상태: 정해진 단어만 · coding 이면 쓰는 AI 도구(여럿)
+const STATUSES = ["coding", "working", "studying", "reading", "resting", "sleeping", "away"], TOOLS = ["claude", "codex", "gemini"];
+const readStatus = (raw) => { try { const o = typeof raw === "string" ? JSON.parse(raw) : raw; return o && STATUSES.includes(o.s) ? { s: o.s, tools: o.s === "coding" ? (o.tools || []).filter((t) => TOOLS.includes(t)) : [], at: o.at || null } : null; } catch { return null; } };
+const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), must_change_pw: u.must_change_pw === true });
 
 // ---------- auth ----------
 // 가입은 기본으로 꺼져 있어요. 계정은 scripts/add-user.mjs 로 만들어요 (ALLOW_SIGNUP=1 이면 켜짐)
@@ -318,13 +321,18 @@ on("PATCH", "/me", async ({ req, env, user }) => {
     else if (typeof b.avatar === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(b.avatar) && b.avatar.length <= 80_000) avatar = b.avatar;
     else fail(400, "사진은 앱에서 고른 이미지만 올릴 수 있어요 (80KB 까지).");
   }
-  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ? WHERE id = ?").bind(display, goal, color, bio, avatar, user.id).run();
-  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar } });
+  let status = readStatus(user.status);
+  if (b.status !== undefined) {
+    if (b.status === null) status = null;
+    else { status = readStatus({ ...b.status, at: Date.now() }); if (!status) fail(400, "상태 형식이 올바르지 않아요."); }
+  }
+  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ?, status = ? WHERE id = ?").bind(display, goal, color, bio, avatar, status ? JSON.stringify(status) : null, user.id).run();
+  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar, status } });
 });
 
 on("GET", "/users", async ({ env }) => {
-  const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal, bio, avatar FROM users ORDER BY created_at").all();
-  return json({ users: results });
+  const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal, bio, avatar, status FROM users ORDER BY created_at").all();
+  return json({ users: results.map((u) => ({ ...u, status: readStatus(u.status) })) });
 });
 
 // ---------- plans (everyone reads, owner writes) ----------
