@@ -300,3 +300,6 @@
 .sc-text b { font: 700 12px var(--mono); color: var(--ink-3); margin-right: 6px; }
 
 .sc text { letter-spacing: 0; }
+.ez-sw-t { font: 700 12px var(--mono); letter-spacing: .04em; min-width: 26px; }
+.ez-ai-logo { flex: none; display: block; }
+.ez-ai-fab { padding-left: 14px; } .ez-ai-head { align-items: center; } .ez-ai-head b { margin-left: -2px; }

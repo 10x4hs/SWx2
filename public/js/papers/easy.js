@@ -228,7 +228,7 @@ function wireMotion(root) {
     motion = on; store.set("ez-motion", on ? "on" : "off");
     root.classList.toggle("anim", on);
     const b = $("#ez-motion", root);
-    if (b) { b.innerHTML = `<span class="ez-sw ${on ? "on" : ""}" aria-hidden="true"><i></i></span>움직이는 그림 ${on ? "켜짐" : "꺼짐"}`; b.setAttribute("aria-pressed", on ? "true" : "false"); b.title = on ? "그림이 화면에 보이면 한 단계씩 저절로 움직여요. 끄면 완성된 그림이 바로 보이고, 장면 그림은 ◀ ▶ 로 넘겨요." : "켜면 그림이 화면에 보일 때 한 단계씩 저절로 움직여요."; }
+    if (b) { b.innerHTML = `<span class="ez-sw ${on ? "on" : ""}" aria-hidden="true"><i></i></span><span class="ez-sw-t">${on ? "ON" : "OFF"}</span>`; b.setAttribute("aria-label", `그림 움직임 ${on ? "켜짐" : "꺼짐"}`); b.setAttribute("aria-pressed", on ? "true" : "false"); b.title = on ? "그림이 화면에 보이면 한 단계씩 저절로 움직여요. 끄면 완성된 그림이 바로 보이고, 장면 그림은 ◀ ▶ 로 넘겨요." : "켜면 그림이 화면에 보일 때 한 단계씩 저절로 움직여요."; }
     $$(".ez-fig", root).forEach((f) => (on && f.classList.contains("seen") ? play(f) : !on && finish(f)));
   };
   $("#ez-motion", root)?.addEventListener("click", () => set(!motion));
@@ -266,8 +266,8 @@ export function mountEasy(host, ctx, id) {
   host.innerHTML = `<div class="ezw">${bar()}<main class="ez"><p class="ez-loading">불러오는 중…</p></main></div>`;
   // AI 버튼 · 패널은 앱 화면 틀 밖(body)에 붙여요 — 틀 안에 있으면 잘려서 안 보여요
   const portal = document.createElement("div"); portal.className = "ezw ez-portal";
-  portal.innerHTML = `<button type="button" class="ez-ai-fab" id="ez-ai-fab" aria-expanded="false" aria-controls="ez-ai"><span class="ez-ai-dot"></span>AI에게 물어보기</button>
-    <aside class="ez-ai" id="ez-ai" aria-label="AI 튜터 (쉽게)" hidden><div class="ez-ai-head"><b>AI 튜터</b><span>중3 ~ 고1 눈높이로 답해요</span><button type="button" class="ez-link" id="ez-ai-x">닫기</button></div>
+  portal.innerHTML = `<button type="button" class="ez-ai-fab" id="ez-ai-fab" aria-expanded="false" aria-controls="ez-ai"><img class="ez-ai-logo" src="/img/claude.svg" alt="" width="20" height="20">AI에게 물어보기</button>
+    <aside class="ez-ai" id="ez-ai" aria-label="AI 튜터 (쉽게)" hidden><div class="ez-ai-head"><img class="ez-ai-logo" src="/img/claude.svg" alt="" width="18" height="18"><b>AI 튜터</b><span>중3 ~ 고1 눈높이로 답해요</span><button type="button" class="ez-link" id="ez-ai-x">닫기</button></div>
       ${chatMarkup("mini", { quick: EASY_QUICK, sub: "쉽게 읽기 모드", empty: "모르는 걸 바로 물어봐요. 본문 글자를 드래그하면 그 문장을 인용해서 물어볼 수 있어요. 장 제목 옆 '물어보기'를 눌러도 돼요.", ph: "예: 인코더가 정확히 뭐예요?" })}</aside>`;
   document.body.append(portal); stops.push(() => portal.remove());
   const root = $(".ezw", host), main = $(".ez", root), panel = $("#ez-ai", portal), fab = $("#ez-ai-fab", portal);
