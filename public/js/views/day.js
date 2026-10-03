@@ -4,7 +4,7 @@
 import { mountCommand } from "../ai-command.js";
 import { api } from "../api.js";
 import {
-  $, esc, pad, hm, toMin, toTime, nowTime, ymd, parseYmd, addDays, today,
+  $, $$, esc, avatar, pad, hm, toMin, toTime, nowTime, ymd, parseYmd, addDays, today,
   DOW, isoWeek, dayOfYear, daysInYear, dayScore, pct, toast, focusOf, englishOf, studyMins, periodKey,
 } from "../util.js";
 import { MOODS } from "../diary.js";
@@ -33,6 +33,9 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   const date = parseYmd(day), tk = ymd(today()), key = "D:" + day;
   const isToday = day === tk, isPast = day < tk, future = day > tk;
   const me = ctx.me;
+  // 누구의 하루를 볼지. 친구 것은 그 사람이 open 했을 때만, 읽기 전용 (추가 · 고치기 · 끌기 없음)
+  let who = me.id;
+  const ro = () => who !== me.id;
   const S = { plans: null, goals: null, diary: undefined, logs: [], english: null, record: null, notes: [], carry: 0, editSlot: null, editMins: 60 };
   const wKey = periodKey("week", date), mKey = periodKey("month", date), yKey = periodKey("year", date);
   const GOAL_KEY = { week: wKey, month: mKey, year: yKey }, GOAL_LAB = { week: "이번 주", month: "이번 달", year: "올해" };
@@ -50,6 +53,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         <p class="dp-sub">${wk.w}주차 · 올해 ${dayOfYear(date)}/${daysInYear(date.getFullYear())}일째<span class="chip accent" id="dp-streak" hidden></span></p>
       </div>
       <div class="pager">
+        <div class="who-switch dp-who" role="tablist" aria-label="누구의 하루를 볼까요">${ctx.users.map((u) => `<button type="button" role="tab" data-dpwho="${u.id}" aria-selected="${u.id === me.id}" style="--c:${esc(u.color)}" title="${esc(u.display_name)}${u.id !== me.id && u.plans_open === false ? " · 비공개" : ""}">${avatar(u, "sm")}${esc(u.username.toUpperCase())}</button>`).join("")}</div>
         <a class="icon-btn sm" href="#/calendar/${ymd(addDays(date, -1))}" aria-label="전날">${icon.left(16)}</a>
         <a class="icon-btn sm" href="#/calendar/${ymd(addDays(date, 1))}" aria-label="다음날">${icon.right(16)}</a>
         <label class="icon-btn sm dp-pick" aria-label="날짜 고르기">${icon.calendar(15)}<input type="date" id="dp-date" value="${day}"></label>
@@ -68,8 +72,10 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   // ---------- data ----------
   async function load() {
     try {
-      const [p, d, g, di] = await Promise.all([api.plans([key]), api.calendarDay(day), Promise.resolve({ plans: [] }), future ? Promise.resolve({ diary: null }) : api.diary(day).catch(() => ({ diary: null }))]);
-      if (!alive) return;
+      const w = who;
+      const [p, d, g, di] = await Promise.all([api.plans([key], ro() ? who : undefined), api.calendarDay(day), Promise.resolve({ plans: [] }), future ? Promise.resolve({ diary: null }) : api.diary(day).catch(() => ({ diary: null }))]);
+      if (!alive || w !== who) return;
+      S.closed = !!p.closed;
       S.plans = p.plans || []; S.goals = g.plans || []; S.diary = di.diary;
       Object.assign(S, { logs: d.logs || [], english: d.english, record: d.record, notes: d.notes || [] });
       drawAll();
@@ -230,6 +236,11 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
     const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${((nowM - startH * 60) / 60) * HOUR_PX}px" aria-hidden="true"></div>` : "";
     // 폰: 추가 · 고치기 창은 시간표 위가 아니라 화면 아래에서 올라오는 시트로 (손가락 · 키보드에 안 가려지게)
+    el.classList.toggle("ro", ro());
+    const u = ctx.users.find((x) => x.id === who);
+    const hintEl = $(".dp-hint", el);
+    if (hintEl) hintEl.textContent = ro() ? (S.closed ? `${u?.display_name || "친구"} 님은 하루 계획표를 공개하지 않았어요 (not open).` : `${u?.display_name || "친구"} 님의 하루 계획표예요 · 보기만 할 수 있어요.`) : "빈 시각을 누르면 5분 단위로 바로 적을 수 있어요. Enter 추가 · Esc 닫기.";
+    if (ro()) { S.editSlot = null; S.editId = null; }
     const sheet = phone();
     $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine + (sheet ? "" : pop);
     let host = $("#dp-sheet", el);
@@ -372,13 +383,16 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   el.addEventListener("dblclick", onElDbl);
   function onElChange(e) {
     const t = e.target.closest("[data-toggle]");
-    if (t && S.plans) toggle(t.dataset.toggle, t.checked);
+    if (t && S.plans) { if (ro()) { t.checked = !t.checked; return; } toggle(t.dataset.toggle, t.checked); }
     if (e.target.id === "dp-date" && e.target.value) ctx.go("#/calendar/" + e.target.value);
     // 계획 창의 시간에서 "직접 입력…" 을 고르면 그 자리에 입력칸이 열려요
     const f = e.target.name === "mins" && e.target.closest("[data-slot-form]");
     if (f && f.mins.value === "custom") { f.mins.hidden = true; f.mins_text.hidden = false; f.mins_text.focus(); }
   }
   async function onElClick(e) {
+    const wb = e.target.closest("[data-dpwho]");
+    if (wb) { if (wb.dataset.dpwho === who) return; who = wb.dataset.dpwho; $$("[data-dpwho]", el).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.dpwho === who))); S.plans = null; S.closed = false; S.editSlot = null; S.editId = null; drawGrid(); load(); return; }
+    if (ro()) return; // 친구 계획표는 보기만
     const mb = e.target.closest("[data-miss]");
     if (mb && S.plans) { const p = S.plans.find((x) => x.id === mb.dataset.miss); if (p) setMissed(p.id, !p.missed); return; }
     const slot = e.target.closest("[data-slot]");
@@ -422,6 +436,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     }
   }
   function onElDbl(e) {
+    if (ro()) return;
     const ed = e.target.closest("[data-edit]");
     if (ed) return editInline(ed, async (text) => { await api.updatePlan(ed.dataset.edit, { text }); const p = S.plans.find((x) => x.id === ed.dataset.edit); if (p) p.text = text; changed("plans"); });
   }
@@ -460,6 +475,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; S.editId = null; drawGrid(); } });
   // 우클릭 → 편집 · 끝냄 · 우선순위 · 다음 날로 · 삭제
   el.addEventListener("contextmenu", (e) => {
+    if (ro()) return;
     const b = e.target.closest("#dp-grid .block"); if (!b) return;
     const p = S.plans?.find((x) => x.id === b.dataset.id); if (!p) return;
     openMenu(e, {
@@ -492,7 +508,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     if (press) { clearTimeout(press.t); press = null; }
   };
   el.addEventListener("pointerdown", (e) => {
-    if (e.pointerType !== "touch") return;
+    if (e.pointerType !== "touch" || ro()) return;
     const b = e.target.closest?.("#dp-grid .block"); if (!b || e.target.closest("button, input, select, a")) return;
     const { clientX, clientY } = e;
     press = { x: clientX, y: clientY, t: setTimeout(() => {
@@ -503,7 +519,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
   el.addEventListener("pointermove", (e) => { if (press && !press.fired && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 8) cancelPress(); });
   ["pointerup", "pointercancel"].forEach((t) => window.addEventListener(t, cancelPress));
   el.addEventListener("pointerdown", (e) => {
-    const b = e.target.closest?.("#dp-grid .block"); if (!b || e.button !== 0 || e.pointerType === "touch") return;
+    const b = e.target.closest?.("#dp-grid .block"); if (!b || e.button !== 0 || e.pointerType === "touch" || ro()) return;
     if (e.target.closest("button, input, select, a, [data-edit].editing")) return;
     const mode = edgeOf(b, e.clientY); // 위·아래 가장자리 8px 안이면 길이 조절, 아니면 옮기기
     drag = { b, id: b.dataset.id, mode, y0: e.clientY, sc0: scroller().scrollTop, s: +b.dataset.s, e: +b.dataset.e, ns: +b.dataset.s, ne: +b.dataset.e, moved: false };

@@ -3157,3 +3157,18 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 @keyframes sheet-fade { from { opacity: 0; } }
 @media (max-width: 720px) { .slot-sheet select.select { height: 44px; } }
 .me-head .av .av-st .px { width: 16px; }
+
+/* ---------- 친구의 하루 계획표 (open 일 때만 · 읽기 전용) ---------- */
+.dp-who { margin-right: 6px; }
+.dp-who button { padding: 4px 9px 4px 4px; font-size: 10.5px; }
+.cal-page.ro .hour > button, .cal-page.ro #dp-grid .block .icon-btn, .cal-page.ro #dp-grid .block .dp-play, .cal-page.ro .bk-rs, .cal-page.ro [data-miss] { display: none !important; }
+.cal-page.ro #dp-grid .block { cursor: default; opacity: .92; }
+.cal-page.ro #dp-grid .block .check { pointer-events: none; }
+.cal-page.ro #dp-aic { display: none; }
+.me-open { padding: 2px 6px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; display: grid; gap: 6px; }
+@media (max-width: 720px) {
+  /* 폰: 날짜가 세로로 깨지지 않게 — 사람 고르기 · 이전/다음은 날짜 아래 한 줄로 */
+  .cal-page .cd-head { flex-wrap: wrap; }
+  .cal-page .cd-head .pager { flex: 1 1 100%; order: 2; justify-content: space-between; }
+  .dp-who { margin: 0; }
+}

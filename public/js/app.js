@@ -155,6 +155,7 @@ function renderMeRow() {
       ${avatar(ctx.me, "")}</button>
     <div class="me-menu glass" id="me-menu" role="menu" hidden>
       <button type="button" role="menuitem" class="me-head" id="me-head" title="프로필 바꾸기">${avatar(ctx.me, "")}<span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small>${ctx.me.bio ? `<small class="me-bio">${esc(ctx.me.bio)}</small>` : ""}</span><span class="me-edit" aria-hidden="true">${icon.edit(14)}</span></button>
+      <div class="me-open"><span class="me-st-h">day plans</span><span class="st-row"><button type="button" class="st-chip" data-open="1" aria-pressed="${ctx.me.plans_open !== false}" title="친구들이 내 하루 계획표를 볼 수 있어요">open</button><button type="button" class="st-chip" data-open="0" aria-pressed="${ctx.me.plans_open === false}" title="내 계획표는 나만 봐요">not open</button></span></div>
       <div class="me-st"><span class="me-st-h">status${ctx.me.status ? ` <b>${esc(statusText(ctx.me.status))}</b>` : ""}</span>${statusPicker(ctx.me.status)}</div>
       <button type="button" role="menuitem" id="prof-btn">${icon.edit(16)}프로필 바꾸기</button>
       <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
@@ -187,6 +188,19 @@ function renderMeRow() {
   const prof = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openProfile(ctx); };
   $("#me-head").addEventListener("click", prof); $("#prof-btn").addEventListener("click", prof);
   $("#logout-btn").addEventListener("click", async () => { await api.logout().catch(() => {}); showAuth(); });
+  // 하루 계획 공개: open / not open
+  menu.querySelector(".me-open").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const b = e.target.closest("[data-open]"); if (!b) return;
+    const open = b.dataset.open === "1"; if (open === (ctx.me.plans_open !== false)) return;
+    try {
+      const r = await api.updateMe({ plans_open: open });
+      window.dispatchEvent(new CustomEvent("trio:me", { detail: { ...ctx.me, ...r.user } }));
+      window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "status" } }));
+      $("#me-menu").hidden = false; $("#me-btn")?.setAttribute("aria-expanded", "true");
+      toast(open ? "이제 친구들이 내 하루 계획표를 볼 수 있어요." : "내 하루 계획표는 나만 봐요.");
+    } catch (x) { toast(x.message, "err"); }
+  });
   // 상태 고르기: 누르면 바로 저장. coding 이면 도구(여럿)도 골라요. 메뉴는 열린 채로 다시 그려요
   menu.querySelector(".me-st").addEventListener("click", async (e) => {
     e.stopPropagation();
