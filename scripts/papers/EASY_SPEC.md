@@ -132,6 +132,25 @@ N+3. 한 번에 이어 말하기 (recap).
 { "t": "scale", "items": [ { "label": "사람 상자", "value": 0.92, "tone": "c" }, { "label": "가려진 사람", "value": 0.35, "tone": "b" } ], "marks": [ { "at": 0.6, "label": "기준선 0.6" } ], "caption": "…" }
 ```
 
+### `scene` — 장면 그림을 한 단계씩 (가장 시각적인 블록)
+움직이는 그림이 켜져 있으면 화면에 보일 때 단계가 저절로 넘어가고(2.3초마다), 꺼져 있으면 ◀ ▶ 로 넘겨요.
+상자 그리기 · 겹친 상자 지우기 · 프레임마다 ID 잇기 · 가리고 맞히기 · 마스크 칠하기처럼 **"무엇이 어디에 생기고 바뀌는지"**를 보여 줄 때 써요.
+```json
+{ "t": "scene", "w": 16, "h": 8, "bg": "night", "ground": 6.6,
+  "things": [ { "kind": "person", "x": 6, "y": 6.4, "s": 1.5, "dim": true }, { "kind": "car", "x": 10.3, "y": 6.4, "s": 1.3 } ],
+  "steps": [
+    { "text": "밤길이에요. {a:RGB} 로는 잘 안 보여요.", "add": [ { "id": "q", "kind": "label", "x": 8, "y": 1.4, "tone": "n", "label": "RGB: 흐릿해요" } ] },
+    { "text": "열화상에서는 사람이 밝아요.", "remove": ["q"], "add": [ { "id": "hp", "kind": "mask", "x": 5.3, "y": 3.9, "w": 1.4, "h": 2.8, "tone": "b" } ] },
+    { "text": "상자가 오른쪽으로 움직여요.", "move": [ { "id": "hp", "x": 7 } ] }
+  ], "caption": "…", "note": "설명용 그림이에요." }
+```
+- 좌표는 칸 단위: 가로 0~`w`, 세로 0~`h` (위가 0). `ground` = 땅 선의 y.
+- `bg`: plain(기본) · day · night · thermal(열화상 느낌).
+- `things`(배경 물체, 안 바뀜): person · car · bike · tree · house · box(x,y,w,h) · dot · text(label). `s` 크기(기본 1), `dim` 흐리게, `tone` 색, `label` 아래 글씨. person/car/tree 의 (x, y) 는 **발 · 바퀴가 닿는 아래쪽 가운데**.
+- `steps` 3~6개. 각 단계: `text`(그 단계 설명, 1~2문장) + `add`(덮개) · `remove`(id 목록) · `move`(id 와 바꿀 x/y).
+- 덮개 `kind`: box(테두리 상자 + 이름표 `label`) · mask(칠한 영역) · dot · arrow(x,y → x2,y2) · label(큰 글씨). `tone` a/b/c/d/n/w, `dash: true` 점선. 덮개는 `id` 를 꼭 붙여요 (지우거나 옮기려면).
+- 프레임이 흐르는 걸 보여 줄 때는 단계를 "1번 프레임 → 2번 프레임 …" 으로 쓰고 `move` 로 상자를 옮겨요.
+
 ### `quiz` — 장 끝 확인 문제 (페이지 전체에 2~4개)
 ```json
 { "t": "quiz", "q": "…?", "choices": ["…", "…", "…"], "answer": 1, "why": "…" }
@@ -139,7 +158,8 @@ N+3. 한 번에 이어 말하기 (recap).
 
 ## 품질 기준 (검사 스크립트가 일부 확인해요)
 
-- 장 9~14개, 장마다 그림 블록 ≥ 1 (p · callout · analogy 만 있는 장은 최대 2개).
+- 장 11~15개, 장마다 그림 블록 ≥ 1 (p · callout · analogy 만 있는 장은 최대 1개).
+- `scene` ≥ 2 (핵심 원리를 단계로 보여 주는 장면), "숫자로 따라가기" 장 1개 (작은 숫자 예시를 처음부터 끝까지 손으로 계산하듯).
 - 원문 그림 `figure` ≥ 2, `bars` ≥ 1, `quiz` 2~4.
 - 문단 하나 400자 이하. 영어 약어는 처음 나올 때 한국어 풀이.
 - 숫자 결과는 `content/<id>.json` · `content/<id>.deep.json` 의 값과 일치.

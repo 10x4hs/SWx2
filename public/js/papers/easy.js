@@ -57,13 +57,13 @@ function blocks(figBase) {
       const hi = b.hi ?? 0.5;
       const g = (x, k) => {
         const rows = x.values.slice(0, 6).map((r) => r.slice(0, 6)), cols = Math.max(...rows.map((r) => r.length));
-        return `<div class="gr" data-st style="--i:${k * 2};${tc(x.tone)}"><span class="gr-l">${inline(x.label)}</span><div class="gr-t" style="--c:${cols}">${rows.flat().map((v) => `<i class="${+v >= hi ? "h" : ""}" style="--v:${Math.max(0, Math.min(1, +v))}">${esc(typeof v === "number" ? v.toFixed(1) : v)}</i>`).join("")}</div></div>`;
+        return `<div class="gr" data-st style="--i:${k * 2};${tc(x.tone)}"><span class="gr-l">${inline(x.label)}</span><div class="gr-t" style="--c:${cols}">${rows.flat().map((v, ci) => `<i data-ci="${ci}" class="${+v >= hi ? "h" : ""}" style="--v:${Math.max(0, Math.min(1, +v))}">${esc(typeof v === "number" ? v.toFixed(1) : v)}</i>`).join("")}</div></div>`;
       };
-      return `<div class="ez-fig wide"><div class="grs">${b.items.map((x, k) => `${k ? `<span class="gr-op" data-st style="--i:${k * 2 - 1}">${esc(b.ops?.[k - 1] || "→")}</span>` : ""}${g(x, k)}`).join("")}</div>${capOf(b)}</div>`;
+      return `<div class="ez-fig wide" data-grids="${b.items.length}"><div class="grs">${b.items.map((x, k) => `${k ? `<span class="gr-op" data-st style="--i:${k * 2 - 1}">${esc(b.ops?.[k - 1] || "→")}</span>` : ""}${g(x, k)}`).join("")}</div>${capOf(b)}</div>`;
     },
     bars: (b) => {
       const max = b.max || Math.max(...b.items.map((x) => +x.value)) * 1.08;
-      return `<div class="ez-fig"><p class="brs-u">${esc(b.unit || "")}${b.lower_better ? " · 낮을수록 좋아요" : b.unit ? " · 높을수록 좋아요" : ""}</p><div class="brs">${b.items.map((x, i) => `<div class="bar" data-st style="--i:${i};${tc(x.tone)}--w:${Math.max(2, Math.min(100, (+x.value / max) * 100))}%"><span class="bar-l">${inline(x.label)}</span><span class="bar-t"><i></i></span><span class="bar-v">${esc(x.display ?? x.value)}</span></div>`).join("")}</div>${capOf(b)}</div>`;
+      return `<div class="ez-fig"><p class="brs-u">${esc(b.unit || "")}${b.lower_better ? " · 낮을수록 좋아요" : b.unit ? " · 높을수록 좋아요" : ""}</p><div class="brs">${b.items.map((x, i) => `<div class="bar" data-st style="--i:${i};${tc(x.tone)}--w:${Math.max(2, Math.min(100, (+x.value / max) * 100))}%"><span class="bar-l">${inline(x.label)}</span><span class="bar-t"><i></i></span><span class="bar-v" data-count="${esc(x.display == null ? x.value : "")}">${esc(x.display ?? x.value)}</span></div>`).join("")}</div>${capOf(b)}</div>`;
     },
     scale: (b) => `<div class="ez-fig"><div class="scl">${b.items.map((x, i) => `<div class="scl-row" data-st style="--i:${i};${tc(x.tone)}"><span>${inline(x.label)}</span><span class="scl-t" style="--x:${(+x.value * 100).toFixed(1)}%"><i style="--x:${(+x.value * 100).toFixed(1)}%"></i>${(b.marks || []).map((m) => `<s style="--x:${m.at * 100}%"></s>`).join("")}</span><span class="scl-v">${esc(x.display ?? (+x.value).toFixed(2))}</span></div>`).join("")}
       ${b.marks?.length ? `<div class="scl-m"><span></span><span>${b.marks.map((m) => `<em style="--x:${m.at * 100}%">${esc(m.label)}</em>`).join("")}</span><span></span></div>` : ""}</div>${capOf(b)}</div>`,
@@ -71,7 +71,64 @@ function blocks(figBase) {
     analogy: (b) => `<aside class="ez-box"><span class="k">비유로 보면</span>${b.title ? `<h3>${inline(b.title)}</h3>` : ""}<p>${inline(b.text)}</p>${b.limit ? `<p class="lim">${inline(b.limit)}</p>` : ""}</aside>`,
     callout: (b) => `<aside class="ez-box ${["warn", "tip", "key"].includes(b.kind) ? b.kind : "tip"}"><span class="k">${{ warn: "주의", tip: "알아 두면 좋아요", key: "꼭 기억" }[b.kind] || "알아 두면 좋아요"}</span><p>${inline(b.text)}</p></aside>`,
     quiz: (b, n) => quizHtml(b, `q${n}`),
+    scene: (b) => sceneHtml(b),
   };
+}
+
+// ---------- scene: 장면 그림 + 단계 (자동 재생 · ◀ ▶) ----------
+// things: 배경 물체 [{kind: person|car|bike|tree|house|box|dot|text, x, y, s?, tone?, dim?, label?}]
+// steps: [{text, add: [{id, kind: box|mask|dot|arrow|label|tag, x, y, w?, h?, x2?, y2?, tone?, label?, dash?}], remove: [id], move: [{id, x, y}]}]
+// SVG 글자: 좌표 단위가 작아서(1칸 = 1) 글자를 그대로 그리면 브라우저가 글자 간격을 반올림해 뭉개요.
+// 50배 큰 글자를 그리고 0.02배로 줄여요.
+const T = (x, y, cls, body, anchor = "middle", fill = "") => `<text transform="translate(${x} ${y}) scale(.02)" class="${cls}" text-anchor="${anchor}"${fill ? ` fill="${fill}"` : ""}>${body}</text>`;
+const S_TONE = { a: "var(--a)", b: "var(--b)", c: "var(--c)", d: "var(--d)", n: "var(--n)", w: "var(--warn)" };
+const col = (t) => S_TONE[t] || "var(--a)";
+function thing(t) {
+  const x = +t.x, y = +t.y, k = +(t.s || 1), c = t.tone ? col(t.tone) : "var(--ink-3)", o = t.dim ? 0.35 : 0.9, lab = t.label ? T(x, y + 1.35 * k, "sc-tl", esc(t.label)) : "";
+  const g = (inner) => `<g class="sc-thing" opacity="${o}" fill="${c}">${inner}</g>${lab}`;
+  switch (t.kind) {
+    case "person": return g(`<circle cx="${x}" cy="${y - 0.95 * k}" r="${0.32 * k}"/><rect x="${x - 0.38 * k}" y="${y - 0.58 * k}" width="${0.76 * k}" height="${1.15 * k}" rx="${0.3 * k}"/>`);
+    case "car": return g(`<rect x="${x - 1.1 * k}" y="${y - 0.55 * k}" width="${2.2 * k}" height="${0.6 * k}" rx="${0.18 * k}"/><rect x="${x - 0.65 * k}" y="${y - 0.95 * k}" width="${1.3 * k}" height="${0.5 * k}" rx="${0.2 * k}"/><circle cx="${x - 0.6 * k}" cy="${y + 0.08 * k}" r="${0.22 * k}"/><circle cx="${x + 0.6 * k}" cy="${y + 0.08 * k}" r="${0.22 * k}"/>`);
+    case "bike": return g(`<circle cx="${x - 0.5 * k}" cy="${y}" r="${0.32 * k}" fill="none" stroke="${c}" stroke-width=".12"/><circle cx="${x + 0.5 * k}" cy="${y}" r="${0.32 * k}" fill="none" stroke="${c}" stroke-width=".12"/><path d="M${x - 0.5 * k} ${y}L${x} ${y - 0.45 * k}L${x + 0.5 * k} ${y}" fill="none" stroke="${c}" stroke-width=".12"/>`);
+    case "tree": return g(`<circle cx="${x}" cy="${y - 1.1 * k}" r="${0.7 * k}"/><rect x="${x - 0.12 * k}" y="${y - 0.5 * k}" width="${0.24 * k}" height="${0.6 * k}"/>`);
+    case "house": return g(`<path d="M${x - 1 * k} ${y - 0.9 * k}L${x} ${y - 1.7 * k}L${x + 1 * k} ${y - 0.9 * k}Z"/><rect x="${x - 0.8 * k}" y="${y - 0.9 * k}" width="${1.6 * k}" height="${1 * k}"/>`);
+    case "box": return g(`<rect x="${x}" y="${y}" width="${+t.w || 1}" height="${+t.h || 1}" rx=".15"/>`);
+    case "dot": return g(`<circle cx="${x}" cy="${y}" r="${0.2 * k}"/>`);
+    case "text": return T(x, y, "sc-tx", esc(t.label || ""), "middle", t.tone ? c : "var(--ink-2)");
+    default: return "";
+  }
+}
+function overlay(o) {
+  const c = col(o.tone), x = +o.x, y = +o.y, w = +o.w || 1, h = +o.h || 1, dash = o.dash ? ' stroke-dasharray=".3 .2"' : "";
+  const tag = (tx, ty) => o.label ? `<g class="sc-tag"><rect x="${tx}" y="${ty - 0.62}" width="${Math.max(1, [...String(o.label)].reduce((n, ch) => n + (ch.charCodeAt(0) > 255 ? 0.42 : 0.24), 0) + 0.4)}" height=".62" rx=".12" fill="${c}"/>${T(tx + 0.2, ty - 0.18, "sc-lb", esc(o.label), "start")}</g>` : "";
+  switch (o.kind) {
+    case "mask": return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(w, h) * 0.35}" fill="${c}" fill-opacity=".38" stroke="${c}" stroke-width=".08"/>${tag(x, y)}`;
+    case "dot": return `<circle cx="${x}" cy="${y}" r=".28" fill="${c}"/><circle cx="${x}" cy="${y}" r=".55" fill="none" stroke="${c}" stroke-width=".07"/>${o.label ? tag(x + 0.4, y - 0.3) : ""}`;
+    case "arrow": return `<line x1="${x}" y1="${y}" x2="${+o.x2}" y2="${+o.y2}" stroke="${c}" stroke-width=".12" marker-end="url(#sc-ar)"${dash}/>${o.label ? T((x + +o.x2) / 2, (y + +o.y2) / 2 - 0.25, "sc-tx", esc(o.label), "middle", c) : ""}`;
+    case "label": case "tag": return T(x, y, "sc-tx big", esc(o.label || ""), o.anchor || "middle", c);
+    default: return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx=".12" fill="${c}" fill-opacity=".08" stroke="${c}" stroke-width=".12"${dash}/>${tag(x, y)}`; // box
+  }
+}
+function sceneHtml(b) {
+  const W = +b.w || 16, H = +b.h || 9;
+  const bg = { night: "sc-night", day: "sc-day", thermal: "sc-thermal" }[b.bg] || "sc-plain";
+  return `<div class="ez-fig wide ez-scene" data-scene='${esc(JSON.stringify({ steps: b.steps || [] }))}'>
+    <svg class="sc ${bg}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(b.caption || "장면 그림")}"><defs><marker id="sc-ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>
+      <rect width="${W}" height="${H}" class="sc-bg"/>${b.ground ? `<line x1="0" y1="${b.ground}" x2="${W}" y2="${b.ground}" class="sc-ground"/>` : ""}
+      <g class="sc-things">${(b.things || []).map(thing).join("")}</g><g class="sc-ov"></g></svg>
+    <div class="sc-ctl"><button type="button" class="sc-b" data-sc="prev" aria-label="이전 단계">◀</button><span class="sc-dots">${(b.steps || []).map((_, i) => `<i data-dot="${i}"></i>`).join("")}</span><button type="button" class="sc-b" data-sc="next" aria-label="다음 단계">▶</button><p class="sc-text" aria-live="polite"></p></div>
+    ${capOf(b)}</div>`;
+}
+// 단계 k 까지 쌓인 덮개를 그려요 (add · remove · move 를 차례로)
+function sceneState(steps, k) {
+  const m = new Map();
+  for (let i = 0; i <= k && i < steps.length; i++) {
+    const st = steps[i];
+    (st.remove || []).forEach((id) => m.delete(id));
+    (st.move || []).forEach((mv) => { const o = m.get(mv.id); if (o) m.set(mv.id, { ...o, ...mv }); });
+    (st.add || []).forEach((o, j) => m.set(o.id || `s${i}-${j}`, { ...o, _new: i === k }));
+  }
+  return [...m.values()];
 }
 const quizHtml = (b, key, label = "잠깐 확인") => `<div class="qz" data-quiz="${esc(key)}" data-a="${+b.answer}"><p class="qz-k">${esc(label)}</p><p class="qz-q">${inline(b.q)}</p><div class="qz-c">${b.choices.map((c, i) => `<button type="button" data-c="${i}">${inline(c)}</button>`).join("")}</div><p class="qz-w" hidden>${inline(b.why || "")}</p></div>`;
 // 퀴즈 답하기: 정답 · 고른 것 표시, 해설 보이기. 돌려주는 값 = 맞혔는지
@@ -86,29 +143,103 @@ function answer(q, c) {
 // ---------- 움직임 ----------
 let motion = store.get("ez-motion") !== "off" && !matchMedia("(prefers-reduced-motion: reduce)").matches;
 function wireMotion(root) {
-  const flowTimers = new Map();
-  const runFlow = (fig, on) => {
-    clearInterval(flowTimers.get(fig)); flowTimers.delete(fig);
-    const steps = $$(".flw-s:not(.empty)", fig).sort((a, b) => a.dataset.flow - b.dataset.flow);
-    if (!on || !motion || !steps.length) { steps.forEach((s) => s.classList.remove("on")); return; }
-    let k = 0; const tick = () => { steps.forEach((s, i) => s.classList.toggle("on", i === k % (steps.length + 1))); k++; };
-    tick(); flowTimers.set(fig, setInterval(tick, 1100));
-  };
+  const timers = new Map(); // 그림마다 돌고 있는 타이머
+  const stop = (fig) => { (timers.get(fig) || []).forEach((t) => { clearInterval(t); clearTimeout(t); }); timers.delete(fig); };
+  const keep = (fig, t) => { timers.set(fig, [...(timers.get(fig) || []), t]); return t; };
+
+  // 장면: 켜짐 = 보이면 한 단계씩 자동 재생 · 꺼짐 = ◀ ▶ 로 직접 넘기기
+  const scenes = new Map();
+  function sceneInit(fig) {
+    const { steps } = JSON.parse(fig.dataset.scene), ov = $(".sc-ov", fig), text = $(".sc-text", fig);
+    const st = { k: 0, steps, user: false };
+    const draw = () => {
+      ov.innerHTML = sceneState(steps, st.k).map((o) => `<g class="${o._new ? "sc-new" : ""}">${overlay(o)}</g>`).join("");
+      text.innerHTML = steps[st.k] ? `<b>${st.k + 1} / ${steps.length}</b> ${inline(steps[st.k].text || "")}` : "";
+      $$("[data-dot]", fig).forEach((d, i) => d.classList.toggle("on", i <= st.k));
+    };
+    st.go = (k) => { st.k = Math.max(0, Math.min(steps.length - 1, k)); draw(); };
+    fig.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-sc]"); const dot = e.target.closest("[data-dot]");
+      if (b || dot) { st.user = true; stop(fig); }
+      if (b) st.go(st.k + (b.dataset.sc === "next" ? 1 : -1));
+      if (dot) st.go(+dot.dataset.dot);
+    });
+    scenes.set(fig, st); draw();
+    return st;
+  }
+  function scenePlay(fig) {
+    const st = scenes.get(fig) || sceneInit(fig);
+    if (st.user || st.steps.length < 2) return;
+    st.go(0);
+    keep(fig, setInterval(() => { if (st.k >= st.steps.length - 1) { stop(fig); keep(fig, setTimeout(() => scenePlay(fig), 3500)); return; } st.go(st.k + 1); }, 2300));
+  }
+  // 격자: 결과 칸을 하나씩 계산하는 모습 (같은 자리 칸을 모든 격자에서 함께 비춰요)
+  function gridsPlay(fig) {
+    const grs = $$(".gr", fig); if (grs.length < 2) return;
+    const out = $$("i", grs[grs.length - 1]); out.forEach((c) => c.classList.add("wait"));
+    let j = 0;
+    keep(fig, setInterval(() => {
+      $$(".cur", fig).forEach((c) => c.classList.remove("cur"));
+      if (j >= out.length) { stop(fig); return; }
+      grs.forEach((g) => $(`[data-ci="${j}"]`, g)?.classList.add("cur"));
+      out[j].classList.remove("wait"); j++;
+    }, Math.max(90, Math.min(260, 4200 / out.length))));
+  }
+  // 막대: 0에서 숫자가 올라가요
+  function barsPlay(fig) {
+    $$("[data-count]", fig).forEach((el, i) => {
+      const to = parseFloat(el.dataset.count); if (!Number.isFinite(to)) return;
+      const dec = (String(el.dataset.count).split(".")[1] || "").length, t0 = performance.now() + i * 120 + 150;
+      el.textContent = (0).toFixed(dec);
+      const tick = (t) => { const k = Math.max(0, Math.min(1, (t - t0) / 1100)), e = 1 - Math.pow(1 - k, 3); el.textContent = (to * e).toFixed(dec); if (k < 1 && fig.isConnected) requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+    });
+  }
+  // 흐름: 단계에 차례로 불이 켜지고, 화살표 위로 점이 지나가요
+  function flowPlay(fig) {
+    const steps = $$(".flw-s:not(.empty)", fig).sort((a, b) => a.dataset.flow - b.dataset.flow), ars = $$(".flw-ar", fig);
+    let k = 0;
+    const tick = () => { const n = k % (steps.length + 1); steps.forEach((s, i) => s.classList.toggle("on", i === n)); ars.forEach((a, i) => a.classList.toggle("go", i === n)); k++; };
+    tick(); keep(fig, setInterval(tick, 1100));
+  }
+  function play(fig) {
+    stop(fig);
+    fig.classList.remove("in"); void fig.offsetWidth; fig.classList.add("in");
+    if (!motion) return;
+    if (fig.dataset.scene) scenePlay(fig);
+    if (fig.dataset.grids) gridsPlay(fig);
+    if ($("[data-count]", fig)) barsPlay(fig);
+    if (fig.hasAttribute("data-flowfig")) flowPlay(fig);
+  }
+  function finish(fig) { // 꺼짐: 완성된 그림 그대로
+    stop(fig); fig.classList.add("in");
+    $$(".wait, .cur, .flw-s.on, .flw-ar.go", fig).forEach((c) => c.classList.remove("wait", "cur", "on", "go"));
+    $$("[data-count]", fig).forEach((el) => { if (el.dataset.count) el.textContent = el.dataset.count; });
+  }
+  // 다시 보기 버튼 (움직이는 그림에만)
+  $$(".ez-fig", root).forEach((fig) => {
+    if (fig.dataset.scene) sceneInit(fig);
+    if (fig.querySelector(".ez-img")) return;
+    const b = document.createElement("button"); b.type = "button"; b.className = "ez-replay"; b.textContent = "↻ 다시 보기"; b.title = "이 그림을 처음부터 다시 움직여요";
+    b.addEventListener("click", () => { const st = scenes.get(fig); if (st) st.user = false; const was = motion; motion = true; play(fig); motion = was; });
+    fig.append(b);
+  });
   const set = (on) => {
     motion = on; store.set("ez-motion", on ? "on" : "off");
     root.classList.toggle("anim", on);
-    const b = $("#ez-motion", root); if (b) { b.textContent = on ? "애니메이션 멈추기" : "애니메이션 켜기"; b.setAttribute("aria-pressed", on ? "false" : "true"); }
-    if (!on) $$(".ez-fig", root).forEach((f) => f.classList.add("in"));
-    $$("[data-flowfig]", root).forEach((f) => runFlow(f, on && f.classList.contains("in")));
+    const b = $("#ez-motion", root);
+    if (b) { b.innerHTML = `<span class="ez-sw ${on ? "on" : ""}" aria-hidden="true"><i></i></span>움직이는 그림 ${on ? "켜짐" : "꺼짐"}`; b.setAttribute("aria-pressed", on ? "true" : "false"); b.title = on ? "그림이 화면에 보이면 한 단계씩 저절로 움직여요. 끄면 완성된 그림이 바로 보이고, 장면 그림은 ◀ ▶ 로 넘겨요." : "켜면 그림이 화면에 보일 때 한 단계씩 저절로 움직여요."; }
+    $$(".ez-fig", root).forEach((f) => (on && f.classList.contains("seen") ? play(f) : !on && finish(f)));
   };
   $("#ez-motion", root)?.addEventListener("click", () => set(!motion));
   const io = new IntersectionObserver((ents) => ents.forEach((e) => {
-    if (e.isIntersecting) e.target.classList.add("in");
-    if (e.target.hasAttribute("data-flowfig")) runFlow(e.target, e.isIntersecting);
-  }), { threshold: 0.25 });
+    const f = e.target;
+    if (e.isIntersecting) { if (!f.classList.contains("seen")) { f.classList.add("seen"); motion ? play(f) : finish(f); } else if (motion && (f.dataset.scene || f.hasAttribute("data-flowfig")) && !timers.has(f)) play(f); }
+    else if (f.dataset.scene || f.hasAttribute("data-flowfig")) stop(f); // 안 보이면 멈춰요
+  }), { threshold: 0.3 });
   $$(".ez-fig", root).forEach((f) => io.observe(f));
   set(motion);
-  return () => { io.disconnect(); flowTimers.forEach((t) => clearInterval(t)); };
+  return () => { io.disconnect(); [...timers.keys()].forEach(stop); };
 }
 function wireZoom(root) {
   root.addEventListener("click", (e) => {

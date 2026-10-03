@@ -262,3 +262,41 @@
 @media (min-width: 1280px) { .ezw.ai-open { margin-right: 420px; } }
 @media (max-width: 720px) { .ez-ai { left: 10px; right: 10px; width: auto; top: auto; height: 72vh; bottom: 10px; } .ez-ai-fab { right: 14px; bottom: 84px; } }
 .ezw.ez-portal { background: none; padding: 0; margin: 0; max-width: none; border-radius: 0; font-size: 15px; line-height: 1.6; }
+
+/* ---------- 움직이는 그림 v2 ---------- */
+.ez-fig { position: relative; }
+.ez-replay { position: absolute; top: 10px; right: 12px; border: 1px solid var(--line-2); background: var(--bg); color: var(--ink-3); font: 600 11.5px var(--font); padding: 3px 9px; border-radius: 99px; cursor: pointer; opacity: 0; transition: opacity .2s; }
+.ez-fig:hover .ez-replay, .ez-replay:focus-visible { opacity: 1; } .ez-replay:hover { color: var(--ink); border-color: var(--ink-3); }
+@media (hover: none) { .ez-replay { opacity: .8; } }
+/* 켜짐/꺼짐 스위치 */
+.ez-link#ez-motion { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+.ez-sw { width: 30px; height: 18px; border-radius: 99px; background: var(--line-2); position: relative; transition: background .2s; flex: none; }
+.ez-sw i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s var(--ease); }
+.ez-sw.on { background: var(--c); } .ez-sw.on i { transform: translateX(12px); }
+/* 격자: 지금 계산하는 칸 · 아직 안 나온 칸 */
+.gr-t i { transition: background .2s, box-shadow .2s, opacity .2s, transform .2s; }
+.gr-t i.cur { box-shadow: 0 0 0 2px var(--ink); transform: scale(1.12); z-index: 1; position: relative; }
+.gr-t i.wait { opacity: .12; }
+/* 흐름: 화살표 위로 지나가는 점 */
+.flw-ar { position: relative; }
+.flw-ar.go::after { content: ""; position: absolute; top: 50%; left: 2px; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: var(--c); animation: ez-run .9s var(--ease) forwards; }
+@keyframes ez-run { to { left: calc(100% - 9px); } }
+@media (max-width: 600px) { .flw-ar.go::after { animation: none; left: 50%; margin-left: -3.5px; } }
+/* 장면 그림 */
+.ez-scene { padding: 18px 18px 14px; }
+.sc { display: block; width: 100%; height: auto; border-radius: 12px; overflow: hidden; }
+.sc-bg { fill: var(--paper-2); } .sc-day .sc-bg { fill: color-mix(in srgb, var(--a) 10%, var(--bg)); } .sc-night .sc-bg { fill: #1a2030; } .sc-thermal .sc-bg { fill: #24123a; }
+.sc-night .sc-thing { fill: #3a4458; } .sc-thermal .sc-thing { fill: #ffb35c; }
+.sc-ground { stroke: var(--line-2); stroke-width: .06; }
+.sc-tl { font: 600 21px var(--font); fill: var(--ink-3); } .sc-night .sc-tl, .sc-thermal .sc-tl { fill: #c9cfdb; }
+.sc-tx { font: 600 24px var(--font); } .sc-tx.big { font-size: 31px; font-weight: 750; }
+.sc-lb { font: 700 19px var(--font); fill: #fff; }
+.sc-ov g { transition: opacity .4s; } .sc-new { animation: sc-in .6s var(--ease); } @keyframes sc-in { from { opacity: 0; } }
+.sc-ctl { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin-top: 12px; }
+.sc-b { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--bg); color: var(--ink-2); cursor: pointer; font-size: 12px; }
+.sc-b:hover { border-color: var(--ink-3); color: var(--ink); }
+.sc-dots { display: flex; gap: 6px; justify-content: center; } .sc-dots i { width: 22px; height: 5px; border-radius: 99px; background: var(--line-2); cursor: pointer; transition: background .3s; } .sc-dots i.on { background: var(--ink); }
+.sc-text { grid-column: 1 / -1; margin: 2px 0 0; min-height: 3.2em; font-size: 15px; line-height: 1.65; color: var(--ink-2); text-align: center; }
+.sc-text b { font: 700 12px var(--mono); color: var(--ink-3); margin-right: 6px; }
+
+.sc text { letter-spacing: 0; }
