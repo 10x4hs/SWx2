@@ -70,7 +70,18 @@ export const api = {
   graph: () => request("GET", "/graph"),
   organize: (note_id, model) => request("POST", "/ai/organize", { note_id, model }),
   generate: (b) => request("POST", "/ai/generate", b),
-  aiPage: (b) => request("POST", "/ai/page", b), // { purpose, hub? } 새 페이지 · { note_id, instruction } 고쳐 쓰기
+  aiPage: (b) => request("POST", "/ai/page", b),
+  // Dock 사용자 페이지 (sandbox iframe 에서 도는 HTML 한 파일)
+  pages: () => request("GET", "/pages"),
+  page: (id) => request("GET", "/pages/" + encodeURIComponent(id)),
+  pageVersions: (id) => request("GET", `/pages/${encodeURIComponent(id)}/versions`),
+  addPage: (b) => request("POST", "/pages", b),
+  updatePage: (id, b) => request("PATCH", "/pages/" + encodeURIComponent(id), b),
+  deletePage: (id) => request("DELETE", "/pages/" + encodeURIComponent(id)),
+  reorderPages: (ids) => request("POST", "/pages/reorder", { ids }),
+  restorePage: (id, version_id) => request("POST", `/pages/${encodeURIComponent(id)}/restore`, { version_id }),
+  aiPageCode: (b) => request("POST", "/ai/page-code", b), // { purpose } 새 페이지 · { page_id, instruction } 고치기
+  raw: request, // 사용자 페이지 브리지가 그대로 넘겨요 // { purpose, hub? } 새 페이지 · { note_id, instruction } 고쳐 쓰기
   tags: () => request("GET", "/tags"),
   search: (q) => request("GET", "/search?" + qs({ q })),
   focus: (from, to, user) => request("GET", "/logs/focus?" + qs({ from, to, user })),
