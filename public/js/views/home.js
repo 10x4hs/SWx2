@@ -114,7 +114,7 @@ export function mount(root, ctx) {
       return;
     }
     const [a, b, c] = LEGEND[pk];
-    line.innerHTML = `<span class="key"><i class="k-done"></i>${a}</span><span class="key"><i class="k-past"></i>${b}</span><span class="key"><i class="k-todo"></i>${c}</span>${pk === "day" ? `<span class="key"><i class="k-now"></i>바늘 = 지금</span>` : ""}<span class="faint">${mine() ? HINT[pk] : S.closed ? "이 친구는 계획표를 공개하지 않았어요 (not open)" : "조각 · 이름표를 누르면 그 계획이 보여요"}</span>`;
+    line.innerHTML = `<span class="key"><i class="k-done"></i>${a}</span><span class="key"><i class="k-past"></i>${b}</span><span class="key"><i class="k-todo"></i>${c}</span>${pk === "day" ? `<span class="key"><i class="k-now"></i>바늘 = 지금</span>` : ""}<span class="faint">${mine() ? HINT[pk] : S.closed ? "이 친구는 계획표를 공개하지 않았어요 (not open)" : "링을 누르면 친구의 하루 계획표 · 조각은 그 계획 하나"}</span>`;
   }
 
   // 체크리스트 쪽: 오늘 할 일을 얼마나 했는지 (우선순위 색 도넛) + 이번 주 날마다 + 남은 할 일
@@ -310,6 +310,17 @@ export function mount(root, ctx) {
       },
     });
   }
+  // 친구의 올해·달·주 목표를 제자리 목록으로 (누르면 그 계획 카드)
+  function showPeriodList(key, at) {
+    const u = ctx.user(S.who) || ctx.me, pk = key === "year" ? K.year : key === "month" ? K.month : K.week;
+    const list = (S.plans || []).filter((p) => p.period === pk);
+    const name = key === "year" ? "올해" : key === "month" ? "이번 달" : "이번 주";
+    openMenu(at, {
+      title: `${u.display_name} · ${name} 목표 ${list.length ? `${list.filter((p) => p.done).length}/${list.length}` : ""}`,
+      items: list.length ? list.map((p) => ({ k: p.id, label: `${p.done ? "✓ " : p.missed ? "✕ " : "· "}${p.text || "비공개"}`, hint: p.priority ? PRIO_LABEL[p.priority] || "" : "" })) : [{ k: "none", label: "아직 목표가 없어요" }],
+      onPick: (k) => { const p = S.plans?.find((x) => x.id === k); if (p) setTimeout(() => showPlanCard(p, at), 0); },
+    });
+  }
   root.addEventListener("click", (e) => {
     const wk = e.target.closest("[data-wk]");
     if (wk) { const off = +wk.dataset.wk; if (off !== S.wk.off) { S.wk.off = off; S.wk.error = null; redrawTeam(); } return; }
@@ -321,9 +332,15 @@ export function mount(root, ctx) {
     const pl = e.target.closest("svg [data-plan]");
     if (pl) { const p = S.plans?.find((x) => x.id === pl.dataset.plan); if (p) showPlanCard(p, e); return; }
     const d = e.target.closest("svg [data-day]");
-    if ((d || e.target.closest("svg [data-ring]")) && !mine()) { toast(S.closed ? "이 친구는 하루 계획표를 공개하지 않았어요 (not open)." : "친구 차트예요 · 조각이나 이름표를 누르면 그 계획이 보여요."); return; }
-    if (d) { ctx.go(dayTarget(d.dataset.day)); return; }
     const r = e.target.closest("svg [data-ring]");
+    if ((d || r) && !mine()) { // 친구 차트: 오늘·날짜 → 친구의 하루 계획표 전체 화면(보기만) · 올해·달·주 → 그 기간 목표 목록
+      if (S.closed) { toast("이 친구는 계획표를 공개하지 않았어요 (not open)."); return; }
+      const key = d ? "day" : r.dataset.ring;
+      if (d || key === "day") { ctx.go(`#/calendar/${d ? d.dataset.day : K.day.slice(2)}/u/${S.who}`); return; }
+      if (key === "check") { ctx.go(`#/calendar/${K.day.slice(2)}/u/${S.who}`); return; }
+      showPeriodList(key, e); return;
+    }
+    if (d) { ctx.go(dayTarget(d.dataset.day)); return; }
     if (r) ctx.go(target(r.dataset.ring));
   });
   root.addEventListener("keydown", (e) => { const r = e.target.closest?.("svg [data-ring]"); if (r && (e.key === "Enter" || e.key === " ") && mine()) { e.preventDefault(); ctx.go(target(r.dataset.ring)); } });

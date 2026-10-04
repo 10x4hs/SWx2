@@ -392,7 +392,7 @@ function parseRoute() {
   if (a === "calendar" && b === "diary") return { view: "diary", nav: "calendar", day: c || null }; // 일기 페이지
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar" && b === "m") return { view: "calendar", nav: "calendar", mode: "month", day: c ? `m/${c}` : null }; // #/calendar/m/2026-10 = 그 달 달력만
-  if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null }; // #/calendar/2026-10-04 = 그날 전체 화면
+  if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null, who: c === "u" && d ? d : null }; // #/calendar/2026-10-04 = 그날 전체 화면 · /u/<id> = 친구의 그날
   if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
   if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지

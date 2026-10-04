@@ -19,7 +19,7 @@ const num = (d) => `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate(
 function stateOf(r, tk, prev) {
   if (r.mode === "year") return { mode: "year", sel: prev?.sel || tk, tab: r.tab === "rec" ? "rec" : "diary", year: r.year || parseYmd(prev?.sel || tk).getFullYear() };
   // #/calendar/2026-10-04 = 그날 전체 화면 · #/calendar 또는 #/calendar/m/2026-10 = 달력만
-  if (r.day && DAY_RE.test(r.day)) return { mode: "day", sel: r.day, tab: prev?.tab || "diary" };
+  if (r.day && DAY_RE.test(r.day)) return { mode: "day", sel: r.day, who: r.who || null, tab: prev?.tab || "diary" }; // who = 친구의 그날 (홈 차트에서)
   const mm = /^m\/(\d{4})-(\d{2})$/.exec(r.day || "");
   return { mode: "month", sel: prev?.sel || tk, month: mm ? `${mm[1]}-${mm[2]}-01` : null, tab: prev?.tab || "diary" };
 }
@@ -148,7 +148,7 @@ export function mount(root, ctx, r) {
     stopDay?.();
     const el = $("#cal-day", root);
     if (!el) return;
-    stopDay = mountDay(el, ctx, st.sel, { onChange: () => {} });
+    stopDay = mountDay(el, ctx, st.sel, { onChange: () => {}, who: st.who });
   }
 
   // ---------- 연: 한 해 잔디 (일기 | 기록) ----------
@@ -254,7 +254,7 @@ export function mount(root, ctx, r) {
   inst = {
     update(nr) {
       const next = stateOf(nr, tk, st);
-      if (next.mode !== st.mode || next.sel !== st.sel || (next.mode === "year" && (next.year !== st.year || next.tab !== st.tab)) || (next.mode === "month" && next.month !== st.month)) {
+      if (next.mode !== st.mode || next.sel !== st.sel || next.who !== st.who || (next.mode === "year" && (next.year !== st.year || next.tab !== st.tab)) || (next.mode === "month" && next.month !== st.month)) {
         st = next;
         month = monthStart(parseYmd(st.month || st.sel));
         drawHead(); drawBody();
