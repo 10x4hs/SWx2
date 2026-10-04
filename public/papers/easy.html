@@ -1,0 +1,10 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>쉽게 읽기</title>
+<!-- 예전 단독 페이지 주소 → 앱 안 쉽게 읽기로 -->
+<script>
+  var p = new URLSearchParams(location.search).get("p");
+  location.replace("/#/papers/" + (p && /^[a-z0-9]+$/.test(p) ? p + "/easy" : "easy"));
+</script>
+<p style="font:15px system-ui;padding:24px"><a href="/#/papers/easy">쉽게 읽기로 이동</a></p>

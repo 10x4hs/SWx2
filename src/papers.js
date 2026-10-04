@@ -83,6 +83,43 @@ export function registerPapers(on, { json, body, fail, now }) {
   // ---------- 로그인한 사람 ----------
   on("GET", "/papers/progress", async ({ req, env, user }) => json(await shape(req, env, { me: user.id })));
 
+  // ---------- 쉽게 읽기: 간격 복습 (본인만 · 스프린트가 끝나도 계속 써요) ----------
+  // 복습 간격은 1 → 3 → 7일 (간격 효과: 기억할 기간의 10~20% 쯤 띄울 때 가장 오래 가요 · Cepeda 2008)
+  const GAP = [0, 1, 3, 7];
+  const addDay = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+  const num = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
+  async function easyState(req, env, uid) {
+    const today = kstToday(req, env);
+    const { results } = await env.DB.prepare("SELECT paper, stage, due_day, read_at, recall, recall_total, reviews FROM easy_reads WHERE user_id = ?").bind(uid).all();
+    return { today, items: results, due: results.filter((r) => r.stage < 4 && r.due_day <= today).map((r) => r.paper) };
+  }
+  on("GET", "/papers/easy", async ({ req, env, user }) => json(await easyState(req, env, user.id)));
+  on("PUT", "/papers/easy/read", async ({ req, env, user }) => {
+    const b = await body(req), paper = paperOf(b.paper), today = kstToday(req, env), t = now();
+    const recall = num(b.recall, 20), total = num(b.total, 20);
+    // 처음 읽으면 1일 뒤 복습. 다시 읽어도 단계는 그대로 (복습은 퀴즈로만 올라가요)
+    await env.DB.prepare(`INSERT INTO easy_reads (user_id, paper, stage, due_day, read_at, recall, recall_total, updated_at) VALUES (?, ?, 1, ?, ?, ?, ?, ?)
+      ON CONFLICT(user_id, paper) DO UPDATE SET recall = COALESCE(excluded.recall, recall), recall_total = COALESCE(excluded.recall_total, recall_total), updated_at = excluded.updated_at`)
+      .bind(user.id, paper, addDay(today, GAP[1]), t, recall, total, t).run();
+    return json(await easyState(req, env, user.id));
+  });
+  on("PUT", "/papers/easy/review", async ({ req, env, user }) => {
+    const b = await body(req), today = kstToday(req, env), t = now();
+    const list = Array.isArray(b.results) ? b.results.slice(0, 16) : fail(400, "results 가 필요해요.");
+    const rows = new Map((await env.DB.prepare("SELECT paper, stage FROM easy_reads WHERE user_id = ?").bind(user.id).all()).results.map((r) => [r.paper, r.stage]));
+    const stmts = [];
+    for (const r of list) {
+      const paper = paperOf(r.paper), correct = num(r.correct, 10), total = num(r.total, 10);
+      if (correct == null || !total || correct > total || !rows.has(paper)) continue;
+      // 절반 이상 맞히면 다음 간격으로, 아니면 내일 다시 (틀린 건 빨리 다시 보는 게 좋아요)
+      const st = rows.get(paper), next = correct * 2 >= total ? Math.min(4, st + 1) : st;
+      stmts.push(env.DB.prepare("UPDATE easy_reads SET stage = ?, due_day = ?, reviews = reviews + 1, updated_at = ? WHERE user_id = ? AND paper = ?")
+        .bind(next, next >= 4 ? "9999-12-31" : addDay(today, next === st ? 1 : GAP[next]), t, user.id, paper));
+    }
+    if (stmts.length) await env.DB.batch(stmts);
+    return json(await easyState(req, env, user.id));
+  });
+
   on("PUT", "/papers/check", async ({ req, env, user }) => {
     open(req, env);
     const c = checkBody(await body(req));
@@ -158,8 +195,15 @@ export function registerPapers(on, { json, body, fail, now }) {
     if (!clean.length || clean[clean.length - 1].role !== "user") fail(400, "질문을 적어 주세요.");
     const c = await content(env, url, paper);
     const system = `너는 이 논문 하나를 셋에게 가르치는 튜터야. 학생들은 딥러닝 기초만 알아. 규칙: 쉬운 한국어 해요체, 짧은 문단, 비유 먼저, 용어는 풀어서, 필요하면 숫자 예시. 자료에 없는 수치는 지어내지 말고 "원문에서 확인해요"라고 해. 목표는 10월 5일까지 이 논문을 3분 안에 설명하게 만드는 것. 우리 프로젝트: RGB+열화상 카메라 → 탐지·추적 → Rockchip NPU(RKNN) INT8 배포.\n\n[논문 자료]\n${brief(c)}`;
+    // 쉽게 읽기 화면에서 물으면: 중3~고1 눈높이로 (용어는 그 자리에서 풀고, 수식 없이)
+    let sys = system;
+    if (b.level === "easy") {
+      let ez = null;
+      try { const r = await env.ASSETS.fetch(new Request(new URL(`/papers/content/${paper}.easy.json`, url))); if (r.ok) ez = await r.json(); } catch {}
+      sys = system + `\n\n[지금은 '쉽게 읽기' 화면이에요] 학생은 중학교 3학년~고등학교 1학년 눈높이예요. 행렬 · 미분 · 로그 · 신경망 용어를 몰라요. 규칙: 수식 없이 말로, 처음 쓰는 용어는 그 자리에서 한 줄로 풀어요, 일상 비유를 먼저, 3~6문장 안에서 짧게. 답 끝에 학생이 스스로 떠올려 볼 짧은 질문 하나를 '한번 생각해 봐요:' 로 붙여요 (스스로 설명하면 오래 기억나요).${ez?.recap ? `\n쉽게 읽기 정리: ${ez.recap.text}` : ""}${ez?.words ? `\n이 페이지 낱말: ${ez.words.map((w) => w.term + "=" + w.easy).join(" · ")}` : ""}`.replace(/\*\*/g, "");
+    }
     if (q.get("stream") === "0") {
-      try { const r = await aiText(env, system, clean); return json({ text: r.text, used: r.used }); }
+      try { const r = await aiText(env, sys, clean); return json({ text: r.text, used: r.used }); }
       catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
     }
     // 스트리밍(SSE): data: {type: "delta"|"reset"|"end"|"error", …}
@@ -169,7 +213,7 @@ export function registerPapers(on, { json, body, fail, now }) {
     const send = async (o) => { if (!open) return; try { await writer.write(enc.encode(`data: ${JSON.stringify(o)}\n\n`)); } catch { open = false; } };
     ec.waitUntil((async () => {
       try {
-        const r = await aiText(env, system, clean, undefined, (t, meta) => (meta?.reset ? send({ type: "reset" }) : send({ type: "delta", text: t })));
+        const r = await aiText(env, sys, clean, undefined, (t, meta) => (meta?.reset ? send({ type: "reset" }) : send({ type: "delta", text: t })));
         await send({ type: "end", text: r.text, used: r.used });
       } catch (e) { await send({ type: "error", message: e.message || "AI 답을 받지 못했어요." }); }
       open = false; try { await writer.close(); } catch {}

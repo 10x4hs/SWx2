@@ -210,13 +210,16 @@ async function requireUser(req, env) {
   const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
   if (!m) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.must_change_pw FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
+    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
   ).bind(await sha256(m[1]), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
   return { ...row, must_change_pw: mustChange(req, env, row) };
 }
 // must_change_pw 는 requireUser / login 에서 이미 true·false 로 바뀐 값이에요
-const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, must_change_pw: u.must_change_pw === true });
+// 활동 상태: 정해진 단어만 · coding 이면 쓰는 AI 도구(여럿)
+const STATUSES = ["coding", "working", "studying", "reading", "resting", "sleeping", "away"], TOOLS = ["claude", "codex", "gemini"];
+const readStatus = (raw) => { try { const o = typeof raw === "string" ? JSON.parse(raw) : raw; return o && STATUSES.includes(o.s) ? { s: o.s, tools: o.s === "coding" ? (o.tools || []).filter((t) => TOOLS.includes(t)) : [], at: o.at || null } : null; } catch { return null; } };
+const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true });
 
 // ---------- auth ----------
 // 가입은 기본으로 꺼져 있어요. 계정은 scripts/add-user.mjs 로 만들어요 (ALLOW_SIGNUP=1 이면 켜짐)
@@ -318,13 +321,19 @@ on("PATCH", "/me", async ({ req, env, user }) => {
     else if (typeof b.avatar === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(b.avatar) && b.avatar.length <= 80_000) avatar = b.avatar;
     else fail(400, "사진은 앱에서 고른 이미지만 올릴 수 있어요 (80KB 까지).");
   }
-  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ? WHERE id = ?").bind(display, goal, color, bio, avatar, user.id).run();
-  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar } });
+  let status = readStatus(user.status);
+  if (b.status !== undefined) {
+    if (b.status === null) status = null;
+    else { status = readStatus({ ...b.status, at: Date.now() }); if (!status) fail(400, "상태 형식이 올바르지 않아요."); }
+  }
+  const plans_open = b.plans_open !== undefined ? !!b.plans_open : user.plans_open !== 0;
+  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ?, status = ?, plans_open = ? WHERE id = ?").bind(display, goal, color, bio, avatar, status ? JSON.stringify(status) : null, plans_open ? 1 : 0, user.id).run();
+  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar, status, plans_open } });
 });
 
 on("GET", "/users", async ({ env }) => {
-  const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal, bio, avatar FROM users ORDER BY created_at").all();
-  return json({ users: results });
+  const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal, bio, avatar, status, plans_open FROM users ORDER BY created_at").all();
+  return json({ users: results.map((u) => ({ ...u, status: readStatus(u.status), plans_open: u.plans_open !== 0 })) });
 });
 
 // ---------- plans (everyone reads, owner writes) ----------
@@ -357,14 +366,18 @@ on("GET", "/plans", async ({ env, q, user }) => {
   const range = dm && dm[1] <= dm[2] && (Date.parse(dm[2]) - Date.parse(dm[1])) / 864e5 <= 62 ? ["D:" + dm[1], "D:" + dm[2]] : null;
   if (!periods.length && !range) return json({ plans: [] });
   const who = q.get("user") || user.id;
+  // 친구 계획은 그 사람이 공개(open)했을 때만. 아니면 빈 목록 + closed 표시
+  if (who !== user.id) {
+    const o = await env.DB.prepare("SELECT plans_open FROM users WHERE id = ?").bind(who).first();
+    if (!o || o.plans_open === 0) return json({ plans: [], closed: true });
+  }
   const where = [periods.length ? `period IN (${periods.map(() => "?").join(",")})` : "", range ? "(period >= ? AND period <= ?)" : ""].filter(Boolean).join(" OR ");
   const { results } = await env.DB.prepare(
     `SELECT plans.*, (SELECT COALESCE(SUM(l.mins), 0) FROM logs l WHERE l.plan_id = plans.id AND l.kind = 'focus') AS focus_mins
      FROM plans WHERE user_id = ? AND (${where}) ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at`
   ).bind(who, ...periods, ...(range || [])).all();
   // focus_mins = 그 할 일에 쌓인 집중 기록 분의 합 (logs.plan_id)
-  // 서로는 차트만: 다른 사람 계획은 칸 모양(완료·시각·길이·집중 분)만 보내고 내용은 비워요
-  if (who !== user.id) return json({ plans: results.map((p) => ({ ...p, text: "" })), private: true });
+  // 친구 계획: open 한 사람 것은 내용까지 그대로 보여요 (not open 이면 위에서 이미 빈 목록)
   return json({ plans: results });
 });
 

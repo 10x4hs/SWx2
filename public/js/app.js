@@ -12,8 +12,10 @@ import * as checklistView from "./views/checklist.js";
 import * as homeView from "./views/home.js";
 import * as englishView from "./views/english.js";
 import * as papersView from "./views/papers.js";
+import * as updatesView from "./views/updates.js";
 import { openMcpPanel } from "./mcp-panel.js";
 import { openProfile } from "./profile-edit.js";
+import { statusPicker, statusText } from "./status.js";
 import * as calendarView from "./views/calendar.js";
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
@@ -65,6 +67,20 @@ async function enter(user) {
   refreshSide();
   refreshUnread();
   startLive(); // 실시간 대화 신호
+  if (!enter.statusTimer) { // 친구들 상태: 1분마다 · 앱으로 돌아올 때 새로 받아요
+    enter.statusTimer = setInterval(syncStatuses, 60_000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) syncStatuses(); });
+  }
+}
+async function syncStatuses() {
+  if (!ctx.me || document.hidden) return;
+  try {
+    const fresh = (await api.users()).users, key = (us) => JSON.stringify(us.map((u) => [u.id, u.status?.s, u.status?.tools]));
+    if (key(fresh) === key(ctx.users)) return;
+    const by = new Map(fresh.map((u) => [u.id, u.status]));
+    ctx.users = ctx.users.map((u) => ({ ...u, status: by.get(u.id) ?? null }));
+    window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "status" } }));
+  } catch {}
 }
 // 어떤 API든 "비밀번호부터 바꿔 주세요"(403)를 받으면 같은 창
 window.addEventListener("trio:must-change", () => { if (ctx.me) { ctx.me.must_change_pw = true; openPassword({ force: true }); } });
@@ -85,7 +101,6 @@ const NAV = [
   { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리 · 그래프" },
   { key: "english", hash: "#/english", label: "영어", tip: "영어 · 6개월 프리토킹" },
   { key: "papers", hash: "#/papers", label: "논문", tip: "논문 스프린트 · 10.1–10.5 · 16편", until: "2026-10-05" },
-  { key: "ai", hash: "#/ai", label: "AI 튜터", tip: "AI 튜터 · 묻고 노트로 정리" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const NAV_SPLIT = 2;
@@ -96,7 +111,7 @@ const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 function renderShell() {
   // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점.
-  const item = (n) => `<a class="rail-btn" href="${n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
+  const item = (n) => `<a class="rail-btn" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
   app.innerHTML = `
     <div class="shell">
       <aside class="rail dock glass" aria-label="메뉴">
@@ -139,13 +154,19 @@ function renderMeRow() {
       ${avatar(ctx.me, "")}</button>
     <div class="me-menu glass" id="me-menu" role="menu" hidden>
       <button type="button" role="menuitem" class="me-head" id="me-head" title="프로필 바꾸기">${avatar(ctx.me, "")}<span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small>${ctx.me.bio ? `<small class="me-bio">${esc(ctx.me.bio)}</small>` : ""}</span><span class="me-edit" aria-hidden="true">${icon.edit(14)}</span></button>
+      <div class="me-open"><span class="me-st-h">day plans</span><span class="st-row"><button type="button" class="st-chip" data-open="1" aria-pressed="${ctx.me.plans_open !== false}" title="친구들이 내 하루 계획표를 볼 수 있어요">open</button><button type="button" class="st-chip" data-open="0" aria-pressed="${ctx.me.plans_open === false}" title="내 계획표는 나만 봐요">not open</button></span></div>
+      <div class="me-st"><span class="me-st-h">status${ctx.me.status ? ` <b>${esc(statusText(ctx.me.status))}</b>` : ""}</span>${statusPicker(ctx.me.status)}</div>
       <button type="button" role="menuitem" id="prof-btn">${icon.edit(16)}프로필 바꾸기</button>
       <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
       <button type="button" role="menuitem" id="pw-btn">${icon.lock(16)}비밀번호 바꾸기</button>
+      <a role="menuitem" class="me-link" id="upd-btn" href="#/updates">${icon.spark(16)}업데이트 기록<span class="me-badge" id="upd-badge" hidden></span></a>
       <button type="button" role="menuitem" id="mcp-btn">${icon.share(16)}MCP 연결 (AI 에이전트)</button>
       <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
     </div>`;
   const menu = $("#me-menu"), btn = $("#me-btn");
+  // 메뉴는 화면 맨 위층(body)에 붙여요 — Dock 안에 두면 좁은 화면에서 본문 아래로 깔려 눌리지 않았어요
+  document.querySelectorAll("body > #me-menu").forEach((m) => m !== menu && m.remove());
+  document.body.append(menu);
   btn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute("aria-expanded", String(!menu.hidden)); });
   if (!renderMeRow.bound) { // 바깥을 누르면 닫기 (한 번만 걸어요)
     renderMeRow.bound = true;
@@ -158,10 +179,42 @@ function renderMeRow() {
     renderMeRow();
   });
   $("#pw-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openPassword(); });
+  $("#upd-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
+  // 마지막으로 본 뒤 생긴 업데이트 수 → 메뉴에 숫자 · 프로필 버튼에 점
+  const updBadge = () => updatesView.unseenCount().then((n) => { const b = $("#upd-badge"); if (b) { b.hidden = !n; b.textContent = n; } btn.classList.toggle("has-new", n > 0); });
+  updBadge(); window.addEventListener("trio:updates-seen", updBadge);
   $("#mcp-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openMcpPanel(ctx); });
   const prof = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openProfile(ctx); };
   $("#me-head").addEventListener("click", prof); $("#prof-btn").addEventListener("click", prof);
   $("#logout-btn").addEventListener("click", async () => { await api.logout().catch(() => {}); showAuth(); });
+  // 하루 계획 공개: open / not open
+  menu.querySelector(".me-open").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const b = e.target.closest("[data-open]"); if (!b) return;
+    const open = b.dataset.open === "1"; if (open === (ctx.me.plans_open !== false)) return;
+    try {
+      const r = await api.updateMe({ plans_open: open });
+      window.dispatchEvent(new CustomEvent("trio:me", { detail: { ...ctx.me, ...r.user } }));
+      window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "status" } }));
+      $("#me-menu").hidden = false; $("#me-btn")?.setAttribute("aria-expanded", "true");
+      toast(open ? "이제 친구들이 내 하루 계획표를 볼 수 있어요." : "내 하루 계획표는 나만 봐요.");
+    } catch (x) { toast(x.message, "err"); }
+  });
+  // 상태 고르기: 누르면 바로 저장. coding 이면 도구(여럿)도 골라요. 메뉴는 열린 채로 다시 그려요
+  menu.querySelector(".me-st").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const b = e.target.closest("[data-st],[data-tool]"); if (!b) return;
+    const cur = ctx.me.status;
+    let next;
+    if (b.dataset.tool) { const t = new Set(cur?.tools || []); t.has(b.dataset.tool) ? t.delete(b.dataset.tool) : t.add(b.dataset.tool); next = { s: "coding", tools: [...t] }; }
+    else next = b.dataset.st && b.dataset.st !== cur?.s ? { s: b.dataset.st, tools: b.dataset.st === "coding" ? ["claude"] : [] } : null;
+    try {
+      const r = await api.updateMe({ status: next });
+      window.dispatchEvent(new CustomEvent("trio:me", { detail: { ...ctx.me, ...r.user } }));
+      window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "status" } }));
+      $("#me-menu").hidden = false; $("#me-btn")?.setAttribute("aria-expanded", "true");
+    } catch (x) { toast(x.message, "err"); }
+  });
 }
 
 // ---------- 비밀번호 바꾸기 (내 것만, 지금 비밀번호 확인) ----------
@@ -286,14 +339,16 @@ function parseRoute() {
   if (a === "goals") return { view: "goals", nav: "home", scope: b || "week", key: c || null }; // 이번 주 · 이번 달 · 올해 목표 (홈 링에서)
   if (a === "calendar" && b === "diary") return { view: "diary", nav: "calendar", day: c || null }; // 일기 페이지
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
-  if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null };
+  if (a === "calendar" && b === "m") return { view: "calendar", nav: "calendar", mode: "month", day: c ? `m/${c}` : null }; // #/calendar/m/2026-10 = 그 달 달력만
+  if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null }; // #/calendar/2026-10-04 = 그날 전체 화면
   if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
-  if (a === "papers") return { view: "papers", nav: "papers", id: b || null };
+  if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
+  if (a === "papers") return { view: "papers", nav: "papers", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, calendar: calendarView, room: roomView };
+const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, calendar: calendarView, room: roomView, updates: updatesView };
 let lastView = null;
 
 function route() {
@@ -351,6 +406,9 @@ function openPalette() {
     { grp: "이동", t: "내일 계획 세우기", s: ymd(new Date(Date.now() + 864e5)), run: () => ctx.go("#/calendar/" + ymd(new Date(Date.now() + 864e5))) },
     { grp: "이동", t: "한 해 잔디", s: "캘린더 · 연 · 일기 | 기록", run: () => ctx.go("#/calendar/year") },
     { grp: "이동", t: "오늘 체크리스트", s: "할 일 적기 · 우선순위 차트", run: () => ctx.go("#/checklist") },
+    { grp: "이동", t: "업데이트 기록", s: "무엇이 언제 바뀌었나", run: () => ctx.go("#/updates") },
+    { grp: "이동", t: "쉽게 읽기 (논문 16편)", s: "중3~고1 눈높이 · AI 튜터 · 복습", run: () => ctx.go("#/papers/easy") },
+    { grp: "이동", t: "섞어서 복습 (쉽게 읽기)", s: "오늘 복습할 차례", run: () => ctx.go("#/papers/easy/review") },
     { grp: "이동", t: "이번 주 목표", s: "목표 · 주", run: () => ctx.go("#/goals/week") },
     { grp: "이동", t: "이번 달 목표", s: "목표 · 월", run: () => ctx.go("#/goals/month") },
     { grp: "이동", t: "올해 목표", s: "목표 · 년", run: () => ctx.go("#/goals/year") },

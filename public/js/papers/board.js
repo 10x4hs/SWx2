@@ -46,11 +46,14 @@ export function mountBoard(root, ctx) {
         <p class="pp-sub muted">${esc(sub)}</p>
       </div>
       <div class="row pp-head-act">
+        <a class="btn ghost sm" href="#/papers/easy" title="중3~고1 눈높이 · 움직이는 그림으로">${icon.spark(15)}쉽게 읽기 16편</a>
         <button class="btn ghost sm" type="button" id="pp-note">${icon.notes(15)}노트에서 보기</button>
         <button class="btn ghost sm" type="button" id="pp-obs" title="진짜 옵시디언 앱에 넣을 .md 파일">${icon.download(15)}옵시디언 파일</button>
         ${todayRow && !ended ? (() => { const next = todayRow.papers.find((id) => !paperDone(meRow(), id)) || todayRow.papers[0]; return `<a class="btn accent sm" href="#/papers/${next}">오늘 공부 시작 ›</a>`; })() : ""}
       </div>
     </header>
+    <a class="pp-easy pp-easy-board" href="#/papers/easy"><span class="pp-easy-k">처음이라면 여기부터 · 16편</span><b>쉽게 읽기 <small>중3 ~ 고1 눈높이 · AI 튜터 · 간격 복습</small></b>
+      <span class="pp-easy-d">짐작하기 → 그림으로 원리 보기 → 책 덮고 말해 보기 → 1·3·7일 뒤 섞어서 복습. 모르는 건 오른쪽 아래 AI에게 바로 물어봐요.</span><span class="pp-easy-go" aria-hidden="true">→</span></a>
     <p class="pp-goal"><span class="faint">끝났다는 기준</span> ${esc(idx.goal)}</p>`;
   }
 

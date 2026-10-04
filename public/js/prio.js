@@ -43,7 +43,7 @@ const hoursList = (cur) => (cur && !HOURS.includes(cur) ? [...HOURS, cur].sort((
 export const hoursSelect = (name = "mins", cur = null, cls = "select sm hours-sel") =>
   `<select class="${cls}" name="${name}" aria-label="예상 시간"><option value="">시간</option>${hoursList(cur).map((m) => `<option value="${m}" ${cur === m ? "selected" : ""}>${hm(m)}</option>`).join("")}<option value="custom">직접 입력…</option></select>`;
 
-// 직접 적은 시간 읽기 → 분 (5분 단위, 5분~24시간). 못 읽으면 null
+// 직접 적은 시간 읽기 → 분 (1분 단위, 1분~24시간). 못 읽으면 null
 //   "1.5" · "2" (15 미만의 숫자 = 시간) · "90" (15 이상 = 분) · "1:30" · "1시간 30분" · "2h" · "45m" · "90분"
 export function parseMins(raw) {
   const s = String(raw || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -55,10 +55,10 @@ export function parseMins(raw) {
   else if ((x = s.match(/^(\d+(?:\.\d+)?)$/))) m = +x[1] < 15 ? +x[1] * 60 : +x[1];
   else if ((x = s.match(/^(\d+) ?분?반$/)) || (x = s.match(/^(\d+) ?시간 ?반$/))) m = +x[1] * 60 + 30;
   if (m === null || !isFinite(m)) return null;
-  m = Math.round(m / 5) * 5;
-  return m >= 5 && m <= 1440 ? m : null;
+  m = Math.round(m);
+  return m >= 1 && m <= 1440 ? m : null;
 }
-export const MINS_HINT = "예: 1.5 · 2시간 · 90분 · 1:30";
+export const MINS_HINT = "예: 4분 · 7시간 · 1.5 · 1:30";
 
 // 알약 자리에 작은 입력칸을 띄워 직접 적기. Enter = 저장 · Esc · 빈 채로 나가기 = 취소
 export function inlineMins(anchor, cur, onPick) {

@@ -1,0 +1,62 @@
+{
+  "f1.jpg": {
+    "title": "그림 1: C-RADIOv3-H와 C-RADIOv4-H의 PCA 특징 시각화 비교",
+    "caption": "C-RADIOv3-H와 C-RADIOv4-H를 비교한 PCA 특징 시각화예요. 이제 물체 경계가 훨씬 깔끔해졌어요.",
+    "labels": [
+      { "en": "FINISH", "ko": "결승선 (사진 속 표지판)" }
+    ],
+    "terms": [
+      { "en": "PCA", "ko": "주성분 분석", "easy": "많은 숫자를 가장 중요한 몇 방향(여기선 색 3개)으로 줄여 보여 주는 방법" },
+      { "en": "feature", "ko": "특징", "easy": "모델이 이미지에서 뽑아낸 숫자 묶음" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 2: DINOv3와 C-RADIOv4(어댑터) 예측 시각화",
+    "caption": "DINOv3와 C-RADIOv4(어댑터)의 예측을 시각화했어요. DINOv3가 만든 엉뚱한 자리의 얼룩점을 눈여겨보세요. 1열: 입력 이미지. 2열: DINOv3 PCA 시각화. 3열: C-RADIOv4 어댑터 PCA 시각화. 4열: 학생 어댑터의 예측과 DINOv3 선생 사이의 오차 히트맵.",
+    "labels": [
+      { "en": "Column 1: Input Image", "ko": "1열: 입력 이미지" },
+      { "en": "Column 2: DINOv3 PCA visualization", "ko": "2열: DINOv3 PCA 시각화" },
+      { "en": "Column 3: C-RADIOv4 adapter PCA visualization", "ko": "3열: C-RADIOv4 어댑터 PCA 시각화" },
+      { "en": "Column 4: Error heatmap", "ko": "4열: 오차 히트맵" }
+    ],
+    "terms": [
+      { "en": "adapter", "ko": "어댑터", "easy": "한 모델의 특징을 다른 모델 모양으로 바꿔 주는 작은 변환기" },
+      { "en": "teacher / student", "ko": "선생 / 학생", "easy": "큰 모델(선생)의 출력을 작은 모델(학생)이 따라 배우는 관계" },
+      { "en": "heatmap", "ko": "히트맵", "easy": "값이 클수록 밝게 칠해 크기를 색으로 보여 주는 그림" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 9: SAM3와 RADIO 비전 인코더의 A100 속도 비교",
+    "caption": "SAM3와 RADIO의 비전 인코더를 SO400M과 Huge 두 크기에서 A100 GPU로 이미지 한 장씩 측정한 결과예요. SAM3는 창 크기 24의 ViT-L+ 구조를 써요. 창 크기 72는 전체 전역 어텐션과 같아요.",
+    "labels": [
+      { "en": "Vision Encoder Benchmark: SAM3 vs RADIO", "ko": "비전 인코더 벤치마크: SAM3 대 RADIO" },
+      { "en": "Inference Time (ms)", "ko": "추론 시간 (밀리초)" },
+      { "en": "VitDet Window Size", "ko": "VitDet 창 크기" }
+    ],
+    "terms": [
+      { "en": "inference time", "ko": "추론 시간", "easy": "모델이 이미지 한 장의 답을 내는 데 걸리는 시간" },
+      { "en": "window attention", "ko": "창 어텐션", "easy": "이미지를 작은 창으로 나눠 그 안에서만 서로 보게 해 계산을 줄이는 방법" },
+      { "en": "global attention", "ko": "전역 어텐션", "easy": "모든 조각이 모든 조각을 다 보는 계산" }
+    ]
+  },
+  "f4.jpg": {
+    "title": "표 1: 여러 비전 인코더 비교",
+    "caption": "여러 비전 인코더를 비교했어요. C-RADIOv4는 훨씬 적은 파라미터로도 촘촘한(픽셀 단위) 과제에서 DINOv3와 겨룰 만해요.",
+    "labels": [
+      { "en": "Model", "ko": "모델" },
+      { "en": "Summary", "ko": "요약(이미지 전체) 성능" },
+      { "en": "Segmentation", "ko": "분할" },
+      { "en": "Probe3d", "ko": "Probe3d (3D 이해 평가)" },
+      { "en": "Name", "ko": "이름" },
+      { "en": "Variant", "ko": "크기 버전" },
+      { "en": "Params", "ko": "파라미터 수" },
+      { "en": "Zero Shot", "ko": "제로샷" },
+      { "en": "kNN", "ko": "kNN (최근접 이웃 분류)" }
+    ],
+    "terms": [
+      { "en": "zero-shot", "ko": "제로샷", "easy": "따로 더 배우지 않고 처음 보는 과제를 바로 푸는 것" },
+      { "en": "dense task", "ko": "촘촘한 과제", "easy": "픽셀마다 답을 내야 하는 과제 (예: 분할)" },
+      { "en": "segmentation", "ko": "분할", "easy": "이미지의 각 픽셀이 무엇인지 칠해 나누는 일" }
+    ]
+  }
+}

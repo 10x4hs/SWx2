@@ -18,7 +18,10 @@ const num = (d) => `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate(
 // 라우트 → 보기 상태. #/calendar/2026-09-29 · #/calendar/year/rec/2026
 function stateOf(r, tk, prev) {
   if (r.mode === "year") return { mode: "year", sel: prev?.sel || tk, tab: r.tab === "rec" ? "rec" : "diary", year: r.year || parseYmd(prev?.sel || tk).getFullYear() };
-  return { mode: "month", sel: r.day && DAY_RE.test(r.day) ? r.day : tk, tab: prev?.tab || "diary" };
+  // #/calendar/2026-10-04 = 그날 전체 화면 · #/calendar 또는 #/calendar/m/2026-10 = 달력만
+  if (r.day && DAY_RE.test(r.day)) return { mode: "day", sel: r.day, tab: prev?.tab || "diary" };
+  const mm = /^m\/(\d{4})-(\d{2})$/.exec(r.day || "");
+  return { mode: "month", sel: prev?.sel || tk, month: mm ? `${mm[1]}-${mm[2]}-01` : null, tab: prev?.tab || "diary" };
 }
 
 let inst = null;
@@ -27,7 +30,8 @@ export function update(r) { inst?.update(r); }
 export function mount(root, ctx, r) {
   const tk = ymd(today());
   let st = stateOf(r, tk);
-  let month = monthStart(parseYmd(st.sel));
+  let month = monthStart(parseYmd(st.month || st.sel));
+  const monthHref = (d) => `#/calendar/m/${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
   let days = {}, alive = true, monthReq = 0, stopDay = null, stopYear = null;
 
   root.innerHTML = `
@@ -47,17 +51,18 @@ export function mount(root, ctx, r) {
       </header>
       <div id="cal-body"></div>
     </div>`;
-  root.addEventListener("click", (e) => { if (e.target.closest("#cal-back")) window.trioBack?.(); });
+  root.addEventListener("click", (e) => { if (e.target.closest("#cal-back")) { if (st.mode === "day") ctx.go(monthHref(parseYmd(st.sel))); else window.trioBack?.(); } });
   const body = $("#cal-body", root);
 
   function drawHead() {
     const selY = parseYmd(st.sel).getFullYear();
     root.querySelectorAll("[data-mode]").forEach((a) => {
       const on = a.dataset.mode === st.mode;
-      a.href = a.dataset.mode === "month" ? `#/calendar/${st.mode === "year" && selY !== st.year ? `${st.year}-01-01` : st.sel}` : `#/calendar/year/${st.tab}/${st.mode === "year" ? st.year : month.getFullYear()}`;
-      if (on) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+      a.href = a.dataset.mode === "month" ? (st.mode === "year" ? monthHref(new Date(st.year, selY === st.year ? parseYmd(st.sel).getMonth() : 0, 1)) : monthHref(month)) : `#/calendar/year/${st.tab}/${st.mode === "year" ? st.year : month.getFullYear()}`;
+      if (on || (st.mode === "day" && a.dataset.mode === "month")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
     });
     const pg = $("#cal-pager", root);
+    if (st.mode === "day") { pg.innerHTML = ""; $("#cal-h1", root).textContent = longDate(parseYmd(st.sel)); $("#cal-sub", root).textContent = ""; return; }
     if (st.mode === "month") {
       pg.innerHTML = `<button class="icon-btn" type="button" data-month="-1" aria-label="지난달">${icon.left()}</button>
         <button class="btn ghost sm" type="button" data-month="0">오늘</button>
@@ -74,8 +79,12 @@ export function mount(root, ctx, r) {
   function drawBody() {
     stopDay?.(); stopDay = null; stopYear?.(); stopYear = null;
     if (st.mode === "year") { stopYear = mountYear(); return; }
+    if (st.mode === "day") { // 그날 전체 화면 (달력은 ‹ 로)
+      body.innerHTML = `<article class="cal-page cal-full" id="cal-day" aria-label="그날 페이지"></article>`;
+      openDay(); return;
+    }
     body.innerHTML = `
-      <div class="cal-layout">
+      <div class="cal-layout cal-only">
         <section class="cal-month" aria-label="한 달 달력">
           <div class="cal-dows" aria-hidden="true">${DOW.map((d, i) => `<span class="${i === 5 ? "sat" : i === 6 ? "sun" : ""}">${d}</span>`).join("")}</div>
           <div class="cal-grid" id="cal-grid" role="grid"></div>
@@ -86,10 +95,8 @@ export function mount(root, ctx, r) {
             <span><i class="lg-bar"></i>공부 시간 (집중 + 영어, 3시간이면 꽉)</span>
           </div>
         </section>
-        <article class="cal-page" id="cal-day" aria-label="그날 페이지"></article>
       </div>`;
     loadMonth();
-    openDay();
   }
 
   // ---------- 월: 한 달 칸 ----------
@@ -141,7 +148,7 @@ export function mount(root, ctx, r) {
     stopDay?.();
     const el = $("#cal-day", root);
     if (!el) return;
-    stopDay = mountDay(el, ctx, st.sel, { onChange: () => reloadMonth() });
+    stopDay = mountDay(el, ctx, st.sel, { onChange: () => {} });
   }
 
   // ---------- 연: 한 해 잔디 (일기 | 기록) ----------
@@ -230,7 +237,7 @@ export function mount(root, ctx, r) {
     const b = e.target.closest("[data-month]");
     if (!b) return;
     const n = +b.dataset.month;
-    if (n === 0) { if (st.sel !== tk) ctx.go("#/calendar/" + tk); else { month = monthStart(today()); loadMonth(); } return; }
+    if (n === 0) { month = monthStart(today()); loadMonth(); drawHead(); return; }
     month = new Date(month.getFullYear(), month.getMonth() + n, 1);
     loadMonth();
     drawHead();
@@ -247,20 +254,12 @@ export function mount(root, ctx, r) {
   inst = {
     update(nr) {
       const next = stateOf(nr, tk, st);
-      if (next.mode !== st.mode || (next.mode === "year" && (next.year !== st.year || next.tab !== st.tab))) {
+      if (next.mode !== st.mode || next.sel !== st.sel || (next.mode === "year" && (next.year !== st.year || next.tab !== st.tab)) || (next.mode === "month" && next.month !== st.month)) {
         st = next;
-        if (st.mode === "month") month = monthStart(parseYmd(st.sel));
+        month = monthStart(parseYmd(st.month || st.sel));
         drawHead(); drawBody();
-        return;
+        root.querySelector(".main, #main")?.scrollTo?.(0, 0); window.scrollTo(0, 0);
       }
-      if (next.mode === "year" || next.sel === st.sel) return;
-      st = next;
-      const m = monthStart(parseYmd(st.sel));
-      if (+m !== +month) { month = m; loadMonth(); } else drawMonth();
-      drawHead();
-      openDay();
-      if (matchMedia("(max-width: 1100px)").matches) $("#cal-day", root)?.scrollIntoView({ behavior: "smooth", block: "start" });
-      else root.querySelector(`.cal-cell[href="#/calendar/${st.sel}"]`)?.focus({ preventScroll: true });
     },
   };
 

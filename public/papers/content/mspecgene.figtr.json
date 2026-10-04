@@ -1,0 +1,105 @@
+{
+  "f1.jpg": {
+    "title": "그림 1: 과제별 맞춤 모델 vs 범용 RGBT 다중분광 기반 모델",
+    "caption": "(a) 사람이 직접 맞춰 만든 모델: 연구마다 따로따로 하는 방식으로, 과제에 맞춘 표현을 배워요. (b) 범용 RGBT 다중분광 기반 모델은 자기지도 학습으로 센서 종류에 흔들리지 않는 표현을 배우는 것을 목표로 해요. RGB와 열화상 특징의 t-SNE 시각화를 보면 M-SpecGene이 두 센서를 더 잘 맞춰 정렬한다는 것을 알 수 있어요.",
+    "labels": [
+      { "en": "From Scratch / ImageNet", "ko": "처음부터 / ImageNet 사전학습" },
+      { "en": "Foundation Model", "ko": "기반 모델" },
+      { "en": "Multi-modality Fusion", "ko": "다중 센서 융합" },
+      { "en": "pretrained", "ko": "사전학습됨" },
+      { "en": "fine-tuned", "ko": "미세조정됨" },
+      { "en": "Thermal", "ko": "열화상" },
+      { "en": "Handcrafted Module", "ko": "사람이 설계한 모듈" },
+      { "en": "Chanel Attention", "ko": "채널 어텐션" },
+      { "en": "Spatial Attention", "ko": "공간 어텐션" },
+      { "en": "Transformer", "ko": "트랜스포머" },
+      { "en": "Graph Network", "ko": "그래프 신경망" },
+      { "en": "HEAD", "ko": "헤드(출력부)" },
+      { "en": "Det/Seg", "ko": "검출/분할" },
+      { "en": "Downstream Tasks", "ko": "다운스트림 과제" },
+      { "en": "Train From Scratch", "ko": "처음부터 학습" },
+      { "en": "ImageNet Pretrained", "ko": "ImageNet 사전학습" },
+      { "en": "RGBT550K datasets", "ko": "RGBT550K 데이터셋" },
+      { "en": "Self-Supervised Representation", "ko": "자기지도 표현" },
+      { "en": "Previous", "ko": "기존 최고 성능" },
+      { "en": "Multispectral Saliency Object Detection", "ko": "다중분광 두드러진 물체 검출" },
+      { "en": "Multispectral Object Detection", "ko": "다중분광 물체 검출" },
+      { "en": "Cross-modality Feature Matching", "ko": "센서 간 특징 매칭" },
+      { "en": "Multispectral Semantic Segmentation", "ko": "다중분광 의미 분할" }
+    ],
+    "terms": [
+      { "en": "foundation model", "ko": "기반 모델", "easy": "아주 많은 데이터로 미리 배워 두고 여러 과제에 두루 쓰는 큰 모델" },
+      { "en": "self-supervised learning", "ko": "자기지도 학습", "easy": "사람이 정답을 달지 않아도 데이터 스스로 문제를 만들어 배우는 방법" },
+      { "en": "modality-invariant", "ko": "센서 불변", "easy": "컬러든 열화상이든 같은 물체면 비슷하게 표현되는 성질" },
+      { "en": "t-SNE", "ko": "t-SNE", "easy": "복잡한 고차원 데이터를 2차원 점 그림으로 펼쳐 보여 주는 방법" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 3: M-SpecGene의 자기지도 사전학습과 미세조정",
+    "caption": "(a) M-SpecGene의 자기지도 사전학습. (b) 다운스트림 과제에 맞춘 M-SpecGene의 미세조정.",
+    "labels": [
+      { "en": "GMM-CMSS Masking", "ko": "GMM-CMSS 마스킹" },
+      { "en": "Thermal", "ko": "열화상" },
+      { "en": "Encoder", "ko": "인코더" },
+      { "en": "Shared-Weight", "ko": "가중치 공유" },
+      { "en": "Cross Attention", "ko": "교차 어텐션" },
+      { "en": "Target", "ko": "목표(복원 정답)" },
+      { "en": "RGB Decoder", "ko": "RGB 디코더" },
+      { "en": "Thermal Decoder", "ko": "열화상 디코더" },
+      { "en": "(a) Step1: cross-modality self-supervised learning", "ko": "(a) 1단계: 센서 간 자기지도 학습" },
+      { "en": "Patchify", "ko": "패치로 자르기" },
+      { "en": "Pretrianed M-SpecGene", "ko": "사전학습된 M-SpecGene" },
+      { "en": "Task Head", "ko": "과제별 헤드" },
+      { "en": "Reshape", "ko": "모양 바꾸기" },
+      { "en": "(b) Step2: fine-tuning on downstream tasks", "ko": "(b) 2단계: 다운스트림 과제 미세조정" }
+    ],
+    "terms": [
+      { "en": "masking", "ko": "마스킹", "easy": "이미지 조각 일부를 가리고 모델이 그 부분을 맞히게 하는 훈련법" },
+      { "en": "fine-tuning", "ko": "미세조정", "easy": "미리 배운 모델을 특정 과제에 맞게 조금 더 학습시키는 것" },
+      { "en": "patch", "ko": "패치", "easy": "이미지를 바둑판처럼 잘라 낸 작은 조각" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 2: RGBT550K 데이터셋의 구성과 정보 분포",
+    "caption": "RGBT550K는 다양한 출처로 이루어져 있고, ImageNet과 비교하면 정보가 고르지 않게 분포해 있어요.",
+    "labels": [
+      { "en": "scale", "ko": "크기" },
+      { "en": "spatial", "ko": "공간" },
+      { "en": "modality", "ko": "센서 종류" },
+      { "en": "CMSS", "ko": "CMSS(센서 간 의미 유사도)" },
+      { "en": "fusion", "ko": "융합" },
+      { "en": "detection", "ko": "검출" },
+      { "en": "other", "ko": "기타" },
+      { "en": "count", "ko": "개수 세기" },
+      { "en": "tracking", "ko": "추적" },
+      { "en": "segmentation", "ko": "분할" }
+    ],
+    "terms": [
+      { "en": "CMSS", "ko": "센서 간 의미 유사도", "easy": "같은 위치의 RGB 조각과 열화상 조각이 얼마나 닮았는지 나타낸 점수" },
+      { "en": "imbalanced distribution", "ko": "불균형 분포", "easy": "정보가 어떤 곳엔 많고 어떤 곳엔 거의 없게 치우쳐 있는 상태" }
+    ]
+  },
+  "f4.jpg": {
+    "title": "그림 4: GMM-CMSS 점진적 마스킹 전략",
+    "caption": "샘플링 함수 S(x)가 μ̂ = 0에서 μ̂ = 1로 옮겨 가면(초록 상자), 가려지지 않는 패치가 정보 밀도가 높은 곳에서 낮은 곳으로 바뀌어 가요(파란 상자).",
+    "labels": [
+      { "en": "RGB patch embedding", "ko": "RGB 패치 임베딩" },
+      { "en": "Thermal", "ko": "열화상" },
+      { "en": "Thermal patch embedding", "ko": "열화상 패치 임베딩" },
+      { "en": "Step1", "ko": "1단계" },
+      { "en": "E step", "ko": "E 단계(기댓값 계산)" },
+      { "en": "M step", "ko": "M 단계(값 갱신)" },
+      { "en": "GMM-CMSS Progressive Masking Strategy", "ko": "GMM-CMSS 점진적 마스킹 전략" },
+      { "en": "Overall Distribution", "ko": "전체 분포" },
+      { "en": "Step2: fit p(m)", "ko": "2단계: p(m) 맞추기" },
+      { "en": "Step3: masking", "ko": "3단계: 마스킹" },
+      { "en": "iter", "ko": "반복 회차" }
+    ],
+    "terms": [
+      { "en": "GMM (Gaussian Mixture Model)", "ko": "가우시안 혼합 모델", "easy": "여러 개의 종 모양 분포를 겹쳐 데이터 모양을 설명하는 방법" },
+      { "en": "EM algorithm", "ko": "EM 알고리즘", "easy": "추측(E)과 고치기(M)를 번갈아 반복하며 분포를 맞추는 방법" },
+      { "en": "sampling function", "ko": "샘플링 함수", "easy": "어떤 조각을 고를지 확률을 정해 주는 함수" },
+      { "en": "information density", "ko": "정보 밀도", "easy": "한 조각 안에 쓸모 있는 정보가 얼마나 빽빽한지" }
+    ]
+  }
+}

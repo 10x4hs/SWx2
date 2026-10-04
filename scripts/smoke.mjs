@@ -64,6 +64,17 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
 { const ppid = r.data.plan.id;
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "max" }); ok(r.status === 200 && r.data.plan.priority === "max", "plan priority: update to max");
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "urgent" }); ok(r.status === 400, "plan priority: unknown value → 400");
+  // 쉽게 읽기: 다 읽으면 1일 뒤 복습 · 절반 이상 맞히면 다음 간격 · 못 맞히면 내일 다시
+  r = await call("a", "GET", "/papers/easy"); ok(r.status === 200 && Array.isArray(r.data.items) && r.data.items.length === 0, "easy: empty state");
+  r = await call("a", "PUT", "/papers/easy/read", { paper: "cmx", recall: 3, total: 5 });
+  { const it = r.data.items?.find((x) => x.paper === "cmx"); ok(r.status === 200 && it?.stage === 1 && it.recall === 3 && it.due_day > r.data.today, "easy: read → stage 1, due tomorrow"); }
+  r = await call("a", "PUT", "/papers/easy/read", { paper: "nope" }); ok(r.status === 400, "easy: unknown paper → 400");
+  r = await call("a", "PUT", "/papers/easy/review", { results: [{ paper: "cmx", correct: 2, total: 2 }] });
+  { const it = r.data.items?.find((x) => x.paper === "cmx"); ok(r.status === 200 && it?.stage === 2 && it.reviews === 1, "easy: review pass → stage 2"); }
+  r = await call("a", "PUT", "/papers/easy/review", { results: [{ paper: "cmx", correct: 0, total: 2 }] });
+  { const it = r.data.items?.find((x) => x.paper === "cmx"); ok(it?.stage === 2 && it.reviews === 2, "easy: review fail keeps stage"); }
+  r = await call("b", "GET", "/papers/easy"); ok(r.status === 200 && !r.data.items.some((x) => x.paper === "cmx"), "easy: private per user");
+  r = await call("a", "PUT", "/papers/easy/review", { results: "x" }); ok(r.status === 400, "easy: bad results → 400");
   // 1~5순위 (1 = 가장 급함) 로도 받아요 — 저장은 예전 값 그대로
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "1" }); ok(r.status === 200 && r.data.plan.priority === "max", "plan priority: '1' → max");
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: 5 }); ok(r.status === 200 && r.data.plan.priority === "low", "plan priority: 5 → low");

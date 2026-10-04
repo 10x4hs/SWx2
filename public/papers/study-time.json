@@ -1,0 +1,230 @@
+{
+ "method": "글자 수를 세서 이해하며 읽는 속도(쉽게 읽기 300자/분 · 공부 페이지 250자/분 · 자세히 읽기 200자/분)로 나누고, 그림 45초 · 장면 한 단계 15초 · 퀴즈 45초 · 책 덮고 말하기 4분 · 3분 설명 쓰기 8분을 더했어요. 근거: 한국어 성인 묵독 약 202어절/분(쉬운 문장), Brysbaert 2019 메타분석(비소설 238 wpm) — 공부하며 읽기는 이보다 느려요.",
+ "measured_at": "2026-10-03",
+ "papers": {
+  "yolov10": {
+   "easy": 34,
+   "page": 22,
+   "deep": 119,
+   "total": 175,
+   "measured": {
+    "easy_chars": 6114,
+    "page_chars": 1999,
+    "deep_chars": 23705,
+    "figures": 3,
+    "scene_steps": 13,
+    "quizzes": 3
+   }
+  },
+  "rtdetrv4": {
+   "easy": 33,
+   "page": 23,
+   "deep": 104,
+   "total": 160,
+   "measured": {
+    "easy_chars": 6063,
+    "page_chars": 2156,
+    "deep_chars": 20797,
+    "figures": 4,
+    "scene_steps": 10,
+    "quizzes": 2
+   }
+  },
+  "dino": {
+   "easy": 35,
+   "page": 24,
+   "deep": 103,
+   "total": 162,
+   "measured": {
+    "easy_chars": 6222,
+    "page_chars": 2369,
+    "deep_chars": 20672,
+    "figures": 4,
+    "scene_steps": 9,
+    "quizzes": 3
+   }
+  },
+  "dinov3": {
+   "easy": 31,
+   "page": 25,
+   "deep": 157,
+   "total": 213,
+   "measured": {
+    "easy_chars": 5325,
+    "page_chars": 2473,
+    "deep_chars": 31446,
+    "figures": 4,
+    "scene_steps": 8,
+    "quizzes": 2
+   }
+  },
+  "sam": {
+   "easy": 31,
+   "page": 24,
+   "deep": 121,
+   "total": 176,
+   "measured": {
+    "easy_chars": 5410,
+    "page_chars": 2231,
+    "deep_chars": 24176,
+    "figures": 4,
+    "scene_steps": 9,
+    "quizzes": 2
+   }
+  },
+  "sam3": {
+   "easy": 36,
+   "page": 23,
+   "deep": 254,
+   "total": 313,
+   "measured": {
+    "easy_chars": 6305,
+    "page_chars": 1993,
+    "deep_chars": 50856,
+    "figures": 4,
+    "scene_steps": 13,
+    "quizzes": 2
+   }
+  },
+  "bytetrack": {
+   "easy": 32,
+   "page": 24,
+   "deep": 123,
+   "total": 179,
+   "measured": {
+    "easy_chars": 5743,
+    "page_chars": 2285,
+    "deep_chars": 24599,
+    "figures": 3,
+    "scene_steps": 10,
+    "quizzes": 2
+   }
+  },
+  "fdta": {
+   "easy": 35,
+   "page": 25,
+   "deep": 114,
+   "total": 174,
+   "measured": {
+    "easy_chars": 6249,
+    "page_chars": 2476,
+    "deep_chars": 22706,
+    "figures": 3,
+    "scene_steps": 12,
+    "quizzes": 3
+   }
+  },
+  "videomae": {
+   "easy": 36,
+   "page": 26,
+   "deep": 119,
+   "total": 181,
+   "measured": {
+    "easy_chars": 6710,
+    "page_chars": 2894,
+    "deep_chars": 23840,
+    "figures": 4,
+    "scene_steps": 10,
+    "quizzes": 2
+   }
+  },
+  "vjepa21": {
+   "easy": 33,
+   "page": 26,
+   "deep": 161,
+   "total": 220,
+   "measured": {
+    "easy_chars": 5840,
+    "page_chars": 2881,
+    "deep_chars": 32149,
+    "figures": 3,
+    "scene_steps": 10,
+    "quizzes": 2
+   }
+  },
+  "cmx": {
+   "easy": 35,
+   "page": 22,
+   "deep": 110,
+   "total": 167,
+   "measured": {
+    "easy_chars": 6075,
+    "page_chars": 2046,
+    "deep_chars": 21905,
+    "figures": 3,
+    "scene_steps": 12,
+    "quizzes": 3
+   }
+  },
+  "mspecgene": {
+   "easy": 34,
+   "page": 24,
+   "deep": 106,
+   "total": 164,
+   "measured": {
+    "easy_chars": 6091,
+    "page_chars": 2294,
+    "deep_chars": 21240,
+    "figures": 4,
+    "scene_steps": 9,
+    "quizzes": 2
+   }
+  },
+  "adaptformer": {
+   "easy": 30,
+   "page": 24,
+   "deep": 80,
+   "total": 134,
+   "measured": {
+    "easy_chars": 5300,
+    "page_chars": 2279,
+    "deep_chars": 15937,
+    "figures": 3,
+    "scene_steps": 9,
+    "quizzes": 2
+   }
+  },
+  "cradiov4": {
+   "easy": 31,
+   "page": 23,
+   "deep": 77,
+   "total": 131,
+   "measured": {
+    "easy_chars": 5304,
+    "page_chars": 2092,
+    "deep_chars": 15363,
+    "figures": 4,
+    "scene_steps": 9,
+    "quizzes": 2
+   }
+  },
+  "intquant": {
+   "easy": 29,
+   "page": 23,
+   "deep": 94,
+   "total": 146,
+   "measured": {
+    "easy_chars": 4946,
+    "page_chars": 2341,
+    "deep_chars": 18747,
+    "figures": 3,
+    "scene_steps": 8,
+    "quizzes": 2
+   }
+  },
+  "iptqvit": {
+   "easy": 31,
+   "page": 24,
+   "deep": 101,
+   "total": 156,
+   "measured": {
+    "easy_chars": 5089,
+    "page_chars": 2268,
+    "deep_chars": 20276,
+    "figures": 4,
+    "scene_steps": 9,
+    "quizzes": 2
+   }
+  }
+ }
+}

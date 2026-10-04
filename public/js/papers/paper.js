@@ -6,6 +6,8 @@ import { icon } from "../icons.js";
 import { renderMarkdown } from "../md.js";
 import { chatMarkup, mountChat } from "./chat.js";
 import { loadTerms, annotate, mountTermCard } from "./terms.js";
+import { fillFigtr } from "./figtr.js";
+import { loadStudyTime, fmtMin } from "./studytime.js";
 import { loadIndex, loadContent, loadDeep, loadDiagram, onProgress, refreshProgress, setCheck, sendQuiz, getProgress, stageOf, stageVar, paperMeta, dayOfPaper, stepsDone, rich, paras, STEP_KEYS } from "./data.js";
 
 const STEP_LABEL = { read: "읽기", quiz: "퀴즈", explain: "3분 설명" };
@@ -57,13 +59,17 @@ export function mountPaper(root, ctx, id) {
 
   function glance() {
     return sec("glance", "한눈에", `
+      <div class="pp-time" id="pp-time" hidden></div>
+      <a class="pp-easy" href="#/papers/${esc(id)}/easy" data-easy>
+        <span class="pp-easy-k">처음이라면 여기부터</span><b>쉽게 읽기 <small>중3 ~ 고1 눈높이 · <span data-tm="easy">약 30분</span></small></b>
+        <span class="pp-easy-d">어려운 말은 그 자리에서 풀고, 움직이는 그림으로 원리를 보여 줘요.</span><span class="pp-easy-go" aria-hidden="true">→</span></a>
       <p class="pp-lead">${rich(c.one_line)}</p>
       <div class="pp-callout analogy"><span class="pp-callout-k">쉽게 말하면</span>${paras(String(c.analogy || "").replace(/^\s*쉽게 말하면\s*[—–:,-]?\s*/, ""))}</div>
       <h3 class="pp-h3">무엇이 문제였나</h3>${paras(c.problem)}`);
   }
   function figs() {
     const f = (c.figures || []).map((x, i) => `<figure class="pp-fig"><button type="button" class="pp-fig-btn" data-zoom="${i}" aria-label="크게 보기"><img loading="lazy" src="/papers/fig/${id}/${esc(x.src)}" alt="${esc(x.caption)}"></button>
-      <figcaption>${rich(x.caption)}${x.page ? ` <span class="faint">· 원문 ${x.page}쪽</span>` : ""}</figcaption></figure>`).join("");
+      <figcaption>${rich(x.caption)}${x.page ? ` <span class="faint">· 원문 ${x.page}쪽</span>` : ""}<div class="pp-tr" data-tr="${esc(x.src)}" hidden></div></figcaption></figure>`).join("");
     return sec("figs", "그림으로 보기", `
       ${c.diagram ? `<figure class="pp-fig pp-dg-wrap"><div class="pp-dg-box" id="pp-dg"><p class="faint">그림 그리는 중…</p></div><figcaption><span class="pp-tag">우리말 그림</span> ${rich(c.diagram.caption)}</figcaption></figure>` : ""}
       <div class="pp-figs">${f}</div>`);
@@ -90,7 +96,7 @@ export function mountPaper(root, ctx, id) {
     const secs = d.sections || [];
     const li = (arr, cls = "") => (arr && arr.length ? `<ul class="${cls}">${arr.map((x) => `<li>${renderMarkdown(String(x))}</li>`).join("")}</ul>` : "");
     box.innerHTML = `
-      <div class="pp-deep-top"><span class="chip">읽는 데 ${esc(d.reading_minutes || 20)}분</span><span class="faint">원문 절 순서 그대로 · 어떻게 작동하고 왜 그렇게 만들었는지</span>
+      <div class="pp-deep-top"><span class="chip" data-tm="deep">읽는 데 ${esc(d.reading_minutes || 20)}분</span><span class="faint">원문 절 순서 그대로 · 어떻게 작동하고 왜 그렇게 만들었는지</span>
         <span class="grow"></span><button type="button" class="btn ghost sm" id="pp-deep-all">모두 펼치기</button></div>
       <nav class="pp-deep-nav">${secs.map((x, i) => `<a href="#pp-deep-${esc(x.id)}" data-jump="deep-${esc(x.id)}"><span class="num">${i + 1}</span>${esc(x.title.replace(/^\d+(\.\d+)*\.?\s*/, ""))}</a>`).join("")}</nav>
       ${secs.map((x, i) => `<details class="pp-deep-sec" id="pp-deep-${esc(x.id)}" data-sec="deep-${esc(x.id)}" ${i === 0 ? "open" : ""}>
@@ -232,9 +238,17 @@ export function mountPaper(root, ctx, id) {
       </div>
       <button type="button" class="pp-fab" id="pp-fab" data-jump="tutor" aria-label="AI 튜터로">${icon.spark(18)}</button>`;
     bindHead(); bindBody(); paintStatus();
+    fillFigtr(view, id); // 원문 그림 속 영어 → 한국어
+    // 공부 예상 시간 (분량을 재서 계산) — 쉽게 읽기 · 이 페이지 · 자세히 읽기
+    const paintTime = () => loadStudyTime().then((tm) => {
+      const t = tm?.papers?.[id]; if (!t || !alive) return;
+      $$("[data-tm]", view).forEach((el) => { const k = el.dataset.tm; el.textContent = k === "deep" ? `읽는 데 약 ${fmtMin(t.deep)}` : `약 ${fmtMin(t[k])}`; el.title = tm.method; });
+      const box = $("#pp-time", view); if (box) { box.hidden = false; box.title = tm.method; box.innerHTML = `<b>공부 예상 ${fmtMin(t.total)}</b><span>쉽게 읽기 ${fmtMin(t.easy)}</span><span>이 페이지(퀴즈 · 3분 설명 포함) ${fmtMin(t.page)}</span><span>자세히 읽기 ${fmtMin(t.deep)}</span>`; }
+    });
+    paintTime();
     stopCard?.(); stopCard = mountTermCard(view, () => dict, askAbout);
     applyTerms();
-    loadDeep(id).then((d) => { if (!alive) return; paintDeep(d); applyTerms($("#pp-deep", view)); });
+    loadDeep(id).then((d) => { if (!alive) return; paintDeep(d); applyTerms($("#pp-deep", view)); paintTime(); });
     if (c.diagram) loadDiagram(id, c.diagram.src).then((svg) => { const box = $("#pp-dg", view); if (box) box.innerHTML = svg || `<p class="faint">그림을 못 불러왔어요.</p>`; });
     spy();
   }

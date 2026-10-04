@@ -1,0 +1,101 @@
+{
+  "f1.jpg": {
+    "title": "그림 1: 시각 프롬프트 분할과 개념 프롬프트 분할",
+    "caption": "SAM 3는 클릭으로 하는 프롬프트 기반 시각 분할에서 SAM 2보다 나아졌고(왼쪽), 새로운 프롬프트 기반 개념 분할 능력을 도입해요(오른쪽). 사용자는 짧은 명사구, 이미지 예시(긍정 또는 부정), 혹은 둘을 함께 써서 지정한 시각 개념의 모든 인스턴스를 분할할 수 있어요.",
+    "labels": [
+      { "en": "PROMPTABLE VISUAL SEGMENTATION", "ko": "프롬프트 기반 시각 분할" },
+      { "en": "PROMPTABLE CONCEPT SEGMENTATION", "ko": "프롬프트 기반 개념 분할" },
+      { "en": "IMAGE", "ko": "이미지" },
+      { "en": "a striped cat", "ko": "줄무늬 고양이" },
+      { "en": "a round cell", "ko": "둥근 세포" },
+      { "en": "small window", "ko": "작은 창문" },
+      { "en": "VIDEO", "ko": "비디오" },
+      { "en": "a kangaroo", "ko": "캥거루" },
+      { "en": "hard hat", "ko": "안전모" },
+      { "en": "Prompts: positive or negative points", "ko": "프롬프트: 긍정 또는 부정 점" },
+      { "en": "Prompts: noun phrase and/or positive or negative image exemplar", "ko": "프롬프트: 명사구 그리고/또는 긍정·부정 이미지 예시" }
+    ],
+    "terms": [
+      { "en": "concept segmentation", "ko": "개념 분할", "easy": "'고양이'처럼 말한 종류에 해당하는 것을 전부 찾아 칠하기" },
+      { "en": "noun phrase", "ko": "명사구", "easy": "'줄무늬 고양이'처럼 짧은 이름 표현" },
+      { "en": "exemplar", "ko": "예시", "easy": "'이런 거' 하고 상자로 보여 주는 본보기" },
+      { "en": "instance", "ko": "인스턴스", "easy": "같은 종류 안의 하나하나의 개체" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 4: SAM 3 구조 개요",
+    "caption": "SAM 3 구조 개요예요. 더 자세한 그림은 그림 10을 보세요.",
+    "labels": [
+      { "en": "\"a penguin\"", "ko": "\"펭귄\"" },
+      { "en": "Text Encoder", "ko": "텍스트 인코더" },
+      { "en": "Detector", "ko": "검출기" },
+      { "en": "masks detected in frame t", "ko": "프레임 t에서 검출된 마스크" },
+      { "en": "merge existing and newly detected masks", "ko": "기존 마스크와 새로 검출된 마스크 합치기" },
+      { "en": "output for frame t", "ko": "프레임 t의 출력" },
+      { "en": "exemplar", "ko": "예시" },
+      { "en": "Image Encoder", "ko": "이미지 인코더" },
+      { "en": "Tracker", "ko": "추적기" },
+      { "en": "frame t", "ko": "프레임 t" },
+      { "en": "masks propagated from frame t-1", "ko": "프레임 t-1에서 이어받은 마스크" },
+      { "en": "Memory Bank", "ko": "메모리 뱅크" },
+      { "en": "mask, point or box", "ko": "마스크, 점 또는 상자" },
+      { "en": "from PE", "ko": "PE(Perception Encoder)에서 가져옴" },
+      { "en": "from SAM 2", "ko": "SAM 2에서 가져옴" },
+      { "en": "new in SAM 3", "ko": "SAM 3에서 새로 추가" }
+    ],
+    "terms": [
+      { "en": "detector", "ko": "검출기", "easy": "한 장면에서 물체를 새로 찾아내는 부분" },
+      { "en": "tracker", "ko": "추적기", "easy": "이미 찾은 물체를 다음 프레임에서 계속 따라가는 부분" },
+      { "en": "memory bank", "ko": "메모리 뱅크", "easy": "지난 프레임 정보를 저장해 두는 기억 창고" },
+      { "en": "propagate", "ko": "전파", "easy": "앞 프레임 결과를 다음 프레임으로 넘겨주기" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 5: 최종 SAM 3 데이터 엔진 개요",
+    "caption": "최종 SAM 3 데이터 엔진의 개요예요. 모은 데이터의 자세한 내용은 §E.1을 보세요.",
+    "labels": [
+      { "en": "Media Pool", "ko": "미디어 풀" },
+      { "en": "Ontology", "ko": "온톨로지(개념 체계)" },
+      { "en": "Mine data", "ko": "데이터 발굴" },
+      { "en": "Propose NPs", "ko": "명사구(NP) 제안" },
+      { "en": "Propose mask", "ko": "마스크 제안" },
+      { "en": "flower", "ko": "꽃" },
+      { "en": "candidates", "ko": "후보" },
+      { "en": "final annotations", "ko": "최종 주석" },
+      { "en": "incomplete masks", "ko": "불완전한 마스크" },
+      { "en": "Correct", "ko": "수정" },
+      { "en": "fail", "ko": "불합격" },
+      { "en": "AI verifiers", "ko": "AI 검증자" },
+      { "en": "Human verifiers", "ko": "사람 검증자" },
+      { "en": "pass", "ko": "합격" },
+      { "en": "data", "ko": "데이터" },
+      { "en": "AI model", "ko": "AI 모델" },
+      { "en": "human", "ko": "사람" },
+      { "en": "label", "ko": "라벨" },
+      { "en": "train", "ko": "학습" }
+    ],
+    "terms": [
+      { "en": "ontology", "ko": "온톨로지", "easy": "개념들을 위아래 관계로 정리한 큰 지도" },
+      { "en": "verifier", "ko": "검증자", "easy": "마스크가 맞는지 확인해 합격·불합격을 정하는 쪽" },
+      { "en": "data mining", "ko": "데이터 발굴", "easy": "쓸 만한 데이터를 많은 자료 속에서 골라내기" }
+    ]
+  },
+  "f4.jpg": {
+    "title": "그림 3: PCS 과제의 초기 프롬프트와 정제 프롬프트",
+    "caption": "PCS(프롬프트 기반 개념 분할) 과제에서 지원하는 초기 프롬프트와, 선택적으로 쓰는 대화형 정제 프롬프트를 보여 줘요.",
+    "labels": [
+      { "en": "Text: \"a fish\" and/or positive exemplar (green)", "ko": "텍스트: \"물고기\" 그리고/또는 긍정 예시(초록)" },
+      { "en": "Masks (or masklets in video) for each detected instance", "ko": "검출된 각 인스턴스의 마스크(비디오에서는 마스크렛)" },
+      { "en": "1+ positive (green) or negative (red) exemplars", "ko": "1개 이상의 긍정(초록) 또는 부정(빨강) 예시" },
+      { "en": "Refined mask(lets) for each detected instance", "ko": "검출된 각 인스턴스의 정제된 마스크(렛)" },
+      { "en": "INITIAL PROMPT", "ko": "초기 프롬프트" },
+      { "en": "OUTPUT", "ko": "출력" },
+      { "en": "REFINEMENT PROMPTS", "ko": "정제 프롬프트" }
+    ],
+    "terms": [
+      { "en": "masklet", "ko": "마스크렛", "easy": "비디오에서 한 물체를 여러 프레임에 걸쳐 칠한 마스크 묶음" },
+      { "en": "refinement", "ko": "정제", "easy": "처음 결과를 보고 고쳐 더 좋게 만들기" },
+      { "en": "PCS", "ko": "프롬프트 기반 개념 분할", "easy": "말이나 예시로 지정한 종류를 모두 찾아 칠하는 과제" }
+    ]
+  }
+}

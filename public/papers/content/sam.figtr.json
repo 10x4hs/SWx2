@@ -1,0 +1,85 @@
+{
+  "f1.jpg": {
+    "title": "그림 1: 과제·모델·데이터, 세 가지 구성 요소",
+    "caption": "서로 맞물린 세 가지 구성 요소를 도입해 분할을 위한 기반 모델을 만들고자 해요. 프롬프트로 지시하는 분할 과제(task), 데이터 주석 작업을 돕고 프롬프트 엔지니어링으로 여러 과제에 제로샷 전이를 가능하게 하는 분할 모델(SAM), 그리고 10억 개가 넘는 마스크를 담은 우리 데이터셋 SA-1B를 모으기 위한 데이터 엔진이에요.",
+    "labels": [
+      { "en": "valid mask", "ko": "유효한 마스크" },
+      { "en": "model", "ko": "모델" },
+      { "en": "cat with black ears", "ko": "검은 귀를 가진 고양이" },
+      { "en": "segmentation prompt", "ko": "분할 프롬프트" },
+      { "en": "image", "ko": "이미지" },
+      { "en": "(a) Task: promptable segmentation", "ko": "(a) 과제: 프롬프트 기반 분할" },
+      { "en": "lightweight mask decoder", "ko": "가벼운 마스크 디코더" },
+      { "en": "prompt encoder", "ko": "프롬프트 인코더" },
+      { "en": "image encoder", "ko": "이미지 인코더" },
+      { "en": "prompt", "ko": "프롬프트" },
+      { "en": "(b) Model: Segment Anything Model (SAM)", "ko": "(b) 모델: 무엇이든 분할 모델 (SAM)" },
+      { "en": "annotate", "ko": "주석 달기" },
+      { "en": "data", "ko": "데이터" },
+      { "en": "train", "ko": "학습" },
+      { "en": "Segment Anything 1B (SA-1B): 1+ billion masks, 11 million images, privacy respecting, licensed images", "ko": "Segment Anything 1B (SA-1B): 마스크 10억 개 이상, 이미지 1,100만 장, 개인정보 보호, 라이선스 받은 이미지" },
+      { "en": "(c) Data: data engine (top) & dataset (bottom)", "ko": "(c) 데이터: 데이터 엔진(위)과 데이터셋(아래)" }
+    ],
+    "terms": [
+      { "en": "foundation model", "ko": "기반 모델", "easy": "아주 많은 데이터로 배워 여러 일에 두루 쓰는 큰 모델" },
+      { "en": "zero-shot transfer", "ko": "제로샷 전이", "easy": "따로 더 배우지 않고 처음 보는 일에 바로 쓰는 것" },
+      { "en": "prompt engineering", "ko": "프롬프트 엔지니어링", "easy": "원하는 답이 나오도록 지시를 잘 짜는 기술" },
+      { "en": "data engine", "ko": "데이터 엔진", "easy": "모델이 주석을 돕고, 그 데이터로 모델을 다시 키우는 순환 장치" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 4: SAM 개요",
+    "caption": "무거운 이미지 인코더가 이미지 임베딩을 만들어 내면, 다양한 입력 프롬프트로 이 임베딩을 효율적으로 질의해 (나눠 계산하면) 실시간 속도로 물체 마스크를 만들 수 있어요. 물체가 여러 개에 해당할 수 있는 애매한 프롬프트에는 SAM이 여러 개의 유효한 마스크와 각각의 신뢰도 점수를 내놓을 수 있어요.",
+    "labels": [
+      { "en": "image", "ko": "이미지" },
+      { "en": "image encoder", "ko": "이미지 인코더" },
+      { "en": "image embedding", "ko": "이미지 임베딩" },
+      { "en": "conv", "ko": "합성곱" },
+      { "en": "mask", "ko": "마스크" },
+      { "en": "mask decoder", "ko": "마스크 디코더" },
+      { "en": "prompt encoder", "ko": "프롬프트 인코더" },
+      { "en": "points", "ko": "점" },
+      { "en": "box", "ko": "상자" },
+      { "en": "text", "ko": "텍스트" },
+      { "en": "score", "ko": "점수" },
+      { "en": "valid masks", "ko": "유효한 마스크들" }
+    ],
+    "terms": [
+      { "en": "image embedding", "ko": "이미지 임베딩", "easy": "이미지를 숫자 묶음으로 요약한 것" },
+      { "en": "amortized", "ko": "분할 상환된", "easy": "무거운 계산을 한 번만 하고 여러 번 나눠 쓰는 것" },
+      { "en": "confidence score", "ko": "신뢰도 점수", "easy": "모델이 이 답을 얼마나 믿는지 나타낸 숫자" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 3: 애매한 점 하나에서 나온 세 가지 마스크",
+    "caption": "각 열은 애매한 점 프롬프트 하나(초록 동그라미)로부터 SAM이 만든 유효한 마스크 3개를 보여 줘요.",
+    "labels": [],
+    "terms": [
+      { "en": "ambiguous prompt", "ko": "애매한 프롬프트", "easy": "가리키는 대상이 여러 가지로 해석될 수 있는 지시" },
+      { "en": "mask", "ko": "마스크", "easy": "물체 부분만 칠해 표시한 그림" }
+    ]
+  },
+  "f4.jpg": {
+    "title": "그림 9: 23개 데이터셋에서 점 → 마스크 평가",
+    "caption": "(a) SAM과 가장 강한 단일 점 분할기 RITM [92]의 평균 IoU 비교예요. 애매함 때문에 마스크 하나가 정답과 맞지 않을 수 있어서, 동그라미는 SAM의 예측 3개 중 가장 알맞은 것을 고른 \"오라클\" 결과를 보여 줘요. (b) 주석자가 1(최악)부터 10(최고)까지 매긴 마스크 품질 점수를 데이터셋별로 비교해요. 모든 방법은 정답 마스크의 중심을 프롬프트로 써요. (c, d) 점 개수에 따른 mIoU예요. SAM은 점 1개일 때 기존 대화형 분할기보다 훨씬 뛰어나고, 점이 많을 때는 비슷해요. 점 1개일 때 절대 mIoU가 낮은 것은 애매함 때문이에요.",
+    "labels": [
+      { "en": "IoU delta at 1 center point", "ko": "중심점 1개일 때 IoU 차이" },
+      { "en": "(a) SAM vs. RITM [92] on 23 datasets", "ko": "(a) 23개 데이터셋에서 SAM 대 RITM [92]" },
+      { "en": "Avg. mask rating", "ko": "평균 마스크 점수" },
+      { "en": "Ground Truth", "ko": "정답" },
+      { "en": "SAM - single output", "ko": "SAM - 출력 1개" },
+      { "en": "Datasets", "ko": "데이터셋" },
+      { "en": "(b) Mask quality ratings by human annotators", "ko": "(b) 사람 주석자의 마스크 품질 평가" },
+      { "en": "SAM (oracle)", "ko": "SAM (오라클)" },
+      { "en": "mIoU (23 datasets)", "ko": "mIoU (23개 데이터셋)" },
+      { "en": "Number of points", "ko": "점 개수" },
+      { "en": "(c) Center points (default)", "ko": "(c) 중심점 (기본 설정)" },
+      { "en": "(d) Random points", "ko": "(d) 무작위 점" }
+    ],
+    "terms": [
+      { "en": "IoU", "ko": "IoU (교집합/합집합)", "easy": "예측과 정답이 겹친 넓이 ÷ 합친 넓이" },
+      { "en": "oracle", "ko": "오라클", "easy": "정답을 알고 가장 좋은 후보를 골랐다고 가정한 결과" },
+      { "en": "interactive segmenter", "ko": "대화형 분할기", "easy": "사람이 점을 찍어 주면 물체를 잘라 내는 도구" }
+    ]
+  }
+}

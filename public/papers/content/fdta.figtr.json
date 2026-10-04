@@ -1,0 +1,93 @@
+{
+  "f1.jpg": {
+    "title": "그림 3: FDTA 프레임워크 개요",
+    "caption": "FDTA 프레임워크 개요예요. DETR이 입력 프레임에서 물체 임베딩을 만들어요. 그다음 이 임베딩을 구별력을 높이는 명시적 어댑터 세 개로 다듬어요. 공간 어댑터(SA)는 깊이 학습으로 3D 기하 단서를 넣고, 시간 어댑터(TA)는 궤적 모델링으로 시간에 따른 관계를 잡고, 신원 어댑터(IA)는 대조 학습으로 개체 하나하나를 구별하게 해요. 마지막으로 ID 예측 모듈이 강화된 임베딩을 바탕으로 물체를 연결해요.",
+    "labels": [
+      { "en": "Pseudo Depth Loss", "ko": "의사 깊이 손실" },
+      { "en": "CL Loss", "ko": "대조 학습(CL) 손실" },
+      { "en": "Only for training", "ko": "학습할 때만 사용" },
+      { "en": "Push close", "ko": "가깝게 당기기" },
+      { "en": "Push away", "ko": "멀리 밀어내기" },
+      { "en": "Spatial Adapter", "ko": "공간 어댑터" },
+      { "en": "Object Embeddings", "ko": "물체 임베딩" },
+      { "en": "Identity Adapter", "ko": "신원 어댑터" },
+      { "en": "Temporal Adapter", "ko": "시간 어댑터" },
+      { "en": "Low Similarity", "ko": "낮은 유사도" },
+      { "en": "Discriminative Embeddings", "ko": "구별력 있는 임베딩" },
+      { "en": "ID Prediction", "ko": "ID 예측" },
+      { "en": "Historical Trajectory Object Embeddings", "ko": "과거 궤적의 물체 임베딩" },
+      { "en": "Encoder", "ko": "인코더" },
+      { "en": "Dual Mask", "ko": "이중 마스크" },
+      { "en": "Causal", "ko": "인과(미래 가림)" },
+      { "en": "Missing", "ko": "누락(빠진 칸 가림)" },
+      { "en": "PE", "ko": "위치 인코딩(PE)" },
+      { "en": "quality weight", "ko": "품질 가중치" },
+      { "en": "IoU-Filter", "ko": "IoU 필터" },
+      { "en": "Consistent Feature Extraction", "ko": "일관된 특징 추출" },
+      { "en": "All other frames (t≠k)", "ko": "나머지 모든 프레임 (t≠k)" },
+      { "en": "Quality-Aware CL Loss", "ko": "품질 반영 대조 학습 손실" }
+    ],
+    "terms": [
+      { "en": "adapter", "ko": "어댑터", "easy": "큰 모델에 끼워 넣어 특정 능력을 더해 주는 작은 부품" },
+      { "en": "embedding", "ko": "임베딩", "easy": "물체를 숫자 목록(벡터)으로 바꾼 것" },
+      { "en": "contrastive learning", "ko": "대조 학습", "easy": "같은 건 가깝게, 다른 건 멀게 배우는 방법" },
+      { "en": "pseudo depth", "ko": "의사 깊이", "easy": "다른 모델이 추정해 준, 정답 대신 쓰는 깊이 정보" }
+    ]
+  },
+  "f2.jpg": {
+    "title": "그림 2: 검출과 연결에 필요한 조건의 차이",
+    "caption": "검출과 연결에 필요한 조건을 보여 줘요. 공간, 시간, 신원 관점에서 서로 달라요.",
+    "labels": [
+      { "en": "Detection Requirements", "ko": "검출에 필요한 것" },
+      { "en": "Association Requirements", "ko": "연결에 필요한 것" },
+      { "en": "Instant Localization", "ko": "순간 위치 찾기" },
+      { "en": "Continuous Spatial Understanding", "ko": "연속적인 공간 이해" },
+      { "en": "Spatial Adapter", "ko": "공간 어댑터" },
+      { "en": "Occlusion has tolerable effects", "ko": "가려짐의 영향은 견딜 만함" },
+      { "en": "Depth maintains continuity", "ko": "깊이가 연속성을 유지해 줌" },
+      { "en": "Frame-Independent", "ko": "프레임마다 독립" },
+      { "en": "Temporal-Dependent", "ko": "시간에 의존" },
+      { "en": "Temporal Adapter", "ko": "시간 어댑터" },
+      { "en": "No temporal correlation", "ko": "시간 관계 없음" },
+      { "en": "Models object trajectories", "ko": "물체 궤적을 모델링" },
+      { "en": "Category-Level", "ko": "범주 수준" },
+      { "en": "Instance-Level", "ko": "개체 수준" },
+      { "en": "Identity Adapter", "ko": "신원 어댑터" },
+      { "en": "Categorize all as \"person\"", "ko": "모두 \"사람\"으로 분류" },
+      { "en": "Identify each object", "ko": "물체 하나하나를 구별" }
+    ],
+    "terms": [
+      { "en": "association", "ko": "연결(연관)", "easy": "프레임이 바뀌어도 같은 물체끼리 짝짓는 일" },
+      { "en": "occlusion", "ko": "가려짐", "easy": "물체가 다른 물체 뒤에 숨어 일부가 안 보이는 것" },
+      { "en": "instance-level", "ko": "개체 수준", "easy": "'사람'이 아니라 '이 사람, 저 사람'까지 나누는 것" }
+    ]
+  },
+  "f3.jpg": {
+    "title": "그림 1: DanceTrack에서 임베딩 유사도 분석",
+    "caption": "DanceTrack에서 임베딩 유사도를 분석했어요. 각 프레임에서 물체 쌍마다 유사도를 계산하고 모든 쌍 중 가장 높은 값 3개를 고른 뒤, 전체 프레임에 걸친 분포를 그렸어요. FDTA는 기존 방법보다 유사도가 훨씬 낮은 물체 임베딩을 만들어요.",
+    "labels": [
+      { "en": "FDTA (Ours)", "ko": "FDTA (우리 방법)" },
+      { "en": "Percentage (%)", "ko": "비율 (%)" },
+      { "en": "Leftward distributions indicate higher discrimination", "ko": "분포가 왼쪽에 있을수록 구별력이 높음" },
+      { "en": "Similarity Score", "ko": "유사도 점수" }
+    ],
+    "terms": [
+      { "en": "similarity", "ko": "유사도", "easy": "두 임베딩이 얼마나 닮았는지 나타내는 값" },
+      { "en": "discrimination", "ko": "구별력", "easy": "서로 다른 물체를 헷갈리지 않고 나누는 능력" }
+    ]
+  },
+  "f4.jpg": {
+    "title": "그림 6: 추적 결과 시각화와 물체 간 임베딩 유사도 행렬 비교",
+    "caption": "DanceTrack과 SportsMOT에서 추적 결과를 시각화하고 물체 간 임베딩 유사도 행렬을 비교했어요. 유사도 행렬에서 색이 진할수록 유사도가 높아요. 유사도 행렬의 초록 상자는 유사도가 높은 영역을 강조해요. 추적 결과에서 잘못된 ID를 표시했어요.",
+    "labels": [
+      { "en": "ID 17 → 18; ID 5 → 9", "ko": "ID 17 → 18, ID 5 → 9 (ID 바뀜)" },
+      { "en": "NO ID Error", "ko": "ID 오류 없음" },
+      { "en": "ID 173 ⇄ ID 174", "ko": "ID 173 ⇄ ID 174 (서로 뒤바뀜)" },
+      { "en": "Ours", "ko": "우리 방법" }
+    ],
+    "terms": [
+      { "en": "similarity matrix", "ko": "유사도 행렬", "easy": "모든 물체 쌍의 닮은 정도를 표처럼 칠한 그림" },
+      { "en": "ID switch", "ko": "ID 바뀜", "easy": "추적 중 한 물체의 번호가 다른 번호로 바뀌는 실수" }
+    ]
+  }
+}
