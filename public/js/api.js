@@ -70,6 +70,7 @@ export const api = {
   graph: () => request("GET", "/graph"),
   organize: (note_id, model) => request("POST", "/ai/organize", { note_id, model }),
   generate: (b) => request("POST", "/ai/generate", b),
+  aiPage: (b) => request("POST", "/ai/page", b), // { purpose, hub? } 새 페이지 · { note_id, instruction } 고쳐 쓰기
   tags: () => request("GET", "/tags"),
   search: (q) => request("GET", "/search?" + qs({ q })),
   focus: (from, to, user) => request("GET", "/logs/focus?" + qs({ from, to, user })),

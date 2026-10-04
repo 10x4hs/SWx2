@@ -295,6 +295,68 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     return json({ topic, notes: out, moc_id, model: used, steps: gsteps }, 201);
   });
 
+  // ---------- AI 페이지: 사용 목적을 적으면 Notion 풍 페이지를 만들고, 대화로 계속 고쳐요 ----------
+  // body: { purpose, hub?: true, model? } → 새 페이지 | { note_id, instruction, model? } → 그 페이지 본문을 고쳐 써요
+  const PAGE_SYSTEM = [
+    "너는 Notion 페이지를 설계하는 편집자야. 사용자가 적은 '사용 목적'에 맞는 페이지를 한국어 마크다운으로 만들어.",
+    "제목은 따로 저장되니 본문에 # 제목 줄을 쓰지 마. 본문은 한 줄 요약(> 인용)으로 시작하고, ## 섹션 3~6개, 섹션마다 짧은 문단 또는 목록. 표(| 머리 | 머리 |)는 비교·일정에만. 할 일은 - [ ] 체크박스.",
+    "실제로 쓸 수 있게 빈 칸·자리표시자(예: `____`)를 두고, 지어낸 사실을 넣지 마. 이모지는 섹션 제목 앞에 하나까지만.",
+    "다른 노트로 가는 링크는 [[제목]] 형식. 주어진 '이미 있는 노트 제목'만 링크해. 앱 화면(#/english 같은 주소)은 마크다운 링크 대신 '영어 페이지(#/english)' 처럼 글자로만 적어.",
+  ].join("\n");
+  async function studyFacts(env, user) {
+    const [en, pp] = await Promise.all([
+      env.DB.prepare("SELECT COUNT(*) AS days, COALESCE(SUM(minutes), 0) AS mins, COALESCE(SUM(newwords), 0) AS words FROM english_days WHERE user_id = ? AND minutes > 0").bind(user.id).first().catch(() => null),
+      env.DB.prepare("SELECT COUNT(*) AS n, COUNT(DISTINCT paper) AS papers FROM paper_checks WHERE user_id = ?").bind(user.id).first().catch(() => null),
+    ]);
+    return [
+      en ? `영어: 공부한 날 ${en.days}일 · 총 ${Math.round(en.mins / 60)}시간 · 새 단어 ${en.words}개 (앱의 영어 페이지 #/english)` : "",
+      pp ? `논문: 체크 ${pp.n}개 · 손댄 논문 ${pp.papers}편 / 16편 (앱의 논문 페이지 #/papers, 쉽게 읽기 #/papers/easy)` : "",
+    ].filter(Boolean).join("\n");
+  }
+  on("POST", "/ai/page", async ({ req, env, user }) => {
+    const b = await body(req);
+    const model = typeof b.model === "string" ? b.model : null;
+    const { results: mine } = await env.DB.prepare("SELECT id, title FROM notes WHERE user_id = ? ORDER BY updated_at DESC LIMIT 150").bind(user.id).all();
+    const titles = mine.map((n) => n.title);
+    if (b.note_id) { // 고쳐 쓰기
+      const n = await env.DB.prepare("SELECT id, title, body FROM notes WHERE id = ? AND user_id = ?").bind(b.note_id, user.id).first();
+      if (!n) fail(404, "페이지를 찾을 수 없어요.");
+      const instruction = String(b.instruction || "").trim().slice(0, 1000);
+      if (!instruction) fail(400, "어떻게 고칠지 적어 주세요.");
+      const prompt = [
+        `아래 페이지("${n.title}")를 사용자의 요청대로 고쳐 써. 요청과 상관없는 부분은 그대로 두고, 전체 본문을 다시 돌려줘.`,
+        `## 요청\n${instruction}`,
+        `## 현재 본문\n${stripAi(n.body).slice(0, PROMPT_BUDGET)}`,
+        titles.length ? `## 이미 있는 내 노트 제목\n${titles.join("\n")}` : "",
+        `다음 JSON으로만 답해: {"title":"제목(바꿀 필요 없으면 그대로)","body":"마크다운 전체 본문","reply":"무엇을 어떻게 바꿨는지 한두 문장"}`,
+      ].filter(Boolean).join("\n\n");
+      const { data, used } = await ask(env, PAGE_SYSTEM, prompt, model);
+      const text = String(data?.body || "").slice(0, MAX_NOTE), title = cleanTitle(data?.title) || n.title;
+      if (!text.trim()) fail(502, "AI가 본문을 돌려주지 않았어요. 다시 시도해 주세요.");
+      const keep = (n.body.match(AI_BLOCK_RE) || [""])[0];
+      const full = keep ? `${text.trim()}\n\n${keep}` : text.trim();
+      await env.DB.batch([env.DB.prepare("UPDATE notes SET title = ?, body = ?, updated_at = ? WHERE id = ?").bind(title, full, now(), n.id), ...indexStmts(env, n.id, full)]);
+      return json({ note: { id: n.id, title }, reply: String(data?.reply || "고쳤어요."), model: used });
+    }
+    const purpose = String(b.purpose || "").trim().slice(0, 1000);
+    if (!purpose) fail(400, "이 페이지를 어디에 쓸지 적어 주세요.");
+    const facts = b.hub ? await studyFacts(env, user) : "";
+    const prompt = [
+      `사용 목적: ${purpose}`,
+      b.hub ? `이 페이지는 '영어 공부'와 '논문 공부'를 한 곳에서 보는 허브야. 두 공부의 목표 · 이번 주 할 일 · 진행 현황 · 복습 · 메모 섹션을 두고, 현황 섹션에는 아래 수치를 표로 넣어. 영어 페이지(#/english) · 논문 페이지(#/papers) · 쉽게 읽기(#/papers/easy) 로 가는 길을 글자로 적어 두고, 관련 노트가 있으면 [[제목]]으로 연결해.\n## 지금 수치\n${facts}` : "",
+      titles.length ? `## 이미 있는 내 노트 제목 (관련 있으면 [[제목]])\n${titles.join("\n")}` : "",
+      `다음 JSON으로만 답해: {"title":"페이지 제목(30자 이내)","body":"마크다운 전체 본문(600~2500자)"}`,
+    ].filter(Boolean).join("\n\n");
+    const { data, used } = await ask(env, PAGE_SYSTEM, prompt, model);
+    let title = cleanTitle(data?.title) || purpose.slice(0, 30); const text = String(data?.body || "").slice(0, MAX_NOTE);
+    if (!text.trim()) fail(502, "AI가 페이지를 만들지 못했어요. 다시 시도해 주세요.");
+    const taken = new Set(titles.map((t) => t.toLowerCase())); let k = 2, base = title;
+    while (taken.has(title.toLowerCase())) title = `${base} ${k++}`;
+    const id = uid();
+    await env.DB.batch([env.DB.prepare("INSERT INTO notes (id, user_id, title, body, shared, topic, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?, ?)").bind(id, user.id, title, text.trim(), b.hub ? "공부 허브" : "페이지", now(), now()), ...indexStmts(env, id, text)]);
+    return json({ note: { id, title }, model: used }, 201);
+  });
+
   // ---------- AI 비서: "9시 반에 영어 수업 등록해 줘" 같은 말을 계획으로 바로 ----------
   // body: { text, day(보고 있는 날), today, time, model?, web?, history?:[{role,content}] } → { text, model, steps, changed }
   on("POST", "/ai/command", async ({ req, env, user }) => {

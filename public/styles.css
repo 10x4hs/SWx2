@@ -3172,3 +3172,37 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
   .cal-page .cd-head .pager { flex: 1 1 100%; order: 2; justify-content: space-between; }
   .dp-who { margin: 0; }
 }
+
+/* ---------- 캘린더: 달력만 / 그날 전체 화면 ---------- */
+.cal-layout.cal-only { grid-template-columns: minmax(0, 1fr); }
+.cal-only .cal-month { position: static; }
+.cal-only .cal-cell { min-height: 112px; }
+.cal-page.cal-full { max-width: 980px; margin: 0 auto; width: 100%; }
+@media (max-width: 720px) { .cal-only .cal-cell { min-height: 72px; } .cal-only .cal-todos li:nth-child(n+2) { display: none; } }
+
+/* ---------- 하루 링: 종류별 색 + 이름표 점 = 우선순위 ---------- */
+.ch-day-clock { --cat-eng: #2FB5C8; --cat-paper: #A26BE8; --cat-rest: #8DA58E; --cat-work: #E9A23B; --cat-health: #4CC46A; --cat-other: var(--c); }
+.ch-day-clock .ch-block.cat-eng { --cc: var(--cat-eng); } .ch-day-clock .ch-block.cat-paper { --cc: var(--cat-paper); } .ch-day-clock .ch-block.cat-rest { --cc: var(--cat-rest); }
+.ch-day-clock .ch-block.cat-work { --cc: var(--cat-work); } .ch-day-clock .ch-block.cat-health { --cc: var(--cat-health); } .ch-day-clock .ch-block.cat-other { --cc: var(--cat-other); }
+.ch .ch-day-clock .ch-block.ch-done, .ch-day-clock .ch-block.ch-done { fill: var(--cc); }
+.ch .ch-day-clock .ch-block.ch-plan, .ch-day-clock .ch-block.ch-plan { fill: color-mix(in srgb, var(--cc) 34%, transparent); }
+.ch-day-clock .ch-block { cursor: pointer; }
+.ch-day-clock .ch-block:hover { filter: brightness(1.25) saturate(1.1); }
+.ch-day-clock .ch-lbl, .ch-day-clock .ch-badge, .ch-day-clock .ch-leg { cursor: pointer; }
+.ch-day-clock .ch-lbl:hover text { fill: var(--ink); }
+.ch-day-clock .ch-lbl .ch-sw, .ch-day-clock .ch-leg .ch-sw, .ch-day-clock .ch-badge circle { fill: color-mix(in srgb, var(--cc, var(--c)) 70%, var(--rh-plan)); }
+.ch-day-clock .ch-lbl.cat-eng, .ch-day-clock .ch-leg.cat-eng, .ch-day-clock .ch-badge.cat-eng { --cc: var(--cat-eng); } .ch-day-clock .ch-lbl.cat-paper, .ch-day-clock .ch-leg.cat-paper, .ch-day-clock .ch-badge.cat-paper { --cc: var(--cat-paper); }
+.ch-day-clock .ch-lbl.cat-rest, .ch-day-clock .ch-leg.cat-rest, .ch-day-clock .ch-badge.cat-rest { --cc: var(--cat-rest); } .ch-day-clock .ch-lbl.cat-work, .ch-day-clock .ch-leg.cat-work, .ch-day-clock .ch-badge.cat-work { --cc: var(--cat-work); }
+.ch-day-clock .ch-lbl.cat-health, .ch-day-clock .ch-leg.cat-health, .ch-day-clock .ch-badge.cat-health { --cc: var(--cat-health); }
+/* 이름표 점: 우선순위가 있으면 그 색 (1순위 빨강 … 5순위) */
+.ch-day-clock .ch-sw.pr[data-p="max"] { fill: var(--p-max); } .ch-day-clock .ch-sw.pr[data-p="xhigh"] { fill: var(--p-xhigh); } .ch-day-clock .ch-sw.pr[data-p="high"] { fill: var(--p-high); }
+.ch-day-clock .ch-sw.pr[data-p="medium"] { fill: var(--p-medium); } .ch-day-clock .ch-sw.pr[data-p="low"] { fill: var(--p-low); }
+.ch-day-clock .ch-sw.pr { stroke: var(--page-bg); stroke-width: 1.5; }
+
+/* ---------- AI 페이지: 목적 적기 · 페이지 안 고치기 칸 ---------- */
+.ai-page-form { display: grid; gap: 8px; }
+.ai-page-form textarea.input { resize: vertical; min-height: 56px; font-size: 13.5px; line-height: 1.45; }
+.ai-refine { display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin: 0 0 4px; border-radius: 12px; background: color-mix(in srgb, var(--accent, #7c5cff) 8%, transparent); border: 1px solid var(--line); }
+.ai-refine .input { flex: 1; min-width: 0; min-height: 34px; font-size: 13.5px; }
+.ai-refine-ic { color: var(--ink-3); display: grid; place-items: center; width: 22px; }
+@media (max-width: 720px) { .ai-refine { flex-wrap: wrap; } .ai-refine .input { flex: 1 1 100%; } }

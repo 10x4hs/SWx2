@@ -101,7 +101,6 @@ const NAV = [
   { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리 · 그래프" },
   { key: "english", hash: "#/english", label: "영어", tip: "영어 · 6개월 프리토킹" },
   { key: "papers", hash: "#/papers", label: "논문", tip: "논문 스프린트 · 10.1–10.5 · 16편", until: "2026-10-05" },
-  { key: "ai", hash: "#/ai", label: "AI 튜터", tip: "AI 튜터 · 묻고 노트로 정리" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const NAV_SPLIT = 2;
@@ -112,7 +111,7 @@ const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 function renderShell() {
   // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점.
-  const item = (n) => `<a class="rail-btn" href="${n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
+  const item = (n) => `<a class="rail-btn" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
   app.innerHTML = `
     <div class="shell">
       <aside class="rail dock glass" aria-label="메뉴">
@@ -340,7 +339,8 @@ function parseRoute() {
   if (a === "goals") return { view: "goals", nav: "home", scope: b || "week", key: c || null }; // 이번 주 · 이번 달 · 올해 목표 (홈 링에서)
   if (a === "calendar" && b === "diary") return { view: "diary", nav: "calendar", day: c || null }; // 일기 페이지
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
-  if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null };
+  if (a === "calendar" && b === "m") return { view: "calendar", nav: "calendar", mode: "month", day: c ? `m/${c}` : null }; // #/calendar/m/2026-10 = 그 달 달력만
+  if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null }; // #/calendar/2026-10-04 = 그날 전체 화면
   if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
   if (a === "papers") return { view: "papers", nav: "papers", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]

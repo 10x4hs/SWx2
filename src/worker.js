@@ -377,8 +377,7 @@ on("GET", "/plans", async ({ env, q, user }) => {
      FROM plans WHERE user_id = ? AND (${where}) ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at`
   ).bind(who, ...periods, ...(range || [])).all();
   // focus_mins = 그 할 일에 쌓인 집중 기록 분의 합 (logs.plan_id)
-  // 서로는 차트만: 다른 사람 계획은 칸 모양(완료·시각·길이·집중 분)만 보내고 내용은 비워요
-  if (who !== user.id) return json({ plans: results.map((p) => ({ ...p, text: "" })), private: true });
+  // 친구 계획: open 한 사람 것은 내용까지 그대로 보여요 (not open 이면 위에서 이미 빈 목록)
   return json({ plans: results });
 });
 

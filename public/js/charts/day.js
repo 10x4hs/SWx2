@@ -24,9 +24,10 @@ export function dayClock(d, { wide = true } = {}) {
   // 바탕: 트랙 → 지난 시간(옅게) → 할 일 블록
   let s = sector(g, 0, 1, "ch-track");
   if (t > 0) s += sector(g, 0, t, "ch-past ch-seg", { tip: `0시부터 지금까지 · ${d.now}` });
+  // 조각 색 = 종류(영어 · 논문 · 휴식 · 사업 · 운동 · 그 밖), 끝낸 일은 진하게 · 안 한 일은 옅게. data-plan 으로 누르면 상세
   blocks.forEach((b, k) => {
     const tip = `${b.time} ${b.title} · ${b.done ? "끝냄" : "아직"}`;
-    s += sector(g, b.a0, Math.max(b.a0 + 0.004, b.a1 - 0.002), `${b.done ? "ch-done" : "ch-plan"} ch-seg ch-block`, { k, tip });
+    s += sector(g, b.a0, Math.max(b.a0 + 0.004, b.a1 - 0.002), `${b.done ? "ch-done" : "ch-plan"} ch-seg ch-block cat-${b.cat || "other"}`, { k, tip, attrs: b.id ? `data-plan="${esc(b.id)}"` : "" });
   });
 
   // 눈금: 매시간 짧게, 3시간마다 길게 + 숫자
@@ -54,8 +55,8 @@ export function dayClock(d, { wide = true } = {}) {
       for (const p of keep) {
         const [ax, ay] = polar(cx, cy, ro + 3, p.m), [ex, ey] = polar(cx, cy, ro + 20, p.m);
         const col = right ? colR : colL, lx = right ? col - 10 : col + 10;
-        labels += `<g class="ch-lbl${p.b.done ? " done" : ""}"><polyline class="ch-lead" points="${f2(ax)},${f2(ay)} ${f2(ex)},${f2(ey)} ${f2(lx)},${f2(p.y)}"/>
-          <circle class="ch-sw" cx="${f2(right ? col - 2 : col + 2)}" cy="${f2(p.y)}" r="4.5"/>
+        labels += `<g class="ch-lbl${p.b.done ? " done" : ""} cat-${p.b.cat || "other"}"${p.b.id ? ` data-plan="${esc(p.b.id)}"` : ""}><polyline class="ch-lead" points="${f2(ax)},${f2(ay)} ${f2(ex)},${f2(ey)} ${f2(lx)},${f2(p.y)}"/>
+          <circle class="ch-sw${p.b.priority ? " pr" : ""}" data-p="${esc(p.b.priority || "")}" cx="${f2(right ? col - 2 : col + 2)}" cy="${f2(p.y)}" r="4.5"/>
           <text x="${f2(right ? col + 8 : col - 8)}" y="${f2(p.y + 5)}" text-anchor="${right ? "start" : "end"}" font-size="15"><tspan class="tm">${esc(p.b.time)}</tspan> ${esc(cut(p.b.title, 13))}</text></g>`;
       }
     }
@@ -64,12 +65,12 @@ export function dayClock(d, { wide = true } = {}) {
     // 좁은 화면: 링 위에 번호, 아래에 두 줄씩 번호 설명
     blocks.forEach((b, i) => {
       const [x, y] = polar(cx, cy, ro + 20, (b.a0 + b.a1) / 2);
-      labels += `<g class="ch-badge${b.done ? " done" : ""}"><circle cx="${f2(x)}" cy="${f2(y)}" r="15"/><text x="${f2(x)}" y="${f2(y + 6.5)}" text-anchor="middle" font-size="18">${i + 1}</text></g>`;
+      labels += `<g class="ch-badge${b.done ? " done" : ""} cat-${b.cat || "other"}"${b.id ? ` data-plan="${esc(b.id)}"` : ""}><circle cx="${f2(x)}" cy="${f2(y)}" r="15"/><text x="${f2(x)}" y="${f2(y + 6.5)}" text-anchor="middle" font-size="18">${i + 1}</text></g>`;
     });
     const rows = Math.ceil(blocks.length / 2), y0 = 2 * cy + 36;
     blocks.forEach((b, i) => {
       const col = i < rows ? 0 : 1, row = i < rows ? i : i - rows, x = 22 + col * 252, y = y0 + row * 36;
-      legend += `<g class="ch-leg${b.done ? " done" : ""}"><circle class="ch-sw" cx="${x + 8}" cy="${y - 6}" r="12"/><text class="n" x="${x + 8}" y="${y}" text-anchor="middle" font-size="15">${i + 1}</text>
+      legend += `<g class="ch-leg${b.done ? " done" : ""} cat-${b.cat || "other"}"${b.id ? ` data-plan="${esc(b.id)}"` : ""}><circle class="ch-sw${b.priority ? " pr" : ""}" data-p="${esc(b.priority || "")}" cx="${x + 8}" cy="${y - 6}" r="12"/><text class="n" x="${x + 8}" y="${y}" text-anchor="middle" font-size="15">${i + 1}</text>
         <text x="${x + 28}" y="${y}" font-size="19"><tspan class="tm">${esc(b.time)}</tspan> ${esc(cut(b.title, 8))}</text></g>`;
     });
     H = y0 + rows * 36;
