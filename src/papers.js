@@ -140,6 +140,52 @@ export function registerPapers(on, { json, body, fail, now }) {
     return json({ paper, text: text || null });
   });
 
+  // ---------- 형광펜 · 메모 (본인만) ----------
+  // 스프린트가 끝나도 공부는 계속하니 날짜 제한 없이 써요. 위치는 '섹션 + 인용문 + 앞뒤 글자' 로 기억해요.
+  const MARK_COLORS = ["yellow", "green", "blue", "rose"];
+  const MAX_QUOTE = 2000, MAX_MEMO = 2000, MAX_CTX = 64;
+  const markRow = (r) => ({ id: r.id, paper: r.paper, mode: r.mode, sec: r.sec, quote: r.quote, prefix: r.prefix, suffix: r.suffix, color: r.color, memo: r.memo, created_at: r.created_at, updated_at: r.updated_at });
+  const modeOf = (v) => (v == null || v === "page" ? "page" : v === "easy" ? "easy" : fail(400, "mode 는 page · easy 중 하나예요."));
+  const colorOf = (v) => (MARK_COLORS.includes(v) ? v : fail(400, "색은 yellow · green · blue · rose 중 하나예요."));
+  const strOf = (v, max, what) => { if (v == null) return ""; if (typeof v !== "string") fail(400, `${what} 형식이 올바르지 않아요.`); if (v.length > max) fail(400, `${what}은(는) ${max}자까지예요.`); return v; };
+  const myMarks = async (env, userId, paper, mode) => {
+    const q = paper
+      ? env.DB.prepare("SELECT * FROM paper_marks WHERE user_id = ? AND paper = ? AND mode = ? ORDER BY created_at").bind(userId, paper, mode)
+      : env.DB.prepare("SELECT * FROM paper_marks WHERE user_id = ? ORDER BY created_at").bind(userId);
+    return (await q.all()).results.map(markRow);
+  };
+
+  on("GET", "/papers/marks", async ({ env, q, user }) => {
+    const paper = q.get("paper") ? paperOf(q.get("paper")) : null;
+    return json({ marks: await myMarks(env, user.id, paper, modeOf(q.get("mode"))) });
+  });
+  on("POST", "/papers/marks", async ({ req, env, user }) => {
+    const b = await body(req);
+    const paper = paperOf(b.paper), mode = modeOf(b.mode), color = colorOf(b.color || "yellow");
+    const sec = strOf(b.sec, 80, "섹션"); if (!sec) fail(400, "어느 섹션인지가 빠졌어요.");
+    const quote = strOf(b.quote, MAX_QUOTE, "인용문").trim(); if (!quote) fail(400, "칠할 글자가 없어요.");
+    const prefix = strOf(b.prefix, MAX_CTX, "앞 글자"), suffix = strOf(b.suffix, MAX_CTX, "뒤 글자"), memo = strOf(b.memo, MAX_MEMO, "메모").trim();
+    const id = crypto.randomUUID(), t = now();
+    await env.DB.prepare("INSERT INTO paper_marks (id, user_id, paper, mode, sec, quote, prefix, suffix, color, memo, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(id, user.id, paper, mode, sec, quote, prefix, suffix, color, memo, t, t).run();
+    return json({ mark: markRow({ id, paper, mode, sec, quote, prefix, suffix, color, memo, created_at: t, updated_at: t }) }, 201);
+  });
+  on("PATCH", "/papers/marks/:id", async ({ req, env, params, user }) => {
+    const b = await body(req);
+    const cur = await env.DB.prepare("SELECT * FROM paper_marks WHERE id = ? AND user_id = ?").bind(params.id, user.id).first();
+    if (!cur) fail(404, "없는 형광펜이에요.");
+    const color = b.color != null ? colorOf(b.color) : cur.color;
+    const memo = b.memo != null ? strOf(b.memo, MAX_MEMO, "메모").trim() : cur.memo;
+    const t = now();
+    await env.DB.prepare("UPDATE paper_marks SET color = ?, memo = ?, updated_at = ? WHERE id = ?").bind(color, memo, t, cur.id).run();
+    return json({ mark: markRow({ ...cur, color, memo, updated_at: t }) });
+  });
+  on("DELETE", "/papers/marks/:id", async ({ env, params, user }) => {
+    const r = await env.DB.prepare("DELETE FROM paper_marks WHERE id = ? AND user_id = ?").bind(params.id, user.id).run();
+    if (!r.meta.changes) fail(404, "없는 형광펜이에요.");
+    return json({ ok: true });
+  });
+
   // 퀴즈 점수: 기준 이상이면 체크까지
   on("POST", "/papers/quiz", async ({ req, env, user }) => {
     open(req, env);

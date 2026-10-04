@@ -69,6 +69,19 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("a", "PUT", "/papers/easy/read", { paper: "cmx", recall: 3, total: 5 });
   { const it = r.data.items?.find((x) => x.paper === "cmx"); ok(r.status === 200 && it?.stage === 1 && it.recall === 3 && it.due_day > r.data.today, "easy: read → stage 1, due tomorrow"); }
   r = await call("a", "PUT", "/papers/easy/read", { paper: "nope" }); ok(r.status === 400, "easy: unknown paper → 400");
+  // 형광펜 · 메모: 만들기 → 내 것만 보임 → 색 · 메모 고치기 → 지우기
+  r = await call("a", "POST", "/papers/marks", { paper: "cmx", sec: "glance", quote: "두 종류 정보를 섞는다", prefix: "는 ", suffix: ". 그래서", color: "green" });
+  ok(r.status === 201 && r.data.mark?.color === "green" && r.data.mark.memo === "", "marks: create"); const mkid = r.data.mark?.id;
+  r = await call("a", "POST", "/papers/marks", { paper: "cmx", sec: "glance", quote: "x", color: "purple" }); ok(r.status === 400, "marks: unknown color → 400");
+  r = await call("a", "POST", "/papers/marks", { paper: "cmx", sec: "glance", quote: "   " }); ok(r.status === 400, "marks: empty quote → 400");
+  r = await call("a", "GET", "/papers/marks?paper=cmx"); ok(r.status === 200 && r.data.marks.length === 1 && r.data.marks[0].id === mkid, "marks: list mine");
+  r = await call("b", "GET", "/papers/marks?paper=cmx"); ok(r.status === 200 && r.data.marks.length === 0, "marks: private to me");
+  r = await call("a", "GET", "/papers/marks?paper=cmx&mode=easy"); ok(r.status === 200 && r.data.marks.length === 0, "marks: easy mode separate");
+  r = await call("a", "PATCH", "/papers/marks/" + mkid, { color: "rose", memo: "  왜 중요한지  " }); ok(r.status === 200 && r.data.mark.color === "rose" && r.data.mark.memo === "왜 중요한지", "marks: update color + memo");
+  r = await call("b", "PATCH", "/papers/marks/" + mkid, { memo: "남의 것" }); ok(r.status === 404, "marks: others can't edit");
+  r = await call("b", "DELETE", "/papers/marks/" + mkid); ok(r.status === 404, "marks: others can't delete");
+  r = await call("a", "DELETE", "/papers/marks/" + mkid); ok(r.status === 200, "marks: delete");
+  r = await call("a", "GET", "/papers/marks?paper=cmx"); ok(r.data.marks.length === 0, "marks: gone");
   r = await call("a", "PUT", "/papers/easy/review", { results: [{ paper: "cmx", correct: 2, total: 2 }] });
   { const it = r.data.items?.find((x) => x.paper === "cmx"); ok(r.status === 200 && it?.stage === 2 && it.reviews === 1, "easy: review pass → stage 2"); }
   r = await call("a", "PUT", "/papers/easy/review", { results: [{ paper: "cmx", correct: 0, total: 2 }] });

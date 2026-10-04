@@ -8,6 +8,7 @@ import { chatMarkup, mountChat } from "./chat.js";
 import { loadTerms, annotate, mountTermCard } from "./terms.js";
 import { fillFigtr } from "./figtr.js";
 import { loadStudyTime, fmtMin } from "./studytime.js";
+import { mountMarks } from "./marks.js";
 import { loadIndex, loadContent, loadDeep, loadDiagram, onProgress, refreshProgress, setCheck, sendQuiz, getProgress, stageOf, stageVar, paperMeta, dayOfPaper, stepsDone, rich, paras, STEP_KEYS } from "./data.js";
 
 const STEP_LABEL = { read: "읽기", quiz: "퀴즈", explain: "3분 설명" };
@@ -141,7 +142,7 @@ export function mountPaper(root, ctx, id) {
       <button type="button" class="pp-bigcheck" id="pp-read-btn">다 읽었어요 — 읽기 체크</button>`);
   }
   // 사전이 오면: 절마다 첫 등장에 밑줄 + 모아 보기 목록 채우기
-  let dict = null, stopCard = null;
+  let dict = null, stopCard = null, marks = null;
   const pageSeen = new Set(); // 공통 용어는 페이지에서 처음 한 번만
   const termsP = () => (termsP.p ||= loadTerms(id, c?.glossary || []).then((d) => (dict = d)));
   function applyTerms(scopeRoot) {
@@ -160,6 +161,13 @@ export function mountPaper(root, ctx, id) {
   }
   // 옆 칸(넓은 화면)이 보이면 거기, 아니면 아래 튜터 칸
   const chatInput = () => { const mini = $(".pp-mini-ai .ppc-in", view); return mini && mini.offsetParent !== null ? mini : $("#pp-tutor .ppc-in", view); };
+  function askQuote(q) {
+    const ta = chatInput();
+    if (!ta || !q) return;
+    ta.value = `"${q.slice(0, 400)}"\n이 부분이 무슨 뜻이에요? 쉬운 예시로 설명해 주세요.`;
+    if (ta.closest(".pp-mini-ai")?.offsetParent == null) $("#pp-tutor", view)?.scrollIntoView({ block: "start" });
+    ta.focus(); ta.dispatchEvent(new Event("input"));
+  }
   function askAbout(term) {
     const ta = chatInput();
     if (!ta) return;
@@ -231,6 +239,7 @@ export function mountPaper(root, ctx, id) {
         </article>
         <aside class="pp-side">
           <nav class="pp-toc" aria-label="목차">${SECTIONS.map(([k, l]) => `<a href="#pp-${k}" data-jump="${k}">${l}</a>`).join("")}</nav>
+          <details class="pp-marks" id="pp-marks" open><summary><span class="pp-callout-k">내 형광펜 · 메모</span><span class="faint">나만 봐요</span></summary><div id="pp-marks-list"><p class="faint">불러오는 중…</p></div></details>
           <div class="pp-mini-ai">
             ${chatMarkup("mini")}
           </div>
@@ -248,7 +257,9 @@ export function mountPaper(root, ctx, id) {
     paintTime();
     stopCard?.(); stopCard = mountTermCard(view, () => dict, askAbout);
     applyTerms();
-    loadDeep(id).then((d) => { if (!alive) return; paintDeep(d); applyTerms($("#pp-deep", view)); paintTime(); });
+    // 형광펜 · 메모: 드래그 → 색 바. 'AI에게 묻기' 는 그 문장을 인용해 튜터에게
+    marks?.stop(); marks = mountMarks($(".pp-article", view), { paper: id, mode: "page", listHost: $("#pp-marks-list", view), onAsk: (q) => askQuote(q) });
+    loadDeep(id).then((d) => { if (!alive) return; paintDeep(d); applyTerms($("#pp-deep", view)); marks?.apply(); paintTime(); });
     if (c.diagram) loadDiagram(id, c.diagram.src).then((svg) => { const box = $("#pp-dg", view); if (box) box.innerHTML = svg || `<p class="faint">그림을 못 불러왔어요.</p>`; });
     spy();
   }
@@ -420,5 +431,5 @@ export function mountPaper(root, ctx, id) {
   const off = onProgress((p) => { prog = p; if (idx) paintStatus(); });
   Promise.all([loadIndex(), loadContent(id)]).then(([x, content]) => { if (!alive) return; idx = x; c = content; paint(); });
   if (!prog) refreshProgress().catch(() => {});
-  return () => { alive = false; off(); io?.disconnect(); if (timer) clearInterval(timer); stopChat?.(); stopCard?.(); };
+  return () => { alive = false; off(); io?.disconnect(); if (timer) clearInterval(timer); stopChat?.(); stopCard?.(); marks?.stop(); };
 }
