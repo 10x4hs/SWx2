@@ -9,7 +9,7 @@ cd desktop
 npm install
 npm start          # 바로 실행해 보기
 npm run dist       # Mac: dist/Dsm-mafia-*-mac-universal.dmg
-npm run dist:win   # Windows: dist/Dsm-mafia-Setup-*.exe (설치형) + *-portable.exe (무설치) — Mac 에서도 만들 수 있어요
+npm run dist:win   # Windows: dist/Dsm-mafia-Setup-*.exe (설치형) + *-portable.exe (무설치) — Windows PC 또는 GitHub Actions 에서 (Apple Silicon Mac 에선 wine 문제로 안 돼요)
 ```
 `npm start` 가 "Electron failed to install correctly" 로 멈추면 (npm 이 설치 스크립트를 막은 경우):
 ```
