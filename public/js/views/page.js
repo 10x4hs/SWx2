@@ -27,11 +27,11 @@ export function mount(root, ctx, r) {
             <span id="np-pick"></span>
             <span class="spacer"></span>
             <button class="composer-blank" type="button" id="np-blank">빈 페이지</button>
-            <button class="composer-send" type="submit" aria-label="AI 로 만들기" title="AI 로 만들기">${icon("send")}</button>
+            <button class="composer-send" type="submit" aria-label="AI 로 만들기" title="AI 로 만들기">${icon.send(16)}</button>
           </div>
         </form>
         <form class="urlbar" id="nu-form">
-          ${icon("external")}<input class="urlbar-in" id="nu-url" type="url" placeholder="또는 URL 붙여넣기" aria-label="사이트 주소"><button class="urlbar-go" type="submit">Add URL</button>
+          ${icon.external(15)}<input class="urlbar-in" id="nu-url" type="url" placeholder="또는 URL 붙여넣기" aria-label="사이트 주소"><button class="urlbar-go" type="submit">Add URL</button>
         </form>
       </div>`;
     const ta = $("#np-purpose", root); ta.focus();
