@@ -31,10 +31,10 @@ export function goalRing(g, segs, t) {
   if (!n) return s + (t > 0 ? sector(g, 0, t, "ch-past ch-seg", { tip: "목표를 세우면 칸이 생겨요" }) : "");
   const gap = n === 1 ? 0 : Math.min(0.012, 0.3 / n), len = 1 / n - gap;
   segs.forEach((sg, k) => {
-    const a0 = k / n + gap / 2, a1 = a0 + len, tip = `${sg.title}${sg.done ? " · 이룸" : " · 아직"}`;
-    if (sg.done) { s += sector(g, a0, a1, "ch-done ch-seg", { k, tip }); return; }
-    s += sector(g, a0, a1, "ch-todo ch-seg", { k, tip });
-    if (t > a0) s += sector(g, a0, Math.min(a1, t), "ch-past ch-seg", { k, tip });
+    const a0 = k / n + gap / 2, a1 = a0 + len, tip = `${sg.title}${sg.done ? " · 이룸" : " · 아직"}`, attrs = sg.id ? `data-plan="${esc(sg.id)}"` : "";
+    if (sg.done) { s += sector(g, a0, a1, "ch-done ch-seg", { k, tip, attrs }); return; }
+    s += sector(g, a0, a1, "ch-todo ch-seg", { k, tip, attrs });
+    if (t > a0) s += sector(g, a0, Math.min(a1, t), "ch-past ch-seg", { k, tip, attrs });
   });
   return s;
 }
