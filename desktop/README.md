@@ -10,6 +10,10 @@ npm install
 npm start          # 바로 실행해 보기
 npm run dist       # dist/Dsm-mafia-*.dmg (Intel + Apple Silicon 통합)
 ```
+`npm start` 가 "Electron failed to install correctly" 로 멈추면 (npm 이 설치 스크립트를 막은 경우):
+```
+node node_modules/electron/install.js && printf 'Electron.app/Contents/MacOS/Electron' > node_modules/electron/path.txt
+```
 `icon.png`(1024×1024) 를 두면 앱 아이콘이 돼요. 없으면 Electron 기본 아이콘.
 
 ## 친구에게 나눠 주기
