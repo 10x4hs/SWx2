@@ -8,7 +8,8 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --mac --universal",
-    "dist:arm": "electron-builder --mac --arm64"
+    "dist:win": "electron-builder --win --x64",
+    "dist:all": "electron-builder --mac --universal --win --x64"
   },
   "devDependencies": {
     "electron": "^33.2.0",
@@ -17,8 +18,52 @@
   "build": {
     "appId": "dev.dsm-mafia.desktop",
     "productName": "Dsm-mafia",
-    "mac": { "category": "public.app-category.education", "target": ["dmg", "zip"], "icon": "icon.png", "identity": null },
-    "directories": { "output": "dist" },
-    "files": ["main.js", "preload-app.js", "preload-chrome.js", "chrome.html", "icon.png"]
+    "mac": {
+      "category": "public.app-category.education",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "icon.png",
+      "identity": null,
+      "artifactName": "Dsm-mafia-${version}-mac-${arch}.${ext}"
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload-app.js",
+      "preload-chrome.js",
+      "chrome.html",
+      "icon.png"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "shortcutName": "Dsm-mafia",
+      "artifactName": "Dsm-mafia-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Dsm-mafia-${version}-portable.${ext}"
+    }
   }
 }

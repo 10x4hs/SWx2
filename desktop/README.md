@@ -1,4 +1,4 @@
-# Dsm-mafia 데스크톱 (Mac)
+# Dsm-mafia 데스크톱 (Mac · Windows)
 
 왼쪽은 공부 앱(dsm-mafia), 오른쪽은 진짜 브라우저 탭. YouTube 재생 · 구글 로그인 전부 돼요 (Chromium 내장).
 웹 앱 코드는 그대로이고, 웹 앱의 **URL 페이지**는 데스크톱 안에서 오른쪽 탭으로 열려요.
@@ -8,7 +8,8 @@
 cd desktop
 npm install
 npm start          # 바로 실행해 보기
-npm run dist       # dist/Dsm-mafia-*.dmg (Intel + Apple Silicon 통합)
+npm run dist       # Mac: dist/Dsm-mafia-*-mac-universal.dmg
+npm run dist:win   # Windows: dist/Dsm-mafia-Setup-*.exe (설치형) + *-portable.exe (무설치) — Mac 에서도 만들 수 있어요
 ```
 `npm start` 가 "Electron failed to install correctly" 로 멈추면 (npm 이 설치 스크립트를 막은 경우):
 ```
@@ -16,10 +17,14 @@ node node_modules/electron/install.js && printf 'Electron.app/Contents/MacOS/Ele
 ```
 `icon.png`(1024×1024) 를 두면 앱 아이콘이 돼요. 없으면 Electron 기본 아이콘.
 
+## 자동 빌드 (권장)
+`git tag desktop-v0.1.0 && git push origin desktop-v0.1.0` 하면 GitHub Actions 가 Mac dmg 와 Windows exe 를 만들어 Release 에 붙여요 (.github/workflows/desktop.yml).
+
 ## 친구에게 나눠 주기
 1. `dist/Dsm-mafia-0.1.0-universal.dmg` 를 GitHub Releases 나 드라이브에 올려요.
 2. 친구는 dmg 를 열어 앱을 Applications 로 끌어다 놓아요.
-3. 서명이 없어서 처음 열 때 "확인되지 않은 개발자" 가 떠요 → 앱을 **오른쪽 클릭 → 열기** (한 번만). 그래도 안 되면 터미널에서
+3. **Windows**: `Dsm-mafia-Setup-x.y.z.exe` 실행. "Windows 의 PC 보호" 가 뜨면 **추가 정보 → 실행**. 설치 없이 쓰려면 portable exe.
+4. **Mac**: 서명이 없어서 처음 열 때 "확인되지 않은 개발자" 가 떠요 → 앱을 **오른쪽 클릭 → 열기** (한 번만). 그래도 안 되면 터미널에서
    ```
    xattr -cr /Applications/Dsm-mafia.app
    ```

@@ -44,7 +44,9 @@ function closeTab(id) {
 const toUrl = (s) => { s = String(s || "").trim(); if (!s) return null; if (/^https?:\/\//i.test(s)) return s; if (/^[\w.-]+\.[a-z]{2,}(\/|$|\?)/i.test(s) || s === "localhost") return "https://" + s; return "https://www.google.com/search?q=" + encodeURIComponent(s); };
 
 function create() {
-  win = new BaseWindow({ width: 1480, height: 940, minWidth: 900, minHeight: 600, title: "Dsm-mafia", titleBarStyle: "hiddenInset", trafficLightPosition: { x: 14, y: 14 }, backgroundColor: "#111214" });
+  const mac = process.platform === "darwin";
+  win = new BaseWindow({ width: 1480, height: 940, minWidth: 900, minHeight: 600, title: "Dsm-mafia", backgroundColor: "#111214", icon: path.join(__dirname, "icon.png"),
+    ...(mac ? { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 14, y: 14 } } : {}) }); // Windows 는 기본 창틀
   // 왼쪽: 웹 앱 (로그인 쿠키는 기본 세션에 남아요)
   sidebar = new WebContentsView({ webPreferences: { preload: path.join(__dirname, "preload-app.js"), contextIsolation: true, sandbox: true } });
   win.contentView.addChildView(sidebar);
@@ -76,8 +78,8 @@ ipcMain.handle("app:openUrl", (e, url) => { const u = toUrl(url); if (!u) return
 ipcMain.handle("app:info", () => ({ version: app.getVersion(), platform: process.platform }));
 
 const menu = Menu.buildFromTemplate([
-  { label: app.name, submenu: [{ role: "about" }, { type: "separator" }, { role: "hide" }, { role: "quit" }] },
-  { label: "파일", submenu: [{ label: "새 탭", accelerator: "CmdOrCtrl+T", click: () => { newTab(); chrome.webContents.send("focus-address"); } }, { label: "탭 닫기", accelerator: "CmdOrCtrl+W", click: () => { const t = tabs[active]; if (t) closeTab(t.id); } }, { label: "주소줄", accelerator: "CmdOrCtrl+L", click: () => chrome.webContents.send("focus-address") }, { type: "separator" }, { label: "사이드바 접기/펴기", accelerator: "CmdOrCtrl+B", click: () => { sidebarOpen = !sidebarOpen; layout(); state(); } }] },
+  ...(process.platform === "darwin" ? [{ label: app.name, submenu: [{ role: "about" }, { type: "separator" }, { role: "hide" }, { role: "quit" }] }] : []),
+  { label: "파일", submenu: [{ label: "새 탭", accelerator: "CmdOrCtrl+T", click: () => { newTab(); chrome.webContents.send("focus-address"); } }, { label: "탭 닫기", accelerator: "CmdOrCtrl+W", click: () => { const t = tabs[active]; if (t) closeTab(t.id); } }, { label: "주소줄", accelerator: "CmdOrCtrl+L", click: () => chrome.webContents.send("focus-address") }, { type: "separator" }, { label: "사이드바 접기/펴기", accelerator: "CmdOrCtrl+B", click: () => { sidebarOpen = !sidebarOpen; layout(); state(); } }, ...(process.platform === "darwin" ? [] : [{ type: "separator" }, { role: "quit", label: "끝내기" }])] },
   { label: "편집", submenu: [{ role: "undo" }, { role: "redo" }, { type: "separator" }, { role: "cut" }, { role: "copy" }, { role: "paste" }, { role: "selectAll" }] },
   { label: "보기", submenu: [{ label: "새로고침", accelerator: "CmdOrCtrl+R", click: () => cur()?.reload() }, { label: "뒤로", accelerator: "CmdOrCtrl+[", click: () => cur()?.goBack() }, { label: "앞으로", accelerator: "CmdOrCtrl+]", click: () => cur()?.goForward() }, { type: "separator" }, { label: "앱 새로고침", accelerator: "CmdOrCtrl+Shift+R", click: () => sidebar.webContents.reload() }, { role: "togglefullscreen" }, { label: "개발자 도구 (탭)", accelerator: "Alt+CmdOrCtrl+I", click: () => cur()?.openDevTools({ mode: "detach" }) }] },
   { role: "windowMenu" },
