@@ -3293,16 +3293,6 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 
 /* ---------- URL 페이지 = 내장 브라우저 (직접 / 프록시) ---------- */
 .upage-host { display: flex; flex-direction: column; }
-.pxbar { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--paper, #111) 70%, transparent); }
-.pxbar .icon-btn.sm { font-size: 18px; line-height: 1; }
-.px-addr { flex: 1; min-width: 0; margin: 0 6px; }
-.px-addr .input { width: 100%; height: 30px; font-size: 13px; padding: 0 10px; border-radius: 9px; }
-.px-mode { flex: none; }
-.px-mode.proxy { background: color-mix(in srgb, var(--c-amber, #e9a23b) 22%, transparent); color: var(--ink); }
-.px-mode.blocked { background: color-mix(in srgb, var(--c-rose, #e06) 22%, transparent); }
-.px-body { flex: 1; min-height: 0; display: flex; }
-.px-body .upage-frame { flex: 1; }
-.px-blocked { display: grid; place-items: center; gap: 12px; padding: 40px 16px; text-align: center; color: var(--ink-2); margin: auto; }
 
 /* ---------- 파비콘 아이콘 · 백그라운드 작업 트레이 ---------- */
 .ic-page .page-fav, .upage-ic .page-fav { width: 22px; height: 22px; border-radius: 6px; object-fit: cover; display: block; }

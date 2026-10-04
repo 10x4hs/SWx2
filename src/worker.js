@@ -4,7 +4,6 @@ import { registerAi, aiJson } from "./ai.js";
 import { registerBrain } from "./brain.js";
 import { registerEnglish } from "./english.js";
 import { registerPages, servePageFile } from "./pages.js";
-import { registerProxy, handleProxy } from "./proxy.js";
 import { registerPapers, cleanupPaperNotes } from "./papers.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth, oauthTokenUser } from "./oauth.js";
@@ -56,10 +55,6 @@ export default {
     if (url.pathname === "/mcp") {
       try { return await handleMcp(req, env, ec, { tokenUser, internal: internalCall }); }
       catch (e) { console.error("mcp", e); return json({ jsonrpc: "2.0", id: null, error: { code: -32603, message: "서버에서 문제가 생겼어요." } }, 500); }
-    }
-    if (url.pathname.startsWith("/px/")) { // 내장 브라우저(프록시, 실험) — 토큰은 주소 안에
-      try { return await handleProxy(req, env, url); }
-      catch (e) { console.error("px", e); return new Response("프록시에서 문제가 생겼어요.", { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } }); }
     }
     if (url.pathname.startsWith("/pf/")) { // Dock 사용자 페이지 파일 (sandbox iframe 이 불러요)
       try { return await servePageFile(req, env, url, await sessionUser(req, env)); }
@@ -881,7 +876,6 @@ registerAi(on, { json, body, fail, str, uid, now });
 registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_NOTE });
 registerEnglish(on, { json, body, fail, uid, now });
 registerPages(on, { json, body, fail, uid, now }); // Dock 사용자 페이지 + AI 코드 생성
-registerProxy(on, { json, fail }); // 내장 브라우저(프록시) 보조 API
 registerPapers(on, { json, body, fail, now });
 registerMcpTokens(on, { json, body, fail, now });
 registerHomePad(on, { json, body, fail, now });
