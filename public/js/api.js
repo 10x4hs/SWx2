@@ -81,6 +81,8 @@ export const api = {
   reorderPages: (ids) => request("POST", "/pages/reorder", { ids }),
   restorePage: (id, version_id) => request("POST", `/pages/${encodeURIComponent(id)}/restore`, { version_id }),
   aiPageCode: (b) => request("POST", "/ai/page-code", b), // { purpose } 새 페이지 · { page_id, instruction } 고치기
+  embedCheck: (url) => request("GET", "/embed-check?" + qs({ url })), // 그 사이트가 iframe 을 허용하는지
+  proxyToken: () => request("GET", "/proxy-token"), // 내장 브라우저(프록시) 1시간 토큰
   raw: request, // 사용자 페이지 브리지가 그대로 넘겨요 // { purpose, hub? } 새 페이지 · { note_id, instruction } 고쳐 쓰기
   tags: () => request("GET", "/tags"),
   search: (q) => request("GET", "/search?" + qs({ q })),
