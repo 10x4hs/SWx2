@@ -21,7 +21,8 @@
 
   // ---- 요청 ----
   const F = window.fetch.bind(window);
-  window.fetch = (input, init) => { try { if (typeof input === "string" || input instanceof URL) input = px(String(input)); else if (input && input.url) input = new Request(px(input.url), input); } catch {} return F(input, init); };
+  window.fetch = (input, init) => { try { if (typeof input === "string" || input instanceof URL) input = px(String(input)); else if (input && input.url) input = new Request(px(input.url), input); if (init && init.credentials === "include") init = { ...init, credentials: "omit" }; } catch {} return F(input, init); };
+  try { const d = Object.getOwnPropertyDescriptor(XMLHttpRequest.prototype, "withCredentials"); if (d?.set) Object.defineProperty(XMLHttpRequest.prototype, "withCredentials", { configurable: true, get() { return false; }, set() {} }); } catch {}
   const XO = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function (m, u, ...r) { return XO.call(this, m, px(u), ...r); };
   if (navigator.sendBeacon) { const SB = navigator.sendBeacon.bind(navigator); navigator.sendBeacon = (u, d) => SB(px(u), d); }

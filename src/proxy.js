@@ -47,7 +47,10 @@ const rewriteCss = (css, base, token) => css
 
 const shimTag = (token, target) => `<script>window.__px=${JSON.stringify({ t: token, u: target })};</script><script src="/js/px-shim.js"></script>`;
 
+// sandbox 안 페이지는 출처가 "null" 이라 우리 /px 로 보내는 fetch 가 전부 교차 출처예요 → CORS 를 열어 둬야 데이터 요청 · 영상 스트림이 돼요
+const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS", "access-control-allow-headers": "*", "access-control-expose-headers": "*", "access-control-max-age": "86400", "timing-allow-origin": "*" };
 export async function handleProxy(req, env, url) {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   const m = /^\/px\/([^/]+)\/([^/?#]+)/.exec(url.pathname);
   if (!m) return new Response("not found", { status: 404 });
   if (!(await checkToken(env, m[1]))) return new Response("프록시 토큰이 만료됐어요. 페이지를 다시 열어 주세요.", { status: 401, headers: { "content-type": "text/plain; charset=utf-8" } });
@@ -61,13 +64,17 @@ export async function handleProxy(req, env, url) {
   const headers = new Headers({ "user-agent": UA, "accept": req.headers.get("accept") || "*/*", "accept-language": req.headers.get("accept-language") || "ko,en;q=0.8", "accept-encoding": "identity" });
   if (req.headers.get("content-type")) headers.set("content-type", req.headers.get("content-type"));
   if (req.headers.get("x-px-referer")) headers.set("referer", req.headers.get("x-px-referer"));
+  else headers.set("referer", target.origin + "/");
+  for (const k of ["range", "if-none-match", "if-modified-since", "x-requested-with"]) if (req.headers.get(k)) headers.set(k, req.headers.get(k));
+  // 사이트 JS 가 붙인 자기 헤더(x-youtube-* 같은 것)도 그대로
+  req.headers.forEach((v, k) => { if (k.startsWith("x-") && !k.startsWith("x-px-") && !k.startsWith("x-trio")) headers.set(k, v); });
   let res;
   try { res = await fetch(target.href, { method: req.method, headers, body: ["GET", "HEAD"].includes(req.method) ? undefined : req.body, redirect: "manual", cf: { cacheTtl: 0 } }); }
   catch (e) { return new Response(`사이트에 연결하지 못했어요: ${e.message}`, { status: 502, headers: { "content-type": "text/plain; charset=utf-8" } }); }
 
-  const out = new Headers();
+  const out = new Headers(CORS);
   const ct = res.headers.get("content-type") || "";
-  for (const k of ["content-type", "content-disposition", "accept-ranges", "content-range", "last-modified", "etag"]) if (res.headers.get(k)) out.set(k, res.headers.get(k));
+  for (const k of ["content-type", "content-disposition", "accept-ranges", "content-range", "content-length", "last-modified", "etag"]) if (res.headers.get(k) && !(k === "content-length" && /text\/(html|css)/i.test(ct))) out.set(k, res.headers.get(k));
   out.set("cache-control", "no-store"); out.set("referrer-policy", "no-referrer"); out.set("x-px-url", target.href);
   if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
     out.set("location", rewriteUrl(res.headers.get("location"), target.href, token));
@@ -117,6 +124,23 @@ export function registerProxy(on, { json, fail }) {
     } catch (e) { v = { embeddable: false, reason: "연결 실패: " + e.message, final: target.href, status: 0 }; }
     cache.set(key, { at: Date.now(), v });
     return json(v);
+  });
+  // 사이트 프로필: 제목 · 파비콘 (URL 페이지의 Dock 아이콘 · 이름)
+  on("GET", "/site-meta", async ({ q, url }) => {
+    let target; try { target = new URL(String(q.get("url") || "")); } catch { fail(400, "주소가 이상해요."); }
+    if (!allowed(target, url.hostname)) fail(400, "이 주소는 열 수 없어요.");
+    const host = target.hostname.replace(/^www\./, "");
+    let title = host, icon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(target.hostname)}&sz=64`;
+    try {
+      const r = await fetch(target.href, { headers: { "user-agent": UA, accept: "text/html,*/*", "accept-language": "ko,en;q=0.8" }, redirect: "follow", cf: { cacheTtl: 600 } });
+      const html = (await r.text()).slice(0, 200_000);
+      const t = /<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)/i.exec(html)?.[1] || /<title[^>]*>([^<]{1,120})<\/title>/i.exec(html)?.[1];
+      if (t) title = t.replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim().slice(0, 40) || host;
+      const links = [...html.matchAll(/<link[^>]+rel=["']([^"']*icon[^"']*)["'][^>]*>/gi)].map((m) => ({ rel: m[1].toLowerCase(), href: /href=["']([^"']+)/i.exec(m[0])?.[1], sizes: /sizes=["']([^"']+)/i.exec(m[0])?.[1] || "" })).filter((l) => l.href);
+      const pick = links.find((l) => l.rel.includes("apple-touch")) || links.sort((a, b) => (parseInt(b.sizes) || 0) - (parseInt(a.sizes) || 0))[0];
+      if (pick) { try { icon = new URL(pick.href, r.url).href; } catch {} }
+    } catch {}
+    return json({ title, icon, host });
   });
   on("GET", "/proxy-token", async ({ env, user }) => json({ token: await makeToken(env, user.id), ttl: TOKEN_TTL }));
 }
