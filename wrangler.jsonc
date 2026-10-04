@@ -7,7 +7,7 @@
     "directory": "./public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/pf/*", "/mcp", "/oauth/*", "/.well-known/*"]
+    "run_worker_first": ["/api/*", "/pf/*", "/px/*", "/mcp", "/oauth/*", "/.well-known/*"]
   },
   // 매일 15:05 UTC = 00:05 한국 시간: 지난 하루 기록 자동 저장
   // 일요일 13:00 UTC = 22:00 한국 시간: 이번 주 회고 미리 만들기 (src/worker.js 의 scheduled 가 event.cron 으로 나눠요)
