@@ -4,6 +4,8 @@ import { $, $$, esc, toast } from "../util.js";
 import { icon } from "../icons.js";
 import { mountRunner } from "../page-runner.js";
 import { aiPrefs, mountAiPick } from "../ai-pick.js";
+import { runJob } from "../jobs.js";
+const pageIcon = (ic) => /^https?:\/\//.test(ic || "") ? `<img class="page-fav" src="${esc(ic)}" alt="">` : esc(ic || "✨");
 
 const model = () => aiPrefs().model || "gemini"; // 긴 코드 출력은 Gemini 가 가장 안정적
 
@@ -39,7 +41,11 @@ export function mount(root, ctx, r) {
     $("#nu-form", root).addEventListener("submit", async (e) => {
       e.preventDefault();
       const url = $("#nu-url", root).value.trim(); if (!url) return $("#nu-url", root).focus();
-      try { const host = new URL(url).hostname.replace(/^www\./, ""); const r = await api.addPage({ kind: "url", url, title: host.slice(0, 40), icon: "🔗", purpose: url }); ctx.changed("pages"); ctx.go("#/p/" + r.page.id); }
+      try {
+        const host = new URL(url).hostname.replace(/^www\./, "");
+        let meta = { title: host.slice(0, 40), icon: "🔗" }; try { meta = await api.siteMeta(url); } catch {}
+        const r = await api.addPage({ kind: "url", url, title: meta.title || host.slice(0, 40), icon: meta.icon || "🔗", purpose: url }); ctx.changed("pages"); ctx.go("#/p/" + r.page.id);
+      }
       catch (err) { toast(err.message || "주소가 이상해요."); }
     });
     const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 240) + "px"; };
@@ -53,11 +59,10 @@ export function mount(root, ctx, r) {
     $("#np-form", root).addEventListener("submit", async (e) => {
       e.preventDefault();
       const purpose = ta.value.trim(); if (!purpose) return ta.focus();
-      const btn = e.currentTarget.querySelector("button[type=submit]"); btn.disabled = true; ta.disabled = true; ta.placeholder = "페이지 짜는 중… 1~2분 걸릴 수 있어요";
-      try {
-        const r = await api.aiPageCode({ purpose, model: model() });
-        toast(r.reply || "만들었어요."); ctx.changed("pages"); ctx.go("#/p/" + r.page.id);
-      } catch (err) { toast(err.message || "만들지 못했어요."); btn.disabled = false; ta.disabled = false; ta.placeholder = "하고 싶은 화면을 한두 문장으로 적어 주세요"; }
+      // 백그라운드 작업: 다른 화면으로 가도 계속 돌고, 끝나면 알림 (public/js/jobs.js)
+      runJob({ label: `페이지 만들기: ${purpose.slice(0, 24)}`, task: () => api.aiPageCode({ purpose, model: model() }),
+        onDone: (r) => { ctx.changed("pages"); return { text: `'${r.page.title}' 페이지가 완성됐어요 — ${r.reply || ""}`, go: "#/p/" + r.page.id }; } });
+      ta.value = ""; toast("AI 가 페이지를 짜기 시작했어요. 다른 일을 하셔도 돼요 — 끝나면 알려 드려요.");
     });
   }
 
@@ -67,13 +72,17 @@ export function mount(root, ctx, r) {
     root.innerHTML = `<div class="upage"><div class="upage-bar glass" id="up-bar"></div><div class="upage-main"><div class="upage-host" id="up-host"></div><aside class="upage-panel glass" id="up-panel" hidden></aside></div></div>`;
     try { page = (await api.page(pid)).page; } catch (e) { root.innerHTML = `<div class="view"><p class="faint">${esc(e.message || "페이지를 열 수 없어요.")}</p></div>`; return; }
     drawBar(); run();
+    // 예전에 만든 URL 페이지(기본 🔗 아이콘)는 한 번 사이트 프로필(제목 · 파비콘)을 받아와 갱신해요
+    if (page.kind === "url" && page.user_id === ctx.me.id && (!page.icon || page.icon === "🔗")) {
+      api.siteMeta(page.url).then(async (m) => { if (!m?.icon || id !== pid) return; page = (await api.updatePage(pid, { icon: m.icon, ...(/^[\w.-]+$/.test(page.title) ? { title: m.title } : {}) })).page; drawBar(); ctx.changed("pages"); }).catch(() => {});
+    }
   }
   const mine = () => page && page.user_id === ctx.me.id;
   function run() { stopRun?.(); stopRun = mountRunner($("#up-host", root), ctx, page); }
   function drawBar() {
     const owner = ctx.user(page.user_id);
     $("#up-bar", root).innerHTML = `
-      <span class="upage-ic">${esc(page.icon || "✨")}</span><b class="upage-title">${esc(page.title)}</b>
+      <span class="upage-ic">${pageIcon(page.icon)}</span><b class="upage-title">${esc(page.title)}</b>
       <span class="faint upage-sub">${mine() ? (page.shared ? "셋에게 공개" : "나만") : `${esc(owner?.display_name || "")} 의 페이지 · 읽기만`}</span>
       <span class="spacer"></span>
       ${page.kind === "url" ? `<a class="btn sm ghost" href="${esc(page.url)}" target="_blank" rel="noopener noreferrer">${icon.external(14)} 새 창으로</a>` : ""}
@@ -106,13 +115,11 @@ export function mount(root, ctx, r) {
       $("#up-ask", body).addEventListener("submit", async (e) => {
         e.preventDefault();
         const inp = $("#up-in", body), instruction = inp.value.trim(); if (!instruction) return inp.focus();
-        const btn = e.currentTarget.querySelector("button"); busy(btn, "고치는 중…", true);
-        chat.push({ role: "me", text: instruction }); drawPanel();
-        try {
-          const r = await api.aiPageCode({ page_id: page.id, instruction, model: model() });
-          page = r.page; chat.push({ role: "ai", text: r.reply || "고쳤어요." }); ctx.changed("pages"); drawBar(); run();
-        } catch (err) { chat.push({ role: "ai", text: "실패: " + (err.message || "다시 시도해 주세요.") }); }
-        if (panel === "ai") drawPanel();
+        chat.push({ role: "me", text: instruction }, { role: "ai", text: "고치는 중… (다른 화면에 가도 계속돼요)" }); inp.value = ""; drawPanel();
+        const pid = page.id;
+        runJob({ label: `'${page.title}' 고치기: ${instruction.slice(0, 20)}`, task: () => api.aiPageCode({ page_id: pid, instruction, model: model() }),
+          onDone: (r) => { ctx.changed("pages"); if (page?.id === pid) { page = r.page; chat.pop(); chat.push({ role: "ai", text: r.reply || "고쳤어요." }); drawBar(); run(); if (panel === "ai") drawPanel(); } return { text: `'${r.page.title}' 고쳤어요 — ${r.reply || ""}`, go: page?.id === pid ? null : "#/p/" + pid }; },
+          onFail: (err) => { if (page?.id === pid) { chat.pop(); chat.push({ role: "ai", text: "실패: " + (err.message || "다시 시도해 주세요.") }); if (panel === "ai") drawPanel(); } } });
       });
       $("#up-in", body).addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); $("#up-ask", body).requestSubmit(); } });
     } else if (panel === "code") {

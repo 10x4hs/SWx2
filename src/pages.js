@@ -64,7 +64,7 @@ export function registerPages(on, { json, body, fail, uid, now }) {
     return p;
   };
   const cleanTitle = (s, fallback = "새 페이지") => (String(s || "").replace(/\s+/g, " ").trim().slice(0, 40) || fallback);
-  const cleanIcon = (s, fallback = "✨") => { const t = String(s || "").trim(); return t && [...t].length <= 2 ? t : fallback; };
+  const cleanIcon = (s, fallback = "✨") => { const t = String(s || "").trim(); return (t && [...t].length <= 2) || /^https?:\/\/\S{1,500}$/.test(t) ? t : fallback; }; // 이모지 하나 또는 파비콘 주소
   const cleanUrl = (s) => { const u = String(s || "").trim(); if (!u) return ""; if (!/^https?:\/\/[^\s]+$/i.test(u)) fail(400, "주소는 http:// 또는 https:// 로 시작해야 해요."); return u.slice(0, 2000); };
   const nextSort = async (env, user) => ((await env.DB.prepare("SELECT COALESCE(MAX(sort), -1) + 1 AS n FROM user_pages WHERE user_id = ?").bind(user.id).first())?.n ?? 0);
   // 파일 묶음 검사: { path: content | null(지움) }

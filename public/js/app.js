@@ -323,6 +323,8 @@ window.addEventListener("room-live", (e) => { if (e.detail?.from !== ctx.me?.id)
 
 // ---------- Dock 사용자 페이지: 내 것 + 셋이 공유한 것. 길게 누르거나 오른쪽 클릭 → 수정 · 공개 · 순서 · 삭제 ----------
 let dockPages = [];
+// Dock 아이콘: 이모지 하나 또는 사이트 파비콘 주소
+export const pageIcon = (ic) => /^https?:\/\//.test(ic || "") ? `<img class="page-fav" src="${esc(ic)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'page-emoji',textContent:'🔗'}))">` : `<span class="page-emoji">${esc(ic || "✨")}</span>`;
 async function loadDockPages() {
   try { dockPages = (await api.pages()).pages || []; } catch { dockPages = []; }
   drawDockPages();
@@ -330,7 +332,7 @@ async function loadDockPages() {
 function drawDockPages() {
   const el = $("#dock-pages"); if (!el) return;
   const cur = parseRoute();
-  el.innerHTML = dockPages.map((p) => `<a class="rail-btn rail-page${p.mine ? "" : " shared"}" href="#/p/${p.id}" data-nav="p:${p.id}" data-page="${p.id}" aria-label="${esc(p.title)}" data-tip="${esc(p.title)}${p.mine ? "" : ` · ${esc(ctx.user(p.user_id)?.display_name || "")}`}"${cur.nav === "p:" + p.id ? ' aria-current="page"' : ""}><span class="app-ic ic-page"><span class="page-emoji">${esc(p.icon || "✨")}</span></span></a>`).join("");
+  el.innerHTML = dockPages.map((p) => `<a class="rail-btn rail-page${p.mine ? "" : " shared"}" href="#/p/${p.id}" data-nav="p:${p.id}" data-page="${p.id}" aria-label="${esc(p.title)}" data-tip="${esc(p.title)}${p.mine ? "" : ` · ${esc(ctx.user(p.user_id)?.display_name || "")}`}"${cur.nav === "p:" + p.id ? ' aria-current="page"' : ""}><span class="app-ic ic-page">${pageIcon(p.icon)}</span></a>`).join("");
 }
 async function pageMenu(e, id) {
   const p = dockPages.find((x) => x.id === id); if (!p) return;
