@@ -59,7 +59,6 @@ function showAuth() {
 // 무채색 테마: 멤버 색은 가입 순서대로 먹 · 슬레이트 · 실버 톤
 const MEMBER_TONES = ["var(--m0)", "var(--m1)", "var(--m2)"];
 const toned = (users) => users.map((u, i) => ({ ...u, color: MEMBER_TONES[i % MEMBER_TONES.length] }));
-if (window.trioDesktop) document.documentElement.classList.add("desktop"); // Electron 껍데기 안 (desktop/)
 async function enter(user) {
   ctx.users = toned((await api.users()).users);
   ctx.me = { ...user, color: ctx.users.find((u) => u.id === user.id)?.color || MEMBER_TONES[0] };

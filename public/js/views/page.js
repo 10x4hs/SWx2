@@ -43,8 +43,7 @@ export function mount(root, ctx, r) {
       const url = $("#nu-url", root).value.trim(); if (!url) return $("#nu-url", root).focus();
       try {
         const host = new URL(url).hostname.replace(/^www\./, "");
-        let meta = { title: host.slice(0, 40), icon: "🔗" }; try { meta = await api.siteMeta(url); } catch {}
-        const r = await api.addPage({ kind: "url", url, title: meta.title || host.slice(0, 40), icon: meta.icon || "🔗", purpose: url }); ctx.changed("pages"); ctx.go("#/p/" + r.page.id);
+        const r = await api.addPage({ kind: "url", url, title: host.slice(0, 40), icon: "🔗", purpose: url }); ctx.changed("pages"); ctx.go("#/p/" + r.page.id);
       }
       catch (err) { toast(err.message || "주소가 이상해요."); }
     });
@@ -72,10 +71,6 @@ export function mount(root, ctx, r) {
     root.innerHTML = `<div class="upage"><div class="upage-bar glass" id="up-bar"></div><div class="upage-main"><div class="upage-host" id="up-host"></div><aside class="upage-panel glass" id="up-panel" hidden></aside></div></div>`;
     try { page = (await api.page(pid)).page; } catch (e) { root.innerHTML = `<div class="view"><p class="faint">${esc(e.message || "페이지를 열 수 없어요.")}</p></div>`; return; }
     drawBar(); run();
-    // 예전에 만든 URL 페이지(기본 🔗 아이콘)는 한 번 사이트 프로필(제목 · 파비콘)을 받아와 갱신해요
-    if (page.kind === "url" && page.user_id === ctx.me.id && (!page.icon || page.icon === "🔗")) {
-      api.siteMeta(page.url).then(async (m) => { if (!m?.icon || id !== pid) return; page = (await api.updatePage(pid, { icon: m.icon, ...(/^[\w.-]+$/.test(page.title) ? { title: m.title } : {}) })).page; drawBar(); ctx.changed("pages"); }).catch(() => {});
-    }
   }
   const mine = () => page && page.user_id === ctx.me.id;
   function run() { stopRun?.(); stopRun = mountRunner($("#up-host", root), ctx, page); }
