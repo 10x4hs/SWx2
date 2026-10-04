@@ -8,7 +8,6 @@ import { aiPrefs, mountAiPick } from "../ai-pick.js";
 const model = () => aiPrefs().model || "gemini"; // 긴 코드 출력은 Gemini 가 가장 안정적
 
 const when = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}.${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
-const EXAMPLES = ["이번 주 영어 공부 시간을 막대그래프로, 오늘 목표까지 남은 시간도", "단어 암기 카드 — 내가 넣은 단어를 뒤집어 외우고 외운 건 체크", "오늘 계획 중 아직 안 한 것만 큰 글씨로, 하나씩 끝냄 누르기", "논문 16편 진도를 셋이 나란히 보는 판", "포모도로 타이머 + 끝나면 집중 기록 남기기"];
 
 let inst = null;
 export function update(r) { inst?.update(r); }
@@ -21,20 +20,18 @@ export function mount(root, ctx, r) {
   function drawNew() {
     root.innerHTML = `
       <div class="view upage-new">
-        <header class="vhead"><div class="title"><span class="eyebrow">Dock 페이지 추가</span><h1 class="h1">무엇을 만들까요?</h1>
-          <p class="faint">하고 싶은 걸 한두 문장으로 적으면 AI 가 화면을 짜요. 만든 뒤에도 옆 대화로 계속 고칠 수 있어요. 계획 · 노트 · 영어 · 논문 데이터를 읽고 쓸 수 있어요.</p></div></header>
-        <form class="card upage-form" id="np-form">
-          <textarea class="input" id="np-purpose" rows="3" maxlength="1000" placeholder="예: ${esc(EXAMPLES[0])}" aria-label="페이지 목적"></textarea>
-          <div class="upage-ex">${EXAMPLES.map((x) => `<button type="button" class="chip" data-ex="${esc(x)}">${esc(x)}</button>`).join("")}</div>
-          <div class="row" style="justify-content:space-between;gap:10px;flex-wrap:wrap">
-            <div class="row" style="gap:8px;align-items:center"><span class="faint">AI 모델</span><span id="np-pick"></span></div>
-            <div class="row" style="gap:8px"><button class="btn ghost" type="button" id="np-blank">빈 페이지로</button><button class="btn accent" type="submit">AI 로 만들기</button></div>
+        <h1 class="upage-hello">무엇을 만들까요?</h1>
+        <form class="composer" id="np-form">
+          <textarea class="composer-ta" id="np-purpose" rows="1" maxlength="1000" placeholder="하고 싶은 화면을 한두 문장으로 적어 주세요" aria-label="페이지 목적"></textarea>
+          <div class="composer-row">
+            <span id="np-pick"></span>
+            <span class="spacer"></span>
+            <button class="composer-blank" type="button" id="np-blank">빈 페이지</button>
+            <button class="composer-send" type="submit" aria-label="AI 로 만들기" title="AI 로 만들기">${icon("send")}</button>
           </div>
-          <p class="faint" style="margin:0">AI 가 1~2분 걸릴 수 있어요. 외부 라이브러리 · 폰트 · 이미지 다 써요. 정교한 화면은 Claude Code 에서 <code>page_write</code> 로도 만들 수 있어요.</p>
         </form>
-        <form class="card upage-form" id="nu-form">
-          <div><b>또는 바깥 사이트를 Dock 에 띄우기</b> <span class="faint">— 주소를 넣으면 그 사이트가 여기 안에서 열려요 (iframe 을 막는 사이트는 '새 창으로' 버튼이 떠요)</span></div>
-          <div class="row" style="gap:8px;flex-wrap:wrap"><input class="input" id="nu-url" type="url" placeholder="https://…" style="flex:1;min-width:220px" aria-label="사이트 주소"><input class="input" id="nu-title" placeholder="이름 (선택)" maxlength="40" style="width:160px" aria-label="페이지 이름"><button class="btn ghost" type="submit">URL 페이지 추가</button></div>
+        <form class="urlbar" id="nu-form">
+          ${icon("external")}<input class="urlbar-in" id="nu-url" type="url" placeholder="또는 URL 붙여넣기" aria-label="사이트 주소"><button class="urlbar-go" type="submit">Add URL</button>
         </form>
       </div>`;
     const ta = $("#np-purpose", root); ta.focus();
@@ -42,10 +39,12 @@ export function mount(root, ctx, r) {
     $("#nu-form", root).addEventListener("submit", async (e) => {
       e.preventDefault();
       const url = $("#nu-url", root).value.trim(); if (!url) return $("#nu-url", root).focus();
-      try { const host = new URL(url).hostname.replace(/^www\./, ""); const r = await api.addPage({ kind: "url", url, title: $("#nu-title", root).value.trim() || host.slice(0, 40), icon: "🔗", purpose: url }); ctx.changed("pages"); ctx.go("#/p/" + r.page.id); }
+      try { const host = new URL(url).hostname.replace(/^www\./, ""); const r = await api.addPage({ kind: "url", url, title: host.slice(0, 40), icon: "🔗", purpose: url }); ctx.changed("pages"); ctx.go("#/p/" + r.page.id); }
       catch (err) { toast(err.message || "주소가 이상해요."); }
     });
-    root.querySelectorAll("[data-ex]").forEach((b) => b.addEventListener("click", () => { ta.value = b.dataset.ex; ta.focus(); }));
+    const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 240) + "px"; };
+    ta.addEventListener("input", grow); grow();
+    ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("#np-form", root).requestSubmit(); } });
     $("#np-blank", root).addEventListener("click", async () => {
       const purpose = ta.value.trim();
       const r = await api.addPage({ title: purpose.slice(0, 12) || "새 페이지", purpose }); // 서버가 index.html · style.css · app.js 뼈대를 넣어요
@@ -54,11 +53,11 @@ export function mount(root, ctx, r) {
     $("#np-form", root).addEventListener("submit", async (e) => {
       e.preventDefault();
       const purpose = ta.value.trim(); if (!purpose) return ta.focus();
-      const btn = e.currentTarget.querySelector("button[type=submit]"); busy(btn, "페이지 짜는 중…", true);
+      const btn = e.currentTarget.querySelector("button[type=submit]"); btn.disabled = true; ta.disabled = true; ta.placeholder = "페이지 짜는 중… 1~2분 걸릴 수 있어요";
       try {
         const r = await api.aiPageCode({ purpose, model: model() });
         toast(r.reply || "만들었어요."); ctx.changed("pages"); ctx.go("#/p/" + r.page.id);
-      } catch (err) { toast(err.message || "만들지 못했어요."); busy(btn, "", false); }
+      } catch (err) { toast(err.message || "만들지 못했어요."); btn.disabled = false; ta.disabled = false; ta.placeholder = "하고 싶은 화면을 한두 문장으로 적어 주세요"; }
     });
   }
 

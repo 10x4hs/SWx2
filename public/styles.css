@@ -3253,9 +3253,31 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .up-vers li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--hover); font-size: 13px; }
 .up-set { display: grid; gap: 10px; font-size: 13px; }
 .up-set label { display: grid; gap: 4px; color: var(--ink-2); }
-.upage-new .upage-form { display: grid; gap: 12px; padding: 18px; }
-.upage-ex { display: flex; flex-wrap: wrap; gap: 6px; }
-.upage-ex .chip { cursor: pointer; border: 0; white-space: normal; text-align: left; }
+/* 새 페이지 — LLM 입력창처럼 가운데 하나 */
+.upage-new { max-width: 720px; min-height: calc(100dvh - 120px); align-content: center; gap: 22px; }
+.upage-hello { margin: 0; text-align: center; font: 600 clamp(24px, 3.4vw, 32px)/1.2 var(--font); letter-spacing: -.02em; color: var(--ink); }
+.composer { display: grid; gap: 6px; padding: 12px 12px 10px; border-radius: 22px; background: var(--paper, var(--hover)); border: 1px solid var(--line); box-shadow: 0 10px 40px -20px rgba(0,0,0,.45); transition: border-color .15s, box-shadow .15s; }
+.composer:focus-within { border-color: color-mix(in srgb, var(--ink) 28%, var(--line)); box-shadow: 0 14px 48px -20px rgba(0,0,0,.55); }
+.composer-ta { width: 100%; border: 0; outline: 0; background: transparent; resize: none; color: var(--ink); font: 400 16px/1.5 var(--font); padding: 6px 6px 2px; min-height: 36px; max-height: 240px; overflow: auto; }
+.composer-ta::placeholder { color: var(--ink-3); }
+.composer-row { display: flex; align-items: center; gap: 6px; }
+.composer-row .spacer { flex: 1; }
+.composer-row .ai-pick .select.sm { border: 0; background: transparent; color: var(--ink-3); font-size: 12.5px; padding-left: 6px; }
+.composer-row .ai-pick .select.sm:hover { color: var(--ink); }
+.composer-blank { border: 0; background: transparent; color: var(--ink-3); font: 500 12.5px/1 var(--font); padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.composer-blank:hover { background: var(--hover); color: var(--ink); }
+.composer-send { width: 34px; height: 34px; border: 0; border-radius: 50%; display: inline-grid; place-items: center; background: var(--ink); color: var(--on-ink, #fff); cursor: pointer; transition: transform .12s, opacity .12s; }
+.composer-send svg { width: 16px; height: 16px; }
+.composer-send:hover { transform: translateY(-1px); }
+.composer-send:disabled { opacity: .45; cursor: default; transform: none; }
+.urlbar { display: flex; align-items: center; gap: 8px; margin: 0 auto; width: min(100%, 520px); padding: 4px 6px 4px 12px; border-radius: 14px; color: var(--ink-3); border: 1px solid transparent; transition: border-color .15s, background .15s; }
+.urlbar:focus-within, .urlbar:hover { border-color: var(--line); background: var(--hover); }
+.urlbar svg { width: 15px; height: 15px; flex: none; }
+.urlbar-in { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 400 13.5px/1.4 var(--font); padding: 6px 0; }
+.urlbar-in::placeholder { color: var(--ink-3); }
+.urlbar-go { border: 0; background: transparent; color: var(--ink-3); font: 600 12px/1 var(--font); padding: 7px 9px; border-radius: 9px; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.urlbar:focus-within .urlbar-go, .urlbar:hover .urlbar-go { opacity: 1; }
+.urlbar-go:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); }
 @media (max-width: 860px) {
   .upage-main { flex-direction: column; padding: 8px; }
   .upage-panel { width: auto; max-height: 55%; }
