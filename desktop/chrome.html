@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>tabs</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #16171a; color: #e8e8ea; font: 13px/1 -apple-system, "SF Pro Text", "Pretendard", system-ui, sans-serif; user-select: none; overflow: hidden; }
+  .bar { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 8px 0 10px; -webkit-app-region: drag; }
+  button, .tab { -webkit-app-region: no-drag; }
+  button { border: 0; background: transparent; color: #c9c9ce; width: 28px; height: 28px; border-radius: 8px; font-size: 16px; cursor: default; }
+  button:hover { background: rgba(255,255,255,.08); color: #fff; } button:disabled { opacity: .3; }
+  .tabs { display: flex; gap: 3px; flex: 1; min-width: 0; overflow: hidden; -webkit-app-region: no-drag; }
+  .tab { display: flex; align-items: center; gap: 6px; max-width: 200px; min-width: 60px; flex: 1 1 120px; height: 30px; padding: 0 8px 0 10px; border-radius: 9px; color: #bdbdc3; overflow: hidden; }
+  .tab.on { background: rgba(255,255,255,.12); color: #fff; }
+  .tab span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tab i { width: 7px; height: 7px; border-radius: 50%; background: #e9a23b; flex: none; } .tab:not(.loading) i { display: none; }
+  .tab b { font-weight: 400; opacity: .6; padding: 0 3px; } .tab b:hover { opacity: 1; }
+  .addr { -webkit-app-region: no-drag; flex: 1.4; min-width: 160px; height: 30px; border-radius: 9px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.06); color: #fff; padding: 0 10px; font: 13px -apple-system, system-ui; outline: none; }
+  .addr:focus { border-color: rgba(120,160,255,.6); background: rgba(255,255,255,.1); }
+</style></head>
+<body>
+<div class="bar">
+  <button id="side" title="사이드바 접기/펴기 (⌘B)">◧</button>
+  <button id="back" title="뒤로">‹</button><button id="fwd" title="앞으로">›</button><button id="reload" title="새로고침">⟳</button>
+  <input class="addr" id="addr" placeholder="주소 또는 검색" spellcheck="false">
+  <div class="tabs" id="tabs"></div>
+  <button id="new" title="새 탭 (⌘T)">＋</button>
+  <button id="ext" title="기본 브라우저로 열기">↗</button>
+</div>
+<script>
+  const $ = (s) => document.querySelector(s); const A = window.tabsApi; let S = { tabs: [], active: -1 };
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  A.onTabs((s) => {
+    S = s; const a = s.tabs[s.active];
+    $("#tabs").innerHTML = s.tabs.map((t, i) => `<div class="tab${i === s.active ? " on" : ""}${t.loading ? " loading" : ""}" data-id="${t.id}" title="${esc(t.url)}"><i></i><span>${esc(t.title)}</span><b data-x="${t.id}">✕</b></div>`).join("");
+    if (document.activeElement !== $("#addr")) $("#addr").value = a?.url && !a.url.startsWith("about:") ? a.url : "";
+    $("#back").disabled = !a?.canBack; $("#fwd").disabled = !a?.canFwd; $("#side").style.opacity = s.sidebarOpen ? 1 : .5;
+  });
+  A.onFocusAddress(() => { $("#addr").focus(); $("#addr").select(); });
+  $("#tabs").addEventListener("click", (e) => { const x = e.target.closest("[data-x]"); if (x) return A.send("tab:close", +x.dataset.x); const t = e.target.closest("[data-id]"); if (t) A.send("tab:activate", +t.dataset.id); });
+  $("#tabs").addEventListener("auxclick", (e) => { const t = e.target.closest("[data-id]"); if (t && e.button === 1) A.send("tab:close", +t.dataset.id); });
+  $("#new").onclick = () => { A.send("tab:new"); setTimeout(() => { $("#addr").focus(); $("#addr").select(); }, 50); };
+  $("#back").onclick = () => A.send("tab:back"); $("#fwd").onclick = () => A.send("tab:forward"); $("#reload").onclick = () => A.send("tab:reload");
+  $("#ext").onclick = () => A.send("tab:external"); $("#side").onclick = () => A.send("sidebar:toggle");
+  $("#addr").addEventListener("keydown", (e) => { if (e.key === "Enter") { A.send("tab:go", e.target.value); e.target.blur(); } if (e.key === "Escape") { e.target.value = S.tabs[S.active]?.url || ""; e.target.blur(); } });
+</script>
+</body></html>

@@ -73,6 +73,13 @@ async function proxyToken() {
   const r = await api.proxyToken(); tokenCache = { token: r.token, exp: Date.now() + (r.ttl || 3600e3) }; return r.token;
 }
 function mountBrowser(host, ctx, page, f) {
+  // 데스크톱 앱(Electron) 안이면: 진짜 브라우저 탭으로 열어요 (YouTube · 로그인 다 됨)
+  if (window.trioDesktop?.openUrl) {
+    host.innerHTML = `<div class="px-blocked"><p style="font-size:15px"><b>${esc(page.title)}</b> 를 오른쪽 브라우저 탭에서 열었어요.</p><p class="faint">데스크톱 앱에서는 사이트가 진짜 Chromium 탭으로 열려요 — 영상 재생 · 로그인 전부 돼요.</p><button class="btn" type="button" id="px-again">다시 열기</button></div>`;
+    window.trioDesktop.openUrl(page.url).catch(() => {});
+    host.querySelector("#px-again").addEventListener("click", () => window.trioDesktop.openUrl(page.url));
+    return () => {};
+  }
   let mode = "direct", cur = page.url, alive = true;
   host.innerHTML = `<div class="pxbar">
       <button class="icon-btn sm" type="button" data-px="back" title="뒤로">‹</button><button class="icon-btn sm" type="button" data-px="forward" title="앞으로">›</button><button class="icon-btn sm" type="button" data-px="reload" title="새로고침">⟳</button>
