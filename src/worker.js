@@ -3,7 +3,7 @@
 import { registerAi, aiJson } from "./ai.js";
 import { registerBrain } from "./brain.js";
 import { registerEnglish } from "./english.js";
-import { registerPages } from "./pages.js";
+import { registerPages, servePageFile } from "./pages.js";
 import { registerPapers, cleanupPaperNotes } from "./papers.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth, oauthTokenUser } from "./oauth.js";
@@ -55,6 +55,10 @@ export default {
     if (url.pathname === "/mcp") {
       try { return await handleMcp(req, env, ec, { tokenUser, internal: internalCall }); }
       catch (e) { console.error("mcp", e); return json({ jsonrpc: "2.0", id: null, error: { code: -32603, message: "서버에서 문제가 생겼어요." } }, 500); }
+    }
+    if (url.pathname.startsWith("/pf/")) { // Dock 사용자 페이지 파일 (sandbox iframe 이 불러요)
+      try { return await servePageFile(req, env, url, await sessionUser(req, env)); }
+      catch (e) { console.error("pf", e); return new Response("서버에서 문제가 생겼어요.", { status: 500 }); }
     }
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
     try {

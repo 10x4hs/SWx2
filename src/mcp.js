@@ -34,8 +34,8 @@ const TOOLS = [
   { name: "page_guide", description: "Dock 페이지 코드 규칙: HTML 한 파일 · sandbox iframe · window.trio 브리지(api/me/go/toast/store) · 쓸 수 있는 앱 API 목록. page_write 전에 꼭 읽어요.", inputSchema: S({}) },
   { name: "pages_list", description: "내 Dock 페이지와 셋이 공유한 페이지 목록 (id · 제목 · 아이콘 · 목적 · 공유 여부).", inputSchema: S({}) },
   { name: "page_read", description: "Dock 페이지 하나의 코드 읽기 (고치기 전에).", inputSchema: S({ id: str("페이지 id (앞 6글자 이상)"), title: str("또는 제목") }) },
-  { name: "page_write", description: "Dock 페이지 만들기·고치기. id/title 로 기존 페이지를 찾으면 코드를 바꿔요(이전 코드는 버전으로 남아요), 없으면 새로 만들어요. code 는 <!doctype html> 로 시작하는 완전한 문서.",
-    inputSchema: S({ title: str("페이지 이름 (12자 이내)"), code: str("HTML 전체 코드"), id: str("고칠 페이지 id (선택)"), icon: str("이모지 하나 (선택)"), purpose: str("이 페이지의 목적 한 줄 (선택)"), shared: { type: "boolean", description: "true 면 셋의 Dock 에 (남은 읽기만)" }, note: str("무엇을 바꿨는지 (버전 메모)") }, ["title", "code"]) },
+  { name: "page_write", description: "Dock 페이지 만들기·고치기 (파일 여러 개). id/title 로 기존 페이지를 찾으면 그 파일들을 바꿔요(이전 묶음은 버전으로 남아요), 없으면 새로 만들어요. files = { \"index.html\": \"<!doctype html>…\", \"style.css\": \"…\", \"app.js\": \"…\" } (index.html 필수 · 상대 경로 그대로 · 외부 CDN · 폰트 OK). 기존 페이지를 고칠 땐 적은 파일만 바뀌고, 값이 null 인 파일은 지워져요. 간단하면 code(=index.html) 하나만 줘도 돼요.",
+    inputSchema: S({ title: str("페이지 이름 (12자 이내)"), files: { type: "object", description: "{ 경로: 내용 | null }", additionalProperties: { type: ["string", "null"] } }, code: str("index.html 전체 (files 대신)"), id: str("고칠 페이지 id (선택)"), icon: str("이모지 하나 (선택)"), purpose: str("이 페이지의 목적 한 줄 (선택)"), shared: { type: "boolean", description: "true 면 셋의 Dock 에 (남은 읽기만)" }, note: str("무엇을 바꿨는지 (버전 메모)") }, ["title"]) },
   // ---- 계획 ----
   { name: "plans_list", description: "그날의 계획(시간표 · 체크리스트). day 없으면 오늘.", inputSchema: S({ day: str("YYYY-MM-DD") }) },
   { name: "plan_add", description: "그날 계획 넣기. start(HH:MM)와 mins 를 주면 시간표, start 없으면 체크리스트(mins 만 주면 예상 시간).",
@@ -273,13 +273,16 @@ const CALL = {
   async page_read(a, c) {
     const p = await pageOf(c, a);
     const { page } = await api(c, "GET", "/pages/" + encodeURIComponent(p.id));
-    return [`# ${page.icon} ${page.title}`, `id ${page.id} · 목적: ${page.purpose || "-"} · 수정 ${kstTime(page.updated_at)} · ${page.mine ? "내 것" : "공유(읽기만)"}`, "", page.code].join("\n");
+    if (page.kind === "url") return `# ${page.icon} ${page.title}\nURL 페이지 · ${page.url}`;
+    return [`# ${page.icon} ${page.title}`, `id ${page.id} · 목적: ${page.purpose || "-"} · 수정 ${kstTime(page.updated_at)} · ${page.mine ? "내 것" : "공유(읽기만)"} · 파일 ${Object.keys(page.files || {}).join(", ")}`, "", ...Object.entries(page.files || {}).map(([k, v]) => `### ${k}\n${v}`)].join("\n\n");
   },
   async page_write(a, c) {
-    const title = String(a.title || "").trim(), code = String(a.code || "");
-    if (!title || !/<html[\s>]/i.test(code)) bad("title 과 완전한 HTML code(<html>…</html>) 를 주세요. 규칙은 page_guide.");
+    const title = String(a.title || "").trim();
+    const files = a.files && typeof a.files === "object" ? a.files : typeof a.code === "string" ? { "index.html": a.code } : null;
+    if (!title || !files) bad("title 과 files(또는 code) 를 주세요. 규칙은 page_guide.");
     const found = await pageOf(c, { id: a.id, title }, true);
-    const fields = { title, code, note: a.note || `${c.who.agent} 가 고침`, ...(a.icon ? { icon: a.icon } : {}), ...(typeof a.purpose === "string" ? { purpose: a.purpose } : {}), ...(typeof a.shared === "boolean" ? { shared: a.shared } : {}) };
+    if (!found && !/<html[\s>]/i.test(files["index.html"] || "")) bad("새 페이지에는 완전한 index.html(<html>…</html>) 이 있어야 해요.");
+    const fields = { title, files, note: a.note || `${c.who.agent} 가 고침`, ...(a.icon ? { icon: a.icon } : {}), ...(typeof a.purpose === "string" ? { purpose: a.purpose } : {}), ...(typeof a.shared === "boolean" ? { shared: a.shared } : {}) };
     if (found) {
       if (!found.mine) bad("남이 공유한 페이지는 고칠 수 없어요. 새 제목으로 만들어 주세요.");
       const r = await api(c, "PATCH", "/pages/" + encodeURIComponent(found.id), fields);

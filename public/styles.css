@@ -3261,3 +3261,10 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
   .upage-panel { width: auto; max-height: 55%; }
   .upage-bar { margin: 8px 8px 0; }
 }
+
+/* ---------- 페이지 v2: 파일 탭 ---------- */
+.up-files { display: flex; flex-wrap: wrap; gap: 4px; }
+.up-file { border: 0; background: var(--hover); color: var(--ink-2); font: 500 12px/1 ui-monospace, Menlo, monospace; padding: 6px 9px; border-radius: 8px; }
+.up-file.on { background: var(--accent-soft); color: var(--ink); }
+.up-file.add { padding: 6px 7px; display: inline-grid; place-items: center; }
+.upage-bar .btn.sm { display: inline-flex; gap: 4px; align-items: center; }

@@ -1,23 +1,29 @@
-// 사용자 페이지 — Dock 에 내가 추가하는 화면. 코드는 HTML 한 파일, 화면 쪽 sandbox iframe 에서 돌고 trio.api 브리지로 앱 API 를 써요.
-// 규칙: 내 페이지는 읽기·쓰기 전부, 남이 공유한 페이지는 내 계정으로 읽기(GET)만 — 브리지가 막아요(public/js/page-runner.js).
-// 만드는 길 두 가지: 앱 안 AI(POST /ai/page-code, 내장 모델) · MCP page_write(Claude Code 같은 바깥 에이전트).
+// 사용자 페이지 — Dock 에 내가 추가하는 화면. 페이지 하나 = 여러 파일(index.html · style.css · app.js · 다른 html …).
+// 서버가 /pf/<id>/<path> 로 그대로 서빙하고(html 에는 브리지 스크립트를 끼워 넣어요), 화면 쪽은 sandbox iframe(allow-same-origin 없음)에 띄워요.
+// 규칙: 내 페이지는 앱 API 읽기·쓰기 전부, 남이 공유한 페이지는 내 계정으로 읽기(GET)만 — 브리지가 막아요(public/js/page-runner.js).
+// kind=url 이면 바깥 사이트 주소를 Dock 안에 띄우는 페이지예요(파일 없음).
 import { aiJson } from "./ai.js";
 
-export const MAX_CODE = 200_000;   // 코드 글자 수
-const MAX_VERSIONS = 30;           // 페이지당 남기는 이전 버전 수
-const LIST_COLS = "id, user_id, title, icon, purpose, shared, sort, created_at, updated_at, length(code) AS size";
+export const MAX_FILE = 300_000;      // 파일 하나 글자 수
+export const MAX_FILES = 40;          // 페이지당 파일 수
+export const MAX_TOTAL = 1_500_000;   // 페이지 전체 글자 수
+const MAX_VERSIONS = 30;
+const LIST_COLS = "id, user_id, title, icon, purpose, kind, url, shared, sort, created_at, updated_at";
+const PATH_RE = /^(?!\.)(?!.*\.\.)[\w\-. /]{1,120}$/;  // 상대 경로만 · .. 금지
+const TYPES = { html: "text/html; charset=utf-8", htm: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/javascript; charset=utf-8", mjs: "text/javascript; charset=utf-8", json: "application/json; charset=utf-8", svg: "image/svg+xml", txt: "text/plain; charset=utf-8", md: "text/markdown; charset=utf-8", csv: "text/csv; charset=utf-8", xml: "application/xml; charset=utf-8", webmanifest: "application/manifest+json" };
+const BRIDGE_TAG = `<script src="/js/page-bridge.js"></script>`;
 
 // 페이지 코드가 쓸 수 있는 브리지 설명 — AI 프롬프트와 MCP page_guide 가 같이 써요
-export const BRIDGE_GUIDE = `## 페이지 코드 규칙
-- HTML 문서 하나(<!doctype html> … </html>). CSS · JS 는 그 안에 인라인. 바깥 CDN 은 쓰지 마 (오프라인 · 보안).
-- 화면은 sandbox iframe 안. 쿠키·fetch("/api") 는 안 돼 — 반드시 window.trio 브리지를 써.
-- 다크 유리 느낌의 앱 안에 떠. :root 변수가 미리 들어와 있어: --bg --ink --ink-2 --ink-3 --line --glass --accent --c-blue --c-green --c-amber --c-rose --c-teal --font. body 배경은 투명하게 두고 글자색은 var(--ink).
-- 모바일 폭(360px)에서도 깨지지 않게. 글자는 14~16px, 눌리는 것은 36px 이상.
+export const BRIDGE_GUIDE = `## 페이지 규칙
+- 페이지 = 파일 여러 개. 반드시 index.html 이 있어야 하고, style.css · app.js · 다른 html(about.html 처럼) 을 상대 경로로 자유롭게 써. 상대 경로는 그대로 돼.
+- 외부 자원은 제한 없음: CDN 라이브러리(three.js · Chart.js · Tailwind · GSAP …), 구글 폰트, 이미지 주소, 바깥 API fetch(그 사이트가 CORS 를 열어 둔 경우). 손으로 짠 정적 사이트 수준(여러 장 · 애니메이션 · 폰트)으로 만들어도 돼.
+- 화면은 sandbox iframe 안. 쿠키·fetch("/api") 는 안 돼 — 앱 데이터는 반드시 window.trio 브리지로. 브리지는 서버가 html 마다 끼워 넣어 주니 직접 넣지 마.
+- 기본 글꼴·색은 네가 정해. 앱 테마 색이 필요하면 trio.theme (아래) 로 받아 써. 모바일 폭(360px)에서도 깨지지 않게.
 
-## window.trio (await 로 써)
-- trio.me  → { id, display_name, color }  · trio.users → 셋의 목록 · trio.today → "YYYY-MM-DD"(한국) · trio.readonly → true 면 남의 공유 페이지(쓰기 호출은 실패)
-- trio.api(method, path, body?) → JSON. 실패하면 throw Error(메시지). 예: await trio.api("GET", "/plans?periods=D:2026-10-04")
-- trio.go(hash) 앱 화면 이동(예 "#/calendar/2026-10-04") · trio.toast(글) 짧은 알림 · trio.store.get(key)/set(key, value) 이 페이지만의 저장소(JSON)
+## window.trio (await trio.ready 뒤에 써 — 또는 trio.onReady(fn))
+- trio.me { id, display_name, color } · trio.users 셋의 목록 · trio.today "YYYY-MM-DD"(한국) · trio.readonly true 면 남의 공유 페이지(쓰기 호출은 실패) · trio.theme { bg, ink, ink2, ink3, line, accent, blue, green, amber, rose, teal, dark:boolean }
+- trio.api(method, path, body?) → JSON. 실패하면 throw Error(메시지). 예: await trio.api("GET", "/plans?periods=D:" + trio.today)
+- trio.go(hash) 앱 화면 이동(예 "#/calendar/2026-10-04") · trio.toast(글) 짧은 알림 · trio.store.get(key)/set(key, value) 이 페이지만의 저장소(JSON, 보는 사람 기기에)
 - trio.onChange(fn) 앱 데이터가 바뀌면 fn 호출(다시 그릴 때)
 
 ## 앱 API (path 는 /api 를 뺀 것)
@@ -30,15 +36,20 @@ export const BRIDGE_GUIDE = `## 페이지 코드 규칙
 - GET /papers/progress → 논문 스프린트 진도(셋) · GET /logs/focus?from=&to=&user= → 집중 타이머 기록
 - GET /diary?day= · PUT /diary { day, body } · GET /records/recent · GET /users · GET /me`;
 
-const PAGE_SYSTEM = `너는 작은 웹 앱 화면을 짜는 프런트엔드 개발자야. 사용자가 적은 '목적'에 맞는 페이지를 HTML 한 파일로 만들어.
+const PAGE_SYSTEM = `너는 작은 웹 사이트·앱 화면을 짜는 프런트엔드 개발자야. 사용자가 적은 '목적'에 맞는 페이지를 파일 여러 개로 만들어.
 ${BRIDGE_GUIDE}
 
 ## 품질
-- 처음 열자마자 쓸 수 있게: 데이터는 trio.api 로 바로 불러와 보여 주고, 비어 있으면 안내 문장.
+- 처음 열자마자 쓸 수 있게: 앱 데이터가 필요하면 trio.api 로 바로 불러와 보여 주고, 비어 있으면 안내 문장.
 - 버튼마다 동작이 있어야 해. 예외는 try/catch 로 잡아 trio.toast 로 알려.
-- 글은 쉬운 한국어 해요체. 이모지는 제목에 하나까지.
-- 코드는 짧고 읽기 쉽게, 주석은 한국어로 핵심만. 전체 8,000자 안쪽이면 좋아.
-반드시 JSON 하나로만 답해: {"title":"페이지 이름(12자 이내)","icon":"이모지 하나","code":"<!doctype html>…","reply":"무엇을 만들었는지(또는 바꿨는지) 한두 문장"}`;
+- 디자인은 목적에 맞게 과감하게(폰트 · 여백 · 움직임). 글은 쉬운 한국어 해요체.
+- 파일은 index.html + style.css + app.js 로 나누는 게 기본. 장이 여러 개면 html 을 더 만들어 서로 링크해.
+반드시 JSON 하나로만 답해: {"title":"페이지 이름(12자 이내)","icon":"이모지 하나","files":{"index.html":"<!doctype html>…","style.css":"…","app.js":"…"},"reply":"무엇을 만들었는지(또는 바꿨는지) 한두 문장"}`;
+
+const isHtml = (p) => /\.html?$/i.test(p);
+const typeOf = (p) => TYPES[(p.split(".").pop() || "").toLowerCase()] || "application/octet-stream";
+// html 에 브리지를 끼워 넣어요 (<head> 바로 뒤, 없으면 맨 앞)
+export const withBridge = (html) => (html.includes("/js/page-bridge.js") ? html : /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + BRIDGE_TAG) : BRIDGE_TAG + html);
 
 export function registerPages(on, { json, body, fail, uid, now }) {
   const own = async (env, id, user) => {
@@ -54,38 +65,80 @@ export function registerPages(on, { json, body, fail, uid, now }) {
   };
   const cleanTitle = (s, fallback = "새 페이지") => (String(s || "").replace(/\s+/g, " ").trim().slice(0, 40) || fallback);
   const cleanIcon = (s, fallback = "✨") => { const t = String(s || "").trim(); return t && [...t].length <= 2 ? t : fallback; };
-  const cleanCode = (s) => { const c = String(s || ""); if (c.length > MAX_CODE) fail(400, `코드는 ${MAX_CODE.toLocaleString()}자까지예요.`); return c; };
+  const cleanUrl = (s) => { const u = String(s || "").trim(); if (!u) return ""; if (!/^https?:\/\/[^\s]+$/i.test(u)) fail(400, "주소는 http:// 또는 https:// 로 시작해야 해요."); return u.slice(0, 2000); };
   const nextSort = async (env, user) => ((await env.DB.prepare("SELECT COALESCE(MAX(sort), -1) + 1 AS n FROM user_pages WHERE user_id = ?").bind(user.id).first())?.n ?? 0);
+  // 파일 묶음 검사: { path: content | null(지움) }
+  function cleanFiles(input, { partial = false } = {}) {
+    if (!input || typeof input !== "object") fail(400, "files 는 { 경로: 내용 } 모양이어야 해요.");
+    const out = {};
+    for (const [rawPath, content] of Object.entries(input)) {
+      const path = rawPath.replace(/^\.?\//, "").trim();
+      if (!PATH_RE.test(path)) fail(400, `파일 이름이 이상해요: ${rawPath} (글자·숫자·-_./ 만, .. 금지)`);
+      if (content === null) { if (partial) out[path] = null; continue; }
+      if (typeof content !== "string") fail(400, `${path} 의 내용은 글자여야 해요.`);
+      if (content.length > MAX_FILE) fail(400, `${path} 가 너무 커요 (${MAX_FILE.toLocaleString()}자까지).`);
+      out[path] = content;
+    }
+    return out;
+  }
+  const filesOf = async (env, id) => Object.fromEntries((await env.DB.prepare("SELECT path, content FROM user_page_files WHERE page_id = ? ORDER BY path").bind(id).all()).results.map((r) => [r.path, r.content]));
+  async function writeFiles(env, id, files, { replaceAll = false } = {}) {
+    const stmts = [];
+    if (replaceAll) stmts.push(env.DB.prepare("DELETE FROM user_page_files WHERE page_id = ?").bind(id));
+    for (const [path, content] of Object.entries(files)) {
+      if (content === null) stmts.push(env.DB.prepare("DELETE FROM user_page_files WHERE page_id = ? AND path = ?").bind(id, path));
+      else stmts.push(env.DB.prepare("INSERT INTO user_page_files (page_id, path, content, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(page_id, path) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at").bind(id, path, content, now()));
+    }
+    if (stmts.length) await env.DB.batch(stmts);
+    const all = await filesOf(env, id);
+    const n = Object.keys(all).length, total = Object.values(all).reduce((a, c) => a + c.length, 0);
+    if (n > MAX_FILES || total > MAX_TOTAL) fail(400, `페이지가 너무 커요 (파일 ${MAX_FILES}개 · 총 ${(MAX_TOTAL / 1e6).toFixed(1)}MB 까지).`);
+    // code 컬럼 = index.html (예전 화면 · MCP 호환)
+    await env.DB.prepare("UPDATE user_pages SET code = ?, updated_at = ? WHERE id = ?").bind(all["index.html"] || "", now(), id).run();
+    return all;
+  }
   async function keepVersion(env, p, note) {
-    if (!p.code) return;
+    const files = await filesOf(env, p.id);
+    if (!Object.keys(files).length) return;
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO user_page_versions (id, page_id, code, note, created_at) VALUES (?, ?, ?, ?, ?)").bind(uid(), p.id, p.code, String(note || "").slice(0, 200), now()),
+      env.DB.prepare("INSERT INTO user_page_versions (id, page_id, code, note, created_at) VALUES (?, ?, ?, ?, ?)").bind(uid(), p.id, JSON.stringify(files), String(note || "").slice(0, 200), now()),
       env.DB.prepare("DELETE FROM user_page_versions WHERE page_id = ? AND id NOT IN (SELECT id FROM user_page_versions WHERE page_id = ? ORDER BY created_at DESC LIMIT ?)").bind(p.id, p.id, MAX_VERSIONS),
     ]);
   }
-  const shape = (p, me) => ({ ...p, shared: !!p.shared, mine: p.user_id === me.id });
+  const shape = (p, me, files) => ({ id: p.id, user_id: p.user_id, title: p.title, icon: p.icon, purpose: p.purpose, kind: p.kind || "code", url: p.url || "", shared: !!p.shared, sort: p.sort, created_at: p.created_at, updated_at: p.updated_at, mine: p.user_id === me.id, ...(files ? { files, code: files["index.html"] || "" } : {}) });
 
-  // 목록: 내 것 전부 + 남이 공유한 것 (코드는 빼고)
   on("GET", "/pages", async ({ env, user }) => {
     const { results } = await env.DB.prepare(`SELECT ${LIST_COLS} FROM user_pages WHERE user_id = ? OR shared = 1 ORDER BY (user_id = ?) DESC, sort ASC, created_at ASC`).bind(user.id, user.id).all();
     return json({ pages: results.map((p) => shape(p, user)) });
   });
   on("GET", "/pages/guide", async () => json({ guide: BRIDGE_GUIDE }));
-  on("GET", "/pages/:id", async ({ env, user, params }) => json({ page: shape(await visible(env, params.id, user), user) }));
+  on("GET", "/pages/:id", async ({ env, user, params }) => { const p = await visible(env, params.id, user); return json({ page: shape(p, user, await filesOf(env, p.id)) }); });
   on("GET", "/pages/:id/versions", async ({ env, user, params }) => {
     await visible(env, params.id, user);
     const { results } = await env.DB.prepare("SELECT id, note, created_at, length(code) AS size FROM user_page_versions WHERE page_id = ? ORDER BY created_at DESC").bind(params.id).all();
     return json({ versions: results });
   });
 
+  // 만들기: { title, icon, purpose, kind:"code"|"url", url, files | code, shared }
   on("POST", "/pages", async ({ req, env, user }) => {
     const b = await body(req);
-    const p = { id: uid(), user_id: user.id, title: cleanTitle(b.title), icon: cleanIcon(b.icon), purpose: String(b.purpose || "").slice(0, 1000), code: cleanCode(b.code), shared: b.shared ? 1 : 0, sort: await nextSort(env, user), created_at: now(), updated_at: now() };
-    await env.DB.prepare("INSERT INTO user_pages (id, user_id, title, icon, purpose, code, shared, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(p.id, p.user_id, p.title, p.icon, p.purpose, p.code, p.shared, p.sort, p.created_at, p.updated_at).run();
-    return json({ page: shape(p, user) }, 201);
+    const kind = b.kind === "url" ? "url" : "code", url = kind === "url" ? cleanUrl(b.url) : "";
+    if (kind === "url" && !url) fail(400, "띄울 주소를 적어 주세요.");
+    const p = { id: uid(), user_id: user.id, title: cleanTitle(b.title), icon: cleanIcon(b.icon, kind === "url" ? "🔗" : "✨"), purpose: String(b.purpose || "").slice(0, 1000), code: "", kind, url, shared: b.shared ? 1 : 0, sort: await nextSort(env, user), created_at: now(), updated_at: now() };
+    await env.DB.prepare("INSERT INTO user_pages (id, user_id, title, icon, purpose, code, kind, url, shared, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(p.id, p.user_id, p.title, p.icon, p.purpose, p.code, p.kind, p.url, p.shared, p.sort, p.created_at, p.updated_at).run();
+    let files = {};
+    if (kind === "code") {
+      const f = b.files ? cleanFiles(b.files) : typeof b.code === "string" ? { "index.html": b.code.slice(0, MAX_FILE) } : {};
+      if (!f["index.html"]) f["index.html"] = `<!doctype html>\n<html lang="ko">\n<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${p.title}</title><link rel="stylesheet" href="style.css"></head>\n<body>\n  <h1>${p.icon} ${p.title}</h1>\n  <p>오른쪽 '코드' 탭에서 파일을 고치거나, 'AI 에게' 칸에 바꾸고 싶은 걸 적어 보세요.</p>\n  <p id="out"></p>\n  <script src="app.js"></script>\n</body>\n</html>`;
+      if (f["index.html"].includes("style.css") && !f["style.css"]) f["style.css"] = `body { font-family: system-ui, sans-serif; margin: 24px; line-height: 1.6; }`;
+      if (f["index.html"].includes("app.js") && !f["app.js"]) f["app.js"] = `trio.onReady(async () => {\n  const r = await trio.api("GET", "/plans?periods=D:" + trio.today);\n  document.getElementById("out").textContent = trio.me.display_name + " 의 오늘 계획 " + r.plans.length + "개";\n});`;
+      files = await writeFiles(env, p.id, f, { replaceAll: true });
+    }
+    return json({ page: shape(p, user, files) }, 201);
   });
 
+  // 고치기: { title, icon, purpose, shared, url, files:{path: content|null}(부분) | code(=index.html), note }
   on("PATCH", "/pages/:id", async ({ req, env, user, params }) => {
     const p = await own(env, params.id, user), b = await body(req);
     const next = {
@@ -93,11 +146,13 @@ export function registerPages(on, { json, body, fail, uid, now }) {
       icon: b.icon !== undefined ? cleanIcon(b.icon, p.icon) : p.icon,
       purpose: typeof b.purpose === "string" ? b.purpose.slice(0, 1000) : p.purpose,
       shared: b.shared !== undefined ? (b.shared ? 1 : 0) : p.shared,
-      code: typeof b.code === "string" ? cleanCode(b.code) : p.code,
+      url: b.url !== undefined ? cleanUrl(b.url) : p.url,
     };
-    if (next.code !== p.code) await keepVersion(env, p, b.note || "직접 고침");
-    await env.DB.prepare("UPDATE user_pages SET title = ?, icon = ?, purpose = ?, shared = ?, code = ?, updated_at = ? WHERE id = ?").bind(next.title, next.icon, next.purpose, next.shared, next.code, now(), p.id).run();
-    return json({ page: shape({ ...p, ...next, updated_at: now() }, user) });
+    let files = null;
+    const patch = b.files ? cleanFiles(b.files, { partial: true }) : typeof b.code === "string" ? { "index.html": b.code.slice(0, MAX_FILE) } : null;
+    if (patch && Object.keys(patch).length) { await keepVersion(env, p, b.note || "직접 고침"); files = await writeFiles(env, p.id, patch); }
+    await env.DB.prepare("UPDATE user_pages SET title = ?, icon = ?, purpose = ?, shared = ?, url = ?, updated_at = ? WHERE id = ?").bind(next.title, next.icon, next.purpose, next.shared, next.url, now(), p.id).run();
+    return json({ page: shape({ ...p, ...next, updated_at: now() }, user, files || await filesOf(env, p.id)) });
   });
 
   on("DELETE", "/pages/:id", async ({ env, user, params }) => {
@@ -105,57 +160,73 @@ export function registerPages(on, { json, body, fail, uid, now }) {
     await env.DB.prepare("DELETE FROM user_pages WHERE id = ?").bind(p.id).run();
     return json({ ok: true });
   });
-
-  // 순서: 내 페이지 id 를 원하는 순서대로
   on("POST", "/pages/reorder", async ({ req, env, user }) => {
     const b = await body(req), ids = Array.isArray(b.ids) ? b.ids.filter((x) => typeof x === "string").slice(0, 100) : [];
     if (!ids.length) fail(400, "순서를 주세요.");
     await env.DB.batch(ids.map((id, i) => env.DB.prepare("UPDATE user_pages SET sort = ? WHERE id = ? AND user_id = ?").bind(i, id, user.id)));
     return json({ ok: true });
   });
-
-  // 이전 버전으로 되돌리기 (지금 코드도 버전으로 남겨요)
   on("POST", "/pages/:id/restore", async ({ req, env, user, params }) => {
     const p = await own(env, params.id, user), b = await body(req);
     const v = await env.DB.prepare("SELECT * FROM user_page_versions WHERE id = ? AND page_id = ?").bind(String(b.version_id || ""), p.id).first();
     if (!v) fail(404, "그 버전을 찾을 수 없어요.");
+    let files; try { files = JSON.parse(v.code); if (!files || typeof files !== "object") throw 0; } catch { files = { "index.html": v.code }; } // 예전 버전은 html 한 덩어리
     await keepVersion(env, p, "되돌리기 전");
-    await env.DB.prepare("UPDATE user_pages SET code = ?, updated_at = ? WHERE id = ?").bind(v.code, now(), p.id).run();
-    return json({ page: shape({ ...p, code: v.code, updated_at: now() }, user) });
+    const all = await writeFiles(env, p.id, files, { replaceAll: true });
+    return json({ page: shape({ ...p, updated_at: now() }, user, all) });
   });
 
-  // ---------- AI: 목적을 적으면 페이지 코드를 짜고, 대화로 고쳐요 ----------
-  // body: { purpose, model? } → 새 페이지 | { page_id, instruction, model? } → 그 페이지 코드를 고쳐 써요
+  // ---------- AI: 목적을 적으면 페이지(파일 여러 개)를 짜고, 대화로 고쳐요 ----------
   on("POST", "/ai/page-code", async ({ req, env, user }) => {
-    const b = await body(req), model = typeof b.model === "string" ? b.model : null;
-    const ask = async (prompt) => {
-      try { return await aiJson(env, PAGE_SYSTEM, prompt, model); }
-      catch (e) { fail(e.status || 502, e.message || "AI 가 응답하지 않았어요."); }
-    };
+    const b = await body(req), model = typeof b.model === "string" && b.model ? b.model : "gemini"; // 긴 코드는 Gemini 가 가장 안정적
+    const ask = async (prompt) => { try { return await aiJson(env, PAGE_SYSTEM, prompt, model); } catch (e) { fail(e.status || 502, e.message || "AI 가 응답하지 않았어요."); } };
     const pick = (data) => {
-      const code = String(data?.code || "");
-      if (!/<html[\s>]/i.test(code) || !/<\/html>/i.test(code)) fail(502, "AI 가 완전한 페이지를 돌려주지 않았어요. 다시 시도하거나 더 짧게 적어 주세요.");
-      return { code: cleanCode(code), title: data?.title, icon: data?.icon, reply: String(data?.reply || "") };
+      let files = data?.files && typeof data.files === "object" ? data.files : typeof data?.code === "string" ? { "index.html": data.code } : null;
+      if (!files || !/<html[\s>]/i.test(files["index.html"] || "")) fail(502, "AI 가 완전한 페이지(index.html)를 돌려주지 않았어요. 다시 시도하거나 더 짧게 적어 주세요.");
+      return { files: cleanFiles(files), title: data?.title, icon: data?.icon, reply: String(data?.reply || "") };
     };
     const me = `사용자: ${user.display_name} (id ${user.id}) · 오늘 ${new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)}`;
     if (b.page_id) {
       const p = await own(env, b.page_id, user);
+      if ((p.kind || "code") !== "code") fail(400, "URL 페이지는 AI 로 고칠 수 없어요.");
       const instruction = String(b.instruction || "").trim().slice(0, 1000);
       if (!instruction) fail(400, "어떻게 고칠지 적어 주세요.");
-      const { data, used } = await ask([me, `페이지 '${p.title}' (목적: ${p.purpose || "-"}) 를 사용자의 요청대로 고쳐. 요청과 상관없는 부분은 그대로 두고, 전체 코드를 다시 돌려줘.`, `## 요청\n${instruction}`, `## 현재 코드\n${p.code.slice(0, 60_000)}`].join("\n\n"));
+      const cur = await filesOf(env, p.id);
+      const dump = Object.entries(cur).map(([k, v]) => `### ${k}\n${v}`).join("\n\n").slice(0, 120_000);
+      const { data, used } = await ask([me, `페이지 '${p.title}' (목적: ${p.purpose || "-"}) 를 사용자의 요청대로 고쳐. 요청과 상관없는 부분은 그대로 두고, 모든 파일을 전부 다시 돌려줘(빠뜨린 파일은 지워져).`, `## 요청\n${instruction}`, `## 현재 파일\n${dump}`].join("\n\n"));
       const r = pick(data);
       await keepVersion(env, p, `AI: ${instruction.slice(0, 80)}`);
-      const title = b.keep_title === false ? cleanTitle(r.title, p.title) : p.title, icon = cleanIcon(r.icon, p.icon);
-      await env.DB.prepare("UPDATE user_pages SET title = ?, icon = ?, code = ?, updated_at = ? WHERE id = ?").bind(title, icon, r.code, now(), p.id).run();
-      return json({ page: shape({ ...p, title, icon, code: r.code, updated_at: now() }, user), reply: r.reply || "고쳤어요.", model: used });
+      const files = await writeFiles(env, p.id, r.files, { replaceAll: true });
+      const icon = cleanIcon(r.icon, p.icon);
+      await env.DB.prepare("UPDATE user_pages SET icon = ?, updated_at = ? WHERE id = ?").bind(icon, now(), p.id).run();
+      return json({ page: shape({ ...p, icon, updated_at: now() }, user, files), reply: r.reply || "고쳤어요.", model: used });
     }
     const purpose = String(b.purpose || "").trim().slice(0, 1000);
     if (!purpose) fail(400, "이 페이지로 무엇을 하고 싶은지 적어 주세요.");
     const { data, used } = await ask([me, `## 목적\n${purpose}`].join("\n\n"));
     const r = pick(data);
-    const p = { id: uid(), user_id: user.id, title: cleanTitle(r.title, purpose.slice(0, 12)), icon: cleanIcon(r.icon), purpose, code: r.code, shared: 0, sort: await nextSort(env, user), created_at: now(), updated_at: now() };
-    await env.DB.prepare("INSERT INTO user_pages (id, user_id, title, icon, purpose, code, shared, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(p.id, p.user_id, p.title, p.icon, p.purpose, p.code, p.shared, p.sort, p.created_at, p.updated_at).run();
-    return json({ page: shape(p, user), reply: r.reply || "만들었어요.", model: used }, 201);
+    const p = { id: uid(), user_id: user.id, title: cleanTitle(r.title, purpose.slice(0, 12)), icon: cleanIcon(r.icon), purpose, code: "", kind: "code", url: "", shared: 0, sort: await nextSort(env, user), created_at: now(), updated_at: now() };
+    await env.DB.prepare("INSERT INTO user_pages (id, user_id, title, icon, purpose, code, kind, url, shared, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(p.id, p.user_id, p.title, p.icon, p.purpose, p.code, p.kind, p.url, p.shared, p.sort, p.created_at, p.updated_at).run();
+    const files = await writeFiles(env, p.id, r.files, { replaceAll: true });
+    return json({ page: shape(p, user, files), reply: r.reply || "만들었어요.", model: used }, 201);
   });
+}
+
+// /pf/<id>/<path> — 페이지 파일 서빙 (로그인 쿠키로 · 내 것 또는 공유된 것). html 에는 브리지를 끼워요. sandbox CSP 로 한 번 더 가둬요.
+export async function servePageFile(req, env, url, user) {
+  const m = /^\/pf\/([^/]+)\/?(.*)$/.exec(url.pathname);
+  if (!m) return new Response("not found", { status: 404 });
+  if (!user) return new Response("로그인이 필요해요.", { status: 401, headers: { "content-type": "text/plain; charset=utf-8" } });
+  const id = m[1]; let path = decodeURIComponent(m[2] || "") || "index.html";
+  if (path.endsWith("/")) path += "index.html";
+  const p = await env.DB.prepare("SELECT id, user_id, shared, kind FROM user_pages WHERE id = ?").bind(id).first();
+  if (!p || (p.user_id !== user.id && !p.shared)) return new Response("not found", { status: 404 });
+  const f = await env.DB.prepare("SELECT content FROM user_page_files WHERE page_id = ? AND path = ?").bind(id, path).first();
+  if (!f) return new Response(`파일이 없어요: ${path}`, { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+  const html = isHtml(path);
+  return new Response(html ? withBridge(f.content) : f.content, { headers: {
+    "content-type": typeOf(path), "cache-control": "no-store", "x-content-type-options": "nosniff",
+    ...(html ? { "content-security-policy": "sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-pointer-lock", "referrer-policy": "no-referrer" } : {}),
+  } });
 }
