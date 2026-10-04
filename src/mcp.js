@@ -11,7 +11,8 @@ const INSTRUCTIONS = `Dsm-mafia — 셋이 쓰는 공부 앱(논문 스프린트
 1) 시작할 때 tasks_list 로 열린 일을 보고, 2) 할 일을 고르면 task_claim 으로 맡고(다른 에이전트가 맡은 일은 건드리지 않기),
 3) 중간 진행은 task_update(note) 로 짧게 남기고, 4) 끝나면 task_update(status="done", result=무엇을 했는지 · 어디에 남겼는지).
 큰 일을 나누려면 task_add(assignee=다른 에이전트 이름 | "anyone"). 결과물(정리 글 등)은 note_write 로 노트에 남기고 result 에 노트 제목을 적어요.
-논문 자료는 papers_overview → paper_read(part="summary"|"deep"|"terms", section) 순서로 읽어요. 사용자의 글은 쉬운 한국어 해요체로 써요.`;
+논문 자료는 papers_overview → paper_read(part="summary"|"deep"|"terms", section) 순서로 읽어요. 사용자의 글은 쉬운 한국어 해요체로 써요.
+**Dock 페이지**: 사용자가 "~하는 화면/페이지 만들어 줘" 하면 page_guide 로 규칙(HTML 한 파일 · window.trio 브리지 · 앱 API)을 읽고 page_write 로 만들어요. 만든 페이지는 그 사람의 Dock 에 바로 떠요.`;
 
 const S = (props, required = []) => ({ type: "object", properties: props, required, additionalProperties: false });
 const str = (description, extra = {}) => ({ type: "string", description, ...extra });
@@ -29,6 +30,12 @@ const TOOLS = [
   { name: "note_read", description: "노트 하나 읽기 (마크다운 원문).", inputSchema: S({ title: str("노트 제목"), id: str("노트 id") }) },
   { name: "note_write", description: "노트 쓰기. mode=create(새로, 같은 제목이 있으면 실패) | append(끝에 덧붙이기, 기본) | replace(본문 통째로 바꾸기). [[제목]] 링크 · #태그는 그래프에 이어져요.",
     inputSchema: S({ title: str("노트 제목 ([ ] | # 은 못 써요)"), body: str("마크다운 본문"), mode: str("create | append | replace", { enum: ["create", "append", "replace"] }), parent_title: str("create 일 때 상위 페이지 제목 (선택)") }, ["title", "body"]) },
+  // ---- Dock 페이지 (사용자가 추가하는 화면, HTML 한 파일) ----
+  { name: "page_guide", description: "Dock 페이지 코드 규칙: HTML 한 파일 · sandbox iframe · window.trio 브리지(api/me/go/toast/store) · 쓸 수 있는 앱 API 목록. page_write 전에 꼭 읽어요.", inputSchema: S({}) },
+  { name: "pages_list", description: "내 Dock 페이지와 셋이 공유한 페이지 목록 (id · 제목 · 아이콘 · 목적 · 공유 여부).", inputSchema: S({}) },
+  { name: "page_read", description: "Dock 페이지 하나의 코드 읽기 (고치기 전에).", inputSchema: S({ id: str("페이지 id (앞 6글자 이상)"), title: str("또는 제목") }) },
+  { name: "page_write", description: "Dock 페이지 만들기·고치기. id/title 로 기존 페이지를 찾으면 코드를 바꿔요(이전 코드는 버전으로 남아요), 없으면 새로 만들어요. code 는 <!doctype html> 로 시작하는 완전한 문서.",
+    inputSchema: S({ title: str("페이지 이름 (12자 이내)"), code: str("HTML 전체 코드"), id: str("고칠 페이지 id (선택)"), icon: str("이모지 하나 (선택)"), purpose: str("이 페이지의 목적 한 줄 (선택)"), shared: { type: "boolean", description: "true 면 셋의 Dock 에 (남은 읽기만)" }, note: str("무엇을 바꿨는지 (버전 메모)") }, ["title", "code"]) },
   // ---- 계획 ----
   { name: "plans_list", description: "그날의 계획(시간표 · 체크리스트). day 없으면 오늘.", inputSchema: S({ day: str("YYYY-MM-DD") }) },
   { name: "plan_add", description: "그날 계획 넣기. start(HH:MM)와 mins 를 주면 시간표, start 없으면 체크리스트(mins 만 주면 예상 시간).",
@@ -130,6 +137,14 @@ const api = async (c, method, path, body) => {
 };
 const plain = (s) => String(s || "").replace(/\*\*/g, "");
 const shortId = (id) => id.slice(0, 8);
+
+async function pageOf(c, a, soft = false) {
+  const { pages } = await api(c, "GET", "/pages");
+  const id = String(a.id || "").trim(), t = String(a.title || "").trim().toLowerCase();
+  const p = (id && pages.find((x) => x.id === id || x.id.startsWith(id))) || (t && pages.find((x) => x.title.toLowerCase() === t && x.mine)) || (t && pages.find((x) => x.title.toLowerCase() === t));
+  if (!p && !soft) bad(id || t ? `페이지를 못 찾았어요: ${id || t}` : "id 나 title 을 주세요.");
+  return p || null;
+}
 
 async function taskOf(c, id) {
   const k = String(id || "").trim();
@@ -247,6 +262,31 @@ const CALL = {
     const next = mode === "replace" ? body : `${note.body.trimEnd()}\n\n${body.trim()}\n\n_— ${c.who.agent}, ${kstTime(Date.now())}_\n`;
     await api(c, "PUT", "/notes/" + encodeURIComponent(found), { body: next });
     return `${mode === "replace" ? "본문을 바꿨어요" : "끝에 덧붙였어요"}: ${title} · ${c.origin}/#/notes/${found}`;
+  },
+
+  async page_guide(a, c) { return (await api(c, "GET", "/pages/guide")).guide; },
+  async pages_list(a, c) {
+    const { pages } = await api(c, "GET", "/pages");
+    if (!pages.length) return "Dock 페이지가 아직 없어요. page_guide 를 읽고 page_write 로 만들어요.";
+    return pages.map((p) => `${p.icon} ${p.title} · id ${shortId(p.id)} · ${p.mine ? "내 것" : "공유(읽기만)"}${p.shared ? " · 셋에게 공개" : ""}${p.purpose ? ` · ${p.purpose}` : ""} · ${c.origin}/#/p/${p.id}`).join("\n");
+  },
+  async page_read(a, c) {
+    const p = await pageOf(c, a);
+    const { page } = await api(c, "GET", "/pages/" + encodeURIComponent(p.id));
+    return [`# ${page.icon} ${page.title}`, `id ${page.id} · 목적: ${page.purpose || "-"} · 수정 ${kstTime(page.updated_at)} · ${page.mine ? "내 것" : "공유(읽기만)"}`, "", page.code].join("\n");
+  },
+  async page_write(a, c) {
+    const title = String(a.title || "").trim(), code = String(a.code || "");
+    if (!title || !/<html[\s>]/i.test(code)) bad("title 과 완전한 HTML code(<html>…</html>) 를 주세요. 규칙은 page_guide.");
+    const found = await pageOf(c, { id: a.id, title }, true);
+    const fields = { title, code, note: a.note || `${c.who.agent} 가 고침`, ...(a.icon ? { icon: a.icon } : {}), ...(typeof a.purpose === "string" ? { purpose: a.purpose } : {}), ...(typeof a.shared === "boolean" ? { shared: a.shared } : {}) };
+    if (found) {
+      if (!found.mine) bad("남이 공유한 페이지는 고칠 수 없어요. 새 제목으로 만들어 주세요.");
+      const r = await api(c, "PATCH", "/pages/" + encodeURIComponent(found.id), fields);
+      return `페이지를 고쳤어요: ${r.page.icon} ${r.page.title} · ${c.origin}/#/p/${r.page.id} (이전 코드는 버전에 남아요)`;
+    }
+    const r = await api(c, "POST", "/pages", fields);
+    return `새 페이지를 만들었어요: ${r.page.icon} ${r.page.title} (id ${r.page.id}) · ${c.origin}/#/p/${r.page.id} — Dock 에 바로 떠요.`;
   },
 
   async plans_list(a, c) {

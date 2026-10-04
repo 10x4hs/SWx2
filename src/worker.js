@@ -3,6 +3,7 @@
 import { registerAi, aiJson } from "./ai.js";
 import { registerBrain } from "./brain.js";
 import { registerEnglish } from "./english.js";
+import { registerPages } from "./pages.js";
 import { registerPapers, cleanupPaperNotes } from "./papers.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth, oauthTokenUser } from "./oauth.js";
@@ -870,6 +871,7 @@ on("GET", "/records/days", async ({ env, q, user, ec }) => {
 registerAi(on, { json, body, fail, str, uid, now });
 registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_NOTE });
 registerEnglish(on, { json, body, fail, uid, now });
+registerPages(on, { json, body, fail, uid, now }); // Dock 사용자 페이지 + AI 코드 생성
 registerPapers(on, { json, body, fail, now });
 registerMcpTokens(on, { json, body, fail, now });
 registerHomePad(on, { json, body, fail, now });
