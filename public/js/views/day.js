@@ -29,12 +29,12 @@ function relDay(k, tk) {
 const stamp = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
 // el 안에 그날 페이지를 그려요. onChange(kind) = 달력 칸을 새로 그려야 할 때. 돌려주는 함수 = 정리(쓰던 일기 저장).
-export function mountDay(el, ctx, day, { onChange } = {}) {
+export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   const date = parseYmd(day), tk = ymd(today()), key = "D:" + day;
   const isToday = day === tk, isPast = day < tk, future = day > tk;
   const me = ctx.me;
   // 누구의 하루를 볼지. 친구 것은 그 사람이 open 했을 때만, 읽기 전용 (추가 · 고치기 · 끌기 없음)
-  let who = me.id;
+  let who = startWho && ctx.users.some((u) => u.id === startWho) ? startWho : me.id; // 홈의 친구 차트에서 오면 그 친구로 시작 (보기만)
   const ro = () => who !== me.id;
   const S = { plans: null, goals: null, diary: undefined, logs: [], english: null, record: null, notes: [], carry: 0, editSlot: null, editMins: 60 };
   const wKey = periodKey("week", date), mKey = periodKey("month", date), yKey = periodKey("year", date);
@@ -53,7 +53,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         <p class="dp-sub">${wk.w}주차 · 올해 ${dayOfYear(date)}/${daysInYear(date.getFullYear())}일째<span class="chip accent" id="dp-streak" hidden></span></p>
       </div>
       <div class="pager">
-        <div class="who-switch dp-who" role="tablist" aria-label="누구의 하루를 볼까요">${ctx.users.map((u) => `<button type="button" role="tab" data-dpwho="${u.id}" aria-selected="${u.id === me.id}" style="--c:${esc(u.color)}" title="${esc(u.display_name)}${u.id !== me.id && u.plans_open === false ? " · 비공개" : ""}">${avatar(u, "sm")}${esc(u.username.toUpperCase())}</button>`).join("")}</div>
+        <div class="who-switch dp-who" role="tablist" aria-label="누구의 하루를 볼까요">${ctx.users.map((u) => `<button type="button" role="tab" data-dpwho="${u.id}" aria-selected="${u.id === who}" style="--c:${esc(u.color)}" title="${esc(u.display_name)}${u.id !== me.id && u.plans_open === false ? " · 비공개" : ""}">${avatar(u, "sm")}${esc(u.username.toUpperCase())}</button>`).join("")}</div>
         <a class="icon-btn sm" href="#/calendar/${ymd(addDays(date, -1))}" aria-label="전날">${icon.left(16)}</a>
         <a class="icon-btn sm" href="#/calendar/${ymd(addDays(date, 1))}" aria-label="다음날">${icon.right(16)}</a>
         <label class="icon-btn sm dp-pick" aria-label="날짜 고르기">${icon.calendar(15)}<input type="date" id="dp-date" value="${day}"></label>
