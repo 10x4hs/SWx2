@@ -17,6 +17,7 @@ import { openMcpPanel } from "./mcp-panel.js";
 import { openProfile } from "./profile-edit.js";
 import { statusPicker, statusText } from "./status.js";
 import * as calendarView from "./views/calendar.js";
+import * as studyView from "./views/study.js"; // 공부 = 영어 | 논문 (Dock 아이콘 하나)
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
@@ -99,8 +100,7 @@ const NAV = [
   { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
   { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리 · 그래프" },
-  { key: "english", hash: "#/english", label: "영어", tip: "영어 · 6개월 프리토킹" },
-  { key: "papers", hash: "#/papers", label: "논문", tip: "논문 스프린트 · 10.1–10.5 · 16편", until: "2026-10-05" },
+  { key: "study", hash: "#/english", label: "공부", tip: "공부 · 영어 | 논문" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const NAV_SPLIT = 2;
@@ -111,7 +111,7 @@ const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 function renderShell() {
   // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점.
-  const item = (n) => `<a class="rail-btn" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
+  const item = (n) => `<a class="rail-btn" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.key === "study" ? studyView.lastHash() : n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
   app.innerHTML = `
     <div class="shell">
       <aside class="rail dock glass" aria-label="메뉴">
@@ -341,9 +341,9 @@ function parseRoute() {
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar" && b === "m") return { view: "calendar", nav: "calendar", mode: "month", day: c ? `m/${c}` : null }; // #/calendar/m/2026-10 = 그 달 달력만
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null }; // #/calendar/2026-10-04 = 그날 전체 화면
-  if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
+  if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
-  if (a === "papers") return { view: "papers", nav: "papers", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
+  if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
@@ -363,8 +363,7 @@ function route() {
   if (lastView === "goals" && r.view === "goals") { goalsView.update(r); return; }
   if (lastView === "checklist" && r.view === "checklist") { checklistView.update(r); return; } // 주·월·년 탭은 판을 그대로 // 날짜만 바뀌면 편집기만 바꿔요
   if (lastView === "calendar" && r.view === "calendar" && calendarView.update) { calendarView.update(r); return; } // 날짜만 바뀌면 달력은 그대로
-  if (lastView === "english" && r.view === "english" && englishView.update) { englishView.update(r); return; } // 영어 탭 전환은 판을 다시 만들지 않아요
-  if (lastView === "papers" && r.view === "papers") { papersView.update(r); return; } // 현황판 ↔ 논문 페이지
+  if (lastView === "study" && (r.view === "english" || r.view === "papers")) { studyView.update(r); return; } // 영어 ↔ 논문, 탭 전환은 껍데기를 그대로
   if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>
@@ -372,8 +371,8 @@ function route() {
   host.className = "host host-" + r.view;
   main.replaceChildren(host);
   main.scrollTop = 0;
-  lastView = r.view;
-  cleanup = VIEWS[r.view].mount(host, ctx, r) || null;
+  lastView = r.view === "english" || r.view === "papers" ? "study" : r.view;
+  cleanup = (lastView === "study" ? studyView : VIEWS[r.view]).mount(host, ctx, r) || null;
   requestAnimationFrame(() => scrambleIn(host));
 }
 window.addEventListener("hashchange", () => { navDepth++; route(); });
