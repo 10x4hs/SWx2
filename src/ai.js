@@ -125,14 +125,21 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
     let system = b.use_context === false ? basePrompt(user) : await contextPrompt(env, user, b, message);
     // 모든 모델이 에이전트처럼: 웹 검색 · 페이지 읽기 · 노트 · 계획 도구가 늘 열려 있어요. 계획 고치기는 모델 하나일 때만 (비교 모드에서 셋이 같은 일을 넣지 않게)
     const TOOLS = ["web_search", "read_page", "search_notes", "read_note", "my_plans", ...(live.length === 1 ? ["day_plans", "add_plan", "update_plan", "delete_plan"] : [])];
-    system += "\n\n" + toolPrompt(TOOLS, 4) + (live.length === 1 ? `\n계획을 넣거나 고쳐 달라고 하면 add_plan 등으로 직접 해. 오늘은 ${typeof b.day === "string" ? b.day : ""}, 시간은 24시간 HH:MM.` : "");
-    // 지금 DB 에 실제로 있는 오늘 · 내일 계획을 사실로 넣어 줘요 — 앞 대화의 "넣었어요"를 믿고 상태를 지어내지 않게
+    // 날짜 감각: 사용자가 '보고 있는 날짜'(b.day — 달력에서 고른 날)와 '실제 오늘'(b.today)은 다를 수 있어요.
+    // 날짜 말이 없는 요청은 보고 있는 날짜 하나에만 넣게 해요 (예전엔 오늘·내일 둘 다 보여 줘서 두 날에 넣는 일이 있었어요)
+    const isYmd = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+    const kstToday = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    const viewDay = isYmd(b.day) ? b.day : (isYmd(b.today) ? b.today : kstToday);
+    const realToday = isYmd(b.today) ? b.today : kstToday;
+    const dayWord = viewDay === realToday ? "오늘" : viewDay > realToday ? "실제 오늘이 아니라 앞으로 올 날" : "실제 오늘이 아니라 지난 날";
+    system += "\n\n" + toolPrompt(TOOLS, 4) + (live.length === 1
+      ? `\n계획을 넣거나 고쳐 달라고 하면 add_plan 등으로 직접 해. 시간은 24시간 HH:MM.\n사용자가 지금 보고 있는 날짜: ${viewDay} (${dayWord}). 실제 오늘: ${realToday}.\n사용자가 날짜를 말하지 않으면 add_plan 의 date 는 반드시 ${viewDay} 하나만 써. '내일'·'모레'·'다음 주' 처럼 날짜 말이 있을 때만 그 날짜로(기준은 보고 있는 날짜 ${viewDay}) 넣어.`
+      : "");
+    // 지금 DB 에 실제로 있는 '보고 있는 날짜' 계획을 사실로 넣어 줘요 — 앞 대화의 "넣었어요"를 믿고 상태를 지어내지 않게
     if (live.length === 1) {
-      const d0 = /^\d{4}-\d{2}-\d{2}$/.test(b.day || "") ? b.day : new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-      const d1 = new Date(Date.parse(d0 + "T00:00:00Z") + 864e5).toISOString().slice(0, 10);
-      const [p0, p1] = await Promise.all([dayPlans(env, user, d0), dayPlans(env, user, d1)]);
+      const p0 = await dayPlans(env, user, viewDay);
       const fmt = (r) => (r.plans?.length ? r.plans.map((x) => `  - ${x.start ? x.start + " " : ""}${x.text}${x.done ? " (끝냄)" : ""}`).join("\n") : "  (없음)");
-      system += `\n\n[지금 실제로 저장된 계획 — 이것만 사실이야. 앞 대화에서 '넣었다'고 한 말과 달라도 이걸 믿어. 여기 없는 건 아직 안 들어간 거야]\n${d0} (오늘)\n${fmt(p0)}\n${d1} (내일)\n${fmt(p1)}\n계획을 넣으라고 하면 날짜·항목마다 add_plan 을 한 번씩 불러. 다른 날짜는 day_plans 로 확인해.`;
+      system += `\n\n[지금 실제로 저장된 계획 — 이것만 사실이야. 앞 대화에서 '넣었다'고 한 말과 달라도 이걸 믿어. 여기 없는 건 아직 안 들어간 거야]\n${viewDay} (보고 있는 날짜)\n${fmt(p0)}\n계획을 넣으라고 하면 항목마다 add_plan 을 한 번씩만 불러 — 날짜는 하나야. 같은 항목을 다른 날짜에 또 넣지 마. 다른 날짜의 계획은 day_plans 로 확인해.`;
     }
 
     const { readable, writable } = new TransformStream();
@@ -295,7 +302,7 @@ async function contextPrompt(env, user, b, message) {
   return [
     basePrompt(user),
     "",
-    `지금: ${day || "?"} ${typeof b.time === "string" ? b.time : ""} (사용자 현지 시간)`,
+    `사용자가 보고 있는 날짜: ${day || "?"}${typeof b.today === "string" && b.today !== day ? ` (실제 오늘은 ${b.today})` : ""} · 지금 시각 ${typeof b.time === "string" ? b.time : ""} (사용자 현지 시간)`,
     "",
     "## 사용자의 기록 (참고용 — 질문과 관련 있을 때만 활용하고, 노트를 인용할 땐 [[제목]]으로 표시해)",
     planLines || "(계획 없음)",
