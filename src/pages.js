@@ -8,7 +8,8 @@ export const MAX_FILE = 300_000;      // 파일 하나 글자 수
 export const MAX_FILES = 40;          // 페이지당 파일 수
 export const MAX_TOTAL = 1_500_000;   // 페이지 전체 글자 수
 const MAX_VERSIONS = 30;
-const LIST_COLS = "id, user_id, title, icon, purpose, kind, url, shared, sort, created_at, updated_at";
+const LIST_COLS = "id, user_id, title, icon, purpose, kind, url, place, shared, sort, created_at, updated_at";
+const MAX_STATE = 200_000; // 사람별 저장소(JSON) 글자 수
 const PATH_RE = /^(?!\.)(?!.*\.\.)[\w\-. /]{1,120}$/;  // 상대 경로만 · .. 금지
 const TYPES = { html: "text/html; charset=utf-8", htm: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/javascript; charset=utf-8", mjs: "text/javascript; charset=utf-8", json: "application/json; charset=utf-8", svg: "image/svg+xml", txt: "text/plain; charset=utf-8", md: "text/markdown; charset=utf-8", csv: "text/csv; charset=utf-8", xml: "application/xml; charset=utf-8", webmanifest: "application/manifest+json" };
 const BRIDGE_TAG = `<script src="/js/page-bridge.js"></script>`;
@@ -23,7 +24,9 @@ export const BRIDGE_GUIDE = `## 페이지 규칙
 ## window.trio (await trio.ready 뒤에 써 — 또는 trio.onReady(fn))
 - trio.me { id, display_name, color } · trio.users 셋의 목록 · trio.today "YYYY-MM-DD"(한국) · trio.readonly true 면 남의 공유 페이지(쓰기 호출은 실패) · trio.theme { bg, ink, ink2, ink3, line, accent, blue, green, amber, rose, teal, dark:boolean }
 - trio.api(method, path, body?) → JSON. 실패하면 throw Error(메시지). 예: await trio.api("GET", "/plans?periods=D:" + trio.today)
-- trio.go(hash) 앱 화면 이동(예 "#/calendar/2026-10-04") · trio.toast(글) 짧은 알림 · trio.store.get(key)/set(key, value) 이 페이지만의 저장소(JSON, 보는 사람 기기에)
+- trio.go(hash) 앱 화면 이동(예 "#/calendar/2026-10-04") · trio.toast(글) 짧은 알림
+- trio.store.get(key) / set(key, value) / all() — 이 페이지의 **사람별 서버 저장소**(JSON, 폰 · 노트북 어디서나 같음). 체크 · 기록 · 진도는 여기에.
+- trio.others() → [{ user_id, display_name, color, data }] 공개 페이지일 때 셋의 저장값(친구 진도 나란히 보기). 비공개면 내 것만.
 - trio.onChange(fn) 앱 데이터가 바뀌면 fn 호출(다시 그릴 때)
 
 ## 앱 API (path 는 /api 를 뺀 것)
@@ -105,7 +108,7 @@ export function registerPages(on, { json, body, fail, uid, now }) {
       env.DB.prepare("DELETE FROM user_page_versions WHERE page_id = ? AND id NOT IN (SELECT id FROM user_page_versions WHERE page_id = ? ORDER BY created_at DESC LIMIT ?)").bind(p.id, p.id, MAX_VERSIONS),
     ]);
   }
-  const shape = (p, me, files) => ({ id: p.id, user_id: p.user_id, title: p.title, icon: p.icon, purpose: p.purpose, kind: p.kind || "code", url: p.url || "", shared: !!p.shared, sort: p.sort, created_at: p.created_at, updated_at: p.updated_at, mine: p.user_id === me.id, ...(files ? { files, code: files["index.html"] || "" } : {}) });
+  const shape = (p, me, files) => ({ id: p.id, user_id: p.user_id, title: p.title, icon: p.icon, purpose: p.purpose, kind: p.kind || "code", url: p.url || "", place: p.place === "study" ? "study" : "dock", shared: !!p.shared, sort: p.sort, created_at: p.created_at, updated_at: p.updated_at, mine: p.user_id === me.id, ...(files ? { files, code: files["index.html"] || "" } : {}) });
 
   on("GET", "/pages", async ({ env, user }) => {
     const { results } = await env.DB.prepare(`SELECT ${LIST_COLS} FROM user_pages WHERE user_id = ? OR shared = 1 ORDER BY (user_id = ?) DESC, sort ASC, created_at ASC`).bind(user.id, user.id).all();
@@ -122,14 +125,15 @@ export function registerPages(on, { json, body, fail, uid, now }) {
   // 만들기: { title, icon, purpose, kind:"code"|"url", url, files | code, shared }
   on("POST", "/pages", async ({ req, env, user }) => {
     const b = await body(req);
-    const kind = b.kind === "url" ? "url" : "code", url = kind === "url" ? cleanUrl(b.url) : "";
+    const kind = b.kind === "url" ? "url" : "code", url = kind === "url" ? cleanUrl(b.url) : "", place = b.place === "study" ? "study" : "dock";
     if (kind === "url" && !url) fail(400, "띄울 주소를 적어 주세요.");
-    const p = { id: uid(), user_id: user.id, title: cleanTitle(b.title), icon: cleanIcon(b.icon, kind === "url" ? "🔗" : "✨"), purpose: String(b.purpose || "").slice(0, 1000), code: "", kind, url, shared: b.shared ? 1 : 0, sort: await nextSort(env, user), created_at: now(), updated_at: now() };
-    await env.DB.prepare("INSERT INTO user_pages (id, user_id, title, icon, purpose, code, kind, url, shared, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(p.id, p.user_id, p.title, p.icon, p.purpose, p.code, p.kind, p.url, p.shared, p.sort, p.created_at, p.updated_at).run();
+    const p = { id: uid(), user_id: user.id, title: cleanTitle(b.title), icon: cleanIcon(b.icon, kind === "url" ? "🔗" : place === "study" ? "📚" : "✨"), purpose: String(b.purpose || "").slice(0, 1000), code: "", kind, url, place, shared: b.shared ? 1 : 0, sort: await nextSort(env, user), created_at: now(), updated_at: now() };
+    await env.DB.prepare("INSERT INTO user_pages (id, user_id, title, icon, purpose, code, kind, url, place, shared, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(p.id, p.user_id, p.title, p.icon, p.purpose, p.code, p.kind, p.url, p.place, p.shared, p.sort, p.created_at, p.updated_at).run();
     let files = {};
     if (kind === "code") {
       const f = b.files ? cleanFiles(b.files) : typeof b.code === "string" ? { "index.html": b.code.slice(0, MAX_FILE) } : {};
+      if (!f["index.html"] && place === "study") f["index.html"] = `<!doctype html>\n<html lang="ko">\n<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${p.title}</title><link rel="stylesheet" href="style.css"></head>\n<body>\n  <h1>${p.icon} ${p.title}</h1>\n  <p>아직 빈 과목 페이지예요. 오른쪽 'AI 에게' 칸에 이렇게 적어 보세요: "매일 30분 목표, 이번 주 할 일 체크리스트, 공부한 날 잔디, 자료 링크 칸" — 체크 · 기록은 trio.store 에 사람별로 저장돼요.</p>\n  <p id="out"></p>\n  <script src="app.js"></script>\n</body>\n</html>`;
       if (!f["index.html"]) f["index.html"] = `<!doctype html>\n<html lang="ko">\n<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${p.title}</title><link rel="stylesheet" href="style.css"></head>\n<body>\n  <h1>${p.icon} ${p.title}</h1>\n  <p>오른쪽 '코드' 탭에서 파일을 고치거나, 'AI 에게' 칸에 바꾸고 싶은 걸 적어 보세요.</p>\n  <p id="out"></p>\n  <script src="app.js"></script>\n</body>\n</html>`;
       if (f["index.html"].includes("style.css") && !f["style.css"]) f["style.css"] = `body { font-family: system-ui, sans-serif; margin: 24px; line-height: 1.6; }`;
       if (f["index.html"].includes("app.js") && !f["app.js"]) f["app.js"] = `trio.onReady(async () => {\n  const r = await trio.api("GET", "/plans?periods=D:" + trio.today);\n  document.getElementById("out").textContent = trio.me.display_name + " 의 오늘 계획 " + r.plans.length + "개";\n});`;
@@ -147,11 +151,12 @@ export function registerPages(on, { json, body, fail, uid, now }) {
       purpose: typeof b.purpose === "string" ? b.purpose.slice(0, 1000) : p.purpose,
       shared: b.shared !== undefined ? (b.shared ? 1 : 0) : p.shared,
       url: b.url !== undefined ? cleanUrl(b.url) : p.url,
+      place: b.place !== undefined ? (b.place === "study" ? "study" : "dock") : (p.place || "dock"),
     };
     let files = null;
     const patch = b.files ? cleanFiles(b.files, { partial: true }) : typeof b.code === "string" ? { "index.html": b.code.slice(0, MAX_FILE) } : null;
     if (patch && Object.keys(patch).length) { await keepVersion(env, p, b.note || "직접 고침"); files = await writeFiles(env, p.id, patch); }
-    await env.DB.prepare("UPDATE user_pages SET title = ?, icon = ?, purpose = ?, shared = ?, url = ?, updated_at = ? WHERE id = ?").bind(next.title, next.icon, next.purpose, next.shared, next.url, now(), p.id).run();
+    await env.DB.prepare("UPDATE user_pages SET title = ?, icon = ?, purpose = ?, shared = ?, url = ?, place = ?, updated_at = ? WHERE id = ?").bind(next.title, next.icon, next.purpose, next.shared, next.url, next.place, now(), p.id).run();
     return json({ page: shape({ ...p, ...next, updated_at: now() }, user, files || await filesOf(env, p.id)) });
   });
 
@@ -165,6 +170,26 @@ export function registerPages(on, { json, body, fail, uid, now }) {
     if (!ids.length) fail(400, "순서를 주세요.");
     await env.DB.batch(ids.map((id, i) => env.DB.prepare("UPDATE user_pages SET sort = ? WHERE id = ? AND user_id = ?").bind(i, id, user.id)));
     return json({ ok: true });
+  });
+  // 사람별 저장소 (trio.store): 내 것 읽기·쓰기. 공개 페이지면 셋의 것을 읽기(trio.others)
+  on("GET", "/pages/:id/state", async ({ env, user, params }) => {
+    await visible(env, params.id, user);
+    const r = await env.DB.prepare("SELECT data FROM user_page_state WHERE page_id = ? AND user_id = ?").bind(params.id, user.id).first();
+    let data = {}; try { data = JSON.parse(r?.data || "{}"); } catch {}
+    return json({ data });
+  });
+  on("PUT", "/pages/:id/state", async ({ req, env, user, params }) => {
+    await visible(env, params.id, user);
+    const b = await body(req), data = b && typeof b.data === "object" && b.data ? b.data : {};
+    const text = JSON.stringify(data); if (text.length > MAX_STATE) fail(400, "저장할 게 너무 커요 (200KB 까지).");
+    await env.DB.prepare("INSERT INTO user_page_state (page_id, user_id, data, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(page_id, user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at").bind(params.id, user.id, text, now()).run();
+    return json({ ok: true });
+  });
+  on("GET", "/pages/:id/state/all", async ({ env, user, params }) => {
+    const p = await visible(env, params.id, user);
+    if (!p.shared && p.user_id !== user.id) fail(403, "공개 페이지만 친구 저장값을 볼 수 있어요.");
+    const { results } = await env.DB.prepare("SELECT s.user_id, s.data, s.updated_at, u.display_name, u.color FROM user_page_state s JOIN users u ON u.id = s.user_id WHERE s.page_id = ?").bind(params.id).all();
+    return json({ states: results.map((r) => { let data = {}; try { data = JSON.parse(r.data || "{}"); } catch {} return { user_id: r.user_id, display_name: r.display_name, color: r.color, updated_at: r.updated_at, data }; }) });
   });
   on("POST", "/pages/:id/restore", async ({ req, env, user, params }) => {
     const p = await own(env, params.id, user), b = await body(req);
@@ -201,13 +226,13 @@ export function registerPages(on, { json, body, fail, uid, now }) {
       await env.DB.prepare("UPDATE user_pages SET icon = ?, updated_at = ? WHERE id = ?").bind(icon, now(), p.id).run();
       return json({ page: shape({ ...p, icon, updated_at: now() }, user, files), reply: r.reply || "고쳤어요.", model: used });
     }
-    const purpose = String(b.purpose || "").trim().slice(0, 1000);
+    const purpose = String(b.purpose || "").trim().slice(0, 1000), place = b.place === "study" ? "study" : "dock";
     if (!purpose) fail(400, "이 페이지로 무엇을 하고 싶은지 적어 주세요.");
-    const { data, used } = await ask([me, `## 목적\n${purpose}`].join("\n\n"));
+    const { data, used } = await ask([me, place === "study" ? "이 페이지는 '공부' 탭 안의 과목 페이지야. 목표 · 일정 · 자료 · 체크 · 기록처럼 그 과목을 꾸준히 공부하게 돕는 구성으로. 체크 · 기록은 trio.store 에 저장하고(사람별), 공개 페이지면 trio.others() 로 친구 진도도 나란히 보여 줘." : "", `## 목적\n${purpose}`].filter(Boolean).join("\n\n"));
     const r = pick(data);
-    const p = { id: uid(), user_id: user.id, title: cleanTitle(r.title, purpose.slice(0, 12)), icon: cleanIcon(r.icon), purpose, code: "", kind: "code", url: "", shared: 0, sort: await nextSort(env, user), created_at: now(), updated_at: now() };
-    await env.DB.prepare("INSERT INTO user_pages (id, user_id, title, icon, purpose, code, kind, url, shared, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(p.id, p.user_id, p.title, p.icon, p.purpose, p.code, p.kind, p.url, p.shared, p.sort, p.created_at, p.updated_at).run();
+    const p = { id: uid(), user_id: user.id, title: cleanTitle(r.title, purpose.slice(0, 12)), icon: cleanIcon(r.icon, place === "study" ? "📚" : "✨"), purpose, code: "", kind: "code", url: "", place, shared: 0, sort: await nextSort(env, user), created_at: now(), updated_at: now() };
+    await env.DB.prepare("INSERT INTO user_pages (id, user_id, title, icon, purpose, code, kind, url, place, shared, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(p.id, p.user_id, p.title, p.icon, p.purpose, p.code, p.kind, p.url, p.place, p.shared, p.sort, p.created_at, p.updated_at).run();
     const files = await writeFiles(env, p.id, r.files, { replaceAll: true });
     return json({ page: shape(p, user, files), reply: r.reply || "만들었어요.", model: used }, 201);
   });

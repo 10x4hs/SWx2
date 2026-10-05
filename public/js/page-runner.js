@@ -31,8 +31,15 @@ export function mountRunner(host, ctx, page, { preview = null } = {}) {
   } else f.src = `/pf/${encodeURIComponent(page.id)}/index.html?v=${page.updated_at || 0}`;
   host.replaceChildren(f);
 
+  // 사람별 서버 저장소 (예전 기기별 localStorage 값이 있으면 처음 한 번 옮겨요)
   const storeKey = `trio.page.${page.id}.store`;
-  const store = () => { try { return JSON.parse(localStorage.getItem(storeKey) || "{}"); } catch { return {}; } };
+  let stateP = null, saveT = null;
+  const state = () => stateP || (stateP = api.pageState(page.id).then((r) => {
+    let d = r.data || {};
+    try { const old = JSON.parse(localStorage.getItem(storeKey) || "null"); if (old && !Object.keys(d).length) { d = old; api.savePageState(page.id, d).catch(() => {}); } localStorage.removeItem(storeKey); } catch {}
+    return d;
+  }).catch(() => ({})));
+  const saveSoon = (d) => { clearTimeout(saveT); saveT = setTimeout(() => api.savePageState(page.id, d).catch((e) => toast(e.message)), 400); };
   const boot = () => {
     const { cssVars, theme } = themeInfo();
     f.contentWindow?.postMessage({ trio: true, type: "boot", me: { id: ctx.me.id, display_name: ctx.me.display_name, color: ctx.me.color }, users: ctx.users.map((u) => ({ id: u.id, display_name: u.display_name, color: u.color })), today: ymd(today()), readonly, theme, cssVars, page: { id: page.id, title: page.title } }, "*");
@@ -46,8 +53,10 @@ export function mountRunner(host, ctx, page, { preview = null } = {}) {
     }
     if (m.type === "go") { if (/^#\//.test(m.hash || "")) ctx.go(m.hash); return true; }
     if (m.type === "toast") { toast(String(m.text || "").slice(0, 200)); return true; }
-    if (m.type === "store.get") return store()[String(m.key)] ?? null;
-    if (m.type === "store.set") { const s = store(); s[String(m.key)] = m.value; try { localStorage.setItem(storeKey, JSON.stringify(s).slice(0, 200_000)); } catch {} return true; }
+    if (m.type === "store.get") return (await state())[String(m.key)] ?? null;
+    if (m.type === "store.all") return await state();
+    if (m.type === "store.set") { const s = await state(); if (m.value === null || m.value === undefined) delete s[String(m.key)]; else s[String(m.key)] = m.value; saveSoon(s); return true; }
+    if (m.type === "others") { try { return (await api.pageStates(page.id)).states; } catch { return [{ user_id: ctx.me.id, display_name: ctx.me.display_name, color: ctx.me.color, data: await state() }]; } }
     throw new Error("모르는 요청");
   }
   const onMsg = async (e) => {
