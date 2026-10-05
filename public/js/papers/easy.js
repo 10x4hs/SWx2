@@ -10,6 +10,7 @@ import { api } from "../api.js";
 import { toast } from "../util.js";
 import { chatMarkup, mountChat } from "./chat.js";
 import { fillFigtr } from "./figtr.js";
+import { mountMarks } from "./marks.js";
 import { loadStudyTime, fmtMin } from "./studytime.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -361,7 +362,9 @@ export function mountEasy(host, ctx, id) {
     $("#ez-recall-skip", main).addEventListener("click", () => reveal(false));
     wireZoom(main);
     fillFigtr(main, id);
-    stops.push(wireMotion(root), wireProgress(root), wireToc(root, main, d));
+    // 형광펜 · 메모 (장마다 id="ez-s1" … 로 위치를 기억해요)
+    const marks = mountMarks(main, { paper: id, mode: "easy", onAsk: (q) => askAi(`"${q.slice(0, 400)}"\n이 부분이 무슨 뜻이에요? 중학생 눈높이로 예를 들어 설명해 주세요.`) });
+    stops.push(() => marks.stop(), wireMotion(root), wireProgress(root), wireToc(root, main, d));
   })();
   return () => { alive = false; stops.forEach((f) => f?.()); };
 }

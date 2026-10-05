@@ -70,7 +70,7 @@ export const api = {
   graph: () => request("GET", "/graph"),
   organize: (note_id, model) => request("POST", "/ai/organize", { note_id, model }),
   generate: (b) => request("POST", "/ai/generate", b),
-  aiPage: (b) => request("POST", "/ai/page", b),
+  aiPage: (b) => request("POST", "/ai/page", b), // { purpose, hub? } 새 페이지 · { note_id, instruction } 고쳐 쓰기
   // Dock 사용자 페이지 (sandbox iframe 에서 도는 HTML 한 파일)
   pages: () => request("GET", "/pages"),
   page: (id) => request("GET", "/pages/" + encodeURIComponent(id)),
@@ -82,9 +82,9 @@ export const api = {
   restorePage: (id, version_id) => request("POST", `/pages/${encodeURIComponent(id)}/restore`, { version_id }),
   aiPageCode: (b) => request("POST", "/ai/page-code", b), // { purpose } 새 페이지 · { page_id, instruction } 고치기
   embedCheck: (url) => request("GET", "/embed-check?" + qs({ url })), // 그 사이트가 iframe 을 허용하는지
-  proxyToken: () => request("GET", "/proxy-token"),
-  siteMeta: (url) => request("GET", "/site-meta?" + qs({ url })), // 사이트 제목 · 파비콘 // 내장 브라우저(프록시) 1시간 토큰
-  raw: request, // 사용자 페이지 브리지가 그대로 넘겨요 // { purpose, hub? } 새 페이지 · { note_id, instruction } 고쳐 쓰기
+  proxyToken: () => request("GET", "/proxy-token"), // 내장 브라우저(프록시) 1시간 토큰
+  siteMeta: (url) => request("GET", "/site-meta?" + qs({ url })), // 사이트 제목 · 파비콘
+  raw: request, // 사용자 페이지 브리지가 그대로 넘겨요
   tags: () => request("GET", "/tags"),
   search: (q) => request("GET", "/search?" + qs({ q })),
   focus: (from, to, user) => request("GET", "/logs/focus?" + qs({ from, to, user })),
@@ -126,6 +126,11 @@ export const api = {
   easyReview: (results) => request("PUT", "/papers/easy/review", { results }),
   paperCheck: (paper, step, done) => request("PUT", "/papers/check", { paper, step, done }),
   paperNote: (paper, text) => request("PUT", "/papers/note", { paper, text }),
+  // 형광펜 · 메모 (본인만)
+  paperMarks: (paper, mode = "page") => request("GET", "/papers/marks?" + qs({ paper, mode })),
+  addPaperMark: (b) => request("POST", "/papers/marks", b),
+  updatePaperMark: (id, b) => request("PATCH", "/papers/marks/" + id, b),
+  deletePaperMark: (id) => request("DELETE", "/papers/marks/" + id),
   paperQuiz: (paper, correct) => request("POST", "/papers/quiz", { paper, correct }),
   paperExplain: (paper, text) => request("POST", "/papers/explain", { paper, text }),
   paperAsk: (paper, messages) => request("POST", "/papers/ask?stream=0", { paper, messages }),
