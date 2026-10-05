@@ -17,6 +17,9 @@ import { openMcpPanel } from "./mcp-panel.js";
 import { openProfile } from "./profile-edit.js";
 import { statusPicker, statusText } from "./status.js";
 import * as calendarView from "./views/calendar.js";
+import * as studyView from "./views/study.js"; // 공부 = 영어 | 논문 (Dock 아이콘 하나)
+import * as pageView from "./views/page.js"; // Dock 사용자 페이지 (#/p/new · #/p/<id>)
+import { openMenu } from "./ctxmenu.js";
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
@@ -66,6 +69,7 @@ async function enter(user) {
   route();
   refreshSide();
   refreshUnread();
+  loadDockPages();
   startLive(); // 실시간 대화 신호
   if (!enter.statusTimer) { // 친구들 상태: 1분마다 · 앱으로 돌아올 때 새로 받아요
     enter.statusTimer = setInterval(syncStatuses, 60_000);
@@ -99,9 +103,7 @@ const NAV = [
   { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
   { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리 · 그래프" },
-  { key: "english", hash: "#/english", label: "영어", tip: "영어 · 6개월 프리토킹" },
-  { key: "papers", hash: "#/papers", label: "논문", tip: "논문 스프린트 · 10.1–10.5 · 16편", until: "2026-10-05" },
-  { key: "ai", hash: "#/ai", label: "AI 튜터", tip: "AI 튜터 · 묻고 노트로 정리" },
+  { key: "study", hash: "#/english", label: "공부", tip: "공부 · 영어 | 논문" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const NAV_SPLIT = 2;
@@ -112,7 +114,7 @@ const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 function renderShell() {
   // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점.
-  const item = (n) => `<a class="rail-btn" href="${n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
+  const item = (n) => `<a class="rail-btn" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.key === "study" ? studyView.lastHash() : n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
   app.innerHTML = `
     <div class="shell">
       <aside class="rail dock glass" aria-label="메뉴">
@@ -122,6 +124,8 @@ function renderShell() {
           ${navLive().slice(0, NAV_SPLIT).map(item).join("")}
           <i class="dock-sep" aria-hidden="true"></i>
           ${navLive().slice(NAV_SPLIT).map(item).join("")}
+          <div class="rail-pages" id="dock-pages"></div>
+          <a class="rail-btn rail-add" href="#/p/new" data-nav="page-new" aria-label="페이지 추가" data-tip="페이지 추가 · AI 가 화면을 짜요">${icon.plus(18)}</a>
         </nav>
         <div class="rail-foot">
           <button class="rail-btn" type="button" id="timer-btn" aria-label="집중 타이머" data-tip="집중 타이머 · 25분" aria-expanded="false">${appIcon("timer")}<span id="timer-mini"></span></button>
@@ -317,6 +321,55 @@ setInterval(() => { if (ctx.me && document.visibilityState === "visible") refres
 window.addEventListener("trio:changed", (e) => { if (e.detail?.kind === "room") refreshUnread(); });
 window.addEventListener("room-live", (e) => { if (e.detail?.from !== ctx.me?.id) refreshUnread(); }); // 새 메시지 → 배지 바로
 
+// ---------- Dock 사용자 페이지: 내 것 + 셋이 공유한 것. 길게 누르거나 오른쪽 클릭 → 수정 · 공개 · 순서 · 삭제 ----------
+let dockPages = [];
+// Dock 아이콘: 이모지 하나 또는 사이트 파비콘 주소
+export const pageIcon = (ic) => /^https?:\/\//.test(ic || "") ? `<img class="page-fav" src="${esc(ic)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'page-emoji',textContent:'🔗'}))">` : `<span class="page-emoji">${esc(ic || "✨")}</span>`;
+async function loadDockPages() {
+  try { dockPages = (await api.pages()).pages || []; } catch { dockPages = []; }
+  drawDockPages();
+}
+function drawDockPages() {
+  const el = $("#dock-pages"); if (!el) return;
+  const cur = parseRoute();
+  el.innerHTML = dockPages.map((p) => `<a class="rail-btn rail-page${p.mine ? "" : " shared"}" href="#/p/${p.id}" data-nav="p:${p.id}" data-page="${p.id}" aria-label="${esc(p.title)}" data-tip="${esc(p.title)}${p.mine ? "" : ` · ${esc(ctx.user(p.user_id)?.display_name || "")}`}"${cur.nav === "p:" + p.id ? ' aria-current="page"' : ""}><span class="app-ic ic-page">${pageIcon(p.icon)}</span></a>`).join("");
+}
+async function pageMenu(e, id) {
+  const p = dockPages.find((x) => x.id === id); if (!p) return;
+  const mineList = dockPages.filter((x) => x.mine), i = mineList.findIndex((x) => x.id === id);
+  openMenu(e, {
+    title: `${p.icon} ${p.title}`,
+    items: p.mine ? [
+      { k: "open", label: "열기" }, { k: "edit", label: "고치기 (AI · 코드 · 설정)" },
+      { k: "share", label: p.shared ? "공개 끄기 (나만)" : "셋에게 공개 (친구는 보기만)" },
+      { sep: true },
+      ...(i > 0 ? [{ k: "up", label: "위로" }] : []), ...(i < mineList.length - 1 ? [{ k: "down", label: "아래로" }] : []),
+      { sep: true }, { k: "del", label: "삭제", danger: true },
+    ] : [{ k: "open", label: "열기" }, { k: "copy", label: "내 페이지로 복사해서 고치기" }],
+    onPick: async (k) => {
+      try {
+        if (k === "open") ctx.go("#/p/" + id);
+        else if (k === "edit") { ctx.go("#/p/" + id); setTimeout(() => $("#up-edit")?.click(), 400); }
+        else if (k === "share") { await api.updatePage(id, { shared: !p.shared }); toast(p.shared ? "이제 나만 봐요." : "셋의 Dock 에 떠요. 친구는 보기만 해요."); }
+        else if (k === "up" || k === "down") { const ids = mineList.map((x) => x.id); const j = k === "up" ? i - 1 : i + 1; [ids[i], ids[j]] = [ids[j], ids[i]]; await api.reorderPages(ids); }
+        else if (k === "del") { if (!confirm(`'${p.title}' 페이지를 지울까요? 되돌릴 수 없어요.`)) return; await api.deletePage(id); toast("지웠어요."); if (location.hash === "#/p/" + id) ctx.go("#/"); }
+        else if (k === "copy") { const full = (await api.page(id)).page; const r = await api.addPage({ title: `${full.title} 사본`, icon: full.icon, purpose: full.purpose, code: full.code }); toast("내 페이지로 복사했어요."); ctx.go("#/p/" + r.page.id); }
+        loadDockPages();
+      } catch (err) { toast(err.message || "실패했어요."); }
+    },
+  });
+}
+window.addEventListener("trio:changed", (e) => { if (e.detail?.kind === "pages") loadDockPages(); });
+document.addEventListener("contextmenu", (e) => { const a = e.target.closest("[data-page]"); if (a) pageMenu(e, a.dataset.page); });
+// 폰: 길게 누르면 메뉴
+let pressT = null;
+document.addEventListener("pointerdown", (e) => {
+  const a = e.target.closest("[data-page]"); if (!a || e.pointerType === "mouse") return;
+  const { clientX, clientY } = e;
+  pressT = setTimeout(() => { pressT = null; a.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX, clientY })); }, 500);
+});
+["pointerup", "pointercancel", "pointermove"].forEach((t) => document.addEventListener(t, () => { if (pressT) { clearTimeout(pressT); pressT = null; } }));
+
 // ---------- routing ----------
 // 예전 주소는 캘린더의 그날로 옮겨요 (뒤로 가기에 남지 않게 replaceState)
 const OLD_DAY = /^#\/(?:today|diary|records)(?:\/(\d{4}-\d{2}-\d{2}))?\/?$/;
@@ -340,15 +393,17 @@ function parseRoute() {
   if (a === "goals") return { view: "goals", nav: "home", scope: b || "week", key: c || null }; // 이번 주 · 이번 달 · 올해 목표 (홈 링에서)
   if (a === "calendar" && b === "diary") return { view: "diary", nav: "calendar", day: c || null }; // 일기 페이지
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
-  if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null };
-  if (a === "english") return { view: "english", nav: "english", tab: b || null, day: c || null };
+  if (a === "calendar" && b === "m") return { view: "calendar", nav: "calendar", mode: "month", day: c ? `m/${c}` : null }; // #/calendar/m/2026-10 = 그 달 달력만
+  if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null, who: c === "u" && d ? d : null }; // #/calendar/2026-10-04 = 그날 전체 화면 · /u/<id> = 친구의 그날
+  if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
-  if (a === "papers") return { view: "papers", nav: "papers", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
+  if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지
+  if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, calendar: calendarView, room: roomView, updates: updatesView };
+const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
 let lastView = null;
 
 function route() {
@@ -363,8 +418,8 @@ function route() {
   if (lastView === "goals" && r.view === "goals") { goalsView.update(r); return; }
   if (lastView === "checklist" && r.view === "checklist") { checklistView.update(r); return; } // 주·월·년 탭은 판을 그대로 // 날짜만 바뀌면 편집기만 바꿔요
   if (lastView === "calendar" && r.view === "calendar" && calendarView.update) { calendarView.update(r); return; } // 날짜만 바뀌면 달력은 그대로
-  if (lastView === "english" && r.view === "english" && englishView.update) { englishView.update(r); return; } // 영어 탭 전환은 판을 다시 만들지 않아요
-  if (lastView === "papers" && r.view === "papers") { papersView.update(r); return; } // 현황판 ↔ 논문 페이지
+  if (lastView === "study" && (r.view === "english" || r.view === "papers")) { studyView.update(r); return; } // 영어 ↔ 논문, 탭 전환은 껍데기를 그대로
+  if (lastView === "page" && r.view === "page") { pageView.update(r); return; } // 페이지 사이 이동은 껍데기를 그대로
   if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>
@@ -372,8 +427,8 @@ function route() {
   host.className = "host host-" + r.view;
   main.replaceChildren(host);
   main.scrollTop = 0;
-  lastView = r.view;
-  cleanup = VIEWS[r.view].mount(host, ctx, r) || null;
+  lastView = r.view === "english" || r.view === "papers" ? "study" : r.view;
+  cleanup = (lastView === "study" ? studyView : VIEWS[r.view]).mount(host, ctx, r) || null;
   requestAnimationFrame(() => scrambleIn(host));
 }
 window.addEventListener("hashchange", () => { navDepth++; route(); });
@@ -419,6 +474,8 @@ function openPalette() {
     { grp: "명령", t: "오늘 데일리 노트 열기", s: ymd(today()), run: () => notesView.openDaily(ctx, ymd(today())) },
     { grp: "명령", t: "새 노트", s: "빈 노트", run: () => notesView.createNote(ctx, "") },
     { grp: "명령", t: "AI에게 묻기", s: "Gemini · MiMo", run: () => ctx.go("#/ai") },
+    { grp: "명령", t: "Dock 페이지 추가", s: "하고 싶은 걸 적으면 AI 가 화면을 짜요", run: () => ctx.go("#/p/new") },
+    ...dockPages.map((p) => ({ grp: "페이지", t: `${p.icon} ${p.title}`, s: p.mine ? (p.shared ? "내 페이지 · 공개" : "내 페이지") : `${ctx.user(p.user_id)?.display_name || ""} 의 페이지`, run: () => ctx.go("#/p/" + p.id) })),
     { grp: "이동", t: "대화방", s: "셋이 같이 · @마피아", run: () => ctx.go("#/room/chat") },
     { grp: "이동", t: "창고", s: "책 · 링크 · 영상", run: () => ctx.go("#/room/library") },
     { grp: "명령", t: "집중 타이머 시작", s: "25분", run: () => timer.start(25) },

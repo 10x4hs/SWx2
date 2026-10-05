@@ -27,22 +27,22 @@ export function gapText(it) {
 
 // 링 위의 호 하나 (0~1 사이 시작·길이). pathLength=100 인 원의 점선으로 그려요.
 // 위치는 인라인 style로 (CSS 규칙보다 우선하게)
-const arc = (r, start, len, cls, sw, k = 0, title = "", extra = "") =>
-  `<circle class="${cls}" cx="${C}" cy="${C}" r="${r}" pathLength="100" stroke-width="${sw}" style="stroke-dasharray:${f2(len * 100)} ${f2(100 - len * 100)};stroke-dashoffset:${f2(-start * 100)};--k:${k};${extra}">${title ? `<title>${esc(title)}</title>` : ""}</circle>`;
+const arc = (r, start, len, cls, sw, k = 0, title = "", extra = "", attrs = "") =>
+  `<circle class="${cls}"${attrs ? " " + attrs : ""} cx="${C}" cy="${C}" r="${r}" pathLength="100" stroke-width="${sw}" style="stroke-dasharray:${f2(len * 100)} ${f2(100 - len * 100)};stroke-dashoffset:${f2(-start * 100)};--k:${k};${extra}">${title ? `<title>${esc(title)}</title>` : ""}</circle>`;
 
 // 진하기로 읽어요: 진한 색 = 이룬 목표 · 옅은 같은 색 = 이미 지난 시간 · 회색 = 남은 목표/앞으로의 시간
 function pieces(it, r, t) {
   const past = (a0, a1) => (t > a0 ? arc(r, a0, Math.min(a1, t) - a0, "rh-past", SW) : "");
   // 오늘: 지난 시간은 이어진 띠, 시간표 블록은 시계 위 제자리에
   if (it.key === "day") {
-    return past(0, 1) + (it.blocks || []).map((b, k) => arc(r, b.a0, Math.max(0.004, b.a1 - b.a0 - 0.002), `rh-seg${b.done ? " done" : ""}`, SW, k, `${b.time} ${b.title}${b.done ? " · 끝냄" : ""}`)).join("");
+    return past(0, 1) + (it.blocks || []).map((b, k) => arc(r, b.a0, Math.max(0.004, b.a1 - b.a0 - 0.002), `rh-seg${b.done ? " done" : ""}`, SW, k, `${b.time} ${b.title}${b.done ? " · 끝냄" : ""}`, "", b.id ? `data-plan="${esc(b.id)}"` : "")).join("");
   }
   // 체크리스트: 할 일 하나 = 칸 하나, 칸 색 = 우선순위 색 (끝낸 칸은 진하게)
   if (it.key === "check") {
     const segs = it.segs || [], n = segs.length;
     if (!n) return "";
     const gap = n === 1 ? 0 : Math.min(0.014, 0.3 / n), len = 1 / n - gap;
-    return segs.map((sg, k) => arc(r, k / n + gap / 2, len, `rh-seg${sg.done ? " done" : ""}`, SW, k, `${sg.title}${sg.done ? " · 끝냄" : ""}`, `--sc:${sg.color}`)).join("");
+    return segs.map((sg, k) => arc(r, k / n + gap / 2, len, `rh-seg${sg.done ? " done" : ""}`, SW, k, `${sg.title}${sg.done ? " · 끝냄" : ""}`, `--sc:${sg.color}`, sg.id ? `data-plan="${esc(sg.id)}"` : "")).join("");
   }
   // 올해·달·주: 목표 수만큼 칸. 칸마다 지난 부분만 옅게 칠해서 칸 경계가 남아요
   const segs = it.segs || [], n = segs.length;
@@ -50,7 +50,8 @@ function pieces(it, r, t) {
   const gap = n === 1 ? 0 : Math.min(0.012, 0.3 / n), len = 1 / n - gap;
   return segs.map((sg, k) => {
     const a0 = k / n + gap / 2, a1 = a0 + len, title = `${sg.title}${sg.done ? " · 이룸" : ""}`;
-    return sg.done ? arc(r, a0, len, "rh-seg done", SW, k, title) : arc(r, a0, len, "rh-seg", SW, k, title) + past(a0, a1);
+    const at = sg.id ? `data-plan="${esc(sg.id)}"` : "";
+    return sg.done ? arc(r, a0, len, "rh-seg done", SW, k, title, "", at) : arc(r, a0, len, "rh-seg", SW, k, title, "", at) + past(a0, a1);
   }).join("");
 }
 

@@ -19,7 +19,7 @@ const FLOOR = 14;   // 그래도 이만큼은 (한 줄 글자가 보이는 최�
 // 못함 버튼 — 체크(끝냄) 옆의 빨간 ✕. 누르면 계획이 빨갛게 바뀌어요 (체크리스트도 같이 써요)
 export const missBtn = (p) => `<button type="button" class="miss-btn" data-miss="${esc(p.id)}" aria-pressed="${p.missed ? "true" : "false"}" aria-label="${esc(p.text)} 못함" title="${p.missed ? "못함 되돌리기" : "못 했어요 (빨간색 표시)"}"><svg viewBox="0 0 12 12" width="8" height="8" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>`;
 // 우선순위 1~5순위 · 예상 시간 — public/js/prio.js (색은 styles.css 의 --p-*). 다른 화면이 여기서 PRIOS 를 가져가요
-import { PRIOS, PRIO_RANK, prioSelect, prioPill, openPrioDrop, hoursPill, openHoursDrop, parseMins, MINS_HINT } from "../prio.js";
+import { PRIOS, PRIO_RANK, prioSelect, prioPill, openPrioDrop, hoursPill, openHoursDrop, parseMins, MINS_HINT, prioLabel } from "../prio.js";
 export { PRIOS };
 const longDate = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`;
 function relDay(k, tk) {
@@ -29,12 +29,12 @@ function relDay(k, tk) {
 const stamp = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
 // el 안에 그날 페이지를 그려요. onChange(kind) = 달력 칸을 새로 그려야 할 때. 돌려주는 함수 = 정리(쓰던 일기 저장).
-export function mountDay(el, ctx, day, { onChange } = {}) {
+export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   const date = parseYmd(day), tk = ymd(today()), key = "D:" + day;
   const isToday = day === tk, isPast = day < tk, future = day > tk;
   const me = ctx.me;
   // 누구의 하루를 볼지. 친구 것은 그 사람이 open 했을 때만, 읽기 전용 (추가 · 고치기 · 끌기 없음)
-  let who = me.id;
+  let who = startWho && ctx.users.some((u) => u.id === startWho) ? startWho : me.id; // 홈의 친구 차트에서 오면 그 친구로 시작 (보기만)
   const ro = () => who !== me.id;
   const S = { plans: null, goals: null, diary: undefined, logs: [], english: null, record: null, notes: [], carry: 0, editSlot: null, editMins: 60 };
   const wKey = periodKey("week", date), mKey = periodKey("month", date), yKey = periodKey("year", date);
@@ -53,7 +53,7 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
         <p class="dp-sub">${wk.w}주차 · 올해 ${dayOfYear(date)}/${daysInYear(date.getFullYear())}일째<span class="chip accent" id="dp-streak" hidden></span></p>
       </div>
       <div class="pager">
-        <div class="who-switch dp-who" role="tablist" aria-label="누구의 하루를 볼까요">${ctx.users.map((u) => `<button type="button" role="tab" data-dpwho="${u.id}" aria-selected="${u.id === me.id}" style="--c:${esc(u.color)}" title="${esc(u.display_name)}${u.id !== me.id && u.plans_open === false ? " · 비공개" : ""}">${avatar(u, "sm")}${esc(u.username.toUpperCase())}</button>`).join("")}</div>
+        <div class="who-switch dp-who" role="tablist" aria-label="누구의 하루를 볼까요">${ctx.users.map((u) => `<button type="button" role="tab" data-dpwho="${u.id}" aria-selected="${u.id === who}" style="--c:${esc(u.color)}" title="${esc(u.display_name)}${u.id !== me.id && u.plans_open === false ? " · 비공개" : ""}">${avatar(u, "sm")}${esc(u.username.toUpperCase())}</button>`).join("")}</div>
         <a class="icon-btn sm" href="#/calendar/${ymd(addDays(date, -1))}" aria-label="전날">${icon.left(16)}</a>
         <a class="icon-btn sm" href="#/calendar/${ymd(addDays(date, 1))}" aria-label="다음날">${icon.right(16)}</a>
         <label class="icon-btn sm dp-pick" aria-label="날짜 고르기">${icon.calendar(15)}<input type="date" id="dp-date" value="${day}"></label>
@@ -389,10 +389,25 @@ export function mountDay(el, ctx, day, { onChange } = {}) {
     const f = e.target.name === "mins" && e.target.closest("[data-slot-form]");
     if (f && f.mins.value === "custom") { f.mins.hidden = true; f.mins_text.hidden = false; f.mins_text.focus(); }
   }
+  // 친구 계획표: 블록을 누르면 상세 카드 (이름 · 시각 · 길이 · 우선순위 · 끝냄/못함 · 쌓인 집중 시간)
+  function showPlanCard(p, at) {
+    closeMenu();
+    const u = ctx.users.find((x) => x.id === who);
+    const end = toTime(toMin(p.start) + (p.mins || 30));
+    const state = p.done ? "끝냄" : p.missed ? "못함" : isPast ? "안 함" : "예정";
+    openMenu(at, {
+      title: `${u?.display_name || ""} · ${p.start}–${end}`,
+      items: [
+        { k: "text", label: p.text, hint: hm(p.mins || 30) },
+        { k: "state", label: state + (p.priority ? ` · ${prioLabel(p.priority)}순위` : ""), hint: p.focus_mins > 0 ? `집중 ${hm(p.focus_mins)}` : "" },
+      ],
+      onPick: () => {},
+    });
+  }
   async function onElClick(e) {
     const wb = e.target.closest("[data-dpwho]");
     if (wb) { if (wb.dataset.dpwho === who) return; who = wb.dataset.dpwho; $$("[data-dpwho]", el).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.dpwho === who))); S.plans = null; S.closed = false; S.editSlot = null; S.editId = null; drawGrid(); load(); return; }
-    if (ro()) return; // 친구 계획표는 보기만
+    if (ro()) { const b = e.target.closest("#dp-grid .block"); const p = b && S.plans?.find((x) => x.id === b.dataset.id); if (p) showPlanCard(p, e); return; } // 친구 계획표는 보기만 · 누르면 상세
     const mb = e.target.closest("[data-miss]");
     if (mb && S.plans) { const p = S.plans.find((x) => x.id === mb.dataset.miss); if (p) setMissed(p.id, !p.missed); return; }
     const slot = e.target.closest("[data-slot]");

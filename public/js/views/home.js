@@ -13,6 +13,7 @@ import { scramble } from "../fx.js";
 import { mountCommand } from "../ai-command.js";
 import { prioDonut, prioStats, PRIO_COLOR, PRIO_LABEL } from "../charts/prio.js";
 import { mountPad } from "../home-pad.js";
+import { openMenu } from "../ctxmenu.js";
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
 const daysLeft = (key) => Math.max(0, Math.ceil((periodEnd(key) - Date.now()) / 864e5));
@@ -23,9 +24,19 @@ const LEGEND = {
   all: ["진한 색 = 이룬 목표", "옅은 색 = 이미 지난 시간", "회색 = 남은 목표"],
   month: ["진한 색 = 이룬 목표 · 다 한 날", "옅을수록 = 덜 한 날 · 지난 시간", "회색 = 남은 목표 · 빈 날"],
   week: ["진한 색 = 이룬 목표 · 다 한 날", "옅을수록 = 덜 한 날 · 지난 시간", "회색 = 남은 목표 · 빈 날"],
-  day: ["진한 색 = 끝낸 일", "옅은 색 = 이미 지난 시간", "회색 = 아직 안 한 일"],
+  day: ["진한 색 = 끝낸 일", "옅은 색 = 아직 안 한 일", "색 = 종류 (영어 · 공부 · 휴식 · 일 · 운동) · 이름표 점 = 우선순위"],
   check: ["진한 색 = 끝낸 할 일", "옅은 색 = 남은 할 일", "색 = 우선순위 (1순위 → 5순위)"],
 };
+// 계획 이름으로 종류를 짐작해요 → 하루 링 조각 색. 못 맞추면 '그 밖'(내 색)
+const CATS = [
+  ["eng", /영어|english|회화|단어|토익|toeic|speaking|리스닝|듣기/i],
+  ["paper", /논문|paper|읽기|읽|독서|책|study|공부|강의|수업|복습|예습|과제|문제|수학|과학|시험/i],
+  ["rest", /쉬|휴식|점심|저녁|아침|밥|식사|잠|수면|낮잠|산책|break|rest|lunch|dinner|sleep/i],
+  ["work", /사업|비즈니스|미팅|회의|업무|회사|출근|일|발표|해커톤|코딩|개발|work|meeting|business|pitch|dev|code/i],
+  ["health", /운동|헬스|러닝|달리기|요가|스트레칭|gym|run|workout/i],
+];
+export const catOf = (text) => (CATS.find(([, re]) => re.test(text || "")) || ["other"])[0];
+const CAT_LABEL = { eng: "영어", paper: "공부 · 논문", rest: "휴식", work: "일 · 사업", health: "운동", other: "그 밖" };
 const HINT = { all: "링을 누르면 그 기간 목표 · 오늘은 하루 계획표", check: "도넛 · 요일을 누르면 체크리스트로", month: "누르면 이번 달 목표", week: "누르면 이번 주 목표", day: "누르면 시간 순 하루 계획표" };
 const COLOR = { all: "var(--r-week)", check: "var(--p-max)", month: "var(--r-month)", week: "var(--r-week)", day: "var(--r-day)", team: "var(--m0)" };
 // 서버 시각은 ms · 초 · ISO 어느 쪽이 와도 ms 로
@@ -103,7 +114,7 @@ export function mount(root, ctx) {
       return;
     }
     const [a, b, c] = LEGEND[pk];
-    line.innerHTML = `<span class="key"><i class="k-done"></i>${a}</span><span class="key"><i class="k-past"></i>${b}</span><span class="key"><i class="k-todo"></i>${c}</span>${pk === "day" ? `<span class="key"><i class="k-now"></i>바늘 = 지금</span>` : ""}<span class="faint">${mine() ? HINT[pk] : "다른 사람은 차트만 보여요 · 내용은 비공개"}</span>`;
+    line.innerHTML = `<span class="key"><i class="k-done"></i>${a}</span><span class="key"><i class="k-past"></i>${b}</span><span class="key"><i class="k-todo"></i>${c}</span>${pk === "day" ? `<span class="key"><i class="k-now"></i>바늘 = 지금</span>` : ""}<span class="faint">${mine() ? HINT[pk] : S.closed ? "이 친구는 계획표를 공개하지 않았어요 (not open)" : "링을 누르면 친구의 하루 계획표 · 조각은 그 계획 하나"}</span>`;
   }
 
   // 체크리스트 쪽: 오늘 할 일을 얼마나 했는지 (우선순위 색 도넛) + 이번 주 날마다 + 남은 할 일
@@ -200,17 +211,19 @@ export function mount(root, ctx) {
       const now = new Date(), dayPassed = (now.getHours() * 60 + now.getMinutes()) / 1440;
       // 한 번에: 올해·이번 달·이번 주 목표 + 이번 달·이번 주 날짜 범위 (예전엔 20개씩 나눠 3번 불렀어요)
       const dayList = [...monthDays, ...weekDays].map((d) => ymd(d)).sort();
-      const plans = (await api.plans([K.year, K.month, K.week], u.id, `${dayList[0]}..${dayList[dayList.length - 1]}`)).plans || [];
+      const res = await api.plans([K.year, K.month, K.week], u.id, `${dayList[0]}..${dayList[dayList.length - 1]}`), plans = res.plans || [];
       const of = (key) => plans.filter((p) => p.period === key).sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0) || (a.sort ?? 0) - (b.sort ?? 0));
       const year = of(K.year), month = of(K.month), week = of(K.week), day = of(K.day);
       const sc = dayScore(day, u.day_goal);
-      const segs = (list) => list.map((p) => ({ done: !!p.done, title: p.text || "비공개 목표" })); // 다른 사람 것은 서버가 내용을 비워 보내요
+      S.closed = !!res.closed; // 친구가 계획을 not open 으로 두면 빈 차트 + 안내
+      const segs = (list) => list.map((p) => ({ done: !!p.done, title: p.text || "비공개 목표", id: p.id }));
+      S.plans = plans; // 조각을 누르면 id 로 찾아요
       const done = (list) => list.filter((p) => p.done).length;
       const period = (list, key, dLeft) => ({ segs: segs(list), value: list.length ? done(list) / list.length : 0, total: list.length, time: elapsed(key), detail: `D-${dLeft}` + (list.length ? ` · ${done(list)}/${list.length} 이룸` : "") });
       // 오늘: 시각이 있는 할 일은 24시간 시계 위 제자리에
       const blocks = day.filter((p) => /^\d\d:\d\d$/.test(p.start || "")).map((p) => {
         const [h, m] = p.start.split(":").map(Number), a0 = (h * 60 + m) / 1440;
-        return { a0, a1: Math.min(1, a0 + (p.mins || 30) / 1440), done: !!p.done, title: p.text || "비공개", time: p.start };
+        return { a0, a1: Math.min(1, a0 + (p.mins || 30) / 1440), done: !!p.done, title: p.text || "비공개", time: p.start, id: p.id, priority: p.priority || "", cat: catOf(p.text), mins: p.mins || 30, missed: !!p.missed, focus: p.focus_mins || 0 };
       }).sort((a, b) => a.a0 - b.a0);
       const val = {
         year: period(year, K.year, left),
@@ -221,7 +234,7 @@ export function mount(root, ctx) {
       };
       // 체크리스트 링 (가장 안쪽): 오늘 할 일마다 칸, 색 = 우선순위
       const ckItems = day.filter((p) => !p.start); // 체크리스트 = 시간 없는 할 일 (시간 있는 건 하루 계획표)
-      const ckSegs = ckItems.slice().sort((a, b) => (PR_RANK[b.priority] || 0) - (PR_RANK[a.priority] || 0)).map((p) => ({ done: !!p.done, title: p.text || "비공개", color: PRIO_COLOR[p.priority || "none"] }));
+      const ckSegs = ckItems.slice().sort((a, b) => (PR_RANK[b.priority] || 0) - (PR_RANK[a.priority] || 0)).map((p) => ({ done: !!p.done, title: p.text || "비공개", color: PRIO_COLOR[p.priority || "none"], id: p.id }));
       const ckDone = ckItems.filter((p) => p.done).length;
       val.check = { segs: ckSegs, value: ckItems.length ? ckDone / ckItems.length : 0, total: ckItems.length, time: dayPassed, detail: ckItems.length ? `${ckDone}/${ckItems.length} 끝냄` + prioStats(ckItems).filter((r) => r.k === "max" || r.k === "xhigh").map((r) => ` · ${PRIO_LABEL[r.k]} ${r.d}/${r.n}`).join("") : "" };
       S.items = [...RINGS, { key: "check", label: "체크리스트", en: "CHECK", color: "var(--r-check)" }].map((r) => ({ ...r, ...val[r.key] }));
@@ -267,6 +280,47 @@ export function mount(root, ctx) {
     $("header", g).addEventListener("click", () => { if (g.classList.contains("mini")) g.classList.toggle("open"); });
   }
 
+  // 조각 하나 = 계획 하나. 누르면 카드: 내용 · 상태 · 우선순위, 내 것이면 끝냄/못함 바로 토글 (올해·달·주 목표 + 오늘 블록 + 체크리스트 모두)
+  const PERIOD_LABEL = (key) => key.startsWith("Y:") ? "올해 목표" : key.startsWith("M:") ? "이번 달 목표" : key.startsWith("W:") ? "이번 주 목표" : "오늘";
+  const endOf = (start, mins) => { const [h, m] = start.split(":").map(Number); const t = h * 60 + m + (mins || 30); return `${String(Math.floor(t / 60) % 24).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
+  function showPlanCard(p, at) {
+    const u = ctx.user(S.who) || ctx.me, timed = /^\d\d:\d\d$/.test(p.start || "");
+    const state = p.done ? "끝냄" : p.missed ? "못함" : "아직";
+    const cat = timed ? CAT_LABEL[catOf(p.text)] || "그 밖" : "";
+    const meta = [state, p.priority ? PRIO_LABEL[p.priority] || p.priority : "", cat].filter(Boolean).join(" · ");
+    const hint = [timed ? hm(p.mins || 30) : "", p.focus_mins > 0 ? `집중 ${hm(p.focus_mins)}` : ""].filter(Boolean).join(" · ");
+    openMenu(at, {
+      title: `${u.display_name} · ${timed ? `${p.start}–${endOf(p.start, p.mins)}` : PERIOD_LABEL(p.period || "")}`,
+      items: [
+        { k: "text", label: p.text || "비공개", hint },
+        { k: "state", label: meta },
+        ...(mine() ? [{ sep: true },
+          { k: "done", label: p.done ? "끝냄 되돌리기" : "끝냈어요 ✓" },
+          { k: "missed", label: p.missed ? "못함 되돌리기" : "못 했어요 ✕", danger: !p.missed },
+          { k: "go", label: timed ? "하루 계획표에서 열기" : "그 기간 페이지에서 열기" }] : []),
+      ],
+      onPick: async (k) => {
+        if (k === "go") { ctx.go(timed ? `#/calendar/${K.day.slice(2)}` : p.period?.startsWith("Y:") ? HREF.year : p.period?.startsWith("M:") ? HREF.month : p.period?.startsWith("W:") ? HREF.week : HREF.check); return; }
+        if (k !== "done" && k !== "missed") return;
+        try {
+          await api.updatePlan(p.id, k === "done" ? { done: !p.done } : { missed: !p.missed });
+          toast(k === "done" ? (p.done ? "끝냄을 되돌렸어요." : "끝냈어요 ✓") : (p.missed ? "못함을 되돌렸어요." : "못 했다고 표시했어요."));
+          ctx.changed("plans"); // 홈은 trio:changed 를 듣고 다시 그려요
+        } catch (err) { toast(err.message || "바꾸지 못했어요."); }
+      },
+    });
+  }
+  // 친구의 올해·달·주 목표를 제자리 목록으로 (누르면 그 계획 카드)
+  function showPeriodList(key, at) {
+    const u = ctx.user(S.who) || ctx.me, pk = key === "year" ? K.year : key === "month" ? K.month : K.week;
+    const list = (S.plans || []).filter((p) => p.period === pk);
+    const name = key === "year" ? "올해" : key === "month" ? "이번 달" : "이번 주";
+    openMenu(at, {
+      title: `${u.display_name} · ${name} 목표 ${list.length ? `${list.filter((p) => p.done).length}/${list.length}` : ""}`,
+      items: list.length ? list.map((p) => ({ k: p.id, label: `${p.done ? "✓ " : p.missed ? "✕ " : "· "}${p.text || "비공개"}`, hint: p.priority ? PRIO_LABEL[p.priority] || "" : "" })) : [{ k: "none", label: "아직 목표가 없어요" }],
+      onPick: (k) => { const p = S.plans?.find((x) => x.id === k); if (p) setTimeout(() => showPlanCard(p, at), 0); },
+    });
+  }
   root.addEventListener("click", (e) => {
     const wk = e.target.closest("[data-wk]");
     if (wk) { const off = +wk.dataset.wk; if (off !== S.wk.off) { S.wk.off = off; S.wk.error = null; redrawTeam(); } return; }
@@ -274,10 +328,19 @@ export function mount(root, ctx) {
     if (e.target.closest("#cheer-btn")) { sendCheer(); return; }
     const b = e.target.closest("[data-who]");
     if (b && b.dataset.who !== S.who) { S.who = b.dataset.who; S.hover = null; pad.setWho(S.who); load(true); return; }
+    // 링 조각 · 이름표를 누르면 그 계획 카드 (올해·달·주·오늘·체크리스트, 내 것도 친구 것도)
+    const pl = e.target.closest("svg [data-plan]");
+    if (pl) { const p = S.plans?.find((x) => x.id === pl.dataset.plan); if (p) showPlanCard(p, e); return; }
     const d = e.target.closest("svg [data-day]");
-    if ((d || e.target.closest("svg [data-ring]")) && !mine()) { toast("서로는 차트만 볼 수 있어요. 계획 내용은 본인만 봐요."); return; }
-    if (d) { ctx.go(dayTarget(d.dataset.day)); return; }
     const r = e.target.closest("svg [data-ring]");
+    if ((d || r) && !mine()) { // 친구 차트: 오늘·날짜 → 친구의 하루 계획표 전체 화면(보기만) · 올해·달·주 → 그 기간 목표 목록
+      if (S.closed) { toast("이 친구는 계획표를 공개하지 않았어요 (not open)."); return; }
+      const key = d ? "day" : r.dataset.ring;
+      if (d || key === "day") { ctx.go(`#/calendar/${d ? d.dataset.day : K.day.slice(2)}/u/${S.who}`); return; }
+      if (key === "check") { ctx.go(`#/calendar/${K.day.slice(2)}/u/${S.who}`); return; }
+      showPeriodList(key, e); return;
+    }
+    if (d) { ctx.go(dayTarget(d.dataset.day)); return; }
     if (r) ctx.go(target(r.dataset.ring));
   });
   root.addEventListener("keydown", (e) => { const r = e.target.closest?.("svg [data-ring]"); if (r && (e.key === "Enter" || e.key === " ") && mine()) { e.preventDefault(); ctx.go(target(r.dataset.ring)); } });

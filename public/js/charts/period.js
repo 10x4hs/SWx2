@@ -75,7 +75,7 @@ export function periodChart(d, { wide = true } = {}) {
   return `<svg class="ch ch-${d.scope}${wide ? " wide" : ""}" viewBox="0 0 ${W} ${H}" role="group" aria-label="${esc(label)}" style="--c:${d.color}">
     <g class="ch-ring" data-ring="${d.scope}" tabindex="0" role="link" aria-label="${esc(d.title)} 목표 보기">
       <circle class="ch-hit" cx="${C}" cy="${C}" r="${OUT.r}" stroke-width="${OUT.sw + 8}"/>
-      ${goalRing(OUT, g.map((x) => ({ title: x.text, done: !!x.done })), t)}
+      ${goalRing(OUT, g.map((x) => ({ title: x.text || "비공개 목표", done: !!x.done, id: x.id })), t)}
     </g>
     <g class="ch-days">${dayRing(d.days)}</g>
     ${nowTick(C, C, IN.r - IN.sw / 2 - 3, OUT.r + OUT.sw / 2 + 8, t)}

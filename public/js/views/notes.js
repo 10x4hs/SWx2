@@ -69,7 +69,15 @@ export function mount(root, ctx, r) {
           <div class="ai-bar" role="group" aria-label="AI">
             <button class="btn sm ai-btn" type="button" id="ai-organize" title="내 노트 전부에 주제·#태그·[[링크]]를 달고 주제별 목차를 만들어요">${icon.spark(14)}AI 정리</button>
             <button class="btn sm ai-btn" type="button" id="ai-make" title="주제를 적으면 서로 연결된 개념 노트를 만들어요">${icon.plus(14)}AI로 만들기</button>
+            <button class="btn sm ai-btn" type="button" id="ai-page" title="이 페이지를 어디에 쓸지 적으면 AI 가 Notion 풍 페이지를 만들어요. 만든 뒤에도 대화로 계속 고쳐요">${icon.edit(14)}AI 페이지</button>
           </div>
+          <form class="ai-make ai-page-form" id="ai-page-form" hidden>
+            <textarea class="input" id="ai-purpose" rows="2" maxlength="1000" placeholder="이 페이지를 어디에 쓸 건가요? 예: 10월 논문 스프린트 복습 일정 · 영어 섀도잉 기록장" aria-label="페이지 사용 목적"></textarea>
+            <div class="row" style="justify-content:space-between;gap:8px">
+              <label class="row faint" style="gap:6px;font-size:12.5px"><input type="checkbox" id="ai-hub"> 영어 + 논문 공부 허브로 (지금 수치 · 두 페이지 링크 포함)</label>
+              <button class="btn sm accent" type="submit">페이지 만들기</button>
+            </div>
+          </form>
           <div id="nl-pick"></div>
           <form class="ai-make" id="ai-make-form" hidden>
             <input class="input" id="ai-topic" placeholder="주제 · 링크 · 사진(붙여넣기) 예: 삼각함수 기초" maxlength="500" aria-label="만들 노트 주제">
@@ -149,6 +157,7 @@ export function mount(root, ctx, r) {
         <button class="btn ghost sm ai-btn" type="button" id="ed-split-ai" title="이 노트를 개념 하나당 노트 하나로 쪼개 새로 만들어요">쪼개기</button>
         <button class="icon-btn sm danger" type="button" id="ed-del" aria-label="노트 삭제">${icon.trash(15)}</button>` : ""}
       </div>
+      ${own ? `<form class="ai-refine" id="ed-refine" title="AI 와 이 페이지를 같이 고쳐요"><span class="ai-refine-ic">${icon.spark(14)}</span><input class="input" id="ed-refine-in" maxlength="1000" placeholder="AI 에게: 여기 표로 바꿔 줘 · 복습 일정 섹션 추가해 줘 · 더 짧게" aria-label="AI 에게 고쳐 달라고 하기"><button class="btn sm accent" type="submit">고치기</button></form>` : ""}
       <div class="ed-body"><div class="ed-inner" style="${mode === "md" ? "max-width:1180px" : ""}">
         ${S.crumbs.length ? `<nav class="crumbs" aria-label="상위 페이지">${S.crumbs.map((c) => `<a href="#/notes/${c.id}">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b></nav>` : ""}
         <input class="ed-title" id="ed-title" value="${esc(n.title)}" aria-label="노트 제목" ${own ? "" : "readonly"} maxlength="120">
@@ -262,6 +271,17 @@ export function mount(root, ctx, r) {
       toast(`주제 '${r.topics[0] || "?"}'로 정리했어요.`);
       ctx.refreshSide(); ctx.changed("notes"); await loadList(); if (S.cur?.id === id) await open(id);
     }));
+    const refine = $("#ed-refine", root);
+    if (refine) refine.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const inp = $("#ed-refine-in", root), instruction = inp.value.trim(); if (!instruction) return inp.focus();
+      aiRun(refine.querySelector("button"), "고치는 중…", async () => {
+        save.flush(); await chain;
+        const id = S.cur.id, r = await api.aiPage({ note_id: id, instruction, model: aiPrefs().model || undefined });
+        inp.value = ""; toast(r.reply || "고쳤어요."); ctx.changed("notes");
+        await loadList(); if (S.cur?.id === id) await open(id);
+      });
+    });
     const aiSplit = $("#ed-split-ai", root);
     if (aiSplit) aiSplit.addEventListener("click", () => aiRun(aiSplit, "쪼개는 중…", async () => {
       save.flush(); await chain;
@@ -405,6 +425,18 @@ export function mount(root, ctx, r) {
     aiRun(btn, images.length ? "사진 읽고 만드는 중…" : "찾아보고 만드는 중…", async () => { const p = aiPrefs(); const r = await api.generate({ topic, images, model: p.model || undefined, web: p.web }); $("#ai-topic", root).value = ""; topicDraft.clear(); topicAtt.clear(); $("#ai-make-form", root).hidden = true; afterGenerate(r); });
   });
 
+  $("#ai-page", root).addEventListener("click", () => { const f = $("#ai-page-form", root); f.hidden = !f.hidden; $("#ai-make-form", root).hidden = true; if (!f.hidden) $("#ai-purpose", root).focus(); });
+  $("#ai-page-form", root).addEventListener("submit", (e) => {
+    e.preventDefault();
+    const purpose = $("#ai-purpose", root).value.trim(), hub = $("#ai-hub", root).checked;
+    if (!purpose && !hub) return $("#ai-purpose", root).focus();
+    aiRun(e.currentTarget.querySelector("button[type=submit]"), "페이지 짜는 중…", async () => {
+      const r = await api.aiPage({ purpose: purpose || "영어 공부와 논문 공부를 한 곳에서 보는 허브", hub, model: aiPrefs().model || undefined });
+      $("#ai-purpose", root).value = ""; $("#ai-hub", root).checked = false; $("#ai-page-form", root).hidden = true;
+      toast(`'${r.note.title}' 페이지를 만들었어요. 아래 AI 칸에 고칠 점을 적으면 계속 다듬어요.`);
+      ctx.refreshSide(); ctx.changed("notes"); await loadList(); ctx.go("#/notes/" + r.note.id);
+    });
+  });
   mountAiPick($("#nl-pick", root));
   const topicDraft = keepDraft($("#ai-topic", root), "ai-topic");
   const topicAtt = attachImages({ tray: $("#ai-topic-att", root), button: $("#ai-topic-img", root), paste: [$("#ai-topic", root)], drop: [$("#ai-make-form", root)] });

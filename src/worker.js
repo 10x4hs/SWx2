@@ -3,6 +3,8 @@
 import { registerAi, aiJson } from "./ai.js";
 import { registerBrain } from "./brain.js";
 import { registerEnglish } from "./english.js";
+import { registerPages, servePageFile } from "./pages.js";
+import { registerProxy, handleProxy } from "./proxy.js";
 import { registerPapers, cleanupPaperNotes } from "./papers.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth, oauthTokenUser } from "./oauth.js";
@@ -54,6 +56,14 @@ export default {
     if (url.pathname === "/mcp") {
       try { return await handleMcp(req, env, ec, { tokenUser, internal: internalCall }); }
       catch (e) { console.error("mcp", e); return json({ jsonrpc: "2.0", id: null, error: { code: -32603, message: "서버에서 문제가 생겼어요." } }, 500); }
+    }
+    if (url.pathname.startsWith("/px/")) { // 내장 브라우저(프록시, 실험) — 토큰은 주소 안에
+      try { return await handleProxy(req, env, url); }
+      catch (e) { console.error("px", e); return new Response("프록시에서 문제가 생겼어요.", { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } }); }
+    }
+    if (url.pathname.startsWith("/pf/")) { // Dock 사용자 페이지 파일 (sandbox iframe 이 불러요)
+      try { return await servePageFile(req, env, url, await sessionUser(req, env)); }
+      catch (e) { console.error("pf", e); return new Response("서버에서 문제가 생겼어요.", { status: 500 }); }
     }
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
     try {
@@ -377,8 +387,7 @@ on("GET", "/plans", async ({ env, q, user }) => {
      FROM plans WHERE user_id = ? AND (${where}) ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at`
   ).bind(who, ...periods, ...(range || [])).all();
   // focus_mins = 그 할 일에 쌓인 집중 기록 분의 합 (logs.plan_id)
-  // 서로는 차트만: 다른 사람 계획은 칸 모양(완료·시각·길이·집중 분)만 보내고 내용은 비워요
-  if (who !== user.id) return json({ plans: results.map((p) => ({ ...p, text: "" })), private: true });
+  // 친구 계획: open 한 사람 것은 내용까지 그대로 보여요 (not open 이면 위에서 이미 빈 목록)
   return json({ plans: results });
 });
 
@@ -871,6 +880,8 @@ on("GET", "/records/days", async ({ env, q, user, ec }) => {
 registerAi(on, { json, body, fail, str, uid, now });
 registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_NOTE });
 registerEnglish(on, { json, body, fail, uid, now });
+registerPages(on, { json, body, fail, uid, now }); // Dock 사용자 페이지 + AI 코드 생성
+registerProxy(on, { json, fail }); // 내장 브라우저(프록시) 보조 API
 registerPapers(on, { json, body, fail, now });
 registerMcpTokens(on, { json, body, fail, now });
 registerHomePad(on, { json, body, fail, now });
