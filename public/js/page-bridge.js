@@ -10,7 +10,8 @@
     ready: readyP, me: null, users: [], today: new Date().toISOString().slice(0, 10), readonly: true, theme: {}, page: null,
     api: (method, path, body) => call("api", { method: String(method || "GET").toUpperCase(), path: String(path || ""), body }),
     go: (hash) => call("go", { hash }), toast: (text) => call("toast", { text }),
-    store: { get: (key) => call("store.get", { key }), set: (key, value) => call("store.set", { key, value }) },
+    store: { get: (key) => call("store.get", { key }), set: (key, value) => call("store.set", { key, value }), all: () => call("store.all", {}) },
+    others: () => call("others", {}),
     onChange: (fn) => { changeFns.add(fn); return () => changeFns.delete(fn); },
     onReady: (fn) => { if (ready) fn(trio); else readyFns.push(fn); },
   };

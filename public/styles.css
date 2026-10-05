@@ -3317,3 +3317,14 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .job-go { border: 0; border-radius: 8px; padding: 5px 10px; font: 600 12px/1 var(--font); background: var(--accent-soft); color: var(--ink); cursor: pointer; }
 .job-x { border: 0; background: transparent; color: var(--ink-3); cursor: pointer; font-size: 12px; }
 @keyframes jobpulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* ---------- 공부: 과목 탭 ---------- */
+.study-switch { max-width: calc(100% - 24px); overflow-x: auto; scrollbar-width: none; }
+.study-switch::-webkit-scrollbar { display: none; }
+.study-switch a { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.study-subj .study-ic { display: inline-grid; place-items: center; width: 16px; height: 16px; font-size: 13px; line-height: 1; }
+.study-subj .page-fav { width: 16px; height: 16px; border-radius: 4px; }
+.study-subj.shared { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--c-blue, #3b82f6) 55%, transparent); }
+.study-add { padding: 5px 9px !important; opacity: .6; }
+.study-add:hover, .study-add[aria-selected="true"] { opacity: 1; }
+.upage-sub2 { margin: -6px 0 14px; text-align: center; font-size: 13px; }

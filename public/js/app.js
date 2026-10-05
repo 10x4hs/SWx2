@@ -332,7 +332,7 @@ async function loadDockPages() {
 function drawDockPages() {
   const el = $("#dock-pages"); if (!el) return;
   const cur = parseRoute();
-  el.innerHTML = dockPages.map((p) => `<a class="rail-btn rail-page${p.mine ? "" : " shared"}" href="#/p/${p.id}" data-nav="p:${p.id}" data-page="${p.id}" aria-label="${esc(p.title)}" data-tip="${esc(p.title)}${p.mine ? "" : ` · ${esc(ctx.user(p.user_id)?.display_name || "")}`}"${cur.nav === "p:" + p.id ? ' aria-current="page"' : ""}><span class="app-ic ic-page">${pageIcon(p.icon)}</span></a>`).join("");
+  el.innerHTML = dockPages.filter((p) => p.place !== "study").map((p) => `<a class="rail-btn rail-page${p.mine ? "" : " shared"}" href="#/p/${p.id}" data-nav="p:${p.id}" data-page="${p.id}" aria-label="${esc(p.title)}" data-tip="${esc(p.title)}${p.mine ? "" : ` · ${esc(ctx.user(p.user_id)?.display_name || "")}`}"${cur.nav === "p:" + p.id ? ' aria-current="page"' : ""}><span class="app-ic ic-page">${pageIcon(p.icon)}</span></a>`).join("");
 }
 async function pageMenu(e, id) {
   const p = dockPages.find((x) => x.id === id); if (!p) return;
@@ -353,7 +353,7 @@ async function pageMenu(e, id) {
         else if (k === "share") { await api.updatePage(id, { shared: !p.shared }); toast(p.shared ? "이제 나만 봐요." : "셋의 Dock 에 떠요. 친구는 보기만 해요."); }
         else if (k === "up" || k === "down") { const ids = mineList.map((x) => x.id); const j = k === "up" ? i - 1 : i + 1; [ids[i], ids[j]] = [ids[j], ids[i]]; await api.reorderPages(ids); }
         else if (k === "del") { if (!confirm(`'${p.title}' 페이지를 지울까요? 되돌릴 수 없어요.`)) return; await api.deletePage(id); toast("지웠어요."); if (location.hash === "#/p/" + id) ctx.go("#/"); }
-        else if (k === "copy") { const full = (await api.page(id)).page; const r = await api.addPage({ title: `${full.title} 사본`, icon: full.icon, purpose: full.purpose, code: full.code }); toast("내 페이지로 복사했어요."); ctx.go("#/p/" + r.page.id); }
+        else if (k === "copy") { const full = (await api.page(id)).page; const r = await api.addPage({ title: `${full.title} 사본`, icon: full.icon, purpose: full.purpose, files: full.files, place: full.place }); toast("내 페이지로 복사했어요."); ctx.go((r.page.place === "study" ? "#/study/" : "#/p/") + r.page.id); }
         loadDockPages();
       } catch (err) { toast(err.message || "실패했어요."); }
     },
@@ -398,6 +398,7 @@ function parseRoute() {
   if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
   if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지
+  if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study" }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new)
   if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
@@ -418,8 +419,9 @@ function route() {
   if (lastView === "goals" && r.view === "goals") { goalsView.update(r); return; }
   if (lastView === "checklist" && r.view === "checklist") { checklistView.update(r); return; } // 주·월·년 탭은 판을 그대로 // 날짜만 바뀌면 편집기만 바꿔요
   if (lastView === "calendar" && r.view === "calendar" && calendarView.update) { calendarView.update(r); return; } // 날짜만 바뀌면 달력은 그대로
-  if (lastView === "study" && (r.view === "english" || r.view === "papers")) { studyView.update(r); return; } // 영어 ↔ 논문, 탭 전환은 껍데기를 그대로
-  if (lastView === "page" && r.view === "page") { pageView.update(r); return; } // 페이지 사이 이동은 껍데기를 그대로
+  const inStudy = r.view === "english" || r.view === "papers" || (r.view === "page" && r.place === "study");
+  if (lastView === "study" && inStudy) { studyView.update(r); return; } // 영어 ↔ 논문 ↔ 과목 탭, 전환은 껍데기를 그대로
+  if (lastView === "page" && r.view === "page" && !inStudy) { pageView.update(r); return; } // 페이지 사이 이동은 껍데기를 그대로
   if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>
@@ -427,7 +429,7 @@ function route() {
   host.className = "host host-" + r.view;
   main.replaceChildren(host);
   main.scrollTop = 0;
-  lastView = r.view === "english" || r.view === "papers" ? "study" : r.view;
+  lastView = inStudy ? "study" : r.view;
   cleanup = (lastView === "study" ? studyView : VIEWS[r.view]).mount(host, ctx, r) || null;
   requestAnimationFrame(() => scrambleIn(host));
 }
@@ -475,7 +477,8 @@ function openPalette() {
     { grp: "명령", t: "새 노트", s: "빈 노트", run: () => notesView.createNote(ctx, "") },
     { grp: "명령", t: "AI에게 묻기", s: "Gemini · MiMo", run: () => ctx.go("#/ai") },
     { grp: "명령", t: "Dock 페이지 추가", s: "하고 싶은 걸 적으면 AI 가 화면을 짜요", run: () => ctx.go("#/p/new") },
-    ...dockPages.map((p) => ({ grp: "페이지", t: `${p.icon} ${p.title}`, s: p.mine ? (p.shared ? "내 페이지 · 공개" : "내 페이지") : `${ctx.user(p.user_id)?.display_name || ""} 의 페이지`, run: () => ctx.go("#/p/" + p.id) })),
+    { grp: "명령", t: "과목 탭 추가", s: "공부 안에 수학 · 코딩 · 자격증 … AI 가 페이지를 짜요", run: () => ctx.go("#/study/new") },
+    ...dockPages.map((p) => ({ grp: p.place === "study" ? "과목" : "페이지", t: `${/^https?:/.test(p.icon) ? "" : p.icon + " "}${p.title}`, s: p.mine ? (p.shared ? "내 것 · 공개" : "내 것") : `${ctx.user(p.user_id)?.display_name || ""} 의 것`, run: () => ctx.go((p.place === "study" ? "#/study/" : "#/p/") + p.id) })),
     { grp: "이동", t: "대화방", s: "셋이 같이 · @마피아", run: () => ctx.go("#/room/chat") },
     { grp: "이동", t: "창고", s: "책 · 링크 · 영상", run: () => ctx.go("#/room/library") },
     { grp: "명령", t: "집중 타이머 시작", s: "25분", run: () => timer.start(25) },

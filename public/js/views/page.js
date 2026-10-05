@@ -8,6 +8,8 @@ import { runJob } from "../jobs.js";
 const pageIcon = (ic) => /^https?:\/\//.test(ic || "") ? `<img class="page-fav" src="${esc(ic)}" alt="">` : esc(ic || "✨");
 
 const model = () => aiPrefs().model || "gemini"; // 긴 코드 출력은 Gemini 가 가장 안정적
+// 페이지가 놓인 자리: Dock(#/p/…) 또는 공부 탭(#/study/…)
+export const hashOf = (p) => (p.place === "study" ? "#/study/" : "#/p/") + p.id;
 
 const when = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}.${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 
@@ -15,16 +17,18 @@ let inst = null;
 export function update(r) { inst?.update(r); }
 
 export function mount(root, ctx, r) {
-  let id = null, page = null, stopRun = null, panel = null, chat = [], S_file = "index.html";
+  let id = null, page = null, stopRun = null, panel = null, chat = [], S_file = "index.html", openAi = false;
+  const place = r.place === "study" ? "study" : "dock"; // 새로 만들 때 어디에 둘지
   const busy = (btn, label, on) => { if (!btn) return; if (on) { btn.dataset.l = btn.textContent; btn.textContent = label; btn.disabled = true; } else { btn.textContent = btn.dataset.l || btn.textContent; btn.disabled = false; } };
 
   // ---------- 새 페이지 ----------
   function drawNew() {
     root.innerHTML = `
       <div class="view upage-new">
-        <h1 class="upage-hello">무엇을 만들까요?</h1>
+        <h1 class="upage-hello">${place === "study" ? "어떤 과목을 공부할까요?" : "무엇을 만들까요?"}</h1>
+        ${place === "study" ? `<p class="faint upage-sub2">예: "수학 — 매일 30분, 이번 주 할 일 체크, 공부한 날 잔디" · 만들면 '공부' 탭에 들어가요. 체크 · 기록은 사람별로 저장되고, 공개하면 친구 진도도 나란히.</p>` : ""}
         <form class="composer" id="np-form">
-          <textarea class="composer-ta" id="np-purpose" rows="1" maxlength="1000" placeholder="하고 싶은 화면을 한두 문장으로 적어 주세요" aria-label="페이지 목적"></textarea>
+          <textarea class="composer-ta" id="np-purpose" rows="1" maxlength="1000" placeholder="${place === "study" ? "과목 이름과 어떻게 공부할지 한두 문장으로" : "하고 싶은 화면을 한두 문장으로 적어 주세요"}" aria-label="페이지 목적"></textarea>
           <div class="composer-row">
             <span id="np-pick"></span>
             <span class="spacer"></span>
@@ -32,7 +36,7 @@ export function mount(root, ctx, r) {
             <button class="composer-send" type="submit" aria-label="AI 로 만들기" title="AI 로 만들기">${icon.send(16)}</button>
           </div>
         </form>
-        <form class="urlbar" id="nu-form">
+        <form class="urlbar" id="nu-form" ${place === "study" ? "hidden" : ""}>
           ${icon.external(15)}<input class="urlbar-in" id="nu-url" type="url" placeholder="또는 URL 붙여넣기" aria-label="사이트 주소"><button class="urlbar-go" type="submit">Add URL</button>
         </form>
       </div>`;
@@ -53,15 +57,15 @@ export function mount(root, ctx, r) {
     ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("#np-form", root).requestSubmit(); } });
     $("#np-blank", root).addEventListener("click", async () => {
       const purpose = ta.value.trim();
-      const r = await api.addPage({ title: purpose.slice(0, 12) || "새 페이지", purpose }); // 서버가 index.html · style.css · app.js 뼈대를 넣어요
-      ctx.changed("pages"); ctx.go("#/p/" + r.page.id);
+      const r = await api.addPage({ title: purpose.slice(0, 12) || (place === "study" ? "새 과목" : "새 페이지"), purpose, place }); // 서버가 index.html · style.css · app.js 뼈대를 넣어요
+      openAi = true; ctx.changed("pages"); ctx.go(hashOf(r.page)); // 빈 페이지는 바로 AI 대화 패널을 열어요
     });
     $("#np-form", root).addEventListener("submit", async (e) => {
       e.preventDefault();
       const purpose = ta.value.trim(); if (!purpose) return ta.focus();
       // 백그라운드 작업: 다른 화면으로 가도 계속 돌고, 끝나면 알림 (public/js/jobs.js)
-      runJob({ label: `페이지 만들기: ${purpose.slice(0, 24)}`, task: () => api.aiPageCode({ purpose, model: model() }),
-        onDone: (r) => { ctx.changed("pages"); return { text: `'${r.page.title}' 페이지가 완성됐어요 — ${r.reply || ""}`, go: "#/p/" + r.page.id }; } });
+      runJob({ label: `${place === "study" ? "과목" : "페이지"} 만들기: ${purpose.slice(0, 24)}`, task: () => api.aiPageCode({ purpose, place, model: model() }),
+        onDone: (r) => { ctx.changed("pages"); return { text: `'${r.page.title}' ${place === "study" ? "과목 탭" : "페이지"}이 완성됐어요 — ${r.reply || ""}`, go: hashOf(r.page) }; } });
       ta.value = ""; toast("AI 가 페이지를 짜기 시작했어요. 다른 일을 하셔도 돼요 — 끝나면 알려 드려요.");
     });
   }
@@ -72,6 +76,7 @@ export function mount(root, ctx, r) {
     root.innerHTML = `<div class="upage"><div class="upage-bar glass" id="up-bar"></div><div class="upage-main"><div class="upage-host" id="up-host"></div><aside class="upage-panel glass" id="up-panel" hidden></aside></div></div>`;
     try { page = (await api.page(pid)).page; } catch (e) { root.innerHTML = `<div class="view"><p class="faint">${esc(e.message || "페이지를 열 수 없어요.")}</p></div>`; return; }
     drawBar(); run();
+    if (openAi && page.user_id === ctx.me.id) { openAi = false; togglePanel("ai"); }
     // 예전에 만든 URL 페이지(기본 🔗 아이콘)는 한 번 사이트 프로필(제목 · 파비콘)을 받아와 갱신해요
     if (page.kind === "url" && page.user_id === ctx.me.id && (!page.icon || page.icon === "🔗")) {
       api.siteMeta(page.url).then(async (m) => { if (!m?.icon || id !== pid) return; page = (await api.updatePage(pid, { icon: m.icon, ...(/^[\w.-]+$/.test(page.title) ? { title: m.title } : {}) })).page; drawBar(); ctx.changed("pages"); }).catch(() => {});
@@ -162,16 +167,17 @@ export function mount(root, ctx, r) {
         <label>이름<input class="input" name="title" value="${esc(page.title)}" maxlength="40"></label>
         <label>아이콘 (이모지 하나)<input class="input" name="icon" value="${esc(page.icon)}" maxlength="2" style="width:80px"></label>
         ${page.kind === "url" ? `<label>주소<input class="input" name="url" type="url" value="${esc(page.url || "")}"></label>` : `<label>목적<textarea class="input" name="purpose" rows="2" maxlength="1000">${esc(page.purpose || "")}</textarea></label>`}
-        <label class="row" style="gap:8px"><input type="checkbox" name="shared" ${page.shared ? "checked" : ""}> 셋에게 공개 (친구는 보기만 · 쓰기는 안 돼요)</label>
+        <label class="row" style="gap:8px"><input type="checkbox" name="shared" ${page.shared ? "checked" : ""}> 셋에게 공개 (${page.place === "study" ? "친구의 공부 탭에도 뜨고, 친구 진도를 나란히 볼 수 있어요" : "친구는 보기만 · 쓰기는 안 돼요"})</label>
+        ${page.kind === "url" ? "" : `<label>어디에 둘까요<select class="select sm" name="place"><option value="dock" ${page.place !== "study" ? "selected" : ""}>Dock 아이콘</option><option value="study" ${page.place === "study" ? "selected" : ""}>공부 탭 (영어 · 논문 옆)</option></select></label>`}
         <div class="row" style="justify-content:space-between"><button class="btn sm danger ghost" type="button" id="up-del">${icon.trash(14)} 삭제</button><button class="btn sm accent" type="submit">저장</button></div>
       </form>`;
       $("#up-set", body).addEventListener("submit", async (e) => {
         e.preventDefault(); const f = e.currentTarget;
-        try { page = (await api.updatePage(page.id, { title: f.title.value, icon: f.icon.value, ...(page.kind === "url" ? { url: f.url.value } : { purpose: f.purpose.value }), shared: f.shared.checked })).page; toast("저장했어요."); ctx.changed("pages"); drawBar(); run(); } catch (err) { toast(err.message); }
+        try { page = (await api.updatePage(page.id, { title: f.title.value, icon: f.icon.value, ...(page.kind === "url" ? { url: f.url.value } : { purpose: f.purpose.value }), shared: f.shared.checked, ...(f.place ? { place: f.place.value } : {}) })).page; toast("저장했어요."); ctx.changed("pages"); drawBar(); run(); if (location.hash !== hashOf(page)) ctx.go(hashOf(page)); } catch (err) { toast(err.message); }
       });
       $("#up-del", body).addEventListener("click", async () => {
         if (!confirm(`'${page.title}' 페이지를 지울까요? 되돌릴 수 없어요.`)) return;
-        await api.deletePage(page.id); toast("지웠어요."); ctx.changed("pages"); ctx.go("#/");
+        const wasStudy = page.place === "study"; await api.deletePage(page.id); toast("지웠어요."); ctx.changed("pages"); ctx.go(wasStudy ? "#/english" : "#/");
       });
     }
   }

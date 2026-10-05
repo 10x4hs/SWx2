@@ -12,7 +12,7 @@ const INSTRUCTIONS = `Dsm-mafia — 셋이 쓰는 공부 앱(논문 스프린트
 3) 중간 진행은 task_update(note) 로 짧게 남기고, 4) 끝나면 task_update(status="done", result=무엇을 했는지 · 어디에 남겼는지).
 큰 일을 나누려면 task_add(assignee=다른 에이전트 이름 | "anyone"). 결과물(정리 글 등)은 note_write 로 노트에 남기고 result 에 노트 제목을 적어요.
 논문 자료는 papers_overview → paper_read(part="summary"|"deep"|"terms", section) 순서로 읽어요. 사용자의 글은 쉬운 한국어 해요체로 써요.
-**Dock 페이지**: 사용자가 "~하는 화면/페이지 만들어 줘" 하면 page_guide 로 규칙(HTML 한 파일 · window.trio 브리지 · 앱 API)을 읽고 page_write 로 만들어요. 만든 페이지는 그 사람의 Dock 에 바로 떠요.`;
+**Dock 페이지 · 과목 탭**: 사용자가 "~하는 화면/페이지 만들어 줘" 하면 page_guide 로 규칙(파일 여러 개 · window.trio 브리지 · 앱 API · 사람별 trio.store)을 읽고 page_write 로 만들어요. "수학 공부 탭" 처럼 과목이면 place="study" 로 — 공부(영어 | 논문) 옆 탭에 떠요.`;
 
 const S = (props, required = []) => ({ type: "object", properties: props, required, additionalProperties: false });
 const str = (description, extra = {}) => ({ type: "string", description, ...extra });
@@ -35,7 +35,7 @@ const TOOLS = [
   { name: "pages_list", description: "내 Dock 페이지와 셋이 공유한 페이지 목록 (id · 제목 · 아이콘 · 목적 · 공유 여부).", inputSchema: S({}) },
   { name: "page_read", description: "Dock 페이지 하나의 코드 읽기 (고치기 전에).", inputSchema: S({ id: str("페이지 id (앞 6글자 이상)"), title: str("또는 제목") }) },
   { name: "page_write", description: "Dock 페이지 만들기·고치기 (파일 여러 개). id/title 로 기존 페이지를 찾으면 그 파일들을 바꿔요(이전 묶음은 버전으로 남아요), 없으면 새로 만들어요. files = { \"index.html\": \"<!doctype html>…\", \"style.css\": \"…\", \"app.js\": \"…\" } (index.html 필수 · 상대 경로 그대로 · 외부 CDN · 폰트 OK). 기존 페이지를 고칠 땐 적은 파일만 바뀌고, 값이 null 인 파일은 지워져요. 간단하면 code(=index.html) 하나만 줘도 돼요.",
-    inputSchema: S({ title: str("페이지 이름 (12자 이내)"), files: { type: "object", description: "{ 경로: 내용 | null }", additionalProperties: { type: ["string", "null"] } }, code: str("index.html 전체 (files 대신)"), id: str("고칠 페이지 id (선택)"), icon: str("이모지 하나 (선택)"), purpose: str("이 페이지의 목적 한 줄 (선택)"), shared: { type: "boolean", description: "true 면 셋의 Dock 에 (남은 읽기만)" }, note: str("무엇을 바꿨는지 (버전 메모)") }, ["title"]) },
+    inputSchema: S({ title: str("페이지 이름 (12자 이내)"), files: { type: "object", description: "{ 경로: 내용 | null }", additionalProperties: { type: ["string", "null"] } }, code: str("index.html 전체 (files 대신)"), id: str("고칠 페이지 id (선택)"), icon: str("이모지 하나 (선택)"), purpose: str("이 페이지의 목적 한 줄 (선택)"), shared: { type: "boolean", description: "true 면 셋에게 공개 (남은 읽기만)" }, place: str("dock(기본, Dock 아이콘) | study(공부 탭의 과목 페이지)", { enum: ["dock", "study"] }), note: str("무엇을 바꿨는지 (버전 메모)") }, ["title"]) },
   // ---- 계획 ----
   { name: "plans_list", description: "그날의 계획(시간표 · 체크리스트). day 없으면 오늘.", inputSchema: S({ day: str("YYYY-MM-DD") }) },
   { name: "plan_add", description: "그날 계획 넣기. start(HH:MM)와 mins 를 주면 시간표, start 없으면 체크리스트(mins 만 주면 예상 시간).",
@@ -282,14 +282,14 @@ const CALL = {
     if (!title || !files) bad("title 과 files(또는 code) 를 주세요. 규칙은 page_guide.");
     const found = await pageOf(c, { id: a.id, title }, true);
     if (!found && !/<html[\s>]/i.test(files["index.html"] || "")) bad("새 페이지에는 완전한 index.html(<html>…</html>) 이 있어야 해요.");
-    const fields = { title, files, note: a.note || `${c.who.agent} 가 고침`, ...(a.icon ? { icon: a.icon } : {}), ...(typeof a.purpose === "string" ? { purpose: a.purpose } : {}), ...(typeof a.shared === "boolean" ? { shared: a.shared } : {}) };
+    const fields = { title, files, note: a.note || `${c.who.agent} 가 고침`, ...(a.icon ? { icon: a.icon } : {}), ...(typeof a.purpose === "string" ? { purpose: a.purpose } : {}), ...(typeof a.shared === "boolean" ? { shared: a.shared } : {}), ...(a.place === "study" || a.place === "dock" ? { place: a.place } : {}) };
     if (found) {
       if (!found.mine) bad("남이 공유한 페이지는 고칠 수 없어요. 새 제목으로 만들어 주세요.");
       const r = await api(c, "PATCH", "/pages/" + encodeURIComponent(found.id), fields);
       return `페이지를 고쳤어요: ${r.page.icon} ${r.page.title} · ${c.origin}/#/p/${r.page.id} (이전 코드는 버전에 남아요)`;
     }
     const r = await api(c, "POST", "/pages", fields);
-    return `새 페이지를 만들었어요: ${r.page.icon} ${r.page.title} (id ${r.page.id}) · ${c.origin}/#/p/${r.page.id} — Dock 에 바로 떠요.`;
+    return `새 페이지를 만들었어요: ${r.page.icon} ${r.page.title} (id ${r.page.id}) · ${c.origin}/${r.page.place === "study" ? "#/study/" : "#/p/"}${r.page.id} — ${r.page.place === "study" ? "공부 탭" : "Dock"} 에 바로 떠요.`;
   },
 
   async plans_list(a, c) {
