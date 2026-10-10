@@ -9,7 +9,7 @@ const renderMarkdown = (s) => renderMd(String(s || "").replace(/\*\*(?=\S)([^*\n
 
 const QUICK = ["이 논문을 처음 보는 사람에게 3문장으로", "핵심 아이디어가 왜 효과가 있어요?", "우리 프로젝트(RGB+열화상 · RKNN)에서 어떻게 써요?", "헷갈리기 쉬운 점 3개만", "지금 읽는 부분을 숫자 예시로"];
 
-// opts.quick: 빠른 질문 목록 · opts.sub: 머리 줄 설명 · opts.empty: 빈 대화 안내 · opts.ph: 입력창 안내
+// opts.quick: 빠른 질문 목록 · opts.sub: 머리 줄 설명 · opts.empty: 빈 대화 안내 · opts.ph: 입력창 안내 · opts.stream: 다른 튜터 API(streamPaperAsk 와 같은 모양)
 export function chatMarkup(variant, opts = {}) {
   const mini = variant === "mini";
   return `<div class="ppc ${mini ? "mini" : ""}" data-ppc="${variant}">
@@ -64,7 +64,7 @@ export function mountChat(root, id, article, decorate = null, opts = {}) {
     ctrl = new AbortController();
     let got = "";
     try {
-      await streamPaperAsk(id, chat.slice(0, ai), (ev) => {
+      await (opts.stream || streamPaperAsk)(id, chat.slice(0, ai), (ev) => {
         if (ev.type === "delta") { got += ev.text; chat[ai].content = got; paintLive(ai, got); }
         else if (ev.type === "reset") { got = ""; chat[ai].content = ""; paint(ai); }
         else if (ev.type === "end") { chat[ai].content = ev.text || got; }

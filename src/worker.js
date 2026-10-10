@@ -6,6 +6,7 @@ import { registerEnglish } from "./english.js";
 import { registerPages, servePageFile } from "./pages.js";
 import { registerProxy, handleProxy } from "./proxy.js";
 import { registerPapers, cleanupPaperNotes } from "./papers.js";
+import { registerBooks } from "./books.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth, oauthTokenUser } from "./oauth.js";
 import { registerHomePad } from "./homepad.js";
@@ -883,6 +884,7 @@ registerEnglish(on, { json, body, fail, uid, now });
 registerPages(on, { json, body, fail, uid, now }); // Dock 사용자 페이지 + AI 코드 생성
 registerProxy(on, { json, fail }); // 내장 브라우저(프록시) 보조 API
 registerPapers(on, { json, body, fail, now });
+registerBooks(on, { json, body, fail, now }); // AI 공부책 (#/books)
 registerMcpTokens(on, { json, body, fail, now });
 registerHomePad(on, { json, body, fail, now });
 registerCalendar(on, { json, fail });

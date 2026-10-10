@@ -88,6 +88,19 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   { const it = r.data.items?.find((x) => x.paper === "cmx"); ok(it?.stage === 2 && it.reviews === 2, "easy: review fail keeps stage"); }
   r = await call("b", "GET", "/papers/easy"); ok(r.status === 200 && !r.data.items.some((x) => x.paper === "cmx"), "easy: private per user");
   r = await call("a", "PUT", "/papers/easy/review", { results: "x" }); ok(r.status === 400, "easy: bad results → 400");
+  // AI 공부책: 장 단위 읽음 → 복습 → 실습 체크 (책 · 장 id 는 public/books/index.json 에 있어야 해요)
+  r = await call("a", "GET", "/books/state"); ok(r.status === 200 && Array.isArray(r.data.items) && Array.isArray(r.data.tasks), "books: state");
+  r = await call("a", "PUT", "/books/read", { book: "big", chapter: "question", recall: 3, total: 4 });
+  { const it = r.data.items?.find((x) => x.book === "big" && x.chapter === "question"); ok(r.status === 200 && it?.stage === 1 && it.recall === 3 && it.due_day > r.data.today, "books: read → stage 1, due tomorrow"); }
+  r = await call("a", "PUT", "/books/read", { book: "big", chapter: "nope" }); ok(r.status === 400, "books: unknown chapter → 400");
+  r = await call("a", "PUT", "/books/review", { results: [{ book: "big", chapter: "question", correct: 2, total: 3 }] });
+  { const it = r.data.items?.find((x) => x.chapter === "question"); ok(r.status === 200 && it?.stage === 2 && it.reviews === 1, "books: review pass → stage 2"); }
+  r = await call("a", "PUT", "/books/review", { results: [{ book: "big", chapter: "question", correct: 1, total: 3 }] });
+  { const it = r.data.items?.find((x) => x.chapter === "question"); ok(it?.stage === 2 && it.reviews === 2, "books: review fail keeps stage"); }
+  r = await call("a", "PUT", "/books/task", { task: "big/data-tokens/1" }); ok(r.status === 200 && r.data.tasks.includes("big/data-tokens/1"), "books: task done");
+  r = await call("a", "PUT", "/books/task", { task: "big/data-tokens/1", done: false }); ok(r.status === 200 && !r.data.tasks.includes("big/data-tokens/1"), "books: task undone");
+  r = await call("a", "PUT", "/books/task", { task: "../x" }); ok(r.status === 400, "books: bad task → 400");
+  r = await call("b", "GET", "/books/state"); ok(r.status === 200 && !r.data.items.some((x) => x.book === "big"), "books: private per user");
   // 1~5순위 (1 = 가장 급함) 로도 받아요 — 저장은 예전 값 그대로
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "1" }); ok(r.status === 200 && r.data.plan.priority === "max", "plan priority: '1' → max");
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: 5 }); ok(r.status === 200 && r.data.plan.priority === "low", "plan priority: 5 → low");

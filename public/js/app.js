@@ -12,6 +12,7 @@ import * as checklistView from "./views/checklist.js";
 import * as homeView from "./views/home.js";
 import * as englishView from "./views/english.js";
 import * as papersView from "./views/papers.js";
+import * as booksView from "./views/books.js";
 import * as updatesView from "./views/updates.js";
 import { openMcpPanel } from "./mcp-panel.js";
 import { openProfile } from "./profile-edit.js";
@@ -400,11 +401,12 @@ function parseRoute() {
   if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지
   if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study" }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new)
   if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
+  if (a === "books") return { view: "books", nav: "study", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
+const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
 let lastView = null;
 
 function route() {
@@ -419,7 +421,7 @@ function route() {
   if (lastView === "goals" && r.view === "goals") { goalsView.update(r); return; }
   if (lastView === "checklist" && r.view === "checklist") { checklistView.update(r); return; } // 주·월·년 탭은 판을 그대로 // 날짜만 바뀌면 편집기만 바꿔요
   if (lastView === "calendar" && r.view === "calendar" && calendarView.update) { calendarView.update(r); return; } // 날짜만 바뀌면 달력은 그대로
-  const inStudy = r.view === "english" || r.view === "papers" || (r.view === "page" && r.place === "study");
+  const inStudy = r.view === "english" || r.view === "papers" || r.view === "books" || (r.view === "page" && r.place === "study");
   if (lastView === "study" && inStudy) { studyView.update(r); return; } // 영어 ↔ 논문 ↔ 과목 탭, 전환은 껍데기를 그대로
   if (lastView === "page" && r.view === "page" && !inStudy) { pageView.update(r); return; } // 페이지 사이 이동은 껍데기를 그대로
   if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요

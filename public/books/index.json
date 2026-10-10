@@ -1,0 +1,51 @@
+{
+ "title": "AI 공부책",
+ "updated": "2026-10-10",
+ "books": [
+  {
+   "id": "big",
+   "n": 0,
+   "title": "큰 그림",
+   "short": "큰 그림",
+   "color": "rose",
+   "headline": "ChatGPT 같은 모델은\n딱 한 가지를 엄청 많이 연습했어요.",
+   "lead": "데이터 → 토큰 → 트랜스포머 → 사전학습 → 사후학습 → 평가. 전체 과정을 한 시간 안에 한 번 훑어요. 자세한 건 다음 책들에서.",
+   "why": "처음 1시간. 뒤의 모든 책이 이 여섯 단계 중 하나를 깊게 파요. 지도를 먼저 손에 쥐어요.",
+   "minutes": 52,
+   "chapters": [
+    {
+     "id": "question",
+     "title": "모델은 글을 읽지 않아요 — 다음 토큰을 맞혀요",
+     "minutes": 12,
+     "week": 1,
+     "build": false,
+     "quizzes": 3
+    },
+    {
+     "id": "data-tokens",
+     "title": "재료 — 데이터와 토큰",
+     "minutes": 13,
+     "week": 1,
+     "build": true,
+     "quizzes": 4
+    },
+    {
+     "id": "model-train",
+     "title": "트랜스포머와 사전학습",
+     "minutes": 14,
+     "week": 2,
+     "build": true,
+     "quizzes": 4
+    },
+    {
+     "id": "post-eval",
+     "title": "사후학습 · 평가 · 나의 길",
+     "minutes": 13,
+     "week": 3,
+     "build": false,
+     "quizzes": 4
+    }
+   ]
+  }
+ ]
+}

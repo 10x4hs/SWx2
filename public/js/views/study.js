@@ -1,6 +1,7 @@
-// 공부 — Dock 아이콘 하나 아래 영어 | 논문 + 내가(또는 친구가 공개한) 추가한 과목 탭. 주소는 그대로 (#/english/… · #/papers/… · #/study/<id>)
+// 공부 — Dock 아이콘 하나 아래 영어 | 논문 | AI + 내가(또는 친구가 공개한) 추가한 과목 탭. 주소는 그대로 (#/english/… · #/papers/… · #/study/<id>)
 import * as englishView from "./english.js";
 import * as papersView from "./papers.js";
+import * as booksView from "./books.js";
 import * as pageView from "./page.js";
 import { $, esc } from "../util.js";
 import { api } from "../api.js";
@@ -9,6 +10,7 @@ import { icon } from "../icons.js";
 const SUBS = [
   { key: "english", label: "영어", hash: "#/english", view: englishView },
   { key: "papers", label: "논문", hash: "#/papers", view: papersView },
+  { key: "books", label: "AI", hash: "#/books", view: booksView },
 ];
 const KEY = "trio.study.sub";
 const tabIcon = (ic) => /^https?:\/\//.test(ic || "") ? `<img class="page-fav" src="${esc(ic)}" alt="">` : esc(ic || "📚");
@@ -36,7 +38,7 @@ export function mount(root, ctx, r) {
     try { subjects = ((await api.pages()).pages || []).filter((p) => p.place === "study"); } catch { subjects = []; }
     drawTabs();
   }
-  const keyOf = (nr) => nr.view === "papers" ? "papers" : nr.view === "page" ? (nr.id && nr.id !== "new" ? "p:" + nr.id : "new") : "english";
+  const keyOf = (nr) => nr.view === "papers" ? "papers" : nr.view === "books" ? "books" : nr.view === "page" ? (nr.id && nr.id !== "new" ? "p:" + nr.id : "new") : "english";
 
   function show(nr) {
     cur = nr;
