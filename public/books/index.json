@@ -48,6 +48,67 @@
    ]
   },
   {
+   "id": "history",
+   "n": 1,
+   "title": "AI 의 역사",
+   "short": "역사",
+   "color": "amber",
+   "headline": "왜 지금 AI 가\n이 모양이 됐을까요.",
+   "lead": "1950년 튜링의 질문에서 2026년 추론 모델까지. 겨울 두 번, 부활 한 번, 그리고 규모의 시대. 장마다 끝에서 '그래서 내 자비스는 이렇게 만든다'로 이어요.",
+   "why": "지금의 설계는 전부 과거의 실패에서 나왔어요. 왜 이 모양인지 알면, 무엇을 바꿔도 되고 무엇은 건드리면 안 되는지 보여요.",
+   "minutes": 87,
+   "chapters": [
+    {
+     "id": "dream",
+     "title": "꿈과 첫 겨울 — 1950~1970",
+     "minutes": 13,
+     "week": null,
+     "build": false,
+     "quizzes": 4
+    },
+    {
+     "id": "backprop",
+     "title": "역전파와 두 번째 겨울 — 1980~1990년대",
+     "minutes": 14,
+     "week": null,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "deep",
+     "title": "딥러닝의 부활 — 2006~2016",
+     "minutes": 15,
+     "week": null,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "transformer",
+     "title": "트랜스포머와 규모의 발견 — 2017~2020",
+     "minutes": 15,
+     "week": null,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "chat",
+     "title": "ChatGPT 와 공개 모델의 시대 — 2021~2023",
+     "minutes": 15,
+     "week": null,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "now",
+     "title": "추론 · 에이전트 · 작은 모델 — 2024~2026",
+     "minutes": 15,
+     "week": null,
+     "build": false,
+     "quizzes": 5
+    }
+   ]
+  },
+  {
    "id": "how",
    "n": 2,
    "title": "작동 원리",
@@ -288,6 +349,120 @@
      "week": 3,
      "build": true,
      "quizzes": 6
+    }
+   ]
+  },
+  {
+   "id": "ops",
+   "n": 6,
+   "title": "운영 — 서빙 · 비용 · 인프라 · 돈",
+   "short": "운영",
+   "color": "sand",
+   "headline": "모델은 만드는 것보다\n돌리는 날이 훨씬 길어요.",
+   "lead": "요청이 큐에 서고, 배치로 묶여 GPU 를 지나고, 토큰이 흘러나와요. 그 뒤엔 전기 요금과 GPU 감가, 그리고 칩에서 앱까지 흐르는 돈이 있어요. 큰 회사가 하는 운영을 알고, 그중 내 맥에서 할 수 있는 것만 골라요.",
+   "why": "자비스는 하루에 수백 번 뇌를 불러요. 느리면 왜 느린지, 얼마가 드는지, 버전을 어떻게 바꾸고 되돌리는지 — 운영을 알면 자비스가 '작동하는 장난감'에서 '매일 쓰는 도구'가 돼요.",
+   "minutes": 81,
+   "chapters": [
+    {
+     "id": "serving",
+     "title": "서빙 — 요청이 큐에 서고 배치로 묶여요",
+     "minutes": 14,
+     "week": 3,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "quant",
+     "title": "양자화 — 숫자를 줄여 모델을 맥에 넣어요",
+     "minutes": 13,
+     "week": 3,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "cost",
+     "title": "비용 — 학습비 한 번, 추론비 매일",
+     "minutes": 14,
+     "week": 3,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "infra",
+     "title": "인프라 — GPU 한 장에서 데이터센터까지",
+     "minutes": 14,
+     "week": 4,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "mlops",
+     "title": "운영 루틴 — 버전 · 시험 · 로그 · 롤백",
+     "minutes": 13,
+     "week": 4,
+     "build": true,
+     "quizzes": 4
+    },
+    {
+     "id": "money",
+     "title": "회사와 돈 — 칩에서 앱까지",
+     "minutes": 13,
+     "week": 4,
+     "build": false,
+     "quizzes": 5
+    }
+   ]
+  },
+  {
+   "id": "safety",
+   "n": 7,
+   "title": "안전 · 정렬 · 규제",
+   "short": "안전",
+   "color": "rose",
+   "headline": "똑똑한 모델이\n착한 모델은 아니에요.",
+   "lead": "다음 토큰을 잘 맞히는 것과 사람이 원하는 대로 하는 것은 달라요. 정렬이 왜 필요한지, 모델이 어떻게 실패하는지, 어떻게 시험하고, 내 데이터를 어떻게 지키고, 법은 어디까지 왔는지를 자비스 기준으로 봐요.",
+   "why": "자비스는 내 노트를 읽고 도구를 부르고 기억을 남겨요. 그래서 '잘 틀리는 자리'와 '막는 법'을 먼저 알아야 해요. 법은 개인 프로젝트에 거의 안 걸리지만, 어디에 있는지는 알아 둬요.",
+   "minutes": 66,
+   "chapters": [
+    {
+     "id": "alignment",
+     "title": "정렬 — 잘 맞히는 것과 잘 하는 것은 달라요",
+     "minutes": 13,
+     "week": null,
+     "build": false,
+     "quizzes": 4
+    },
+    {
+     "id": "failures",
+     "title": "흔한 실패 — 지어내기 · 주입 · 탈옥 · 유출 · 편향",
+     "minutes": 14,
+     "week": null,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "evals",
+     "title": "안전 평가와 레드팀 — 시험지를 만들어요",
+     "minutes": 13,
+     "week": null,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "privacy",
+     "title": "데이터와 개인정보 — 내 노트는 어디까지 가나",
+     "minutes": 13,
+     "week": null,
+     "build": false,
+     "quizzes": 4
+    },
+    {
+     "id": "regulation",
+     "title": "규제 지형 2026 — 내 자비스는 어디에 있나",
+     "minutes": 13,
+     "week": null,
+     "build": false,
+     "quizzes": 5
     }
    ]
   }
