@@ -168,6 +168,128 @@
      "quizzes": 5
     }
    ]
+  },
+  {
+   "id": "post",
+   "n": 4,
+   "title": "사후학습과 자비스의 뇌",
+   "short": "뇌",
+   "color": "violet",
+   "headline": "이어 쓰기 모델을 대화 모델로.\n그리고 뇌를 갈아 끼워요.",
+   "lead": "SFT · DPO · GRPO 가 무엇을 바꾸는지, 공개 모델을 어떻게 고르고 맥에서 돌리는지, 그리고 3권에서 만든 내 작은 모델을 자비스의 뇌 자리에 어떻게 꽂는지. 2주차와 4주차 실습이 여기 있어요.",
+   "why": "자비스 뼈대는 '뇌 주소 하나'로 뇌를 불러요. 이 책을 읽으면 그 자리에 공개 모델도, 내 모델도 꽂을 수 있어요.",
+   "minutes": 79,
+   "chapters": [
+    {
+     "id": "sft",
+     "title": "SFT — 이어 쓰기 모델을 대화 모델로",
+     "minutes": 15,
+     "week": 4,
+     "build": true,
+     "quizzes": 4
+    },
+    {
+     "id": "preference",
+     "title": "선호 학습 — 둘 중 나은 답을 고르면",
+     "minutes": 12,
+     "week": 4,
+     "build": false,
+     "quizzes": 4
+    },
+    {
+     "id": "reasoning",
+     "title": "강화학습으로 추론 — 정답이 있으면 사람이 필요 없어요",
+     "minutes": 12,
+     "week": null,
+     "build": false,
+     "quizzes": 4
+    },
+    {
+     "id": "choose-brain",
+     "title": "공개 모델 고르기 — 맥에 들어갈 뇌",
+     "minutes": 13,
+     "week": 2,
+     "build": true,
+     "quizzes": 3
+    },
+    {
+     "id": "run-local",
+     "title": "로컬 실행 — 뇌 주소 하나",
+     "minutes": 13,
+     "week": 2,
+     "build": true,
+     "quizzes": 3
+    },
+    {
+     "id": "swap",
+     "title": "내 모델 꽂기 — 주소만 바꾸고 비교해요",
+     "minutes": 14,
+     "week": 4,
+     "build": true,
+     "quizzes": 4
+    }
+   ]
+  },
+  {
+   "id": "jarvis",
+   "n": 5,
+   "title": "자비스 뼈대",
+   "short": "뼈대",
+   "color": "teal",
+   "headline": "뇌는 주소 하나로 꽂아요.\n뼈대는 내가 만들어요.",
+   "lead": "내 노트 검색(RAG) · 도구 호출 · 음성 · 기억을 파이썬 몇 백 줄로 짜요. 뇌는 http://localhost:11434/v1 주소 하나로만 만나요. 지금은 Ollama 의 공개 모델, 다음 주엔 내가 만든 작은 모델이에요.",
+   "why": "3주차에 '말이 통하는 비서'를 실제로 손에 쥐어요. 뇌와 뼈대를 떼어 두면, 4주차에 내 모델을 꽂아도 뼈대는 한 줄도 안 바뀌어요.",
+   "minutes": 80,
+   "chapters": [
+    {
+     "id": "skeleton",
+     "title": "전체 설계 — 요청이 뼈대를 한 바퀴 도는 길",
+     "minutes": 12,
+     "week": 3,
+     "build": true,
+     "quizzes": 5
+    },
+    {
+     "id": "rag",
+     "title": "내 노트로 대답하기 — RAG",
+     "minutes": 15,
+     "week": 3,
+     "build": true,
+     "quizzes": 5
+    },
+    {
+     "id": "tools",
+     "title": "대신 일하기 — 도구 호출",
+     "minutes": 14,
+     "week": 3,
+     "build": true,
+     "quizzes": 5
+    },
+    {
+     "id": "voice",
+     "title": "말로 대화하기 — 듣기와 말하기",
+     "minutes": 12,
+     "week": 3,
+     "build": true,
+     "quizzes": 5
+    },
+    {
+     "id": "memory",
+     "title": "기억 — 최근 · 요약 · 장기",
+     "minutes": 13,
+     "week": 3,
+     "build": true,
+     "quizzes": 5
+    },
+    {
+     "id": "glue",
+     "title": "다 붙이기와 평가 — 설정 한 곳, 시험표 하나",
+     "minutes": 14,
+     "week": 3,
+     "build": true,
+     "quizzes": 6
+    }
+   ]
   }
  ]
 }
