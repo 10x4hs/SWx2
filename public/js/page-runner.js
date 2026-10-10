@@ -18,17 +18,22 @@ export function mountRunner(host, ctx, page, { preview = null } = {}) {
   f.className = "upage-frame"; f.title = page.title;
   if (page.kind === "url") return mountBrowser(host, ctx, page, f);
   f.setAttribute("sandbox", "allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-pointer-lock");
-  if (preview) { // 저장 없이 미리보기: 파일들을 srcdoc 으로 (상대 경로는 /pf/ 로 가도록 <base>)
-    const base = `<base href="${location.origin}/pf/${encodeURIComponent(page.id)}/">`, tag = `<script src="/js/page-bridge.js"></script>`;
-    let html = preview["index.html"] || "<p>index.html 이 없어요.</p>";
-    // 미리보기에서는 같이 고친 css/js 도 바로 반영되게 인라인으로 끼워요
-    for (const [path, content] of Object.entries(preview)) {
-      if (/\.css$/i.test(path)) html = html.replace(new RegExp(`<link[^>]+href=["']\\.?/?${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'][^>]*>`, "i"), () => `<style data-f="${path}">${content.replace(/<\/style/gi, "<\\/style")}</style>`);
-      if (/\.m?js$/i.test(path)) html = html.replace(new RegExp(`<script[^>]+src=["']\\.?/?${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'][^>]*>\\s*</script>`, "i"), () => `<script data-f="${path}">${content.replace(/<\/script/gi, "<\\/script")}</script>`);
-    }
-    html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + base + tag) : base + tag + html;
-    f.srcdoc = html;
-  } else f.src = `/pf/${encodeURIComponent(page.id)}/index.html?v=${page.updated_at || 0}`;
+  // sandbox iframe 안의 하위 요청(style.css · app.js …)에는 로그인 쿠키가 안 붙어요 → 페이지 파일 토큰을 주소에 넣어요(/pf/<id>/~<토큰>/)
+  const load = (token) => {
+    const dir = `/pf/${encodeURIComponent(page.id)}/${token ? `~${token}/` : ""}`;
+    if (preview) { // 저장 없이 미리보기: 파일들을 srcdoc 으로 (상대 경로는 /pf/ 로 가도록 <base>)
+      const base = `<base href="${location.origin}${dir}">`, tag = `<script src="/js/page-bridge.js"></script>`;
+      let html = preview["index.html"] || "<p>index.html 이 없어요.</p>";
+      // 미리보기에서는 같이 고친 css/js 도 바로 반영되게 인라인으로 끼워요
+      for (const [path, content] of Object.entries(preview)) {
+        if (/\.css$/i.test(path)) html = html.replace(new RegExp(`<link[^>]+href=["']\\.?/?${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'][^>]*>`, "i"), () => `<style data-f="${path}">${content.replace(/<\/style/gi, "<\\/style")}</style>`);
+        if (/\.m?js$/i.test(path)) html = html.replace(new RegExp(`<script[^>]+src=["']\\.?/?${path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["'][^>]*>\\s*</script>`, "i"), () => `<script data-f="${path}">${content.replace(/<\/script/gi, "<\\/script")}</script>`);
+      }
+      html = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + base + tag) : base + tag + html;
+      f.srcdoc = html;
+    } else f.src = `${dir}index.html?v=${page.updated_at || 0}`;
+  };
+  api.pageFileToken(page.id).then((r) => load(r.token), () => load(null));
   host.replaceChildren(f);
 
   // 사람별 서버 저장소 (예전 기기별 localStorage 값이 있으면 처음 한 번 옮겨요)

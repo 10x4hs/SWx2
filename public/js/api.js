@@ -86,6 +86,7 @@ export const api = {
   pageState: (id) => request("GET", `/pages/${encodeURIComponent(id)}/state`),
   savePageState: (id, data) => request("PUT", `/pages/${encodeURIComponent(id)}/state`, { data }),
   pageStates: (id) => request("GET", `/pages/${encodeURIComponent(id)}/state/all`),
+  pageFileToken: (id) => request("GET", `/pages/${encodeURIComponent(id)}/file-token`), // sandbox iframe 은 쿠키가 없어서 파일 주소에 넣는 12시간 토큰
   siteMeta: (url) => request("GET", "/site-meta?" + qs({ url })), // 사이트 제목 · 파비콘
   raw: request, // 사용자 페이지 브리지가 그대로 넘겨요
   tags: () => request("GET", "/tags"),

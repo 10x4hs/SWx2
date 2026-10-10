@@ -3,6 +3,7 @@
 // 규칙: 내 페이지는 앱 API 읽기·쓰기 전부, 남이 공유한 페이지는 내 계정으로 읽기(GET)만 — 브리지가 막아요(public/js/page-runner.js).
 // kind=url 이면 바깥 사이트 주소를 Dock 안에 띄우는 페이지예요(파일 없음).
 import { aiJson } from "./ai.js";
+import { b64u, unb64u } from "./proxy.js";
 
 export const MAX_FILE = 300_000;      // 파일 하나 글자 수
 export const MAX_FILES = 40;          // 페이지당 파일 수
@@ -171,6 +172,11 @@ export function registerPages(on, { json, body, fail, uid, now }) {
     await env.DB.batch(ids.map((id, i) => env.DB.prepare("UPDATE user_pages SET sort = ? WHERE id = ? AND user_id = ?").bind(i, id, user.id)));
     return json({ ok: true });
   });
+  // 파일 토큰: 러너가 iframe 을 /pf/<id>/~<토큰>/ 로 열 때 써요 (servePageFile 위 설명)
+  on("GET", "/pages/:id/file-token", async ({ env, user, params }) => {
+    await visible(env, params.id, user);
+    return json({ token: await makeFileToken(env, user.id, params.id), ttl: FILE_TOKEN_TTL });
+  });
   // 사람별 저장소 (trio.store): 내 것 읽기·쓰기. 공개 페이지면 셋의 것을 읽기(trio.others)
   on("GET", "/pages/:id/state", async ({ env, user, params }) => {
     await visible(env, params.id, user);
@@ -238,15 +244,34 @@ export function registerPages(on, { json, body, fail, uid, now }) {
   });
 }
 
-// /pf/<id>/<path> — 페이지 파일 서빙 (로그인 쿠키로 · 내 것 또는 공유된 것). html 에는 브리지를 끼워요. sandbox CSP 로 한 번 더 가둬요.
+// 페이지 파일 토큰 — sandbox iframe(allow-same-origin 없음) 안에서 부르는 style.css · app.js 같은 하위 요청은 출처가 없어서
+// SameSite=Lax 로그인 쿠키가 안 붙어요. 그래서 iframe 을 /pf/<id>/~<토큰>/index.html 로 열고, 상대 경로가 토큰을 그대로 달고 가게 해요.
+// 토큰은 (보는 사람 · 페이지 하나 · 12시간) 에 묶여서, 공유 페이지 코드가 보는 사람의 다른 페이지를 읽는 데는 못 써요.
+const FILE_TOKEN_TTL = 12 * 3600e3;
+async function signFile(env, data) {
+  const secret = env.VAPID_PRIVATE_KEY || env.INVITE_CODE || "trio";
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("pf:" + secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return [...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data)))].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
+export async function makeFileToken(env, userId, pageId) { const body = `${userId}.${pageId}.${Date.now() + FILE_TOKEN_TTL}`; return `${b64u(body)}.${await signFile(env, body)}`; }
+async function fileTokenUser(env, token, pageId) {
+  const [b, sig] = String(token || "").split("."); if (!b || !sig) return null;
+  let body; try { body = unb64u(b); } catch { return null; }
+  if ((await signFile(env, body)) !== sig) return null;
+  const [userId, pid, exp] = body.split(".");
+  return pid === pageId && +exp > Date.now() ? userId : null;
+}
+
+// /pf/<id>/[~<토큰>/]<path> — 페이지 파일 서빙 (파일 토큰 또는 로그인 쿠키로 · 내 것 또는 공유된 것). html 에는 브리지를 끼워요. sandbox CSP 로 한 번 더 가둬요.
 export async function servePageFile(req, env, url, user) {
-  const m = /^\/pf\/([^/]+)\/?(.*)$/.exec(url.pathname);
+  const m = /^\/pf\/([^/]+)(?:\/~([^/]+))?\/?(.*)$/.exec(url.pathname);
   if (!m) return new Response("not found", { status: 404 });
-  if (!user) return new Response("로그인이 필요해요.", { status: 401, headers: { "content-type": "text/plain; charset=utf-8" } });
-  const id = m[1]; let path = decodeURIComponent(m[2] || "") || "index.html";
+  const id = m[1], viewer = m[2] ? await fileTokenUser(env, m[2], id) : user?.id;
+  if (!viewer) return new Response("로그인이 필요해요.", { status: 401, headers: { "content-type": "text/plain; charset=utf-8" } });
+  let path = decodeURIComponent(m[3] || "") || "index.html";
   if (path.endsWith("/")) path += "index.html";
   const p = await env.DB.prepare("SELECT id, user_id, shared, kind FROM user_pages WHERE id = ?").bind(id).first();
-  if (!p || (p.user_id !== user.id && !p.shared)) return new Response("not found", { status: 404 });
+  if (!p || (p.user_id !== viewer && !p.shared)) return new Response("not found", { status: 404 });
   const f = await env.DB.prepare("SELECT content FROM user_page_files WHERE page_id = ? AND path = ?").bind(id, path).first();
   if (!f) return new Response(`파일이 없어요: ${path}`, { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
   const html = isHtml(path);

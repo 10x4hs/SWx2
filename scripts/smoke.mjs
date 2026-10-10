@@ -731,6 +731,23 @@ if (!process.env.SKIP_AI) {
   
 }
 
+// ---------- 페이지 파일: sandbox iframe 은 쿠키가 없어서 /pf/<id>/~<토큰>/ 으로 불러요 ----------
+{
+  const files = { "index.html": '<!doctype html><html><head><link rel="stylesheet" href="style.css"></head><body>hi</body></html>', "style.css": "body{color:red}" };
+  const pa = (await call("a", "POST", "/pages", { title: "파일 토큰", files })).data.page;
+  const pa2 = (await call("a", "POST", "/pages", { title: "다른 페이지", files })).data.page;
+  const raw = (path, cookie) => fetch(BASE + path, { headers: cookie ? { cookie } : {} });
+  r = await raw(`/pf/${pa.id}/style.css`); ok(r.status === 401, "pf: no cookie, no token → 401 (what a sandbox iframe used to get)");
+  r = await raw(`/pf/${pa.id}/style.css`, jar.a); ok(r.status === 200, "pf: cookie still works");
+  const t = await call("a", "GET", `/pages/${pa.id}/file-token`); ok(t.status === 200 && t.data.token, "pf: file token issued to owner");
+  r = await raw(`/pf/${pa.id}/~${t.data.token}/style.css`); ok(r.status === 200 && (await r.text()).includes("red"), "pf: token loads style.css without cookie");
+  r = await raw(`/pf/${pa.id}/~${t.data.token}/index.html`); ok(r.status === 200 && (await r.text()).includes("/js/page-bridge.js"), "pf: token loads index.html with bridge");
+  r = await raw(`/pf/${pa2.id}/~${t.data.token}/style.css`); ok(r.status === 401, "pf: token is bound to one page");
+  r = await raw(`/pf/${pa.id}/~${t.data.token.slice(0, -2)}xx/style.css`); ok(r.status === 401, "pf: tampered token → 401");
+  r = await call("b", "GET", `/pages/${pa.id}/file-token`); ok(r.status === 404, "pf: no token for someone else's private page");
+  await call("a", "DELETE", `/pages/${pa.id}`); await call("a", "DELETE", `/pages/${pa2.id}`);
+}
+
 r = await call("a", "POST", "/auth/logout"); r = await call("a", "GET", "/me"); ok(r.status === 401, "logout");
 
 execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", "DELETE FROM users WHERE username LIKE 't\\_%' ESCAPE '\\'"], { stdio: "ignore" });
