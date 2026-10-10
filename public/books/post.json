@@ -1,0 +1,2804 @@
+{
+ "id": "post",
+ "n": 4,
+ "title": "사후학습과 자비스의 뇌",
+ "short": "뇌",
+ "color": "violet",
+ "kicker": "4권 · 사후학습과 자비스의 뇌",
+ "headline": "이어 쓰기 모델을 대화 모델로.\n그리고 뇌를 갈아 끼워요.",
+ "lead": "SFT · DPO · GRPO 가 무엇을 바꾸는지, 공개 모델을 어떻게 고르고 맥에서 돌리는지, 그리고 3권에서 만든 내 작은 모델을 자비스의 뇌 자리에 어떻게 꽂는지. 2주차와 4주차 실습이 여기 있어요.",
+ "why": "자비스 뼈대는 '뇌 주소 하나'로 뇌를 불러요. 이 책을 읽으면 그 자리에 공개 모델도, 내 모델도 꽂을 수 있어요.",
+ "chapters": [
+  {
+   "id": "sft",
+   "title": "SFT — 이어 쓰기 모델을 대화 모델로",
+   "minutes": 15,
+   "week": 4,
+   "headline": "지식은 이미 있어요.\n'답하는 형식'만 가르쳐요.",
+   "lead": "사전학습만 한 모델은 질문을 보면 질문을 이어 써요. 질문 → 답 예시를 보여 주는 게 SFT(지도 미세조정)예요. 데이터 모양, 얼마나 필요한지, 내 노트로 어떻게 만드는지, 과적합은 어떻게 알아보는지까지 봐요. 4주차 실습은 내 작은 모델에 SFT 를 직접 해요.",
+   "sections": [
+    {
+     "title": "기본 모델은 질문에 질문으로 답해요",
+     "body": [
+      {
+       "t": "quiz",
+       "q": "사전학습만 한 모델에 '김치찌개 레시피 알려 줘'라고 쓰면 무엇이 나올 가능성이 높을까요?",
+       "choices": [
+        "친절한 레시피",
+        "'…된장찌개 레시피도 알려 줘' 같은 이어 쓴 글",
+        "아무것도 안 나와요"
+       ],
+       "answer": 1,
+       "why": "기본 모델은 글을 이어 쓰는 모델이에요. 인터넷 글에선 질문 뒤에 또 질문이 오기도 하니, 질문을 이어 쓸 때가 많아요."
+      },
+      {
+       "t": "quiz",
+       "q": "SFT 가 가르치는 건 주로 무엇일까요?",
+       "choices": [
+        "새 지식 수백만 개",
+        "질문에 답하는 형식과 말투",
+        "토크나이저"
+       ],
+       "answer": 1,
+       "why": "지식은 사전학습에서 이미 배웠어요. SFT 는 '이런 질문엔 이런 모양으로 답해'를 보여 주는 단계예요."
+      },
+      {
+       "t": "p",
+       "text": "3권에서 만든 내 모델은 글을 **이어 쓰기**만 해요. 사전학습의 목표가 다음 토큰 맞히기 하나였으니까요. 여기에 '질문 → 답' 예시를 수백~수천 개 보여 주며 한 번 더 학습하는 게 **SFT**(supervised fine-tuning · 지도 미세조정)예요. 학습 루프는 사전학습과 똑같아요. 데이터 모양만 바뀌어요."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "기본 모델",
+         "tone": "n",
+         "icon": "layers",
+         "text": "질문을 '이어 쓸 글'로 봐요. 아는 건 많은데 대화하는 법을 몰라요."
+        },
+        {
+         "label": "SFT 후",
+         "tone": "c",
+         "icon": "spark",
+         "text": "질문 → 좋은 답 예시로 배워서, 질문이 오면 답 자리에서 답을 시작해요."
+        }
+       ],
+       "caption": "모델의 지식이 아니라 '언제 무엇을 쓰기 시작하나'가 바뀌어요."
+      },
+      {
+       "t": "analogy",
+       "title": "박식한 신입 사원",
+       "text": "책을 엄청 읽은 신입은 아는 건 많은데 보고서 쓰는 법을 몰라요. 잘 쓴 보고서 예시 몇백 개를 보여 주면 금방 형식을 익혀요. 그게 SFT 예요.",
+       "limit": "비유가 틀리는 점: 모델은 '이해'해서 따라 하는 게 아니라, 예시와 비슷한 글이 나올 확률이 높아지도록 숫자가 바뀌는 거예요."
+      }
+     ]
+    },
+    {
+     "title": "대화 형식 — 특수 토큰으로 역할을 가르쳐요",
+     "body": [
+      {
+       "t": "p",
+       "text": "모델에게 '여기까지가 질문, 여기부터 답'을 알려 주려면 글 사이에 **울타리**가 필요해요. 그래서 역할을 뜻하는 **특수 토큰**을 어휘에 더해요. 이 울타리를 붙이는 규칙이 **대화 템플릿**(chat template)이에요. 모델마다 모양이 달라요. Qwen 은 `<|im_start|>user` 식(ChatML), Llama 3 는 `<|start_header_id|>` 식이에요."
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "msg",
+         "label": "메시지",
+         "items": [
+          {
+           "id": "u",
+           "text": "user: 오늘 뭐 먹지?",
+           "tone": "a"
+          },
+          {
+           "id": "a",
+           "text": "assistant: 김치찌개 어때요?",
+           "tone": "c"
+          }
+         ]
+        },
+        {
+         "id": "txt",
+         "label": "템플릿으로 감싼 글",
+         "items": []
+        },
+        {
+         "id": "tok",
+         "label": "토큰 (앞부분)",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "질문과 답, 메시지 두 개가 있어요.",
+         "hi": [
+          "u",
+          "a"
+         ]
+        },
+        {
+         "text": "템플릿이 역할 토큰으로 감싸요. 이 책은 ChatML 모양을 써요.",
+         "add": [
+          {
+           "row": "txt",
+           "id": "x1",
+           "text": "<|im_start|>user",
+           "tone": "n"
+          },
+          {
+           "row": "txt",
+           "id": "x2",
+           "text": "오늘 뭐 먹지?",
+           "tone": "a"
+          },
+          {
+           "row": "txt",
+           "id": "x3",
+           "text": "<|im_end|>",
+           "tone": "n"
+          },
+          {
+           "row": "txt",
+           "id": "x4",
+           "text": "<|im_start|>assistant",
+           "tone": "n"
+          },
+          {
+           "row": "txt",
+           "id": "x5",
+           "text": "김치찌개 어때요?",
+           "tone": "c"
+          },
+          {
+           "row": "txt",
+           "id": "x6",
+           "text": "<|im_end|>",
+           "tone": "n"
+          }
+         ],
+         "link": [
+          {
+           "from": "u",
+           "to": "x2"
+          },
+          {
+           "from": "a",
+           "to": "x5"
+          }
+         ],
+         "hi": [
+          "x1",
+          "x3",
+          "x4",
+          "x6"
+         ]
+        },
+        {
+         "text": "토크나이저가 자르면 특수 토큰은 통째로 하나, 글은 BPE 조각으로 나뉘어요.",
+         "add": [
+          {
+           "row": "tok",
+           "id": "t1",
+           "text": "<|im_start|>",
+           "tone": "n"
+          },
+          {
+           "row": "tok",
+           "id": "t2",
+           "text": "user",
+           "tone": "n"
+          },
+          {
+           "row": "tok",
+           "id": "t3",
+           "text": "오늘",
+           "tone": "a"
+          },
+          {
+           "row": "tok",
+           "id": "t4",
+           "text": " 뭐",
+           "tone": "a"
+          },
+          {
+           "row": "tok",
+           "id": "t5",
+           "text": " 먹",
+           "tone": "a"
+          },
+          {
+           "row": "tok",
+           "id": "t6",
+           "text": "지?",
+           "tone": "a"
+          },
+          {
+           "row": "tok",
+           "id": "t7",
+           "text": "<|im_end|>",
+           "tone": "n"
+          }
+         ],
+         "link": [
+          {
+           "from": "x1",
+           "to": "t1"
+          },
+          {
+           "from": "x2",
+           "to": "t3"
+          },
+          {
+           "from": "x3",
+           "to": "t7"
+          }
+         ],
+         "hi": [
+          "t1",
+          "t7"
+         ]
+        },
+        {
+         "text": "학습 때 손실은 답 부분(초록)에서만 재요. 질문은 '보기만' 해요.",
+         "hi": [
+          "x5"
+         ]
+        },
+        {
+         "text": "쓸 때는 질문 뒤에 `<|im_start|>assistant` 까지만 붙여 줘요. 모델이 그 뒤를 이어 쓰면 그게 답이에요. `<|im_end|>` 가 나오면 멈춰요.",
+         "hi": [
+          "x4",
+          "x6"
+         ]
+        }
+       ],
+       "caption": "메시지 → 템플릿 → 토큰. 특수 토큰은 BPE 합치기에서 빠진 '통째로 하나'예요.",
+       "note": "조각 나누기는 설명용 예시예요"
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "대화 모델 = **역할 토큰으로 감싼 글**을 이어 쓰는 모델이에요. 템플릿이 다르면 같은 가중치도 엉뚱하게 답해요."
+      },
+      {
+       "t": "quiz",
+       "q": "학습한 템플릿과 다른 템플릿으로 질문하면 어떻게 될까요?",
+       "choices": [
+        "아무 문제 없어요",
+        "답이 엉뚱해지거나 멈추지 않을 수 있어요",
+        "더 똑똑해져요"
+       ],
+       "answer": 1,
+       "why": "모델은 특수 토큰의 모양을 외웠어요. 울타리가 바뀌면 '여기가 답 자리'를 못 찾아요. Ollama 는 모델마다 템플릿을 저장해 두고 자동으로 붙여요."
+      }
+     ]
+    },
+    {
+     "title": "데이터 모양 — 질문 → 답 JSONL",
+     "body": [
+      {
+       "t": "p",
+       "text": "SFT 데이터는 한 줄에 대화 하나인 **JSONL** 이 표준이에요. Hugging Face 생태계는 `messages` 배열 모양을 많이 써요. `role` 이 system · user · assistant 중 하나고, `content` 가 글이에요. 이 모양이면 `tokenizer.apply_chat_template()` 이 모델에 맞는 템플릿으로 바꿔 줘요."
+      },
+      {
+       "t": "code",
+       "lang": "json",
+       "title": "sft.jsonl 한 줄",
+       "code": "{\"messages\": [\n  {\"role\": \"system\", \"content\": \"너는 내 공부 노트를 아는 비서야. 짧게 답해.\"},\n  {\"role\": \"user\", \"content\": \"KV 캐시가 뭐야?\"},\n  {\"role\": \"assistant\", \"content\": \"앞 토큰들의 열쇠 · 내용을 저장해 다시 계산하지 않는 거예요. 길이에 비례해 자라요.\"}\n]}",
+       "note": "system 은 빼도 돼요. 멀티턴이면 user · assistant 를 번갈아 더 넣어요"
+      },
+      {
+       "t": "p",
+       "text": "얼마나 필요할까요? **LIMA**(2023) 연구는 잘 고른 **1,000개**만으로도 꽤 좋은 대화 모델이 됐다고 보였어요. 지식은 사전학습에서 왔고 SFT 는 형식을 가르치는 거라서예요. 다만 LIMA 는 65B 모델이었어요. 우리 모델은 수백만 파라미터라 '지식'이 거의 없고, 형식도 더 많이 봐야 잡혀요. 4주차엔 **200~500개**로 시작해 봐요."
+      },
+      {
+       "t": "bars",
+       "unit": "SFT 예시 수 (개)",
+       "items": [
+        {
+         "label": "LIMA (2023)",
+         "value": 1000,
+         "display": "1,000",
+         "tone": "a"
+        },
+        {
+         "label": "우리 4주차 시작",
+         "value": 300,
+         "display": "200~500",
+         "tone": "c"
+        },
+        {
+         "label": "공개 모델 흔한 규모",
+         "value": 10000,
+         "display": "수천~수만+",
+         "tone": "n"
+        }
+       ],
+       "max": 10000,
+       "caption": "양보다 질이에요. 중복 · 틀린 답 하나가 100개 좋은 예시를 망쳐요.",
+       "note": "LIMA: Zhou et al. 2023 (1,000개). 나머지는 설명용 범위예요"
+      },
+      {
+       "t": "callout",
+       "kind": "tip",
+       "text": "기존 모델을 쓸 때는 **원래 템플릿을 그대로** 써요. 공개 모델의 템플릿은 `tokenizer_config.json` 의 `chat_template` 에 들어 있어요. 내 모델은 템플릿이 없으니 우리가 하나 정해서(ChatML) 특수 토큰을 어휘에 더해요."
+      }
+     ]
+    },
+    {
+     "title": "내 말투 · 내 분야 데이터 만들기",
+     "body": [
+      {
+       "t": "p",
+       "text": "내 노트가 데이터 원천이에요. 노트 한 단락을 보고 **'이 단락이 답이 되는 질문'** 을 만들면 질문-답 쌍 하나가 생겨요. 손으로 100개를 만들면 말투가 제일 잘 담기고, 공개 모델(2주차에 고른 Ollama 뇌)에게 단락을 주고 질문을 만들게 하면 양을 늘릴 수 있어요. 둘을 섞어요."
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "단락 고르기",
+         "text": "노트에서 3~6문장짜리 단락 300개. 너무 긴 건 잘라요. 제목 · 목록만 있는 건 빼요."
+        },
+        {
+         "title": "질문 만들기",
+         "text": "단락마다 질문 1~2개. 공개 모델에게 '이 글을 답으로 하는 짧은 질문 2개를 만들어 줘'라고 시켜도 돼요."
+        },
+        {
+         "title": "답을 내 말투로",
+         "text": "답은 단락을 내 말투로 다듬은 것. 노트 그대로 복사하면 '글 이어 쓰기'와 다를 게 없어요. 짧게 · 해요체로."
+        },
+        {
+         "title": "검수",
+         "text": "틀린 답 · 중복 질문을 지워요. 10%는 held-out 으로 빼서 평가에만 써요."
+        }
+       ],
+       "caption": "노트 → 단락 → 질문 → 답 → 검수. 2~3시간이면 300개 나와요."
+      },
+      {
+       "t": "callout",
+       "kind": "warn",
+       "text": "공개 모델이 만든 질문 · 답을 그대로 쓰면 그 모델의 말투를 배워요. 답은 꼭 내 손을 거치게 해요. 그리고 생성에 쓴 모델의 **라이선스**가 '출력으로 다른 모델 학습'을 허용하는지 모델 카드에서 확인해요."
+      },
+      {
+       "t": "quiz",
+       "q": "내 노트로 SFT 데이터를 만들 때 가장 피해야 할 것은?",
+       "choices": [
+        "질문을 짧게 쓰기",
+        "노트 단락을 답으로 그대로 복사하기",
+        "system 메시지 넣기"
+       ],
+       "answer": 1,
+       "why": "답이 노트와 똑같으면 모델은 '질문 뒤에 노트를 이어 쓰기'를 배워요. 답은 질문에 맞게 다듬은 내 말투여야 해요."
+      }
+     ]
+    },
+    {
+     "title": "과적합 신호 — 손실 곡선을 다시 봐요",
+     "body": [
+      {
+       "t": "p",
+       "text": "SFT 데이터는 작아요. 몇 에포크만 돌려도 모델이 답을 **통째로 외워요**. 신호는 사전학습 때와 같아요. train loss 는 계속 내려가는데 **val loss 가 올라가면** 과적합이에요. 생성 샘플에서도 보여요. 학습에 있던 질문엔 답을 토씨 하나 안 틀리고 외우고, 조금만 바꾼 질문엔 엉뚱해져요."
+      },
+      {
+       "t": "widget",
+       "kind": "loss",
+       "caption": "SFT 에서도 손실은 −log p 예요. 외운 답의 확률이 0.99 가 되면 벌점은 0.01 — 그런데 held-out 질문에선 확률이 0.1 로 떨어져 벌점 2.3. 그 틈이 과적합이에요."
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "에포크 1~3",
+         "text": "작은 데이터는 1~3 에포크면 충분해요. 매 에포크 val loss 를 적어요."
+        },
+        {
+         "title": "학습률은 사전학습의 1/10",
+         "text": "3권에서 1e-3 을 썼으면 1e-4 안팎. 너무 크면 사전학습에서 배운 걸 지워요."
+        },
+        {
+         "title": "held-out 질문 10개로 손으로 확인",
+         "text": "숫자보다 '안 본 질문에 말이 되나'가 빨라요."
+        }
+       ],
+       "caption": "과적합을 막는 세 가지"
+      },
+      {
+       "t": "deep",
+       "title": "손실은 답 부분만 — 그리고 코드",
+       "body": [
+        {
+         "t": "p",
+         "text": "SFT 손실은 사전학습과 같은 교차 엔트로피인데, **질문 토큰 자리는 손실에서 빼요**. 질문은 사람이 쓰는 것이니 모델이 맞힐 필요가 없고, 넣으면 '질문 흉내'를 배우느라 답 학습이 희석돼요. PyTorch 에서는 정답(target)에 `ignore_index` 값을 넣으면 그 자리는 손실 계산에서 빠져요. nanoGPT 의 forward 는 `ignore_index=-1` 을 써요."
+        },
+        {
+         "t": "formula",
+         "text": "L = −(1/|A|) Σ_{t∈A} log p(y_t | y_<t, x)",
+         "note": "A = 답(assistant) 토큰 자리. x = 시스템 · 질문 토큰. 질문 자리는 마스크"
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "내 nanoGPT 모델에 SFT — 답 부분만 손실",
+         "code": "import json, torch\nfrom tokenizers import Tokenizer\nfrom model import GPT, GPTConfig\n\ntok = Tokenizer.from_file('tok8k_chat.json')   # <|im_start|> <|im_end|> 를 더한 토크나이저\nS, E = tok.token_to_id('<|im_start|>'), tok.token_to_id('<|im_end|>')\n\ndef encode(ex):\n    ids, tgt = [], []\n    for m in ex['messages']:\n        head = [S] + tok.encode(m['role'] + '\\n').ids\n        body = tok.encode(m['content']).ids + [E]\n        ids += head + body\n        tgt += [-1] * len(head) + (body if m['role'] == 'assistant' else [-1] * len(body))\n    return ids[:256], tgt[:256]\n\ndata = [encode(json.loads(l)) for l in open('sft.jsonl')]\nck = torch.load('out-ko-b/ckpt.pt', map_location='cpu')\nmodel = GPT(GPTConfig(**ck['model_args']))\nsd = {k.replace('_orig_mod.', ''): v for k, v in ck['model'].items()}\nmodel.load_state_dict(sd)\nmodel.cuda(); opt = torch.optim.AdamW(model.parameters(), lr=1e-4)\n\nfor epoch in range(3):\n    for ids, tgt in data:\n        x = torch.tensor([ids[:-1]]).cuda(); y = torch.tensor([tgt[1:]]).cuda()\n        _, loss = model(x, y)          # nanoGPT: ignore_index=-1\n        loss.backward(); opt.step(); opt.zero_grad()\n    print(epoch, loss.item())",
+         "note": "배치 1 · 패딩 없음으로 가장 단순하게. 어휘를 늘렸으면 임베딩 표를 2줄 키워야 해요(아래 실습 2단계). 3권 sample.py 와 같은 '_orig_mod' 처리"
+        },
+        {
+         "t": "p",
+         "text": "큰 공개 모델에 SFT 할 때는 Hugging Face **TRL** 의 `SFTTrainer` 를 써요. `messages` 모양 데이터를 주면 모델의 템플릿을 알아서 붙여요. 답 부분만 손실로 잡는 옵션(`assistant_only_loss`)은 TRL 버전에 따라 이름 · 지원 모델이 달라서 문서를 한 번 확인해요."
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "TRL SFTTrainer (공개 모델용 · 뼈대)",
+         "code": "from datasets import load_dataset\nfrom trl import SFTTrainer, SFTConfig\nds = load_dataset('json', data_files='sft.jsonl')['train']\ntrainer = SFTTrainer(model='Qwen/Qwen3-0.6B', train_dataset=ds,\n                     args=SFTConfig(output_dir='out-sft', num_train_epochs=2, learning_rate=1e-5))\ntrainer.train()",
+         "note": "0.6B 급은 Colab T4 에서 LoRA(peft) 없이 빠듯해요. peft 의 LoraConfig 를 peft_config 로 넘기면 메모리가 크게 줄어요"
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "LIMA: Zhou et al. 2023, 'Less Is More for Alignment'. InstructGPT: Ouyang et al. 2022 — SFT 가 RLHF 의 첫 단계였어요."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "사전학습만 한 모델은 질문을 이어 써요. 질문 → 답 예시로 한 번 더 학습하는 게 SFT 고, 루프는 사전학습과 같아요. 역할을 알려 주는 특수 토큰과 템플릿이 '답 자리'를 정하고, 손실은 답 부분에서만 재요. 데이터는 JSONL 의 messages 모양이고, 잘 고른 1,000개(LIMA)도 통했지만 우리 작은 모델은 형식부터 200~500개로 시작해요. 내 노트 단락을 질문 → 내 말투 답으로 바꿔 만들고, val loss 가 오르면 과적합이에요.",
+    "points": [
+     "SFT = 같은 루프, 데이터만 질문 → 답",
+     "특수 토큰 · 템플릿이 답 자리를 정한다",
+     "손실은 답 부분만",
+     "내 노트 단락 → 질문 → 내 말투 답 → 검수",
+     "val loss 오르면 과적합, 학습률은 1/10"
+    ]
+   },
+   "jarvis": "4주차에 내 작은 모델이 자비스 질문에 '답 자리에서' 답을 시작하게 만드는 단계예요. 뼈대가 보내는 system · user 메시지가 이 장의 템플릿으로 감싸져 들어가요.",
+   "words": [
+    {
+     "term": "SFT",
+     "en": "supervised fine-tuning",
+     "easy": "질문 → 답 예시로 모델을 한 번 더 학습하기",
+     "deep": "사전학습과 같은 교차 엔트로피, 답 토큰만 손실. InstructGPT 1단계. 학습률은 사전학습의 1/10 안팎"
+    },
+    {
+     "term": "대화 템플릿",
+     "en": "chat template",
+     "easy": "메시지를 역할 토큰으로 감싸 한 줄 글로 만드는 규칙",
+     "deep": "ChatML(<|im_start|>role … <|im_end|>), Llama 3 헤더 토큰 등. HF tokenizer_config.json 의 chat_template (Jinja)"
+    },
+    {
+     "term": "특수 토큰",
+     "en": "special token",
+     "easy": "역할 · 경계를 뜻하는, 통째로 하나인 토큰",
+     "deep": "BPE 합치기에서 제외. 어휘에 더하면 임베딩 · 출력층 크기를 함께 키워야(resize)"
+    },
+    {
+     "term": "JSONL",
+     "en": "JSON Lines",
+     "easy": "한 줄에 JSON 하나씩 쌓은 파일",
+     "deep": "스트리밍 · 섞기(shuffle)에 편해요. HF datasets 의 load_dataset('json') 이 바로 읽어요"
+    },
+    {
+     "term": "LIMA",
+     "en": "Less Is More for Alignment",
+     "easy": "잘 고른 1,000개로도 대화 모델이 됐다는 연구",
+     "deep": "Zhou et al. 2023, LLaMA 65B. '지식은 사전학습, 정렬은 형식'이라는 표면 정렬 가설"
+    },
+    {
+     "term": "마스킹",
+     "en": "loss masking",
+     "easy": "질문 자리는 손실에서 빼기",
+     "deep": "target 에 ignore_index(-100 또는 nanoGPT 의 -1). TRL assistant_only_loss / completion_only_loss"
+    },
+    {
+     "term": "과적합",
+     "en": "overfitting",
+     "easy": "학습 데이터만 외우고 새 질문엔 약해지는 것",
+     "deep": "train↓ val↑. 작은 SFT 데이터는 1~3 에포크, held-out 10% 로 감시"
+    },
+    {
+     "term": "held-out",
+     "en": "held-out set",
+     "easy": "학습에 안 쓰고 평가에만 쓰는 몫",
+     "deep": "SFT 데이터의 10%. 6장의 내 노트 50문제 시험과 겹치지 않게"
+    }
+   ],
+   "build": {
+    "title": "4주차 실습 ① 내 노트 → 질문-답 → 내 작은 모델에 SFT",
+    "note": "Colab 무료 T4 · 1~2시간 (데이터 만들기 별도). 결과물: sft.jsonl 200~500줄 · out-ko-sft/ckpt.pt · 대화 샘플 10개",
+    "steps": [
+     {
+      "text": "노트 단락 300개를 뽑아 질문-답 쌍을 만들어요. 질문은 2주차 Ollama 뇌에게 시켜도 되지만 답은 내 말투로 다듬어요. 10%는 held-out 으로.",
+      "lang": "python",
+      "code": "import json, random\nfrom openai import OpenAI\nai = OpenAI(base_url='http://localhost:11434/v1', api_key='ollama')\nrows = []\nfor para in paragraphs:                     # 노트 단락 목록\n    r = ai.chat.completions.create(model='qwen3:1.7b', messages=[\n        {'role': 'user', 'content': '다음 글을 답으로 하는 짧은 질문을 한 줄로 만들어 줘. 질문만 써.\\n\\n' + para}])\n    q = r.choices[0].message.content.strip()\n    rows.append({'messages': [{'role': 'user', 'content': q}, {'role': 'assistant', 'content': para}]})\nrandom.shuffle(rows)\nfor name, part in [('sft.jsonl', rows[30:]), ('sft_val.jsonl', rows[:30])]:\n    with open(name, 'w') as f:\n        for r in part: f.write(json.dumps(r, ensure_ascii=False) + '\\n')\n# 그다음 sft.jsonl 을 열어 answer 를 내 말투로 고쳐요 — 이게 제일 중요한 단계예요"
+     },
+     {
+      "text": "3권 토크나이저에 역할 토큰 2개를 더하고, 모델의 임베딩 · 출력층을 2줄 키워요(weight tying 이라 한 표예요).",
+      "lang": "python",
+      "code": "from tokenizers import Tokenizer\nimport torch\nfrom model import GPT, GPTConfig\ntok = Tokenizer.from_file('tok8k.json')\ntok.add_special_tokens(['<|im_start|>', '<|im_end|>'])\ntok.save('tok8k_chat.json')\nV = tok.get_vocab_size()\nck = torch.load('out-ko-b/ckpt.pt', map_location='cpu')\nargs = dict(ck['model_args']); old = args['vocab_size']; args['vocab_size'] = V\nmodel = GPT(GPTConfig(**args))\nsd = {k.replace('_orig_mod.', ''): v for k, v in ck['model'].items()}\nw = sd['transformer.wte.weight']\nsd['transformer.wte.weight'] = torch.cat([w, w.mean(0, keepdim=True).repeat(V - old, 1)])\nsd.pop('lm_head.weight', None)             # tying: wte 와 같은 표\nmodel.load_state_dict(sd, strict=False)\ntorch.save({'model': model.state_dict(), 'model_args': args}, 'out-ko-sft/init.pt')"
+     },
+     {
+      "text": "깊게 상자의 SFT 루프를 돌려요. 에포크마다 sft_val.jsonl 의 손실을 같이 찍고, 오르기 시작하면 멈춰요. 결과를 out-ko-sft/ckpt.pt 로 저장해요."
+     },
+     {
+      "text": "held-out 질문 10개로 대화해 봐요. `<|im_start|>assistant\\n` 까지 넣고 `<|im_end|>` 가 나오면 멈춰요.",
+      "lang": "python",
+      "code": "@torch.no_grad()\ndef chat(q, max_new=80):\n    ids = [S] + tok.encode('user\\n' + q).ids + [E] + [S] + tok.encode('assistant\\n').ids\n    x = torch.tensor([ids]).cuda()\n    for _ in range(max_new):\n        logits, _ = model(x[:, -256:])\n        nxt = torch.multinomial(torch.softmax(logits[0, -1] / 0.7, -1), 1)\n        if nxt.item() == E: break\n        x = torch.cat([x, nxt[None]], 1)\n    return tok.decode(x[0, len(ids):].tolist())\nfor q in held_out[:10]: print(q, '→', chat(q))"
+     },
+     {
+      "text": "샘플 10개를 적어 두세요. '답 자리에서 답을 시작하나', '내 말투인가', '안 본 질문에 말이 되나' 세 칸으로. 6장 비교표의 왼쪽 열이 돼요."
+     }
+    ]
+   }
+  },
+  {
+   "id": "preference",
+   "title": "선호 학습 — 둘 중 나은 답을 고르면",
+   "minutes": 12,
+   "week": 4,
+   "headline": "좋은 답을 쓰긴 어려워도,\n둘 중 고르기는 쉬워요.",
+   "lead": "SFT 다음은 '사람이 더 좋아하는 답'으로 다듬는 단계예요. RLHF 는 보상 모델과 PPO 로, DPO 는 선호 쌍으로 바로 학습해요. 데이터 모양과 손실이 미는 방향을 보고, 우리 작은 모델에 DPO 가 의미 있는지 솔직하게 따져요.",
+   "sections": [
+    {
+     "title": "쓰기보다 고르기가 쉬워요",
+     "body": [
+      {
+       "t": "quiz",
+       "q": "사람이 모델에게 '더 좋은 답'을 가르칠 때 가장 싼 방법은?",
+       "choices": [
+        "모범 답을 직접 다 쓰기",
+        "모델이 낸 두 답 중 나은 걸 고르기",
+        "모델에게 스스로 채점시키기"
+       ],
+       "answer": 1,
+       "why": "좋은 답을 쓰는 건 비싸요. 두 답 중 고르기는 몇 초예요. 선호 학습은 이 '고른 기록'으로 배워요."
+      },
+      {
+       "t": "quiz",
+       "q": "DPO 는 무엇을 안 만들어도 될까요?",
+       "choices": [
+        "선호 데이터",
+        "보상 모델과 강화학습 루프",
+        "참조 모델"
+       ],
+       "answer": 1,
+       "why": "DPO 는 보상 모델 · PPO 없이 선호 쌍에서 바로 학습해요. 선호 데이터와 참조 모델은 여전히 필요해요."
+      },
+      {
+       "t": "p",
+       "text": "SFT 가 끝난 모델도 답이 길거나 장황하거나 질문을 비껴갈 수 있어요. 어떤 답이 '좋은' 답인지는 쓰기보다 **고르기**가 쉬워요. 같은 질문에 답 두 개를 내게 하고 사람이 나은 쪽을 고르면 **선호 쌍**(chosen · rejected) 하나가 생겨요. 이 기록으로 모델을 다듬는 게 **선호 학습**이에요."
+      },
+      {
+       "t": "flow",
+       "rows": [
+        [
+         {
+          "label": "SFT 모델",
+          "tone": "n"
+         },
+         {
+          "label": "보상 모델 학습",
+          "sub": "사람의 순위로",
+          "tone": "b"
+         },
+         {
+          "label": "PPO 강화학습",
+          "sub": "점수 올리기",
+          "tone": "a"
+         }
+        ],
+        [
+         {
+          "label": "SFT 모델",
+          "tone": "n"
+         },
+         {
+          "label": "선호 쌍",
+          "sub": "좋은 답 vs 나쁜 답",
+          "tone": "b"
+         },
+         {
+          "label": "DPO",
+          "sub": "손실 하나로 바로",
+          "tone": "c"
+         }
+        ]
+       ],
+       "caption": "위: RLHF(InstructGPT, 2022) · 아래: DPO(2023). 둘 다 선호 데이터에서 출발해요."
+      }
+     ]
+    },
+    {
+     "title": "RLHF 의 흐름 — 보상 모델 → PPO",
+     "body": [
+      {
+       "t": "p",
+       "text": "**RLHF** 는 두 단계예요. 먼저 사람이 고른 순위로 '답에 점수를 매기는 모델'(**보상 모델**)을 학습해요. 그다음 모델이 답을 내면 보상 모델이 점수를 주고, 점수가 높아지는 쪽으로 강화학습(**PPO**)이 가중치를 밀어요. OpenAI 의 InstructGPT(2022)에서 1.3B 모델이 175B GPT-3 보다 사람들에게 더 선호됐어요."
+      },
+      {
+       "t": "p",
+       "text": "문제는 복잡함이에요. 모델이 넷 필요해요. 학습하는 모델, 멀어지지 않게 잡아 주는 참조 모델, 보상 모델, 그리고 PPO 의 가치 모델. 메모리도 4배, 조절할 숫자도 많고, 보상 모델의 빈틈을 파고드는 **보상 해킹**(엉뚱하게 점수만 올리기)도 생겨요."
+      },
+      {
+       "t": "callout",
+       "kind": "warn",
+       "text": "보상 모델은 '사람 흉내'일 뿐이에요. 길게 쓰면 점수를 더 주는 버릇이 있으면 모델은 길게만 써요. 그래서 참조 모델에서 너무 멀어지지 않게 벌점(KL)을 붙여요."
+      }
+     ]
+    },
+    {
+     "title": "DPO — 손실 하나로 끝내요",
+     "body": [
+      {
+       "t": "p",
+       "text": "**DPO**(direct preference optimization, 2023)는 '보상 모델을 학습하고 PPO 로 올리는' 두 단계를 수학적으로 **하나의 분류 손실**로 바꿨어요. 좋은 답의 확률은 올리고 나쁜 답의 확률은 내리되, 참조 모델(SFT 모델)과의 비율로 재요. 코드가 짧고 안정적이라 공개 모델들이 많이 써요."
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "q",
+         "label": "질문",
+         "items": [
+          {
+           "id": "x",
+           "text": "KV 캐시가 뭐야?",
+           "tone": "n"
+          }
+         ]
+        },
+        {
+         "id": "ans",
+         "label": "답 두 개",
+         "items": [
+          {
+           "id": "c",
+           "text": "앞 토큰의 K · V 를 저장해 재계산을 피해요.",
+           "tone": "c"
+          },
+          {
+           "id": "r",
+           "text": "캐시란 무릇 컴퓨터 과학에서… (장황)",
+           "tone": "d"
+          }
+         ]
+        },
+        {
+         "id": "p",
+         "label": "모델이 주는 확률 (참조 대비)",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "같은 질문에 답 두 개. 사람이 왼쪽을 골랐어요(chosen · rejected).",
+         "hi": [
+          "c",
+          "r"
+         ]
+        },
+        {
+         "text": "학습 전엔 둘의 확률이 비슷해요. 참조 모델과 같으니 비율은 1 이에요.",
+         "add": [
+          {
+           "row": "p",
+           "id": "pc",
+           "text": "chosen",
+           "v": 0.5,
+           "tone": "c"
+          },
+          {
+           "row": "p",
+           "id": "pr",
+           "text": "rejected",
+           "v": 0.5,
+           "tone": "d"
+          }
+         ],
+         "link": [
+          {
+           "from": "c",
+           "to": "pc",
+           "w": 0.5
+          },
+          {
+           "from": "r",
+           "to": "pr",
+           "w": 0.5
+          }
+         ]
+        },
+        {
+         "text": "DPO 손실은 '좋은 답 비율 − 나쁜 답 비율'이 커지는 쪽으로 밀어요. 둘 다 움직여요.",
+         "set": [
+          {
+           "id": "pc",
+           "v": 0.7
+          },
+          {
+           "id": "pr",
+           "v": 0.3
+          }
+         ],
+         "hi": [
+          "pc",
+          "pr"
+         ],
+         "link": [
+          {
+           "from": "c",
+           "to": "pc",
+           "w": 0.7
+          },
+          {
+           "from": "r",
+           "to": "pr",
+           "w": 0.3
+          }
+         ]
+        },
+        {
+         "text": "β 가 고삐예요. 작으면 참조에서 멀리 가도 되고, 크면 조금만 움직여요. 보통 0.1 안팎.",
+         "set": [
+          {
+           "id": "pc",
+           "v": 0.8
+          },
+          {
+           "id": "pr",
+           "v": 0.2
+          }
+         ],
+         "hi": [
+          "pc"
+         ],
+         "link": [
+          {
+           "from": "c",
+           "to": "pc",
+           "w": 0.8
+          },
+          {
+           "from": "r",
+           "to": "pr",
+           "w": 0.2
+          }
+         ]
+        }
+       ],
+       "caption": "두 답 중 고른 기록 → 좋은 답은 올리고 나쁜 답은 내리기. 보상 모델 없이, 손실 하나로.",
+       "note": "확률은 설명용 예시예요"
+      },
+      {
+       "t": "widget",
+       "kind": "loss",
+       "caption": "DPO 손실도 −log p 모양이에요. 여기서 p 는 '모델이 좋은 답을 더 좋아할 확률' σ(β·차이). 0.5(구별 못 함)면 0.69, 0.9 면 0.11 — 이미 잘 고르는 쌍은 거의 안 움직여요."
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "DPO = **'좋은 답 vs 나쁜 답' 쌍**으로, 참조 모델 대비 좋은 답의 확률을 올리고 나쁜 답을 내리는 손실 하나."
+      },
+      {
+       "t": "quiz",
+       "q": "DPO 가 RLHF(PPO)보다 간단한 이유로 가장 맞는 것은?",
+       "choices": [
+        "보상 모델과 강화학습 없이 선호 쌍으로 바로 학습해요",
+        "사람의 선호 데이터가 전혀 필요 없어요",
+        "사전학습을 대신할 수 있어요"
+       ],
+       "answer": 0,
+       "why": "DPO 도 선호 데이터는 필요해요. 보상 모델을 따로 만들고 강화학습을 돌리는 과정을 하나의 손실로 줄인 거예요."
+      }
+     ]
+    },
+    {
+     "title": "선호 쌍 데이터 모양",
+     "body": [
+      {
+       "t": "p",
+       "text": "DPO 데이터는 한 줄에 **prompt · chosen · rejected** 세 칸이에요. chosen 과 rejected 는 같은 질문에 대한 답이어야 해요. 만드는 가장 쉬운 방법은 내 SFT 모델에 같은 질문으로 답 두 개를 내게 하고(온도 0.8 정도), 내가 나은 쪽을 고르는 거예요. 100~300쌍이면 작은 실험은 돼요."
+      },
+      {
+       "t": "code",
+       "lang": "json",
+       "title": "dpo.jsonl 한 줄",
+       "code": "{\"prompt\": \"KV 캐시가 뭐야?\",\n \"chosen\": \"앞 토큰의 K · V 를 저장해 다시 계산하지 않는 거예요. 길이에 비례해 자라요.\",\n \"rejected\": \"캐시란 무릇 컴퓨터 과학에서 널리 쓰이는 개념으로서…\"}",
+       "note": "TRL DPOTrainer 가 읽는 기본 모양. 대화 모양(messages 배열)도 받아요"
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "같은 질문, 답 2개",
+         "text": "내 SFT 모델에 온도 0.8 로 두 번. 또는 내 모델 답 vs 공개 모델 답."
+        },
+        {
+         "title": "고르기 기준을 한 줄로 적기",
+         "text": "'짧고 정확하고 내 말투'. 기준이 흔들리면 모델도 흔들려요."
+        },
+        {
+         "title": "너무 쉬운 쌍은 빼기",
+         "text": "한쪽이 완전히 깨진 글이면 배울 게 없어요. 둘 다 그럴듯한데 하나가 나은 쌍이 좋은 쌍이에요."
+        }
+       ],
+       "caption": "선호 쌍 만들기"
+      }
+     ]
+    },
+    {
+     "title": "작은 모델에 DPO 가 의미 있나 — 솔직하게",
+     "body": [
+      {
+       "t": "p",
+       "text": "솔직히 말하면, 수백만 파라미터짜리 우리 모델엔 DPO 효과가 **잘 안 보일** 가능성이 커요. DPO 는 '이미 그럴듯한 답 둘 중 더 나은 쪽'을 가르치는 건데, 우리 모델은 그럴듯한 답 자체가 드물어요. 형식(SFT)이 먼저고, 선호 학습은 그다음이에요. 4주차에 시간이 남으면 '답을 짧게' 같은 단순한 기준 하나로 100쌍만 해 보고, 길이가 줄었는지만 확인해요."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "우리 작은 모델 (수 M)",
+         "tone": "n",
+         "icon": "box",
+         "text": "SFT 가 먼저. DPO 는 '길이 줄이기' 같은 한 가지 버릇 고치기 실험 정도."
+        },
+        {
+         "label": "1~4B 공개 모델",
+         "tone": "c",
+         "icon": "spark",
+         "text": "LoRA + DPO 로 말투 · 거절 방식 · 길이를 바꾸는 데 실제로 쓰여요. Colab T4 에서 LoRA 면 가능."
+        }
+       ],
+       "caption": "DPO 가 빛나는 자리는 '이미 말이 되는 모델' 이에요."
+      },
+      {
+       "t": "quiz",
+       "q": "우리 수백만 파라미터 모델에서 사후학습 순서로 가장 맞는 건?",
+       "choices": [
+        "DPO 먼저, SFT 는 선택",
+        "SFT 먼저, DPO 는 시간이 남으면 한 가지 버릇 실험",
+        "둘 다 건너뛰고 GRPO"
+       ],
+       "answer": 1,
+       "why": "DPO 는 그럴듯한 답 둘 중 고르는 학습이에요. 답이 그럴듯해지는 것(SFT)이 먼저예요."
+      },
+      {
+       "t": "deep",
+       "title": "DPO 수식 한 번 더 · TRL 코드",
+       "body": [
+        {
+         "t": "formula",
+         "text": "L_DPO = −log σ( β [ log π(y₊|x)/π₀(y₊|x) − log π(y₋|x)/π₀(y₋|x) ] )",
+         "note": "Rafailov et al. 2023. π = 학습 모델, π₀ = 참조(SFT) 모델, y₊ 좋은 답, y₋ 나쁜 답, σ = 시그모이드"
+        },
+        {
+         "t": "p",
+         "text": "괄호 안은 '좋은 답이 참조보다 얼마나 더 좋아졌나' 빼기 '나쁜 답이 참조보다 얼마나 더 좋아졌나'예요. 이 차이를 β 로 키우고 시그모이드에 넣으니, 꼭 **두 답을 분류하는 로지스틱 회귀**예요. 유도의 핵심은 KL 벌점이 붙은 RLHF 의 최적 정책이 r(x,y) = β log π*(y|x)/π₀(y|x) + const 를 만족한다는 것. 보상을 정책으로 바꿔 쓰면 보상 모델이 사라져요."
+        },
+        {
+         "t": "p",
+         "text": "기울기를 보면 직관이 또렷해요. σ(r̂₋ − r̂₊) 가 가중치로 곱해져요. 모델이 이미 좋은 답을 더 좋아하면 가중치가 작아져 거의 안 움직이고, 거꾸로 알고 있을 때 세게 움직여요. 참조 모델의 로그확률은 학습 전에 한 번 계산해 저장해 두면 메모리를 아껴요(TRL 의 `precompute_ref_log_probs`)."
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "TRL DPOTrainer (공개 모델 · LoRA)",
+         "code": "from datasets import load_dataset\nfrom peft import LoraConfig\nfrom transformers import AutoModelForCausalLM, AutoTokenizer\nfrom trl import DPOTrainer, DPOConfig\nname = 'Qwen/Qwen3-0.6B'\nmodel = AutoModelForCausalLM.from_pretrained(name)\ntok = AutoTokenizer.from_pretrained(name)\nds = load_dataset('json', data_files='dpo.jsonl')['train']\ntrainer = DPOTrainer(model=model, ref_model=None,           # LoRA 면 참조는 어댑터 끈 같은 모델\n    args=DPOConfig(output_dir='out-dpo', beta=0.1, num_train_epochs=1, learning_rate=5e-6),\n    train_dataset=ds, processing_class=tok,\n    peft_config=LoraConfig(r=16, lora_alpha=32, target_modules='all-linear'))\ntrainer.train()",
+         "note": "학습률은 SFT 보다 더 작게(5e-6 안팎). 인자 이름은 TRL 버전에 따라 조금 달라요 — 공식 문서의 DPOTrainer 예제를 먼저 봐요"
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "InstructGPT: Ouyang et al. 2022 (RLHF 3단계). DPO: Rafailov et al. 2023. 둘 다 big.json 0권 '사후학습' 장과 이어져요."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "좋은 답을 쓰기보다 둘 중 고르기가 싸요. 그 기록이 선호 쌍이에요. RLHF 는 선호로 보상 모델을 만들고 PPO 로 점수를 올리는데 모델 넷이 필요하고 보상 해킹이 생겨요. DPO 는 그 두 단계를 참조 모델 대비 좋은 답을 올리고 나쁜 답을 내리는 손실 하나로 바꿨고, β 가 고삐예요. 데이터는 prompt · chosen · rejected. 우리 작은 모델엔 SFT 가 먼저고, DPO 는 한 가지 버릇 실험 정도예요.",
+    "points": [
+     "선호 쌍 = 같은 질문, 좋은 답 vs 나쁜 답",
+     "RLHF = 보상 모델 → PPO, 모델 넷",
+     "DPO = 손실 하나, 참조 대비 비율, β 가 고삐",
+     "작은 모델엔 SFT 먼저, DPO 는 실험"
+    ]
+   },
+   "jarvis": "자비스가 자꾸 길게 답하면 '짧은 답 vs 긴 답' 선호 쌍 100개로 DPO 하는 게 정석이에요. 다만 2주차 공개 뇌라면 그 전에 시스템 프롬프트 한 줄('두 문장 이내')부터 시험해요 — 훨씬 싸요.",
+   "words": [
+    {
+     "term": "선호 쌍",
+     "en": "preference pair",
+     "easy": "같은 질문에 대한 좋은 답과 나쁜 답 한 쌍",
+     "deep": "(x, y₊, y₋). 사람이 또는 더 큰 모델이 고름. TRL 은 prompt/chosen/rejected 칸"
+    },
+    {
+     "term": "RLHF",
+     "en": "reinforcement learning from human feedback",
+     "easy": "사람이 고른 답으로 보상 모델을 만들고 강화학습으로 다듬기",
+     "deep": "Ouyang et al. 2022. 보상 모델 + PPO + KL 벌점. 정책 · 참조 · 보상 · 가치 모델 넷"
+    },
+    {
+     "term": "보상 모델",
+     "en": "reward model",
+     "easy": "답에 점수를 매기도록 학습한 모델",
+     "deep": "Bradley-Terry 로 쌍 순위를 학습. 빈틈을 파면 보상 해킹"
+    },
+    {
+     "term": "PPO",
+     "en": "proximal policy optimization",
+     "easy": "점수가 오르는 쪽으로 조금씩 미는 강화학습 방법",
+     "deep": "Schulman et al. 2017. 클리핑으로 한 번에 너무 많이 안 움직이게. 가치 모델 필요"
+    },
+    {
+     "term": "DPO",
+     "en": "direct preference optimization",
+     "easy": "보상 모델 없이 선호 쌍으로 바로 배우기",
+     "deep": "Rafailov et al. 2023. −log σ(β[Δ₊ − Δ₋]). 참조 로그확률은 미리 계산해 저장"
+    },
+    {
+     "term": "참조 모델",
+     "en": "reference model",
+     "easy": "너무 멀리 가지 않게 기준이 되는 원래(SFT) 모델",
+     "deep": "π₀. KL(π‖π₀) 벌점 또는 DPO 의 비율 분모. LoRA 면 어댑터를 끈 같은 모델"
+    },
+    {
+     "term": "β (베타)",
+     "en": "beta",
+     "easy": "참조에서 얼마나 멀리 가도 되는지 정하는 고삐",
+     "deep": "작을수록 자유. TRL 기본 0.1. KL 벌점 계수와 같은 자리"
+    },
+    {
+     "term": "보상 해킹",
+     "en": "reward hacking",
+     "easy": "점수만 올리고 실제론 나빠지는 것",
+     "deep": "길이 편향이 흔함. Goodhart 의 법칙. KL 벌점 · 길이 정규화로 완화"
+    }
+   ]
+  },
+  {
+   "id": "reasoning",
+   "title": "강화학습으로 추론 — 정답이 있으면 사람이 필요 없어요",
+   "minutes": 12,
+   "headline": "맞으면 1, 틀리면 0.\n그걸로 생각하는 법을 배워요.",
+   "lead": "수학 · 코드처럼 정답을 확인할 수 있는 문제는 사람이 고를 필요가 없어요. GRPO 는 같은 문제의 답 여러 개를 평균과 비교해 올리고 내려요. DeepSeek-R1 은 이렇게 '생각 토큰'을 길게 쓰는 습관을 얻었어요. 작은 모델엔 증류가 현실적이고, 자비스에 추론 모델을 쓸 땐 느림이 대가예요.",
+   "sections": [
+    {
+     "title": "정답을 확인할 수 있으면",
+     "body": [
+      {
+       "t": "quiz",
+       "q": "수학 문제로 모델을 강화학습할 때 보상은 누가 줄까요?",
+       "choices": [
+        "사람이 답마다 점수를 매겨요",
+        "정답과 맞는지 자동으로 확인해요",
+        "모델이 스스로 느껴요"
+       ],
+       "answer": 1,
+       "why": "정답이 있는 문제는 채점이 자동이에요. 맞으면 1, 틀리면 0. 이게 RLVR 이에요."
+      },
+      {
+       "t": "quiz",
+       "q": "추론 모델이 답 앞에 길게 쓰는 '생각'은 어떻게 생겼을까요?",
+       "choices": [
+        "사람이 생각 과정을 수만 개 써서 가르쳤어요",
+        "정답 보상만 줬는데 스스로 길게 생각하는 쪽이 유리해서 생겼어요",
+        "프로그램으로 넣었어요"
+       ],
+       "answer": 1,
+       "why": "DeepSeek-R1 보고서는 정답 보상 강화학습만으로 검산 · 다시 풀기 같은 습관이 생겼다고 했어요."
+      },
+      {
+       "t": "p",
+       "text": "선호 학습은 사람이 고른 기록이 필요했어요. 그런데 수학 · 코드처럼 **정답을 확인할 수 있는 문제**는 다르죠. 답이 맞으면 보상 1, 틀리면 0 을 자동으로 주면 돼요. 코드는 테스트를 통과하면 1 이에요. 이런 강화학습을 **RLVR**(확인 가능한 보상으로 하는 강화학습)이라고 해요."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "선호 학습",
+         "tone": "b",
+         "icon": "box",
+         "text": "사람이 둘 중 고름. 말투 · 길이 · 안전처럼 '정답이 없는' 것에."
+        },
+        {
+         "label": "RLVR",
+         "tone": "a",
+         "icon": "spark",
+         "text": "정답과 대조. 수학 · 코드 · 형식 규칙처럼 '맞고 틀림이 있는' 것에."
+        }
+       ],
+       "caption": "보상을 누가 주느냐가 다를 뿐, '올리고 내리기'는 같아요."
+      }
+     ]
+    },
+    {
+     "title": "GRPO — 같은 문제의 답끼리 비교해요",
+     "body": [
+      {
+       "t": "p",
+       "text": "강화학습의 어려움은 '이 답이 얼마나 좋은지'의 **기준선**이에요. PPO 는 기준선을 주는 가치 모델을 따로 학습했어요. **GRPO**(DeepSeekMath, 2024)는 더 단순해요. 같은 문제에 답을 G 개 내게 하고, 그 **그룹의 평균**을 기준선으로 써요. 평균보다 나은 답은 올리고, 못한 답은 내려요."
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "q",
+         "label": "문제",
+         "items": [
+          {
+           "id": "x",
+           "text": "17 × 23 = ?",
+           "tone": "n"
+          }
+         ]
+        },
+        {
+         "id": "g",
+         "label": "답 G=4 개",
+         "items": []
+        },
+        {
+         "id": "r",
+         "label": "보상 · 이득",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "같은 문제로 답을 4개 뽑아요(온도 1).",
+         "add": [
+          {
+           "row": "g",
+           "id": "g1",
+           "text": "…= 391",
+           "tone": "c"
+          },
+          {
+           "row": "g",
+           "id": "g2",
+           "text": "…= 381",
+           "tone": "d"
+          },
+          {
+           "row": "g",
+           "id": "g3",
+           "text": "…= 391",
+           "tone": "c"
+          },
+          {
+           "row": "g",
+           "id": "g4",
+           "text": "…= 401",
+           "tone": "d"
+          }
+         ],
+         "link": [
+          {
+           "from": "x",
+           "to": "g1"
+          },
+          {
+           "from": "x",
+           "to": "g2"
+          },
+          {
+           "from": "x",
+           "to": "g3"
+          },
+          {
+           "from": "x",
+           "to": "g4"
+          }
+         ],
+         "hi": [
+          "g1",
+          "g2",
+          "g3",
+          "g4"
+         ]
+        },
+        {
+         "text": "정답과 대조해 보상을 줘요. 맞으면 1, 틀리면 0.",
+         "add": [
+          {
+           "row": "r",
+           "id": "r1",
+           "text": "1",
+           "v": 1,
+           "tone": "c"
+          },
+          {
+           "row": "r",
+           "id": "r2",
+           "text": "0",
+           "v": 0,
+           "tone": "d"
+          },
+          {
+           "row": "r",
+           "id": "r3",
+           "text": "1",
+           "v": 1,
+           "tone": "c"
+          },
+          {
+           "row": "r",
+           "id": "r4",
+           "text": "0",
+           "v": 0,
+           "tone": "d"
+          }
+         ],
+         "link": [
+          {
+           "from": "g1",
+           "to": "r1"
+          },
+          {
+           "from": "g2",
+           "to": "r2"
+          },
+          {
+           "from": "g3",
+           "to": "r3"
+          },
+          {
+           "from": "g4",
+           "to": "r4"
+          }
+         ]
+        },
+        {
+         "text": "그룹 평균은 0.5. 평균을 빼면 맞힌 답은 +0.5, 틀린 답은 −0.5 — 이게 '이득'이에요.",
+         "set": [
+          {
+           "id": "r1",
+           "text": "+0.5",
+           "v": 0.75
+          },
+          {
+           "id": "r2",
+           "text": "−0.5",
+           "v": 0.25
+          },
+          {
+           "id": "r3",
+           "text": "+0.5",
+           "v": 0.75
+          },
+          {
+           "id": "r4",
+           "text": "−0.5",
+           "v": 0.25
+          }
+         ],
+         "hi": [
+          "r1",
+          "r3"
+         ]
+        },
+        {
+         "text": "이득이 + 인 답의 토큰 확률은 올리고, − 인 답은 내려요. 가치 모델 없이 그룹이 기준선이에요.",
+         "hi": [
+          "g1",
+          "g3"
+         ],
+         "link": [
+          {
+           "from": "r1",
+           "to": "g1",
+           "w": 0.75
+          },
+          {
+           "from": "r3",
+           "to": "g3",
+           "w": 0.75
+          }
+         ]
+        },
+        {
+         "text": "4개를 다 맞히면? 이득이 전부 0 이라 배울 게 없어요. 너무 쉽거나 너무 어려운 문제는 신호가 없어요.",
+         "set": [
+          {
+           "id": "r2",
+           "text": "1→0",
+           "v": 0.5
+          },
+          {
+           "id": "r4",
+           "text": "1→0",
+           "v": 0.5
+          },
+          {
+           "id": "r1",
+           "text": "0",
+           "v": 0.5
+          },
+          {
+           "id": "r3",
+           "text": "0",
+           "v": 0.5
+          }
+         ],
+         "hi": []
+        }
+       ],
+       "caption": "같은 문제 답 G 개 → 보상 → 평균 기준선 → 올리고 내리기.",
+       "note": "숫자는 설명용 예시예요"
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "GRPO = **같은 문제의 답 여러 개를 서로 비교**해서, 평균보다 나은 답을 키우기. 가치 모델이 없어 메모리가 가벼워요."
+      },
+      {
+       "t": "quiz",
+       "q": "GRPO 에서 한 문제의 답 8개를 모두 맞혔다면?",
+       "choices": [
+        "모두 크게 올려요",
+        "이득이 0 이라 그 문제에선 거의 안 배워요",
+        "모두 내려요"
+       ],
+       "answer": 1,
+       "why": "평균이 1 이면 어떤 답도 평균보다 낫지 않아요. 그래서 '모델이 반쯤 맞히는' 난이도의 문제가 가장 좋은 데이터예요."
+      }
+     ]
+    },
+    {
+     "title": "DeepSeek-R1 의 '생각 토큰'",
+     "body": [
+      {
+       "t": "p",
+       "text": "**DeepSeek-R1**(2025)은 기본 모델에 사람이 쓴 생각 과정을 거의 주지 않고, 정답 보상 강화학습을 길게 돌렸어요. 그러자 모델이 답 앞에 `<think>` 구간을 스스로 길게 쓰며 **검산하고, 다시 풀고, '잠깐'** 하는 습관을 갖게 됐다고 보고했어요. 사람이 가르친 게 아니라 그게 정답률에 유리해서 자란 거예요. 이 결과는 Nature 에도 실렸어요."
+      },
+      {
+       "t": "p",
+       "text": "이게 **추론 모델**(reasoning model)이에요. 답 앞에 긴 생각 토큰을 쓰고, 그만큼 느리고 비싸요. 수학 · 코드 · 논리 퍼즐에선 크게 좋아지고, '오늘 날씨 어때' 같은 질문엔 생각이 낭비예요. Qwen3 처럼 한 모델에서 생각 모드를 켜고 끌 수 있게 만든 모델도 있어요."
+      },
+      {
+       "t": "callout",
+       "kind": "tip",
+       "text": "Ai2 의 Tülu 3 는 SFT → DPO → RLVR 순서의 사후학습을 데이터까지 모두 공개했어요. 순서를 외워 두세요: 형식 → 선호 → 정답."
+      }
+     ]
+    },
+    {
+     "title": "작은 모델엔 증류가 현실이에요",
+     "body": [
+      {
+       "t": "p",
+       "text": "GRPO 로 생각하는 습관이 '자라려면' 모델에 지식과 계산력이 있어야 해요. 수백만 파라미터 모델엔 자랄 씨앗이 없어요. 그래서 작은 모델에는 **증류**(distillation)가 현실적이에요. 큰 추론 모델이 쓴 긴 생각 + 답을 데이터로 받아, 작은 모델에 **SFT** 로 가르쳐요. DeepSeek-R1 팀도 R1 이 만든 약 80만 개 예시로 Qwen · Llama 작은 모델을 SFT 해 **R1-Distill-Qwen-1.5B** 같은 모델을 냈어요."
+      },
+      {
+       "t": "bars",
+       "unit": "방법별 '필요한 것'",
+       "items": [
+        {
+         "label": "GRPO 직접 — 큰 기본 모델 + GPU 많이 + 정답 데이터",
+         "value": 1,
+         "display": "무거움",
+         "tone": "d"
+        },
+        {
+         "label": "증류 — 큰 모델의 생각 데이터 + SFT",
+         "value": 0.4,
+         "display": "SFT 만큼",
+         "tone": "c"
+        },
+        {
+         "label": "그냥 가져다 쓰기 — Ollama 의 deepseek-r1:1.5b",
+         "value": 0.1,
+         "display": "받기만",
+         "tone": "a"
+        }
+       ],
+       "max": 1,
+       "caption": "우리에겐 셋째가 현실이에요. 증류된 1.5B 추론 모델을 받아 써 보고, 어디서 느려지는지 재요.",
+       "note": "막대는 상대적 부담을 나타내는 설명용 예시예요"
+      },
+      {
+       "t": "quiz",
+       "q": "수백만 파라미터 내 모델에게 '생각하는 습관'을 주려면 가장 현실적인 길은?",
+       "choices": [
+        "GRPO 를 오래 돌린다",
+        "큰 추론 모델의 생각 데이터로 SFT(증류)한다",
+        "온도를 높인다"
+       ],
+       "answer": 1,
+       "why": "GRPO 는 자랄 씨앗(지식 · 계산력)이 있어야 해요. 작은 모델엔 큰 모델이 쓴 생각을 SFT 로 베끼는 증류가 현실적이에요. 그래도 효과는 제한적이에요."
+      }
+     ]
+    },
+    {
+     "title": "자비스에 추론 모델을 쓰면",
+     "body": [
+      {
+       "t": "p",
+       "text": "자비스 뇌 자리에 추론 모델을 꽂을 수 있어요. 장점은 계산 · 계획 · 코드가 좋아지는 것. 단점은 **느림**이에요. 생각 토큰이 수백~수천 개라 답이 나오기까지 몇 초~몇십 초가 걸리고, 음성 대화엔 치명적이에요. 그리고 생각 구간이 답에 섞여 나오면 뼈대가 걸러야 해요."
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "둘 다 꽂아 두기",
+         "text": "일상 대화는 일반 모델, '계산해 줘 · 계획 짜 줘'는 추론 모델. 뼈대가 질문 종류로 갈라요(5장의 '뇌 주소' 둘)."
+        },
+        {
+         "title": "생각 구간 걸러 내기",
+         "text": "`<think>…</think>` 는 화면 · 음성에 내지 않아요. Ollama 는 think 옵션으로 생각을 따로 돌려주는 모델이 있어요."
+        },
+        {
+         "title": "속도 재기",
+         "text": "5장 brain.py 로 두 뇌의 첫 토큰까지 시간과 tok/s 를 재서 표에 적어요."
+        }
+       ],
+       "caption": "추론 모델은 '도구 중 하나'예요. 뇌 하나로 다 하려 하지 않아요."
+      },
+      {
+       "t": "deep",
+       "title": "GRPO 의 이점 — 수식으로",
+       "body": [
+        {
+         "t": "formula",
+         "text": "Â_i = (r_i − mean(r₁…r_G)) / std(r₁…r_G)",
+         "note": "DeepSeekMath 2024. 같은 문제의 G 개 답 보상을 표준화. 가치 모델 없이 그룹이 기준선"
+        },
+        {
+         "t": "formula",
+         "text": "J = E[ (1/G) Σ_i min( ρ_i Â_i, clip(ρ_i, 1−ε, 1+ε) Â_i ) − β KL(π ‖ π₀) ]",
+         "note": "ρ_i = π(y_i|x)/π_old(y_i|x). PPO 의 클리핑은 그대로, 가치 모델만 그룹 평균으로 대체"
+        },
+        {
+         "t": "p",
+         "text": "PPO 의 가치 모델은 정책만큼 큰 모델 하나를 더 학습해야 했어요. GRPO 는 '같은 문제에서 뽑은 G 개 답' 자체가 기준선이라 그게 없어요. 대가는 문제마다 G 번 생성해야 하는 **샘플링 비용**이에요. 보상 1/0 이 섞인 문제(통과율 0 과 1 사이)만 기울기를 주니, 데이터는 '반쯤 맞히는' 난이도로 고르는 게 중요해요."
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "그룹 이득 계산",
+         "code": "import torch\nrewards = torch.tensor([1., 0., 1., 1., 0., 0., 1., 0.])   # 같은 문제, 답 8개 채점\nadv = (rewards - rewards.mean()) / (rewards.std() + 1e-6)\nprint(adv)   # 맞힌 답 ≈ +0.94, 틀린 답 ≈ −0.94",
+         "note": "이 값을 각 답의 토큰 로그확률에 곱해 올리고 내려요. TRL 의 GRPOTrainer 가 같은 계산을 해요"
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "DeepSeekMath: Shao et al. 2024 (GRPO). DeepSeek-R1: DeepSeek-AI 2025 (Nature 게재). 증류 모델: DeepSeek-R1-Distill-Qwen-1.5B/7B 등, 약 80만 예시 SFT. Tülu 3: Lambert et al. 2024 (RLVR)."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "정답을 확인할 수 있는 문제는 보상을 자동으로 줄 수 있어요(RLVR). GRPO 는 같은 문제의 답 G 개를 뽑아 그룹 평균을 기준선으로 쓰니 가치 모델이 필요 없고, 모두 맞히거나 모두 틀린 문제는 신호가 없어요. DeepSeek-R1 은 이 방식만으로 길게 생각하는 습관을 얻었고, 작은 모델엔 큰 모델의 생각을 SFT 로 베끼는 증류가 현실이에요. 자비스엔 추론 모델을 '느린 도구'로 두고 질문 종류에 따라 갈라 써요.",
+    "points": [
+     "정답 있는 문제 = 자동 보상 (RLVR)",
+     "GRPO = 그룹 평균이 기준선, 가치 모델 없음",
+     "반쯤 맞히는 문제만 신호가 있다",
+     "작은 모델엔 증류(큰 모델 생각 → SFT)",
+     "추론 모델은 느림, 뇌 둘을 갈라 쓰기"
+    ]
+   },
+   "jarvis": "자비스에 '계산 · 계획' 질문이 오면 deepseek-r1:1.5b 같은 증류 추론 모델 주소로, 일상 대화는 일반 뇌 주소로 보내요. 생각 구간은 음성으로 내지 않아요.",
+   "words": [
+    {
+     "term": "RLVR",
+     "en": "reinforcement learning with verifiable rewards",
+     "easy": "정답과 대조해 자동으로 보상을 주는 강화학습",
+     "deep": "Tülu 3 (2024)에서 이름 붙음. 수학 · 코드 · 형식 규칙. 보상 모델 불필요"
+    },
+    {
+     "term": "GRPO",
+     "en": "group relative policy optimization",
+     "easy": "같은 문제의 답 여러 개를 평균과 비교해 올리고 내리기",
+     "deep": "DeepSeekMath 2024. Â = (r − mean)/std 그룹 내 표준화. PPO 클리핑 유지, 가치 모델 제거"
+    },
+    {
+     "term": "기준선",
+     "en": "baseline",
+     "easy": "'이 답이 평균보다 나은가'를 재는 기준",
+     "deep": "분산 감소용. PPO 는 가치 모델 V(s), GRPO 는 그룹 평균"
+    },
+    {
+     "term": "가치 모델",
+     "en": "value model / critic",
+     "easy": "상태가 얼마나 좋은지 점수를 주는 보조 모델",
+     "deep": "PPO 에 필요, 정책만큼 큼. GRPO 가 없앤 것"
+    },
+    {
+     "term": "추론 모델",
+     "en": "reasoning model",
+     "easy": "답 앞에 긴 '생각'을 쓰는 모델",
+     "deep": "o1 · DeepSeek-R1 · Qwen3 thinking. 테스트 시 계산 확장. 느림이 대가"
+    },
+    {
+     "term": "생각 토큰",
+     "en": "thinking tokens",
+     "easy": "답 앞에 모델이 쓰는 검산 · 계획 글",
+     "deep": "<think>…</think> 구간. RL 중 길이가 자람(R1 보고서). 화면엔 숨김"
+    },
+    {
+     "term": "증류",
+     "en": "distillation",
+     "easy": "큰 모델의 답(생각)을 데이터로 작은 모델에 가르치기",
+     "deep": "여기선 SFT 증류. R1-Distill: R1 생성 약 80만 예시로 Qwen · Llama 1.5~70B SFT"
+    },
+    {
+     "term": "샘플링 비용",
+     "en": "sampling cost",
+     "easy": "문제마다 답을 G 번 만들어야 하는 비용",
+     "deep": "GRPO 의 대가. 생성이 학습 시간의 큰 몫. G=8~64"
+    }
+   ]
+  },
+  {
+   "id": "choose-brain",
+   "title": "공개 모델 고르기 — 맥에 들어갈 뇌",
+   "minutes": 13,
+   "week": 2,
+   "headline": "큰 게 좋은 게 아니라,\n내 맥에서 돌아가는 게 좋은 거예요.",
+   "lead": "자비스의 첫 뇌는 공개 모델이에요. 크기 · 한국어 · 라이선스 · 양자화 · 문맥 길이 · 도구 호출, 여섯 가지로 골라요. 2주차 실습은 Ollama 로 2~3개를 받아 같은 질문 10개로 비교표를 만들고 하나를 고르는 거예요.",
+   "sections": [
+    {
+     "title": "크기 — 1~3B 가 맥의 현실이에요",
+     "body": [
+      {
+       "t": "quiz",
+       "q": "8GB 맥에서 자비스 뇌로 쓰기에 현실적인 공개 모델 크기는?",
+       "choices": [
+        "70B",
+        "1~3B",
+        "0.01B"
+       ],
+       "answer": 1,
+       "why": "4비트로 줄여도 7B 는 4GB 안팎이라 8GB 맥에선 빠듯해요. 1~3B 가 메모리도 속도도 편해요."
+      },
+      {
+       "t": "quiz",
+       "q": "같은 모델을 '4비트 양자화'하면 무엇이 좋아질까요?",
+       "choices": [
+        "정확도",
+        "메모리와 속도 둘 다",
+        "문맥 길이"
+       ],
+       "answer": 1,
+       "why": "가중치 바이트가 1/4 이니 메모리도 줄고, 토큰마다 읽을 양이 줄어 속도도 올라요(2권 추론 장)."
+      },
+      {
+       "t": "p",
+       "text": "2권에서 봤듯 추론 메모리는 **파라미터 × 바이트**예요. 4비트면 파라미터당 0.5바이트 조금 넘어요. 1B 는 약 0.7GB, 3B 는 약 2GB, 7B 는 약 4GB. 8~16GB 맥이면 **1~3B** 가 메모리도 넉넉하고 초당 수십 토큰이 나와요. 7B 는 '되긴 되는데 느린' 선이에요."
+      },
+      {
+       "t": "widget",
+       "kind": "memory",
+       "caption": "파라미터 수를 1B · 3B · 7B 로, 정밀도를 4비트로 바꿔 보세요. '가중치' 줄이 Ollama 가 올리는 크기예요. 여기에 KV 캐시와 시스템이 더해져요."
+      },
+      {
+       "t": "bars",
+       "unit": "4비트(Q4_K_M) 파일 크기 (GB, 어림)",
+       "items": [
+        {
+         "label": "1B 급",
+         "value": 0.8,
+         "display": "≈0.8",
+         "tone": "a"
+        },
+        {
+         "label": "2~2.4B 급",
+         "value": 1.6,
+         "display": "≈1.6",
+         "tone": "a"
+        },
+        {
+         "label": "4B 급",
+         "value": 2.5,
+         "display": "≈2.5",
+         "tone": "c"
+        },
+        {
+         "label": "7~8B 급",
+         "value": 4.7,
+         "display": "≈4.5~5",
+         "tone": "n"
+        }
+       ],
+       "max": 5,
+       "caption": "메모리의 절반 이하로 고르면 KV 캐시와 다른 앱이 편해요.",
+       "note": "파라미터 × 약 0.55~0.6바이트로 계산한 설명용 어림이에요. 실제 파일은 모델 카드에서 확인"
+      }
+     ]
+    },
+    {
+     "title": "한국어 — 이름만 믿지 말고 직접 재요",
+     "body": [
+      {
+       "t": "p",
+       "text": "한국어를 잘하는 작은 공개 모델 후보는 몇 개 있어요. LG 의 **EXAONE 3.5 2.4B**(그리고 EXAONE 4.0 1.2B), 알리바바의 **Qwen3 1.7B · 4B**(다국어 · 생각 모드 켜고 끄기), 카카오의 **Kanana 1.5 2.1B**, 메타의 Llama 3.2 1B · 3B. 벤치마크 점수는 회사 발표가 많으니 참고만 하고, **내 질문 10개**로 직접 재는 게 이 장의 실습이에요."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "EXAONE 3.5 2.4B",
+         "tone": "a",
+         "icon": "spark",
+         "text": "LG AI연구원. 한국어 · 영어. 라이선스는 EXAONE 자체 라이선스 — 상업 이용 조건은 모델 카드에서 확인."
+        },
+        {
+         "label": "Qwen3 1.7B · 4B",
+         "tone": "c",
+         "icon": "layers",
+         "text": "알리바바. 다국어, 생각 모드 토글, 도구 호출. Apache 2.0 — 그래도 모델 카드 확인."
+        },
+        {
+         "label": "Kanana 1.5 2.1B",
+         "tone": "b",
+         "icon": "box",
+         "text": "카카오. 한국어 소형. Apache 2.0 (0권 '따라 배울 한국 모델'). Ollama 공식 목록엔 없을 수 있어 GGUF 로 직접 등록."
+        }
+       ],
+       "caption": "세 후보. 점수는 안 적었어요 — 직접 재세요."
+      },
+      {
+       "t": "callout",
+       "kind": "warn",
+       "text": "'한국어 벤치마크 1등' 같은 숫자는 대부분 회사 발표고, 작은 모델끼리는 시험 문제가 학습에 섞였는지(오염)도 알기 어려워요. 내 노트 질문으로 재면 그 걱정이 없어요."
+      }
+     ]
+    },
+    {
+     "title": "라이선스 · 양자화 · 문맥 · 도구 호출",
+     "body": [
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "라이선스",
+         "text": "Apache 2.0 · MIT 면 자유로워요. Llama 라이선스 · EXAONE 라이선스처럼 자체 라이선스는 상업 이용 · 재배포 조건이 달라요. 꼭 모델 카드의 License 항목을 읽어요. 개인 자비스는 대부분 괜찮지만, 나중에 공개할 생각이면 지금 확인해요."
+        },
+        {
+         "title": "양자화 · GGUF",
+         "text": "Ollama 가 쓰는 파일 형식이 GGUF 예요. 4비트 중 Q4_K_M 이 '품질 · 크기' 균형이 좋아 기본으로 많이 써요. 1B 급은 양자화 손실이 상대적으로 커서 Q8_0 도 시험해 봐요(2권)."
+        },
+        {
+         "title": "문맥 길이",
+         "text": "모델이 한 번에 보는 토큰 수. 작은 모델도 요즘은 32K 안팎이에요(Qwen3 · EXAONE 3.5 는 32K, Llama 3.2 는 128K). 단 Ollama 가 실제로 쓰는 길이는 num_ctx 설정이에요(5장)."
+        },
+        {
+         "title": "도구 호출",
+         "text": "'검색해 줘'를 함수 호출 JSON 으로 내는 능력. Qwen3 · Llama 3.2 는 Ollama 에서 tools 를 지원해요. 자비스 뼈대가 도구를 쓰려면 꼭 필요해요."
+        }
+       ],
+       "caption": "고를 때 보는 네 칸. 모두 모델 카드(Hugging Face · Ollama 라이브러리 페이지)에 적혀 있어요."
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "뇌를 고르는 여섯 칸: **크기 · 한국어 · 라이선스 · 양자화 · 문맥 · 도구 호출**. 숫자는 모델 카드와 내 시험에서만."
+      },
+      {
+       "t": "quiz",
+       "q": "Ollama 가 모델을 저장하는 파일 형식과 흔한 양자화 이름은?",
+       "choices": [
+        "GGUF · Q4_K_M",
+        "safetensors · fp32",
+        "ckpt.pt · bf16"
+       ],
+       "answer": 0,
+       "why": "GGUF 는 llama.cpp 계열의 형식이고 Q4_K_M 은 4비트 양자화 중 균형이 좋은 것이에요. 6장에서 내 모델을 이 형식으로 바꿔요."
+      }
+     ]
+    },
+    {
+     "title": "같은 질문 10개로 비교표",
+     "body": [
+      {
+       "t": "p",
+       "text": "고르는 법은 간단해요. 자비스가 받을 법한 질문 10개를 정해요. 내 노트 질문 4개, 일상 3개, 계산 · 코드 2개, 도구 호출 1개('내일 날씨 검색해 줘'를 JSON 으로). 후보 2~3개에 똑같이 묻고, 답 품질 1~3점 · 속도(tok/s) · 메모리를 표에 적어요. 점수 합이 아니라 **'내 자비스가 자주 할 일'에서 누가 나은가**로 골라요."
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "qs",
+         "label": "질문 10개",
+         "items": [
+          {
+           "id": "q1",
+           "text": "노트 4",
+           "tone": "a"
+          },
+          {
+           "id": "q2",
+           "text": "일상 3",
+           "tone": "n"
+          },
+          {
+           "id": "q3",
+           "text": "계산 2",
+           "tone": "b"
+          },
+          {
+           "id": "q4",
+           "text": "도구 1",
+           "tone": "d"
+          }
+         ]
+        },
+        {
+         "id": "m",
+         "label": "후보",
+         "items": [
+          {
+           "id": "m1",
+           "text": "exaone3.5:2.4b",
+           "tone": "a"
+          },
+          {
+           "id": "m2",
+           "text": "qwen3:1.7b",
+           "tone": "c"
+          },
+          {
+           "id": "m3",
+           "text": "qwen3:4b",
+           "tone": "c"
+          }
+         ]
+        },
+        {
+         "id": "s",
+         "label": "표",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "질문 10개를 네 묶음으로 정해요.",
+         "hi": [
+          "q1",
+          "q2",
+          "q3",
+          "q4"
+         ]
+        },
+        {
+         "text": "후보마다 똑같이 물어요. 온도 · 시스템 프롬프트도 똑같이.",
+         "hi": [
+          "m1",
+          "m2",
+          "m3"
+         ],
+         "link": [
+          {
+           "from": "q1",
+           "to": "m1"
+          },
+          {
+           "from": "q1",
+           "to": "m2"
+          },
+          {
+           "from": "q1",
+           "to": "m3"
+          }
+         ]
+        },
+        {
+         "text": "품질 1~3점, tok/s, 메모리를 적어요. 숫자는 설명용이에요.",
+         "add": [
+          {
+           "row": "s",
+           "id": "s1",
+           "text": "품질 평균",
+           "tone": "n"
+          },
+          {
+           "row": "s",
+           "id": "s2",
+           "text": "tok/s",
+           "tone": "n"
+          },
+          {
+           "row": "s",
+           "id": "s3",
+           "text": "메모리 GB",
+           "tone": "n"
+          }
+         ],
+         "hi": [
+          "s1",
+          "s2",
+          "s3"
+         ]
+        },
+        {
+         "text": "'노트 4 + 도구 1'에서 누가 나은지로 골라요. 일상 대화는 다 비슷해요.",
+         "hi": [
+          "q1",
+          "q4"
+         ],
+         "link": [
+          {
+           "from": "q1",
+           "to": "s1",
+           "w": 0.9
+          },
+          {
+           "from": "q4",
+           "to": "s1",
+           "w": 0.9
+          }
+         ]
+        }
+       ],
+       "caption": "비교표는 점수 합이 아니라 '내가 자주 할 일' 열을 봐요."
+      },
+      {
+       "t": "callout",
+       "kind": "tip",
+       "text": "한 번 고른 뇌는 고정이 아니에요. 뼈대는 주소 하나로 뇌를 부르니(5장), 나중에 더 좋은 모델이 나오면 `ollama pull` 하고 이름만 바꿔요. 그게 뇌 교체형의 뜻이에요."
+      }
+     ]
+    },
+    {
+     "title": "깊게 — 양자화 이름과 모델 카드 읽기",
+     "body": [
+      {
+       "t": "p",
+       "text": "Ollama 라이브러리에서 모델 이름 뒤의 태그가 크기와 양자화예요. `qwen3:1.7b` 는 기본 태그(보통 Q4_K_M), `qwen3:1.7b-q8_0` 처럼 양자화를 고를 수 있는 모델도 있어요. 태그 목록은 라이브러리 페이지에 있어요."
+      },
+      {
+       "t": "deep",
+       "title": "Q4_K_M · 모델 카드 · 도구 호출 형식",
+       "body": [
+        {
+         "t": "p",
+         "text": "GGUF 양자화 이름 읽기: `Q4` 는 4비트, `_K` 는 k-quant(블록별 배율을 더 세밀하게), `_M` 은 medium(일부 중요 층을 더 높은 비트로). `Q8_0` 은 8비트 단순 양자화로 손실이 거의 없고 크기는 bf16 의 절반. `Q4_K_M` 이 7B 급에서 perplexity 손실이 작으면서 크기가 1/4 이라 기본이 됐어요. 1B 이하는 임베딩 비중이 커서 손실이 더 보이니 Q8_0 과 비교해요."
+        },
+        {
+         "t": "formula",
+         "text": "크기 ≈ N × (비트/8) + 보정   (Q4_K_M ≈ 0.55~0.6 B/파라미터)",
+         "note": "보정 = 블록 배율 · 일부 고비트 층. 설명용 어림"
+        },
+        {
+         "t": "p",
+         "text": "모델 카드에서 볼 줄: ① License ② Context length ③ Languages ④ 'tools' 또는 'function calling' 언급 ⑤ 권장 샘플링(온도 · top-p) ⑥ 템플릿. Ollama 페이지의 모델 정보에서도 템플릿(`TEMPLATE`)과 기본 파라미터를 볼 수 있어요(`ollama show 모델이름`)."
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "Ollama 도구 호출 — OpenAI 호환 모양",
+         "code": "from openai import OpenAI\nai = OpenAI(base_url='http://localhost:11434/v1', api_key='ollama')\ntools = [{'type': 'function', 'function': {'name': 'web_search', 'description': '웹 검색',\n          'parameters': {'type': 'object', 'properties': {'q': {'type': 'string'}}, 'required': ['q']}}}]\nr = ai.chat.completions.create(model='qwen3:1.7b', tools=tools,\n        messages=[{'role': 'user', 'content': '내일 서울 날씨 검색해 줘'}])\nprint(r.choices[0].message.tool_calls)   # 지원 모델이면 web_search(q=…) 가 와요",
+         "note": "도구 호출을 지원하지 않는 모델은 tool_calls 가 비고 글로만 답해요. 그게 비교표의 '도구 1' 점수예요"
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "양자화 형식: GGUF 는 llama.cpp 의 파일 형식(2023~). k-quant 는 llama.cpp 의 PR 로 들어왔어요. 모델 수치는 어느 것도 외우지 말고 모델 카드에서 읽어요."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "자비스 첫 뇌는 공개 모델이에요. 4비트면 파라미터당 0.5바이트 남짓이라 8~16GB 맥엔 1~3B 가 현실이에요. 한국어 후보는 EXAONE 3.5 2.4B · Qwen3 1.7B/4B · Kanana 1.5 2.1B 등인데 점수는 발표를 믿지 말고 내 질문 10개로 재요. 라이선스 · 양자화(GGUF Q4_K_M) · 문맥 길이 · 도구 호출은 모델 카드에서 확인해요. 비교표는 점수 합이 아니라 '내가 자주 할 일' 열로 고르고, 뼈대는 주소 하나로 부르니 나중에 바꿔도 돼요.",
+    "points": [
+     "맥의 현실: 1~3B, 4비트",
+     "한국어는 내 질문 10개로 직접 잰다",
+     "라이선스 · 문맥 · 도구 호출은 모델 카드",
+     "GGUF Q4_K_M 이 기본, 1B 급은 Q8_0 도 비교",
+     "고른 뇌는 바꿀 수 있다"
+    ]
+   },
+   "jarvis": "2주차에 고른 이 모델이 3주차 자비스 뼈대(검색 · 도구 · 음성 · 기억)의 첫 뇌예요. 도구 호출 점수가 낮은 모델을 고르면 뼈대의 '검색해 줘'가 안 돌아가요.",
+   "words": [
+    {
+     "term": "공개 가중치 모델",
+     "en": "open-weight model",
+     "easy": "가중치 파일을 내려받아 내 컴퓨터에서 돌릴 수 있는 모델",
+     "deep": "소스 · 데이터까지 공개한 '오픈소스'와 구분. 라이선스는 제각각"
+    },
+    {
+     "term": "모델 카드",
+     "en": "model card",
+     "easy": "모델 설명서. 라이선스 · 문맥 · 언어 · 쓰임이 적힌 페이지",
+     "deep": "Hugging Face README. Mitchell et al. 2019 제안. 숫자의 유일한 1차 출처"
+    },
+    {
+     "term": "GGUF",
+     "en": "GGUF",
+     "easy": "Ollama · llama.cpp 가 쓰는 모델 파일 형식",
+     "deep": "GGML 후속(2023). 가중치 · 토크나이저 · 템플릿 · 메타데이터를 한 파일에. convert_hf_to_gguf.py 로 변환"
+    },
+    {
+     "term": "Q4_K_M",
+     "en": "Q4_K_M",
+     "easy": "4비트 양자화 중 품질 · 크기 균형이 좋은 기본",
+     "deep": "k-quant, medium. 파라미터당 약 0.55~0.6바이트. Q8_0 은 손실 거의 없음"
+    },
+    {
+     "term": "문맥 길이",
+     "en": "context length",
+     "easy": "모델이 한 번에 보는 최대 토큰 수",
+     "deep": "학습된 최대(32K · 128K)와 실행 시 num_ctx 는 달라요. KV 캐시가 길이에 비례"
+    },
+    {
+     "term": "도구 호출",
+     "en": "tool calling / function calling",
+     "easy": "답 대신 '이 함수를 이 인자로 불러'를 JSON 으로 내는 능력",
+     "deep": "OpenAI tools 형식. 모델이 템플릿 안에서 학습. 미지원 모델은 글로만 답함"
+    },
+    {
+     "term": "라이선스",
+     "en": "license",
+     "easy": "써도 되는 범위를 정한 약속",
+     "deep": "Apache 2.0 · MIT(자유), Llama · EXAONE(자체 조건). 출력으로 다른 모델 학습 허용 여부도 봐요"
+    },
+    {
+     "term": "Ollama 태그",
+     "en": "Ollama tag",
+     "easy": "모델 이름 뒤 ':1.7b' 같은 크기 · 양자화 표시",
+     "deep": "name:size-quant. 기본 태그는 보통 Q4_K_M. ollama show 로 확인"
+    }
+   ],
+   "build": {
+    "title": "2주차 실습 ③ Ollama 로 뇌 후보 비교하기",
+    "note": "맥 · 1시간. 결과물: 비교표(모델 3 × 질문 10)와 '고른 뇌' 한 줄",
+    "steps": [
+     {
+      "text": "Ollama 를 설치하고(ollama.com 의 맥 설치 파일 또는 brew) 후보 2~3개를 받아요. 이름 · 태그는 Ollama 라이브러리 페이지에서 확인해요.",
+      "lang": "bash",
+      "code": "ollama pull qwen3:1.7b\nollama pull exaone3.5:2.4b\nollama pull qwen3:4b          # 16GB 이상이면\nollama list                  # 받은 모델과 크기"
+     },
+     {
+      "text": "하나를 열어 말을 걸어 보고, --verbose 로 속도(eval rate · tokens/s)를 봐요.",
+      "lang": "bash",
+      "code": "ollama run qwen3:1.7b --verbose\n>>> KV 캐시가 뭐야? 두 문장으로.\n# 답 뒤에 'eval rate: NN tokens/s' 가 찍혀요. /bye 로 나와요"
+     },
+     {
+      "text": "질문 10개를 파일로 두고 후보마다 똑같이 물어 표로 만들어요.",
+      "lang": "python",
+      "code": "import time, json\nfrom openai import OpenAI\nai = OpenAI(base_url='http://localhost:11434/v1', api_key='ollama')\nqs = [l.strip() for l in open('q10.txt') if l.strip()]\nrows = []\nfor m in ['qwen3:1.7b', 'exaone3.5:2.4b', 'qwen3:4b']:\n    for q in qs:\n        t = time.time()\n        r = ai.chat.completions.create(model=m, temperature=0.3,\n              messages=[{'role': 'system', 'content': '짧게 답해.'}, {'role': 'user', 'content': q}])\n        dt = time.time() - t; n = r.usage.completion_tokens\n        rows.append({'model': m, 'q': q, 'a': r.choices[0].message.content, 'tok_s': round(n / dt, 1)})\njson.dump(rows, open('compare.json', 'w'), ensure_ascii=False, indent=1)"
+     },
+     {
+      "text": "compare.json 을 열어 답마다 품질 1~3점을 손으로 매겨요. 노트 질문 4개와 도구 질문 1개 열을 특히 봐요. 메모리는 ollama ps 로 확인해요.",
+      "lang": "bash",
+      "code": "ollama ps        # 지금 올라간 모델과 메모리"
+     },
+     {
+      "text": "'고른 뇌: ___ — 이유 한 줄' 을 적어요. 이 이름이 5장 brain.py 의 MODEL 이 돼요."
+     }
+    ]
+   }
+  },
+  {
+   "id": "run-local",
+   "title": "로컬 실행 — 뇌 주소 하나",
+   "minutes": 13,
+   "week": 2,
+   "headline": "뼈대는 뇌를 몰라요.\n주소 하나만 알아요.",
+   "lead": "Ollama 는 OpenAI 와 같은 모양의 API 를 localhost:11434 에 열어요. 파이썬에서 openai 패키지의 base_url 만 바꾸면 돼요. 시스템 프롬프트 · 온도 · 문맥 · 스트리밍 · 속도 재기를 익히고, '뼈대가 주소 하나로 뇌를 부르는' 설계를 brain.py 열 줄로 만들어요. 이게 뇌 교체형의 핵심이에요.",
+   "sections": [
+    {
+     "title": "뇌는 주소 뒤에 있어요",
+     "body": [
+      {
+       "t": "quiz",
+       "q": "자비스 뼈대가 뇌를 바꿀 때 가장 적게 고쳐야 하는 설계는?",
+       "choices": [
+        "뼈대 코드 곳곳에서 모델을 직접 불러요",
+        "뼈대는 주소 하나로 뇌를 부르고, 뇌는 그 주소 뒤에서 바뀌어요",
+        "뇌마다 뼈대를 새로 짜요"
+       ],
+       "answer": 1,
+       "why": "뼈대가 '주소 + 모델 이름'만 알면, 뇌가 공개 모델이든 내 모델이든 뼈대는 그대로예요."
+      },
+      {
+       "t": "quiz",
+       "q": "Ollama 의 OpenAI 호환 API 주소는?",
+       "choices": [
+        "http://localhost:11434/v1",
+        "https://api.openai.com/v1",
+        "http://localhost:8000"
+       ],
+       "answer": 0,
+       "why": "Ollama 는 11434 포트에 OpenAI 와 같은 모양의 /v1 경로를 열어요. openai 패키지의 base_url 을 이걸로 바꾸면 돼요."
+      },
+      {
+       "t": "p",
+       "text": "뇌 교체형의 핵심은 설계 하나예요. 뼈대(검색 · 도구 · 음성 · 기억)는 뇌가 **무엇인지 몰라요**. '이 주소로 메시지를 보내면 답이 온다'만 알아요. 그 약속(API 모양)이 같으면 주소 뒤의 뇌를 바꿔도 뼈대는 한 줄도 안 바뀌어요. 그 약속으로 OpenAI 의 채팅 API 모양이 사실상 표준이 됐고, Ollama 도 같은 모양을 열어요."
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "sk",
+         "label": "뼈대",
+         "items": [
+          {
+           "id": "rag",
+           "text": "검색",
+           "tone": "n"
+          },
+          {
+           "id": "tool",
+           "text": "도구",
+           "tone": "n"
+          },
+          {
+           "id": "voice",
+           "text": "음성",
+           "tone": "n"
+          },
+          {
+           "id": "mem",
+           "text": "기억",
+           "tone": "n"
+          }
+         ]
+        },
+        {
+         "id": "addr",
+         "label": "뇌 주소",
+         "items": [
+          {
+           "id": "url",
+           "text": "http://localhost:11434/v1 · qwen3:1.7b",
+           "tone": "b"
+          }
+         ]
+        },
+        {
+         "id": "brain",
+         "label": "뇌",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "뼈대 넷은 뇌 주소 하나만 알아요.",
+         "hi": [
+          "rag",
+          "tool",
+          "voice",
+          "mem"
+         ],
+         "link": [
+          {
+           "from": "rag",
+           "to": "url"
+          },
+          {
+           "from": "tool",
+           "to": "url"
+          },
+          {
+           "from": "voice",
+           "to": "url"
+          },
+          {
+           "from": "mem",
+           "to": "url"
+          }
+         ]
+        },
+        {
+         "text": "주소 뒤에 2주차 공개 모델이 있어요.",
+         "add": [
+          {
+           "row": "brain",
+           "id": "pub",
+           "text": "Qwen3 1.7B (Ollama)",
+           "tone": "a"
+          }
+         ],
+         "hi": [
+          "pub"
+         ],
+         "link": [
+          {
+           "from": "url",
+           "to": "pub"
+          }
+         ]
+        },
+        {
+         "text": "4주차: 주소의 모델 이름만 바꿔요. 뼈대는 그대로.",
+         "set": [
+          {
+           "id": "url",
+           "text": "http://localhost:11434/v1 · my-ko-sft",
+           "tone": "b"
+          }
+         ],
+         "add": [
+          {
+           "row": "brain",
+           "id": "mine",
+           "text": "내 SFT 모델",
+           "tone": "c"
+          }
+         ],
+         "remove": [
+          "pub"
+         ],
+         "hi": [
+          "mine"
+         ],
+         "link": [
+          {
+           "from": "url",
+           "to": "mine"
+          }
+         ]
+        },
+        {
+         "text": "뇌가 둘이어도 돼요. 주소 둘, 질문 종류로 갈라요(3장).",
+         "add": [
+          {
+           "row": "brain",
+           "id": "r1",
+           "text": "deepseek-r1:1.5b (계산용)",
+           "tone": "d"
+          }
+         ],
+         "hi": [
+          "mine",
+          "r1"
+         ],
+         "link": [
+          {
+           "from": "url",
+           "to": "mine",
+           "w": 0.8
+          },
+          {
+           "from": "url",
+           "to": "r1",
+           "w": 0.3
+          }
+         ]
+        }
+       ],
+       "caption": "뼈대 → 주소 → 뇌. 바뀌는 건 주소 뒤뿐이에요."
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "**뼈대는 주소 하나로 뇌를 불러요.** API 모양(OpenAI 채팅)이 약속이고, 뇌는 그 뒤에서 자유롭게 바뀌어요."
+      }
+     ]
+    },
+    {
+     "title": "파이썬에서 부르기 — base_url 만 바꿔요",
+     "body": [
+      {
+       "t": "p",
+       "text": "`openai` 패키지는 OpenAI 서버를 부르는 도구지만, **base_url** 을 바꾸면 같은 모양의 다른 서버를 불러요. Ollama 는 API 키를 검사하지 않으니 아무 글자나 넣어요. 메시지는 SFT 장에서 본 `messages` 배열 그대로예요. system 이 자비스의 성격, user 가 질문이에요."
+      },
+      {
+       "t": "code",
+       "lang": "python",
+       "title": "가장 짧은 호출",
+       "code": "from openai import OpenAI\nai = OpenAI(base_url='http://localhost:11434/v1', api_key='ollama')\nr = ai.chat.completions.create(model='qwen3:1.7b', messages=[\n    {'role': 'system', 'content': '너는 자비스. 한국어로 두 문장 이내로 답해.'},\n    {'role': 'user', 'content': 'KV 캐시가 뭐야?'}])\nprint(r.choices[0].message.content)",
+       "note": "pip install openai. Ollama 앱이 켜져 있어야 해요(ollama serve)"
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "시스템 프롬프트",
+         "text": "뇌의 '성격 · 규칙'. 길이 · 말투 · 언어를 여기서 정해요. 뇌를 바꿔도 이 글은 그대로 보내요."
+        },
+        {
+         "title": "온도",
+         "text": "도구 호출 · 계산은 0~0.3, 대화는 0.7 안팎. 2권 추론 장의 그 온도예요."
+        },
+        {
+         "title": "스트리밍",
+         "text": "stream=True 면 토큰이 나오는 대로 받아요. 음성 · 화면에 '바로 말하기 시작'하려면 필수예요."
+        }
+       ],
+       "caption": "뇌가 바뀌어도 그대로인 세 설정"
+      },
+      {
+       "t": "code",
+       "lang": "python",
+       "title": "스트리밍",
+       "code": "for chunk in ai.chat.completions.create(model='qwen3:1.7b', stream=True,\n        messages=[{'role': 'user', 'content': '자기소개 한 줄'}]):\n    print(chunk.choices[0].delta.content or '', end='', flush=True)"
+      }
+     ]
+    },
+    {
+     "title": "문맥 길이와 KV 캐시",
+     "body": [
+      {
+       "t": "p",
+       "text": "모델 카드의 32K 는 '학습된 최대'예요. Ollama 가 **실제로 쓰는** 길이는 `num_ctx` 설정이고, 기본값은 버전마다 달라요(수천 토큰). 기억 · 검색 결과를 많이 넣는 자비스는 넘치기 쉬워요. 넘치면 앞부분이 잘려요. 길이를 늘리면 **KV 캐시**가 비례해 커지니 메모리를 보고 정해요."
+      },
+      {
+       "t": "bars",
+       "unit": "문맥에 들어가는 것 (토큰, 설명용)",
+       "items": [
+        {
+         "label": "시스템 프롬프트",
+         "value": 150,
+         "tone": "n"
+        },
+        {
+         "label": "기억 · 검색 결과 5개",
+         "value": 1500,
+         "tone": "a"
+        },
+        {
+         "label": "대화 10턴",
+         "value": 1200,
+         "tone": "a"
+        },
+        {
+         "label": "답",
+         "value": 300,
+         "tone": "c"
+        }
+       ],
+       "max": 4096,
+       "caption": "합이 3,150 — num_ctx 2048 이면 이미 넘쳐요. 4096~8192 로 두고 메모리를 봐요.",
+       "note": "설명용 예시 숫자예요"
+      },
+      {
+       "t": "quiz",
+       "q": "자비스가 검색 결과를 넣기 시작하자 답이 앞 대화를 잊어요. 먼저 볼 설정은?",
+       "choices": [
+        "온도",
+        "num_ctx(문맥 길이)",
+        "모델 크기"
+       ],
+       "answer": 1,
+       "why": "문맥이 넘치면 앞부분이 잘려요. num_ctx 를 늘리고(Modelfile 또는 API 옵션), KV 캐시 메모리가 늘어나는 걸 같이 봐요."
+      }
+     ]
+    },
+    {
+     "title": "속도 재기 — tok/s",
+     "body": [
+      {
+       "t": "p",
+       "text": "두 숫자를 재요. **첫 토큰까지 시간**(프리필, 긴 문맥일수록 김)과 **초당 토큰**(디코드, 모델 크기와 대역폭이 정함). 2권의 식 'tok/s ≤ 대역폭 ÷ 가중치 크기'가 여기서 확인돼요. OpenAI 호환 응답의 `usage.completion_tokens` 를 걸린 시간으로 나누면 tok/s 예요. Ollama 의 `--verbose` 가 찍는 eval rate 와 비교해요."
+      },
+      {
+       "t": "callout",
+       "kind": "tip",
+       "text": "음성 자비스는 tok/s 보다 **첫 토큰까지 시간**이 체감이에요. 스트리밍 + 짧은 시스템 프롬프트 + 작은 모델이면 1초 안에 말을 시작해요."
+      }
+     ]
+    },
+    {
+     "title": "깊게 — 요청 · 응답 JSON 과 num_ctx",
+     "body": [
+      {
+       "t": "p",
+       "text": "openai 패키지가 숨기는 건 결국 HTTP 요청 하나예요. 모양을 알면 뼈대를 어떤 언어로 짜도 되고, 6장에서 내 모델 서버를 만들 때 **같은 모양으로 답하면** 뼈대가 못 알아채요."
+      },
+      {
+       "t": "deep",
+       "title": "요청 · 응답 JSON · num_ctx · KV",
+       "body": [
+        {
+         "t": "code",
+         "lang": "json",
+         "title": "POST /v1/chat/completions 요청",
+         "code": "{\"model\": \"qwen3:1.7b\",\n \"messages\": [{\"role\": \"system\", \"content\": \"너는 자비스.\"},\n              {\"role\": \"user\", \"content\": \"KV 캐시가 뭐야?\"}],\n \"temperature\": 0.3, \"stream\": false}"
+        },
+        {
+         "t": "code",
+         "lang": "json",
+         "title": "응답 (필요한 칸만)",
+         "code": "{\"id\": \"chatcmpl-…\", \"object\": \"chat.completion\", \"model\": \"qwen3:1.7b\",\n \"choices\": [{\"index\": 0, \"finish_reason\": \"stop\",\n              \"message\": {\"role\": \"assistant\", \"content\": \"앞 토큰의 K · V 를 …\"}}],\n \"usage\": {\"prompt_tokens\": 41, \"completion_tokens\": 37, \"total_tokens\": 78}}",
+         "note": "6장 내 모델 서버는 이 칸들만 채우면 돼요. 스트리밍은 data: 줄마다 delta.content 가 오는 SSE"
+        },
+        {
+         "t": "p",
+         "text": "`num_ctx` 는 OpenAI 호환 경로의 표준 인자가 아니에요. 확실한 두 길: ① Modelfile 에 `PARAMETER num_ctx 8192` 를 적어 내 이름으로 등록(6장과 같은 방법), ② Ollama 고유 경로 `/api/chat` 에 `options: {num_ctx: 8192}` 로 보내기. 최신 Ollama 는 환경 변수 `OLLAMA_CONTEXT_LENGTH` 도 있어요 — 버전 문서를 확인해요."
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "Ollama 고유 경로로 num_ctx 주기",
+         "code": "import requests\nr = requests.post('http://localhost:11434/api/chat', json={\n    'model': 'qwen3:1.7b', 'stream': False,\n    'messages': [{'role': 'user', 'content': '안녕'}],\n    'options': {'num_ctx': 8192, 'temperature': 0.3}})\nprint(r.json()['message']['content'], r.json()['eval_count'], r.json()['eval_duration'])",
+         "note": "eval_count / (eval_duration/1e9) = tok/s. prompt_eval_duration 이 프리필 시간"
+        },
+        {
+         "t": "formula",
+         "text": "KV 메모리 ≈ num_ctx × 2 × L × H_kv × d_head × 바이트",
+         "note": "2권 추론 장. 문맥을 2배로 늘리면 KV 도 2배. 1~3B 모델은 KV 가 가중치보다 작지만 32K 로 가면 무시 못 해요"
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "Ollama 는 요청 사이에 모델을 메모리에 유지(keep_alive, 기본 몇 분)해요. 자비스처럼 계속 쓰는 경우 첫 요청만 느리고 그다음부터 빨라요. 뇌를 둘 띄우면 메모리도 둘 몫이에요."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "뼈대는 뇌가 무엇인지 모르고 주소 하나로 불러요. 약속은 OpenAI 채팅 API 모양이고 Ollama 가 localhost:11434/v1 에 같은 모양을 열어요. openai 패키지의 base_url 만 바꾸면 되고, 시스템 프롬프트 · 온도 · 스트리밍은 뇌가 바뀌어도 그대로예요. 실제 문맥 길이는 num_ctx 가 정하고 KV 캐시가 비례해 커요. 속도는 첫 토큰까지 시간과 tok/s 둘을 재요.",
+    "points": [
+     "뼈대 → 주소 하나 → 뇌",
+     "base_url 만 바꾸면 같은 코드",
+     "system · 온도 · 스트리밍은 뇌와 무관",
+     "num_ctx 가 실제 문맥, KV 는 비례",
+     "첫 토큰 시간 + tok/s"
+    ]
+   },
+   "jarvis": "3주차 뼈대의 모든 모듈은 brain.py 의 ask() 하나만 불러요. 4주차에 내 모델을 꽂을 때 바뀌는 파일도 brain.py 의 상수 두 줄뿐이에요.",
+   "words": [
+    {
+     "term": "OpenAI 호환 API",
+     "en": "OpenAI-compatible API",
+     "easy": "OpenAI 채팅 API 와 같은 모양의 요청 · 응답",
+     "deep": "POST /v1/chat/completions, messages · choices · usage. Ollama · vLLM · llama.cpp server 가 지원"
+    },
+    {
+     "term": "base_url",
+     "en": "base URL",
+     "easy": "openai 패키지가 요청을 보내는 서버 주소",
+     "deep": "OpenAI(base_url='http://localhost:11434/v1'). api_key 는 Ollama 가 무시"
+    },
+    {
+     "term": "시스템 프롬프트",
+     "en": "system prompt",
+     "easy": "뇌의 성격 · 규칙을 적은 첫 메시지",
+     "deep": "role: system. 템플릿이 맨 앞에 넣어요. 토큰을 먹으니 짧게"
+    },
+    {
+     "term": "스트리밍",
+     "en": "streaming",
+     "easy": "답을 토큰 단위로 나오는 대로 받기",
+     "deep": "stream=True, SSE 의 data: 줄마다 delta.content. 첫 토큰 체감 시간을 줄임"
+    },
+    {
+     "term": "num_ctx",
+     "en": "num_ctx",
+     "easy": "Ollama 가 실제로 쓰는 문맥 길이",
+     "deep": "Modelfile PARAMETER 또는 /api/chat options. 기본값은 버전마다 달라요. KV 캐시가 비례"
+    },
+    {
+     "term": "첫 토큰까지 시간",
+     "en": "time to first token (TTFT)",
+     "easy": "질문을 보내고 첫 글자가 나올 때까지",
+     "deep": "≈ 프리필 시간, 문맥 길이에 비례. 음성 자비스의 체감 지표"
+    },
+    {
+     "term": "tok/s",
+     "en": "tokens per second",
+     "easy": "초당 만드는 토큰 수",
+     "deep": "디코드 속도. ≤ 대역폭 ÷ 가중치 바이트(2권). usage.completion_tokens ÷ 시간"
+    },
+    {
+     "term": "keep_alive",
+     "en": "keep_alive",
+     "easy": "요청이 끝나도 모델을 메모리에 잠시 두는 시간",
+     "deep": "Ollama 옵션. 기본 몇 분. 0 이면 바로 내림, -1 이면 계속"
+    }
+   ],
+   "build": {
+    "title": "2주차 실습 ④ brain.py — 뇌 주소 하나짜리 클라이언트",
+    "note": "맥 · 30분. 결과물: brain.py (ask · ask_stream · bench) 와 속도표 한 줄",
+    "steps": [
+     {
+      "text": "뼈대가 부를 파일 하나. 바꿀 것은 맨 위 상수 둘뿐이에요.",
+      "lang": "python",
+      "code": "# brain.py — 뼈대는 이 파일만 알아요\nimport time\nfrom openai import OpenAI\nBRAIN_URL = 'http://localhost:11434/v1'   # 뇌 주소\nMODEL = 'qwen3:1.7b'                      # 뇌 이름 (4주차: 'my-ko-sft')\nSYSTEM = '너는 자비스. 한국어로 짧게 답해.'\n_ai = OpenAI(base_url=BRAIN_URL, api_key='ollama')\n\ndef ask(user, history=(), temperature=0.3):\n    msgs = [{'role': 'system', 'content': SYSTEM}, *history, {'role': 'user', 'content': user}]\n    r = _ai.chat.completions.create(model=MODEL, messages=msgs, temperature=temperature)\n    return r.choices[0].message.content\n\ndef ask_stream(user, history=(), temperature=0.7):\n    msgs = [{'role': 'system', 'content': SYSTEM}, *history, {'role': 'user', 'content': user}]\n    for c in _ai.chat.completions.create(model=MODEL, messages=msgs, temperature=temperature, stream=True):\n        yield c.choices[0].delta.content or ''"
+     },
+     {
+      "text": "속도 재기. 첫 토큰까지 시간과 tok/s 를 같이 찍어요.",
+      "lang": "python",
+      "code": "def bench(user='KV 캐시가 뭐야? 세 문장으로.'):\n    t0 = time.time(); first = None; n = 0\n    for piece in ask_stream(user):\n        if piece and first is None: first = time.time() - t0\n        n += 1\n    total = time.time() - t0\n    return {'model': MODEL, 'ttft_s': round(first, 2), 'tok_s': round(n / (total - first), 1)}\n\nif __name__ == '__main__':\n    print(ask('안녕, 넌 누구야?'))\n    print(bench())",
+      "note": "스트리밍 조각 수 ≈ 토큰 수. 정확히 재려면 깊게 상자의 /api/chat eval_count 를 써요"
+     },
+     {
+      "text": "MODEL 을 2주차 실습 ③의 후보들로 바꿔 가며 bench() 를 돌려 속도표에 적어요. '뇌가 바뀌어도 ask() 코드는 그대로'를 눈으로 확인하는 게 목표예요."
+     },
+     {
+      "text": "3주차 뼈대 모듈(검색 · 도구 · 음성 · 기억)은 모두 `from brain import ask, ask_stream` 만 해요. 모델 이름을 다른 파일에 적지 않기 — 이게 규칙이에요."
+     }
+    ]
+   }
+  },
+  {
+   "id": "swap",
+   "title": "내 모델 꽂기 — 주소만 바꾸고 비교해요",
+   "minutes": 14,
+   "week": 4,
+   "headline": "뼈대는 그대로.\n뇌만 내 것으로.",
+   "lead": "4주차 마지막. 1장에서 SFT 한 내 작은 모델을 자비스 뇌 자리에 꽂아요. 길은 둘이에요. GGUF 로 바꿔 Ollama 에 등록하거나, 같은 OpenAI 모양으로 답하는 작은 서버를 띄우거나. 그다음 brain.py 의 이름만 바꾸고, 내 노트 50문제로 공개 뇌와 비교해 솔직한 결론을 적어요.",
+   "sections": [
+    {
+     "title": "두 길 — GGUF 등록, 또는 같은 모양의 서버",
+     "body": [
+      {
+       "t": "quiz",
+       "q": "내 모델을 자비스에 꽂을 때 뼈대 코드는 얼마나 고칠까요?",
+       "choices": [
+        "모듈마다 모델 호출을 바꿔요",
+        "brain.py 의 상수(주소 · 이름)만",
+        "뼈대를 다시 짜요"
+       ],
+       "answer": 1,
+       "why": "5장 설계 덕이에요. 뇌가 '같은 API 모양'으로 답하기만 하면 뼈대는 상수 두 줄만 바뀌어요."
+      },
+      {
+       "t": "quiz",
+       "q": "nanoGPT 로 만든 ckpt.pt 를 Ollama 에 바로 올릴 수 있을까요?",
+       "choices": [
+        "네, ollama pull ckpt.pt",
+        "아니요, GGUF 로 바꾸거나 같은 모양의 서버를 따로 띄워야 해요",
+        "아니요, 절대 불가능해요"
+       ],
+       "answer": 1,
+       "why": "Ollama 는 GGUF 만 읽어요. nanoGPT 체크포인트는 HF GPT-2 형식으로 내보낸 뒤 변환하거나, 내 서버를 띄워 같은 API 모양으로 답하게 해요."
+      },
+      {
+       "t": "p",
+       "text": "내 모델은 nanoGPT 의 `ckpt.pt` 예요. Ollama 는 그걸 모르고 **GGUF** 만 읽어요. 그래서 길이 둘이에요. **A 길**: nanoGPT 가중치를 Hugging Face GPT-2 형식으로 내보내고, llama.cpp 의 `convert_hf_to_gguf.py` 로 GGUF 를 만들어 `Modelfile` 로 등록해요. **B 길**: 내 모델을 파이썬으로 직접 돌리면서 5장의 요청 · 응답 JSON 과 **같은 모양**으로 답하는 작은 서버(FastAPI)를 띄워요."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "A. GGUF → Ollama 등록",
+         "tone": "a",
+         "icon": "layers",
+         "text": "맥에서 빠르고 Ollama 가 템플릿 · 멈춤을 관리. 단 GPT-2 구조 변환이 한 번에 안 될 수 있어요(어휘 · 특수 토큰 · bias)."
+        },
+        {
+         "label": "B. FastAPI 서버",
+         "tone": "c",
+         "icon": "spark",
+         "text": "변환 없음, 내 코드 그대로. 언제나 돼요. 대신 파이썬이 토큰을 만들어 느리고 내가 템플릿 · 멈춤을 짜요."
+        }
+       ],
+       "caption": "솔직한 추천: B 를 먼저 해서 비교표를 끝내고, A 는 시간이 남으면."
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "뇌 교체의 조건은 하나예요. **같은 API 모양으로 답하기.** GGUF 든 내 서버든 뼈대는 구별하지 못해요."
+      }
+     ]
+    },
+    {
+     "title": "A 길 — HF GPT-2 로 내보내고 GGUF 로",
+     "body": [
+      {
+       "t": "p",
+       "text": "nanoGPT 의 GPT 는 HF 의 GPT-2 와 **같은 구조**예요(nanoGPT 가 HF 가중치를 불러오는 `from_pretrained` 코드가 그 증거예요). 다만 HF GPT-2 는 선형층 가중치를 **뒤집어(전치)** 저장해요(Conv1D). 그래서 내보낼 때 `c_attn · c_proj · c_fc` 가중치를 전치하면 돼요. 토크나이저는 `tok8k_chat.json` 을 HF 의 `PreTrainedTokenizerFast` 로 감싸 저장해요."
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "① HF 형식으로 저장",
+         "text": "GPT2Config 에 n_layer · n_head · n_embd · vocab_size 를 넣고 가중치를 옮겨요(전치 주의). save_pretrained 로 폴더 하나."
+        },
+        {
+         "title": "② GGUF 변환",
+         "text": "llama.cpp 저장소의 convert_hf_to_gguf.py 에 그 폴더를 넣어요. 작은 모델은 f16 그대로 두어도 수십 MB 예요. 양자화는 불필요."
+        },
+        {
+         "title": "③ Modelfile 로 등록",
+         "text": "FROM ./my-ko-sft.gguf 와 TEMPLATE(ChatML) · 멈춤 토큰을 적고 ollama create."
+        }
+       ],
+       "caption": "변환 → 등록. 어느 단계든 막히면 B 길로 가요. 비교표가 목표지 변환이 목표가 아니에요."
+      },
+      {
+       "t": "code",
+       "lang": "text",
+       "title": "Modelfile",
+       "code": "FROM ./my-ko-sft.gguf\nTEMPLATE \"\"\"{{ if .System }}<|im_start|>system\n{{ .System }}<|im_end|>\n{{ end }}<|im_start|>user\n{{ .Prompt }}<|im_end|>\n<|im_start|>assistant\n\"\"\"\nPARAMETER stop <|im_end|>\nPARAMETER temperature 0.7\nPARAMETER num_ctx 256",
+       "note": "num_ctx 는 내 모델의 block_size(256) 이하로. ollama create my-ko-sft -f Modelfile → ollama run my-ko-sft"
+      },
+      {
+       "t": "callout",
+       "kind": "warn",
+       "text": "솔직하게: GPT-2 구조 GGUF 를 Ollama 가 내 토크나이저 · 특수 토큰까지 그대로 받아 주는지는 **버전에 따라** 달라요. 변환 스크립트가 어휘를 못 알아보거나, 한글이 깨지면 1시간 안에 B 길로 바꿔요. 3권의 '디코더 빼먹기' 함정이 여기서 다시 나와요."
+      }
+     ]
+    },
+    {
+     "title": "B 길 — 같은 모양으로 답하는 작은 서버",
+     "body": [
+      {
+       "t": "p",
+       "text": "5장 깊게 상자의 응답 JSON 에서 뼈대가 읽는 칸은 `choices[0].message.content` 와 `usage` 뿐이에요. 그 칸만 채우는 `/v1/chat/completions` 경로를 FastAPI 로 만들고, 안에서 1장의 `chat()` 함수를 부르면 끝이에요. brain.py 의 BRAIN_URL 을 이 서버로 바꾸면 뼈대는 모르고 내 모델과 대화해요."
+      },
+      {
+       "t": "code",
+       "lang": "python",
+       "title": "my_server.py — OpenAI 모양으로 답하는 내 모델",
+       "code": "# pip install fastapi uvicorn   →   uvicorn my_server:app --port 8001\nimport time, torch\nfrom fastapi import FastAPI\nfrom tokenizers import Tokenizer\nfrom model import GPT, GPTConfig\n\ntok = Tokenizer.from_file('tok8k_chat.json')\nS, E = tok.token_to_id('<|im_start|>'), tok.token_to_id('<|im_end|>')\nck = torch.load('out-ko-sft/ckpt.pt', map_location='cpu')\nmodel = GPT(GPTConfig(**ck['model_args'])); model.load_state_dict(ck['model']); model.eval()\napp = FastAPI()\n\n@torch.no_grad()\ndef generate(messages, temperature=0.7, max_new=80):\n    ids = []\n    for m in messages:\n        ids += [S] + tok.encode(m['role'] + '\\n' + m['content']).ids + [E]\n    ids += [S] + tok.encode('assistant\\n').ids\n    x = torch.tensor([ids]); n0 = len(ids)\n    for _ in range(max_new):\n        logits, _ = model(x[:, -256:])\n        p = torch.softmax(logits[0, -1] / max(temperature, 1e-3), -1)\n        nxt = torch.multinomial(p, 1)\n        if nxt.item() == E: break\n        x = torch.cat([x, nxt[None]], 1)\n    out = x[0, n0:].tolist()\n    return tok.decode(out), n0, len(out)\n\n@app.post('/v1/chat/completions')\ndef chat(body: dict):\n    text, n_in, n_out = generate(body['messages'], body.get('temperature', 0.7))\n    return {'id': 'mine', 'object': 'chat.completion', 'created': int(time.time()), 'model': 'my-ko-sft',\n            'choices': [{'index': 0, 'finish_reason': 'stop', 'message': {'role': 'assistant', 'content': text}}],\n            'usage': {'prompt_tokens': n_in, 'completion_tokens': n_out, 'total_tokens': n_in + n_out}}",
+       "note": "스트리밍(stream=True)은 생략했어요. 뼈대의 ask_stream 은 이 서버에선 ask 로 대신하거나, SSE 를 나중에 더해요. 맥 CPU 에서도 수백만 파라미터는 초당 수십 토큰"
+      },
+      {
+       "t": "quiz",
+       "q": "B 길 서버가 꼭 지켜야 하는 것은?",
+       "choices": [
+        "Ollama 와 같은 포트",
+        "뼈대가 읽는 응답 칸(choices · message.content · usage)의 모양",
+        "GGUF 형식"
+       ],
+       "answer": 1,
+       "why": "뼈대는 API 모양만 알아요. 포트는 BRAIN_URL 에 적으면 되고, 형식은 상관없어요."
+      }
+     ]
+    },
+    {
+     "title": "두 뇌를 같은 뼈대에 번갈아",
+     "body": [
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "sk",
+         "label": "뼈대 (brain.py)",
+         "items": [
+          {
+           "id": "ask",
+           "text": "ask('내 노트 질문')",
+           "tone": "n"
+          }
+         ]
+        },
+        {
+         "id": "cfg",
+         "label": "상수 두 줄",
+         "items": [
+          {
+           "id": "url",
+           "text": "BRAIN_URL = …:11434/v1",
+           "tone": "b"
+          },
+          {
+           "id": "name",
+           "text": "MODEL = 'qwen3:1.7b'",
+           "tone": "b"
+          }
+         ]
+        },
+        {
+         "id": "b",
+         "label": "뇌",
+         "items": [
+          {
+           "id": "pub",
+           "text": "Qwen3 1.7B",
+           "tone": "a"
+          }
+         ]
+        },
+        {
+         "id": "out",
+         "label": "답",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "공개 뇌로 50문제를 물어요. 답을 저장해요.",
+         "hi": [
+          "pub"
+         ],
+         "link": [
+          {
+           "from": "ask",
+           "to": "url"
+          },
+          {
+           "from": "url",
+           "to": "pub"
+          }
+         ],
+         "add": [
+          {
+           "row": "out",
+           "id": "o1",
+           "text": "공개 뇌 답 50개",
+           "tone": "a"
+          }
+         ]
+        },
+        {
+         "text": "상수 두 줄을 내 서버로 바꿔요. ask() 는 손대지 않아요.",
+         "set": [
+          {
+           "id": "url",
+           "text": "BRAIN_URL = …:8001/v1",
+           "tone": "c"
+          },
+          {
+           "id": "name",
+           "text": "MODEL = 'my-ko-sft'",
+           "tone": "c"
+          }
+         ],
+         "hi": [
+          "url",
+          "name"
+         ]
+        },
+        {
+         "text": "주소 뒤의 뇌가 내 모델로 바뀌었어요.",
+         "remove": [
+          "pub"
+         ],
+         "add": [
+          {
+           "row": "b",
+           "id": "mine",
+           "text": "내 SFT 모델 (수 M)",
+           "tone": "c"
+          }
+         ],
+         "hi": [
+          "mine"
+         ],
+         "link": [
+          {
+           "from": "ask",
+           "to": "url"
+          },
+          {
+           "from": "url",
+           "to": "mine"
+          }
+         ]
+        },
+        {
+         "text": "같은 50문제를 다시 물어요. 두 답 묶음을 나란히 놓으면 비교표예요.",
+         "add": [
+          {
+           "row": "out",
+           "id": "o2",
+           "text": "내 뇌 답 50개",
+           "tone": "c"
+          }
+         ],
+         "hi": [
+          "o1",
+          "o2"
+         ],
+         "link": [
+          {
+           "from": "mine",
+           "to": "o2"
+          }
+         ]
+        }
+       ],
+       "caption": "번갈아 꽂기. 바뀐 건 상수 두 줄, 비교 대상은 답 50 × 2."
+      },
+      {
+       "t": "p",
+       "text": "비교표의 문제는 **3권에서 만든 내 노트 50문제**예요. 그때는 보기별 손실로 채점했는데, 이번엔 대화 모델이니 **답을 보고 채점**해요. 정답 포함(0/1) · 말투(0/1) · 길이 적당(0/1) 세 칸이면 충분해요. 1장 SFT 데이터와 겹치는 문제는 빼요(held-out)."
+      },
+      {
+       "t": "grids",
+       "items": [
+        {
+         "label": "공개 뇌 (설명용)",
+         "tone": "a",
+         "values": [
+          [
+           1,
+           1,
+           1
+          ],
+          [
+           1,
+           0,
+           1
+          ],
+          [
+           1,
+           1,
+           0
+          ]
+         ]
+        },
+        {
+         "label": "내 뇌 (설명용)",
+         "tone": "c",
+         "values": [
+          [
+           0,
+           1,
+           1
+          ],
+          [
+           0,
+           1,
+           0
+          ],
+          [
+           1,
+           1,
+           1
+          ]
+         ]
+        }
+       ],
+       "ops": [
+        "vs"
+       ],
+       "hi": 0.5,
+       "caption": "행 = 문제, 열 = 정답 · 말투 · 길이. 내 뇌는 '말투' 열은 좋고 '정답' 열이 약한 모양이 흔해요.",
+       "note": "설명용 예시예요"
+      }
+     ]
+    },
+    {
+     "title": "솔직한 결론 — 어디서 무너지나",
+     "body": [
+      {
+       "t": "p",
+       "text": "결론은 대개 이래요. 수백만 파라미터 모델은 **말투와 형식**은 흉내 내지만 **사실**은 틀리고, 두세 문장 뒤엔 말이 흐트러지고, 안 본 질문엔 엉뚱해요. 그건 실패가 아니라 측정이에요. 3권 '1~10M 모델이 할 수 있는 것 · 없는 것'이 표로 확인된 거예요. 그리고 뼈대가 둘을 **구별하지 않았다**는 사실이 이 달의 진짜 성과예요."
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "무너지는 자리 적기",
+         "text": "정답 열이 0 인 문제들의 공통점(숫자 · 고유명사 · 긴 질문)을 한 줄로."
+        },
+        {
+         "title": "잘된 자리 적기",
+         "text": "말투 열이 1 인 비율. SFT 데이터 몇 개로 이게 됐는지."
+        },
+        {
+         "title": "다음 한 걸음",
+         "text": "모델을 키울지(3권 6장), SFT 데이터를 늘릴지, 공개 뇌 + 내 노트 검색(RAG)으로 갈지. 셋 중 하나를 고르고 이유 한 줄."
+        }
+       ],
+       "caption": "결론 한 문단 = 이 세 줄"
+      },
+      {
+       "t": "quiz",
+       "q": "내 작은 모델이 '말투는 되는데 사실이 틀리는' 결과가 나왔어요. 가장 맞는 해석은?",
+       "choices": [
+        "SFT 를 잘못했어요",
+        "지식은 사전학습 크기에서 오고 SFT 는 형식을 가르친다는 걸 확인한 거예요",
+        "토크나이저가 문제예요"
+       ],
+       "answer": 1,
+       "why": "1장의 핵심이 그대로 나타난 거예요. 사실을 늘리려면 모델과 사전학습 데이터를 키우거나, 검색(RAG)으로 사실을 밖에서 넣어요."
+      },
+      {
+       "t": "deep",
+       "title": "HF GPT-2 내보내기 코드 · 변환 명령",
+       "body": [
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "nanoGPT ckpt → HF GPT-2 폴더",
+         "code": "import torch\nfrom transformers import GPT2Config, GPT2LMHeadModel, PreTrainedTokenizerFast\nck = torch.load('out-ko-sft/ckpt.pt', map_location='cpu'); a = ck['model_args']\ncfg = GPT2Config(vocab_size=a['vocab_size'], n_positions=a['block_size'], n_embd=a['n_embd'],\n                 n_layer=a['n_layer'], n_head=a['n_head'])\nhf = GPT2LMHeadModel(cfg)\nsd = {k.replace('_orig_mod.', ''): v for k, v in ck['model'].items() if not k.endswith('.attn.bias')}\nT = ('attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight')\nfor k in list(sd):\n    if any(k.endswith(t) for t in T): sd[k] = sd[k].t()   # nanoGPT Linear → HF Conv1D\nmissing, unexpected = hf.load_state_dict(sd, strict=False)\nprint('missing', missing, 'unexpected', unexpected)   # bias 들만 남아야 해요 (bias=False 로 학습했다면)\nhf.save_pretrained('hf-my-ko-sft')\ntk = PreTrainedTokenizerFast(tokenizer_file='tok8k_chat.json', bos_token='<|im_start|>', eos_token='<|im_end|>')\ntk.save_pretrained('hf-my-ko-sft')",
+         "note": "nanoGPT from_pretrained 가 하는 전치를 거꾸로 한 거예요. bias=False 로 학습했으면 HF 쪽 bias 가 0 으로 남아 괜찮아요"
+        },
+        {
+         "t": "code",
+         "lang": "bash",
+         "title": "GGUF 변환 · 등록",
+         "code": "git clone https://github.com/ggml-org/llama.cpp\npip install -r llama.cpp/requirements.txt\npython llama.cpp/convert_hf_to_gguf.py hf-my-ko-sft --outfile my-ko-sft.gguf --outtype f16\nollama create my-ko-sft -f Modelfile\nollama run my-ko-sft\n>>> KV 캐시가 뭐야?",
+         "note": "변환이 어휘 · 토크나이저 종류에서 멈추면 그 오류 메시지를 들고 B 길로. 작은 모델은 양자화(llama-quantize) 가 필요 없어요"
+        },
+        {
+         "t": "p",
+         "text": "HF 형식으로 저장해 두면 덤이 있어요. 1장 깊게 상자의 TRL `SFTTrainer` · 2장의 `DPOTrainer` 에 내 모델을 그대로 넣을 수 있고, 0권에서 본 `lm_eval --model hf` 로도 잴 수 있어요. 내 모델이 '생태계의 모델'이 되는 순간이에요."
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "Ollama 가 지원하는 모델 구조 목록과 Modelfile 문법은 Ollama 공식 문서(docs 의 modelfile · import)에서 확인해요. llama.cpp 의 convert_hf_to_gguf.py 는 HF 폴더의 config.json 의 architectures 로 구조를 알아봐요(GPT2LMHeadModel)."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "내 nanoGPT 모델을 자비스에 꽂는 길은 둘이에요. HF GPT-2 형식으로 내보내 convert_hf_to_gguf.py 로 GGUF 를 만들고 Modelfile 로 Ollama 에 등록하거나, 5장 응답 JSON 과 같은 모양으로 답하는 FastAPI 서버를 띄우거나. 어느 쪽이든 뼈대는 brain.py 의 상수 두 줄만 바뀌어요. 내 노트 50문제(held-out)로 공개 뇌와 번갈아 묻고 정답 · 말투 · 길이로 채점하면, 작은 모델은 말투는 되고 사실은 약하다는 측정이 나와요. 그게 이 달의 결론이에요.",
+    "points": [
+     "길 둘: GGUF 등록 또는 같은 모양의 서버",
+     "뼈대는 상수 두 줄만 바뀐다",
+     "내 노트 50문제 held-out 으로 번갈아 비교",
+     "작은 모델: 말투 O, 사실 X — 측정이지 실패가 아니다",
+     "다음 걸음: 키우기 · 데이터 · RAG 중 하나"
+    ]
+   },
+   "jarvis": "4주차 마지막 날, brain.py 의 MODEL 을 'my-ko-sft' 로 바꾸고 음성으로 '내 노트에서 KV 캐시 설명해 줘'라고 말해 보세요. 뼈대는 아무것도 모른 채 내 모델의 답을 읽어 줘요.",
+   "words": [
+    {
+     "term": "Modelfile",
+     "en": "Modelfile",
+     "easy": "Ollama 에 모델을 등록하는 설명 파일",
+     "deep": "FROM(gguf 또는 기존 모델) · TEMPLATE · SYSTEM · PARAMETER(stop · temperature · num_ctx). ollama create 이름 -f Modelfile"
+    },
+    {
+     "term": "convert_hf_to_gguf.py",
+     "en": "convert_hf_to_gguf.py",
+     "easy": "HF 폴더를 GGUF 파일로 바꾸는 llama.cpp 스크립트",
+     "deep": "config.json 의 architectures 로 구조 판별. --outtype f16/bf16/q8_0. 양자화는 llama-quantize 로 따로"
+    },
+    {
+     "term": "Conv1D 전치",
+     "en": "Conv1D transpose",
+     "easy": "HF GPT-2 가 선형층 가중치를 뒤집어 저장하는 것",
+     "deep": "HF Conv1D weight [in, out] vs nn.Linear [out, in]. c_attn · c_proj · c_fc · mlp.c_proj 네 곳. nanoGPT from_pretrained 의 역방향"
+    },
+    {
+     "term": "FastAPI",
+     "en": "FastAPI",
+     "easy": "파이썬으로 HTTP 서버를 몇 줄로 만드는 도구",
+     "deep": "uvicorn 으로 실행. @app.post('/v1/chat/completions') 하나면 OpenAI 모양 흉내 가능"
+    },
+    {
+     "term": "SSE",
+     "en": "server-sent events",
+     "easy": "스트리밍 답을 'data:' 줄로 흘려보내는 방식",
+     "deep": "OpenAI 스트리밍 형식. 조각마다 delta.content, 끝에 data: [DONE]"
+    },
+    {
+     "term": "held-out 시험",
+     "en": "held-out test",
+     "easy": "학습에 안 쓴 문제로 재는 시험",
+     "deep": "SFT 데이터와 겹치면 오염. 3권의 내 노트 50문제를 그대로, 단 SFT 에 쓴 단락은 제외"
+    },
+    {
+     "term": "RAG",
+     "en": "retrieval-augmented generation",
+     "easy": "답하기 전에 내 노트를 검색해 문맥에 넣어 주기",
+     "deep": "작은 모델의 '사실 부족'을 밖에서 메우는 길. 3주차 뼈대의 검색 모듈이 이것"
+    }
+   ],
+   "build": {
+    "title": "4주차 실습 ② 내 뇌 꽂고 비교표 · 결론",
+    "note": "맥 · 2시간. 결과물: compare50.json · 비교표 · 결론 한 문단",
+    "steps": [
+     {
+      "text": "B 길부터. my_server.py 를 띄우고 brain.py 의 상수 두 줄을 바꿔 ask() 가 내 모델과 대화하는지 확인해요.",
+      "lang": "bash",
+      "code": "uvicorn my_server:app --port 8001\n# 다른 터미널에서 brain.py 의 BRAIN_URL='http://localhost:8001/v1', MODEL='my-ko-sft' 로 바꾸고\npython brain.py"
+     },
+     {
+      "text": "내 노트 50문제(3권 · SFT 에 쓴 단락은 제외)를 두 뇌에 번갈아 물어 저장해요.",
+      "lang": "python",
+      "code": "import json, importlib\nimport brain\nqs = [l.strip() for l in open('q50.txt') if l.strip()]\nout = {}\nfor url, name in [('http://localhost:11434/v1', 'qwen3:1.7b'), ('http://localhost:8001/v1', 'my-ko-sft')]:\n    brain.BRAIN_URL, brain.MODEL = url, name\n    brain._ai = brain.OpenAI(base_url=url, api_key='x')\n    out[name] = [brain.ask(q, temperature=0.3) for q in qs]\njson.dump({'q': qs, **out}, open('compare50.json', 'w'), ensure_ascii=False, indent=1)"
+     },
+     {
+      "text": "답마다 정답 · 말투 · 길이를 0/1 로 채점해 표로 만들어요(스프레드시트도 좋아요). 두 뇌의 열 합을 적어요."
+     },
+     {
+      "text": "시간이 남으면 A 길. 깊게 상자의 내보내기 → convert_hf_to_gguf.py → Modelfile → ollama create. 되면 MODEL='my-ko-sft', BRAIN_URL 은 다시 11434 로 — 뼈대는 역시 모르는 채로."
+     },
+     {
+      "text": "결론 한 문단: 무너지는 자리 · 잘된 자리 · 다음 한 걸음. 이 문단이 1달의 마지막 줄이에요."
+     }
+    ]
+   }
+  }
+ ]
+}

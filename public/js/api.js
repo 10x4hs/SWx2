@@ -128,6 +128,11 @@ export const api = {
   easyState: () => request("GET", "/papers/easy"),
   easyRead: (paper, recall, total) => request("PUT", "/papers/easy/read", { paper, recall, total }),
   easyReview: (results) => request("PUT", "/papers/easy/review", { results }),
+  // AI 공부책 (#/books) — 장 단위 읽음 · 복습 · 실습 체크
+  booksState: () => request("GET", "/books/state"),
+  bookRead: (book, chapter, recall, total) => request("PUT", "/books/read", { book, chapter, recall, total }),
+  bookReview: (results) => request("PUT", "/books/review", { results }),
+  bookTask: (task, done) => request("PUT", "/books/task", { task, done }),
   paperCheck: (paper, step, done) => request("PUT", "/papers/check", { paper, step, done }),
   paperNote: (paper, text) => request("PUT", "/papers/note", { paper, text }),
   // 형광펜 · 메모 (본인만)
@@ -207,10 +212,17 @@ export async function streamChat(payload, onEvent, signal) {
 }
 
 // 논문 튜터 답을 글자 단위로 받아요. onEvent({type:"delta"|"reset"|"end"|"error", …})
-export async function streamPaperAsk(paper, messages, onEvent, signal, level) {
+// AI 공부책 튜터 — /books/ask 로, 나머지는 논문 튜터와 같아요
+export function streamBookAsk(book, chapter, messages, onEvent, signal, level) {
+  return streamAsk("/api/books/ask", { book, chapter, messages, ...(level ? { level } : {}) }, onEvent, signal);
+}
+export function streamPaperAsk(paper, messages, onEvent, signal, level) {
+  return streamAsk("/api/papers/ask", { paper, messages, ...(level ? { level } : {}) }, onEvent, signal);
+}
+async function streamAsk(path, payload, onEvent, signal) {
   let res;
   try {
-    res = await fetch("/api/papers/ask", { method: "POST", credentials: "same-origin", signal, headers: { "content-type": "application/json", "x-trio": "1" }, body: JSON.stringify({ paper, messages, ...(level ? { level } : {}) }) });
+    res = await fetch(path, { method: "POST", credentials: "same-origin", signal, headers: { "content-type": "application/json", "x-trio": "1" }, body: JSON.stringify(payload) });
   } catch (e) { if (e.name === "AbortError") return; throw new ApiError(0, "서버에 연결할 수 없어요."); }
   if (!res.ok) { const data = await res.json().catch(() => ({})); throw new ApiError(res.status, data.error || "질문을 보내지 못했어요.", data); }
   const reader = res.body.getReader(), dec = new TextDecoder();
