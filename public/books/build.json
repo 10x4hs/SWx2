@@ -1,0 +1,2898 @@
+{
+ "id": "build",
+ "n": 3,
+ "title": "바닥부터 만들기",
+ "short": "만들기",
+ "color": "green",
+ "kicker": "3권 · 바닥부터 만들기",
+ "headline": "작은 한국어 GPT 를\n내 손으로 끝까지 한 번.",
+ "lead": "한국어 글 모으기 → 토크나이저 → nanoGPT 읽기 → 학습 돌리기 → 평가 → 키울 때 바뀌는 것. 0권의 1 · 2주차 실습을 더 깊게 파요. GPU 없이, 돈 거의 없이.",
+ "why": "자비스의 뇌는 당분간 공개 모델이에요. 하지만 파이프라인을 한 번 끝까지 돌려 본 사람만 '뇌를 바꿔 끼울' 수 있어요. 이 책이 그 한 번이에요.",
+ "chapters": [
+  {
+   "id": "data-ko",
+   "title": "한국어 데이터 — 어디서, 얼마나, 어떻게 거를까",
+   "minutes": 14,
+   "week": 1,
+   "headline": "모델은 먹인 글만큼 자라요.\n한국어는 먹일 게 적어서 손질이 더 중요해요.",
+   "lead": "FineWeb2 한국어에서 문서를 흘려 받고, 규칙으로 거르고, MinHash 로 중복을 지우고, 비율을 정해 섞어요. 이번 주 실습은 '거르기 스크립트'예요.",
+   "sections": [
+    {
+     "title": "어디서 구하나 — 세 곳과 두 가지 주의",
+     "body": [
+      {
+       "t": "p",
+       "text": "한국어는 영어보다 공개 글이 훨씬 적어요. 처음 연습엔 **FineWeb2 한국어**(`HuggingFaceFW/fineweb-2`, `kor_Hang`)가 제일 편해요. 이미 언어를 고르고 한 번 거른 웹 글이고, 스트리밍으로 1만 문서만 받아도 돼요. 라이선스는 ODC-By 예요."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "FineWeb2 한국어",
+         "tone": "c",
+         "icon": "layers",
+         "text": "약 6,087만 문서 · 486억 단어 · 213GB. ODC-By. 원어민 검수는 없어서 내 필터를 한 번 더."
+        },
+        {
+         "label": "AI Hub (NIA)",
+         "tone": "a",
+         "icon": "box",
+         "text": "저작권 · 개인정보를 정리한 정부 데이터 800개 이상. 데이터마다 이용 조건이 달라요."
+        },
+        {
+         "label": "모두의 말뭉치",
+         "tone": "b",
+         "icon": "warn",
+         "text": "국립국어원 37종 · 약 22억 어절. 신청해서 받고 라이선스가 엄격해요. 상업용이면 특히 조심."
+        }
+       ],
+       "caption": "한국어 데이터 세 곳",
+       "note": "FineWeb2 데이터 카드 · AI Hub · 국립국어원 안내 기준"
+      },
+      {
+       "t": "callout",
+       "kind": "warn",
+       "text": "위키 덤프도 흔히 써요. 한국어 위키백과는 CC BY-SA 4.0 — 출처와 같은 라이선스를 지키면 돼요. **나무위키는 CC BY-NC-SA 2.0 KR** 이라 '비영리'가 붙어요. 자비스를 나중에 팔 생각이면 처음부터 빼는 게 편해요. 덤프 파일엔 표 · 틀 문법이 섞여 있어 글만 뽑는 전처리가 따로 필요해요."
+      },
+      {
+       "t": "quiz",
+       "q": "처음 연습용 한국어 데이터로 이 책이 권하는 것은?",
+       "choices": [
+        "나무위키 전체 덤프",
+        "FineWeb2 의 한국어 부분을 스트리밍으로 1만 문서",
+        "직접 크롤링한 뉴스"
+       ],
+       "answer": 1,
+       "why": "이미 거른 웹 글이고 라이선스가 느슨하고, 스트리밍이라 통째로 받을 필요가 없어요."
+      }
+     ]
+    },
+    {
+     "title": "거르기 — 규칙 다섯 개면 절반은 돼요",
+     "body": [
+      {
+       "t": "p",
+       "text": "FineWeb2 도 '웹 글'이에요. 메뉴 · 쿠키 안내 · 상품 목록 · 깨진 인코딩이 남아 있어요. 큰 회사는 품질 분류기를 따로 만들지만, 우리는 **규칙 다섯 개**부터 시작해요. 규칙만으로도 눈에 띄는 쓰레기는 대부분 빠져요."
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "① 길이",
+         "text": "너무 짧은 글(예: 200자 미만)은 버려요. 짧은 글은 대부분 메뉴 · 제목이에요."
+        },
+        {
+         "title": "② 한글 비율",
+         "text": "글자 중 한글이 일정 비율(예: 50%) 미만이면 버려요. 영어 · 숫자 · 기호 덩어리를 걸러요."
+        },
+        {
+         "title": "③ 줄 반복",
+         "text": "같은 줄이 여러 번 나오면 버려요. 게시판 목록 · 상품 페이지의 특징이에요."
+        },
+        {
+         "title": "④ 기호 비율",
+         "text": "'|', '·', '>' 같은 기호가 너무 많으면 표 · 내비게이션이에요."
+        },
+        {
+         "title": "⑤ 금칙 패턴",
+         "text": "'쿠키', '로그인', '장바구니' 같은 말이 첫 줄에 있으면 의심해요. 예시 목록은 내가 데이터를 보며 늘려요."
+        }
+       ],
+       "caption": "규칙 필터 다섯 개. 숫자(200자 · 50%)는 설명용 출발값이에요 — 데이터를 보며 조정해요."
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "src",
+         "label": "들어온 문서",
+         "items": [
+          {
+           "id": "d1",
+           "text": "요리 블로그 글"
+          },
+          {
+           "id": "d2",
+           "text": "메뉴 · 로그인 · 장바구니"
+          },
+          {
+           "id": "d3",
+           "text": "뉴스 기사"
+          },
+          {
+           "id": "d4",
+           "text": "상품 목록 (줄 반복)"
+          },
+          {
+           "id": "d5",
+           "text": "뉴스 기사 (거의 같음)"
+          }
+         ]
+        },
+        {
+         "id": "out",
+         "label": "남은 문서",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "다섯 문서가 들어와요.",
+         "hi": [
+          "d1",
+          "d2",
+          "d3",
+          "d4",
+          "d5"
+         ]
+        },
+        {
+         "text": "① 길이 · ⑤ 금칙 패턴: 메뉴 페이지가 빠져요.",
+         "hi": [
+          "d2"
+         ],
+         "set": [
+          {
+           "id": "d2",
+           "text": "메뉴 — 짧음 · 금칙",
+           "tone": "b"
+          }
+         ]
+        },
+        {
+         "text": "③ 줄 반복: 상품 목록이 빠져요.",
+         "hi": [
+          "d4"
+         ],
+         "set": [
+          {
+           "id": "d4",
+           "text": "상품 목록 — 줄 반복",
+           "tone": "b"
+          }
+         ]
+        },
+        {
+         "text": "MinHash 중복 제거: 거의 같은 기사 둘 중 하나만 남겨요.",
+         "hi": [
+          "d3",
+          "d5"
+         ],
+         "link": [
+          {
+           "from": "d3",
+           "to": "d5",
+           "w": 0.9
+          }
+         ],
+         "set": [
+          {
+           "id": "d5",
+           "text": "기사 — 중복",
+           "tone": "b"
+          }
+         ]
+        },
+        {
+         "text": "남은 셋이 학습 데이터예요. 5개 중 3개 — 실제로도 절반 가까이 빠지는 일이 흔해요.",
+         "add": [
+          {
+           "row": "out",
+           "id": "o1",
+           "text": "요리 블로그 글",
+           "tone": "c"
+          },
+          {
+           "row": "out",
+           "id": "o3",
+           "text": "뉴스 기사",
+           "tone": "c"
+          }
+         ],
+         "link": [
+          {
+           "from": "d1",
+           "to": "o1",
+           "w": 0.8
+          },
+          {
+           "from": "d3",
+           "to": "o3",
+           "w": 0.8
+          }
+         ],
+         "hi": [
+          "o1",
+          "o3"
+         ]
+        }
+       ],
+       "caption": "거르기 파이프라인: 규칙 → 중복 제거 → 남은 것만 저장.",
+       "note": "문서와 비율은 설명용 예시예요"
+      },
+      {
+       "t": "quiz",
+       "q": "'같은 줄이 여러 번 나오는 문서'를 버리는 이유는?",
+       "choices": [
+        "저장 공간 때문에",
+        "상품 목록 · 게시판처럼 배울 게 없는 반복 페이지의 특징이라서",
+        "모델이 긴 글을 못 읽어서"
+       ],
+       "answer": 1,
+       "why": "반복 줄은 글이 아니라 목록이에요. 모델이 '목록 쓰기'를 배우게 돼요."
+      }
+     ]
+    },
+    {
+     "title": "중복 제거 — MinHash 의 감각",
+     "body": [
+      {
+       "t": "p",
+       "text": "거의 같은 문서가 열 번 들어가면 모델은 그 글을 **외워요**. 완전히 같은 글은 해시로 바로 찾지만, 한두 줄만 다른 글은 못 찾아요. **MinHash** 는 문서를 짧은 조각(예: 글자 5개짜리 n-gram) 집합으로 보고, 두 집합이 얼마나 겹치는지(자카드 유사도)를 **작은 서명**만 비교해서 어림해요."
+      },
+      {
+       "t": "analogy",
+       "title": "지문 몇 개만 찍기",
+       "text": "책 두 권이 같은 책인지 보려고 전부 읽지 않아요. 정해진 자리 128곳의 글자만 적어 두고 비교해요. 128곳 중 110곳이 같으면 '거의 같은 책'이에요. MinHash 서명이 이 128곳이에요.",
+       "limit": "비유가 틀리는 점: 진짜 MinHash 는 '자리'가 아니라 해시 함수 128개로 '가장 작은 값'을 고르기 때문에, 글이 조금 밀려도 서명이 거의 같아요."
+      },
+      {
+       "t": "deep",
+       "title": "자카드와 MinHash",
+       "body": [
+        {
+         "t": "formula",
+         "text": "J(A, B) = |A ∩ B| / |A ∪ B|",
+         "note": "두 문서의 n-gram 집합이 얼마나 겹치나"
+        },
+        {
+         "t": "p",
+         "text": "해시 함수 h 하나로 집합의 모든 원소를 해시하고 **최솟값**을 고르면, 두 집합의 최솟값이 같을 확률이 정확히 J(A, B) 예요. 해시 128개로 이걸 반복하면 서명 128개가 나오고, 같은 칸의 비율이 J 의 추정값이에요. 문서가 6천만 개면 모든 쌍을 비교할 수 없으니 서명을 띠(band)로 나눠 같은 띠가 있는 것끼리만 비교해요(LSH)."
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "datasketch 로 근사 중복 찾기",
+         "code": "from datasketch import MinHash, MinHashLSH\n\ndef sig(text, k=5, perm=128):\n    m = MinHash(num_perm=perm)\n    for i in range(len(text) - k + 1):\n        m.update(text[i:i+k].encode())\n    return m\n\nlsh = MinHashLSH(threshold=0.8, num_perm=128)\nkeep = []\nfor i, doc in enumerate(docs):\n    m = sig(doc)\n    if lsh.query(m):          # 비슷한 게 이미 있으면 버림\n        continue\n    lsh.insert(str(i), m)\n    keep.append(doc)",
+         "note": "threshold 0.8 = 자카드 0.8 이상이면 중복. 큰 데이터는 band 수를 조정해요."
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "FineWeb · Dolma 같은 공개 파이프라인도 문서 단위 MinHash + LSH 를 써요. 큰 코퍼스를 다룰 땐 Hugging Face `datatrove` 에 같은 단계가 구현돼 있어요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "MinHash 가 '완전히 같은 글 찾기'와 다른 점은?",
+       "choices": [
+        "더 느리지만 정확하다",
+        "짧은 서명만 비교해서 '거의 같은' 글도 빠르게 찾는다",
+        "맞춤법을 고쳐 준다"
+       ],
+       "answer": 1,
+       "why": "한두 줄 다른 글은 해시가 전혀 달라요. MinHash 는 겹치는 비율을 어림해요."
+      }
+     ]
+    },
+    {
+     "title": "얼마나 필요한가 — 토큰 수 감각",
+     "body": [
+      {
+       "t": "p",
+       "text": "데이터 양은 **토큰 수**로 세요. 한국어 웹 문서 하나는 보통 몇백~몇천 토큰이에요(내 토크나이저 기준으로 2장에서 직접 재요). 1만 문서면 수백만 토큰, 10만 문서면 수천만 토큰 정도로 잡고 시작해요. 정확한 값은 거른 뒤 직접 세요 — 여기 숫자는 어림이에요."
+      },
+      {
+       "t": "bars",
+       "unit": "토큰 수 (설명용 어림)",
+       "items": [
+        {
+         "label": "1만 문서 (1주차 실습)",
+         "value": 5,
+         "display": "~5M",
+         "tone": "a"
+        },
+        {
+         "label": "10만 문서",
+         "value": 50,
+         "display": "~50M",
+         "tone": "a"
+        },
+        {
+         "label": "5M 파라미터의 Chinchilla 적정량 (20×N)",
+         "value": 100,
+         "display": "100M",
+         "tone": "c"
+        }
+       ],
+       "max": 110,
+       "caption": "10만 문서로도 5M 모델의 '적정량'에 못 미쳐요. 그래서 작은 모델은 같은 글을 2~4번 반복(epoch)해서 봐요.",
+       "note": "문서당 토큰은 설명용 어림(문서당 ~500토큰 가정). Chinchilla 비율은 Hoffmann et al. 2022"
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "작은 모델도 데이터는 **수천만 토큰** 단위로 봐요. 모자라면 몇 번 반복해도 괜찮지만, 반복이 많아질수록 효과가 줄어요. 한국어는 늘 데이터가 병목이에요."
+      },
+      {
+       "t": "deep",
+       "title": "섞기 비율",
+       "body": [
+        {
+         "t": "p",
+         "text": "한국어만 넣으면 코드 · 영어가 들어간 질문에 약해요. 큰 한국 모델들은 한 · 영 · 코드를 섞고, 비율은 작은 실험으로 정해요. 우리 크기(수백만 파라미터)에선 섞어도 효과를 보기 어려우니, **1주차는 한국어 100%** 로 가고 비율 실험은 4주차 이후로 미뤄요."
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "Muennighoff et al. 2023 ('Scaling Data-Constrained LMs')는 같은 데이터를 약 4번까지는 새 데이터와 거의 같은 효과, 그 뒤로 급격히 줄어든다고 보고했어요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "1만 문서로 5M 파라미터 모델을 학습하면 생기는 일은?",
+       "choices": [
+        "데이터가 너무 많아 못 돌린다",
+        "Chinchilla 적정량에 한참 모자라 같은 글을 여러 번 반복해 보게 된다",
+        "토큰 수와 상관없다"
+       ],
+       "answer": 1,
+       "why": "5M × 20 = 1억 토큰이 적정인데 1만 문서는 수백만 토큰이에요. 몇 번 반복은 괜찮아요."
+      }
+     ]
+    },
+    {
+     "title": "저장 형식 — 한 줄에 문서 하나",
+     "body": [
+      {
+       "t": "p",
+       "text": "거른 결과는 **JSONL**(한 줄에 JSON 하나)로 저장해요. 문서마다 `text` 와 출처 `url`, 거르기에 쓴 점수를 같이 적어 두면 나중에 '왜 빠졌나 · 왜 남았나'를 되짚을 수 있어요. 독자 모델 팀들이 학습 로그를 남기듯, 우리도 **거르기 통계**를 파일로 남겨요."
+      },
+      {
+       "t": "code",
+       "lang": "python",
+       "title": "거르기 통계 남기기",
+       "code": "import json, collections\nstat = collections.Counter()\nwith open('ko_clean.jsonl', 'w') as f:\n    for doc in docs:\n        why = reject(doc['text'])      # None 이면 통과\n        stat[why or 'keep'] += 1\n        if why is None:\n            f.write(json.dumps(doc, ensure_ascii=False) + '\\n')\nprint(dict(stat))                   # {'keep': 6120, 'short': 1800, ...}",
+       "note": "ensure_ascii=False 를 꼭 — 아니면 한글이 \\uac00 으로 저장돼요."
+      },
+      {
+       "t": "callout",
+       "kind": "tip",
+       "text": "2장에서 이 `ko_clean.jsonl` 로 토크나이저를 학습하고, 3장에서 번호열(train.bin)로 바꿔요. 파일 이름을 바꾸지 말고 쭉 써요."
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "한국어 데이터는 FineWeb2 한국어에서 스트리밍으로 시작하고, 위키 · 나무위키는 라이선스를 먼저 봐요. 거르기는 길이 · 한글 비율 · 줄 반복 · 기호 비율 · 금칙 패턴 다섯 규칙으로 시작하고, MinHash 로 거의 같은 문서를 지워요. 데이터 양은 토큰 수로 세고, 작은 모델도 수천만 토큰이 필요해서 몇 번 반복해 봐요. 결과는 JSONL 로, 거르기 통계와 함께 남겨요.",
+    "points": [
+     "FineWeb2 kor_Hang 스트리밍으로 시작, 라이선스 먼저",
+     "규칙 다섯 개: 길이 · 한글 비율 · 줄 반복 · 기호 · 금칙",
+     "MinHash = 짧은 서명으로 '거의 같은' 문서 찾기",
+     "토큰 수로 세기, 모자라면 몇 번 반복은 괜찮다",
+     "JSONL + 거르기 통계를 남긴다"
+    ]
+   },
+   "jarvis": "자비스가 내 노트를 검색 인덱스에 넣을 때도 같은 거르기를 써요 — 중복 노트, 템플릿만 있는 빈 노트를 빼야 검색 결과가 깨끗해져요.",
+   "words": [
+    {
+     "term": "FineWeb2",
+     "en": "FineWeb2",
+     "easy": "Hugging Face 가 언어별로 거른 공개 웹 글. 한국어는 kor_Hang",
+     "deep": "Common Crawl 을 언어 분류 · 규칙 필터 · 중복 제거해 1,000개 넘는 언어로. 한국어 약 6,087만 문서. ODC-By"
+    },
+    {
+     "term": "라이선스",
+     "en": "license",
+     "easy": "이 글을 어디까지 써도 되는지 정한 약속",
+     "deep": "CC BY-SA(출처 · 같은 조건), CC BY-NC-SA(비영리 추가), ODC-By(출처). 학습 데이터 사용 자체의 법적 해석은 나라마다 달라요"
+    },
+    {
+     "term": "규칙 필터",
+     "en": "heuristic filter",
+     "easy": "길이 · 비율 같은 간단한 규칙으로 쓰레기 글 빼기",
+     "deep": "Gopher(Rae et al. 2021)의 규칙 목록이 출발점. 기호 비율 · 줄 반복 · 불용어 비율 등"
+    },
+    {
+     "term": "MinHash",
+     "en": "MinHash",
+     "easy": "문서를 짧은 지문으로 바꿔 '거의 같은' 문서를 빨리 찾기",
+     "deep": "해시 k개의 최솟값 서명. 같은 칸 비율 ≈ 자카드 유사도. LSH 로 후보 쌍만 비교"
+    },
+    {
+     "term": "자카드 유사도",
+     "en": "Jaccard similarity",
+     "easy": "두 집합이 겹치는 비율",
+     "deep": "|A∩B| / |A∪B|. n-gram 집합에 적용. 0.8 이상을 중복으로 보는 일이 흔해요"
+    },
+    {
+     "term": "JSONL",
+     "en": "JSON Lines",
+     "easy": "한 줄에 JSON 하나씩 쌓은 파일",
+     "deep": "스트리밍 · 이어 쓰기 · 병렬 처리에 편해요. ensure_ascii=False 로 한글 그대로"
+    },
+    {
+     "term": "에포크",
+     "en": "epoch",
+     "easy": "데이터 전체를 한 번 다 보는 것",
+     "deep": "사전학습은 보통 1 에포크 미만. 데이터가 모자라면 2~4 에포크까지는 거의 손해 없음(Muennighoff 2023)"
+    }
+   ],
+   "build": {
+    "title": "1주차 실습 ② 한국어 문서 1만~10만 개 모아 거르기",
+    "note": "Colab 무료(CPU) 또는 맥 · 30~60분. 결과물: ko_clean.jsonl 과 거르기 통계. 0권 1주차 실습의 '1만 문서 받기'를 거르기까지 확장해요.",
+    "steps": [
+     {
+      "text": "FineWeb2 한국어를 스트리밍으로 받아요. 처음엔 2만 문서, 잘 되면 10만으로 늘려요.",
+      "lang": "python",
+      "code": "from datasets import load_dataset\nds = load_dataset('HuggingFaceFW/fineweb-2', name='kor_Hang', split='train', streaming=True)\nraw = [{'text': x['text'], 'url': x.get('url', '')} for _, x in zip(range(20000), ds)]"
+     },
+     {
+      "text": "규칙 필터 다섯 개를 함수 하나로. 빠진 이유를 돌려주게 해서 통계를 내요.",
+      "lang": "python",
+      "code": "import re, collections\nHANGUL = re.compile(r'[가-힣]')\nBAD = ('쿠키', '로그인', '장바구니', '회원가입')\ndef reject(t):\n    if len(t) < 200: return 'short'\n    if len(HANGUL.findall(t)) / max(len(t), 1) < 0.5: return 'hangul'\n    lines = [l.strip() for l in t.split('\\n') if l.strip()]\n    if lines and len(set(lines)) / len(lines) < 0.7: return 'repeat'\n    if sum(t.count(c) for c in '|·>»') / len(t) > 0.02: return 'symbol'\n    if any(b in lines[0] for b in BAD): return 'nav'\n    return None"
+     },
+     {
+      "text": "MinHash 로 거의 같은 문서를 지워요 (`pip install datasketch`). 본문의 deep 코드를 그대로 써요."
+     },
+     {
+      "text": "통과한 문서를 JSONL 로 저장하고 통계를 찍어요. `keep` 비율이 30% 아래면 규칙이 너무 세고, 95% 위면 너무 느슨해요 — 빠진 문서 20개를 눈으로 보고 숫자를 조정해요."
+     },
+     {
+      "text": "기록표에 적어요: 받은 수 · 규칙별 빠진 수 · 중복 빠진 수 · 남은 수 · 남은 글자 수. 2장에서 토큰 수로 바꿔 다시 적어요."
+     }
+    ]
+   }
+  },
+  {
+   "id": "tokenizer",
+   "title": "BPE 직접 학습 — 어휘 크기와 한국어 효율",
+   "minutes": 13,
+   "week": 1,
+   "headline": "토크나이저는 모델보다 먼저,\n따로 학습하는 '첫 번째 모델'이에요.",
+   "lead": "바이트 수준 BPE 를 내 데이터로 학습하고, 어휘 크기 8k 와 32k 를 비교하고, 한국어 효율을 숫자로 재요. 0권에서 한 번 돌린 학습 코드를 이번엔 '왜 이 설정인가'까지 읽어요.",
+   "sections": [
+    {
+     "title": "바이트에서 시작하면 모르는 글자가 없어요",
+     "body": [
+      {
+       "t": "p",
+       "text": "GPT-2 부터 BPE 는 **바이트 수준**으로 돌려요. 글자가 아니라 UTF-8 바이트 256개에서 시작해 합쳐 나가요. 그래서 어떤 글자가 와도 '모르는 토큰'(unk)이 안 생겨요. 한글 한 글자는 UTF-8 로 3바이트라서, 합치기가 충분히 안 되면 한 글자가 3토큰이 되는 함정이 여기서 나와요."
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "b",
+         "label": "'날' 의 UTF-8 바이트",
+         "items": [
+          {
+           "id": "b1",
+           "text": "EB",
+           "tone": "n"
+          },
+          {
+           "id": "b2",
+           "text": "82",
+           "tone": "n"
+          },
+          {
+           "id": "b3",
+           "text": "A0",
+           "tone": "n"
+          }
+         ]
+        },
+        {
+         "id": "m",
+         "label": "합쳐진 조각",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "한글 한 글자 '날'은 바이트 3개예요. 학습 전엔 이 셋이 각각 토큰이에요.",
+         "hi": [
+          "b1",
+          "b2",
+          "b3"
+         ]
+        },
+        {
+         "text": "말뭉치에서 EB 82 가 자주 붙어 나오면 먼저 합쳐져요.",
+         "add": [
+          {
+           "row": "m",
+           "id": "m1",
+           "text": "EB 82",
+           "tone": "a"
+          }
+         ],
+         "link": [
+          {
+           "from": "b1",
+           "to": "m1",
+           "w": 0.7
+          },
+          {
+           "from": "b2",
+           "to": "m1",
+           "w": 0.7
+          }
+         ],
+         "hi": [
+          "m1"
+         ]
+        },
+        {
+         "text": "그다음 A0 가 붙어 '날' 한 글자가 한 토큰이 돼요.",
+         "add": [
+          {
+           "row": "m",
+           "id": "m2",
+           "text": "날",
+           "tone": "c"
+          }
+         ],
+         "link": [
+          {
+           "from": "m1",
+           "to": "m2",
+           "w": 0.8
+          },
+          {
+           "from": "b3",
+           "to": "m2",
+           "w": 0.8
+          }
+         ],
+         "hi": [
+          "m2"
+         ]
+        },
+        {
+         "text": "합치기가 더 가면 '날씨' · '날씨가' 처럼 낱말 단위 토큰이 생겨요. 드문 글자는 끝까지 바이트 3개로 남아요.",
+         "add": [
+          {
+           "row": "m",
+           "id": "m3",
+           "text": "날씨가",
+           "tone": "c"
+          }
+         ],
+         "link": [
+          {
+           "from": "m2",
+           "to": "m3",
+           "w": 0.6
+          }
+         ],
+         "hi": [
+          "m3"
+         ]
+        }
+       ],
+       "caption": "바이트 3개 → 글자 → 낱말. 한국어 효율은 이 합치기가 얼마나 가느냐예요.",
+       "note": "'날' 의 UTF-8 은 EB 82 A0. 합치기 순서는 설명용 예시예요"
+      },
+      {
+       "t": "widget",
+       "kind": "bpe",
+       "text": "오늘 날씨가 정말 좋아요. 내일은 비가 온대요.",
+       "caption": "합치기 횟수를 0 에서 올려 보세요. 처음엔 글자가 다 쪼개져 있다가, 자주 붙는 조각이 먼저 한 토큰이 돼요."
+      },
+      {
+       "t": "deep",
+       "title": "바이트 수준의 대가",
+       "body": [
+        {
+         "t": "p",
+         "text": "한글 완성형 음절은 11,172개예요. 바이트 BPE 는 이 음절들을 바이트 3개짜리 조각으로 '배워야' 하므로, 말뭉치에 드문 음절(예: '뷁')은 끝까지 3토큰으로 남아요. 반대로 SentencePiece 유니그램 방식은 글자 단위에서 시작해 이 문제가 덜하지만, 어휘 밖 글자는 unk 가 돼요. 둘 다 장단이 있고, 요즘 큰 모델은 대부분 바이트 BPE 예요."
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "Hugging Face `tokenizers` 에서 `pre_tokenizers.ByteLevel()` 과 `decoders.ByteLevel()` 을 **짝으로** 써야 해요. 디코더를 빼면 한글이 'Ġë' 같은 바이트 문자로 보여요 — 흔한 첫 번째 함정이에요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "바이트 수준 BPE 의 장점은?",
+       "choices": [
+        "한글이 무조건 한 글자 한 토큰이 된다",
+        "어떤 글자가 와도 '모르는 토큰'이 안 생긴다",
+        "어휘가 작아진다"
+       ],
+       "answer": 1,
+       "why": "256바이트에서 시작하니 못 읽는 글자가 없어요. 대신 드문 한글은 3토큰이 될 수 있어요."
+      }
+     ]
+    },
+    {
+     "title": "어휘 크기 — 8k 와 32k 사이에서",
+     "body": [
+      {
+       "t": "p",
+       "text": "어휘가 크면 한 토큰에 글이 더 많이 들어가서 같은 글이 **짧은 토큰열**이 돼요. 대신 임베딩 표(어휘 × d)가 커지고, 드문 토큰은 학습 기회가 적어 엉성해져요. 작은 모델일수록 임베딩이 전체 파라미터의 큰 몫을 차지해요 — 3장에서 숫자로 확인해요."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "8k (작게)",
+         "tone": "a",
+         "icon": "box",
+         "text": "임베딩 8,000 × 128 = 약 1M. 토큰열은 길어지지만 모든 토큰이 자주 나와 잘 배워요. 1~10M 모델에 맞아요."
+        },
+        {
+         "label": "32k (중간)",
+         "tone": "n",
+         "icon": "layers",
+         "text": "임베딩 32,000 × 128 = 약 4M — 4층 128차원 모델 본체보다 커요. 토큰열은 짧아져요. 100M 급부터 어울려요."
+        },
+        {
+         "label": "128k (큰 모델)",
+         "tone": "d",
+         "icon": "grid",
+         "text": "Llama 3 가 쓰는 크기예요. 여러 언어를 함께 담을 때. 우리 크기엔 낭비예요."
+        }
+       ],
+       "caption": "어휘 크기는 모델 크기와 짝이에요.",
+       "note": "임베딩 크기는 어휘 × 차원으로 계산. Llama 3 어휘 128,256 은 Llama 3 논문(2024)"
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "우리 크기(1~10M)에선 **8k** 로 시작해요. 토큰열이 좀 길어도, 임베딩이 모델을 삼키지 않고 모든 토큰이 충분히 학습돼요. 32k 는 실습에서 비교용으로만 학습해요."
+      },
+      {
+       "t": "quiz",
+       "q": "4층 · 128차원 모델에 32k 어휘를 쓰면 생기는 일은?",
+       "choices": [
+        "모델이 빨라진다",
+        "임베딩 표가 모델 본체보다 커지고 드문 토큰은 제대로 못 배운다",
+        "한국어가 항상 더 좋아진다"
+       ],
+       "answer": 1,
+       "why": "32,000 × 128 ≈ 4M 인데 본체(12·L·d²)는 약 0.8M 이에요. 꼬리가 몸통을 흔들어요."
+      }
+     ]
+    },
+    {
+     "title": "특수 토큰 — 글 사이의 울타리",
+     "body": [
+      {
+       "t": "p",
+       "text": "문서를 이어 붙여 긴 번호열로 만들 때, 문서 경계에 **특수 토큰**을 넣어요. 보통 `<|endoftext|>` 또는 `</s>` 하나면 돼요. 모델은 이 토큰 뒤에서 '새 글이 시작된다'를 배우고, 생성할 때 이 토큰이 나오면 멈춰요. 대화 모델은 나중에 `<|user|>` 같은 역할 토큰을 더해요."
+      },
+      {
+       "t": "flow",
+       "steps": [
+        {
+         "label": "문서 1",
+         "sub": "…좋아요.",
+         "tone": "a"
+        },
+        {
+         "label": "<|endoftext|>",
+         "sub": "경계",
+         "tone": "b"
+        },
+        {
+         "label": "문서 2",
+         "sub": "서울의 날씨는…",
+         "tone": "a"
+        },
+        {
+         "label": "<|endoftext|>",
+         "sub": "경계",
+         "tone": "b"
+        },
+        {
+         "label": "문서 3",
+         "sub": "…",
+         "tone": "a"
+        }
+       ],
+       "caption": "train.bin 은 이렇게 한 줄로 이어진 번호열이에요. 3장의 데이터 로더가 여기서 임의의 자리를 잘라 가요."
+      },
+      {
+       "t": "deep",
+       "title": "nanoGPT 와 맞추기",
+       "body": [
+        {
+         "t": "p",
+         "text": "nanoGPT 의 GPT-2 데이터 준비(`data/openwebtext/prepare.py`)는 문서마다 `eot` 토큰(50256)을 끝에 붙여 하나의 uint16 배열로 저장해요. 우리 토크나이저는 어휘 8,000 이라 번호가 65,535 를 넘지 않으니 **uint16 으로 충분**해요. 특수 토큰을 어휘 앞쪽(0~2번)에 두면 코드에서 다루기 편해요."
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "특수 토큰을 넣어 학습하기",
+         "code": "from tokenizers import Tokenizer, models, trainers, pre_tokenizers, decoders\ntok = Tokenizer(models.BPE())\ntok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)\ntok.decoder = decoders.ByteLevel()\ntrainer = trainers.BpeTrainer(vocab_size=8000, special_tokens=['<|endoftext|>', '<|pad|>'],\n                              initial_alphabet=pre_tokenizers.ByteLevel.alphabet())\ntok.train_from_iterator((d['text'] for d in docs), trainer)\ntok.save('tok8k.json')\nEOT = tok.token_to_id('<|endoftext|>')   # 0",
+         "note": "initial_alphabet 으로 256바이트를 먼저 넣어 어떤 글자도 unk 가 안 되게 해요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "문서 사이에 `<|endoftext|>` 를 넣는 이유는?",
+       "choices": [
+        "파일을 작게 만들려고",
+        "모델이 글의 경계를 배우고 생성할 때 멈출 자리를 알게 하려고",
+        "한글 효율을 높이려고"
+       ],
+       "answer": 1,
+       "why": "경계 토큰이 없으면 모델은 앞 문서의 끝과 뒤 문서의 시작을 한 글로 배워요."
+      }
+     ]
+    },
+    {
+     "title": "한국어 효율 재기 — 글자당 토큰",
+     "body": [
+      {
+       "t": "p",
+       "text": "효율은 **글자당 토큰 수**(또는 토큰당 글자 수)로 재요. 학습에 안 쓴 문서(held-out) 1,000개로 재야 공정해요. 내 8k · 32k 토크나이저와 공개 모델 토크나이저(예: Qwen3)를 같은 글로 비교하면, '한국어를 넣어 만든 토크나이저'가 왜 중요한지 숫자로 보여요."
+      },
+      {
+       "t": "bars",
+       "unit": "같은 한국어 글의 토큰 수",
+       "lower_better": true,
+       "items": [
+        {
+         "label": "한국어를 넣어 만든 토크나이저 (A.X K1)",
+         "value": 527,
+         "tone": "c"
+        },
+        {
+         "label": "GPT-4o 계열 (o200k)",
+         "value": 812,
+         "tone": "n"
+        },
+        {
+         "label": "Qwen3",
+         "value": 906,
+         "tone": "n"
+        }
+       ],
+       "max": 1000,
+       "caption": "공개된 비교. 내 토크나이저도 이 표에 한 줄 더해 보는 게 이번 주 실습이에요.",
+       "note": "SK텔레콤 A.X K1 기술 보고서 (2026). 영어 글은 세 토크나이저가 거의 같았어요"
+      },
+      {
+       "t": "deep",
+       "title": "압축률과 손실의 비교 함정",
+       "body": [
+        {
+         "t": "p",
+         "text": "토크나이저가 다르면 **손실 값을 그대로 비교할 수 없어요**. 토큰이 큰 토크나이저는 한 토큰에 정보가 많아 토큰당 손실이 높게 나와요. 공정하게 비교하려면 글자당(또는 바이트당) 손실로 바꿔요: 토큰당 손실 × (토큰 수 / 바이트 수). 5장의 perplexity 에서 다시 나와요."
+        },
+        {
+         "t": "formula",
+         "text": "bits per byte = L_token · (N_token / N_byte) / ln 2",
+         "note": "토크나이저가 달라도 비교할 수 있는 단위"
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "내 토크나이저의 효율을 공정하게 재려면?",
+       "choices": [
+        "학습에 쓴 글로 재면 된다",
+        "학습에 안 쓴 글로, 같은 글을 여러 토크나이저에 넣어 글자당 토큰 수를 비교한다",
+        "토큰 수가 많을수록 좋다"
+       ],
+       "answer": 1,
+       "why": "학습에 쓴 글은 외운 조각이 많아 유리하게 나와요. held-out 으로."
+      }
+     ]
+    },
+    {
+     "title": "흔한 함정 다섯",
+     "body": [
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "디코더 빼먹기",
+         "text": "ByteLevel 디코더가 없으면 한글이 'ìĺ¤' 처럼 보여요. 인코드 → 디코드가 원문과 같은지 꼭 확인해요."
+        },
+        {
+         "title": "공백 처리",
+         "text": "ByteLevel 은 앞 공백을 'Ġ' 로 토큰에 붙여요. add_prefix_space 를 학습과 사용에서 똑같이 둬요."
+        },
+        {
+         "title": "숫자 · 영어 섞인 글",
+         "text": "한국어만으로 학습하면 영어 낱말이 바이트로 쪼개져요. 데이터에 영어가 조금 있어야 해요."
+        },
+        {
+         "title": "어휘보다 큰 dtype",
+         "text": "어휘가 65,536 을 넘으면 uint16 이 넘쳐요. 8k 는 괜찮지만 습관으로 확인해요."
+        },
+        {
+         "title": "토크나이저 바꾸고 모델 안 바꾸기",
+         "text": "토크나이저를 다시 학습하면 train.bin 과 모델을 전부 다시 만들어야 해요. 번호가 달라지니까요."
+        }
+       ],
+       "caption": "하나씩 체크하고 넘어가요."
+      },
+      {
+       "t": "callout",
+       "kind": "warn",
+       "text": "토크나이저는 **한 번 정하면 모델 수명 내내 못 바꿔요**. 학습된 모델의 임베딩 번호가 토크나이저에 묶여 있어서예요. 그래서 큰 팀들은 토크나이저에 가장 먼저, 가장 오래 시간을 써요."
+      },
+      {
+       "t": "quiz",
+       "q": "토크나이저를 다시 학습한 뒤 해야 하는 일은?",
+       "choices": [
+        "아무것도 — 모델은 그대로 쓴다",
+        "train.bin 을 다시 만들고 모델도 처음부터 다시 학습한다",
+        "어휘만 바꾸면 된다"
+       ],
+       "answer": 1,
+       "why": "토큰 번호가 전부 달라져요. 임베딩 표가 옛 번호에 묶여 있으니 모델도 새로."
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "토크나이저는 모델보다 먼저 따로 학습해요. 바이트 수준 BPE 는 모르는 글자가 없지만 드문 한글은 3토큰이 될 수 있어요. 어휘 크기는 모델 크기와 짝이고, 1~10M 모델엔 8k 가 맞아요. 문서 사이엔 특수 토큰을 넣어 경계를 가르쳐요. 효율은 학습에 안 쓴 글로 글자당 토큰 수를 재고, 공개 토크나이저와 비교해요. 디코더 · 공백 · dtype 같은 함정을 체크하고, 한 번 정하면 못 바꾼다는 걸 기억해요.",
+    "points": [
+     "바이트 BPE: unk 없음, 대신 드문 한글은 3토큰",
+     "어휘 8k = 작은 모델에 맞는 크기 (임베딩이 본체를 삼키지 않게)",
+     "<|endoftext|> 로 문서 경계",
+     "효율 = held-out 글의 글자당 토큰, 공개 토크나이저와 비교",
+     "토크나이저는 한 번 정하면 모델 수명 내내 그대로"
+    ]
+   },
+   "jarvis": "자비스의 뇌(Ollama 모델)를 고를 때 한국어 토큰 효율을 같은 방법으로 재요 — 내 노트 1,000자가 몇 토큰이 되는지. 적을수록 한 번에 더 많은 노트를 넣고, 답도 빨라요.",
+   "words": [
+    {
+     "term": "바이트 수준 BPE",
+     "en": "byte-level BPE",
+     "easy": "글자가 아니라 바이트 256개에서 시작해 합치는 BPE",
+     "deep": "GPT-2(Radford et al. 2019)부터. unk 가 없고, UTF-8 다바이트 문자는 합쳐져야 한 토큰"
+    },
+    {
+     "term": "어휘 크기",
+     "en": "vocabulary size",
+     "easy": "토크나이저가 아는 조각의 수",
+     "deep": "GPT-2 50,257 · Llama 2 32,000 · Llama 3 128,256. 임베딩 파라미터 = V × d"
+    },
+    {
+     "term": "특수 토큰",
+     "en": "special token",
+     "easy": "글의 경계 · 역할을 표시하는 약속된 토큰",
+     "deep": "<|endoftext|>, <pad>, 대화용 <|user|> 등. BPE 합치기에서 제외되고 통째로 하나"
+    },
+    {
+     "term": "글자당 토큰",
+     "en": "tokens per character",
+     "easy": "같은 글이 몇 토큰이 되는지의 효율 지표",
+     "deep": "역수는 compression ratio. 토크나이저 간 손실 비교는 bits-per-byte 로 바꿔야 공정"
+    },
+    {
+     "term": "held-out",
+     "en": "held-out set",
+     "easy": "학습에 안 쓰고 따로 떼어 둔 평가용 글",
+     "deep": "토크나이저 · 모델 모두 held-out 으로 재야 외운 효과가 안 섞여요"
+    },
+    {
+     "term": "pre-tokenizer",
+     "en": "pre-tokenizer",
+     "easy": "BPE 전에 글을 공백 · 바이트 단위로 먼저 나누는 단계",
+     "deep": "ByteLevel 은 공백을 Ġ 로 바꿔 토큰에 붙여요. 디코더와 짝"
+    },
+    {
+     "term": "SentencePiece",
+     "en": "SentencePiece",
+     "easy": "구글의 토크나이저 도구. 유니그램 방식이 유명해요",
+     "deep": "Kudo & Richardson 2018. 공백을 ▁ 로. Llama 2 · Gemma 가 사용. 유니그램은 확률적으로 조각을 고름"
+    }
+   ],
+   "build": {
+    "title": "1주차 실습 ③ 토크나이저 8k · 32k 학습하고 효율 비교표 만들기",
+    "note": "Colab 무료(CPU) · 20~30분. 결과물: tok8k.json · tok32k.json 과 효율 비교표. 0권의 '8,000개 학습'을 두 크기 + 공개 모델 비교로 확장해요.",
+    "steps": [
+     {
+      "text": "1장의 ko_clean.jsonl 에서 마지막 1,000문서를 held-out 으로 떼어 두고, 나머지로 학습해요.",
+      "lang": "python",
+      "code": "import json\ndocs = [json.loads(l) for l in open('ko_clean.jsonl')]\ntrain_docs, test_docs = docs[:-1000], docs[-1000:]"
+     },
+     {
+      "text": "어휘 8,000 과 32,000 으로 두 번 학습해요. 본문 deep 의 코드에서 vocab_size 만 바꿔 tok8k.json · tok32k.json 으로 저장해요."
+     },
+     {
+      "text": "held-out 글로 글자당 토큰 수를 재요. 공개 토크나이저도 같은 글로 재요 (`pip install transformers`).",
+      "lang": "python",
+      "code": "from tokenizers import Tokenizer\nfrom transformers import AutoTokenizer\ntxt = '\\n'.join(d['text'] for d in test_docs)\nrows = {'mine-8k': Tokenizer.from_file('tok8k.json'), 'mine-32k': Tokenizer.from_file('tok32k.json')}\nfor name, t in rows.items():\n    print(name, len(t.encode(txt).ids) / len(txt), '토큰/글자')\nq = AutoTokenizer.from_pretrained('Qwen/Qwen3-0.6B')\nprint('qwen3', len(q(txt)['input_ids']) / len(txt), '토큰/글자')"
+     },
+     {
+      "text": "인코드 → 디코드가 원문과 같은지 확인해요. `t.decode(t.encode(s).ids) == s` 가 False 면 디코더나 공백 설정을 봐요."
+     },
+     {
+      "text": "기록표에 적어요: 어휘 크기 · 글자당 토큰 · held-out 전체 토큰 수 · 임베딩 파라미터(어휘 × 128). 3장에서 이 표의 토큰 수가 '얼마나 학습할 수 있나'의 기준이 돼요."
+     }
+    ]
+   }
+  },
+  {
+   "id": "tiny-gpt",
+   "title": "nanoGPT 코드 읽기 — 설정 숫자가 뜻하는 것",
+   "minutes": 15,
+   "week": 1,
+   "headline": "config 의 숫자 네 개가\n모델의 모양과 크기를 정해요.",
+   "lead": "n_layer · n_head · n_embd · block_size 가 무엇을 바꾸는지, 파라미터 수를 손으로 세는 법, 데이터 로더가 배치를 자르는 법, 그리고 왜 1M~10M 이 노트북의 한계인지. 0권 2주차의 명령줄을 이번엔 한 줄씩 읽어요.",
+   "sections": [
+    {
+     "title": "설정 네 개 — 깊이 · 너비 · 헤드 · 문맥",
+     "body": [
+      {
+       "t": "p",
+       "text": "nanoGPT 의 `train.py` 는 명령줄로 설정을 덮어써요. 모델 모양을 정하는 건 네 개예요. **n_layer** 는 층을 몇 번 쌓나(깊이), **n_embd** 는 토큰 하나를 몇 개 숫자로 나타내나(너비 d), **n_head** 는 어텐션을 몇 갈래로 나누나, **block_size** 는 한 번에 보는 토큰 수(문맥)예요."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "GPT-2 small (124M)",
+         "tone": "n",
+         "icon": "layers",
+         "text": "n_layer 12 · n_head 12 · n_embd 768 · block_size 1024 · 어휘 50,257. nanoGPT 의 기본값이에요."
+        },
+        {
+         "label": "shakespeare-char 예제",
+         "tone": "a",
+         "icon": "box",
+         "text": "n_layer 6 · n_head 6 · n_embd 384 · block_size 256 · 어휘 65. 약 10M. nanoGPT 저장소의 작은 설정 파일."
+        },
+        {
+         "label": "우리 1주차",
+         "tone": "c",
+         "icon": "spark",
+         "text": "n_layer 4 · n_head 4 · n_embd 128 · block_size 128 · 어휘 8,000. 약 1.8M. Colab T4 로 30분."
+        }
+       ],
+       "caption": "같은 코드, 설정만 달라요.",
+       "note": "GPT-2 · shakespeare-char 값은 karpathy/nanoGPT 저장소의 config 파일"
+      },
+      {
+       "t": "callout",
+       "kind": "tip",
+       "text": "n_embd 는 n_head 로 나누어떨어져야 해요(헤드마다 d/h 차원). 128/4 = 32, 384/6 = 64. 안 나누어지면 모델을 만들 때 바로 오류가 나요."
+      },
+      {
+       "t": "quiz",
+       "q": "'모델을 더 깊게' 만들고 싶으면 어느 설정을 올리나요?",
+       "choices": [
+        "block_size",
+        "n_layer",
+        "batch_size"
+       ],
+       "answer": 1,
+       "why": "층 수예요. n_embd 는 너비, block_size 는 문맥 길이예요."
+      }
+     ]
+    },
+    {
+     "title": "파라미터 수 세기 — 12·L·d² 의 정체",
+     "body": [
+      {
+       "t": "p",
+       "text": "층 하나엔 어텐션(Q · K · V · 출력 투영)과 피드포워드(4d 로 넓혔다 d 로 되돌리기)가 있어요. 행렬 크기를 더하면 층마다 **약 12 d²** 이에요. 층이 L 개면 12·L·d². 여기에 임베딩 표(어휘 V × d)를 더해요. 작은 모델에선 이 임베딩이 본체보다 클 수 있어요."
+      },
+      {
+       "t": "deep",
+       "title": "수식으로",
+       "body": [
+        {
+         "t": "formula",
+         "text": "어텐션: Q, K, V, O 각 d×d → 4d²   ·   FFN: d×4d + 4d×d → 8d²",
+         "note": "층 하나 = 12 d² (편향 · LayerNorm 은 작아서 뺌)"
+        },
+        {
+         "t": "formula",
+         "text": "N ≈ 12 · L · d²  +  V · d  (+ T · d 위치 임베딩)",
+         "note": "nanoGPT 는 입력 임베딩과 출력층을 공유(weight tying)해서 V·d 가 한 번만"
+        },
+        {
+         "t": "p",
+         "text": "GPT-2 small 로 검산해요: 12 × 12 × 768² = 84.9M, 임베딩 50,257 × 768 = 38.6M, 위치 1024 × 768 = 0.8M. 합 약 124M — 이름 그대로예요. nanoGPT 의 `model.get_num_params()` 는 위치 임베딩을 뺀 값을 찍어요."
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "손으로 세는 함수",
+         "code": "def count(L, d, V, T):\n    body = 12 * L * d * d\n    emb = V * d          # 입력 · 출력 공유\n    pos = T * d\n    return body, emb, body + emb + pos\nfor L, d in [(4, 128), (6, 256), (6, 384)]:\n    b, e, n = count(L, d, 8000, 128)\n    print(L, d, f'본체 {b/1e6:.2f}M  임베딩 {e/1e6:.2f}M  합 {n/1e6:.2f}M')",
+         "note": "실습에서 nanoGPT 가 찍는 숫자와 비교해 보세요. 편향 · LayerNorm 만큼 조금 달라요."
+        }
+       ]
+      },
+      {
+       "t": "bars",
+       "unit": "파라미터 (M) · 어휘 8,000 기준",
+       "items": [
+        {
+         "label": "A: 4층 · 128 — 본체 0.79 + 임베딩 1.02",
+         "value": 1.8,
+         "display": "1.8M",
+         "tone": "a"
+        },
+        {
+         "label": "B: 6층 · 256 — 본체 4.72 + 임베딩 2.05",
+         "value": 6.8,
+         "display": "6.8M",
+         "tone": "a"
+        },
+        {
+         "label": "C: 6층 · 384 — 본체 10.6 + 임베딩 3.07",
+         "value": 13.7,
+         "display": "13.7M",
+         "tone": "c"
+        }
+       ],
+       "max": 15,
+       "caption": "A 는 임베딩이 본체보다 커요. 어휘 8k 를 고른 이유가 여기서 보여요.",
+       "note": "12·L·d² + V·d 로 계산한 값 (위치 임베딩 제외). 실제 nanoGPT 출력과 소수점이 조금 달라요"
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "파라미터 수 ≈ **12·L·d² + V·d**. 작은 모델에선 어휘(V·d)가 큰 몫이라, 어휘 크기와 모델 크기를 같이 정해야 해요."
+      },
+      {
+       "t": "quiz",
+       "q": "6층 · 256차원 · 어휘 8,000 모델의 본체 파라미터는 약?",
+       "choices": [
+        "0.8M",
+        "4.7M",
+        "47M"
+       ],
+       "answer": 1,
+       "why": "12 × 6 × 256² = 4,718,592. 임베딩 2.05M 을 더하면 약 6.8M."
+      }
+     ]
+    },
+    {
+     "title": "데이터 로더 — 긴 번호열에서 임의로 잘라요",
+     "body": [
+      {
+       "t": "p",
+       "text": "nanoGPT 의 `get_batch` 는 train.bin 을 통째로 메모리에 매핑해 두고, **임의의 자리** batch_size 개를 골라 block_size 길이만큼 잘라요. 입력 x 와 정답 y 는 같은 조각을 한 칸 민 것이에요. 에포크 개념이 없고, 그냥 max_iters 번 뽑아요."
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "bin",
+         "label": "train.bin (번호열)",
+         "items": [
+          {
+           "id": "b1",
+           "text": "17"
+          },
+          {
+           "id": "b2",
+           "text": "402"
+          },
+          {
+           "id": "b3",
+           "text": "9"
+          },
+          {
+           "id": "b4",
+           "text": "1203"
+          },
+          {
+           "id": "b5",
+           "text": "55"
+          },
+          {
+           "id": "b6",
+           "text": "0"
+          },
+          {
+           "id": "b7",
+           "text": "88"
+          },
+          {
+           "id": "b8",
+           "text": "310"
+          }
+         ]
+        },
+        {
+         "id": "x",
+         "label": "x (입력)",
+         "items": []
+        },
+        {
+         "id": "y",
+         "label": "y (정답 = 한 칸 민 것)",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "번호열이 길게 이어져 있어요. 0 은 문서 경계(<|endoftext|>)예요. 숫자는 설명용이에요.",
+         "hi": [
+          "b1",
+          "b2",
+          "b3",
+          "b4",
+          "b5",
+          "b6",
+          "b7",
+          "b8"
+         ]
+        },
+        {
+         "text": "임의의 자리(여기선 2번째)에서 block_size = 4 만큼 잘라 x 로 삼아요.",
+         "hi": [
+          "b2",
+          "b3",
+          "b4",
+          "b5"
+         ],
+         "add": [
+          {
+           "row": "x",
+           "id": "x1",
+           "text": "402",
+           "tone": "a"
+          },
+          {
+           "row": "x",
+           "id": "x2",
+           "text": "9",
+           "tone": "a"
+          },
+          {
+           "row": "x",
+           "id": "x3",
+           "text": "1203",
+           "tone": "a"
+          },
+          {
+           "row": "x",
+           "id": "x4",
+           "text": "55",
+           "tone": "a"
+          }
+         ],
+         "link": [
+          {
+           "from": "b2",
+           "to": "x1"
+          },
+          {
+           "from": "b5",
+           "to": "x4"
+          }
+         ]
+        },
+        {
+         "text": "한 칸 민 조각이 y 예요. 자리마다 '다음 토큰'이 정답이 돼요.",
+         "hi": [
+          "b3",
+          "b4",
+          "b5",
+          "b6"
+         ],
+         "add": [
+          {
+           "row": "y",
+           "id": "y1",
+           "text": "9",
+           "tone": "c"
+          },
+          {
+           "row": "y",
+           "id": "y2",
+           "text": "1203",
+           "tone": "c"
+          },
+          {
+           "row": "y",
+           "id": "y3",
+           "text": "55",
+           "tone": "c"
+          },
+          {
+           "row": "y",
+           "id": "y4",
+           "text": "0",
+           "tone": "c"
+          }
+         ],
+         "link": [
+          {
+           "from": "x1",
+           "to": "y1",
+           "w": 0.6
+          },
+          {
+           "from": "x2",
+           "to": "y2",
+           "w": 0.6
+          },
+          {
+           "from": "x3",
+           "to": "y3",
+           "w": 0.6
+          },
+          {
+           "from": "x4",
+           "to": "y4",
+           "w": 0.6
+          }
+         ]
+        },
+        {
+         "text": "이걸 batch_size 개 모아 GPU 로 보내요. 한 배치에 자리 수 = batch_size × block_size 개의 '문제'가 들어 있어요.",
+         "hi": [
+          "x1",
+          "x2",
+          "x3",
+          "x4",
+          "y1",
+          "y2",
+          "y3",
+          "y4"
+         ],
+         "link": []
+        }
+       ],
+       "caption": "x 와 y 는 같은 조각을 한 칸 밀어 만든 쌍이에요. 손실은 네 자리 모두에서 계산돼요.",
+       "note": "번호는 설명용 예시예요"
+      },
+      {
+       "t": "deep",
+       "title": "get_batch 원문 읽기",
+       "body": [
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "nanoGPT train.py 의 get_batch (요약)",
+         "code": "data = np.memmap('data/ko/train.bin', dtype=np.uint16, mode='r')\nix = torch.randint(len(data) - block_size, (batch_size,))\nx = torch.stack([torch.from_numpy(data[i:i+block_size].astype(np.int64)) for i in ix])\ny = torch.stack([torch.from_numpy(data[i+1:i+1+block_size].astype(np.int64)) for i in ix])",
+         "note": "memmap 이라 수 GB 파일도 메모리에 다 올리지 않아요. 문서 경계를 무시하고 자르는 건 nanoGPT 의 단순화예요."
+        },
+        {
+         "t": "p",
+         "text": "한 스텝에 보는 토큰 수 = batch_size × block_size × gradient_accumulation_steps. 우리 설정(32 × 128 × 1)이면 4,096토큰이고, 2,000스텝이면 약 820만 토큰이에요. 1장에서 모은 토큰 수와 비교하면 '몇 에포크를 도는지' 바로 나와요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "nanoGPT 가 한 배치를 만드는 방법은?",
+       "choices": [
+        "문서를 하나씩 순서대로 읽는다",
+        "긴 번호열에서 임의의 자리를 block_size 만큼 잘라 모은다",
+        "가장 긴 문서부터 고른다"
+       ],
+       "answer": 1,
+       "why": "임의 자리 잘라내기예요. 에포크 개념 없이 max_iters 번 반복해요."
+      }
+     ]
+    },
+    {
+     "title": "왜 1M~10M 이 노트북의 한계인가",
+     "body": [
+      {
+       "t": "p",
+       "text": "메모리는 문제가 아니에요. 10M 모델은 학습 상태(16바이트/파라미터)를 다 해도 160MB 예요. 한계는 **시간과 데이터**예요. Colab 무료 T4 는 bf16 이 없고, 세션이 몇 시간이면 끊겨요. 한 세션에 돌릴 수 있는 토큰이 수천만 개 수준이라, 그 안에서 적정량(20×N)에 가까운 모델이 10M 근처예요."
+      },
+      {
+       "t": "bars",
+       "unit": "6ND 로 어림한 계산량 (PFLOPs = 10¹⁵)",
+       "items": [
+        {
+         "label": "1.8M × 1,000만 토큰",
+         "value": 0.1,
+         "display": "0.1",
+         "tone": "a"
+        },
+        {
+         "label": "6.8M × 1억 토큰",
+         "value": 4.1,
+         "display": "4.1",
+         "tone": "a"
+        },
+        {
+         "label": "13.7M × 3억 토큰",
+         "value": 24.7,
+         "display": "24.7",
+         "tone": "b"
+        },
+        {
+         "label": "124M × 100억 토큰 (GPT-2 재현)",
+         "value": 7440,
+         "display": "7,440 →",
+         "tone": "n"
+        }
+       ],
+       "max": 30,
+       "caption": "GPT-2 재현은 막대 밖이에요. 그 급은 llm.c 로 8×A100 90분, 약 $20 이 들었어요.",
+       "note": "6ND 계산값. llm.c GPT-2 124M 재현 비용은 karpathy/llm.c discussions #481 (2024)"
+      },
+      {
+       "t": "deep",
+       "title": "T4 로 시간 어림하기",
+       "body": [
+        {
+         "t": "p",
+         "text": "T4 의 fp16 텐서코어 이론 속도는 약 65 TFLOPS 예요. 작은 모델은 GPU 를 꽉 채우지 못해 효율이 10% 안팎까지 떨어져요(설명용 가정). 6.5 TFLOPS 로 4.1 PFLOPs 를 나누면 약 630초 — 그런데 실제론 데이터 로딩 · 파이썬 오버헤드 · 평가 시간이 붙어 몇 배가 걸려요. 그래서 '수천만 토큰 = 한 세션'이 현실적인 감각이에요."
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "맥(MPS)도 비슷한 급이에요. `--device=mps --compile=False` 로 돌아가요. bf16 · fp16 자동 혼합 정밀도는 MPS 에서 제약이 있으니 `--dtype=float32` 가 안전해요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "노트북에서 10M 을 넘기 어려운 진짜 이유는?",
+       "choices": [
+        "메모리가 모자라서",
+        "한 세션에 돌릴 수 있는 토큰 수가 수천만 개라 그보다 큰 모델은 데이터가 모자라서",
+        "코드가 지원 안 해서"
+       ],
+       "answer": 1,
+       "why": "10M 의 상태는 160MB 뿐이에요. 시간 × 속도가 토큰 수를 정하고, 토큰 수가 모델 크기를 정해요."
+      }
+     ]
+    },
+    {
+     "title": "config 를 파일로 — 실험을 기록하는 습관",
+     "body": [
+      {
+       "t": "p",
+       "text": "명령줄 옵션이 길어지면 실수가 늘어요. nanoGPT 는 `config/*.py` 파일을 첫 인자로 받아요. 설정을 파일로 두면 실험마다 '무엇을 바꿨는지'가 git 에 남아요. 독자 모델 팀들이 학습 로그를 공개해 의혹을 반박했듯, 우리도 **설정 파일 + 손실 로그**가 증거예요."
+      },
+      {
+       "t": "code",
+       "lang": "python",
+       "title": "config/train_ko_a.py",
+       "code": "out_dir = 'out-ko-a'\ndataset = 'ko'\nn_layer, n_head, n_embd = 4, 4, 128\nblock_size, batch_size = 128, 32\nlearning_rate, max_iters, lr_decay_iters = 1e-3, 2000, 2000\nwarmup_iters, min_lr = 100, 1e-4\neval_interval, eval_iters = 200, 50\ndropout = 0.0\ncompile = False",
+       "note": "python train.py config/train_ko_a.py 로 실행. 뒤에 --max_iters=10000 처럼 덮어쓸 수 있어요."
+      },
+      {
+       "t": "callout",
+       "kind": "tip",
+       "text": "`meta.pkl` 을 잊지 마세요. nanoGPT 는 `data/ko/meta.pkl` 에 `vocab_size` 가 있으면 그 크기로 모델을 만들고, 없으면 GPT-2 어휘(50,304)로 만들어요 — 8k 토크나이저인데 50k 임베딩이 생기는 흔한 실수예요."
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "nanoGPT 의 설정 네 개가 모델 모양을 정해요: n_layer(깊이) · n_embd(너비) · n_head(갈래) · block_size(문맥). 파라미터 수는 12·L·d² + V·d 로 손으로 셀 수 있고, 작은 모델에선 임베딩이 큰 몫이에요. 데이터 로더는 긴 번호열에서 임의 자리를 잘라 x 와 한 칸 민 y 를 만들어요. 노트북의 한계는 메모리가 아니라 한 세션에 돌릴 수 있는 토큰 수예요. 설정은 파일로 남겨요.",
+    "points": [
+     "n_layer · n_embd · n_head · block_size 가 모델 모양",
+     "N ≈ 12·L·d² + V·d — 작은 모델은 임베딩이 크다",
+     "get_batch = 임의 자리에서 block_size 자르기, y 는 한 칸 민 것",
+     "한계는 시간 × 속도 = 토큰 수, 그래서 1~10M",
+     "config 파일 + meta.pkl 을 꼭"
+    ]
+   },
+   "jarvis": "자비스 뇌로 쓸 공개 모델의 모델 카드에도 같은 숫자가 있어요 — 층 수 · 차원 · 문맥 길이. 문맥 길이(block_size)가 곧 '한 번에 넣을 수 있는 내 노트의 양'이에요.",
+   "words": [
+    {
+     "term": "n_layer",
+     "en": "number of layers",
+     "easy": "트랜스포머 층을 몇 번 쌓나 (깊이)",
+     "deep": "GPT-2 small 12, Llama 3 8B 32. 깊을수록 한 토큰이 거치는 계산이 길어요"
+    },
+    {
+     "term": "n_embd",
+     "en": "embedding dimension (d_model)",
+     "easy": "토큰 하나를 숫자 몇 개로 나타내나 (너비)",
+     "deep": "d. 파라미터는 d² 에 비례. 헤드 수로 나누어떨어져야 함"
+    },
+    {
+     "term": "n_head",
+     "en": "number of attention heads",
+     "easy": "어텐션을 몇 갈래로 나눠 각각 다른 관계를 보나",
+     "deep": "헤드당 차원 d/h. 보통 64 안팎. 파라미터 수는 안 바뀜"
+    },
+    {
+     "term": "block_size",
+     "en": "context length",
+     "easy": "한 번에 보는 토큰 수",
+     "deep": "어텐션 비용은 T² 에 비례. 학습 때 정하고, 추론 때 그 이상은 못 봐요(위치 임베딩 크기)"
+    },
+    {
+     "term": "weight tying",
+     "en": "weight tying",
+     "easy": "입력 임베딩과 출력층이 같은 표를 쓰기",
+     "deep": "Press & Wolf 2017. V·d 파라미터를 한 번만. nanoGPT · GPT-2 가 사용"
+    },
+    {
+     "term": "memmap",
+     "en": "memory-mapped file",
+     "easy": "큰 파일을 다 안 올리고 필요한 부분만 읽기",
+     "deep": "np.memmap. train.bin 이 수 GB 라도 RAM 을 안 먹어요"
+    },
+    {
+     "term": "gradient accumulation",
+     "en": "gradient accumulation",
+     "easy": "작은 배치 여러 번의 기울기를 모아 큰 배치처럼 쓰기",
+     "deep": "유효 배치 = batch × accum × GPU 수. 메모리가 작을 때 큰 배치 흉내"
+    }
+   ],
+   "build": {
+    "title": "1~2주차 실습 ④ 모델 크기 3개 비교표 만들기",
+    "note": "Colab 무료 · 20분. 결과물: A · B · C 설정 파일 3개와 비교표(파라미터 · 스텝당 토큰 · 2,000스텝 시간). 학습은 4장에서.",
+    "steps": [
+     {
+      "text": "2장의 tok8k.json 으로 ko_clean.jsonl 을 번호열로 바꿔 train.bin · val.bin · meta.pkl 을 만들어요. 문서마다 끝에 EOT 를 붙여요.",
+      "lang": "python",
+      "code": "import json, pickle, numpy as np, os\nfrom tokenizers import Tokenizer\ntok = Tokenizer.from_file('tok8k.json'); EOT = tok.token_to_id('<|endoftext|>')\nids = []\nfor l in open('ko_clean.jsonl'):\n    ids += tok.encode(json.loads(l)['text']).ids + [EOT]\nn = int(len(ids) * 0.95); os.makedirs('data/ko', exist_ok=True)\nnp.array(ids[:n], dtype=np.uint16).tofile('data/ko/train.bin')\nnp.array(ids[n:], dtype=np.uint16).tofile('data/ko/val.bin')\npickle.dump({'vocab_size': tok.get_vocab_size()}, open('data/ko/meta.pkl', 'wb'))\nprint(len(ids), '토큰')"
+     },
+     {
+      "text": "설정 파일 세 개를 만들어요: A(4층 · 128), B(6층 · 256), C(6층 · 384). 본문의 config 예시를 복사해 숫자만 바꿔요."
+     },
+     {
+      "text": "각 설정으로 20스텝만 돌려 nanoGPT 가 찍는 'number of parameters' 와 스텝당 시간을 적어요.",
+      "lang": "bash",
+      "code": "for c in a b c; do python train.py config/train_ko_$c.py --max_iters=20 --eval_interval=10 --eval_iters=5 2>&1 | grep -E 'parameters|iter 1[0-9]:'; done"
+     },
+     {
+      "text": "비교표를 채워요: 설정 · 파라미터(손 계산 vs 출력) · 스텝당 토큰(batch × block) · 스텝당 ms · 2,000스텝 예상 시간 · 20×N 토큰 vs 내 train.bin 토큰. 4장에서 돌릴 설정을 여기서 골라요 — 보통 B 가 균형이에요."
+     }
+    ]
+   }
+  },
+  {
+   "id": "pretrain-run",
+   "title": "학습 돌리기 — 손실 곡선 읽는 법",
+   "minutes": 14,
+   "week": 2,
+   "headline": "곡선 하나가 모든 걸 말해요.\n읽을 줄 알면 다음 손잡이가 보여요.",
+   "lead": "손실이 왜 처음엔 급하게 떨어지고 곧 평탄해지는지, val 이 벌어지면 왜 과적합인지, 학습률을 어떻게 찾는지, 체크포인트와 세션 끊김 대처, 혼합 정밀도 한 모금. 2주차 실습은 2,000 → 10,000 스텝이에요.",
+   "sections": [
+    {
+     "title": "시작 손실은 ln(어휘 수)예요",
+     "body": [
+      {
+       "t": "p",
+       "text": "학습 전 모델은 아무 토큰이나 같은 확률로 찍어요. 정답 확률은 1/V, 손실은 **−log(1/V) = ln V** 예요. 어휘 8,000 이면 약 **9.0**, GPT-2 어휘면 약 10.8. 첫 손실이 이보다 훨씬 크면 초기화가 이상한 거고, 훨씬 작으면 데이터가 샜을 수 있어요."
+      },
+      {
+       "t": "widget",
+       "kind": "loss",
+       "caption": "정답 확률을 1/8000 ≈ 0.0125% 쪽으로 내려 보세요. 벌점이 9 근처예요. 학습은 이 점에서 출발해요."
+      },
+      {
+       "t": "deep",
+       "title": "정확한 말로",
+       "body": [
+        {
+         "t": "formula",
+         "text": "L₀ = −log(1/V) = ln V   ·   V = 8,000 → 8.99",
+         "note": "균등 분포에서의 교차 엔트로피"
+        },
+        {
+         "t": "p",
+         "text": "몇백 스텝 만에 손실이 급하게 떨어지는 건 **단일 토큰 빈도**(유니그램)를 배우기 때문이에요. 자주 나오는 조각('은', '는', '이', '가')에 확률을 몰면 그것만으로 손실이 2~3 줄어요. 그다음 평탄한 구간에서 문맥(바이그램 → 긴 의존)을 천천히 배워요. 이 두 단계 모양은 모델 크기와 상관없이 비슷해요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "어휘 8,000 모델의 학습 시작 손실은 대략?",
+       "choices": [
+        "약 1",
+        "약 9",
+        "약 100"
+       ],
+       "answer": 1,
+       "why": "ln(8000) ≈ 9.0. 이 값에서 출발하지 않으면 뭔가 잘못됐어요."
+      }
+     ]
+    },
+    {
+     "title": "곡선 세 구간 — 급강하 · 평탄 · 벌어짐",
+     "body": [
+      {
+       "t": "scale",
+       "items": [
+        {
+         "label": "0스텝 (시작, ln V)",
+         "value": 1,
+         "tone": "n",
+         "display": "9.0"
+        },
+        {
+         "label": "200스텝 (유니그램 배움)",
+         "value": 0.67,
+         "tone": "a",
+         "display": "6.0"
+        },
+        {
+         "label": "2,000스텝 (문맥 배우는 중)",
+         "value": 0.5,
+         "tone": "a",
+         "display": "4.5"
+        },
+        {
+         "label": "10,000스텝 train",
+         "value": 0.38,
+         "tone": "c",
+         "display": "3.4"
+        },
+        {
+         "label": "10,000스텝 val",
+         "value": 0.42,
+         "tone": "b",
+         "display": "3.8"
+        }
+       ],
+       "marks": [
+        {
+         "at": 0.4,
+         "label": "train · val 사이가 벌어지기 시작"
+        }
+       ],
+       "caption": "손실 곡선을 눈금으로. 왼쪽이 낮아요. train 과 val 의 틈이 커지면 과적합이에요.",
+       "note": "설명용 예시 값이에요. 실제 값은 데이터 · 모델마다 달라요"
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "s",
+         "label": "스텝",
+         "items": [
+          {
+           "id": "s0",
+           "text": "0"
+          },
+          {
+           "id": "s1",
+           "text": "200"
+          },
+          {
+           "id": "s2",
+           "text": "2,000"
+          },
+          {
+           "id": "s3",
+           "text": "10,000"
+          }
+         ]
+        },
+        {
+         "id": "tr",
+         "label": "train 손실",
+         "items": []
+        },
+        {
+         "id": "va",
+         "label": "val 손실",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "시작: 둘 다 ln V ≈ 9.0. 설명용 숫자예요.",
+         "hi": [
+          "s0"
+         ],
+         "add": [
+          {
+           "row": "tr",
+           "id": "t0",
+           "text": "9.0",
+           "v": 1,
+           "tone": "n"
+          },
+          {
+           "row": "va",
+           "id": "v0",
+           "text": "9.0",
+           "v": 1,
+           "tone": "n"
+          }
+         ]
+        },
+        {
+         "text": "급강하: 자주 나오는 토큰을 배워 200스텝에 6.0. train 과 val 이 같이 내려가요.",
+         "hi": [
+          "s1"
+         ],
+         "add": [
+          {
+           "row": "tr",
+           "id": "t1",
+           "text": "6.0",
+           "v": 0.67,
+           "tone": "a"
+          },
+          {
+           "row": "va",
+           "id": "v1",
+           "text": "6.0",
+           "v": 0.67,
+           "tone": "a"
+          }
+         ]
+        },
+        {
+         "text": "평탄: 문맥을 배우며 천천히. 2,000스텝에 4.5. 여기서 멈추면 '덜 익은' 모델이에요.",
+         "hi": [
+          "s2"
+         ],
+         "add": [
+          {
+           "row": "tr",
+           "id": "t2",
+           "text": "4.5",
+           "v": 0.5,
+           "tone": "a"
+          },
+          {
+           "row": "va",
+           "id": "v2",
+           "text": "4.6",
+           "v": 0.51,
+           "tone": "a"
+          }
+         ]
+        },
+        {
+         "text": "벌어짐: 10,000스텝에 train 3.4, val 3.8. 데이터를 여러 번 돌아 외우기 시작했어요 — val 이 다시 올라가면 멈춰요.",
+         "hi": [
+          "s3",
+          "t3",
+          "v3"
+         ],
+         "add": [
+          {
+           "row": "tr",
+           "id": "t3",
+           "text": "3.4",
+           "v": 0.38,
+           "tone": "c"
+          },
+          {
+           "row": "va",
+           "id": "v3",
+           "text": "3.8",
+           "v": 0.42,
+           "tone": "b"
+          }
+         ],
+         "link": [
+          {
+           "from": "t3",
+           "to": "v3",
+           "w": 0.4
+          }
+         ]
+        }
+       ],
+       "caption": "train 만 내려가고 val 이 멈추거나 올라가면 과적합. 데이터를 늘리거나 dropout 을 켜거나 일찍 멈춰요.",
+       "note": "값은 설명용 예시예요"
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "곡선은 **세 구간**이에요: 급강하(빈도 배움) → 평탄(문맥 배움) → train · val 벌어짐(외우기). 우리는 세 번째가 시작되기 직전에 멈추는 걸 목표로 해요."
+      },
+      {
+       "t": "quiz",
+       "q": "train 손실은 계속 내려가는데 val 손실이 올라가기 시작했어요. 뜻은?",
+       "choices": [
+        "학습률이 너무 낮다",
+        "데이터를 외우기 시작했다(과적합) — 멈추거나 데이터를 늘린다",
+        "토크나이저가 틀렸다"
+       ],
+       "answer": 1,
+       "why": "작은 데이터를 여러 번 돌 때 흔해요. 1장에서 문서를 더 모으는 게 가장 좋은 약이에요."
+      }
+     ]
+    },
+    {
+     "title": "학습률 찾기 — 너무 크면 튀고, 너무 작으면 안 내려가요",
+     "body": [
+      {
+       "t": "p",
+       "text": "**학습률**은 한 스텝에 파라미터를 얼마나 움직이나예요. 너무 크면 손실이 튀거나 nan 이 되고, 너무 작으면 평탄 구간이 끝없이 길어요. 작은 모델은 큰 학습률을 견뎌요. nanoGPT 의 shakespeare-char 는 1e-3, GPT-2 124M 은 6e-4 를 써요. 우리도 **1e-3** 에서 시작해요."
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "① 세 개 돌려 보기",
+         "text": "3e-4 · 1e-3 · 3e-3 으로 각 300스텝. 셋 중 손실이 가장 낮은 것이 출발점이에요."
+        },
+        {
+         "title": "② 튀면 반으로",
+         "text": "손실이 갑자기 커지거나 nan 이면 학습률을 반으로. grad_clip(기본 1.0)이 켜져 있는지도 확인."
+        },
+        {
+         "title": "③ warmup 과 decay",
+         "text": "처음 100스텝은 0 에서 올리고(warmup), 끝까지 코사인으로 min_lr 까지 내려요. lr_decay_iters 를 max_iters 와 같게."
+        },
+        {
+         "title": "④ 스텝을 늘리면 다시",
+         "text": "2,000 → 10,000 으로 늘리면 lr_decay_iters 도 같이 늘려요. 아니면 이미 바닥에 닿은 학습률로 오래 돌게 돼요."
+        }
+       ],
+       "caption": "학습률 찾는 순서"
+      },
+      {
+       "t": "deep",
+       "title": "코사인 스케줄과 WSD",
+       "body": [
+        {
+         "t": "formula",
+         "text": "lr(t) = min_lr + ½ (lr − min_lr) (1 + cos(π · t / T))   (warmup 뒤)",
+         "note": "nanoGPT get_lr. T = lr_decay_iters"
+        },
+        {
+         "t": "p",
+         "text": "큰 학습은 '천천히 올리고 → 오래 유지 → 마지막에 급히 내리는' **WSD** 스케줄을 많이 써요. 유지 구간에선 총 스텝을 나중에 늘려도 되고, 내리는 구간만 다시 하면 돼서 '얼마나 돌릴지'를 미리 안 정해도 돼요. nanoGPT 엔 없지만 get_lr 몇 줄만 바꾸면 돼요."
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "학습률은 배치 크기와 묶여 있어요. 배치를 4배로 키우면 학습률도 보통 2~4배 올려요(제곱근~선형 규칙). gradient_accumulation 으로 배치를 키울 때 잊기 쉬워요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "손실이 nan 이 됐어요. 먼저 할 일은?",
+       "choices": [
+        "모델을 키운다",
+        "학습률을 반으로 줄이고 grad_clip 을 확인한다",
+        "데이터를 줄인다"
+       ],
+       "answer": 1,
+       "why": "거의 항상 학습률이에요. 작은 모델은 1e-3 안팎, 튀면 반으로."
+      }
+     ]
+    },
+    {
+     "title": "배치 · 문맥 · 체크포인트 · 세션 끊김",
+     "body": [
+      {
+       "t": "p",
+       "text": "Colab 무료는 세션이 몇 시간이면 끊기고, 창을 안 보면 더 빨리 끊겨요(정확한 시간은 공개되지 않아요). 그래서 **체크포인트를 Google Drive 에** 저장하고, `--init_from=resume` 으로 이어 돌려요. nanoGPT 는 eval_interval 마다 ckpt.pt 를 저장하고, resume 하면 스텝 · 옵티마이저 상태까지 복구해요."
+      },
+      {
+       "t": "widget",
+       "kind": "cost",
+       "presets": [
+        {
+         "label": "A 1.8M × 1,000만 토큰",
+         "n": 1800000,
+         "d": 10000000
+        },
+        {
+         "label": "B 6.8M × 4,000만 토큰 (10,000스텝)",
+         "n": 6800000,
+         "d": 41000000
+        },
+        {
+         "label": "nanochat d20 561M × 112억",
+         "n": 561000000,
+         "d": 11200000000
+        }
+       ],
+       "caption": "우리 실습은 GPU 시간으로 몇 분이에요 — 실제론 효율이 낮아 몇십 분. nanochat 급(약 $92)과 자릿수 차이를 느껴 보세요."
+      },
+      {
+       "t": "deep",
+       "title": "세션 끊김 대처 세 가지",
+       "body": [
+        {
+         "t": "code",
+         "lang": "bash",
+         "title": "Drive 에 저장하고 이어 돌리기",
+         "code": "# Colab 셀에서\nfrom google.colab import drive; drive.mount('/content/drive')\n# 첫 실행\n!python train.py config/train_ko_b.py --out_dir=/content/drive/MyDrive/out-ko-b --max_iters=2000 --lr_decay_iters=2000\n# 끊긴 뒤 (또는 늘릴 때)\n!python train.py config/train_ko_b.py --out_dir=/content/drive/MyDrive/out-ko-b --init_from=resume --max_iters=10000 --lr_decay_iters=10000",
+         "note": "resume 은 ckpt.pt 의 iter_num 부터 이어요. max_iters 를 명령줄로 덮어쓰면 그 값까지 더 돌아요."
+        },
+        {
+         "t": "p",
+         "text": "둘째, `eval_interval` 을 200~250 으로 짧게 두면 잃는 게 몇 분이에요. 셋째, 로그를 `| tee -a /content/drive/MyDrive/out-ko-b/log.txt` 로 Drive 에 같이 남겨요. 곡선 그림은 이 로그에서 만들어요 — wandb 를 켜도 되지만 로그 파일이 가장 확실해요."
+        },
+        {
+         "t": "callout",
+         "kind": "warn",
+         "text": "resume 하면 학습률 스케줄도 저장된 스텝에서 이어져요. 2,000스텝짜리 코사인이 끝난 상태에서 max_iters 만 10,000 으로 늘리면, 학습률은 이미 min_lr 이에요. lr_decay_iters 를 꼭 같이 늘려요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "Colab 세션이 끊겨도 학습을 잃지 않으려면?",
+       "choices": [
+        "batch_size 를 줄인다",
+        "체크포인트를 Drive 에 저장하고 init_from=resume 으로 이어 돌린다",
+        "학습률을 올려 빨리 끝낸다"
+       ],
+       "answer": 1,
+       "why": "out_dir 을 Drive 로. resume 은 스텝 · 옵티마이저까지 복구해요."
+      }
+     ]
+    },
+    {
+     "title": "혼합 정밀도 한 모금",
+     "body": [
+      {
+       "t": "p",
+       "text": "숫자를 32비트 대신 16비트로 계산하면 빠르고 메모리도 절반이에요. **bf16** 은 범위가 fp32 와 같아 편한데, T4 는 bf16 을 지원하지 않아요. nanoGPT 는 자동으로 **fp16** 으로 바꾸고 GradScaler 로 작은 기울기가 0 이 되는 걸 막아요. 우리 크기에선 fp32 로 돌려도 충분히 빠르니, 이상하면 `--dtype=float32` 로 돌아가면 돼요."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "fp32",
+         "tone": "n",
+         "icon": "box",
+         "text": "4바이트. 느리지만 안전. 작은 모델 · 디버깅용."
+        },
+        {
+         "label": "fp16 + GradScaler",
+         "tone": "a",
+         "icon": "spark",
+         "text": "2바이트. T4 가 지원. 범위가 좁아 손실 스케일링이 필요해요 — nanoGPT 가 자동으로."
+        },
+        {
+         "label": "bf16",
+         "tone": "c",
+         "icon": "layers",
+         "text": "2바이트. 범위는 fp32 와 같아 스케일러 불필요. A100 · H100 · 맥 M 시리즈 일부. 큰 학습의 표준."
+        }
+       ],
+       "caption": "GPU 에 따라 자동으로 골라져요. 대형 모델은 FP8 까지 내려가요(DeepSeek-V3)."
+      },
+      {
+       "t": "quiz",
+       "q": "Colab T4 에서 nanoGPT 가 bf16 대신 fp16 을 쓰는 이유는?",
+       "choices": [
+        "fp16 이 더 정확해서",
+        "T4 가 bf16 을 지원하지 않아서",
+        "코드에 bf16 이 없어서"
+       ],
+       "answer": 1,
+       "why": "하드웨어 때문이에요. fp16 은 범위가 좁아 GradScaler 가 붙어요."
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "손실은 ln V(어휘 8k 면 약 9)에서 출발해 급강하(빈도) → 평탄(문맥) → train · val 벌어짐(외우기)의 세 구간을 지나요. 학습률은 1e-3 안팎에서 세 개 돌려 고르고, 튀면 반으로, warmup 과 코사인 decay 는 max_iters 에 맞춰요. Colab 세션 끊김은 Drive 체크포인트 + resume 으로 대처하고, lr_decay_iters 도 같이 늘려요. T4 는 fp16, 이상하면 fp32 로.",
+    "points": [
+     "시작 손실 = ln V (8k → 9.0)",
+     "세 구간: 급강하 · 평탄 · 벌어짐(과적합이면 멈춤)",
+     "학습률 1e-3 에서 세 개 비교, 튀면 반으로",
+     "Drive 체크포인트 + resume, lr_decay_iters 같이",
+     "T4 는 fp16 + GradScaler, 안전은 fp32"
+    ]
+   },
+   "jarvis": "자비스에 내 모델을 꽂을 때 '어느 체크포인트'인지가 곧 버전이에요. val 손실이 가장 낮았던 ckpt 를 고르고, 그 스텝 번호를 자비스 설정에 적어 둬요.",
+   "words": [
+    {
+     "term": "손실 곡선",
+     "en": "loss curve",
+     "easy": "스텝마다 손실을 찍은 그림",
+     "deep": "train 은 노이즈가 커서 이동 평균으로, val 은 eval_interval 마다. 둘의 틈이 일반화 격차"
+    },
+    {
+     "term": "과적합",
+     "en": "overfitting",
+     "easy": "학습 데이터는 외웠는데 새 글엔 약해지는 것",
+     "deep": "val 손실이 최소를 찍고 다시 오름. 데이터 반복 횟수 · 모델 크기 · dropout 이 변수"
+    },
+    {
+     "term": "학습률",
+     "en": "learning rate",
+     "easy": "한 스텝에 파라미터를 얼마나 움직이나",
+     "deep": "AdamW 기준 작은 모델 1e-3, GPT-2 124M 6e-4, 큰 모델 1e-4 대. 배치와 묶여 조정"
+    },
+    {
+     "term": "warmup",
+     "en": "learning-rate warmup",
+     "easy": "처음 몇백 스텝 동안 학습률을 0 에서 천천히 올리기",
+     "deep": "초기 Adam 분산 추정이 불안정해서. nanoGPT warmup_iters"
+    },
+    {
+     "term": "체크포인트",
+     "en": "checkpoint",
+     "easy": "모델 · 옵티마이저 · 스텝을 파일로 저장한 것",
+     "deep": "nanoGPT ckpt.pt = model, optimizer, model_args, iter_num, best_val_loss, config"
+    },
+    {
+     "term": "혼합 정밀도",
+     "en": "mixed precision",
+     "easy": "계산은 16비트, 중요한 값은 32비트로",
+     "deep": "torch.autocast. fp16 은 GradScaler 필요, bf16 은 불필요. 마스터 가중치는 fp32"
+    },
+    {
+     "term": "기울기 클리핑",
+     "en": "gradient clipping",
+     "easy": "기울기가 너무 크면 잘라서 튀는 걸 막기",
+     "deep": "norm 이 1.0 을 넘으면 줄임. nanoGPT grad_clip=1.0 기본"
+    }
+   ],
+   "build": {
+    "title": "2주차 실습 ⑤ 2,000 → 10,000 스텝 돌리고 곡선 저장하기",
+    "note": "Colab 무료 T4 · 1~3시간(끊기면 이어서). 결과물: Drive 의 ckpt.pt · log.txt · loss.png. 0권 2주차의 2,000스텝을 resume 으로 10,000 까지 늘려요.",
+    "steps": [
+     {
+      "text": "3장 비교표에서 고른 설정(보통 B)으로 2,000스텝. out_dir 은 Drive, 로그는 tee 로.",
+      "lang": "bash",
+      "code": "python train.py config/train_ko_b.py --out_dir=/content/drive/MyDrive/out-ko-b --max_iters=2000 --lr_decay_iters=2000 2>&1 | tee -a /content/drive/MyDrive/out-ko-b/log.txt"
+     },
+     {
+      "text": "학습률 세 개(3e-4 · 1e-3 · 3e-3)를 각 300스텝씩 돌려 300스텝 손실을 비교해요. 가장 낮은 것으로 본 학습을 해요 (--out_dir 을 각각 다르게)."
+     },
+     {
+      "text": "resume 으로 10,000 까지. lr_decay_iters 를 같이 늘리는 걸 잊지 마세요.",
+      "lang": "bash",
+      "code": "python train.py config/train_ko_b.py --out_dir=/content/drive/MyDrive/out-ko-b --init_from=resume --max_iters=10000 --lr_decay_iters=10000 2>&1 | tee -a /content/drive/MyDrive/out-ko-b/log.txt"
+     },
+     {
+      "text": "로그에서 'step N: train loss X, val loss Y' 줄을 뽑아 곡선을 그려요.",
+      "lang": "python",
+      "code": "import re, matplotlib.pyplot as plt\nrows = [(int(a), float(b), float(c)) for a, b, c in re.findall(r'step (\\d+): train loss ([\\d.]+), val loss ([\\d.]+)', open('/content/drive/MyDrive/out-ko-b/log.txt').read())]\ns, tr, va = zip(*rows)\nplt.plot(s, tr, label='train'); plt.plot(s, va, label='val'); plt.axhline(9.0, ls='--', c='gray', label='ln V')\nplt.legend(); plt.xlabel('step'); plt.ylabel('loss'); plt.savefig('/content/drive/MyDrive/out-ko-b/loss.png')"
+     },
+     {
+      "text": "기록표에 적어요: 설정 · 학습률 · 2,000 과 10,000 스텝의 train/val · 최저 val 과 그 스텝 · 총 토큰 수(스텝 × batch × block) · 에포크 수(총 토큰 / train.bin 토큰). val 이 올라가기 시작한 스텝이 있으면 그것도."
+     }
+    ]
+   }
+  },
+  {
+   "id": "evaluate",
+   "title": "평가 — 숫자 하나와 내 눈, 그리고 내 시험",
+   "minutes": 12,
+   "week": 2,
+   "headline": "perplexity 는 '모델이 다음 토큰을\n몇 개 중에서 고르는 셈인가'예요.",
+   "lead": "손실을 perplexity 로 바꿔 읽고, 생성 샘플을 눈으로 보고, 내 노트로 50문제 시험을 만들고, 벤치마크 오염을 의심하고, 작은 모델에 기대할 수 있는 것을 솔직하게 적어요.",
+   "sections": [
+    {
+     "title": "perplexity = exp(평균 손실)",
+     "body": [
+      {
+       "t": "p",
+       "text": "**perplexity**(혼란도)는 평균 손실에 지수를 씌운 값이에요. 손실 9.0(ln 8000)이면 perplexity 8,000 — '8,000개 중 아무거나'예요. 손실 3.8 이면 약 45 — '45개 중에서 고르는 셈'이에요. 낮을수록 좋고, 같은 토크나이저 · 같은 평가 글에서만 비교해요."
+      },
+      {
+       "t": "bars",
+       "unit": "perplexity = exp(손실)",
+       "lower_better": true,
+       "items": [
+        {
+         "label": "손실 9.0 (시작)",
+         "value": 8103,
+         "display": "8,103",
+         "tone": "n"
+        },
+        {
+         "label": "손실 6.0",
+         "value": 403,
+         "display": "403",
+         "tone": "a"
+        },
+        {
+         "label": "손실 4.5",
+         "value": 90,
+         "display": "90",
+         "tone": "a"
+        },
+        {
+         "label": "손실 3.8",
+         "value": 45,
+         "display": "45",
+         "tone": "c"
+        }
+       ],
+       "max": 8500,
+       "caption": "손실이 1 줄면 perplexity 는 e ≈ 2.7배 줄어요. 4장의 설명용 곡선 값을 바꿔 본 거예요.",
+       "note": "exp 계산값. 손실 값은 4장의 설명용 예시"
+      },
+      {
+       "t": "deep",
+       "title": "수식과 비교 함정",
+       "body": [
+        {
+         "t": "formula",
+         "text": "PPL = exp( −(1/N) Σᵢ log P(xᵢ | x<ᵢ) ) = exp(평균 손실)",
+         "note": "토큰 단위. 자연로그 기준"
+        },
+        {
+         "t": "p",
+         "text": "토크나이저가 다르면 토큰 수 N 이 달라 PPL 을 그대로 비교할 수 없어요(2장). 공개 모델과 비교하려면 **바이트당 손실**(bits per byte)로 바꿔요. 그리고 평가 글이 학습 데이터에 섞였으면 PPL 이 비현실적으로 낮아져요 — 1장에서 held-out 을 떼어 둔 이유예요."
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "val.bin 으로 PPL 재기 (nanoGPT estimate_loss 와 같은 생각)",
+         "code": "import math, torch\nmodel.eval(); losses = []\nwith torch.no_grad():\n    for _ in range(200):\n        x, y = get_batch('val')\n        _, loss = model(x, y)\n        losses.append(loss.item())\nprint('val loss', sum(losses)/len(losses), 'ppl', math.exp(sum(losses)/len(losses)))",
+         "note": "nanoGPT model(x, y) 는 (logits, loss) 를 돌려줘요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "val 손실 3.8 인 모델의 perplexity 는 대략?",
+       "choices": [
+        "3.8",
+        "45",
+        "3,800"
+       ],
+       "answer": 1,
+       "why": "exp(3.8) ≈ 44.7. '다음 토큰을 45개 중에서 고르는 셈'이에요."
+      }
+     ]
+    },
+    {
+     "title": "생성 샘플 — 숫자가 못 보는 것",
+     "body": [
+      {
+       "t": "p",
+       "text": "PPL 이 같아도 글은 다를 수 있어요. 꼭 **직접 이어 쓰게** 해 보세요. 1.8M 모델은 조사와 띄어쓰기를 맞추는 정도, 6.8M 은 문장이 되기 시작, 13.7M 은 두세 문장이 이어지는 정도가 현실적인 기대예요(설명용 어림 — 데이터에 따라 달라요). 같은 프롬프트 · 같은 온도로 체크포인트마다 비교해요."
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "pr",
+         "label": "프롬프트",
+         "items": [
+          {
+           "id": "p1",
+           "text": "오늘"
+          },
+          {
+           "id": "p2",
+           "text": "날씨가"
+          }
+         ]
+        },
+        {
+         "id": "g",
+         "label": "모델이 이어 쓴 토큰",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "프롬프트를 토크나이저로 번호열로 바꿔 넣어요.",
+         "hi": [
+          "p1",
+          "p2"
+         ]
+        },
+        {
+         "text": "2,000스텝 모델: 토큰은 한국어인데 말이 안 돼요. 설명용 예시예요.",
+         "add": [
+          {
+           "row": "g",
+           "id": "g1",
+           "text": "정말",
+           "tone": "a"
+          },
+          {
+           "row": "g",
+           "id": "g2",
+           "text": "의",
+           "tone": "b"
+          },
+          {
+           "row": "g",
+           "id": "g3",
+           "text": "에서는",
+           "tone": "b"
+          }
+         ],
+         "hi": [
+          "g1",
+          "g2",
+          "g3"
+         ]
+        },
+        {
+         "text": "10,000스텝 모델: 조사가 맞고 짧은 문장이 돼요.",
+         "remove": [
+          "g1",
+          "g2",
+          "g3"
+         ],
+         "add": [
+          {
+           "row": "g",
+           "id": "h1",
+           "text": "정말",
+           "tone": "c"
+          },
+          {
+           "row": "g",
+           "id": "h2",
+           "text": "좋아서",
+           "tone": "c"
+          },
+          {
+           "row": "g",
+           "id": "h3",
+           "text": "산책을",
+           "tone": "c"
+          },
+          {
+           "row": "g",
+           "id": "h4",
+           "text": "했어요",
+           "tone": "c"
+          },
+          {
+           "row": "g",
+           "id": "h5",
+           "text": "<|endoftext|>",
+           "tone": "d"
+          }
+         ],
+         "hi": [
+          "h1",
+          "h2",
+          "h3",
+          "h4",
+          "h5"
+         ]
+        },
+        {
+         "text": "<|endoftext|> 가 나오면 멈춰요. 2장에서 넣은 경계 토큰이 여기서 일해요.",
+         "hi": [
+          "h5"
+         ]
+        }
+       ],
+       "caption": "같은 프롬프트로 체크포인트를 비교해요. 눈으로 보는 평가가 숫자를 보완해요.",
+       "note": "생성 결과는 설명용 예시예요"
+      },
+      {
+       "t": "deep",
+       "title": "nanoGPT sample.py 의 함정",
+       "body": [
+        {
+         "t": "callout",
+         "kind": "warn",
+         "text": "nanoGPT 의 `sample.py` 는 meta.pkl 에 글자 사전(stoi · itos)이 없으면 **GPT-2 tiktoken** 으로 디코드해요. 우리 8k 토크나이저로 학습한 모델에 그대로 쓰면 엉뚱한 글자가 나와요. 아래처럼 직접 디코드해요."
+        },
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "내 토크나이저로 생성하기",
+         "code": "import torch\nfrom tokenizers import Tokenizer\nfrom model import GPT, GPTConfig\nck = torch.load('out-ko-b/ckpt.pt', map_location='cpu')\nmodel = GPT(GPTConfig(**ck['model_args']))\nsd = {k.replace('_orig_mod.', ''): v for k, v in ck['model'].items()}\nmodel.load_state_dict(sd); model.eval()\ntok = Tokenizer.from_file('tok8k.json')\nx = torch.tensor([tok.encode('오늘 날씨가').ids])\ny = model.generate(x, max_new_tokens=60, temperature=0.8, top_k=50)\nprint(tok.decode(y[0].tolist()))",
+         "note": "'_orig_mod.' 접두어는 torch.compile 을 켰을 때 붙어요. 안 켰으면 없어요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "PPL 이 비슷한 두 체크포인트를 고를 때 이 장이 권하는 것은?",
+       "choices": [
+        "숫자가 0.01 이라도 낮은 쪽",
+        "같은 프롬프트 · 같은 온도로 이어 쓰게 해 눈으로 비교",
+        "더 늦은 스텝 쪽"
+       ],
+       "answer": 1,
+       "why": "숫자는 평균이에요. 글의 결은 눈으로 봐야 해요."
+      }
+     ]
+    },
+    {
+     "title": "내 일로 시험 만들기 — 내 노트 50문제",
+     "body": [
+      {
+       "t": "p",
+       "text": "공개 벤치마크는 우리 모델엔 너무 어려워요(KMMLU 는 4지선다 찍기 25% 근처가 나올 거예요). 대신 **내 노트 20개에서 50문제**를 만들어요. 빈칸 채우기 · 다음 문장 고르기 · 용어 뜻 묻기. 0권에서 '자비스 비교용'으로 만들라던 그 시험이에요. 작은 모델엔 **객관식을 손실로 채점**하는 방식이 맞아요."
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "① 문제 만들기",
+         "text": "노트 한 개에서 2~3문제. 질문 · 정답 · 오답 2개. JSONL 로 저장."
+        },
+        {
+         "title": "② 손실로 채점",
+         "text": "'질문 + 보기' 각각을 모델에 넣어 보기 부분의 손실을 재고, 가장 낮은 보기를 모델의 답으로 봐요. 생성시키지 않아요."
+        },
+        {
+         "title": "③ 기준선 셋",
+         "text": "찍기(33%) · 공개 모델(Ollama) · 내 모델. 셋을 같은 문제로."
+        },
+        {
+         "title": "④ 매주 같은 시험",
+         "text": "체크포인트가 바뀔 때마다 같은 50문제. 점수 변화가 곧 진척이에요."
+        }
+       ],
+       "caption": "내 시험 만드는 순서"
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "평가는 세 겹이에요: **PPL(숫자) · 생성 샘플(눈) · 내 시험(내 일)**. 하나만 보면 속아요."
+      },
+      {
+       "t": "deep",
+       "title": "보기별 손실로 채점하기",
+       "body": [
+        {
+         "t": "code",
+         "lang": "python",
+         "title": "객관식을 손실로 채점",
+         "code": "import torch\ndef score(prompt, choice):\n    ids = tok.encode(prompt + choice).ids\n    x = torch.tensor([ids[:-1]]); y = torch.tensor([ids[1:]])\n    n = len(tok.encode(prompt).ids)\n    with torch.no_grad():\n        logits, _ = model(x, y)\n    lp = torch.log_softmax(logits[0], -1).gather(1, y[0][:, None])[:, 0]\n    return -lp[n-1:].mean().item()      # 보기 부분의 평균 손실\ndef answer(q):\n    return min(range(3), key=lambda i: score(q['prompt'], q['choices'][i]))",
+         "note": "lm-eval-harness 의 loglikelihood 방식과 같은 생각이에요. 길이가 다른 보기는 평균으로 맞춰요."
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "공개 모델(Ollama)은 보기별 손실을 바로 못 재니, 그쪽은 생성 답을 사람이 채점해요. 비교가 완전히 공정하진 않다는 걸 적어 둬요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "작은 모델에 객관식 시험을 보게 할 때 권하는 채점 방식은?",
+       "choices": [
+        "답을 생성시켜 사람이 읽는다",
+        "보기마다 손실을 재서 가장 낮은 보기를 답으로 본다",
+        "KMMLU 점수를 그대로 쓴다"
+       ],
+       "answer": 1,
+       "why": "생성은 작은 모델엔 불안정해요. 손실 채점은 모델이 '어느 보기를 더 자연스럽다고 보나'를 재요."
+      }
+     ]
+    },
+    {
+     "title": "오염 의심과 솔직한 기대",
+     "body": [
+      {
+       "t": "p",
+       "text": "벤치마크 점수가 갑자기 높으면 **오염**부터 의심해요. 우리 상황에선 반대 함정이 흔해요: val.bin 이 train.bin 과 같은 문서에서 잘려 나왔으면(1장에서 중복 제거를 안 했으면) val 손실이 낮게 나와요. '비슷한 글'이 아니라 '같은 글'이 섞였는지 n-gram 겹침으로 확인해요."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "1~10M 한국어 모델이 할 수 있는 것",
+         "tone": "c",
+         "icon": "spark",
+         "text": "조사 · 띄어쓰기 · 자주 쓰는 표현. 짧은 문장 이어 쓰기. 내 노트 말투 흉내. 내 시험에서 찍기보다 나은 점수."
+        },
+        {
+         "label": "할 수 없는 것",
+         "tone": "n",
+         "icon": "box",
+         "text": "질문에 답하기(사후학습 전). 사실 기억. 긴 글의 일관성. KMMLU 같은 지식 시험. 자비스의 뇌 노릇 — 아직."
+        }
+       ],
+       "caption": "솔직한 기대. 4주차 SFT 뒤에 왼쪽이 조금 넓어져요."
+      },
+      {
+       "t": "callout",
+       "kind": "warn",
+       "text": "작은 모델에 실망하는 게 정상이에요. 이 책의 목표는 '좋은 모델'이 아니라 **파이프라인을 내 손으로 한 번 끝까지**예요. 6장에서 '키우면 무엇이 바뀌나'를 보면, 지금 만든 것이 어디까지 그대로 가는지 보여요."
+      },
+      {
+       "t": "quiz",
+       "q": "val 손실이 기대보다 훨씬 낮게 나왔을 때 먼저 의심할 것은?",
+       "choices": [
+        "모델이 천재다",
+        "val 에 train 과 같은 문서가 섞였는지(중복 · 오염)",
+        "학습률이 좋았다"
+       ],
+       "answer": 1,
+       "why": "좋은 소식은 먼저 의심해요. n-gram 겹침을 확인하고, 1장의 중복 제거를 다시 봐요."
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "perplexity 는 exp(평균 손실)이고 '다음 토큰을 몇 개 중에서 고르는 셈인가'예요. 같은 토크나이저 · 같은 held-out 글에서만 비교해요. 숫자가 못 보는 걸 생성 샘플로 보고, nanoGPT sample.py 는 내 토크나이저로 바꿔 써요. 내 노트 50문제를 보기별 손실로 채점해 찍기 · 공개 모델 · 내 모델을 비교해요. 좋은 숫자는 오염부터 의심하고, 작은 모델의 한계는 솔직하게 적어요.",
+    "points": [
+     "PPL = exp(평균 손실), 같은 토크나이저에서만 비교",
+     "생성 샘플은 내 토크나이저로 직접 디코드",
+     "내 노트 50문제, 보기별 손실로 채점",
+     "평가는 PPL · 샘플 · 내 시험 세 겹",
+     "좋은 숫자는 오염부터 의심"
+    ]
+   },
+   "jarvis": "자비스 뇌 비교표의 첫 줄이 이 50문제예요. 공개 모델(Ollama)이 몇 점, 내 모델이 몇 점 — 이 틈이 줄어드는 날이 '뇌 교체'하는 날이에요.",
+   "words": [
+    {
+     "term": "perplexity",
+     "en": "perplexity",
+     "easy": "다음 토큰을 몇 개 중에서 고르는 셈인지의 숫자. 낮을수록 좋아요",
+     "deep": "exp(평균 교차 엔트로피). 토크나이저 · 평가 집합이 같아야 비교 가능. bits-per-byte 로 정규화"
+    },
+    {
+     "term": "생성 샘플",
+     "en": "generated sample",
+     "easy": "모델이 직접 이어 쓴 글을 눈으로 보는 평가",
+     "deep": "같은 프롬프트 · 온도 · top_k 고정. 체크포인트별 비교. 정성 평가"
+    },
+    {
+     "term": "손실 채점",
+     "en": "log-likelihood scoring",
+     "easy": "보기마다 손실을 재서 가장 자연스러운 보기를 답으로 보기",
+     "deep": "lm-eval-harness 의 loglikelihood 방식. MMLU 류 객관식의 표준. 생성 없이 평가"
+    },
+    {
+     "term": "오염",
+     "en": "contamination",
+     "easy": "시험 문제가 학습 데이터에 섞인 것",
+     "deep": "n-gram 겹침 검사, 새 문제로 재평가(GSM1k). 우리 경우 train/val 중복이 같은 문제"
+    },
+    {
+     "term": "KMMLU",
+     "en": "KMMLU",
+     "easy": "한국 시험에서 가져온 35,000문제 벤치마크",
+     "deep": "번역이 아닌 한국어 원문. lm-eval --tasks kmmlu. 작은 모델은 찍기 근처"
+    },
+    {
+     "term": "기준선",
+     "en": "baseline",
+     "easy": "비교의 바닥이 되는 점수 (찍기 · 공개 모델)",
+     "deep": "찍기 = 1/보기 수. 기준선 없는 점수는 의미가 없어요"
+    }
+   ]
+  },
+  {
+   "id": "scale-up",
+   "title": "키울 때 바뀌는 것 — GPU 여러 장, 안 터지게",
+   "minutes": 13,
+   "headline": "코드는 거의 그대로예요.\n바뀌는 건 메모리 · 나누기 · 안 터지게예요.",
+   "lead": "지금 만든 파이프라인이 1B 까지 어떻게 이어지는지. 파라미터당 16바이트, 데이터 병렬 · FSDP · 텐서 병렬, loss spike 와 체크포인트, nanochat 의 $100 경로, 그리고 한국 독자 모델 보고서 읽는 법.",
+   "sections": [
+    {
+     "title": "메모리 — 파라미터당 16바이트",
+     "body": [
+      {
+       "t": "p",
+       "text": "학습엔 가중치만이 아니라 기울기와 옵티마이저 상태(AdamW 의 m · v)가 필요해요. 혼합 정밀도면 bf16 가중치 2 + fp32 마스터 4 + 기울기 2 + m 4 + v 4 = **16바이트/파라미터**예요. 7B 면 112GB — H100(80GB) 하나에 안 들어가요. 우리 13.7M 은 220MB 라 느끼지 못했던 벽이에요."
+      },
+      {
+       "t": "widget",
+       "kind": "memory",
+       "caption": "파라미터 수를 13.7M → 561M(nanochat) → 7B 로 올려 보세요. 어디서 80GB 를 넘는지."
+      },
+      {
+       "t": "deep",
+       "title": "활성값은 별도예요",
+       "body": [
+        {
+         "t": "p",
+         "text": "16바이트는 '상태'만이에요. 역전파를 위해 저장하는 중간값(**활성값**)은 배치 × 문맥 × 층 × d 에 비례해 따로 들어요. 문맥 길이를 늘리면 이게 먼저 터져요. **activation checkpointing** 은 활성값을 버렸다가 역전파 때 다시 계산해 메모리를 계산으로 바꿔요(약 33% 계산 추가)."
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "ZeRO 논문(Rajbhandari et al. 2020)이 16바이트/파라미터 셈법의 출처예요. 8비트 옵티마이저(bitsandbytes)를 쓰면 m · v 가 1바이트씩으로 줄어요."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "7B 모델을 AdamW 혼합 정밀도로 학습할 때 상태 메모리는 약?",
+       "choices": [
+        "14GB",
+        "112GB",
+        "1TB"
+       ],
+       "answer": 1,
+       "why": "16바이트 × 70억 = 112GB. 활성값은 별도예요."
+      }
+     ]
+    },
+    {
+     "title": "나누기 세 가지 — 데이터 · FSDP · 텐서",
+     "body": [
+      {
+       "t": "p",
+       "text": "GPU 가 여러 장이면 세 가지로 나눠요. **데이터 병렬**은 모델을 GPU 마다 복사하고 데이터만 나눠요 — 모델이 한 장에 들어갈 때. **FSDP**(ZeRO-3)는 가중치 · 기울기 · 옵티마이저 상태를 GPU 수로 조각내 들고, 계산할 때만 모아요. **텐서 병렬**은 행렬 하나를 여러 GPU 가 나눠 곱해요 — 한 층도 안 들어갈 때."
+      },
+      {
+       "t": "play",
+       "rows": [
+        {
+         "id": "m",
+         "label": "모델 (112GB)",
+         "items": [
+          {
+           "id": "w",
+           "text": "가중치",
+           "tone": "n"
+          },
+          {
+           "id": "g",
+           "text": "기울기",
+           "tone": "n"
+          },
+          {
+           "id": "o",
+           "text": "옵티마이저 상태",
+           "tone": "n"
+          }
+         ]
+        },
+        {
+         "id": "g0",
+         "label": "GPU 0 (80GB)",
+         "items": []
+        },
+        {
+         "id": "g1",
+         "label": "GPU 1 (80GB)",
+         "items": []
+        },
+        {
+         "id": "g2",
+         "label": "GPU 2 · 3 …",
+         "items": []
+        }
+       ],
+       "steps": [
+        {
+         "text": "모델 전체 112GB. GPU 한 장은 80GB 예요.",
+         "hi": [
+          "w",
+          "g",
+          "o"
+         ]
+        },
+        {
+         "text": "데이터 병렬: 모든 GPU 에 통째로 복사 — 각자 112GB 라 넘쳐요.",
+         "add": [
+          {
+           "row": "g0",
+           "id": "a0",
+           "text": "112GB → 넘침",
+           "tone": "b"
+          },
+          {
+           "row": "g1",
+           "id": "a1",
+           "text": "112GB → 넘침",
+           "tone": "b"
+          }
+         ],
+         "hi": [
+          "a0",
+          "a1"
+         ],
+         "link": [
+          {
+           "from": "w",
+           "to": "a0",
+           "w": 0.9
+          },
+          {
+           "from": "w",
+           "to": "a1",
+           "w": 0.9
+          }
+         ]
+        },
+        {
+         "text": "FSDP: 가중치 · 기울기 · 상태를 4조각으로. GPU 마다 28GB 만 들어요.",
+         "remove": [
+          "a0",
+          "a1"
+         ],
+         "add": [
+          {
+           "row": "g0",
+           "id": "f0",
+           "text": "1/4 · 28GB",
+           "tone": "c"
+          },
+          {
+           "row": "g1",
+           "id": "f1",
+           "text": "1/4 · 28GB",
+           "tone": "c"
+          },
+          {
+           "row": "g2",
+           "id": "f2",
+           "text": "1/4 · 28GB ×2",
+           "tone": "c"
+          }
+         ],
+         "hi": [
+          "f0",
+          "f1",
+          "f2"
+         ],
+         "link": [
+          {
+           "from": "w",
+           "to": "f0",
+           "w": 0.25
+          },
+          {
+           "from": "g",
+           "to": "f1",
+           "w": 0.25
+          },
+          {
+           "from": "o",
+           "to": "f2",
+           "w": 0.25
+          }
+         ]
+        },
+        {
+         "text": "층을 계산할 차례가 되면 그 층의 가중치만 잠깐 모았다가(all-gather) 쓰고 버려요. 통신이 늘지만 메모리는 들어가요.",
+         "hi": [
+          "f0",
+          "f1",
+          "f2"
+         ],
+         "link": [
+          {
+           "from": "f0",
+           "to": "f1",
+           "w": 0.5
+          },
+          {
+           "from": "f1",
+           "to": "f2",
+           "w": 0.5
+          }
+         ]
+        },
+        {
+         "text": "텐서 병렬은 한 층 안의 행렬을 쪼개요. 통신이 매 층마다 있어 같은 서버 안(NVLink)에서만 써요. 큰 모델은 셋을 섞어요(3D 병렬).",
+         "hi": [
+          "f0",
+          "f1",
+          "f2"
+         ],
+         "link": []
+        }
+       ],
+       "caption": "데이터 병렬 → FSDP → 텐서 병렬. 모델이 커질수록 오른쪽이 필요해요.",
+       "note": "GB 숫자는 7B · 16바이트 기준의 설명용 계산이에요"
+      },
+      {
+       "t": "callout",
+       "kind": "key",
+       "text": "나누기의 원칙은 하나예요: **메모리가 모자라면 조각내고, 조각내면 통신이 늘어요.** 그래서 MFU(실제 효율)가 큰 학습도 40% 안팎이에요."
+      },
+      {
+       "t": "deep",
+       "title": "nanoGPT 에서 FSDP 까지",
+       "body": [
+        {
+         "t": "p",
+         "text": "nanoGPT 는 `torchrun --nproc_per_node=8 train.py` 로 **DDP**(데이터 병렬)까지 지원해요. 배치를 GPU 수로 나누고 기울기를 all-reduce 로 평균해요. FSDP 는 PyTorch 의 `FullyShardedDataParallel` 로 모델을 감싸면 되고, nanochat 이 그 다음 단계의 좋은 교과서예요. 텐서 병렬은 Megatron-LM 이 원조예요(Shoeybi et al. 2019)."
+        },
+        {
+         "t": "scale",
+         "items": [
+          {
+           "label": "Llama 3 405B",
+           "value": 0.405,
+           "tone": "a",
+           "display": "38~43%"
+          },
+          {
+           "label": "Olmo 3 7B",
+           "value": 0.43,
+           "tone": "c",
+           "display": "약 43%"
+          },
+          {
+           "label": "Olmo 3 32B",
+           "value": 0.41,
+           "tone": "c",
+           "display": "약 41%"
+          }
+         ],
+         "marks": [
+          {
+           "at": 0.4,
+           "label": "40%"
+          }
+         ],
+         "caption": "큰 학습의 MFU. 통신 · 메모리 대기 · 데이터 로딩이 나머지를 먹어요.",
+         "note": "Llama 3 논문 Table 4 · Olmo 3 기술 보고서"
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "모델이 GPU 한 장에 안 들어갈 때 먼저 쓰는 방법은?",
+       "choices": [
+        "데이터 병렬 — 모델을 복사한다",
+        "FSDP — 가중치 · 기울기 · 상태를 GPU 수로 조각낸다",
+        "학습률을 줄인다"
+       ],
+       "answer": 1,
+       "why": "데이터 병렬은 복사라 안 들어가는 건 그대로예요. 조각내는 FSDP 부터."
+      }
+     ]
+    },
+    {
+     "title": "안 터지게 — loss spike · 체크포인트 · 재시작",
+     "body": [
+      {
+       "t": "p",
+       "text": "오래 돌리면 손실이 갑자기 튀는 **loss spike** 가 생겨요. 작은 모델에선 거의 못 보지만, 큰 모델은 수천 GPU 가 몇 주 도는 동안 몇 번씩 겪어요. 대처는 4장과 같아요 — 체크포인트로 되돌아가 데이터 순서를 바꾸거나 학습률을 낮춰 다시. 다만 체크포인트 하나가 수백 GB 라 저장 자체가 일이에요."
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "QK-norm",
+         "text": "어텐션 점수가 폭주하지 않게 Q · K 를 정규화해요. OLMo 2 가 안정성 장에서 꼽은 첫 번째."
+        },
+        {
+         "title": "z-loss",
+         "text": "softmax 의 분모가 너무 커지지 않게 작은 벌점을 더해요."
+        },
+        {
+         "title": "학습률 조심",
+         "text": "WSD 스케줄로 유지 구간을 길게, 내리는 건 마지막에."
+        },
+        {
+         "title": "체크포인트 자주",
+         "text": "GPU 수천 장이면 하나는 늘 고장 나요. 저장 주기 × 고장 빈도가 잃는 시간이에요."
+        },
+        {
+         "title": "데이터 순서 기록",
+         "text": "spike 난 배치를 찾아 빼려면 어느 스텝에 어느 데이터를 봤는지 남겨야 해요."
+        }
+       ],
+       "caption": "큰 학습의 안정성 체크리스트",
+       "note": "OLMo 2 기술 보고서(Ai2, 2024)의 안정성 장 기준"
+      },
+      {
+       "t": "deep",
+       "title": "우리 코드와 이어지는 것",
+       "body": [
+        {
+         "t": "p",
+         "text": "4장의 `grad_clip=1.0`, warmup, Drive 체크포인트, 로그 파일 — 전부 그대로 큰 학습의 기본이에요. 더해지는 건 QK-norm 같은 구조 손질과 '하드웨어가 고장 난다'는 전제예요. nanoGPT 의 model.py 에 QK-norm 을 넣는 건 몇 줄이고, nanochat 엔 이미 들어 있어요."
+        },
+        {
+         "t": "callout",
+         "kind": "tip",
+         "text": "DeepSeek-V3 보고서는 두 달 사전학습 동안 복구 불가능한 loss spike 가 한 번도 없었다고 적었어요. 그만큼 안정화 기술이 쌓였다는 뜻이에요 (DeepSeek-AI, 2024.12)."
+        }
+       ]
+      },
+      {
+       "t": "quiz",
+       "q": "큰 학습에서 체크포인트를 자주 저장하는 가장 큰 이유는?",
+       "choices": [
+        "디스크가 남아서",
+        "GPU 수천 장 중 하나는 늘 고장 나고, 저장 주기만큼 잃어서",
+        "손실 곡선을 그리려고"
+       ],
+       "answer": 1,
+       "why": "저장 주기 × 고장 빈도 = 잃는 시간. 그래서 저장 자체를 빠르게 하는 기술이 따로 있어요."
+      }
+     ]
+    },
+    {
+     "title": "nanochat 의 $100 경로",
+     "body": [
+      {
+       "t": "p",
+       "text": "Karpathy 의 **nanochat** 은 토크나이저 → 사전학습 → SFT → 채팅까지 한 저장소에서, 8×H100 으로 **3시간 51분, 약 $92** 에 끝내요(d20, 561M 파라미터, 112억 토큰). 우리가 이 책에서 한 다섯 단계와 같은 순서예요. 다른 점은 크기와 GPU 수뿐이에요 — 그래서 다음 교과서예요."
+      },
+      {
+       "t": "bars",
+       "unit": "공개된 학습 비용 ($)",
+       "items": [
+        {
+         "label": "우리 실습 (Colab 무료)",
+         "value": 0,
+         "display": "$0",
+         "tone": "c"
+        },
+        {
+         "label": "llm.c GPT-2 124M · 8×A100 90분",
+         "value": 20,
+         "display": "약 $20",
+         "tone": "a"
+        },
+        {
+         "label": "nanochat d20 561M · 8×H100 3h51m",
+         "value": 92,
+         "display": "약 $92",
+         "tone": "a"
+        }
+       ],
+       "max": 100,
+       "caption": "1B · 200억 토큰은 6ND 로 8×H100 반나절, 약 $200 급이에요.",
+       "note": "karpathy/llm.c discussions #481 (2024) · karpathy/nanochat discussions #1 (2025.10) · 1B 는 6ND 계산(H100 효율 40%, $2~4/시간)"
+      },
+      {
+       "t": "steps",
+       "items": [
+        {
+         "title": "nanochat 읽기",
+         "text": "github.com/karpathy/nanochat — speedrun.sh 를 한 줄씩. 우리 1~5장과 대응시켜 읽어요."
+        },
+        {
+         "title": "GPU 빌리기",
+         "text": "8×H100 노드를 시간당 빌려요(Lambda 등). 4시간이면 $100 안팎. 끊길 수 있으니 체크포인트를 밖으로."
+        },
+        {
+         "title": "한국어로 바꾸기",
+         "text": "토크나이저와 데이터를 이 책의 것으로. 영어 FineWeb 대신 FineWeb2 kor_Hang."
+        },
+        {
+         "title": "CS336 과제",
+         "text": "Stanford CS336 의 과제 5개(토크나이저 · 트랜스포머 · 시스템 · 스케일링 · 데이터/정렬)가 이 책의 '깊게' 전부예요."
+        }
+       ],
+       "caption": "이 책 다음 단계. 실습은 없고, 갈 길만 적어요."
+      },
+      {
+       "t": "quiz",
+       "q": "nanochat 이 우리 실습과 '같은' 점은?",
+       "choices": [
+        "모델 크기",
+        "토크나이저 → 데이터 → 사전학습 → 평가의 순서와 코드 구조",
+        "GPU 수"
+       ],
+       "answer": 1,
+       "why": "순서가 같아요. 크기와 GPU 수만 달라요. 그래서 다음 교과서예요."
+      }
+     ]
+    },
+    {
+     "title": "한국 독자 모델 보고서 따라 읽기",
+     "body": [
+      {
+       "t": "p",
+       "text": "기술 보고서가 공개된 한국 모델은 이 책의 다섯 장이 **실제로 어떻게 결정됐는지**를 보여 줘요. 읽는 순서는 이 책 순서와 같아요: 토크나이저(어휘 크기 · 한국어 효율 표) → 데이터(출처 · 비율 · 중복 제거) → 모델(층 · 차원 · 문맥) → 학습(학습률 · 배치 · 토큰 수 · 안정화) → 평가(KMMLU 등)."
+      },
+      {
+       "t": "compare",
+       "items": [
+        {
+         "label": "A.X K1 (SKT, 2026.1)",
+         "tone": "a",
+         "icon": "layers",
+         "text": "519B MoE · 처음부터 학습 · 한국어 토크나이저 비교표가 있어요(2장 막대의 출처). Apache 2.0."
+        },
+        {
+         "label": "EXAONE 4.0 (LG, 2025.7)",
+         "tone": "a",
+         "icon": "box",
+         "text": "32B · 1.2B. 작은 쪽 1.2B 는 설정을 우리 B · C 와 이어서 읽기 좋아요."
+        },
+        {
+         "label": "HyperCLOVA X THINK (네이버, 2025.6)",
+         "tone": "n",
+         "icon": "spark",
+         "text": "한 · 영 약 6조 토큰 사전학습 보고서. 데이터 비율 장이 1장의 '섞기'예요."
+        }
+       ],
+       "caption": "보고서마다 이 책의 장 번호를 옆에 적으며 읽어요.",
+       "note": "각 기술 보고서(arXiv) 기준. 라이선스는 바뀔 수 있으니 모델 카드 확인"
+      },
+      {
+       "t": "callout",
+       "kind": "tip",
+       "text": "보고서를 읽을 때 '우리 설정과 같은 칸'을 표로 만들어요: 어휘 크기 · 글자당 토큰 · n_layer · n_embd · block_size · 학습률 · 총 토큰 · 16바이트 × N 메모리. 우리 13.7M 줄 옆에 1.2B 줄이 생기면, 키울 때 무엇이 바뀌는지가 한눈에 보여요."
+      },
+      {
+       "t": "quiz",
+       "q": "한국 모델 기술 보고서를 이 책 순서로 읽는 이유는?",
+       "choices": [
+        "보고서가 그 순서로만 쓰여서",
+        "토크나이저 → 데이터 → 모델 → 학습 → 평가의 결정이 우리 실습과 같은 칸이라 비교표가 되어서",
+        "영어라서"
+       ],
+       "answer": 1,
+       "why": "같은 칸을 채우면 '키울 때 바뀌는 것'이 표 한 장으로 보여요."
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "title": "한 번에 이어 말하면",
+    "text": "키우면 코드는 거의 그대로고 세 가지가 바뀌어요. 메모리는 파라미터당 16바이트라 7B 부터 한 장에 안 들어가요. 그래서 데이터 병렬 → FSDP → 텐서 병렬로 나누고, 나누면 통신이 늘어 MFU 가 40% 안팎이에요. 오래 돌리면 loss spike 가 나고, QK-norm · z-loss · WSD · 잦은 체크포인트로 안 터지게 해요. nanochat 은 같은 순서를 8×H100 약 $92 로 끝내는 다음 교과서고, 한국 독자 모델 보고서는 이 책 순서대로 읽으면 비교표가 돼요.",
+    "points": [
+     "학습 메모리 ≈ 16바이트/파라미터, 활성값은 별도",
+     "데이터 병렬 → FSDP → 텐서 병렬, 조각내면 통신이 는다",
+     "loss spike 대처: QK-norm · z-loss · WSD · 체크포인트",
+     "nanochat = 같은 순서, 8×H100 3h51m 약 $92",
+     "한국 모델 보고서를 이 책 순서로 읽어 비교표 만들기"
+    ]
+   },
+   "jarvis": "자비스 뇌를 '내 모델'로 바꾸는 날이 오면, 그 모델은 이 장의 경로(nanochat 급)에서 나올 거예요. 지금 뼈대가 OpenAI 호환 API 로 뇌를 부르게 돼 있으면, 그날 바꾸는 건 주소 한 줄이에요.",
+   "words": [
+    {
+     "term": "16바이트/파라미터",
+     "en": "16 bytes per parameter",
+     "easy": "AdamW 혼합 정밀도 학습에 파라미터 하나당 드는 메모리",
+     "deep": "bf16 가중치 2 + fp32 마스터 4 + 기울기 2 + Adam m 4 + v 4. ZeRO 논문(2020) 기준"
+    },
+    {
+     "term": "활성값",
+     "en": "activations",
+     "easy": "역전파를 위해 저장해 두는 중간 계산값",
+     "deep": "배치 × 문맥 × 층 × d 에 비례. activation checkpointing 으로 재계산과 맞바꿈"
+    },
+    {
+     "term": "데이터 병렬",
+     "en": "data parallel (DDP)",
+     "easy": "모델을 GPU 마다 복사하고 데이터만 나누기",
+     "deep": "기울기 all-reduce. nanoGPT torchrun 지원. 모델이 한 장에 들어갈 때만"
+    },
+    {
+     "term": "FSDP",
+     "en": "fully sharded data parallel",
+     "easy": "가중치 · 기울기 · 상태를 GPU 수로 조각내 들기",
+     "deep": "ZeRO-3 와 같은 생각. 층 계산 때 all-gather. PyTorch FullyShardedDataParallel"
+    },
+    {
+     "term": "텐서 병렬",
+     "en": "tensor parallel",
+     "easy": "행렬 하나를 여러 GPU 가 나눠 곱하기",
+     "deep": "Megatron-LM(2019). 매 층 통신이라 NVLink 안에서. 파이프라인 병렬과 함께 3D 병렬"
+    },
+    {
+     "term": "MFU",
+     "en": "model FLOPs utilization",
+     "easy": "GPU 이론 속도 중 실제 모델 계산에 쓴 비율",
+     "deep": "6ND / (GPU 피크 × 시간). 큰 학습 38~43%. 통신 · 메모리 대기가 손실"
+    },
+    {
+     "term": "loss spike",
+     "en": "loss spike",
+     "easy": "학습 중 손실이 갑자기 튀는 것",
+     "deep": "어텐션 로짓 폭주 · 나쁜 배치 · 큰 학습률. QK-norm · z-loss · 체크포인트 복구"
+    },
+    {
+     "term": "nanochat",
+     "en": "nanochat",
+     "easy": "토크나이저부터 채팅까지 한 저장소, 8×H100 약 4시간 $100",
+     "deep": "Karpathy 2025.10. d20 561M · 112억 토큰 · 3h51m 약 $92. speedrun.sh"
+    }
+   ]
+  }
+ ]
+}

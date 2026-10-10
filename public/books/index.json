@@ -46,6 +46,128 @@
      "quizzes": 4
     }
    ]
+  },
+  {
+   "id": "how",
+   "n": 2,
+   "title": "작동 원리",
+   "short": "원리",
+   "color": "blue",
+   "headline": "모델은 글을 읽지 않아요.\n숫자를 계산해요.",
+   "lead": "토큰이 벡터가 되고, 어텐션이 섞고, 층이 쌓이고, 손실이 줄고, 한 토큰씩 나오기까지. 내 작은 GPT 를 짤 때 손에 쥐고 있어야 할 원리 여섯 개예요.",
+   "why": "0권이 지도라면 이 책은 엔진 설명서예요. 2주차에 nanoGPT 를 돌릴 때 '지금 무슨 숫자가 움직이나'를 알게 돼요.",
+   "minutes": 80,
+   "chapters": [
+    {
+     "id": "embeddings",
+     "title": "토큰에서 벡터로 — 임베딩",
+     "minutes": 12,
+     "week": 1,
+     "build": false,
+     "quizzes": 4
+    },
+    {
+     "id": "attention",
+     "title": "어텐션 — 누구를 얼마나 볼까",
+     "minutes": 14,
+     "week": 2,
+     "build": false,
+     "quizzes": 4
+    },
+    {
+     "id": "block",
+     "title": "트랜스포머 한 층 — 그리고 쌓기",
+     "minutes": 12,
+     "week": 2,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "training",
+     "title": "학습 루프 — 틀린 만큼 조금씩",
+     "minutes": 15,
+     "week": 2,
+     "build": true,
+     "quizzes": 5
+    },
+    {
+     "id": "scaling",
+     "title": "스케일링 법칙 — 얼마나 크게, 얼마나 오래",
+     "minutes": 13,
+     "week": 2,
+     "build": false,
+     "quizzes": 5
+    },
+    {
+     "id": "inference",
+     "title": "추론 — 한 토큰씩, 메모리에 묶여서",
+     "minutes": 14,
+     "week": 2,
+     "build": false,
+     "quizzes": 6
+    }
+   ]
+  },
+  {
+   "id": "build",
+   "n": 3,
+   "title": "바닥부터 만들기",
+   "short": "만들기",
+   "color": "green",
+   "headline": "작은 한국어 GPT 를\n내 손으로 끝까지 한 번.",
+   "lead": "한국어 글 모으기 → 토크나이저 → nanoGPT 읽기 → 학습 돌리기 → 평가 → 키울 때 바뀌는 것. 0권의 1 · 2주차 실습을 더 깊게 파요. GPU 없이, 돈 거의 없이.",
+   "why": "자비스의 뇌는 당분간 공개 모델이에요. 하지만 파이프라인을 한 번 끝까지 돌려 본 사람만 '뇌를 바꿔 끼울' 수 있어요. 이 책이 그 한 번이에요.",
+   "minutes": 81,
+   "chapters": [
+    {
+     "id": "data-ko",
+     "title": "한국어 데이터 — 어디서, 얼마나, 어떻게 거를까",
+     "minutes": 14,
+     "week": 1,
+     "build": true,
+     "quizzes": 4
+    },
+    {
+     "id": "tokenizer",
+     "title": "BPE 직접 학습 — 어휘 크기와 한국어 효율",
+     "minutes": 13,
+     "week": 1,
+     "build": true,
+     "quizzes": 5
+    },
+    {
+     "id": "tiny-gpt",
+     "title": "nanoGPT 코드 읽기 — 설정 숫자가 뜻하는 것",
+     "minutes": 15,
+     "week": 1,
+     "build": true,
+     "quizzes": 4
+    },
+    {
+     "id": "pretrain-run",
+     "title": "학습 돌리기 — 손실 곡선 읽는 법",
+     "minutes": 14,
+     "week": 2,
+     "build": true,
+     "quizzes": 5
+    },
+    {
+     "id": "evaluate",
+     "title": "평가 — 숫자 하나와 내 눈, 그리고 내 시험",
+     "minutes": 12,
+     "week": 2,
+     "build": false,
+     "quizzes": 4
+    },
+    {
+     "id": "scale-up",
+     "title": "키울 때 바뀌는 것 — GPU 여러 장, 안 터지게",
+     "minutes": 13,
+     "week": null,
+     "build": false,
+     "quizzes": 5
+    }
+   ]
   }
  ]
 }

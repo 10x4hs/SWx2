@@ -75,7 +75,7 @@
 /* 자비스 연결 · 실습 */
 .bk .bk-jarvis { margin-top: 28px; }
 .bk .bk-build { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; counter-reset: s; }
-.bk .bk-build > li { padding: 14px 16px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); }
+.bk .bk-build > li { min-width: 0; padding: 14px 16px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); }
 .bk .bk-step { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; cursor: pointer; font-size: 15.5px; line-height: 1.6; }
 .bk .bk-step input { width: 18px; height: 18px; margin-top: 4px; accent-color: var(--c); }
 .bk .bk-step:has(input:checked) span { color: var(--ink-3); text-decoration: line-through; }
