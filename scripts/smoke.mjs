@@ -117,11 +117,18 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: 0 }); ok(r.status === 400, "plan priority: 0 → 400");
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "" }); ok(r.status === 200 && r.data.plan.priority === null, "plan priority: '' clears");
   // 체크리스트 예상 시간: 시각 없이 mins 만
+  // 계획 길이는 1분 단위 (예전엔 5분 미만을 막았어요)
+  r = await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-27", text: "3분 스트레칭", start: "07:03", mins: 3 }); ok(r.status === 201 && r.data.plan.mins === 3 && r.data.plan.start === "07:03", "plan mins: 3분 · 07:03 ok");
+  { const sid = r.data.plan.id;
+    r = await call("a", "PATCH", "/plans/" + sid, { mins: 1 }); ok(r.status === 200 && r.data.plan.mins === 1, "plan mins: 1분으로 고치기");
+    await call("a", "DELETE", "/plans/" + sid); }
+  r = await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-27", text: "0분", start: "07:10", mins: 0 }); ok(r.status === 400, "plan mins: 0분 → 400");
   r = await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-28", text: "예상 시간 있는 할 일", mins: 120, priority: 2 });
   ok(r.status === 201 && r.data.plan.start === null && r.data.plan.mins === 120 && r.data.plan.priority === "xhigh", "checklist: mins without start + priority 2");
   { const hid = r.data.plan.id;
     r = await call("a", "PATCH", "/plans/" + hid, { mins: null }); ok(r.status === 200 && r.data.plan.mins === null, "checklist: mins null clears");
-    r = await call("a", "PATCH", "/plans/" + hid, { mins: 3 }); ok(r.status === 400, "checklist: mins 3 → 400");
+    r = await call("a", "PATCH", "/plans/" + hid, { mins: 3 }); ok(r.status === 200 && r.data.plan.mins === 3, "checklist: mins 3 → 3분 (1분 단위)");
+    r = await call("a", "PATCH", "/plans/" + hid, { mins: 0 }); ok(r.status === 400, "checklist: mins 0 → 400");
     await call("a", "DELETE", "/plans/" + hid); }
   r = await call("a", "PATCH", "/plans/" + ppid, { start: "14:35", mins: 5 }); ok(r.status === 200 && r.data.plan.start === "14:35" && r.data.plan.mins === 5, "plan: 5-minute slot");
   // 못함(빨간 표시): 켜면 끝냄은 꺼지고, 끝냄을 켜면 못함이 꺼지고, 다른 날로 미루면 지워져요

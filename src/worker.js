@@ -361,7 +361,7 @@ function checkSlot(b, into) {
   }
   if (b.mins !== undefined) {
     const m = b.mins === null ? null : Math.round(Number(b.mins));
-    if (m !== null && !(m >= 5 && m <= 1440)) fail(400, "걸리는 시간은 5분~24시간이에요.");
+    if (m !== null && !(m >= 1 && m <= 1440)) fail(400, "걸리는 시간은 1분~24시간이에요.");
     into.mins = m;
   }
 }

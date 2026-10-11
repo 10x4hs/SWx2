@@ -14,7 +14,8 @@ import { icon } from "../icons.js";
 import { BLOCKS } from "../english/data.js";
 
 const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게)
-const STEP = 5;     // 시간표는 5분 단위
+const STEP = 5;     // 시간표를 누르거나 끌 때만 5분 칸 (적는 시각 · 길이는 1분 단위)
+const DEFAULT_MINS = 60; // 새 계획의 기본 길이 — 바로 전에 넣은 길이를 따라가지 않아요
 const MIN_H = 22;   // 짧은 계획도 글자가 보이는 높이(px) — 바로 뒤에 다른 계획이 있으면 그 앞까지만
 const FLOOR = 14;   // 그래도 이만큼은 (한 줄 글자가 보이는 최소 · 10분 = 16px 이라 10분 이상은 원래 자리에 딱 맞아요)
 // 못함 버튼 — 체크(끝냄) 옆의 빨간 ✕. 누르면 계획이 빨갛게 바뀌어요 (체크리스트도 같이 써요)
@@ -37,7 +38,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   // 누구의 하루를 볼지. 친구 것은 그 사람이 open 했을 때만, 읽기 전용 (추가 · 고치기 · 끌기 없음)
   let who = startWho && ctx.users.some((u) => u.id === startWho) ? startWho : me.id; // 홈의 친구 차트에서 오면 그 친구로 시작 (보기만)
   const ro = () => who !== me.id;
-  const S = { plans: null, goals: null, diary: undefined, logs: [], english: null, record: null, notes: [], carry: 0, editSlot: null, editMins: 60 };
+  const S = { plans: null, goals: null, diary: undefined, logs: [], english: null, record: null, notes: [], carry: 0, editSlot: null };
   const wKey = periodKey("week", date), mKey = periodKey("month", date), yKey = periodKey("year", date);
   const GOAL_KEY = { week: wKey, month: mKey, year: yKey }, GOAL_LAB = { week: "이번 주", month: "이번 달", year: "올해" };
   const wk = isoWeek(date);
@@ -66,7 +67,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     <!-- 그날 판은 AI 와 시간표만 (체크리스트 · 목표 · 점수 · 일기는 각자 페이지에서: #/checklist · #/goals · 홈 차트) -->
     <section class="cd-sec dp-tt" aria-labelledby="dp-tt-t">
       <div class="cd-sh"><h3 id="dp-tt-t">하루 계획표</h3><span class="row" style="gap:8px"><span class="faint" id="dp-tt-sum"></span><a class="faint dp-more" href="#/checklist/${day}">체크리스트 ›</a></span></div>
-      <p class="dp-hint">빈 시각을 누르면 5분 단위로 바로 적을 수 있어요. Enter 추가 · Esc 닫기.</p>
+      <p class="dp-hint">빈 시각을 누르면 바로 적을 수 있어요. 시각 · 길이는 1분 단위로 고쳐도 돼요. Enter 추가 · Esc 닫기.</p>
       <div class="dp-allday" id="dp-allday" hidden></div>
       <div class="dp-scroll" id="dp-scroll"><div class="day-grid" id="dp-grid"></div></div>
     </section>`;
@@ -218,11 +219,11 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     // 추가 창: 칸을 늘리지 않고 누른 시각 위치에 떠요 (블록 위로)
     // 추가 창 · 고치기 창(우클릭 → 편집)은 같은 모양. 고칠 땐 값이 채워지고 버튼이 '저장'
     const ed = S.editId ? plans.find((x) => x.id === S.editId) : null;
-    const MINS = [5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180, 240];
-    const mins0 = ed ? ed.mins || 30 : S.editMins, minsList = MINS.includes(mins0) ? MINS : [...MINS, mins0].sort((a, b) => a - b);
+    const MINS = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180, 240];
+    const mins0 = ed ? ed.mins || 30 : DEFAULT_MINS, minsList = MINS.includes(mins0) ? MINS : [...MINS, mins0].sort((a, b) => a - b);
     const pop = S.editSlot ? `<form class="slot-add slot-pop${ed ? " editing" : ""}" data-slot-form="${S.editSlot}" ${ed ? `data-edit-id="${esc(ed.id)}"` : ""} autocomplete="off" style="top:${Math.max(0, ((toMin(S.editSlot) - startH * 60) / 60) * HOUR_PX + 2)}px">
         ${ed ? `<span class="sp-t">계획 고치기</span>` : ""}
-        <input class="input slot-at" type="time" name="at" step="300" value="${S.editSlot}" aria-label="시작 시각 (5분 단위)">
+        <input class="input slot-at" type="time" name="at" step="60" value="${S.editSlot}" aria-label="시작 시각 (1분 단위)">
         <input class="input" name="text" maxlength="200" placeholder="${S.editSlot}에 할 일" aria-label="할 일" value="${ed ? esc(ed.text) : ""}" autofocus>
         <select class="select" name="mins" aria-label="걸리는 시간">${minsList.map((m) => `<option value="${m}" ${m === mins0 ? "selected" : ""}>${hm(m)}</option>`).join("")}<option value="custom">직접 입력…</option></select><input class="input slot-mins" name="mins_text" placeholder="${MINS_HINT}" aria-label="걸리는 시간 직접 입력" autocomplete="off" hidden>
         ${prioSelect("priority", ed ? ed.priority || "" : S.editPrio || "")}
@@ -232,7 +233,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     el.classList.toggle("ro", ro());
     const u = ctx.users.find((x) => x.id === who);
     const hintEl = $(".dp-hint", el);
-    if (hintEl) hintEl.textContent = ro() ? (S.closed ? `${u?.display_name || "친구"} 님은 하루 계획표를 공개하지 않았어요 (not open).` : `${u?.display_name || "친구"} 님의 하루 계획표예요 · 보기만 할 수 있어요.`) : "빈 시각을 누르면 5분 단위로 바로 적을 수 있어요. Enter 추가 · Esc 닫기.";
+    if (hintEl) hintEl.textContent = ro() ? (S.closed ? `${u?.display_name || "친구"} 님은 하루 계획표를 공개하지 않았어요 (not open).` : `${u?.display_name || "친구"} 님의 하루 계획표예요 · 보기만 할 수 있어요.`) : "빈 시각을 누르면 바로 적을 수 있어요. 시각 · 길이는 1분 단위로 고쳐도 돼요. Enter 추가 · Esc 닫기.";
     if (ro()) { S.editSlot = null; S.editId = null; }
     const sheet = phone();
     $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine + (sheet ? "" : pop);
@@ -471,7 +472,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       catch (ex) { Object.assign(p, old); drawAll(); toast(ex.message, "err"); }
       return;
     }
-    S.editMins = mins; S.editPrio = priority || "";
+    S.editPrio = priority || "";
     try {
       await addPlan({ text, start, mins, ...(priority ? { priority } : {}) });
       // 끝난 시각에서 바로 이어서 적을 수 있게 열어 둬요 (5분 단위)

@@ -195,7 +195,7 @@ async function addPlan(env, user, a) {
   const start = scope === "day" ? normHM(a.start) : null;
   if (scope === "day" && a.start && !start) return { error: "start 는 HH:MM (24시간) 이에요." };
   let mins = scope === "day" && a.mins != null ? Math.round(+a.mins) : null;
-  if (mins != null && !(mins >= 5 && mins <= 1440)) mins = 60;
+  if (mins != null && !(mins >= 1 && mins <= 1440)) mins = 60;
   if (start && mins == null) mins = 60;
   const id = crypto.randomUUID(), t = Date.now(), period = periodOf(scope, date);
   const priority = normPrio(a.priority);
@@ -207,7 +207,7 @@ async function updatePlan(env, user, a) {
   if (!p) return { error: "그 id 의 계획이 없어요. 먼저 day_plans 로 id 를 확인해." };
   const text = a.text != null ? String(a.text).trim().slice(0, 200) || p.text : p.text;
   const start = a.start !== undefined && p.scope === "day" ? (a.start === null ? null : normHM(a.start) ?? p.start) : p.start;
-  const mins = a.mins !== undefined && p.scope === "day" ? (a.mins === null ? null : Math.min(1440, Math.max(5, Math.round(+a.mins) || 60))) : p.mins;
+  const mins = a.mins !== undefined && p.scope === "day" ? (a.mins === null ? null : Math.min(1440, Math.max(1, Math.round(+a.mins) || 60))) : p.mins;
   let period = p.period;
   if (a.date && DATE_RE.test(a.date) && p.scope === "day") period = "D:" + a.date;
   let done = a.done === undefined ? p.done : a.done ? 1 : 0;

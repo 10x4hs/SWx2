@@ -6,6 +6,7 @@
 //   ④ 논문 쉽게 읽기 — 목록 · 한 편(장면 · 퀴즈 · 목차) · 복습
 //   ⑤ 내 AI 모델 — 일정 AI 비서 칸에 고르기가 보이고, 바꾸면 계정에 저장돼 다시 열어도 그대로
 //   ⑥ 자정 AI 점수 — 지난 날 그날 화면에 점수 · 한 줄 평 · 매긴 모델, 오늘은 안 보여요
+//   ⑦ 계획 길이 — 직접 입력 '3' 은 3분으로 저장되고, 다음 계획의 기본 길이는 그대로 1시간 (전에 넣은 길이를 따라가지 않아요)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -75,6 +76,25 @@ try {
     const shown = hasPick ? await p.locator(".aic-pick select").first().inputValue().catch(() => "") : "";
     ok(hasPick && saved === "cohere" && shown === "cohere", `${tv} · 일정 AI 비서 — 모델 고르기 칸이 보이고, 바꾸면 계정에 저장 (${saved || "없음"} · 다시 열면 ${shown || "없음"})`);
     await ctx.request.patch(BASE + "/api/me", { headers: H, data: { ai_model: "" } });
+
+    // ---------- ⑦ 계획 길이: 직접 입력 3 → 3분, 다음 기본값은 1시간 ----------
+    try {
+      const day7 = new Date(Date.now() + 9 * 3600e3 + 2 * 864e5).toISOString().slice(0, 10); // 모레 (지금 시각 줄과 겹치지 않게)
+      await go("#/calendar/" + day7, 2500);
+      const hr = w > 600 ? 9 : 14, label7 = `3분 스트레칭 ${tv}`; // 컴퓨터 · 폰이 같은 날을 써서 칸이 겹치지 않게
+      await p.locator(`.hour[data-h="${hr}"] [data-slot]`).first().click({ position: { x: 40, y: 3 }, timeout: 8000 }); // 그 시각 칸 (가려져 있으면 여기서 실패해요)
+      const f = p.locator("[data-slot-form]").first();
+      await f.waitFor({ timeout: 5000 });
+      const def1 = await f.locator("select[name=mins]").inputValue().catch(() => "");
+      await f.locator("[name=text]").fill(label7);
+      await f.locator("select[name=mins]").selectOption("custom");
+      await f.locator("[name=mins_text]").fill("3");
+      await f.locator("[name=text]").press("Enter");
+      await sleep(1500);
+      const saved = (await (await ctx.request.get(BASE + "/api/plans?periods=D:" + day7)).json()).plans.find((x) => x.text === label7);
+      const def2 = await p.locator("[data-slot-form] select[name=mins]").first().inputValue().catch(() => "(창 없음)");
+      ok(def1 === "60" && saved?.mins === 3 && def2 === "60", `${tv} · 계획 길이 — 직접 입력 3 → ${saved ? saved.mins + "분" : "저장 안 됨"} · 기본값 처음 ${def1} → 다음 ${def2}`);
+    } catch (e) { const why = String(e.message).split("\n").filter((l) => /intercept|stable|outside|visible/.test(l)).slice(-2).join(" / "); ok(false, `${tv} · 계획 길이 — ${String(e.message).split("\n")[0]}${why ? " · " + why : ""}`); }
 
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
     const kst = (n) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
