@@ -44,7 +44,8 @@ export const hoursSelect = (name = "mins", cur = null, cls = "select sm hours-se
   `<select class="${cls}" name="${name}" aria-label="예상 시간"><option value="">시간</option>${hoursList(cur).map((m) => `<option value="${m}" ${cur === m ? "selected" : ""}>${hm(m)}</option>`).join("")}<option value="custom">직접 입력…</option></select>`;
 
 // 직접 적은 시간 읽기 → 분 (1분 단위, 1분~24시간). 못 읽으면 null
-//   "1.5" · "2" (15 미만의 숫자 = 시간) · "90" (15 이상 = 분) · "1:30" · "1시간 30분" · "2h" · "45m" · "90분"
+//   단위 없는 정수는 분: "3" = 3분 · "90" = 90분 (예전엔 15 미만을 시간으로 읽어서 3 → 3시간이 됐어요)
+//   소수는 시간: "1.5" = 90분 · 그 밖에 "1:30" · "1시간 30분" · "2h" · "45m" · "90분"
 export function parseMins(raw) {
   const s = String(raw || "").trim().toLowerCase().replace(/\s+/g, " ");
   if (!s) return null;
@@ -52,13 +53,14 @@ export function parseMins(raw) {
   if ((x = s.match(/^(\d{1,2}):([0-5]\d)$/))) m = +x[1] * 60 + +x[2];
   else if ((x = s.match(/^(\d+(?:\.\d+)?) ?(?:시간|h|hr|hrs|시)(?: ?(\d+) ?(?:분|m|min)?)?$/))) m = +x[1] * 60 + (+x[2] || 0);
   else if ((x = s.match(/^(\d+(?:\.\d+)?) ?(?:분|m|min|mins)$/))) m = +x[1];
-  else if ((x = s.match(/^(\d+(?:\.\d+)?)$/))) m = +x[1] < 15 ? +x[1] * 60 : +x[1];
+  else if ((x = s.match(/^\d+$/))) m = +x[0];
+  else if ((x = s.match(/^\d*\.\d+$/))) m = +x[0] * 60;
   else if ((x = s.match(/^(\d+) ?분?반$/)) || (x = s.match(/^(\d+) ?시간 ?반$/))) m = +x[1] * 60 + 30;
   if (m === null || !isFinite(m)) return null;
   m = Math.round(m);
   return m >= 1 && m <= 1440 ? m : null;
 }
-export const MINS_HINT = "예: 4분 · 7시간 · 1.5 · 1:30";
+export const MINS_HINT = "예: 3 (=3분) · 90 · 2시간 · 1.5시간 · 1:30";
 
 // 알약 자리에 작은 입력칸을 띄워 직접 적기. Enter = 저장 · Esc · 빈 채로 나가기 = 취소
 export function inlineMins(anchor, cur, onPick) {
@@ -95,7 +97,7 @@ export function openHoursDrop(anchor, cur, onPick) {
     label: "예상 시간",
     items: [
       ...hoursList(cur).map((m) => ({ v: String(m), label: hm(m), on: cur === m })),
-      { v: "custom", label: "직접 입력…", sub: "1.5 · 90분" },
+      { v: "custom", label: "직접 입력…", sub: "3 = 3분 · 2시간 · 1:30" },
       ...(cur ? [{ v: "", label: "없음", sub: "시간 지우기", clear: true }] : []),
     ],
     onPick: (v) => (v === "custom" ? inlineMins(anchor, cur, onPick) : onPick(v === "" ? null : +v)),
