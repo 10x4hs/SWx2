@@ -4,7 +4,7 @@ import { keepDraft } from "./draft.js";
 import { api } from "./api.js";
 import { esc, toast, ymd, today, nowTime } from "./util.js";
 import { icon } from "./icons.js";
-import { aiPrefs, stepsHTML } from "./ai-pick.js";
+import { aiPrefs, stepsHTML, mountAiPick, whoAnswered, modelName } from "./ai-pick.js";
 import { attachImages } from "./imgattach.js";
 
 const WRITE = new Set(["add_plan", "update_plan", "delete_plan"]);
@@ -23,7 +23,9 @@ export function mountCommand(host, opts = {}) {
       <button class="aic-go" type="submit" aria-label="실행">${icon.arrowRight(15)}</button>
     </form>
     <div class="att-tray aic-att" hidden></div>
+    <div class="aic-pick"></div>
     <div class="aic-out" hidden aria-live="polite"></div>`;
+  mountAiPick(host.querySelector(".aic-pick"), { label: "AI 모델" }); // 지금 어떤 모델로 하는지 보이고, 여기서 바로 바꿔요
   const form = host.querySelector("form"), input = host.querySelector(".aic-in"), out = host.querySelector(".aic-out");
   const draft = keepDraft(input, "aic");
   const att = attachImages({ tray: host.querySelector(".aic-att"), button: host.querySelector(".aic-img"), paste: [input], drop: [host] });
@@ -41,7 +43,8 @@ export function mountCommand(host, opts = {}) {
       const r = await api.aiCommand({ text, images, day: opts.day ? opts.day() : ymd(today()), today: ymd(today()), time: nowTime(), model: p.model || undefined, web: p.web, history, ...ctxPage });
       history = [...history, { role: "user", content: shown }, { role: "assistant", content: r.text }].slice(-8);
       // 찾아본 것(웹 · 링크 · 이미지 · 노트)과 못 한 것만 칩으로 — 넣은 계획은 답 글에 이미 있어요
-      out.innerHTML = `<p class="aic-q">${esc(shown)}</p><p class="aic-a">${r.changed ? "✓ " : ""}${linkify(r.text)}</p>${stepsHTML(r.steps?.filter((s) => !WRITE.has(s.name) || s.ok === false))}<p class="aic-m faint">${esc(r.model || "")}</p>`;
+      out.innerHTML = `<p class="aic-q">${esc(shown)}</p><p class="aic-a">${r.changed ? "✓ " : ""}${linkify(r.text)}</p>${stepsHTML(r.steps?.filter((s) => !WRITE.has(s.name) || s.ok === false))}<p class="aic-m faint" data-used></p>`;
+      whoAnswered(r.model).then(async (w) => { const el = out.querySelector("[data-used]"); if (!el || !w) return; const want = p.model; el.textContent = `답한 모델 · ${w.label}${want && w.pick && w.pick !== want ? ` (고른 ${await modelName(want)} 이 막혀서 대신 답했어요)` : ""}`; });
       if (r.changed) { window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind: "plans" } })); opts.onDone?.(true); }
       if (r.question) input.focus();
     } catch (err) { out.innerHTML = `<p class="aic-q">${esc(shown)}</p><p class="aic-a ans-err">${esc(err.message)}</p>`; toast(err.message, "err"); }

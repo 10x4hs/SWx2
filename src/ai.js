@@ -43,6 +43,14 @@ export const TEXT_ORDER = ["groq", "gemini", "cohere", "mimo", "zhipu", "openrou
 // 사용자가 고른 모델을 맨 앞에 (없거나 모르는 id 면 기본 순서). 그 모델이 막히면 뒤의 것들로 넘어가요.
 export const orderFrom = (prefer, base = TEXT_ORDER) => (prefer && MODELS[prefer] ? [prefer, ...base.filter((p) => p !== prefer)] : base);
 export const modelLabel = (id) => MODELS[id]?.label || id;
+export const isModel = (id) => typeof id === "string" && Object.hasOwn(MODELS, id);
+// 실제로 답한 모델 id(체인 안의 이름) → { pick: 고를 수 있는 이름, label } — 화면에 "Groq GPT-OSS" 처럼 보여 주려고
+export function whoAnswered(used) {
+  if (!used) return null;
+  if (used === "formula") return { pick: null, label: "계산식 (AI 가 바빠서)", used };
+  const hit = Object.entries(MODELS).find(([id, m]) => id === used || m.chain.includes(used));
+  return hit ? { pick: hit[0], label: hit[1].label, used } : { pick: null, label: used, used };
+}
 const COMPARE = ["gemini", "groq", "cohere"]; // "all" = 이 셋을 나란히 (MiMo는 따로 골라요)
 const DAILY_LIMIT = 200;             // 사람당 하루 질문 수
 // 413 = Groq "한 번에 너무 큼(분당 토큰 초과)" → 다음 모델/회사로
@@ -56,10 +64,12 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
     models: [
       // 키가 하나라도 있으면 비교를 열어 두고, 없는 모델은 meta.skipped 로 알려줘요
       { id: "all", label: "전체 비교", desc: "Gemini · Groq · Cohere 답을 나란히", available: COMPARE.some((m) => available(env, m)), targets: COMPARE },
-      ...Object.entries(MODELS).map(([id, m]) => ({ id, label: m.label, desc: m.desc, available: available(env, id) })),
+      ...Object.entries(MODELS).map(([id, m]) => ({ id, label: m.label, desc: m.desc, available: available(env, id), chain: m.chain })), // chain: 실제로 답한 모델 이름을 이 목록 이름으로 바꿔 보여 주려고
     ],
     default: "all",
   }));
+  // 내 AI 모델 (일정 · 계획 · 노트 AI 와 자정 점수 · 주간 회고가 먼저 써요) — 고르는 건 PATCH /me { ai_model }
+  on("GET", "/ai/my-model", ({ user }) => json({ model: user.ai_model || "", label: user.ai_model ? modelLabel(user.ai_model) : "자동 (되는 모델)" }));
 
   on("GET", "/ai/chats", async ({ env, user }) => {
     const { results } = await env.DB.prepare("SELECT id, title, model, updated_at FROM chats WHERE user_id = ? ORDER BY updated_at DESC LIMIT 100").bind(user.id).all();
@@ -322,7 +332,9 @@ export async function aiJson(env, system, prompt, prefer = null) {
   if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
   let lastErr = null;
   for (const p of groups) {
-    for (const model of MODELS[p].chain) {
+    // 고른 모델이 같은 회사의 다른 체인(예: gemini-pro · mimo-pro)이면 그 체인을 먼저 돌고, 막히면 회사 기본 체인으로
+    const chain = p === pv && prefer !== p ? [...new Set([...MODELS[prefer].chain, ...MODELS[p].chain])] : MODELS[p].chain;
+    for (const model of chain) {
       try { return await JSON_RUN[p](env, model, system, prompt); }
       catch (e) { lastErr = e; if (!e.retry) break; }
     }

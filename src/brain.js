@@ -147,7 +147,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
       context ? `노트 내용:\n${context}` : "",
     ].filter(Boolean).join("\n\n");
     try {
-      const prefer = typeof b.model === "string" ? b.model : null;
+      const prefer = typeof b.model === "string" && b.model ? b.model : user.ai_model || null;
       // 늘 에이전트로: 필요하면 스스로 웹 검색 · 페이지 읽기 · 내 노트 찾기 (웹 토글이 켜져 있으면 먼저 한 번 검색하고 시작)
       const vis = await withImages(env, question, images);
       const r = await runAgent(env, user, { system, messages: [{ role: "user", content: vis.text }], tools: ["web_search", "read_page", "search_notes", "read_note"], prefer, maxSteps: 4, preSearch: b.web === true ? true : "auto" });
@@ -180,7 +180,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
       `규칙: topics는 ${one ? "1개" : "2~8개"}, 정리할 노트마다 notes 항목 하나, tags 1~4개, links 0~5개(자기 자신 제외, 정말 관련 있을 때만).${similar.size ? " '비슷한 노트 후보'는 내용이 비슷하다고 계산된 노트야. 링크를 고를 때 먼저 살펴보되, 실제로 관련 있을 때만 넣어." : ""}`,
     ].filter(Boolean).join("\n\n");
 
-    const { data, used } = await ask(env, SYSTEM, prompt, typeof b.model === "string" ? b.model : null);
+    const { data, used } = await ask(env, SYSTEM, prompt, typeof b.model === "string" && b.model ? b.model : user.ai_model || null);
     const byTitle = new Map(notes.map((n) => [n.title.toLowerCase(), n]));
     const topics = (Array.isArray(data.topics) ? data.topics : []).map((t) => ({ name: cleanTopic(t?.name), summary: t?.summary })).filter((t) => t.name);
     const topicSet = new Map(topics.map((t) => [t.name.toLowerCase(), t.name]));
@@ -262,7 +262,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
       "규칙: notes는 3~7개. 제목은 짧은 개념 이름(40자 이내, [ ] | # 금지). body는 200~900자 마크다운: 핵심 정의 → 예시 → 헷갈리는 점. body 안에서 다른 새 노트나 이미 있는 노트를 [[제목]]으로 자연스럽게 연결해. 사실이 아닌 내용을 지어내지 마.",
     ].filter(Boolean).join("\n\n");
 
-    const { data, used } = await ask(env, SYSTEM, prompt, typeof b.model === "string" ? b.model : null);
+    const { data, used } = await ask(env, SYSTEM, prompt, typeof b.model === "string" && b.model ? b.model : user.ai_model || null);
     // 사용자가 적은 주제가 있으면 그래프 그룹 이름도 그걸로 (AI 가 바꿔 부르지 않게)
     const topic = (userTopic && !prev.some((t) => t.toLowerCase() === cleanTopic(data.topic).toLowerCase()) ? cleanTopic(userTopic) : cleanTopic(data.topic)) || cleanTopic(userTopic) || prev[0] || "새 주제";
     await saveTopics(env, user, [{ name: topic, summary: data.summary }], prev.some((t) => t.toLowerCase() === topic.toLowerCase()));
@@ -315,7 +315,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
   }
   on("POST", "/ai/page", async ({ req, env, user }) => {
     const b = await body(req);
-    const model = typeof b.model === "string" ? b.model : null;
+    const model = typeof b.model === "string" && b.model ? b.model : user.ai_model || null;
     const { results: mine } = await env.DB.prepare("SELECT id, title FROM notes WHERE user_id = ? ORDER BY updated_at DESC LIMIT 150").bind(user.id).all();
     const titles = mine.map((n) => n.title);
     if (b.note_id) { // 고쳐 쓰기
@@ -410,7 +410,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     const READ = new Set(["web_search", "read_page", "search_notes", "read_note"]);
     // 에이전트 바퀴: AI 가 research 를 내면 그 도구를 돌려 결과를 붙이고 다시 물어요 (최대 2번)
     for (let round = 0; ; round++) {
-      try { ({ data, used } = await aiJson(env, system, makePrompt(), typeof b.model === "string" ? b.model : null)); }
+      try { ({ data, used } = await aiJson(env, system, makePrompt(), typeof b.model === "string" && b.model ? b.model : user.ai_model || null)); }
       catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
       const want = (Array.isArray(data?.research) ? data.research : []).filter((r) => r && READ.has(r.name)).slice(0, 3);
       const acting = Array.isArray(data?.actions) && data.actions.some((a) => a && WRITE_TOOLS.has(a.name));
@@ -464,7 +464,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     try {
       const vis = await withImages(env, msgs[msgs.length - 1].content, images);
       if (vis.note) msgs[msgs.length - 1] = { role: "user", content: vis.text };
-      const r0 = await runAgent(env, user, { system, messages: msgs, tools: ["web_search", "read_page", "search_notes", "read_note", "day_plans", "add_plan", "update_plan", "delete_plan"], prefer: typeof b.model === "string" ? b.model : null, maxSteps: 4, periods, preSearch: b.web === true ? true : "auto" });
+      const r0 = await runAgent(env, user, { system, messages: msgs, tools: ["web_search", "read_page", "search_notes", "read_note", "day_plans", "add_plan", "update_plan", "delete_plan"], prefer: typeof b.model === "string" && b.model ? b.model : user.ai_model || null, maxSteps: 4, periods, preSearch: b.web === true ? true : "auto" });
       const r = { ...r0, steps: [vis.step, ...r0.steps].filter(Boolean) };
       let plan = null;
       const m = /```plan\s*([\s\S]*?)```/.exec(r.text);

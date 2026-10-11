@@ -1,5 +1,6 @@
 // Dsm-mafia — app shell: auth, routing, sidebar, command palette, focus timer.
 import { api } from "./api.js";
+import { syncAiPrefs } from "./ai-pick.js";
 import { $, $$, esc, initial, debounce, ymd, today, nowTime, toast, pad, planHash, avatar } from "./util.js";
 import { icon, appIcon } from "./icons.js";
 import * as notesView from "./views/notes.js";
@@ -63,6 +64,7 @@ const toned = (users) => users.map((u, i) => ({ ...u, color: MEMBER_TONES[i % ME
 async function enter(user) {
   ctx.users = toned((await api.users()).users);
   ctx.me = { ...user, color: ctx.users.find((u) => u.id === user.id)?.color || MEMBER_TONES[0] };
+  syncAiPrefs(ctx.me); // 계정에 저장된 AI 모델로 맞춰요
   document.documentElement.style.setProperty("--me", ctx.me.color);
   renderShell();
   // 스터디장이 정해 준 비밀번호 그대로면: 화면을 열기 전에 먼저 바꾸게 해요
