@@ -55,6 +55,7 @@ npm run db:init        # 로컬 D1에 테이블 만들기
 npm run dev            # http://localhost:8787
 npm run seed           # (선택) 예시 데이터 — dev 실행 중에
 npm test               # (선택) API+AI 테스트 — 임시 계정을 만들었다가 지워요 (AI 빼려면 SKIP_AI=1)
+npm run e2e            # (선택) 화면 검사 — 과목 탭 높이 · 여러 파일 페이지 · AI 공부책 · 논문 쉽게 읽기, 컴퓨터 · 폰 크기 (처음 한 번 npx playwright install chromium)
 ```
 
 - 계정: `gyk` · `chj` · `hsk` — 로컬에서는 **아이디만 입력하면 들어가요** (`.dev.vars` 의 `PASSWORDLESS=1`). 배포된 주소는 `wrangler.jsonc` 의 `PASSWORDLESS: "0"` 이라 비밀번호가 필요해요
@@ -239,7 +240,7 @@ public/                정적 프론트엔드 (빌드 없음, ES 모듈)
   js/ringhud.js        홈 링 차트 (시간 호 + 달성 호 + 숫자 행)
   js/chart.js          계획 화면 링 차트 · HUD
   assets/fonts, login  Geist, Geist Mono, Pretendard · 로그인 구름 사진
-scripts/               smoke.mjs(API+AI 테스트), seed.mjs(예시 데이터), add-user.mjs(계정)
+scripts/               smoke.mjs(API+AI 테스트), e2e.mjs(브라우저 화면 검사), seed.mjs(예시 데이터), add-user.mjs(계정)
 legacy/                이전 단일 파일 버전
 ```
 

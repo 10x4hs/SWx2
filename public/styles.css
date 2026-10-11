@@ -3214,9 +3214,12 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 
 /* ---------- 공부: 영어 | 논문 스위처 (Dock 아이콘 하나) ---------- */
 .study-wrap { display: flex; flex-direction: column; min-height: 100%; }
-/* 공부 탭 안의 과목 페이지: 높이를 끝까지 이어 줘야 iframe 이 기본 150px 로 쪼그라들지 않아요 (Dock #/p/ 와 같은 높이) */
-.host-page > .study-wrap { height: 100%; }
-.host-page > .study-wrap > .study-body { flex: 1; min-height: 0; }
+/* 공부 탭 안의 과목 페이지: 높이를 끝까지 이어 줘야 iframe 이 기본 150px 로 쪼그라들지 않아요 (Dock #/p/ 와 같은 높이).
+   study.js 가 지금 탭이 과목 페이지일 때만 바깥 칸에 .study-fill 을 붙여요 — 바깥 칸 이름(처음 들어온 길)에 기대면
+   영어 · 논문 · AI 탭에서 넘어올 때 규칙이 안 걸려요 (2026-10-11 고침, npm run e2e 가 모든 길을 확인해요) */
+.host.study-fill { height: 100%; }
+.study-fill > .study-wrap { height: 100%; }
+.study-fill > .study-wrap > .study-body { flex: 1; min-height: 0; }
 .study-switch { position: sticky; top: 8px; z-index: 5; align-self: center; margin: 6px auto 2px; padding: 3px; border-radius: 999px; display: inline-flex; gap: 2px; }
 .study-switch a { padding: 5px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink-3); text-decoration: none; }
 .study-switch a[aria-selected="true"] { background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); }

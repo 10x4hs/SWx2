@@ -428,7 +428,7 @@ function route() {
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>
   const host = document.createElement("div");
-  host.className = "host host-" + r.view;
+  host.className = "host host-" + (inStudy ? "study" : r.view); // 공부 탭은 어느 탭으로 들어와도 같은 껍데기 (높이는 study.js 의 .study-fill 이 정해요)
   main.replaceChildren(host);
   main.scrollTop = 0;
   lastView = inStudy ? "study" : r.view;

@@ -46,6 +46,8 @@ export function mount(root, ctx, r) {
     try { if (next !== "new") localStorage.setItem(KEY, next); } catch {}
     drawTabs();
     const isPage = nr.view === "page";
+    // 과목 페이지(iframe)는 화면 끝까지 채워야 해요. 처음 들어온 길(바로 주소 · 영어 · 논문 · AI)과 상관없이 지금 탭으로 정해요
+    root.classList.toggle("study-fill", isPage);
     const S = isPage ? { view: pageView } : SUBS.find((s) => s.key === next);
     const same = isPage ? sub?.startsWith("p:") || sub === "new" : sub === next;
     if (same && sub !== null && S.view.update) { sub = next; S.view.update(nr); return; }

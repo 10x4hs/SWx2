@@ -10,12 +10,14 @@
     "deploy:all": "bash scripts/deploy.sh",
     "seed": "node scripts/seed.mjs",
     "test": "node scripts/smoke.mjs",
+    "e2e": "node scripts/e2e.mjs",
     "db:reset": "rm -rf .wrangler/state && wrangler d1 migrations apply dsm-mafia --local",
     "user:add": "node scripts/add-user.mjs",
     "english:import": "node scripts/english-import.mjs",
     "english:sync": "node scripts/english-sync.mjs"
   },
   "devDependencies": {
+    "playwright": "1.63.0",
     "wrangler": "^4.142.0"
   },
   "dependencies": {
