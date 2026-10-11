@@ -5,6 +5,7 @@
 //   ③ AI 공부책 — 책장 · 모든 장 · 복습 · 용어 사전이 오류 없이, 가로로 넘치지 않게
 //   ④ 논문 쉽게 읽기 — 목록 · 한 편(장면 · 퀴즈 · 목차) · 복습
 //   ⑤ 내 AI 모델 — 일정 AI 비서 칸에 고르기가 보이고, 바꾸면 계정에 저장돼 다시 열어도 그대로
+//   ⑥ 자정 AI 점수 — 지난 날 그날 화면에 점수 · 한 줄 평 · 매긴 모델, 오늘은 안 보여요
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -74,6 +75,15 @@ try {
     const shown = hasPick ? await p.locator(".aic-pick select").first().inputValue().catch(() => "") : "";
     ok(hasPick && saved === "cohere" && shown === "cohere", `${tv} · 일정 AI 비서 — 모델 고르기 칸이 보이고, 바꾸면 계정에 저장 (${saved || "없음"} · 다시 열면 ${shown || "없음"})`);
     await ctx.request.patch(BASE + "/api/me", { headers: H, data: { ai_model: "" } });
+
+    // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
+    const kst = (n) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
+    execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `INSERT OR REPLACE INTO day_records (user_id, day, data, score, done, total, auto, saved_at, ai_score, ai_note, ai_model) SELECT id, '${kst(-1)}', '{"plans":[]}', 70, 1, 1, 1, 0, 82, '우선순위 높은 일을 끝냈어요.', 'openai/gpt-oss-120b' FROM users WHERE username = '${user}'`], { stdio: "ignore" });
+    await go("#/calendar/" + kst(-1), 2500);
+    const ais = await p.evaluate(() => { const b = document.querySelector("#dp-ai-score"); return b && !b.hidden ? b.innerText.replace(/\s+/g, " ") : ""; });
+    await go("#/calendar/" + kst(0), 2000);
+    const aisToday = await p.evaluate(() => !document.querySelector("#dp-ai-score")?.hidden);
+    ok(/82/.test(ais) && /Groq GPT-OSS/.test(ais) && /우선순위/.test(ais) && !aisToday, `${tv} · 자정 AI 점수 — 어제: ${ais || "안 보임"} · 오늘은 숨김 ${!aisToday}`);
 
     // ---------- ② 여러 파일 페이지 ----------
     await go("#/p/" + M, 3000);
