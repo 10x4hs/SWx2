@@ -4,6 +4,7 @@
 //   ② 여러 파일 페이지 — style.css · app.js 가 sandbox iframe 안에서 불러와지는지 (흰 화면에 글자만 뜨던 문제, 2026-10-10)
 //   ③ AI 공부책 — 책장 · 모든 장 · 복습 · 용어 사전이 오류 없이, 가로로 넘치지 않게
 //   ④ 논문 쉽게 읽기 — 목록 · 한 편(장면 · 퀴즈 · 목차) · 복습
+//   ⑤ 내 AI 모델 — 일정 AI 비서 칸에 고르기가 보이고, 바꾸면 계정에 저장돼 다시 열어도 그대로
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -18,7 +19,7 @@ for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { a
 
 const tag = Date.now().toString(36), user = "t_e2e" + tag;
 execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1"], { stdio: "ignore" });
-const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE id = '${user}'`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
+const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username = '${user}'`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
 
 // 과목 페이지: 화면을 꽉 채우는 한 장짜리 · 여러 파일(style.css · app.js)짜리
 const FULL = `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%}body{display:grid;place-items:center;background:#1b6}</style><p>꽉 차야 해요</p>`;
@@ -62,6 +63,17 @@ try {
     await p.click('#study-switch [data-sub="english"]'); await sleep(1500);
     const back = await p.evaluate(() => { const o = document.querySelector("#main > .host"), wr = document.querySelector(".study-wrap"); return { fill: o.classList.contains("study-fill"), fits: wr.scrollHeight <= wr.clientHeight + 1 }; });
     ok(!back.fill && back.fits, `${tv} · 과목에서 영어로 돌아가면 높이 고정이 풀려요`);
+
+    // ---------- ⑤ 내 AI 모델 — 일정 AI 비서 칸에서 보이고 바꾸면 계정에 남아요 ----------
+    await go("#/calendar/" + new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), 2500);
+    const pick = p.locator(".aic-pick select").first();
+    const hasPick = await pick.count() > 0;
+    if (hasPick) { await p.waitForFunction(() => document.querySelectorAll(".aic-pick select option").length > 1, null, { timeout: 8000 }).catch(() => {}); await pick.selectOption("cohere"); await sleep(1200); }
+    const saved = hasPick ? (await (await ctx.request.get(BASE + "/api/me")).json()).user.ai_model : null;
+    await go("#/calendar/" + new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), 2500);
+    const shown = hasPick ? await p.locator(".aic-pick select").first().inputValue().catch(() => "") : "";
+    ok(hasPick && saved === "cohere" && shown === "cohere", `${tv} · 일정 AI 비서 — 모델 고르기 칸이 보이고, 바꾸면 계정에 저장 (${saved || "없음"} · 다시 열면 ${shown || "없음"})`);
+    await ctx.request.patch(BASE + "/api/me", { headers: H, data: { ai_model: "" } });
 
     // ---------- ② 여러 파일 페이지 ----------
     await go("#/p/" + M, 3000);

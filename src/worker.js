@@ -1,6 +1,6 @@
 // Dsm-mafia API — Cloudflare Worker + D1.
 // Static files in ./public are served by the assets binding; only /api/* reaches this code.
-import { registerAi, aiJson } from "./ai.js";
+import { registerAi, aiJson, isModel } from "./ai.js";
 import { registerBrain } from "./brain.js";
 import { registerEnglish } from "./english.js";
 import { registerPages, servePageFile } from "./pages.js";
@@ -221,7 +221,7 @@ async function requireUser(req, env) {
   const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
   if (!m) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
+    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
   ).bind(await sha256(m[1]), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
   return { ...row, must_change_pw: mustChange(req, env, row) };
@@ -230,7 +230,7 @@ async function requireUser(req, env) {
 // 활동 상태: 정해진 단어만 · coding 이면 쓰는 AI 도구(여럿)
 const STATUSES = ["coding", "working", "studying", "reading", "resting", "sleeping", "away"], TOOLS = ["claude", "codex", "gemini"];
 const readStatus = (raw) => { try { const o = typeof raw === "string" ? JSON.parse(raw) : raw; return o && STATUSES.includes(o.s) ? { s: o.s, tools: o.s === "coding" ? (o.tools || []).filter((t) => TOOLS.includes(t)) : [], at: o.at || null } : null; } catch { return null; } };
-const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true });
+const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true, ai_model: u.ai_model || null });
 
 // ---------- auth ----------
 // 가입은 기본으로 꺼져 있어요. 계정은 scripts/add-user.mjs 로 만들어요 (ALLOW_SIGNUP=1 이면 켜짐)
@@ -318,6 +318,8 @@ on("PATCH", "/me", async ({ req, env, user }) => {
   const b = await body(req);
   const display = b.display_name !== undefined ? str(b.display_name, 12, "이름") : user.display_name;
   const goal = b.day_goal !== undefined ? Math.max(30, Math.min(960, Math.round(Number(b.day_goal) || 240))) : user.day_goal;
+  // 내 AI 모델: "" · null = 자동. 모르는 id 는 400
+  const aiModel = b.ai_model === undefined ? user.ai_model || null : b.ai_model === "" || b.ai_model === null ? null : isModel(b.ai_model) ? b.ai_model : fail(400, "없는 AI 모델이에요.");
   const color = typeof b.color === "string" && /^#[0-9a-fA-F]{6}$/.test(b.color) ? b.color : user.color;
   let bio = user.bio || null;
   if (b.bio !== undefined) {
@@ -338,8 +340,8 @@ on("PATCH", "/me", async ({ req, env, user }) => {
     else { status = readStatus({ ...b.status, at: Date.now() }); if (!status) fail(400, "상태 형식이 올바르지 않아요."); }
   }
   const plans_open = b.plans_open !== undefined ? !!b.plans_open : user.plans_open !== 0;
-  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ?, status = ?, plans_open = ? WHERE id = ?").bind(display, goal, color, bio, avatar, status ? JSON.stringify(status) : null, plans_open ? 1 : 0, user.id).run();
-  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar, status, plans_open } });
+  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ?, status = ?, plans_open = ?, ai_model = ? WHERE id = ?").bind(display, goal, color, bio, avatar, status ? JSON.stringify(status) : null, plans_open ? 1 : 0, aiModel, user.id).run();
+  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar, status, plans_open, ai_model: aiModel } });
 });
 
 on("GET", "/users", async ({ env }) => {
@@ -810,7 +812,7 @@ async function aiScoreDay(env, u, day) {
   try {
     const out = await aiJson(env,
       "너는 공부 앱의 하루 채점관이야. 하루 계획과 실행을 보고 0~100 점과 한국어 한 줄 평(40자 안팎, 다정하지만 솔직하게)을 줘. 우선순위가 높은 일(1순위·2순위·3순위)을 끝냈는지를 가장 크게 보고, 계획이 너무 적거나 비현실적이면 감점. 공부 시간도 반영.",
-      `날짜: ${day}\n하루 목표 공부 시간: ${d.goal || 240}분\n집중 기록: ${d.focus || 0}분\n계산식 점수(참고): ${r.score ?? "없음"}\n계획:\n${lines || "(없음)"}\n\nJSON 으로만: {"score": 0~100 정수, "note": "한 줄 평"}`);
+      `날짜: ${day}\n하루 목표 공부 시간: ${d.goal || 240}분\n집중 기록: ${d.focus || 0}분\n계산식 점수(참고): ${r.score ?? "없음"}\n계획:\n${lines || "(없음)"}\n\nJSON 으로만: {"score": 0~100 정수, "note": "한 줄 평"}`, u.ai_model || null);
     const v = Math.round(Number(out.data?.score));
     if (v >= 0 && v <= 100) { ai = v; note = String(out.data?.note || "").slice(0, 120); model = out.used || null; }
   } catch (e) { console.warn("AI 채점 실패", u.id, day, e.message); }
@@ -831,7 +833,7 @@ async function ensureYesterday(env, u, ec = null) {
 export async function autoSaveYesterday(env) {
   const y = kstDay(-1);
   const { results } = await env.DB.prepare(
-    "SELECT u.id, u.day_goal FROM users u WHERE EXISTS (SELECT 1 FROM plans p WHERE p.user_id = u.id AND p.period = ?) OR EXISTS (SELECT 1 FROM logs l WHERE l.user_id = u.id AND l.day = ?)"
+    "SELECT u.id, u.day_goal, u.ai_model FROM users u WHERE EXISTS (SELECT 1 FROM plans p WHERE p.user_id = u.id AND p.period = ?) OR EXISTS (SELECT 1 FROM logs l WHERE l.user_id = u.id AND l.day = ?)"
   ).bind("D:" + y, y).all();
   for (const u of results) { const s0 = await snapshotDay(env, u, y, true); if (s0) await aiScoreDay(env, u, y); }
   return { day: y, saved: results.length };

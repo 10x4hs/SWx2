@@ -3334,3 +3334,10 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .study-add { padding: 5px 9px !important; opacity: .6; }
 .study-add:hover, .study-add[aria-selected="true"] { opacity: 1; }
 .upage-sub2 { margin: -6px 0 14px; text-align: center; font-size: 13px; }
+
+/* ---------- 내 AI 모델: AI 비서 칸 아래 고르기 · 답한 모델 · AI 점수 모델 ---------- */
+.aic-pick { margin-top: 6px; }
+.aic-pick .ai-pick { justify-content: flex-end; }
+.aic-pick .select.sm { flex: 0 1 auto; max-width: 220px; }
+.ai-pick-l { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.aic-out .aic-m { font: 500 11.5px/1.5 inherit; font-family: inherit; }

@@ -89,6 +89,15 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("b", "GET", "/papers/easy"); ok(r.status === 200 && !r.data.items.some((x) => x.paper === "cmx"), "easy: private per user");
   r = await call("a", "PUT", "/papers/easy/review", { results: "x" }); ok(r.status === 400, "easy: bad results → 400");
   // AI 공부책: 장 단위 읽음 → 복습 → 실습 체크 (책 · 장 id 는 public/books/index.json 에 있어야 해요)
+  // 내 AI 모델: 계정에 저장 → /me · /ai/my-model 에 보이고, 모르는 id 는 400, "" 이면 자동으로
+  r = await call("a", "GET", "/ai/models"); ok(r.status === 200 && r.data.models.some((m) => m.id === "groq" && Array.isArray(m.chain) && m.chain.length), "ai model: list has chains");
+  r = await call("a", "PATCH", "/me", { ai_model: "groq" }); ok(r.status === 200 && r.data.user.ai_model === "groq", "ai model: set groq");
+  r = await call("a", "GET", "/me"); ok(r.data.user.ai_model === "groq", "ai model: /me shows it");
+  r = await call("a", "GET", "/ai/my-model"); ok(r.status === 200 && r.data.model === "groq" && r.data.label === "Groq GPT-OSS", "ai model: my-model label");
+  r = await call("a", "PATCH", "/me", { ai_model: "gpt-9" }); ok(r.status === 400, "ai model: unknown id → 400");
+  r = await call("a", "PATCH", "/me", { display_name: r.data?.user?.display_name || "테스트A" }); r = await call("a", "GET", "/me"); ok(r.data.user.ai_model === "groq", "ai model: other profile edits keep it");
+  r = await call("b", "GET", "/me"); ok(!r.data.user.ai_model, "ai model: per user");
+  r = await call("a", "PATCH", "/me", { ai_model: "" }); ok(r.status === 200 && r.data.user.ai_model === null, "ai model: clear → auto");
   r = await call("a", "GET", "/books/state"); ok(r.status === 200 && Array.isArray(r.data.items) && Array.isArray(r.data.tasks), "books: state");
   r = await call("a", "PUT", "/books/read", { book: "big", chapter: "question", recall: 3, total: 4 });
   { const it = r.data.items?.find((x) => x.book === "big" && x.chapter === "question"); ok(r.status === 200 && it?.stage === 1 && it.recall === 3 && it.due_day > r.data.today, "books: read → stage 1, due tomorrow"); }
