@@ -3348,3 +3348,16 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .dp-ais-b { min-width: 0; }
 .dp-ais-k { margin: 0; font-size: 12px; color: var(--ink-3); }
 .dp-ais-t { margin: 2px 0 0; font-size: 14px; line-height: 1.5; color: var(--ink); }
+
+/* ---------- Dock: 끌어서 순서 바꾸기 (dock-drag.js) ---------- */
+.dock-list { display: contents; } /* 아이콘들이 예전처럼 rail-nav 의 칸에 바로 놓여요 */
+.dock-list > [data-dock] { -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; transition: transform .18s var(--ease, ease), opacity .18s; touch-action: manipulation; }
+.dock-list > .dock-held { transform: scale(1.1); }
+.dock-list > .dock-dragging { transform: scale(1.16); opacity: .9; z-index: 10; position: relative; filter: drop-shadow(0 6px 14px rgba(0,0,0,.35)); }
+.dock-sorting, .dock-sorting * { cursor: grabbing !important; }
+.dock-sorting [data-tip]::after, .dock-sorting [data-tip]::before { display: none !important; } /* 끄는 동안 이름표는 숨겨요 */
+/* 프로필: 숨긴 친구 페이지 */
+.prof-hidden { margin: 4px 0 2px; display: grid; gap: 6px; }
+.prof-hidden-h { font-size: 12.5px; color: var(--ink-3); font-weight: 600; }
+.prof-hidden-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--ink) 5%, transparent); font-size: 14px; }
+.prof-hidden-row small { color: var(--ink-3); font-size: 12px; }

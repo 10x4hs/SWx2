@@ -6,6 +6,8 @@ import * as pageView from "./page.js";
 import { $, esc } from "../util.js";
 import { api } from "../api.js";
 import { icon } from "../icons.js";
+import { isHidden, hidePage } from "../hidden-pages.js";
+import { openMenu } from "../ctxmenu.js";
 
 const SUBS = [
   { key: "english", label: "영어", hash: "#/english", view: englishView },
@@ -35,7 +37,7 @@ export function mount(root, ctx, r) {
       + `<a role="tab" class="study-add" href="#/study/new" data-sub="new" aria-selected="${key === "new"}" title="과목 추가 — AI 가 페이지를 짜요">${icon.plus(13)}</a>`;
   }
   async function loadSubjects() {
-    try { subjects = ((await api.pages()).pages || []).filter((p) => p.place === "study"); } catch { subjects = []; }
+    try { subjects = ((await api.pages()).pages || []).filter((p) => p.place === "study" && !isHidden(p)); } catch { subjects = []; } // 내 화면에서 숨긴 친구 과목은 빼요
     drawTabs();
   }
   const keyOf = (nr) => nr.view === "papers" ? "papers" : nr.view === "books" ? "books" : nr.view === "page" ? (nr.id && nr.id !== "new" ? "p:" + nr.id : "new") : "english";
@@ -59,6 +61,19 @@ export function mount(root, ctx, r) {
     root.closest(".main")?.scrollTo?.({ top: 0 });
   }
   const onChanged = (e) => { if (e.detail?.kind === "pages") loadSubjects(); };
+  // 폰(특히 iPhone)은 길게 눌러도 contextmenu 가 안 와서 직접 띄워요
+  let holdT = null;
+  nav.addEventListener("pointerdown", (e) => { const a = e.target.closest(".study-subj.shared"); if (!a || e.pointerType === "mouse") return; const { clientX, clientY } = e; holdT = setTimeout(() => { holdT = null; a.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX, clientY })); }, 500); });
+  ["pointerup", "pointercancel", "pointermove"].forEach((t) => nav.addEventListener(t, () => { clearTimeout(holdT); holdT = null; }));
+  // 친구 과목 탭: 오른쪽 클릭 · 길게 누르기 → 내 화면에서 숨기기
+  nav.addEventListener("contextmenu", (e) => {
+    const a = e.target.closest(".study-subj.shared"); if (!a) return;
+    const p = subjects.find((x) => "p:" + x.id === a.dataset.sub); if (!p) return;
+    openMenu(e, { title: p.title, items: [{ k: "open", label: "열기" }, { k: "hide", label: "내 화면에서 숨기기" }], onPick: async (k) => {
+      if (k === "open") ctx.go("#/study/" + p.id);
+      if (k === "hide") { await hidePage(p); if (cur.view === "page" && cur.id === p.id) ctx.go("#/english"); }
+    } });
+  });
   window.addEventListener("trio:changed", onChanged);
   inst = { update: show };
   show(r); loadSubjects();
