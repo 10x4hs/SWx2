@@ -2,6 +2,7 @@
 // 할 일(시간 없는 목표) · 시간표 · 하루 점수 · 실행 기록 · 일기 · 그날 한 공부. 앞으로 올 날은 할 일 · 시간표만.
 // 전부 나만 봐요. 할 일 옆 ▶ 를 누르면 집중 타이머가 그 할 일 이름으로 시작하고, 끝나면 그 할 일에 집중 시간이 쌓여요.
 import { mountCommand } from "../ai-command.js";
+import { whoAnswered } from "../ai-pick.js";
 import { api } from "../api.js";
 import {
   $, $$, esc, avatar, pad, hm, toMin, toTime, nowTime, ymd, parseYmd, addDays, today,
@@ -60,6 +61,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       </div>
     </header>
     <div id="dp-aic"></div>
+    <div class="dp-ai-score" id="dp-ai-score" hidden></div>
     ${future ? `<p class="dp-note">앞으로 올 날이에요. 시간표를 미리 적어 두면 그날 홈 차트에 그대로 나와요.</p>` : ""}
     <!-- 그날 판은 AI 와 시간표만 (체크리스트 · 목표 · 점수 · 일기는 각자 페이지에서: #/checklist · #/goals · 홈 차트) -->
     <section class="cd-sec dp-tt" aria-labelledby="dp-tt-t">
@@ -116,23 +118,14 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       <text x="55" y="58" text-anchor="middle" class="gl-big">${esc(big)}</text><text x="55" y="75" text-anchor="middle" class="gl-cap">${esc(cap)}</text>
     </svg>`;
   }
+  // 자정 AI 점수: 지난 날(내 하루)에 점수 · 한 줄 평 · 매긴 모델을 작게 (오늘은 아직 없고, 친구 하루엔 내 기록이 아니라서 안 보여요)
   function drawScore() {
-    const ring = $("#dp-sc-ring", el); if (!ring || !S.plans) return;
-    const sc = dayScore(S.plans, me.day_goal), ai = S.record?.ai_score;
-    // 점수는 자정에 AI 가 매겨요. 오늘은 지금까지 모습으로 미리보기(참고)만
-    if (ai != null) ring.innerHTML = glassRing(ai / 100, String(ai), "AI 점수");
-    else ring.innerHTML = glassRing(sc.score == null ? 0 : sc.score / 100, sc.score == null ? "–" : String(sc.score), isToday ? "미리보기" : "계산");
-    $("#dp-sc-sub", el).textContent = sc.count ? `실행 ${pct(sc.exec)}% · 계획 ${pct(sc.plan)}%` : "할 일을 넣으면 점수가 생겨요";
-    const note = $("#dp-sc-note", el);
-    if (note) note.innerHTML = ai != null ? `${icon.spark(12)} <b>AI</b> ${esc(S.record.ai_note || "")}` : isToday ? `${icon.spark(12)} 자정이 지나면 AI가 오늘을 보고 점수와 한 줄 평을 기록해요.` : `<span class="faint">이날은 AI 점수가 아직 없어요.</span>`;
-    // 우선순위 색 차트: 단계마다 끝낸 수 / 전체 (진한 색 = 끝낸 몫)
-    const rows = [...PRIOS.map((p) => p.k), "none"].map((k) => {
-      const list = S.plans.filter((p) => (p.priority || "none") === k); return { k, n: list.length, d: list.filter((p) => p.done).length };
-    }).filter((r) => r.n);
-    const max = Math.max(1, ...rows.map((r) => r.n));
-    $("#dp-sc-prio", el).innerHTML = rows.length ? rows.map((r) => `<div class="pb" style="--pc:${PRIO_COL[r.k]}"><span class="pb-l">${r.k === "none" ? "없음" : PRIOS.find((x) => x.k === r.k).label}</span><span class="pb-t" style="--w:${(r.n / max) * 100}%"><i style="--f:${(r.d / r.n) * 100}%"></i></span><span class="pb-n">${r.d}/${r.n}</span></div>`).join("")
-      : `<p class="faint pb-empty">우선순위를 고르면 여기에 색으로 쌓여요.</p>`;
-    drawTrend();
+    const box = $("#dp-ai-score", el); if (!box) return;
+    const r = S.record;
+    if (isToday || future || ro() || !r || r.ai_score == null) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = `<span class="dp-ais-n">${esc(r.ai_score)}</span><div class="dp-ais-b"><p class="dp-ais-k">${icon.spark(12)} AI 점수 · 자정에 매겼어요<span data-ai-model></span></p>${r.ai_note ? `<p class="dp-ais-t">${esc(r.ai_note)}</p>` : ""}</div>`;
+    if (r.ai_model) whoAnswered(r.ai_model).then((w) => { const m = $("[data-ai-model]", box); if (m && w) m.textContent = ` · ${w.label}`; });
   }
   function drawTrend() {
     const box = $("#dp-sc-trend", el); if (!box || !S.trend) return;
