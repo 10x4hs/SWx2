@@ -22,6 +22,8 @@ import * as calendarView from "./views/calendar.js";
 import * as studyView from "./views/study.js"; // 공부 = 영어 | 논문 (Dock 아이콘 하나)
 import * as pageView from "./views/page.js"; // Dock 사용자 페이지 (#/p/new · #/p/<id>)
 import { openMenu } from "./ctxmenu.js";
+import { wireDockDrag, sortByOrder } from "./dock-drag.js";
+import { setHiddenMe, isHidden, hidePage } from "./hidden-pages.js";
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
@@ -65,6 +67,7 @@ async function enter(user) {
   ctx.users = toned((await api.users()).users);
   ctx.me = { ...user, color: ctx.users.find((u) => u.id === user.id)?.color || MEMBER_TONES[0] };
   syncAiPrefs(ctx.me); // 계정에 저장된 AI 모델로 맞춰요
+  setHiddenMe(ctx.me); // 내 화면에서 숨긴 친구 페이지
   document.documentElement.style.setProperty("--me", ctx.me.color);
   renderShell();
   // 스터디장이 정해 준 비밀번호 그대로면: 화면을 열기 전에 먼저 바꾸게 해요
@@ -94,6 +97,7 @@ window.addEventListener("trio:must-change", () => { if (ctx.me) { ctx.me.must_ch
 window.addEventListener("trio:logout", () => { if (ctx.me) { toast("로그인이 만료됐어요. 다시 로그인해 주세요.", "err"); showAuth(); } });
 window.addEventListener("trio:me", (e) => {
   ctx.me = { ...e.detail, color: ctx.me?.color || MEMBER_TONES[0] };
+  setHiddenMe(ctx.me);
   ctx.users = ctx.users.map((u) => (u.id === ctx.me.id ? { ...u, ...ctx.me } : u));
   document.documentElement.style.setProperty("--me", ctx.me.color);
   renderMeRow();
@@ -109,25 +113,21 @@ const NAV = [
   { key: "study", hash: "#/english", label: "공부", tip: "공부 · 영어 | 논문" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
-const NAV_SPLIT = 2;
 // until 이 지난 메뉴는 Dock 에서 빠져요 (한국 시간 기준) — 주소로 들어가면 결과는 볼 수 있어요
 const kstNow = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const navLive = () => NAV.filter((n) => !n.until || kstNow() <= n.until);
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
+// 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점. data-dock = 순서를 기억하는 이름
+const navItem = (n) => `<a class="rail-btn" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.key === "study" ? studyView.lastHash() : n.hash}" data-nav="${n.key}" data-dock="nav:${n.key}" draggable="false" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
 function renderShell() {
-  // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점.
-  const item = (n) => `<a class="rail-btn" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.key === "study" ? studyView.lastHash() : n.hash}" data-nav="${n.key}" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
   app.innerHTML = `
     <div class="shell">
       <aside class="rail dock glass" aria-label="메뉴">
         <button class="rail-btn" type="button" id="open-palette" aria-label="검색 · 명령 (${isMac ? "⌘" : "Ctrl"} K)" data-tip="검색 · ${isMac ? "⌘" : "Ctrl"}K">${appIcon("search")}</button>
         <i class="dock-sep" aria-hidden="true"></i>
         <nav class="rail-nav">
-          ${navLive().slice(0, NAV_SPLIT).map(item).join("")}
-          <i class="dock-sep" aria-hidden="true"></i>
-          ${navLive().slice(NAV_SPLIT).map(item).join("")}
-          <div class="rail-pages" id="dock-pages"></div>
+          <div class="dock-list" id="dock-list" aria-label="Dock 아이콘 · 끌어서 순서를 바꿔요"></div>
           <a class="rail-btn rail-add" href="#/p/new" data-nav="page-new" aria-label="페이지 추가" data-tip="페이지 추가 · AI 가 화면을 짜요">${icon.plus(18)}</a>
         </nav>
         <div class="rail-foot">
@@ -149,6 +149,16 @@ function renderShell() {
   });
   renderMeRow();
   renderTimer();
+  drawDock();
+  wireDockDrag($("#dock-list"), {
+    onDrop: async (keys) => {
+      const prev = ctx.me.dock_order;
+      ctx.me.dock_order = keys;
+      try { const r = await api.updateMe({ dock_order: keys }); ctx.me.dock_order = r.user.dock_order; }
+      catch (err) { ctx.me.dock_order = prev; drawDock(); toast(err.message || "순서를 저장하지 못했어요.", "err"); }
+    },
+    onHoldMenu: (el) => { if (!el.dataset.page) return; const r = el.getBoundingClientRect(); pageMenu({ clientX: r.right, clientY: r.top + r.height / 2, preventDefault() {} }, el.dataset.page); },
+  });
 }
 
 function renderMeRow() {
@@ -318,6 +328,7 @@ async function refreshUnread() {
     const n = Number(r.total ?? r.unread) || 0; // 우리 셋 + 1:1 전부 합친 수
     el.textContent = n > 9 ? "9+" : String(n);
     el.hidden = n === 0;
+    unreadText = n ? el.textContent : "";
   } catch {}
 }
 setInterval(() => { if (ctx.me && document.visibilityState === "visible") refreshUnread(); }, 60_000);
@@ -332,29 +343,32 @@ async function loadDockPages() {
   try { dockPages = (await api.pages()).pages || []; } catch { dockPages = []; }
   drawDockPages();
 }
-function drawDockPages() {
-  const el = $("#dock-pages"); if (!el) return;
+function drawDockPages() { drawDock(); }
+let unreadText = ""; // 다시 그려도 대화 배지가 사라지지 않게
+function drawDock() {
+  const el = $("#dock-list"); if (!el || !ctx.me) return;
   const cur = parseRoute();
-  el.innerHTML = dockPages.filter((p) => p.place !== "study").map((p) => `<a class="rail-btn rail-page${p.mine ? "" : " shared"}" href="#/p/${p.id}" data-nav="p:${p.id}" data-page="${p.id}" aria-label="${esc(p.title)}" data-tip="${esc(p.title)}${p.mine ? "" : ` · ${esc(ctx.user(p.user_id)?.display_name || "")}`}"${cur.nav === "p:" + p.id ? ' aria-current="page"' : ""}><span class="app-ic ic-page">${pageIcon(p.icon)}</span></a>`).join("");
+  const pageItem = (p) => `<a class="rail-btn rail-page${p.mine ? "" : " shared"}" href="#/p/${p.id}" data-nav="p:${p.id}" data-page="${p.id}" data-dock="page:${p.id}" draggable="false" aria-label="${esc(p.title)}" data-tip="${esc(p.title)}${p.mine ? "" : ` · ${esc(ctx.user(p.user_id)?.display_name || "")}`}"><span class="app-ic ic-page">${pageIcon(p.icon)}</span></a>`;
+  const entries = [...navLive().map((n) => ({ key: "nav:" + n.key, html: navItem(n) })), ...dockPages.filter((p) => p.place !== "study" && !isHidden(p)).map((p) => ({ key: "page:" + p.id, html: pageItem(p) }))];
+  el.innerHTML = sortByOrder(entries, ctx.me.dock_order).map((x) => x.html).join("");
+  $$("[data-nav]", el).forEach((a) => { if (a.dataset.nav === cur.nav) a.setAttribute("aria-current", "page"); });
+  const b = $("#room-badge"); if (b && unreadText) { b.textContent = unreadText; b.hidden = false; }
 }
 async function pageMenu(e, id) {
   const p = dockPages.find((x) => x.id === id); if (!p) return;
-  const mineList = dockPages.filter((x) => x.mine), i = mineList.findIndex((x) => x.id === id);
   openMenu(e, {
     title: `${p.icon} ${p.title}`,
     items: p.mine ? [
       { k: "open", label: "열기" }, { k: "edit", label: "고치기 (AI · 코드 · 설정)" },
       { k: "share", label: p.shared ? "공개 끄기 (나만)" : "셋에게 공개 (친구는 보기만)" },
-      { sep: true },
-      ...(i > 0 ? [{ k: "up", label: "위로" }] : []), ...(i < mineList.length - 1 ? [{ k: "down", label: "아래로" }] : []),
       { sep: true }, { k: "del", label: "삭제", danger: true },
-    ] : [{ k: "open", label: "열기" }, { k: "copy", label: "내 페이지로 복사해서 고치기" }],
+    ] : [{ k: "open", label: "열기" }, { k: "copy", label: "내 페이지로 복사해서 고치기" }, { sep: true }, { k: "hide", label: "내 화면에서 숨기기" }],
     onPick: async (k) => {
       try {
         if (k === "open") ctx.go("#/p/" + id);
         else if (k === "edit") { ctx.go("#/p/" + id); setTimeout(() => $("#up-edit")?.click(), 400); }
         else if (k === "share") { await api.updatePage(id, { shared: !p.shared }); toast(p.shared ? "이제 나만 봐요." : "셋의 Dock 에 떠요. 친구는 보기만 해요."); }
-        else if (k === "up" || k === "down") { const ids = mineList.map((x) => x.id); const j = k === "up" ? i - 1 : i + 1; [ids[i], ids[j]] = [ids[j], ids[i]]; await api.reorderPages(ids); }
+        else if (k === "hide") { await hidePage(p); if (location.hash === "#/p/" + id) ctx.go("#/"); return; }
         else if (k === "del") { if (!confirm(`'${p.title}' 페이지를 지울까요? 되돌릴 수 없어요.`)) return; await api.deletePage(id); toast("지웠어요."); if (location.hash === "#/p/" + id) ctx.go("#/"); }
         else if (k === "copy") { const full = (await api.page(id)).page; const r = await api.addPage({ title: `${full.title} 사본`, icon: full.icon, purpose: full.purpose, files: full.files, place: full.place }); toast("내 페이지로 복사했어요."); ctx.go((r.page.place === "study" ? "#/study/" : "#/p/") + r.page.id); }
         loadDockPages();
@@ -364,14 +378,7 @@ async function pageMenu(e, id) {
 }
 window.addEventListener("trio:changed", (e) => { if (e.detail?.kind === "pages") loadDockPages(); });
 document.addEventListener("contextmenu", (e) => { const a = e.target.closest("[data-page]"); if (a) pageMenu(e, a.dataset.page); });
-// 폰: 길게 누르면 메뉴
-let pressT = null;
-document.addEventListener("pointerdown", (e) => {
-  const a = e.target.closest("[data-page]"); if (!a || e.pointerType === "mouse") return;
-  const { clientX, clientY } = e;
-  pressT = setTimeout(() => { pressT = null; a.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX, clientY })); }, 500);
-});
-["pointerup", "pointercancel", "pointermove"].forEach((t) => document.addEventListener(t, () => { if (pressT) { clearTimeout(pressT); pressT = null; } }));
+// 폰에서 길게 누르기(끌기 · 메뉴)는 dock-drag.js 가 맡아요
 
 // ---------- routing ----------
 // 예전 주소는 캘린더의 그날로 옮겨요 (뒤로 가기에 남지 않게 replaceState)

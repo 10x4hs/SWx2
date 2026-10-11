@@ -7,6 +7,8 @@
 //   ⑤ 내 AI 모델 — 일정 AI 비서 칸에 고르기가 보이고, 바꾸면 계정에 저장돼 다시 열어도 그대로
 //   ⑥ 자정 AI 점수 — 지난 날 그날 화면에 점수 · 한 줄 평 · 매긴 모델, 오늘은 안 보여요
 //   ⑦ 계획 길이 — 직접 입력 '3' 은 3분으로 저장되고, 다음 계획의 기본 길이는 그대로 1시간 (전에 넣은 길이를 따라가지 않아요)
+//   ⑧ Dock 순서 — '대화' 아이콘을 끌어서 맨 앞으로 → 계정에 저장, 새로고침해도 그대로, 끄는 동안 링크가 열리지 않아요
+//   ⑨ 친구 페이지 숨기기 — 친구가 공개한 Dock 페이지 · 공부 과목 탭을 '내 화면에서 숨기기', 프로필에서 다시 보이기
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -19,9 +21,10 @@ const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); if (!
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await sleep(500); } }
 
-const tag = Date.now().toString(36), user = "t_e2e" + tag;
+const tag = Date.now().toString(36), user = "t_e2e" + tag, friend = "t_e2f" + tag;
 execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1"], { stdio: "ignore" });
-const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username = '${user}'`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
+execFileSync("node", ["scripts/add-user.mjs", friend, "검사친구", "password1"], { stdio: "ignore" }); // ⑨ 공개 페이지를 올리는 친구
+const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username IN ('${user}', '${friend}')`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
 
 // 과목 페이지: 화면을 꽉 채우는 한 장짜리 · 여러 파일(style.css · app.js)짜리
 const FULL = `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%}body{display:grid;place-items:center;background:#1b6}</style><p>꽉 차야 해요</p>`;
@@ -95,6 +98,53 @@ try {
       const def2 = await p.locator("[data-slot-form] select[name=mins]").first().inputValue().catch(() => "(창 없음)");
       ok(def1 === "60" && saved?.mins === 3 && def2 === "60", `${tv} · 계획 길이 — 직접 입력 3 → ${saved ? saved.mins + "분" : "저장 안 됨"} · 기본값 처음 ${def1} → 다음 ${def2}`);
     } catch (e) { const why = String(e.message).split("\n").filter((l) => /intercept|stable|outside|visible/.test(l)).slice(-2).join(" / "); ok(false, `${tv} · 계획 길이 — ${String(e.message).split("\n")[0]}${why ? " · " + why : ""}`); }
+
+    // ---------- ⑧ Dock 순서: '대화'를 끌어서 맨 앞으로 ----------
+    try {
+      await ctx.request.patch(BASE + "/api/me", { headers: H, data: { dock_order: null } });
+      await go("#/", 2200);
+      const order = () => p.evaluate(() => [...document.querySelectorAll("#dock-list > [data-dock]")].map((x) => x.dataset.dock));
+      const mid = async (k) => { const bb = await p.locator(`#dock-list > [data-dock="${k}"]`).boundingBox(); return { x: bb.x + bb.width / 2, y: bb.y + bb.height / 2 }; };
+      const first = (await order())[0], from = await mid("nav:room"), to = await mid(first), vert = Math.abs(to.y - from.y) > Math.abs(to.x - from.x);
+      await p.mouse.move(from.x, from.y); await p.mouse.down();
+      await p.mouse.move(from.x + (vert ? 0 : -8), from.y + (vert ? -8 : 0), { steps: 3 });
+      await p.mouse.move(to.x - (vert ? 0 : 8), to.y - (vert ? 8 : 0), { steps: 12 }); await p.mouse.up(); await sleep(1200);
+      const moved = (await order())[0], stayed = await p.evaluate(() => location.hash);
+      const savedOrder = (await (await ctx.request.get(BASE + "/api/me")).json()).user.dock_order;
+      await p.reload(); await sleep(2200);
+      const after = (await order())[0];
+      ok(moved === "nav:room" && savedOrder[0] === "nav:room" && after === "nav:room" && stayed === "#/", `${tv} · Dock 순서 — 끌어서 맨 앞: ${moved} · 저장 ${savedOrder[0]} · 새로고침 ${after} · 링크 안 열림 ${stayed === "#/"}`);
+      await ctx.request.patch(BASE + "/api/me", { headers: H, data: { dock_order: null } });
+    } catch (e) { ok(false, `${tv} · Dock 순서 — ${String(e.message).split("\n")[0]}`); }
+
+    // ---------- ⑨ 친구가 공개한 페이지를 내 화면에서 숨기기 → 프로필에서 다시 보이기 ----------
+    try {
+      const fctx = await browser.newContext();
+      await fctx.request.post(BASE + "/api/auth/login", { headers: H, data: { username: friend } });
+      const fmk = async (data) => (await (await fctx.request.post(BASE + "/api/pages", { headers: H, data })).json()).page.id;
+      const FD = await fmk({ title: "친구 Dock", shared: true, files: { "index.html": FULL } });
+      const FS = await fmk({ title: "친구 과목", place: "study", shared: true, files: { "index.html": FULL } });
+      await go("#/", 2200);
+      const dockHas = () => p.locator(`#dock-list > [data-dock="page:${FD}"]`).count();
+      const seen = await dockHas();
+      await p.locator(`#dock-list > [data-dock="page:${FD}"]`).click({ button: "right" });
+      await p.locator('.cm [data-k="hide"]').click(); await sleep(1200);
+      const goneDock = await dockHas() === 0;
+      await go("#/english", 2200);
+      const tab = p.locator(`#study-switch [data-sub="p:${FS}"]`), tabSeen = await tab.count();
+      if (tabSeen) { await tab.click({ button: "right" }); await p.locator('.cm [data-k="hide"]').click(); await sleep(1200); }
+      const goneTab = await p.locator(`#study-switch [data-sub="p:${FS}"]`).count() === 0;
+      const hiddenSaved = (await (await ctx.request.get(BASE + "/api/me")).json()).user.hidden_pages;
+      await go("#/", 2200);
+      await p.locator("#me-btn").click(); await p.locator("#me-head").click();
+      await p.locator(`[data-unhide="${FD}"]`).click({ timeout: 6000 }); await sleep(1200);
+      await p.keyboard.press("Escape"); await sleep(400);
+      const back = await dockHas() === 1, stillHidden = (await (await ctx.request.get(BASE + "/api/me")).json()).user.hidden_pages;
+      ok(seen === 1 && goneDock && tabSeen === 1 && goneTab && hiddenSaved.includes(FD) && hiddenSaved.includes(FS) && back && !stillHidden.includes(FD) && stillHidden.includes(FS),
+        `${tv} · 친구 페이지 숨기기 — Dock 숨김 ${goneDock} · 과목 탭 숨김 ${goneTab} · 저장 ${hiddenSaved.length}개 · 프로필에서 다시 보이기 ${back}`);
+      await ctx.request.patch(BASE + "/api/me", { headers: H, data: { hidden_pages: [] } });
+      await fctx.close();
+    } catch (e) { ok(false, `${tv} · 친구 페이지 숨기기 — ${String(e.message).split("\n")[0]}`); }
 
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
     const kst = (n) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);

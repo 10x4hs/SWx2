@@ -89,6 +89,16 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("b", "GET", "/papers/easy"); ok(r.status === 200 && !r.data.items.some((x) => x.paper === "cmx"), "easy: private per user");
   r = await call("a", "PUT", "/papers/easy/review", { results: "x" }); ok(r.status === 400, "easy: bad results → 400");
   // AI 공부책: 장 단위 읽음 → 복습 → 실습 체크 (책 · 장 id 는 public/books/index.json 에 있어야 해요)
+  // Dock 순서 · 숨긴 친구 페이지: 계정에 저장, 본인만, 모양이 틀리면 400
+  r = await call("a", "PATCH", "/me", { dock_order: ["nav:room", "nav:home", "page:abc-123"] }); ok(r.status === 200 && r.data.user.dock_order.join() === "nav:room,nav:home,page:abc-123", "dock: save order");
+  r = await call("a", "GET", "/me"); ok(r.data.user.dock_order[0] === "nav:room", "dock: /me shows order");
+  r = await call("a", "PATCH", "/me", { dock_order: ["x:<script>"] }); ok(r.status === 400, "dock: bad key → 400");
+  r = await call("a", "PATCH", "/me", { hidden_pages: ["pg-1", "pg-1", "pg-2"] }); ok(r.status === 200 && r.data.user.hidden_pages.join() === "pg-1,pg-2", "hidden pages: save (dedupe)");
+  r = await call("a", "PATCH", "/me", { hidden_pages: "pg-1" }); ok(r.status === 400, "hidden pages: not array → 400");
+  r = await call("a", "PATCH", "/me", { bio: "순서 유지 검사" }); ok(r.data.user.dock_order[0] === "nav:room" && r.data.user.hidden_pages.length === 2, "dock: other edits keep order + hidden");
+  r = await call("b", "GET", "/me"); ok(!r.data.user.dock_order.length && !r.data.user.hidden_pages.length, "dock: per user");
+  r = await call("a", "GET", "/users"); ok(r.data.users.every((u) => u.dock_order === undefined && u.hidden_pages === undefined), "dock: not exposed to friends");
+  r = await call("a", "PATCH", "/me", { dock_order: null, hidden_pages: [] }); ok(r.status === 200 && !r.data.user.dock_order.length, "dock: reset");
   // 내 AI 모델: 계정에 저장 → /me · /ai/my-model 에 보이고, 모르는 id 는 400, "" 이면 자동으로
   r = await call("a", "GET", "/ai/models"); ok(r.status === 200 && r.data.models.some((m) => m.id === "groq" && Array.isArray(m.chain) && m.chain.length), "ai model: list has chains");
   r = await call("a", "PATCH", "/me", { ai_model: "groq" }); ok(r.status === 200 && r.data.user.ai_model === "groq", "ai model: set groq");

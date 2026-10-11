@@ -1,4 +1,5 @@
 // 프로필 바꾸기 — 이름 · 한 줄 소개(셋이 봐요) · 하루 공부 목표. 로그인 아이디(@)는 못 바꿔요.
+import { unhidePage } from "./hidden-pages.js";
 import { api } from "./api.js";
 import { esc, initial, toast, hm, avatar } from "./util.js";
 
@@ -43,6 +44,7 @@ export function openProfile(ctx) {
         <input class="input" name="bio" maxlength="40" value="${esc(me.bio || "")}" placeholder="예: 10월까지 논문 16편 · 영어 650시간" autocomplete="off"></label>
       <label class="pw-field"><span>하루 공부 목표 <small id="prof-goal-v">${esc(hm(me.day_goal || 240))}</small></span>
         <input class="prof-range" type="range" name="day_goal" min="30" max="960" step="30" value="${esc(me.day_goal || 240)}" aria-label="하루 공부 목표 (분)"></label>
+      <div class="prof-hidden" id="prof-hidden" hidden><span class="prof-hidden-h">내 화면에서 숨긴 친구 페이지</span><div id="prof-hidden-list"></div></div>
       <p class="pw-help prof-note">로그인 아이디 <b>@${esc(me.username)}</b> 는 바꿀 수 없어요. 프로필 색은 셋이 겹치지 않게 앱이 정해요.</p>
       <p class="pw-err" role="alert" aria-live="assertive"></p>
       <div class="pw-foot"><button class="btn ghost" type="button" data-close>취소</button><button class="btn accent" type="submit">저장</button></div>
@@ -89,5 +91,15 @@ export function openProfile(ctx) {
       close();
     } catch (x) { err.textContent = x.message || "저장하지 못했어요."; btn.disabled = false; }
   });
+  // 숨긴 친구 페이지: 다시 보이기
+  const hid = me.hidden_pages || [];
+  if (hid.length) api.pages().then(({ pages }) => {
+    const box = back.querySelector("#prof-hidden"), list = back.querySelector("#prof-hidden-list");
+    const rows = hid.map((id) => pages.find((p) => p.id === id)).filter(Boolean);
+    if (!rows.length) return;
+    box.hidden = false;
+    list.innerHTML = rows.map((p) => `<div class="prof-hidden-row"><span>${esc(p.icon || "✨")} ${esc(p.title)} <small>${p.place === "study" ? "공부 탭" : "Dock"} · ${esc(ctx.user(p.user_id)?.display_name || "")}</small></span><button type="button" class="pad-retry-like" data-unhide="${esc(p.id)}">다시 보이기</button></div>`).join("");
+    list.addEventListener("click", async (e) => { const b = e.target.closest("[data-unhide]"); if (!b) return; b.disabled = true; await unhidePage(b.dataset.unhide); b.closest(".prof-hidden-row").remove(); if (!list.children.length) box.hidden = true; });
+  }).catch(() => {});
   setTimeout(() => f.display_name.focus(), 30);
 }
