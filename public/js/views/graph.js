@@ -21,7 +21,7 @@ const paperHash = (n) => {
 // 주제 색: 차분한 파스텔 (유리 구슬이라 너무 진하면 촌스러워요)
 const PALETTE = ["#E9B872", "#8CC5B0", "#93A9E8", "#E39AA8", "#B9A3E6", "#84C6CC", "#D9C27A", "#E0A184", "#A7B6CB", "#B3CF8C"];
 const SETTINGS_KEY = "trio-graph";
-const DEFAULTS = { tags: false, ghosts: true, mocs: true, orphans: true, text: 11, node: 1, line: 1, pull: 1, push: 1, open: false };
+const DEFAULTS = { tags: false, ghosts: true, mocs: true, orphans: true, text: 11, node: 1, line: 1, pull: 1, push: 1, open: true, basis: "deg" };
 const load = () => { try { const v = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); if (v.text === 13 && !v.textV2) { v.text = 11; v.textV2 = 1; } return { ...DEFAULTS, ...v }; } catch { return { ...DEFAULTS }; } };
 const saveSet = (s) => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {} };
 const DBL_MS = 280;
@@ -56,7 +56,8 @@ export function mount(root, ctx) {
         <section><h2>그룹 <small>주제별 색</small></h2><ul class="obs-groups" id="groups"></ul></section>
         <section><h2>표시</h2>
           <label class="rng">글자 크기<input type="range" min="8" max="16" step="1" data-set="text" value="${set.text}"></label>
-          <label class="rng">점 크기<input type="range" min=".6" max="2" step=".1" data-set="node" value="${set.node}"></label>
+          <label class="rng">크기 기준<select class="select sm" data-set="basis"><option value="deg" ${set.basis !== "same" ? "selected" : ""}>연결 수</option><option value="same" ${set.basis === "same" ? "selected" : ""}>모두 같게</option></select></label>
+          <label class="rng">점 크기<input type="range" min=".4" max="3" step=".1" data-set="node" value="${set.node}"></label>
           <label class="rng">선 두께<input type="range" min=".5" max="3" step=".1" data-set="line" value="${set.line}"></label>
         </section>
         <section><h2>힘</h2>
@@ -151,7 +152,7 @@ export function mount(root, ctx) {
     alpha = Math.max(alpha, 0.5); kick();
   }
 
-  const radius = (n) => ((n.ghost || n.tag) ? 4 : n.moc ? 13 + Math.sqrt(n.deg) * 2.2 : 9 + Math.sqrt(n.deg) * 2.6) * set.node;
+  const radius = (n) => ((n.ghost || n.tag) ? 3 : set.basis === "same" ? (n.moc ? 6.5 : 5) : n.moc ? 7 + Math.sqrt(n.deg) * 1.8 : 4 + Math.sqrt(n.deg) * 1.8) * set.node; // 옵시디언처럼 작은 점
 
   // ---------- 물리 ----------
   function step() {
@@ -188,25 +189,11 @@ export function mount(root, ctx) {
   function draw() {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, W, H);
-    // 배경: 아주 옅은 점 격자 (종이 느낌)
-    const gap = 28 * view.k, ox = ((W / 2 + view.x) % gap + gap) % gap, oy = ((H / 2 + view.y) % gap + gap) % gap;
-    if (gap > 14) { g.fillStyle = C.dark ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.07)"; for (let x = ox; x < W; x += gap) for (let y = oy; y < H; y += gap) g.fillRect(x - 0.5, y - 0.5, 1, 1); }
     g.translate(W / 2 + view.x, H / 2 + view.y); g.scale(view.k, view.k);
     const focus = hover || sel;
     const near = focus ? adj.get(focus) : null;
     const dim = !!(focus || query || focusGroup);
     const lit = (n) => (focus ? n === focus || near?.has(n) : query ? match(n) : focusGroup ? n.group === focusGroup : true);
-    // 주제 무리: 같은 색 점들 뒤에 아주 옅은 둥근 안개 하나
-    if (!dim) {
-      const cl = new Map();
-      for (const n of nodes) if (n.group && !n.ghost && !n.tag) { const c = cl.get(n.group) || { x: 0, y: 0, n: 0, color: n.color, pts: [] }; c.x += n.x; c.y += n.y; c.n++; c.pts.push(n); cl.set(n.group, c); }
-      for (const c of cl.values()) {
-        if (c.n < 2) continue;
-        const cx = c.x / c.n, cy = c.y / c.n; let r = 0; for (const n of c.pts) r = Math.max(r, Math.hypot(n.x - cx, n.y - cy)); r += 40;
-        const grd = g.createRadialGradient(cx, cy, 0, cx, cy, r); grd.addColorStop(0, rgba(c.color, C.dark ? 0.10 : 0.09)); grd.addColorStop(1, rgba(c.color, 0));
-        g.globalAlpha = 1; g.fillStyle = grd; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
-      }
-    }
     // 선
     for (const l of links) {
       const on = focus && (l.s === focus || l.t === focus), isHL = l === hoverLink;
@@ -229,17 +216,7 @@ export function mount(root, ctx) {
       g.beginPath(); g.arc(n.x, n.y, r, 0, Math.PI * 2);
       if (n.ghost) { g.fillStyle = C.bg; g.fill(); g.strokeStyle = C.ink3; g.lineWidth = 1.2 / view.k; g.setLineDash([2 / view.k, 2 / view.k]); g.stroke(); g.setLineDash([]); }
       else if (n.tag) { g.fillStyle = C.ink3; g.fill(); }
-      else { // 유리 구슬: 바닥 그림자 → 색 유리 속 → 구슬 이미지(빛·테·굴절)
-        const sh = g.createRadialGradient(n.x, n.y + r * 1.05, 0, n.x, n.y + r * 1.05, r * 1.3);
-        sh.addColorStop(0, "rgba(0,0,0,.35)"); sh.addColorStop(1, "rgba(0,0,0,0)");
-        g.fillStyle = sh; g.beginPath(); g.ellipse(n.x, n.y + r * 1.05, r * 1.2, r * 0.42, 0, 0, Math.PI * 2); g.fill();
-        g.beginPath(); g.arc(n.x, n.y, r * 0.97, 0, Math.PI * 2);
-        const body = g.createRadialGradient(n.x, n.y + r * 0.1, r * 0.1, n.x, n.y, r);
-        body.addColorStop(0, rgba(col, 0.28)); body.addColorStop(0.7, rgba(col, 0.62)); body.addColorStop(1, rgba(col, 0.92));
-        g.fillStyle = body; g.fill();
-        if (ORB.complete && ORB.naturalWidth) { const d = r * 2 * ORB_K; g.drawImage(ORB, n.x - d / 2, n.y - d / 2, d, d); }
-        else { g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = 1 / view.k; g.stroke(); }
-      }
+      else { g.fillStyle = col; g.fill(); } // 옵시디언처럼 납작한 점
       if (n === hover || n === sel || (query && match(n))) { // 얇은 고리 + 옅은 후광
         g.globalAlpha = 0.25; g.beginPath(); g.arc(n.x, n.y, r + 9 / view.k, 0, Math.PI * 2); g.fillStyle = col; g.fill();
         g.globalAlpha = 1; g.beginPath(); g.arc(n.x, n.y, r + 3.5 / view.k, 0, Math.PI * 2); g.strokeStyle = n === sel ? col : C.ink; g.lineWidth = 1.4 / view.k; g.stroke();
@@ -512,7 +489,7 @@ export function mount(root, ctx) {
     const el = e.target;
     if (el.id === "gq") { query = el.value.trim().toLowerCase(); kick(); return; }
     const k = el.dataset.set; if (!k) return;
-    set[k] = el.type === "checkbox" ? el.checked : +el.value; saveSet(set);
+    set[k] = el.type === "checkbox" ? el.checked : el.tagName === "SELECT" ? el.value : +el.value; saveSet(set);
     if (el.type === "checkbox") applyView(); else { if (k === "pull" || k === "push") alpha = Math.max(alpha, 0.6); kick(); }
   });
 

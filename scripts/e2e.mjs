@@ -9,6 +9,7 @@
 //   ⑦ 계획 길이 — 직접 입력 '3' 은 3분으로 저장되고, 다음 계획의 기본 길이는 그대로 1시간 (전에 넣은 길이를 따라가지 않아요)
 //   ⑧ Dock 순서 — '대화' 아이콘을 끌어서 맨 앞으로 → 계정에 저장, 새로고침해도 그대로, 끄는 동안 링크가 열리지 않아요
 //   ⑨ 친구 페이지 숨기기 — 친구가 공개한 Dock 페이지 · 공부 과목 탭을 '내 화면에서 숨기기', 프로필에서 다시 보이기
+//   ⑩ Study 그래프 — 영어 · 논문 · AI · 과목 페이지마다 [내용 | 그래프], 크기 기준 · 크기가 계정에 저장, 점을 누르면 그 내용으로
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -145,6 +146,31 @@ try {
       await ctx.request.patch(BASE + "/api/me", { headers: H, data: { hidden_pages: [] } });
       await fctx.close();
     } catch (e) { ok(false, `${tv} · 친구 페이지 숨기기 — ${String(e.message).split("\n")[0]}`); }
+
+    // ---------- ⑩ Study 그래프 ----------
+    try {
+      await ctx.request.patch(BASE + "/api/me", { headers: H, data: { graph_prefs: null } });
+      const counts = {};
+      for (const [k, hash] of [["영어", "#/english/graph"], ["논문", "#/papers/graph"], ["AI", "#/books/graph"], ["과목", `#/study/${A}/graph`]]) {
+        await go(hash, 3200);
+        counts[k] = await p.evaluate(() => (document.querySelector(".og-c")?.__nodes?.() || []).length);
+        counts[k + "탭"] = await p.evaluate(() => document.querySelector('#study-mode a[aria-current="page"]')?.textContent);
+      }
+      await go("#/books/graph", 3500);
+      if (w <= 760) await p.locator("[data-toggle]").click();
+      await p.selectOption('[data-p="basis"]', "tier"); await p.locator('[data-p="node"]').fill("2"); await sleep(1200);
+      const gp = (await (await ctx.request.get(BASE + "/api/me")).json()).user.graph_prefs;
+      if (w <= 760) await p.locator("[data-toggle]").click();
+      await sleep(4000);
+      const target = await p.evaluate(() => { const c = document.querySelector(".og-c"), r = c.getBoundingClientRect(); return c.__nodes().filter((n) => n.type === "chapter").map((n) => ({ ...n, x: n.x + r.left, y: n.y + r.top })).find((n) => document.elementFromPoint(n.x, n.y) === c); });
+      if (target) { await p.mouse.click(target.x, target.y); await sleep(300); if (w <= 760) await p.mouse.click(target.x, target.y); await sleep(1500); }
+      const went = await p.evaluate(() => location.hash);
+      ok(counts["영어"] > 100 && counts["논문"] > 30 && counts["AI"] > 300 && counts["과목"] >= 1 && ["영어탭", "논문탭", "AI탭", "과목탭"].every((k) => counts[k] === "그래프") && gp?.basis === "tier" && gp?.node === 2 && /^#\/books\/[a-z-]+\/[a-z0-9-]+$/.test(went),
+        `${tv} · Study 그래프 — 점 영어 ${counts["영어"]} · 논문 ${counts["논문"]} · AI ${counts["AI"]} · 과목 ${counts["과목"]} · 저장 ${gp?.basis}/${gp?.node} · 점 누르기 → ${went}`);
+      await ctx.request.patch(BASE + "/api/me", { headers: H, data: { graph_prefs: null } });
+      await go("#/graph", 2500);
+      ok(await p.evaluate(() => !!document.querySelector("#gc")) && await p.evaluate(() => !!document.querySelector('[data-set="basis"]')), `${tv} · 노트 그래프 — 열리고 크기 기준이 있어요`);
+    } catch (e) { ok(false, `${tv} · Study 그래프 — ${String(e.message).split("\n")[0]}`); }
 
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
     const kst = (n) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
