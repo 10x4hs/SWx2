@@ -1,13 +1,14 @@
 // 홈 첫 화면의 글 쓰는 자리: 오늘의 다짐(셋이 봐요 · 날마다 한 줄) · 메모장(나만 봐요 · 한 장, 자동 저장)
+import { kstToday } from "./lib/day.js";
+
 const MAX_PLEDGE = 120;
 const MAX_MEMO = 20000;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
-const kst = (offset = 0) => new Date(Date.now() + 9 * 3600e3 + offset * 864e5).toISOString().slice(0, 10);
 
 export function registerHomePad(on, { json, body, fail, now }) {
   // 오늘 셋의 다짐 + 내 최근 7일 다짐(이어 쓴 날 세기) + 내 메모
   on("GET", "/home/pad", async ({ env, user, q }) => {
-    const day = DAY_RE.test(q.get("day") || "") ? q.get("day") : kst();
+    const day = DAY_RE.test(q.get("day") || "") ? q.get("day") : kstToday();
     const [today, mine, memo] = await env.DB.batch([
       env.DB.prepare("SELECT user_id, body, updated_at FROM pledges WHERE day = ?").bind(day),
       env.DB.prepare("SELECT day, body FROM pledges WHERE user_id = ? AND day <= ? ORDER BY day DESC LIMIT 30").bind(user.id, day),
@@ -24,7 +25,7 @@ export function registerHomePad(on, { json, body, fail, now }) {
 
   on("PUT", "/home/pledge", async ({ req, env, user }) => {
     const b = await body(req);
-    const day = DAY_RE.test(b.day || "") && b.day >= kst(-1) && b.day <= kst(1) ? b.day : kst(); // 오늘 근처만 (시간대 차이 허용)
+    const day = DAY_RE.test(b.day || "") && b.day >= kstToday(-1) && b.day <= kstToday(1) ? b.day : kstToday(); // 오늘 근처만 (시간대 차이 허용)
     if (b.text != null && typeof b.text !== "string") fail(400, "다짐 형식이 올바르지 않아요.");
     const text = String(b.text || "").replace(/\s+/g, " ").trim();
     if (text.length > MAX_PLEDGE) fail(400, `다짐은 ${MAX_PLEDGE}자까지예요.`);

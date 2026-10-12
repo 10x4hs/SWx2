@@ -15,6 +15,8 @@ import { registerTogether, weeklyReviewCron } from "./together.js";
 import { registerRoom } from "./room.js";
 import { registerLibrary } from "./library.js";
 import { registerPush } from "./push.js";
+import { hex, sha256, b64url } from "./lib/crypto.js";
+import { kstToday } from "./lib/day.js";
 export { RoomHub } from "./hub.js"; // Durable Object 클래스는 main 모듈에서 내보내야 해요
 
 const COLORS = ["#E8552B", "#4C6FFF", "#14A38B"]; // Golden Gate orange, bay blue, cypress green
@@ -85,7 +87,7 @@ export default {
     }
     ec.waitUntil(autoSaveYesterday(env).then((r) => console.log("자동 저장", r.day, r.saved + "명")));
     // 논문 스프린트가 끝났으면(10-06~) 노트의 논문 구역을 지워요
-    ec.waitUntil(cleanupPaperNotes(env, kstDay(0)).then((r) => r.deleted && console.log("논문 구역 정리", r.deleted + "개")));
+    ec.waitUntil(cleanupPaperNotes(env, kstToday(0)).then((r) => r.deleted && console.log("논문 구역 정리", r.deleted + "개")));
   },
 };
 
@@ -186,10 +188,9 @@ const str = (v, max, name) => {
   if (s.length > max) fail(400, `${name}은(는) ${max}자까지 쓸 수 있어요.`);
   return s;
 };
-const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const sha256 = async (s) => hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
-
+// 쿼리·본문 값 검사 (틀리면 400) — 라우트마다 같은 줄을 쓰던 걸 모았어요
+const dayParam = (v) => { if (!DAY_RE.test(v || "")) fail(400, "날짜 형식이 올바르지 않아요."); };
+const yearParam = (v) => { if (!/^\d{4}$/.test(v || "")) fail(400, "연도를 알려 주세요."); };
 async function hashPassword(password, saltHex) {
   const salt = saltHex ? Uint8Array.from(saltHex.match(/../g), (h) => parseInt(h, 16)) : crypto.getRandomValues(new Uint8Array(16));
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
@@ -216,12 +217,20 @@ async function startSession(req, env, userId) {
 // 단, 요청에 "x-trio-strict: 1" 이 있으면 로컬에서도 배포본처럼 검사해요 (smoke 테스트용 — 더 엄격해지기만 하고 풀어 주는 일은 없어요)
 const pwStrict = (req, env) => env.PASSWORDLESS !== "1" || req.headers.get("x-trio-strict") === "1";
 const mustChange = (req, env, u) => pwStrict(req, env) && Number(u.must_change_pw) === 1;
+const sessionToken = (req) => (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/)?.[1] || null;
+// 틀린 비밀번호 LOCK_TRIES 번이면 LOCK_MINUTES 분 잠가요 (잠기는 순간 횟수는 0 으로 돌아가요)
+const LOCK_TRIES = 5, LOCK_MINUTES = 5;
+const LOCKED_MSG = `여러 번 틀려서 잠시 잠겼어요. ${LOCK_MINUTES}분 뒤에 다시 시도해 주세요.`;
+async function bumpFail(env, u) {
+  const fails = u.fail_count + 1, lock = fails >= LOCK_TRIES;
+  await env.DB.prepare("UPDATE users SET fail_count = ?, locked_until = ? WHERE id = ?").bind(lock ? 0 : fails, lock ? now() + LOCK_MINUTES * 60e3 : 0, u.id).run();
+}
 async function requireUser(req, env) {
-  const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
-  if (!m) fail(401, "로그인이 필요해요.");
+  const token = sessionToken(req);
+  if (!token) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
     "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.hidden_pages, u.graph_prefs FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
-  ).bind(await sha256(m[1]), now()).first();
+  ).bind(await sha256(token), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
   return { ...row, must_change_pw: mustChange(req, env, row) };
 }
@@ -265,12 +274,10 @@ on("POST", "/auth/login", async ({ req, env }) => {
   if (!b.password) return json({ error: "비밀번호를 입력해 주세요.", need_password: true }, 401);
   const wrong = "아이디 또는 비밀번호가 맞지 않아요.";
   if (!u) { await hashPassword(String(b.password || "")); fail(401, wrong); } // same cost either way
-  if (u.locked_until > now()) fail(429, "여러 번 틀려서 잠시 잠겼어요. 5분 뒤에 다시 시도해 주세요.");
+  if (u.locked_until > now()) fail(429, LOCKED_MSG);
   const { hash } = await hashPassword(String(b.password || ""), u.pw_salt);
   if (!safeEqual(hash, u.pw_hash)) {
-    const fails = u.fail_count + 1;
-    await env.DB.prepare("UPDATE users SET fail_count = ?, locked_until = ? WHERE id = ?")
-      .bind(fails >= 5 ? 0 : fails, fails >= 5 ? now() + 5 * 60e3 : 0, u.id).run();
+    await bumpFail(env, u);
     fail(401, wrong);
   }
   await env.DB.batch([
@@ -281,8 +288,8 @@ on("POST", "/auth/login", async ({ req, env }) => {
 }, { auth: false });
 
 on("POST", "/auth/logout", async ({ req, env }) => {
-  const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
-  if (m) await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(await sha256(m[1])).run();
+  const token = sessionToken(req);
+  if (token) await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(await sha256(token)).run();
   return json({ ok: true }, 200, { "set-cookie": cookie(req, "", 0) });
 }, { auth: false });
 
@@ -291,21 +298,18 @@ on("POST", "/auth/logout", async ({ req, env }) => {
 on("POST", "/auth/password", async ({ req, env, user }) => {
   const b = await body(req);
   const u = await env.DB.prepare("SELECT id, pw_hash, pw_salt, fail_count, locked_until FROM users WHERE id = ?").bind(user.id).first();
-  if (u.locked_until > now()) fail(429, "여러 번 틀려서 잠시 잠겼어요. 5분 뒤에 다시 시도해 주세요.");
+  if (u.locked_until > now()) fail(429, LOCKED_MSG);
   if (typeof b.current !== "string" || !b.current) fail(400, "지금 비밀번호를 입력해 주세요.");
   if (typeof b.next !== "string" || b.next.length < 8) fail(400, "새 비밀번호는 8자 이상이어야 해요.");
   if (b.next.length > 200) fail(400, "새 비밀번호가 너무 길어요.");
   const { hash } = await hashPassword(b.current, u.pw_salt);
   if (!safeEqual(hash, u.pw_hash)) {
-    const fails = u.fail_count + 1;
-    await env.DB.prepare("UPDATE users SET fail_count = ?, locked_until = ? WHERE id = ?")
-      .bind(fails >= 5 ? 0 : fails, fails >= 5 ? now() + 5 * 60e3 : 0, u.id).run();
+    await bumpFail(env, u);
     fail(403, "지금 비밀번호가 맞지 않아요.");
   }
   if (b.next === b.current) fail(400, "지금과 다른 비밀번호로 정해 주세요.");
   const next = await hashPassword(b.next);
-  const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
-  const keep = await sha256(m[1]);
+  const keep = await sha256(sessionToken(req));
   const r = await env.DB.batch([
     env.DB.prepare("UPDATE users SET pw_hash = ?, pw_salt = ?, fail_count = 0, locked_until = 0, must_change_pw = 0 WHERE id = ?").bind(next.hash, next.salt, u.id),
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND id != ?").bind(u.id, keep),
@@ -450,7 +454,7 @@ on("POST", "/plans/carry", async ({ req, env, user }) => {
 // 연간 히트맵: 하루별 완료 수
 on("GET", "/plans/heatmap", async ({ env, q, user }) => {
   const year = q.get("year");
-  if (!/^\d{4}$/.test(year || "")) fail(400, "연도를 알려 주세요.");
+  yearParam(year);
   const { results } = await env.DB.prepare(
     "SELECT period, COUNT(*) AS total, SUM(done) AS done FROM plans WHERE user_id = ? AND scope = 'day' AND period LIKE ? GROUP BY period"
   ).bind(q.get("user") || user.id, `D:${year}-%`).all();
@@ -472,7 +476,7 @@ on("GET", "/summary", async ({ env, q }) => {
 // ---------- logs: 실행 타임라인 ----------
 on("GET", "/logs", async ({ env, q, user }) => {
   const day = q.get("day") || "";
-  if (!DAY_RE.test(day)) fail(400, "날짜 형식이 올바르지 않아요.");
+  dayParam(day);
   if (q.get("user") && q.get("user") !== user.id) fail(403, "다른 사람의 기록은 볼 수 없어요.");
   const { results } = await env.DB.prepare("SELECT * FROM logs WHERE user_id = ? AND day = ? ORDER BY at, created_at")
     .bind(user.id, day).all();
@@ -481,7 +485,7 @@ on("GET", "/logs", async ({ env, q, user }) => {
 
 on("POST", "/logs", async ({ req, env, user }) => {
   const b = await body(req);
-  if (!DAY_RE.test(b.day || "")) fail(400, "날짜 형식이 올바르지 않아요.");
+  dayParam(b.day);
   if (!TIME_RE.test(b.at || "")) fail(400, "시각은 HH:MM 형식이에요.");
   const kind = ["note", "done", "focus"].includes(b.kind) ? b.kind : "note";
   const mins = kind === "focus" && Number(b.mins) > 0 ? Math.min(600, Math.round(Number(b.mins))) : null;
@@ -520,7 +524,7 @@ on("DELETE", "/logs/:id", async ({ env, user, params }) => {
 // 공부 시간: 집중 타이머 기록의 합 (하루별)
 on("GET", "/logs/focus", async ({ env, q, user }) => {
   const from = q.get("from") || "", to = q.get("to") || "";
-  if (!DAY_RE.test(from) || !DAY_RE.test(to)) fail(400, "날짜 형식이 올바르지 않아요.");
+  dayParam(from); dayParam(to);
   const { results } = await env.DB.prepare(
     "SELECT user_id, day, SUM(COALESCE(mins, 0)) AS mins, COUNT(*) AS sessions FROM logs WHERE kind = 'focus' AND day BETWEEN ? AND ? AND (? = '' OR user_id = ?) GROUP BY user_id, day"
   ).bind(from, to, q.get("user") || "", q.get("user") || "").all();
@@ -530,14 +534,14 @@ on("GET", "/logs/focus", async ({ env, q, user }) => {
 // ---------- diary: 하루 한 편, 본인만 ----------
 on("GET", "/diary", async ({ env, q, user }) => {
   const day = q.get("day") || "";
-  if (!DAY_RE.test(day)) fail(400, "날짜 형식이 올바르지 않아요.");
+  dayParam(day);
   const d = await env.DB.prepare("SELECT day, mood, body, updated_at FROM diaries WHERE user_id = ? AND day = ?").bind(user.id, day).first();
   return json({ diary: d || null });
 });
 
 on("PUT", "/diary", async ({ req, env, user }) => {
   const b = await body(req);
-  if (!DAY_RE.test(b.day || "")) fail(400, "날짜 형식이 올바르지 않아요.");
+  dayParam(b.day);
   const mood = b.mood == null ? null : Math.round(Number(b.mood));
   if (mood !== null && !(mood >= 1 && mood <= 5)) fail(400, "기분은 1~5 중에서 골라 주세요.");
   const text = typeof b.body === "string" ? b.body : "";
@@ -556,7 +560,7 @@ on("PUT", "/diary", async ({ req, env, user }) => {
 // 잔디: 한 해 동안 일기를 쓴 날
 on("GET", "/diary/days", async ({ env, q, user }) => {
   const year = q.get("year") || "";
-  if (!/^\d{4}$/.test(year)) fail(400, "연도를 알려 주세요.");
+  yearParam(year);
   const { results } = await env.DB.prepare("SELECT day, mood, length(body) AS len FROM diaries WHERE user_id = ? AND day LIKE ? ORDER BY day")
     .bind(user.id, year + "-%").all();
   return json({ days: results });
@@ -597,6 +601,8 @@ function indexStmts(env, id, text) {
 async function indexNote(env, id, text) {
   await env.DB.batch(indexStmts(env, id, text));
 }
+// 노트 제목: 길이 검사 + 링크 문법([[ ]] | #)과 겹치는 글자 막기
+const noteTitle = (v, name) => { const t = str(v, 120, name); if (/[\[\]|#]/.test(t)) fail(400, "제목에는 [ ] | # 를 쓸 수 없어요."); return t; };
 async function visibleNote(env, id, user) {
   const n = await env.DB.prepare(`SELECT n.* FROM notes n WHERE n.id = ?2 AND ${VISIBLE}`).bind(user.id, id).first();
   if (!n) fail(404, "노트를 찾을 수 없어요.");
@@ -647,8 +653,7 @@ on("GET", "/notes/:id", async ({ env, user, params }) => {
 
 on("POST", "/notes", async ({ req, env, user }) => {
   const b = await body(req);
-  const title = str(b.title, 120, "제목");
-  if (/[\[\]|#]/.test(title)) fail(400, "제목에는 [ ] | # 를 쓸 수 없어요.");
+  const title = noteTitle(b.title, "제목");
   const text = typeof b.body === "string" ? b.body.slice(0, MAX_NOTE) : "";
   const dup = await env.DB.prepare("SELECT id FROM notes WHERE user_id = ? AND title = ? COLLATE NOCASE").bind(user.id, title).first();
   if (dup) return json({ error: "같은 제목의 노트가 이미 있어요.", id: dup.id }, 409);
@@ -667,12 +672,10 @@ on("POST", "/notes", async ({ req, env, user }) => {
 
 on("PUT", "/notes/:id", async ({ req, env, user, params }) => {
   const n = await visibleNote(env, params.id, user);
-  if (n.user_id !== user.id) fail(403, "다른 사람의 노트는 수정할 수 없어요.");
   const b = await body(req);
   const next = { ...n };
   if (b.title !== undefined) {
-    next.title = str(b.title, 120, "제목");
-    if (/[\[\]|#]/.test(next.title)) fail(400, "제목에는 [ ] | # 를 쓸 수 없어요.");
+    next.title = noteTitle(b.title, "제목");
     const dup = await env.DB.prepare("SELECT id FROM notes WHERE user_id = ? AND title = ? COLLATE NOCASE AND id != ?").bind(user.id, next.title, n.id).first();
     if (dup) fail(409, "같은 제목의 노트가 이미 있어요.");
   }
@@ -726,10 +729,8 @@ async function relink(env, n, text) {
 }
 on("POST", "/notes/:id/link", async ({ req, env, user, params }) => {
   const n = await visibleNote(env, params.id, user);
-  if (n.user_id !== user.id) fail(403, "다른 사람의 노트는 수정할 수 없어요.");
   const b = await body(req);
-  const title = str(b.title, 120, "연결할 노트 제목");
-  if (/[\[\]|#]/.test(title)) fail(400, "제목에는 [ ] | # 를 쓸 수 없어요.");
+  const title = noteTitle(b.title, "연결할 노트 제목");
   if (title.toLowerCase() === n.title.toLowerCase()) fail(400, "자기 자신과는 연결할 수 없어요.");
   const text = addLinkLine(n.body || "", title);
   if (text === null) return json({ note: n, added: false });
@@ -738,7 +739,6 @@ on("POST", "/notes/:id/link", async ({ req, env, user, params }) => {
 });
 on("DELETE", "/notes/:id/link", async ({ env, user, params, q }) => {
   const n = await visibleNote(env, params.id, user);
-  if (n.user_id !== user.id) fail(403, "다른 사람의 노트는 수정할 수 없어요.");
   const title = String(q.get("title") || "").trim();
   if (!title) fail(400, "끊을 연결의 제목을 알려 주세요.");
   const text = removeLink(n.body || "", title);
@@ -784,7 +784,6 @@ on("GET", "/search", async ({ env, user, q }) => {
 });
 
 // ---------- 하루 기록: 그날 계획·실행을 얼려 둔 사본 (본인만) ----------
-// 점수 공식은 public/js/util.js 의 dayScore 와 같아요: 계획 40 + 실행 60
 // 하루 점수 (public/js/util.js 의 dayScore 와 같은 식): 계획 35 + 실행 65.
 // 실행 = 끝낸 일의 무게 / 전체 무게. 무게 = 우선순위(low 1 · medium 2 · high 3 · xhigh 4 · max 5, 없으면 2) × 걸리는 시간(없으면 30분)
 const PRIO_W = { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 };
@@ -834,12 +833,11 @@ async function aiScoreDay(env, u, day) {
   return { ai_score: ai, ai_note: note, ai_model: model };
 }
 // 한국 시간 기준 날짜 (자정 자동 저장용)
-const kstDay = (offsetDays = 0) => new Date(Date.now() + 9 * 3600e3 + offsetDays * 864e5).toISOString().slice(0, 10);
 // 어제 기록이 아직 없으면 만들어 둬요 (크론이 못 돈 날을 위한 대비책) — 그리고 main 쿼리 결과를 돌려줘요.
 // 확인과 main 을 왕복 한 번에 묻고, 어제 기록을 새로 만든 때만 main 을 다시 물어요
 async function ensureYesterday(env, u, ec, main) {
   const later = (p) => (ec ? ec.waitUntil(p.catch((e) => console.warn("AI 채점", e.message))) : p); // AI 채점은 뒤에서 (화면을 기다리게 하지 않게)
-  const y = kstDay(-1);
+  const y = kstToday(-1);
   const [chk, res] = await env.DB.batch([env.DB.prepare("SELECT data != '{}' AS full, ai_score FROM day_records WHERE user_id = ? AND day = ?").bind(u.id, y), main]);
   const has = chk.results[0]?.full ? chk.results[0] : null; // 내 점수만 적힌 빈 기록은 없는 것으로
   let again = false;
@@ -847,8 +845,8 @@ async function ensureYesterday(env, u, ec, main) {
   else if (has.ai_score == null) { await later(aiScoreDay(env, u, y)); again = !ec; } // 크론이 못 돌았으면 여기서 (ec 없이 기다렸으면 새 점수로 다시)
   return again ? (await main.all()).results : res.results;
 }
-export async function autoSaveYesterday(env) {
-  const y = kstDay(-1);
+async function autoSaveYesterday(env) {
+  const y = kstToday(-1);
   const { results } = await env.DB.prepare(
     "SELECT u.id, u.day_goal, u.ai_model FROM users u WHERE EXISTS (SELECT 1 FROM plans p WHERE p.user_id = u.id AND p.period = ?) OR EXISTS (SELECT 1 FROM logs l WHERE l.user_id = u.id AND l.day = ?)"
   ).bind("D:" + y, y).all();
@@ -858,21 +856,21 @@ export async function autoSaveYesterday(env) {
 
 on("POST", "/records", async ({ req, env, user }) => {
   const b = await body(req);
-  if (!DAY_RE.test(b.day || "")) fail(400, "날짜 형식이 올바르지 않아요.");
+  dayParam(b.day);
   const r = await snapshotDay(env, user, b.day, false);
   if (!r) fail(400, "그날은 저장할 계획이나 기록이 없어요.");
   return json({ record: r });
 });
 on("GET", "/records", async ({ env, q, user }) => {
   const day = q.get("day") || "";
-  if (!DAY_RE.test(day)) fail(400, "날짜 형식이 올바르지 않아요.");
+  dayParam(day);
   const r = await env.DB.prepare("SELECT day, data, score, self, ai_score, ai_note, ai_model, done, total, auto, saved_at FROM day_records WHERE user_id = ? AND day = ?").bind(user.id, day).first();
   return json({ record: r ? { ...r, data: JSON.parse(r.data) } : null });
 });
 // 내가 매긴 하루 점수 (0~100, null 이면 지워요). 기록이 없던 날이면 빈 기록을 만들어 점수만 붙여요.
 on("PUT", "/records/self", async ({ req, env, user }) => {
   const b = await body(req);
-  if (!DAY_RE.test(b.day || "")) fail(400, "날짜 형식이 올바르지 않아요.");
+  dayParam(b.day);
   const v = b.self === null || b.self === "" ? null : Math.round(Number(b.self));
   if (v !== null && !(v >= 0 && v <= 100)) fail(400, "점수는 0~100 이에요.");
   await env.DB.prepare("INSERT INTO day_records (user_id, day, data, score, self, done, total, auto, saved_at) VALUES (?, ?, '{}', NULL, ?, 0, 0, 0, ?) ON CONFLICT(user_id, day) DO UPDATE SET self = excluded.self")
@@ -881,7 +879,7 @@ on("PUT", "/records/self", async ({ req, env, user }) => {
 });
 // 최근 N일 점수 흐름 (자동 · 내 점수)
 on("GET", "/records/recent", async ({ env, q, user, ec }) => {
-  const to = DAY_RE.test(q.get("to") || "") ? q.get("to") : kstDay(0);
+  const to = DAY_RE.test(q.get("to") || "") ? q.get("to") : kstToday(0);
   const n = Math.min(60, Math.max(3, +q.get("days") || 14));
   const from = new Date(new Date(to + "T00:00:00Z").getTime() - (n - 1) * 864e5).toISOString().slice(0, 10);
   const results = await ensureYesterday(env, user, ec, env.DB.prepare("SELECT day, score, ai_score, ai_note, done, total FROM day_records WHERE user_id = ? AND day BETWEEN ? AND ? ORDER BY day").bind(user.id, from, to));
@@ -889,7 +887,7 @@ on("GET", "/records/recent", async ({ env, q, user, ec }) => {
 });
 on("GET", "/records/days", async ({ env, q, user, ec }) => {
   const year = q.get("year") || "";
-  if (!/^\d{4}$/.test(year)) fail(400, "연도를 알려 주세요.");
+  yearParam(year);
   const results = await ensureYesterday(env, user, ec, env.DB.prepare("SELECT day, score, ai_score, done, total, auto FROM day_records WHERE user_id = ? AND day LIKE ? ORDER BY day").bind(user.id, year + "-%"));
   return json({ days: results });
 });
@@ -905,7 +903,7 @@ registerBooks(on, { json, body, fail, now }); // AI 공부책 (#/books)
 registerMcpTokens(on, { json, body, fail, now });
 registerHomePad(on, { json, body, fail, now });
 registerCalendar(on, { json, fail });
-registerTogether(on, { json, body, fail, now, kstDay });
+registerTogether(on, { json, body, fail, now });
 registerRoom(on, { json, body, fail, uid, now });
 registerPush(on, { json, body, fail, uid, now });
 registerLibrary(on, { json, body, fail, uid, now });

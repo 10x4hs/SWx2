@@ -3,6 +3,7 @@
 
 import { toolPrompt, parseToolCall, runAgentTool, toolSummary, autoResearch, WRITE_TOOLS, CLAIM_RE, dayPlans, stripToolLines } from "./agent.js";
 import { cleanImages, withImages } from "./vision.js";
+import { kstToday } from "./lib/day.js";
 
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
 const MIMO_URL = "https://api.xiaomimimo.com/v1/chat/completions";
@@ -42,7 +43,7 @@ const JSON_ORDER = ["gemini", "groq", "cohere", "mimo", "zhipu", "openrouter", "
 export const TEXT_ORDER = ["groq", "gemini", "cohere", "mimo", "zhipu", "openrouter", "kilo", "ollama"];
 // 사용자가 고른 모델을 맨 앞에 (없거나 모르는 id 면 기본 순서). 그 모델이 막히면 뒤의 것들로 넘어가요.
 export const orderFrom = (prefer, base = TEXT_ORDER) => (prefer && MODELS[prefer] ? [prefer, ...base.filter((p) => p !== prefer)] : base);
-export const modelLabel = (id) => MODELS[id]?.label || id;
+const modelLabel = (id) => MODELS[id]?.label || id;
 export const isModel = (id) => typeof id === "string" && Object.hasOwn(MODELS, id);
 // 실제로 답한 모델 id(체인 안의 이름) → { pick: 고를 수 있는 이름, label } — 화면에 "Groq GPT-OSS" 처럼 보여 주려고
 export function whoAnswered(used) {
@@ -143,9 +144,8 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
     // 날짜 감각: 사용자가 '보고 있는 날짜'(b.day — 달력에서 고른 날)와 '실제 오늘'(b.today)은 다를 수 있어요.
     // 날짜 말이 없는 요청은 보고 있는 날짜 하나에만 넣게 해요 (예전엔 오늘·내일 둘 다 보여 줘서 두 날에 넣는 일이 있었어요)
     const isYmd = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
-    const kstToday = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-    const viewDay = isYmd(b.day) ? b.day : (isYmd(b.today) ? b.today : kstToday);
-    const realToday = isYmd(b.today) ? b.today : kstToday;
+    const viewDay = isYmd(b.day) ? b.day : (isYmd(b.today) ? b.today : kstToday());
+    const realToday = isYmd(b.today) ? b.today : kstToday();
     const dayWord = viewDay === realToday ? "오늘" : viewDay > realToday ? "실제 오늘이 아니라 앞으로 올 날" : "실제 오늘이 아니라 지난 날";
     system += "\n\n" + toolPrompt(TOOLS, 4) + (live.length === 1
       ? `\n계획을 넣거나 고쳐 달라고 하면 add_plan 등으로 직접 해. 시간은 24시간 HH:MM.\n사용자가 지금 보고 있는 날짜: ${viewDay} (${dayWord}). 실제 오늘: ${realToday}.\n사용자가 날짜를 말하지 않으면 add_plan 의 date 는 반드시 ${viewDay} 하나만 써. '내일'·'모레'·'다음 주' 처럼 날짜 말이 있을 때만 그 날짜로(기준은 보고 있는 날짜 ${viewDay}) 넣어.`

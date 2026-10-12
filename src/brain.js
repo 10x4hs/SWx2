@@ -3,6 +3,7 @@
 import { aiJson } from "./ai.js";
 import { runAgent, WRITE_TOOLS, runAgentTool, toolSummary, autoResearch } from "./agent.js";
 import { cleanImages, withImages } from "./vision.js";
+import { kstToday } from "./lib/day.js";
 
 const PRIO_N = { max: 1, xhigh: 2, high: 3, medium: 4, low: 5 }; // 저장값 → AI 에게 보여 주는 1~5순위
 const AI_START = "<!-- ai:start -->", AI_END = "<!-- ai:end -->", MOC_MARK = "<!-- ai:moc -->";
@@ -365,7 +366,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     const text = String(b.text || "").trim().slice(0, 2000) || (images.length ? "이 이미지에 있는 일정·할 일을 넣어 줘." : "");
     if (!text) fail(400, "무엇을 할지 적어 주세요.");
     const isDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
-    const today = isDate(b.today) ? b.today : new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    const today = isDate(b.today) ? b.today : kstToday();
     const day = isDate(b.day) ? b.day : today;
     const time = typeof b.time === "string" && /^\d{2}:\d{2}$/.test(b.time) ? b.time : "";
     const dow = (d) => "일월화수목금토"[new Date(d + "T00:00:00Z").getUTCDay()];

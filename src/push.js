@@ -5,8 +5,9 @@
 //   DELETE /push/subscribe { endpoint }
 // 보내기: pushUsers(env, ec, userIds, { room }) — 404/410 이면 그 구독은 지워요.
 
-const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const enc = (s) => b64u(new TextEncoder().encode(s));
+import { b64url } from "./lib/crypto.js";
+
+const enc = (s) => b64url(new TextEncoder().encode(s));
 
 export function registerPush(on, { json, body, fail, uid, now }) {
   on("GET", "/push/key", ({ env }) => json({ key: env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY ? env.VAPID_PUBLIC_KEY : null }));
@@ -33,7 +34,7 @@ async function vapidJwt(env, audience) {
   const header = enc(JSON.stringify({ typ: "JWT", alg: "ES256" }));
   const payload = enc(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: "mailto:admin@dsm-mafia.local" }));
   const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`${header}.${payload}`));
-  return `${header}.${payload}.${b64u(sig)}`; // WebCrypto 의 ECDSA 서명은 이미 r||s 64바이트라 그대로 써요
+  return `${header}.${payload}.${b64url(sig)}`; // WebCrypto 의 ECDSA 서명은 이미 r||s 64바이트라 그대로 써요
 }
 
 // userIds 에게 "깨우기" 푸시. 응답을 기다리지 않게 ec.waitUntil 로 감싸요.

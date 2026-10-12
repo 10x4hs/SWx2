@@ -2,6 +2,8 @@
 // 옵시디언 노트에 끼워 넣는 개인 토큰 페이지. 셋이 서로의 체크와 한 줄 정리를 봐요 — 쓰기는 본인만.
 // 공부 자료는 정적 파일(public/papers/*)이고, 여기선 기록만 다뤄요.
 import { aiJson, aiText } from "./ai.js";
+import { sha256, b64url } from "./lib/crypto.js";
+import { kstTodayReq } from "./lib/day.js";
 
 export const PAPER_IDS = ["yolov10", "bytetrack", "fdta", "sam", "sam3", "dino", "dinov3", "rtdetrv4", "cradiov4", "videomae", "vjepa21", "adaptformer", "cmx", "mspecgene", "intquant", "iptqvit"];
 const PAPER_SET = new Set(PAPER_IDS);
@@ -13,18 +15,9 @@ const MAX_NOTE = 300;
 const MAX_EXPLAIN = 4000;
 const MAX_TURNS = 12;
 
-const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-const sha256 = async (s) => hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
-const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const TOKEN_RE = /^[A-Za-z0-9_-]{32,64}$/;
 
-// 한국 시간 오늘. 로컬 테스트(PASSWORDLESS=1)에서만 x-papers-now 헤더로 날짜를 바꿀 수 있어요.
-function kstToday(req, env) {
-  const fake = env.PASSWORDLESS === "1" ? req.headers.get("x-papers-now") : null;
-  if (fake && /^\d{4}-\d{2}-\d{2}$/.test(fake)) return fake;
-  return new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-}
-export const papersEnded = (req, env) => kstToday(req, env) > PAPERS_UNTIL;
+export const papersEnded = (req, env) => kstTodayReq(req, env) > PAPERS_UNTIL;
 
 export function registerPapers(on, { json, body, fail, now }) {
   const paperOf = (v) => (typeof v === "string" && PAPER_SET.has(v) ? v : fail(400, "없는 논문이에요."));
@@ -49,7 +42,7 @@ export function registerPapers(on, { json, body, fail, now }) {
     for (const n of notes.results) by.get(n.user_id) && (by.get(n.user_id).notes[n.paper] = n.body);
     return [...by.values()].map((m) => ({ ...m, done: Object.values(m.checks).reduce((s, p) => s + STEPS.filter((k) => p[k]).length, 0) }));
   }
-  const shape = async (req, env, extra = {}) => ({ until: PAPERS_UNTIL, today: kstToday(req, env), ended: papersEnded(req, env), total: PAPER_IDS.length * STEPS.length, members: await progress(env), ...extra });
+  const shape = async (req, env, extra = {}) => ({ until: PAPERS_UNTIL, today: kstTodayReq(req, env), ended: papersEnded(req, env), total: PAPER_IDS.length * STEPS.length, members: await progress(env), ...extra });
 
   async function setCheck(env, userId, paper, step, done, score = null) {
     if (done) {
@@ -89,13 +82,13 @@ export function registerPapers(on, { json, body, fail, now }) {
   const addDay = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10);
   const num = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
   async function easyState(req, env, uid) {
-    const today = kstToday(req, env);
+    const today = kstTodayReq(req, env);
     const { results } = await env.DB.prepare("SELECT paper, stage, due_day, read_at, recall, recall_total, reviews FROM easy_reads WHERE user_id = ?").bind(uid).all();
     return { today, items: results, due: results.filter((r) => r.stage < 4 && r.due_day <= today).map((r) => r.paper) };
   }
   on("GET", "/papers/easy", async ({ req, env, user }) => json(await easyState(req, env, user.id)));
   on("PUT", "/papers/easy/read", async ({ req, env, user }) => {
-    const b = await body(req), paper = paperOf(b.paper), today = kstToday(req, env), t = now();
+    const b = await body(req), paper = paperOf(b.paper), today = kstTodayReq(req, env), t = now();
     const recall = num(b.recall, 20), total = num(b.total, 20);
     // 처음 읽으면 1일 뒤 복습. 다시 읽어도 단계는 그대로 (복습은 퀴즈로만 올라가요)
     await env.DB.prepare(`INSERT INTO easy_reads (user_id, paper, stage, due_day, read_at, recall, recall_total, updated_at) VALUES (?, ?, 1, ?, ?, ?, ?, ?)
@@ -104,7 +97,7 @@ export function registerPapers(on, { json, body, fail, now }) {
     return json(await easyState(req, env, user.id));
   });
   on("PUT", "/papers/easy/review", async ({ req, env, user }) => {
-    const b = await body(req), today = kstToday(req, env), t = now();
+    const b = await body(req), today = kstTodayReq(req, env), t = now();
     const list = Array.isArray(b.results) ? b.results.slice(0, 16) : fail(400, "results 가 필요해요.");
     const rows = new Map((await env.DB.prepare("SELECT paper, stage FROM easy_reads WHERE user_id = ?").bind(user.id).all()).results.map((r) => [r.paper, r.stage]));
     const stmts = [];
@@ -279,7 +272,7 @@ export function registerPapers(on, { json, body, fail, now }) {
   // 로컬 테스트용(PASSWORDLESS=1): 크론이 하는 정리를 날짜를 바꿔 바로 돌려 봐요
   on("POST", "/papers/cleanup", async ({ req, env }) => {
     if (env.PASSWORDLESS !== "1") fail(404, "없는 주소예요.");
-    return json(await cleanupPaperNotes(env, kstToday(req, env)));
+    return json(await cleanupPaperNotes(env, kstTodayReq(req, env)));
   });
 
   // ---------- 토큰 (옵시디언 iframe, 로그인 없음) ----------
@@ -313,7 +306,7 @@ export async function cleanupPaperNotes(env, today) {
   return { deleted: count.results[0]?.n || 0 };
 }
 
-export function obsidianNote(link, name) {
+function obsidianNote(link, name) {
   return `---
 tags: [논문스프린트]
 until: ${PAPERS_UNTIL}

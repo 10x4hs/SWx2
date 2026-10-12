@@ -6,14 +6,13 @@
 //   POST /oauth/token                              authorization_code · refresh_token (갱신 토큰은 쓸 때마다 바꿔요)
 // 코드 · 토큰 · 비밀값은 전부 SHA-256 만 저장해요. 토큰 하나 = 그 사람 계정 권한.
 
+import { sha256, b64url } from "./lib/crypto.js";
+
 const ACCESS_TTL = 3600e3;            // 1시간
 const REFRESH_TTL = 30 * 864e5;       // 30일
 const CODE_TTL = 5 * 60e3;            // 5분
 const SCOPE = "mcp";
 
-const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-const sha256 = async (s) => hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
-const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const rand = (n = 32) => b64url(crypto.getRandomValues(new Uint8Array(n)));
 const s256 = async (verifier) => b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -203,12 +202,4 @@ async function token(req, env) {
     return issue(env, c.client_id, row.user_id);
   }
   return oerr("unsupported_grant_type", "authorization_code 와 refresh_token 만 돼요.");
-}
-
-// /mcp 의 Bearer 토큰이 OAuth 접근 토큰이면 → { user_id, agent }
-export async function oauthTokenUser(env, tokenHash) {
-  const r = await env.DB.prepare("SELECT t.user_id, t.access_expires, c.client_name, c.client_id FROM oauth_tokens t JOIN oauth_clients c ON c.client_id = t.client_id WHERE t.access_hash = ?").bind(tokenHash).first();
-  if (!r || r.access_expires < Date.now()) return null;
-  await env.DB.prepare("UPDATE oauth_tokens SET last_used_at = ? WHERE access_hash = ?").bind(Date.now(), tokenHash).run();
-  return { user_id: r.user_id, agent: agentName(r.client_name, r.client_id) };
 }

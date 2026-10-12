@@ -64,7 +64,7 @@ export async function getAiName(env) {
 }
 
 // share 메시지에 창고 카드 붙이기 (항목이 지워졌으면 item: null)
-export async function attachItems(env, messages) {
+async function attachItems(env, messages) {
   const ids = [...new Set(messages.filter((m) => m.kind === "share" && m.ref_id).map((m) => m.ref_id))];
   const found = new Map();
   if (ids.length) {
