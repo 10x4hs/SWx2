@@ -3419,3 +3419,30 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .obs-top .obs-title { font-size: 16px; }
 .obs-top .obs-stat { flex-basis: 100%; font-size: 11.5px; font-weight: 500; color: var(--ink-3); }
 .obs-top .obs-hint { flex-basis: 100%; font-size: 11px; line-height: 1.4; }
+
+/* ---------- Brain: 노트 + 공부 한 나무 (views/brain.js) ---------- */
+.host-brain { height: 100%; }
+.brain { display: flex; flex-direction: column; height: 100%; gap: 10px; }
+.brain-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.brain-crumbs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; min-width: 0; }
+.brain-crumbs a { color: var(--ink-2); text-decoration: none; }
+.brain-crumbs a:hover { color: var(--ink); }
+.brain-crumbs b { font-size: 16px; }
+.brain-crumbs i { font-style: normal; opacity: .4; }
+.brain-actions { display: flex; gap: 8px; }
+.brain-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 240px; gap: 10px; }
+.brain-graph { position: relative; min-height: 0; }
+.brain-list { overflow: auto; border-radius: 14px; background: var(--glass-2, rgba(127,127,127,.06)); padding: 6px; }
+.brain-list ul { list-style: none; margin: 0; padding: 0; }
+.brain-list a { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 9px; color: var(--ink); text-decoration: none; font-size: 13.5px; }
+.brain-list a:hover { background: rgba(127,127,127,.12); }
+.brain-list a span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brain-list i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.brain-list small { opacity: .55; font-variant-numeric: tabular-nums; }
+.brain-empty { opacity: .6; font-size: 13px; padding: 10px; }
+@media (max-width: 760px) {
+  .host-brain { height: auto; }
+  .brain-body { grid-template-columns: 1fr; }
+  .brain-graph { height: 58vh; }
+  .brain-list { max-height: none; }
+}

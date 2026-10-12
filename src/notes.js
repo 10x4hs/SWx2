@@ -75,6 +75,36 @@ export function registerNotes(on) {
     return json({ notes: results });
   });
 
+  // 한꺼번에 가져오기 (Brain → Import): items = [{ title, body, parent_title }] 를 위에서부터 (부모가 먼저).
+  // 같은 제목이 이미 있으면 새로 만들지 않고, 그 노트가 맨 위(부모 없음)일 때만 parent_title 아래로 옮겨요 → 다시 올려도 안전해요.
+  on("POST", "/notes/import", async ({ req, env, user }) => {
+    const b = await body(req);
+    const items = Array.isArray(b.items) ? b.items.slice(0, 40) : fail(400, "items 가 필요해요.");
+    const list = items.map((it) => ({ title: noteTitle(it?.title, "제목"), body: typeof it?.body === "string" ? it.body.slice(0, MAX_NOTE) : "", parent: typeof it?.parent_title === "string" && it.parent_title.trim() ? it.parent_title.trim() : null }));
+    const want = [...new Set(list.flatMap((x) => [x.title, x.parent].filter(Boolean)).map((t) => t.toLowerCase()))];
+    const ids = new Map(); // 소문자 제목 → { id, parent_id }
+    if (want.length) {
+      const { results } = await env.DB.prepare(`SELECT id, title, parent_id FROM notes WHERE user_id = ? AND lower(title) IN (${want.map(() => "?").join(",")})`).bind(user.id, ...want).all();
+      for (const r of results) ids.set(r.title.toLowerCase(), r);
+    }
+    const stmts = [];
+    let created = 0, moved = 0, kept = 0;
+    for (const x of list) {
+      const parent = x.parent ? ids.get(x.parent.toLowerCase()) : null;
+      const have = ids.get(x.title.toLowerCase());
+      if (have) {
+        if (parent && !have.parent_id && parent.id !== have.id) { stmts.push(env.DB.prepare("UPDATE notes SET parent_id = ? WHERE id = ? AND user_id = ?").bind(parent.id, have.id, user.id)); have.parent_id = parent.id; moved++; } else kept++;
+        continue;
+      }
+      const n = { id: uid(), title: x.title, parent_id: parent?.id || null, t: now() };
+      stmts.push(env.DB.prepare("INSERT INTO notes (id, user_id, title, body, shared, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?, ?)").bind(n.id, user.id, n.title, x.body, n.parent_id, n.t, n.t), ...indexStmts(env, n.id, x.body));
+      ids.set(x.title.toLowerCase(), { id: n.id, parent_id: n.parent_id });
+      created++;
+    }
+    if (stmts.length) await env.DB.batch(stmts);
+    return json({ created, moved, kept });
+  });
+
   on("GET", "/notes/resolve", async ({ env, user, q }) => {
     const title = String(q.get("title") || "").trim();
     if (!title) fail(400, "제목을 알려 주세요.");
