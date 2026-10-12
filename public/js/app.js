@@ -115,6 +115,7 @@ const NAV = [
   { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
   { key: "brain", hash: "#/brain", label: "Brain", tip: "Brain · notes + study in one tree" }, // 노트 · 공부 아이콘을 하나로
+  { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI" }, // Brain 안에 묻히면 AI 공부책을 못 찾아서 바로 가는 아이콘은 남겨요
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -281,12 +282,12 @@ function parseRoute() {
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar" && b === "m") return { view: "calendar", nav: "calendar", mode: "month", day: c ? `m/${c}` : null }; // #/calendar/m/2026-10 = 그 달 달력만
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null, who: c === "u" && d ? d : null }; // #/calendar/2026-10-04 = 그날 전체 화면 · /u/<id> = 친구의 그날
-  if (a === "english") return { view: "english", nav: "brain", tab: b || null, day: c || null }; // 공부 탭 안
+  if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
   if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지
-  if (a === "study") return { view: "page", nav: "brain", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
-  if (a === "papers") return { view: "papers", nav: "brain", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
-  if (a === "books") return { view: "books", nav: "brain", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
+  if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
+  if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
+  if (a === "books") return { view: "books", nav: "study", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
