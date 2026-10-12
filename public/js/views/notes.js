@@ -60,16 +60,16 @@ export function mount(root, ctx, r) {
         <div class="top">
           <div class="row" style="justify-content:space-between">
             <h1 class="sr-only">노트</h1>
-            <nav class="seg nt-tabs" aria-label="노트 · 그래프"><a href="#/notes" aria-current="page">노트</a><a href="#/graph">그래프</a></nav>
+            <nav class="seg nt-tabs" aria-label="Notes · Brain"><a href="#/notes" aria-current="page">Notes</a><a href="#/brain">Brain</a></nav>
             <span class="row" style="gap:2px">
-              <button class="btn ghost sm" type="button" id="daily">오늘 노트</button>
-              <button class="btn sm accent" type="button" id="new">${icon.plus(14)}새 노트</button>
+              <button class="btn ghost sm" type="button" id="daily">Today</button>
+              <button class="btn sm accent" type="button" id="new">${icon.plus(14)}New page</button>
             </span>
           </div>
           <div class="ai-bar" role="group" aria-label="AI">
-            <button class="btn sm ai-btn" type="button" id="ai-organize" title="내 노트 전부에 주제·#태그·[[링크]]를 달고 주제별 목차를 만들어요">${icon.spark(14)}AI 정리</button>
-            <button class="btn sm ai-btn" type="button" id="ai-make" title="주제를 적으면 서로 연결된 개념 노트를 만들어요">${icon.plus(14)}AI로 만들기</button>
-            <button class="btn sm ai-btn" type="button" id="ai-page" title="이 페이지를 어디에 쓸지 적으면 AI 가 Notion 풍 페이지를 만들어요. 만든 뒤에도 대화로 계속 고쳐요">${icon.edit(14)}AI 페이지</button>
+            <button class="btn sm ai-btn" type="button" id="ai-organize" title="내 노트 전부에 주제·#태그·[[링크]]를 달고 주제별 목차를 만들어요">${icon.spark(14)}AI tidy</button>
+            <button class="btn sm ai-btn" type="button" id="ai-make" title="주제를 적으면 서로 연결된 개념 노트를 만들어요">${icon.plus(14)}AI create</button>
+            <button class="btn sm ai-btn" type="button" id="ai-page" title="이 페이지를 어디에 쓸지 적으면 AI 가 Notion 풍 페이지를 만들어요. 만든 뒤에도 대화로 계속 고쳐요">${icon.edit(14)}AI page</button>
           </div>
           <form class="ai-make ai-page-form" id="ai-page-form" hidden>
             <textarea class="input" id="ai-purpose" rows="2" maxlength="1000" placeholder="이 페이지를 어디에 쓸 건가요? 예: 10월 논문 스프린트 복습 일정 · 영어 섀도잉 기록장" aria-label="페이지 사용 목적"></textarea>
@@ -85,7 +85,7 @@ export function mount(root, ctx, r) {
             <button class="btn sm accent" type="submit">만들기</button>
             <div class="att-tray" id="ai-topic-att" hidden></div>
           </form>
-          <input class="input" id="filter" placeholder="제목·내용으로 거르기" aria-label="노트 거르기">
+          <input class="input" id="filter" placeholder="Filter by title or text" aria-label="Filter pages">
           <div id="tagbar"></div>
         </div>
         <ul id="nl"></ul>
@@ -98,15 +98,15 @@ export function mount(root, ctx, r) {
     const q = S.filter.toLowerCase();
     const list = S.notes.filter((n) => !q || n.title.toLowerCase().includes(q) || (n.snippet || "").toLowerCase().includes(q));
     $("#tagbar", root).innerHTML = S.tag
-      ? `<span class="row" style="gap:6px"><span class="tag" aria-pressed="true">#${esc(S.tag)}</span><a class="linkbtn faint" href="#/notes" style="font-size:12px">태그 해제</a></span>`
+      ? `<span class="row" style="gap:6px"><span class="tag" aria-pressed="true">#${esc(S.tag)}</span><a class="linkbtn faint" href="#/notes" style="font-size:12px">Clear tag</a></span>`
       : `<div class="tagcloud" style="padding:0">${(S.allTags || []).slice(0, 12).map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t.tag)}">#${esc(t.tag)}</a>`).join("")}</div>`;
     $("#nl", root).innerHTML = list.length ? list.map((n) => {
       const u = ctx.user(n.user_id);
       return `<li><a href="#/notes/${n.id}" ${S.cur?.id === n.id ? 'aria-current="page"' : ""}>
         <span class="nt"><span class="dot" style="--c:${esc(u?.color || "#999")}"></span><span>${esc(n.title)}</span></span>
-        <span class="ns">${esc(plain(n.snippet) || "빈 노트")}</span>
+        <span class="ns">${esc(plain(n.snippet) || "Empty")}</span>
       </a></li>`;
-    }).join("") : `<li class="empty" style="margin:8px">${S.notes.length ? "맞는 노트가 없어요" : "첫 노트를 만들어 보세요"}</li>`;
+    }).join("") : `<li class="empty" style="margin:8px">${S.notes.length ? "No match" : "Create your first page"}</li>`;
   }
   async function loadList() {
     try { const [{ notes }, { tags }] = await Promise.all([api.notes(S.tag), api.tags()]); S.notes = notes; S.allTags = tags; drawList(); } catch (e) { toast(e.message, "err"); }
@@ -118,21 +118,19 @@ export function mount(root, ctx, r) {
     $("#notes", root).classList.remove("has-note");
     $("#ed", root).innerHTML = `
       <div class="ed-body"><div class="ed-inner" style="max-width:520px;padding-top:8vh">
-        <span class="eyebrow">// Vault</span>
-        <h2 class="h1 vault-title">Second Brain<br><span class="muted">공부한 것을 연결해요</span></h2>
+        <span class="eyebrow">// Brain</span>
+        <h2 class="h1 vault-title">Brain<br><span class="muted">Everything I learn, in one tree</span></h2>
         <div class="md muted">
           <ul>
-            <li>Notion 처럼 써요. <code>/</code> 를 치면 제목·목록·할 일·코드·페이지·AI 블록이 떠요. 글자를 긁으면 굵게·링크 도구가 나와요.</li>
-            <li><code>[[노트 제목]]</code> 으로 다른 노트를 연결해요. 없는 제목이면 누를 때 새로 만들어져요. 그래프에서는 점을 누르고 다른 점을 누르면 이어져요.</li>
-            <li><code>#태그</code> 를 붙이면 왼쪽 사이드바에서 모아 볼 수 있어요.</li>
-            <li><b>AI 정리</b>를 누르면 AI가 노트마다 주제·태그·관련 링크를 달고, 주제별 목차(<code>MOC · 주제</code>) 노트를 만들어요.</li>
-            <li><b>AI로 만들기</b>에 주제를 적으면 서로 연결된 개념 노트를 여러 개 만들어 줘요. AI 튜터 대화도 노트로 정리할 수 있어요.</li>
-            <li>다른 노트가 이 노트를 가리키면 아래에 <b>백링크</b>로 보여요.</li>
-            <li><kbd>${/Mac/.test(navigator.platform) ? "⌘" : "Ctrl"} K</kbd> 로 어디서든 찾고, 없는 제목은 바로 만들어요.</li>
-            <li>노트는 나만 볼 수 있어요. 다른 두 사람에게는 차트만 보여요.</li>
+            <li>Write like Notion. Type <code>/</code> for headings, lists, to-dos, code, pages and AI blocks.</li>
+            <li><code>[[Page title]]</code> links pages. A missing title becomes a new page when you open it.</li>
+            <li>Every page can hold pages. Put new pages under one of the five concepts in <a href="#/brain">Brain</a>.</li>
+            <li><code>#tag</code> groups pages in the left panel. <b>Backlinks</b> show who points here.</li>
+            <li><kbd>${/Mac/.test(navigator.platform) ? "⌘" : "Ctrl"} K</kbd> finds anything, or creates it.</li>
+            <li>Pages are private. The other two only see charts.</li>
           </ul>
         </div>
-        <div class="row"><button class="btn accent" type="button" id="empty-new">${icon.plus(15)}새 노트</button><button class="btn ghost" type="button" id="empty-daily">오늘 데일리 노트</button></div>
+        <div class="row"><button class="btn accent" type="button" id="empty-new">${icon.plus(15)}New page</button><button class="btn ghost" type="button" id="empty-daily">Today's daily page</button></div>
       </div></div>`;
     $("#empty-new", root).addEventListener("click", () => createNote(ctx, ""));
     $("#empty-daily", root).addEventListener("click", () => openDaily(ctx, ymd(new Date())));
@@ -146,24 +144,24 @@ export function mount(root, ctx, r) {
       <div class="ed-bar">
         <a class="icon-btn sm only-m" href="#/notes" aria-label="목록으로" id="ed-back">${icon.left(16)}</a>
         <button class="icon-btn sm only-d" type="button" id="ed-list" aria-label="${S.listOpen ? "찾기 패널 접기" : "찾기 패널 펴기"}" aria-expanded="${S.listOpen}" title="${S.listOpen ? "찾기 패널 접기" : "찾기 패널 펴기"}">${S.listOpen ? icon.left(15) : icon.right(15)}</button>
-        <span class="status" id="ed-status">${own ? esc(S.status || "수정 " + fmt(n.updated_at)) : `${esc(u?.display_name || "누군가")}의 노트 · 보기 전용`}</span>
+        <span class="status" id="ed-status">${own ? esc(S.status || "Edited " + fmt(n.updated_at)) : `${esc(u?.display_name || "누군가")}의 노트 · 보기 전용`}</span>
         ${own ? `
         <div class="seg" role="tablist" aria-label="보기 방식">
-          <button type="button" role="tab" data-mode="block" aria-selected="${mode === "block"}" title="블록 편집">${icon.edit(14)}<span class="seg-l">편집</span></button>
-          <button type="button" role="tab" data-mode="md" aria-selected="${mode === "md"}" title="마크다운 원문">${icon.split(14)}<span class="seg-l">원문</span></button>
-          <button type="button" role="tab" data-mode="view" aria-selected="${mode === "view"}" title="보기">${icon.eye(14)}<span class="seg-l">보기</span></button>
+          <button type="button" role="tab" data-mode="block" aria-selected="${mode === "block"}" title="블록 편집">${icon.edit(14)}<span class="seg-l">Edit</span></button>
+          <button type="button" role="tab" data-mode="md" aria-selected="${mode === "md"}" title="마크다운 원문">${icon.split(14)}<span class="seg-l">Markdown</span></button>
+          <button type="button" role="tab" data-mode="view" aria-selected="${mode === "view"}" title="보기">${icon.eye(14)}<span class="seg-l">View</span></button>
         </div>
-        <button class="btn ghost sm ai-btn" type="button" id="ed-ai" title="이 노트에 주제·#태그·[[링크]]를 달아요">${icon.spark(14)}AI 정리</button>
-        <button class="btn ghost sm ai-btn" type="button" id="ed-split-ai" title="이 노트를 개념 하나당 노트 하나로 쪼개 새로 만들어요">쪼개기</button>
+        <button class="btn ghost sm ai-btn" type="button" id="ed-ai" title="Add topic, #tags and [[links]] to this page">${icon.spark(14)}AI tidy</button>
+        <button class="btn ghost sm ai-btn" type="button" id="ed-split-ai" title="이 노트를 개념 하나당 노트 하나로 쪼개 새로 만들어요">Split</button>
         <button class="icon-btn sm danger" type="button" id="ed-del" aria-label="노트 삭제">${icon.trash(15)}</button>` : ""}
       </div>
-      ${own ? `<form class="ai-refine" id="ed-refine" title="AI 와 이 페이지를 같이 고쳐요"><span class="ai-refine-ic">${icon.spark(14)}</span><input class="input" id="ed-refine-in" maxlength="1000" placeholder="AI 에게: 여기 표로 바꿔 줘 · 복습 일정 섹션 추가해 줘 · 더 짧게" aria-label="AI 에게 고쳐 달라고 하기"><button class="btn sm accent" type="submit">고치기</button></form>` : ""}
+      ${own ? `<form class="ai-refine" id="ed-refine" title="AI 와 이 페이지를 같이 고쳐요"><span class="ai-refine-ic">${icon.spark(14)}</span><input class="input" id="ed-refine-in" maxlength="1000" placeholder="Ask AI: make this a table · add a review section · shorter" aria-label="AI 에게 고쳐 달라고 하기"><button class="btn sm accent" type="submit">Apply</button></form>` : ""}
       <div class="ed-body"><div class="ed-inner" style="${mode === "md" ? "max-width:1180px" : ""}">
-        ${S.crumbs.length ? `<nav class="crumbs" aria-label="상위 페이지">${S.crumbs.map((c) => `<a href="#/notes/${c.id}">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b></nav>` : ""}
+        <nav class="crumbs" aria-label="Path"><a href="#/brain">Brain</a><span>›</span>${S.crumbs.map((c) => `<a href="#/notes/${c.id}">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b><a class="crumb-map" href="#/brain/${encodeURIComponent(S.children.length ? n.id : S.crumbs.at(-1)?.id || "")}" title="See this page in the Brain graph">◎ Map</a></nav>
         <input class="ed-title" id="ed-title" value="${esc(n.title)}" aria-label="노트 제목" ${own ? "" : "readonly"} maxlength="120">
         <div class="row faint" style="font-size:12px;gap:10px">
           <span class="row" style="gap:6px">${avatar({ ...(u || {}), color: u?.color || "#999" }, "sm")}${esc(u?.display_name || "")}</span>
-          <span>${fmt(n.created_at)} 작성</span>
+          <span>Created ${fmt(n.created_at)}</span>
           <span id="ed-tags" class="row" style="gap:4px">${S.tags.map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join("")}</span>
         </div>
         ${mode === "block" ? `<div id="ed-blocks"></div>` : `<div class="${mode === "md" ? "ed-split" : ""}">
@@ -171,10 +169,10 @@ export function mount(root, ctx, r) {
           <article class="md" id="ed-md"></article>
         </div>`}
         <div class="ed-meta">
-          <div class="row" style="justify-content:space-between;align-items:center"><div class="eyebrow">페이지 · ${S.children.length}</div>${own ? `<button class="btn ghost sm" type="button" id="ed-newpage">${icon.plus(13)}페이지</button>` : ""}</div>
-          <div class="pages" id="ed-pages">${S.children.length ? S.children.map((c) => `<a href="#/notes/${c.id}"><span class="pg-ic">📄</span><b>${esc(c.title)}</b></a>`).join("") : `<span class="faint" style="font-size:13px">이 노트 아래에 페이지를 만들어 내용을 나눠 담을 수 있어요.</span>`}</div>
-          <div class="eyebrow">백링크 · ${S.backlinks.length}</div>
-          <div class="backlinks" id="ed-back-list">${S.backlinks.length ? S.backlinks.map((b) => `<a href="#/notes/${b.id}"><b>${esc(b.title)}</b><span>${esc(plain(b.snippet).slice(0, 120))}</span></a>`).join("") : `<span class="faint" style="font-size:13px">아직 이 노트를 가리키는 노트가 없어요. 다른 노트에서 <code>[[${esc(n.title)}]]</code> 라고 써 보세요.</span>`}</div>
+          <div class="row" style="justify-content:space-between;align-items:center"><div class="eyebrow">Pages · ${S.children.length}</div>${own ? `<button class="btn ghost sm" type="button" id="ed-newpage">${icon.plus(13)}Page</button>` : ""}</div>
+          <div class="pages" id="ed-pages">${S.children.length ? S.children.map((c) => `<a href="#/notes/${c.id}"><span class="pg-ic">📄</span><b>${esc(c.title)}</b></a>`).join("") : `<span class="faint" style="font-size:13px">Add pages inside this one to split it up.</span>`}</div>
+          <div class="eyebrow">Backlinks · ${S.backlinks.length}</div>
+          <div class="backlinks" id="ed-back-list">${S.backlinks.length ? S.backlinks.map((b) => `<a href="#/notes/${b.id}"><b>${esc(b.title)}</b><span>${esc(plain(b.snippet).slice(0, 120))}</span></a>`).join("") : `<span class="faint" style="font-size:13px">Nothing links here yet. Write <code>[[${esc(n.title)}]]</code> in another page.</span>`}</div>
           <div id="ed-outline"></div>
         </div>
       </div></div>`;
