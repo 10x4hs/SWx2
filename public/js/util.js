@@ -4,6 +4,8 @@ export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const pad = (n) => String(n).padStart(2, "0");
+// 한국 시각(KST)의 오늘 "YYYY-MM-DD" — 서버(Workers)는 UTC 라서 날짜 경계를 이걸로 맞춰요
+export const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 export const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 export const pct = (x) => Math.round(clamp(x) * 100);
 // 사람 동그라미: 사진(avatar · data URL)이 있으면 사진, 없으면 이름 첫 글자. 모든 화면이 이걸 써요
@@ -35,14 +37,11 @@ export const nowTime = () => { const d = new Date(); return `${pad(d.getHours())
 
 // ---------- dates (always local time) ----------
 export const DOW = ["일", "월", "화", "수", "목", "금", "토"];
-export const DOW_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-export const MON_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 export const parseYmd = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
 export const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 export const today = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
-export const sameDay = (a, b) => ymd(a) === ymd(b);
 
 export function isoWeek(d) {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -51,7 +50,7 @@ export function isoWeek(d) {
   const y = t.getUTCFullYear();
   return { y, w: Math.ceil(((t - Date.UTC(y, 0, 1)) / 864e5 + 1) / 7) };
 }
-export function mondayOf(y, w) {
+function mondayOf(y, w) {
   const jan4 = new Date(y, 0, 4);
   const mon1 = addDays(jan4, -((jan4.getDay() + 6) % 7));
   return addDays(mon1, (w - 1) * 7);
@@ -78,7 +77,7 @@ export function periodEnd(key) {
   if (p === "W") return addDays(s, 7);
   return addDays(s, 1);
 }
-export const scopeOf = (key) => ({ Y: "year", M: "month", W: "week", D: "day" }[key[0]]);
+const scopeOf = (key) => ({ Y: "year", M: "month", W: "week", D: "day" }[key[0]]);
 export function shiftPeriod(key, n) {
   const s = periodStart(key), scope = scopeOf(key);
   if (scope === "year") return periodKey(scope, new Date(s.getFullYear() + n, 0, 1));
@@ -89,20 +88,6 @@ export function shiftPeriod(key, n) {
 export function elapsed(key, at = new Date()) {
   const s = periodStart(key), e = periodEnd(key);
   return clamp((at - s) / (e - s));
-}
-export function periodLabel(key) {
-  const s = periodStart(key), scope = scopeOf(key);
-  if (scope === "year") return `${s.getFullYear()}년`;
-  if (scope === "month") return `${s.getFullYear()}년 ${s.getMonth() + 1}월`;
-  if (scope === "week") {
-    const e = addDays(s, 6), { w } = isoWeek(s);
-    return `${w}주차 · ${s.getMonth() + 1}.${s.getDate()} – ${e.getMonth() + 1}.${e.getDate()}`;
-  }
-  return `${s.getMonth() + 1}월 ${s.getDate()}일 ${DOW[s.getDay()]}요일`;
-}
-export function relativeDay(d) {
-  const diff = Math.round((d - today()) / 864e5);
-  return { "-1": "어제", 0: "오늘", 1: "내일" }[diff] ?? null;
 }
 export function dayOfYear(d) { return Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(d.getFullYear(), 0, 1)) / 864e5) + 1; }
 export function daysInYear(y) { return Math.round((new Date(y + 1, 0, 1) - new Date(y, 0, 1)) / 864e5); }
@@ -118,7 +103,7 @@ export function pace(done, time, total) {
 
 // 하루 점수 = 계획 35 + 실행 65 (서버 scoreOf 와 같은 식).
 // 실행 = 끝낸 일의 무게 / 전체 무게 · 무게 = 우선순위(low 1 … max 5, 없으면 2) × 걸리는 시간(없으면 30분)
-export const PRIO_W = { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 };
+const PRIO_W = { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 };
 export function dayScore(plans, goal) {
   const planned = plans.reduce((s, p) => s + (p.mins || 0), 0);
   const doneMins = plans.filter((p) => p.done).reduce((s, p) => s + (p.mins || 0), 0);

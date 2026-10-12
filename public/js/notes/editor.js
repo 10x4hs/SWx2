@@ -30,7 +30,7 @@ const TEXTY = new Set(["p", "h1", "h2", "h3", "bullet", "number", "todo", "quote
 const WIDGET = new Set(["divider", "page", "ai", "ask", "newpage", "meta", "papers"]);
 
 // ---------- 마크다운 → 블록 ----------
-export function parseBlocks(md) {
+function parseBlocks(md) {
   const lines = String(md || "").replace(/\r\n?/g, "\n").split("\n");
   const out = [];
   for (let i = 0; i < lines.length; i++) {
@@ -73,7 +73,7 @@ export function parseBlocks(md) {
 }
 
 // ---------- 블록 → 마크다운 ----------
-export function serializeBlocks(blocks) {
+function serializeBlocks(blocks) {
   const parts = [];
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i], t = (b.text || "").replace(/\s+$/, "");

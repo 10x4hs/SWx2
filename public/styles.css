@@ -21,7 +21,7 @@ button { cursor: pointer; }
 ::selection { background: var(--accent-soft); }
 [hidden] { display: none !important; }
 
-.bg { position: fixed; inset: 0; z-index: -2; background: #1a1a1c url("/assets/bg/golden-gate-above-fog-dusk.jpg") center 40% / cover no-repeat; filter: grayscale(1) contrast(1.06) brightness(1.04); }
+.bg { position: fixed; inset: 0; z-index: -2; background: #1a1a1c; filter: grayscale(1) contrast(1.06) brightness(1.04); }
 .bg::after { content: ""; position: absolute; inset: 0; background: var(--scrim); }
 .grain {
   position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .07; mix-blend-mode: overlay;

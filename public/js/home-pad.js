@@ -2,11 +2,10 @@
 //   오늘의 다짐: 밑줄 하나짜리 입력칸. 날마다 한 줄, 셋이 봐요. Enter · 다른 곳 누르면 저장. 친구 칩을 누르면 그 친구 화면으로.
 //   메모장: 나만 봐요. 줄 공책, 쓰는 대로 저장(0.7초 뒤), ⌘S 로 바로 저장, "노트로 보내기".
 import { api } from "./api.js";
-import { esc, initial, toast, avatar } from "./util.js";
+import { esc, initial, toast, avatar, kstDay } from "./util.js";
 import { icon } from "./icons.js";
 
 const OPEN_KEY = "trio-memo-open";
-const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const hm = (ms) => new Date(ms).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 

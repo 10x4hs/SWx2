@@ -12,7 +12,6 @@ export const PRIOS = [
   { k: "low", n: 5, label: "5순위", desc: "여유" },
 ];
 const BY_K = Object.fromEntries(PRIOS.map((p) => [p.k, p]));
-export const prioOf = (k) => BY_K[k] || null;
 export const prioLabel = (k) => BY_K[k]?.label || "";
 // 정렬용: 1순위가 가장 큰 값 (높은 것부터)
 export const PRIO_RANK = { max: 5, xhigh: 4, high: 3, medium: 2, low: 1 };

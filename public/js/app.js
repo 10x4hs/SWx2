@@ -1,7 +1,7 @@
 // Dsm-mafia — app shell: auth, routing, sidebar, command palette, focus timer.
 import { api, navStart } from "./api.js";
 import { syncAiPrefs } from "./ai-pick.js";
-import { $, $$, esc, initial, debounce, ymd, today, nowTime, toast, pad, planHash, avatar } from "./util.js";
+import { $, $$, esc, initial, debounce, ymd, today, nowTime, toast, pad, planHash, avatar, kstDay } from "./util.js";
 import { icon, appIcon } from "./icons.js";
 import * as notesView from "./views/notes.js";
 import * as graphView from "./views/graph.js";
@@ -115,8 +115,7 @@ const NAV = [
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 // until 이 지난 메뉴는 Dock 에서 빠져요 (한국 시간 기준) — 주소로 들어가면 결과는 볼 수 있어요
-const kstNow = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-const navLive = () => NAV.filter((n) => !n.until || kstNow() <= n.until);
+const navLive = () => NAV.filter((n) => !n.until || kstDay() <= n.until);
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점. data-dock = 순서를 기억하는 이름

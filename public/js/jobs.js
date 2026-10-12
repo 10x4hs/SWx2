@@ -35,4 +35,3 @@ export function runJob({ label, task, onDone, onFail }) {
   });
   return id;
 }
-export const runningJobs = () => [...jobs.values()].filter((j) => j.state === "running").length;

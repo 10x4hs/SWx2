@@ -258,4 +258,4 @@ legacy/                이전 단일 파일 버전
 
 ## 크레딧
 
-사진 출처와 라이선스는 `public/assets/bg/credits.json`, `public/assets/login/credits.json` 에 있어요. 로그인 화면과 앱 배경(흐리게)은 같은 황금빛 구름 사진을 써요.
+사진 출처와 라이선스는 `public/assets/login/credits.json` 에 있어요. 로그인 화면과 앱 배경(흐리게)은 같은 황금빛 구름 사진을 써요.

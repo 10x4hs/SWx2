@@ -1,6 +1,6 @@
 // 논문 스프린트 공통: 자료 불러오기(정적 JSON) · 진도 계산 · 색 · 작은 글자 서식
 import { api } from "../api.js";
-import { esc } from "../util.js";
+import { esc, kstDay } from "../util.js";
 
 let indexP = null;
 const contentP = new Map();
@@ -30,10 +30,9 @@ export const getProgress = () => progress;
 export const refreshProgress = () => api.papersProgress().then(publish);
 export const setCheck = (paper, step, done) => api.paperCheck(paper, step, done).then(publish);
 export const sendQuiz = (paper, correct) => api.paperQuiz(paper, correct).then((r) => { publish(r); return r; });
-export const acceptProgress = publish;
 
 export const STEP_KEYS = ["read", "quiz", "explain"];
-export const kstToday = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+export const kstToday = kstDay;
 export const dayDiff = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 864e5);
 
 export const stageOf = (idx, n) => idx.stages.find((s) => s.n === n) || idx.stages[0];
