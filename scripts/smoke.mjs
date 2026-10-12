@@ -230,6 +230,11 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   r = await call("b", "GET", `/logs?day=2026-09-28&user=${me.id}`); ok(r.status === 403, "b cannot read a's logs");
   r = await call("a", "POST", "/records", { day: "2026-09-28" }); ok(r.status === 200 && r.data.record.total >= 1, "a saves a day record");
   r = await call("a", "GET", "/records?day=2026-09-28"); ok(r.data.record?.data.plans.some((p) => p.text === "a만 아는 계획"), "record keeps plan text for owner");
+  // 못함으로 표시한 계획은 하루 기록에도 missed 로 남아야 AI 채점이 '못함'으로 읽어요 (예전엔 빠졌어요)
+  await call("a", "PATCH", `/plans/${pp.id}`, { missed: true });
+  await call("a", "POST", "/records", { day: "2026-09-28" });
+  r = await call("a", "GET", "/records?day=2026-09-28"); ok(r.data.record?.data.plans.find((p) => p.text === "a만 아는 계획")?.missed === true, "record keeps missed flag (AI score reads 못함)");
+  await call("a", "PATCH", `/plans/${pp.id}`, { missed: false });
   r = await call("b", "GET", "/records?day=2026-09-28"); ok(r.data.record === null, "b cannot see a's record");
   r = await call("a", "GET", "/records/days?year=2026"); ok(r.data.days.some((d) => d.day === "2026-09-28"), "record days list");
 }

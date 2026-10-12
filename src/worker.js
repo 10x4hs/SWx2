@@ -806,7 +806,7 @@ async function snapshotDay(env, u, day, auto) {
   if (!P.length && !L.length) return null;
   const sc = scoreOf(P, u.day_goal);
   const focus = L.filter((l) => l.kind === "focus").reduce((a, l) => a + (l.mins || 0), 0);
-  const data = { plans: P.map((p) => ({ text: p.text, done: !!p.done, start: p.start, mins: p.mins, priority: p.priority || null })), logs: L, ...sc, focus, goal: u.day_goal };
+  const data = { plans: P.map((p) => ({ text: p.text, done: !!p.done, missed: !!p.missed, start: p.start, mins: p.mins, priority: p.priority || null })), logs: L, ...sc, focus, goal: u.day_goal };
   const at = now();
   await env.DB.prepare(
     "INSERT INTO day_records (user_id, day, data, score, done, total, auto, saved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id, day) DO UPDATE SET data = excluded.data, score = excluded.score, done = excluded.done, total = excluded.total, auto = excluded.auto, saved_at = excluded.saved_at"
