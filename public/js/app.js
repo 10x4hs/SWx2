@@ -1,7 +1,7 @@
 // Dsm-mafia — app shell: auth, routing, sidebar, command palette, focus timer.
 import { api, navStart } from "./api.js";
 import { syncAiPrefs } from "./ai-pick.js";
-import { $, $$, esc, initial, debounce, ymd, today, nowTime, toast, pad, planHash, avatar, kstDay } from "./util.js";
+import { $, $$, esc, initial, ymd, today, toast, avatar } from "./util.js";
 import { icon, appIcon } from "./icons.js";
 import * as notesView from "./views/notes.js";
 import * as graphView from "./views/graph.js";
@@ -21,13 +21,16 @@ import { statusPicker, statusText } from "./status.js";
 import * as calendarView from "./views/calendar.js";
 import * as studyView from "./views/study.js"; // 공부 = 영어 | 논문 (Dock 아이콘 하나)
 import * as pageView from "./views/page.js"; // Dock 사용자 페이지 (#/p/new · #/p/<id>)
-import { openMenu } from "./ctxmenu.js";
-import { wireDockDrag, sortByOrder } from "./dock-drag.js";
-import { setHiddenMe, isHidden, hidePage } from "./hidden-pages.js";
+import { wireDockDrag } from "./dock-drag.js";
+import { setHiddenMe } from "./hidden-pages.js";
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
 import { startLive, stopLive } from "./live.js";
+import { openPassword, initPassword } from "./password.js";
+import { initDock, refreshUnread, loadDockPages, drawDock, pageMenu } from "./dock.js";
+import { openPalette, initPalette } from "./palette.js";
+import { timer, renderTimer, initTimer } from "./focus-timer.js";
 
 const app = $("#app");
 const ctx = {
@@ -114,12 +117,8 @@ const NAV = [
   { key: "study", hash: "#/english", label: "Study", tip: "Study" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
-// until 이 지난 메뉴는 Dock 에서 빠져요 (한국 시간 기준) — 주소로 들어가면 결과는 볼 수 있어요
-const navLive = () => NAV.filter((n) => !n.until || kstDay() <= n.until);
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
-// 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점. data-dock = 순서를 기억하는 이름
-const navItem = (n) => `<a class="rail-btn" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.key === "study" ? studyView.lastHash() : n.hash}" data-nav="${n.key}" data-dock="nav:${n.key}" draggable="false" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
 function renderShell() {
   app.innerHTML = `
     <div class="shell">
@@ -235,72 +234,8 @@ function renderMeRow() {
   });
 }
 
-// ---------- 비밀번호 바꾸기 (내 것만, 지금 비밀번호 확인) ----------
-// force = 스터디장이 정해 준 비밀번호 그대로일 때: 닫기 · Esc · 바깥 누르기 없이, 취소 대신 로그아웃만.
-function openPassword({ force = false } = {}) {
-  const open = document.querySelector(".pw-back");
-  if (open) { if (force && !open.dataset.force) { open.remove(); } else return; }
-  const prevFocus = document.activeElement;
-  const back = document.createElement("div");
-  back.className = "palette-back pw-back" + (force ? " force" : "");
-  if (force) back.dataset.force = "1";
-  back.innerHTML = `
-    <form class="pw-dialog glass" role="dialog" aria-modal="true" aria-labelledby="pw-title" aria-describedby="pw-help" autocomplete="on" novalidate>
-      <input type="text" name="username" value="${esc(ctx.me.username)}" autocomplete="username" hidden>
-      <div class="pw-head"><h2 id="pw-title">${force ? "먼저 비밀번호를 바꿔 주세요" : "비밀번호 바꾸기"}</h2>${force ? "" : `<button class="icon-btn sm" type="button" data-close aria-label="닫기">${icon.x(16)}</button>`}</div>
-      <p class="pw-help" id="pw-help">${force
-        ? `지금 비밀번호는 스터디장이 정해 준 거예요. <b>@${esc(ctx.me.username)}</b> 계정을 쓰려면 나만 아는 새 비밀번호로 먼저 바꿔야 해요.`
-        : `@${esc(ctx.me.username)} 계정의 비밀번호예요. 바꾸면 다른 기기에서는 다시 로그인해야 해요.`}</p>
-      <label class="pw-field"><span>${force ? "스터디장이 알려 준 비밀번호" : "지금 비밀번호"}</span><input class="input" type="password" name="current" autocomplete="current-password" required></label>
-      <label class="pw-field"><span>새 비밀번호 <small>8자 이상</small></span><input class="input" type="password" name="next" autocomplete="new-password" minlength="8" required></label>
-      <label class="pw-field"><span>새 비밀번호 한 번 더</span><input class="input" type="password" name="again" autocomplete="new-password" minlength="8" required></label>
-      <label class="pw-show"><input type="checkbox" data-show> 입력한 글자 보기</label>
-      <p class="pw-err" role="alert" aria-live="assertive"></p>
-      <div class="pw-foot">${force
-        ? `<button class="btn ghost" type="button" data-logout>${icon.logout(15)}로그아웃</button>`
-        : `<button class="btn ghost" type="button" data-close>취소</button>`}<button class="btn accent" type="submit">바꾸기</button></div>
-    </form>`;
-  document.body.appendChild(back);
-  const f = $(".pw-dialog", back), err = $(".pw-err", back), submit = f.querySelector('[type="submit"]');
-  const close = () => { back.remove(); document.removeEventListener("keydown", onKey, true); if (!force) prevFocus?.focus?.(); };
-  const onKey = (e) => {
-    if (!back.isConnected) { document.removeEventListener("keydown", onKey, true); return; }
-    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); if (!force) close(); }
-    if (e.key === "Tab") { // 대화상자 안에서만 돌기
-      const els = [...f.querySelectorAll("input:not([hidden]), button")];
-      const i = els.indexOf(document.activeElement);
-      if (e.shiftKey && i <= 0) { e.preventDefault(); els.at(-1).focus(); }
-      else if (!e.shiftKey && i === els.length - 1) { e.preventDefault(); els[0].focus(); }
-    }
-  };
-  document.addEventListener("keydown", onKey, true);
-  back.addEventListener("mousedown", (e) => { if (e.target === back && !force) close(); });
-  f.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", close));
-  f.querySelector("[data-logout]")?.addEventListener("click", async () => { close(); await api.logout().catch(() => {}); showAuth(); });
-  f.querySelector("[data-show]").addEventListener("change", (e) => f.querySelectorAll('input[type="password"], input[data-pw]').forEach((i) => { i.dataset.pw = "1"; i.type = e.target.checked ? "text" : "password"; }));
-  f.addEventListener("input", () => { err.textContent = ""; });
-  f.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const cur = f.current.value, next = f.next.value, again = f.again.value;
-    const bad = !cur ? ["지금 비밀번호를 입력해 주세요.", f.current]
-      : next.length < 8 ? ["새 비밀번호는 8자 이상이어야 해요.", f.next]
-      : next !== again ? ["새 비밀번호 두 칸이 서로 달라요.", f.again]
-      : next === cur ? ["지금과 다른 비밀번호로 정해 주세요.", f.next] : null;
-    if (bad) { err.textContent = bad[0]; bad[1].focus(); return; }
-    submit.disabled = true; submit.textContent = "바꾸는 중…";
-    try {
-      const r = await api.changePassword(cur, next);
-      close();
-      toast(r.signed_out ? `비밀번호를 바꿨어요. 다른 기기 ${r.signed_out}곳은 로그아웃됐어요.` : "비밀번호를 바꿨어요.");
-      if (ctx.me?.must_change_pw) { ctx.me.must_change_pw = false; lastView = null; route(); refreshSide(); } // 막혀 있던 화면을 이어서 열어요
-    } catch (x) {
-      err.textContent = x.message || "비밀번호를 바꾸지 못했어요.";
-      (x.status === 403 ? f.current : f.next).focus();
-      if (x.status === 403) f.current.select();
-    } finally { if (submit.isConnected) { submit.disabled = false; submit.textContent = "바꾸기"; } }
-  });
-  f.current.focus();
-}
+// 비밀번호 대화상자 (password.js) — 바꾼 뒤 막혀 있던 화면을 이어서 열어요
+initPassword({ ctx, showAuth, resume: () => { lastView = null; route(); refreshSide(); } });
 
 async function refreshSide() {
   if (!ctx.me) return;
@@ -317,68 +252,8 @@ async function refreshSide() {
   } catch {}
 }
 
-// ---------- Dock 배지: 대화방 안 읽은 개수 ----------
-// 로그인해 있으면 60초마다. 대화방이 열려 있을 땐 그 화면이 스스로 폴링하니 여기선 쉬어요.
-async function refreshUnread() {
-  const el = $("#room-badge");
-  if (!ctx.me || !el) return;
-  if (lastView === "room") { el.hidden = true; return; }
-  try {
-    const r = await api.roomUnread();
-    const n = Number(r.total ?? r.unread) || 0; // 우리 셋 + 1:1 전부 합친 수
-    el.textContent = n > 9 ? "9+" : String(n);
-    el.hidden = n === 0;
-    unreadText = n ? el.textContent : "";
-  } catch {}
-}
-setInterval(() => { if (ctx.me && document.visibilityState === "visible") refreshUnread(); }, 60_000);
-window.addEventListener("trio:changed", (e) => { if (e.detail?.kind === "room") refreshUnread(); });
-window.addEventListener("room-live", (e) => { if (e.detail?.from !== ctx.me?.id) refreshUnread(); }); // 새 메시지 → 배지 바로
-
-// ---------- Dock 사용자 페이지: 내 것 + 셋이 공유한 것. 길게 누르거나 오른쪽 클릭 → 수정 · 공개 · 순서 · 삭제 ----------
-let dockPages = [];
-// Dock 아이콘: 이모지 하나 또는 사이트 파비콘 주소
-export const pageIcon = (ic) => /^https?:\/\//.test(ic || "") ? `<img class="page-fav" src="${esc(ic)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'page-emoji',textContent:'🔗'}))">` : `<span class="page-emoji">${esc(ic || "✨")}</span>`;
-async function loadDockPages() {
-  try { dockPages = (await api.pages()).pages || []; } catch { dockPages = []; }
-  drawDockPages();
-}
-function drawDockPages() { drawDock(); }
-let unreadText = ""; // 다시 그려도 대화 배지가 사라지지 않게
-function drawDock() {
-  const el = $("#dock-list"); if (!el || !ctx.me) return;
-  const cur = parseRoute();
-  const pageItem = (p) => `<a class="rail-btn rail-page${p.mine ? "" : " shared"}" href="#/p/${p.id}" data-nav="p:${p.id}" data-page="${p.id}" data-dock="page:${p.id}" draggable="false" aria-label="${esc(p.title)}" data-tip="${esc(p.title)}${p.mine ? "" : ` · ${esc(ctx.user(p.user_id)?.display_name || "")}`}"><span class="app-ic ic-page">${pageIcon(p.icon)}</span></a>`;
-  const entries = [...navLive().map((n) => ({ key: "nav:" + n.key, html: navItem(n) })), ...dockPages.filter((p) => p.place !== "study" && !isHidden(p)).map((p) => ({ key: "page:" + p.id, html: pageItem(p) }))];
-  el.innerHTML = sortByOrder(entries, ctx.me.dock_order).map((x) => x.html).join("");
-  $$("[data-nav]", el).forEach((a) => { if (a.dataset.nav === cur.nav) a.setAttribute("aria-current", "page"); });
-  const b = $("#room-badge"); if (b && unreadText) { b.textContent = unreadText; b.hidden = false; }
-}
-async function pageMenu(e, id) {
-  const p = dockPages.find((x) => x.id === id); if (!p) return;
-  openMenu(e, {
-    title: `${p.icon} ${p.title}`,
-    items: p.mine ? [
-      { k: "open", label: "열기" }, { k: "edit", label: "고치기 (AI · 코드 · 설정)" },
-      { k: "share", label: p.shared ? "공개 끄기 (나만)" : "셋에게 공개 (친구는 보기만)" },
-      { sep: true }, { k: "del", label: "삭제", danger: true },
-    ] : [{ k: "open", label: "열기" }, { k: "copy", label: "내 페이지로 복사해서 고치기" }, { sep: true }, { k: "hide", label: "내 화면에서 숨기기" }],
-    onPick: async (k) => {
-      try {
-        if (k === "open") ctx.go("#/p/" + id);
-        else if (k === "edit") { ctx.go("#/p/" + id); setTimeout(() => $("#up-edit")?.click(), 400); }
-        else if (k === "share") { await api.updatePage(id, { shared: !p.shared }); toast(p.shared ? "이제 나만 봐요." : "셋의 Dock 에 떠요. 친구는 보기만 해요."); }
-        else if (k === "hide") { await hidePage(p); if (location.hash === "#/p/" + id) ctx.go("#/"); return; }
-        else if (k === "del") { if (!confirm(`'${p.title}' 페이지를 지울까요? 되돌릴 수 없어요.`)) return; await api.deletePage(id); toast("지웠어요."); if (location.hash === "#/p/" + id) ctx.go("#/"); }
-        else if (k === "copy") { const full = (await api.page(id)).page; const r = await api.addPage({ title: `${full.title} 사본`, icon: full.icon, purpose: full.purpose, files: full.files, place: full.place }); toast("내 페이지로 복사했어요."); ctx.go((r.page.place === "study" ? "#/study/" : "#/p/") + r.page.id); }
-        loadDockPages();
-      } catch (err) { toast(err.message || "실패했어요."); }
-    },
-  });
-}
-window.addEventListener("trio:changed", (e) => { if (e.detail?.kind === "pages") loadDockPages(); });
-document.addEventListener("contextmenu", (e) => { const a = e.target.closest("[data-page]"); if (a) pageMenu(e, a.dataset.page); });
-// 폰에서 길게 누르기(끌기 · 메뉴)는 dock-drag.js 가 맡아요
+// Dock 배지 · 사용자 페이지 (dock.js) — 60초 폴링 · 'trio:changed' · 'room-live' · contextmenu 리스너를 여기서 한 번 걸어요
+initDock({ ctx, NAV, parseRoute, getLastView: () => lastView });
 
 // ---------- routing ----------
 // 예전 주소는 캘린더의 그날로 옮겨요 (뒤로 가기에 남지 않게 replaceState)
@@ -477,204 +352,7 @@ window.addEventListener("hashchange", () => { navDepth++; route(); });
 let navDepth = 0;
 window.trioBack = () => { if (navDepth > 0 && history.length > 1) history.back(); else ctx.go("#/"); };
 
-// ---------- command palette ----------
-let paletteOpen = false;
-function openPalette() {
-  if (paletteOpen || !ctx.me || document.querySelector(".pw-back.force")) return;
-  paletteOpen = true;
-  const prevFocus = document.activeElement;
-  const back = document.createElement("div");
-  back.className = "palette-back";
-  back.innerHTML = `
-    <div class="palette" role="dialog" aria-modal="true" aria-label="검색과 명령">
-      <input id="pal-input" placeholder="노트, 계획, 명령 검색… 없으면 새 노트로 만들어요" autocomplete="off" aria-controls="pal-list">
-      <ul id="pal-list" role="listbox"></ul>
-      <div class="foot"><span><kbd>↑</kbd> <kbd>↓</kbd> 이동</span><span><kbd>Enter</kbd> 열기</span><span><kbd>Esc</kbd> 닫기</span></div>
-    </div>`;
-  document.body.appendChild(back);
-  const input = $("#pal-input", back), list = $("#pal-list", back);
-  let items = [], sel = 0, seq = 0;
-
-  const commands = () => [
-    { grp: "이동", t: "홈", s: "차트 · 서로의 현황", run: () => ctx.go("#/") },
-    { grp: "이동", t: "오늘 페이지", s: "캘린더 · 할 일 · 시간표 · 일기", run: () => ctx.go("#/calendar/" + ymd(today())) },
-    { grp: "이동", t: "일기 쓰기", s: "캘린더 · 오늘의 일기", run: () => { ctx.go("#/calendar/" + ymd(today())); setTimeout(() => $("#dp-diary textarea")?.focus(), 400); } },
-    { grp: "이동", t: "내일 계획 세우기", s: ymd(new Date(Date.now() + 864e5)), run: () => ctx.go("#/calendar/" + ymd(new Date(Date.now() + 864e5))) },
-    { grp: "이동", t: "한 해 잔디", s: "캘린더 · 연 · 일기 | 기록", run: () => ctx.go("#/calendar/year") },
-    { grp: "이동", t: "오늘 체크리스트", s: "할 일 적기 · 우선순위 차트", run: () => ctx.go("#/checklist") },
-    { grp: "이동", t: "업데이트 기록", s: "무엇이 언제 바뀌었나", run: () => ctx.go("#/updates") },
-    { grp: "이동", t: "쉽게 읽기 (논문 16편)", s: "중3~고1 눈높이 · AI 튜터 · 복습", run: () => ctx.go("#/papers/easy") },
-    { grp: "이동", t: "섞어서 복습 (쉽게 읽기)", s: "오늘 복습할 차례", run: () => ctx.go("#/papers/easy/review") },
-    { grp: "이동", t: "이번 주 목표", s: "목표 · 주", run: () => ctx.go("#/goals/week") },
-    { grp: "이동", t: "이번 달 목표", s: "목표 · 월", run: () => ctx.go("#/goals/month") },
-    { grp: "이동", t: "올해 목표", s: "목표 · 년", run: () => ctx.go("#/goals/year") },
-    { grp: "이동", t: "그래프 보기", s: "노트 · 그래프 탭", run: () => ctx.go("#/graph") },
-    { grp: "이동", t: "계획 AI", s: "대화로 이번 주 계획 짜기", run: () => ctx.go("#/planner") },
-    { grp: "이동", t: "오늘 일기 쓰기", s: "캘린더 · 일기", run: () => ctx.go("#/calendar/diary/" + ymd(today())) },
-    { grp: "이동", t: "우리 셋 주간 회고", s: "홈 · 5쪽", run: () => { try { localStorage.setItem("trio-home-page", "4"); } catch {} ctx.go("#/"); } },
-    { grp: "명령", t: "오늘 데일리 노트 열기", s: ymd(today()), run: () => notesView.openDaily(ctx, ymd(today())) },
-    { grp: "명령", t: "새 노트", s: "빈 노트", run: () => notesView.createNote(ctx, "") },
-    { grp: "명령", t: "AI에게 묻기", s: "Gemini · MiMo", run: () => ctx.go("#/ai") },
-    { grp: "명령", t: "Dock 페이지 추가", s: "하고 싶은 걸 적으면 AI 가 화면을 짜요", run: () => ctx.go("#/p/new") },
-    { grp: "명령", t: "과목 탭 추가", s: "공부 안에 수학 · 코딩 · 자격증 … AI 가 페이지를 짜요", run: () => ctx.go("#/study/new") },
-    ...dockPages.map((p) => ({ grp: p.place === "study" ? "과목" : "페이지", t: `${/^https?:/.test(p.icon) ? "" : p.icon + " "}${p.title}`, s: p.mine ? (p.shared ? "내 것 · 공개" : "내 것") : `${ctx.user(p.user_id)?.display_name || ""} 의 것`, run: () => ctx.go((p.place === "study" ? "#/study/" : "#/p/") + p.id) })),
-    { grp: "이동", t: "대화방", s: "셋이 같이 · @마피아", run: () => ctx.go("#/room/chat") },
-    { grp: "이동", t: "창고", s: "책 · 링크 · 영상", run: () => ctx.go("#/room/library") },
-    { grp: "명령", t: "집중 타이머 시작", s: "25분", run: () => timer.start(25) },
-  ];
-  const draw = () => {
-    let grp = "";
-    list.innerHTML = items.map((it, i) => {
-      const head = it.grp !== grp ? `<li class="grp" role="presentation">${esc((grp = it.grp))}</li>` : "";
-      return `${head}<li role="presentation"><button type="button" role="option" data-i="${i}" aria-selected="${i === sel}">${it.ic || ""}<span class="t">${esc(it.t)}</span><span class="s">${esc(it.s || "")}</span></button></li>`;
-    }).join("") || `<li class="grp">결과가 없어요</li>`;
-    const cur = list.querySelector('[aria-selected="true"]');
-    if (cur) cur.scrollIntoView({ block: "nearest" });
-  };
-  const search = debounce(async (q) => {
-    const my = ++seq;
-    const cmds = commands().filter((c) => !q || (c.t + c.s).toLowerCase().includes(q.toLowerCase()));
-    let found = { notes: [], plans: [] };
-    if (q) { try { found = await api.search(q); } catch {} }
-    if (my !== seq) return;
-    const scopeName = { year: "올해", month: "월간", week: "주간", day: "하루" };
-    items = [
-      ...found.notes.map((n) => ({ grp: "노트", t: n.title, s: (n.snippet || "").replace(/\s+/g, " "), ic: `<span class="dot" style="--c:${esc(ctx.user(n.user_id)?.color || "#999")}"></span>`, run: () => ctx.go("#/notes/" + n.id) })),
-      ...found.plans.map((p) => ({ grp: "내 계획", t: p.text, s: `${scopeName[p.scope]} · ${p.period.slice(2)}${p.done ? " · 완료" : ""}`, run: () => ctx.go(planHash(p)) })),
-      ...cmds,
-      ...(q && !found.notes.some((n) => n.title.toLowerCase() === q.toLowerCase()) ? [{ grp: "만들기", t: `새 노트: ${q}`, s: "Enter로 만들기", run: () => notesView.createNote(ctx, q) }] : []),
-    ];
-    sel = 0;
-    draw();
-  }, 120);
-  const close = () => { paletteOpen = false; back.remove(); document.removeEventListener("keydown", onKey, true); if (prevFocus && prevFocus.focus) prevFocus.focus(); };
-  const runSel = () => { const it = items[sel]; if (it) { close(); it.run(); } };
-  const onKey = (e) => {
-    if (e.key === "Escape") { e.preventDefault(); close(); }
-    else if (e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); draw(); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(0, sel - 1); draw(); }
-    else if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); runSel(); }
-  };
-  document.addEventListener("keydown", onKey, true);
-  input.addEventListener("input", () => search(input.value.trim()));
-  list.addEventListener("click", (e) => { const b = e.target.closest("[data-i]"); if (b) { sel = +b.dataset.i; runSel(); } });
-  back.addEventListener("mousedown", (e) => { if (e.target === back) close(); });
-  search.flush("");
-  input.focus();
-}
-document.addEventListener("keydown", (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); }
-});
-
-// ---------- focus timer ----------
-// 시작 · 일시정지 · 처음으로 · 끝 에서 "지금 공부 중" 상태를 서버에 알려요 (무엇을 하는지는 안 보내요).
-const presence = (state, ends_at) => api.setPresence(state === "focus" ? { state, ends_at } : { state }).catch(() => {});
-const timer = {
-  total: 25 * 60, left: 25 * 60, running: false, t: null, label: "", plan_id: null,
-  start(min) {
-    if (min) { this.total = this.left = min * 60; }
-    if (this.left <= 0) this.left = this.total;
-    this.running = true;
-    const end = Date.now() + this.left * 1000;
-    clearInterval(this.t);
-    this.t = setInterval(() => {
-      this.left = Math.max(0, Math.round((end - Date.now()) / 1000));
-      if (this.left === 0) this.finish();
-      this.paint();
-    }, 250);
-    presence("focus", end);
-    renderTimer();
-  },
-  // 할 일 ▶: 그 할 일 이름 · id 로 시작 (끝나면 그 할 일에 집중 시간이 쌓여요)
-  startFor(plan) {
-    if (this.running) {
-      toast(this.plan_id === plan.id ? "이미 이 할 일로 집중하고 있어요." : "집중 타이머가 이미 돌고 있어요. 멈추거나 끝난 뒤에 시작해요.");
-      openTimer(); return;
-    }
-    this.label = String(plan.text || "").slice(0, 60);
-    this.plan_id = plan.id;
-    this.left = this.total;
-    this.start();
-    openTimer();
-    toast(`‘${this.label}’ 집중 ${Math.round(this.total / 60)}분을 시작했어요.`);
-  },
-  pause() { this.running = false; clearInterval(this.t); presence("idle"); renderTimer(); },
-  reset() { this.pause(); this.left = this.total; renderTimer(); },
-  stop() { this.running = false; clearInterval(this.t); presence("idle"); this.left = this.total; this.plan_id = null; this.label = ""; document.title = "Dsm-mafia"; },
-  async finish() {
-    clearInterval(this.t);
-    this.running = false;
-    const mins = Math.round(this.total / 60);
-    chime();
-    document.title = "Dsm-mafia";
-    presence("idle");
-    try {
-      const b = { day: ymd(today()), at: nowTime(), text: `집중 ${mins}분${this.label ? " · " + this.label : ""}`, kind: "focus", mins };
-      if (this.plan_id) b.plan_id = this.plan_id;
-      await api.addLog(b);
-      toast(this.plan_id ? `집중 ${mins}분 완료. ‘${this.label}’에 쌓였어요.` : `집중 ${mins}분 완료. 오늘 기록에 남겼어요.`);
-      ctx.changed("logs");
-    } catch (e) { toast(e.message, "err"); }
-    this.left = this.total;
-    renderTimer();
-  },
-  paint() {
-    const el = $("#timer .clock"), bar = $("#timer .bar > i");
-    if (!el) return;
-    const t = `${pad(Math.floor(this.left / 60))}:${pad(this.left % 60)}`;
-    el.textContent = t;
-    bar.style.width = `${(1 - this.left / this.total) * 100}%`;
-    document.title = this.running ? `${t} · 집중 중` : "Dsm-mafia";
-    const mini = $("#timer-mini");
-    if (mini) { mini.classList.toggle("on", this.running); mini.textContent = this.running ? t : ""; }
-  },
-};
-ctx.timer = timer;
-function openTimer() { const pop = $("#timer"); if (pop) { pop.hidden = false; $("#timer-btn")?.setAttribute("aria-expanded", "true"); } }
-function renderTimer() {
-  const el = $("#timer");
-  if (!el) return;
-  el.classList.toggle("running", timer.running);
-  el.innerHTML = `
-    <div class="eyebrow">집중 타이머</div>
-    <div class="row" style="justify-content:space-between">
-      <span class="clock">00:00</span>
-      <span class="row" style="gap:2px">
-        <button class="icon-btn sm" type="button" id="tm-toggle" aria-label="${timer.running ? "일시정지" : "시작"}">${timer.running ? icon.pause(15) : icon.play(15)}</button>
-        <button class="icon-btn sm" type="button" id="tm-reset" aria-label="처음으로">${icon.reset(15)}</button>
-      </span>
-    </div>
-    <div class="bar"><i style="width:0"></i></div>
-    <div class="row">
-      <select class="select" id="tm-len" aria-label="집중 시간" ${timer.running ? "disabled" : ""}>
-        ${[15, 25, 50, 90].map((m) => `<option value="${m}" ${m * 60 === timer.total ? "selected" : ""}>${m}분</option>`).join("")}
-      </select>
-    </div>
-    <input class="input" id="tm-label" placeholder="무엇에 집중할까요?" value="${esc(timer.label)}" style="padding:6px 10px;font-size:12.5px">
-    ${timer.plan_id ? `<p class="tm-plan">할 일에 쌓여요 · <button type="button" class="linkbtn" id="tm-unlink">떼기</button></p>` : ""}`;
-  timer.paint();
-  $("#tm-toggle").addEventListener("click", () => (timer.running ? timer.pause() : timer.start()));
-  $("#tm-reset").addEventListener("click", () => timer.reset());
-  $("#tm-len").addEventListener("change", (e) => { timer.total = timer.left = +e.target.value * 60; timer.paint(); });
-  $("#tm-label").addEventListener("input", (e) => { // 이름을 직접 바꾸면 할 일과의 연결은 풀어요
-    timer.label = e.target.value.trim().slice(0, 60);
-    if (timer.plan_id) { timer.plan_id = null; $("#timer .tm-plan")?.remove(); }
-  });
-  $("#tm-unlink")?.addEventListener("click", (e) => { e.stopPropagation(); timer.plan_id = null; renderTimer(); });
-}
-function chime() {
-  try {
-    const ac = new (window.AudioContext || window.webkitAudioContext)();
-    [0, .18, .36].forEach((d, i) => {
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.frequency.value = [660, 880, 990][i];
-      g.gain.setValueAtTime(.0001, ac.currentTime + d);
-      g.gain.exponentialRampToValueAtTime(.18, ac.currentTime + d + .02);
-      g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d + .5);
-      o.connect(g).connect(ac.destination);
-      o.start(ac.currentTime + d); o.stop(ac.currentTime + d + .55);
-    });
-  } catch {}
-}
+initPalette({ ctx }); // 명령 팔레트 (palette.js) · Cmd/Ctrl+K
+initTimer({ ctx }); // 집중 타이머 (focus-timer.js) · ctx.timer
 
 boot();
