@@ -19,3 +19,6 @@ Turn dsm-mafia into the user's single "second brain": one view, Notion-like nest
 ## Surfaced assumptions
 - Notes are private per user, so personal Diary content is fine to import.
 - Cross-links between concepts are judged by Claude and stored as [[links]].
+
+## Follow-up (2026-10-13)
+- Decision: write new records only in the app; Notion stays a read-only archive. Reason: avoid drift. Alternative considered: periodic re-import, Notion→app sync.
