@@ -6,6 +6,7 @@
 //   POST /books/ask              그 장의 내용을 넣은 AI 튜터 (SSE · 쉽게/깊게)
 // 복습 규칙은 논문 쉽게 읽기(papers.js easy_reads)와 같아요 — 1 → 3 → 7일 간격 (Cepeda 2008).
 import { aiText } from "./ai.js";
+import { kstTodayReq } from "./lib/day.js";
 
 const GAP = [0, 1, 3, 7];
 const MAX_TURNS = 12;
@@ -13,12 +14,6 @@ const ID_RE = /^[a-z0-9][a-z0-9-]{0,40}$/;
 const TASK_RE = /^[a-z0-9-]+\/[a-z0-9-]+\/\d{1,2}$/;
 const addDay = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10);
 const num = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
-// 한국 시간 오늘. 로컬 테스트(PASSWORDLESS=1)에서만 x-papers-now 헤더로 날짜를 바꿀 수 있어요 (논문 쪽과 같은 헤더)
-function kstToday(req, env) {
-  const fake = env.PASSWORDLESS === "1" ? req.headers.get("x-papers-now") : null;
-  if (fake && /^\d{4}-\d{2}-\d{2}$/.test(fake)) return fake;
-  return new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-}
 
 // 정적 파일 읽기 (같은 워커의 assets). 책 목록은 잠깐 기억해 둬요
 let idxCache = null, idxAt = 0;
@@ -45,7 +40,7 @@ export function registerBooks(on, { json, body, fail, now }) {
     return { book, chapter };
   }
   async function state(req, env, uid) {
-    const today = kstToday(req, env);
+    const today = kstTodayReq(req, env);
     const [{ results }, t] = await Promise.all([
       env.DB.prepare("SELECT book, chapter, stage, due_day, read_at, recall, recall_total, reviews FROM book_reads WHERE user_id = ? ORDER BY read_at").bind(uid).all(),
       env.DB.prepare("SELECT task FROM book_tasks WHERE user_id = ?").bind(uid).all(),
@@ -55,7 +50,7 @@ export function registerBooks(on, { json, body, fail, now }) {
   on("GET", "/books/state", async ({ req, env, user }) => json(await state(req, env, user.id)));
 
   on("PUT", "/books/read", async ({ req, env, url, user }) => {
-    const b = await body(req), { book, chapter } = await place(env, url, b), today = kstToday(req, env), t = now();
+    const b = await body(req), { book, chapter } = await place(env, url, b), today = kstTodayReq(req, env), t = now();
     const recall = num(b.recall, 20), total = num(b.total, 20);
     await env.DB.prepare(`INSERT INTO book_reads (user_id, book, chapter, stage, due_day, read_at, recall, recall_total, updated_at) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id, book, chapter) DO UPDATE SET recall = COALESCE(excluded.recall, recall), recall_total = COALESCE(excluded.recall_total, recall_total), updated_at = excluded.updated_at`)
@@ -64,7 +59,7 @@ export function registerBooks(on, { json, body, fail, now }) {
   });
 
   on("PUT", "/books/review", async ({ req, env, url, user }) => {
-    const b = await body(req), today = kstToday(req, env), t = now();
+    const b = await body(req), today = kstTodayReq(req, env), t = now();
     const list = Array.isArray(b.results) ? b.results.slice(0, 40) : fail(400, "results 가 필요해요.");
     const rows = new Map((await env.DB.prepare("SELECT book, chapter, stage FROM book_reads WHERE user_id = ?").bind(user.id).all()).results.map((r) => [r.book + "/" + r.chapter, r.stage]));
     const stmts = [];

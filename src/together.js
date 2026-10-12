@@ -4,6 +4,7 @@
 //   GET /review/week           한 주 숫자는 셋 다, 회고 글은 나만
 //   POST /review/week/ai       AI가 내 기록만으로 회고 쓰기 (일기 본문은 절대 안 보내요)
 import { aiJson } from "./ai.js";
+import { kstToday } from "./lib/day.js";
 
 const DAY_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const WEEK_RE = /^(\d{4})-W(\d{2})$/;
@@ -36,9 +37,9 @@ export function weekRange(week) {
   return isoWeekOf(from) === week ? { from, to } : null;
 }
 
-export function registerTogether(on, { json, body, fail, now, kstDay }) {
+export function registerTogether(on, { json, body, fail, now }) {
   const pickWeek = (v) => {
-    const week = v || isoWeekOf(kstDay());
+    const week = v || isoWeekOf(kstToday());
     const r = weekRange(week);
     if (!r) fail(400, "주 형식이 올바르지 않아요. (예: 2026-W40)");
     return { week, ...r };
@@ -94,7 +95,7 @@ export function registerTogether(on, { json, body, fail, now, kstDay }) {
     if (b.to === user.id) fail(400, "나에게는 응원할 수 없어요.");
     const to = await env.DB.prepare("SELECT id FROM users WHERE id = ?").bind(b.to).first();
     if (!to) fail(404, "없는 멤버예요.");
-    const day = kstDay(), at = now();
+    const day = kstToday(), at = now();
     const r = await env.DB.prepare("INSERT OR IGNORE INTO cheers (from_id, to_id, day, created_at) VALUES (?, ?, ?, ?)").bind(user.id, b.to, day, at).run();
     if (!r.meta.changes) fail(409, "오늘은 이미 응원했어요. 내일 또 해 주세요.");
     return json({ cheer: { from_id: user.id, to_id: b.to, day, created_at: at } }, 201);
@@ -102,7 +103,7 @@ export function registerTogether(on, { json, body, fail, now, kstDay }) {
 
   // 그날(기본 오늘) 내가 받은 응원과 내가 보낸 사람
   on("GET", "/cheers", async ({ env, q, user }) => {
-    const day = q.get("day") || kstDay();
+    const day = q.get("day") || kstToday();
     if (!realDay(day)) fail(400, "날짜 형식이 올바르지 않아요.");
     const [got, sent] = await env.DB.batch([
       env.DB.prepare("SELECT from_id, created_at FROM cheers WHERE to_id = ? AND day = ? ORDER BY created_at").bind(user.id, day),
@@ -230,7 +231,7 @@ async function makeReview(env, userId, w) {
 // 일요일 22:00 (한국 시간): 이번 주 활동이 있는 사람 것을 미리 만들어요.
 // 그날(일요일) 이미 직접 만든 회고가 있으면 덮어쓰지 않아요.
 export async function weeklyReviewCron(env) {
-  const today = new Date(Date.now() + KST).toISOString().slice(0, 10);
+  const today = kstToday();
   const week = isoWeekOf(today);
   const w = { week, ...weekRange(week) };
   const sunday = kstStart(w.to);

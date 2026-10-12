@@ -2,6 +2,10 @@
 // 로그인: Authorization: Bearer <토큰> (scripts/mcp-token.mjs 가 연결마다 하나씩 만들어요). 토큰 = 그 사람 + 연결 이름(agent).
 // 도구는 앱 API 를 안에서 그대로 불러요(internal) — 검증 · 권한이 웹 화면과 같아요. 공용 작업판(agent_tasks)만 여기서 직접 다뤄요.
 
+import { sha256, b64url } from "./lib/crypto.js";
+import { resourceMetadataUrl } from "./oauth.js";
+import { kstToday } from "./lib/day.js";
+
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const STATUSES = ["todo", "doing", "blocked", "done"];
 const MAX_LOG = 60;
@@ -53,12 +57,9 @@ const TOOLS = [
 
 class ToolError extends Error {}
 const bad = (m) => { throw new ToolError(m); };
-const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const kstTime = (ms) => new Date(ms + 9 * 3600e3).toISOString().slice(5, 16).replace("T", " ");
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const STEP_MARK = (c = {}) => ["read", "quiz", "explain"].map((k) => (c[k] ? "✓" : "·")).join("");
-
-export function mcpTools() { return TOOLS; }
 
 export async function handleMcp(req, env, ec, deps) {
   const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
@@ -73,7 +74,7 @@ export async function handleMcp(req, env, ec, deps) {
     const origin = new URL(req.url).origin;
     return new Response(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "로그인이 필요해요. OAuth 로 연결하거나, 앱의 프로필 → MCP 연결에서 받은 Bearer 토큰을 넣어 주세요." } }), {
       status: 401,
-      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "www-authenticate": `Bearer realm="dsm-mafia", resource_metadata="${origin}/.well-known/oauth-protected-resource"${auth ? ', error="invalid_token"' : ""}` },
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "www-authenticate": `Bearer realm="dsm-mafia", resource_metadata="${resourceMetadataUrl(origin)}"${auth ? ', error="invalid_token"' : ""}` },
     });
   }
 
@@ -168,7 +169,7 @@ async function saveTask(c, t, logText) {
 
 const CALL = {
   async whoami(_, c) {
-    return `사용자: ${c.who.user.display_name} (@${c.who.user.username})\n에이전트: ${c.who.agent}\n오늘(한국 시간): ${kstDay()}\n\n${INSTRUCTIONS}`;
+    return `사용자: ${c.who.user.display_name} (@${c.who.user.username})\n에이전트: ${c.who.agent}\n오늘(한국 시간): ${kstToday()}\n\n${INSTRUCTIONS}`;
   },
 
   async papers_overview(_, c) {
@@ -293,7 +294,7 @@ const CALL = {
   },
 
   async plans_list(a, c) {
-    const day = DAY.test(a.day || "") ? a.day : kstDay();
+    const day = DAY.test(a.day || "") ? a.day : kstToday();
     const { plans } = await api(c, "GET", "/plans?periods=D:" + day);
     if (!plans.length) return `${day} 계획이 없어요.`;
     const PRIO_N = { max: 1, xhigh: 2, high: 3, medium: 4, low: 5 };
@@ -303,7 +304,7 @@ const CALL = {
   },
 
   async plan_add(a, c) {
-    const day = DAY.test(a.day || "") ? a.day : kstDay();
+    const day = DAY.test(a.day || "") ? a.day : kstToday();
     const r = await api(c, "POST", "/plans", { scope: "day", period: "D:" + day, text: a.text, ...(a.start ? { start: a.start, mins: a.mins || 30 } : a.mins ? { mins: a.mins } : {}), ...(a.priority ? { priority: a.priority } : {}) });
     return `${day}에 넣었어요: ${r.plan.start ? r.plan.start + " " : ""}${r.plan.text}`;
   },
@@ -362,9 +363,6 @@ const CALL = {
 // 원문 토큰은 만들 때 한 번만 돌려주고, DB 에는 SHA-256 만. 연결 이름(agent)은 사람마다 겹치지 않게(같은 이름이면 새 토큰으로 바꿔요).
 const NAME_RE = /^[a-z0-9][a-z0-9._-]{0,31}$/;
 const MAX_TOKENS = 10;
-const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-const sha256 = async (s) => hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
-const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
 export function registerMcpTokens(on, { json, body, fail, now }) {
   on("GET", "/mcp/tokens", async ({ env, url, user }) => {

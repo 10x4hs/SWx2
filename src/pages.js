@@ -4,10 +4,11 @@
 // kind=url 이면 바깥 사이트 주소를 Dock 안에 띄우는 페이지예요(파일 없음).
 import { aiJson } from "./ai.js";
 import { b64u, unb64u } from "./proxy.js";
+import { kstToday } from "./lib/day.js";
 
 export const MAX_FILE = 300_000;      // 파일 하나 글자 수
 export const MAX_FILES = 40;          // 페이지당 파일 수
-export const MAX_TOTAL = 1_500_000;   // 페이지 전체 글자 수
+const MAX_TOTAL = 1_500_000;   // 페이지 전체 글자 수
 const MAX_VERSIONS = 30;
 const LIST_COLS = "id, user_id, title, icon, purpose, kind, url, place, shared, sort, created_at, updated_at";
 const MAX_STATE = 200_000; // 사람별 저장소(JSON) 글자 수
@@ -58,7 +59,7 @@ ${BRIDGE_GUIDE}
 const isHtml = (p) => /\.html?$/i.test(p);
 const typeOf = (p) => TYPES[(p.split(".").pop() || "").toLowerCase()] || "application/octet-stream";
 // html 에 브리지를 끼워 넣어요 (<head> 바로 뒤, 없으면 맨 앞)
-export const withBridge = (html) => (html.includes("/js/page-bridge.js") ? html : /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + BRIDGE_TAG) : BRIDGE_TAG + html);
+const withBridge = (html) => (html.includes("/js/page-bridge.js") ? html : /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => m + BRIDGE_TAG) : BRIDGE_TAG + html);
 
 export function registerPages(on, { json, body, fail, uid, now }) {
   const own = async (env, id, user) => {
@@ -229,7 +230,7 @@ export function registerPages(on, { json, body, fail, uid, now }) {
       if (!files || !/<html[\s>]/i.test(files["index.html"] || "")) fail(502, "AI 가 완전한 페이지(index.html)를 돌려주지 않았어요. 다시 시도하거나 더 짧게 적어 주세요.");
       return { files: cleanFiles(files), title: data?.title, icon: data?.icon, reply: String(data?.reply || "") };
     };
-    const me = `사용자: ${user.display_name} (id ${user.id}) · 오늘 ${new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)}`;
+    const me = `사용자: ${user.display_name} (id ${user.id}) · 오늘 ${kstToday()}`;
     if (b.page_id) {
       const p = await own(env, b.page_id, user);
       if ((p.kind || "code") !== "code") fail(400, "URL 페이지는 AI 로 고칠 수 없어요.");
@@ -266,7 +267,7 @@ async function signFile(env, data) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("pf:" + secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return [...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data)))].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
-export async function makeFileToken(env, userId, pageId) { const body = `${userId}.${pageId}.${Date.now() + FILE_TOKEN_TTL}`; return `${b64u(body)}.${await signFile(env, body)}`; }
+async function makeFileToken(env, userId, pageId) { const body = `${userId}.${pageId}.${Date.now() + FILE_TOKEN_TTL}`; return `${b64u(body)}.${await signFile(env, body)}`; }
 async function fileTokenUser(env, token, pageId) {
   const [b, sig] = String(token || "").split("."); if (!b || !sig) return null;
   let body; try { body = unb64u(b); } catch { return null; }

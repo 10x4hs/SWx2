@@ -64,7 +64,7 @@ async function readHead(res, max = MAX_HTML) {
 
 // ---------- HTML 메타 ----------
 const ENT = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
-export const decodeEntities = (s) => String(s || "")
+const decodeEntities = (s) => String(s || "")
   .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
   .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
   .replace(/&([a-z]+);/gi, (m, n) => ENT[n.toLowerCase()] ?? m);
@@ -81,7 +81,7 @@ function meta(html, prop) {
   }
   return null;
 }
-export function parseHtmlMeta(html, base) {
+function parseHtmlMeta(html, base) {
   const head = html.slice(0, MAX_HTML);
   const t = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(head);
   let thumb = clean(meta(head, "og:image") || meta(head, "twitter:image") || "", MAX_URL);

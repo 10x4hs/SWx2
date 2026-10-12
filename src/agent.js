@@ -6,7 +6,7 @@ import { aiText, TEXT_ORDER, orderFrom } from "./ai.js";
 
 // 모델이 꺾쇠를 하나 빼먹는 일이 잦아요(<<tool>…, …<</tool>, <tool>…</tool>) — 다 알아봐요
 const TOOL_RE = /<{1,2}\s*tool\s*>{1,2}\s*([\s\S]*?)\s*<{1,2}\s*\/\s*tool\s*>{1,2}/;
-export const TOOL_RE_G = new RegExp(TOOL_RE.source, "g");
+const TOOL_RE_G = new RegExp(TOOL_RE.source, "g");
 // 닫는 태그가 아예 없을 때: 여는 태그 뒤 첫 { … } 덩어리(괄호 짝 맞춰서)
 function openOnly(text) {
   const i = text.search(/<{1,2}\s*tool\s*>{1,2}/);
