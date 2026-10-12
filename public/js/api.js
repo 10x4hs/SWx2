@@ -4,13 +4,22 @@ export class ApiError extends Error {
   constructor(status, message, data) { super(message); this.status = status; this.data = data; }
 }
 
+// 화면을 막 열 때(navStart 뒤 1.5초, 아직 아무것도 누르지 않았을 때) 부른 GET 은 x-swr 를 붙여요
+// → 서비스 워커가 받아 둔 답을 바로 주고 뒤에서 새로 받아요 (sw.js). 그 밖의 GET(누르고 나서 · 실시간 새로고침)은 늘 서버 먼저.
+// 대화방(/room)은 실시간이라 언제나 서버 먼저.
+let swrUntil = 0;
+export function navStart() { swrUntil = performance.now() + 1500; }
+for (const t of ["pointerdown", "keydown"]) addEventListener(t, () => { swrUntil = 0; }, { capture: true, passive: true });
+
 async function request(method, path, body) {
   let res;
+  const headers = { "content-type": "application/json", "x-trio": "1" };
+  if (method === "GET" && performance.now() < swrUntil && !path.startsWith("/room")) headers["x-swr"] = "1";
   try {
     res = await fetch("/api" + path, {
       method,
       credentials: "same-origin",
-      headers: { "content-type": "application/json", "x-trio": "1" },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {

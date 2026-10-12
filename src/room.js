@@ -85,8 +85,11 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     const row = await env.DB.prepare("SELECT id FROM users WHERE id = ?").bind(other).first();
     if (!row) fail(404, "그 멤버를 찾을 수 없어요.");
   };
-  const markRead = (env, userId, room, at) =>
-    env.DB.prepare("INSERT INTO room_reads (user_id, room, last_read_at) VALUES (?, ?, ?) ON CONFLICT(user_id, room) DO UPDATE SET last_read_at = MAX(last_read_at, excluded.last_read_at)").bind(userId, room, at).run();
+  const readStmt = (env, userId, room, at) =>
+    env.DB.prepare("INSERT INTO room_reads (user_id, room, last_read_at) VALUES (?, ?, ?) ON CONFLICT(user_id, room) DO UPDATE SET last_read_at = MAX(last_read_at, excluded.last_read_at)").bind(userId, room, at);
+  const markRead = (env, userId, room, at) => readStmt(env, userId, room, at).run();
+  const aiNameStmt = (env) => env.DB.prepare("SELECT value FROM room_settings WHERE key = 'ai_name'");
+  const aiNameOf = (res) => res.results[0]?.value || "마피아";
 
   // 방의 다른 사람들 (푸시 알림 대상): 'all' 은 나 빼고 모두, dm 은 상대 한 명
   async function roomMembers(env, room, me) {
@@ -95,17 +98,12 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     const { results } = await env.DB.prepare("SELECT id FROM users WHERE id != ?").bind(me).all();
     return results.map((u) => u.id);
   }
-  // 내가 들어갈 수 있는 모든 방의 안 읽음: 'all' + 다른 멤버마다 dm 방 하나
-  async function unreadRooms(env, userId) {
-    const { results: users } = await env.DB.prepare("SELECT id FROM users WHERE id != ?").bind(userId).all();
-    const rooms = [ALL, ...users.map((u) => dmRoom(userId, u.id))];
-    const { results } = await env.DB.prepare(
-      `SELECT m.room, COUNT(*) AS n FROM room_messages m WHERE m.room IN (${rooms.map(() => "?").join(",")}) AND (m.user_id IS NULL OR m.user_id != ?) AND m.created_at > COALESCE((SELECT last_read_at FROM room_reads r WHERE r.user_id = ? AND r.room = m.room), 0) GROUP BY m.room`
-    ).bind(...rooms, userId, userId).all();
-    const out = Object.fromEntries(rooms.map((r) => [r, 0]));
-    for (const r of results) out[r.room] = r.n;
-    return out;
-  }
+  // 내가 들어갈 수 있는 모든 방의 안 읽음: 'all' + 다른 멤버마다 dm 방 하나 (dmRoom 과 같은 규칙을 SQL 로 — 멤버 목록 + 개수를 쿼리 하나로)
+  // ?1 = 나. 안 읽음 = 내 마지막 읽은 시각 뒤에 온 남의 메시지
+  const MY_ROOMS = `WITH rooms(room, ord, last) AS (SELECT x.room, x.ord, COALESCE((SELECT last_read_at FROM room_reads rr WHERE rr.user_id = ?1 AND rr.room = x.room), 0) FROM (SELECT '${ALL}' AS room, 0 AS ord UNION ALL SELECT CASE WHEN ?1 < id THEN 'dm:' || ?1 || ':' || id ELSE 'dm:' || id || ':' || ?1 END, rowid FROM users WHERE id != ?1) x)`;
+  const UNREAD = "(m.user_id IS NULL OR m.user_id != ?1) AND m.created_at > r.last"; // r.last 가 있어서 (room, created_at) 색인으로 범위만 읽어요
+  const unreadStmt = (env, userId) => env.DB.prepare(`${MY_ROOMS} SELECT r.room, (SELECT COUNT(*) FROM room_messages m WHERE m.room = r.room AND ${UNREAD}) AS n FROM rooms r ORDER BY r.ord`).bind(userId);
+  const unreadOf = (res) => Object.fromEntries(res.results.map((r) => [r.room, r.n]));
 
   // ---------- AI 답 만들기 ----------
   // 그 방 안의 것만 프롬프트에 넣어요: 최근 메시지(이름 붙여서) + 창고 목록(종류 · 제목 · 넣은 사람)
@@ -151,13 +149,15 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     const room = roomOf(q.get("room"), user);
     const since = Number(q.get("since"));
     const limit = Math.min(MAX_LIMIT, Math.max(1, Number(q.get("limit")) || DEFAULT_LIMIT));
-    let rows;
-    if (Number.isFinite(since) && since > 0) {
-      rows = (await env.DB.prepare("SELECT * FROM room_messages WHERE room = ? AND created_at > ? ORDER BY created_at, id LIMIT ?").bind(room, since, limit).all()).results;
-    } else {
-      rows = (await env.DB.prepare("SELECT * FROM room_messages WHERE room = ? ORDER BY created_at DESC, id DESC LIMIT ?").bind(room, limit).all()).results.reverse();
-    }
-    const [messages, ai_name, rooms] = await Promise.all([attachItems(env, rows), getAiName(env), unreadRooms(env, user.id)]);
+    const after = Number.isFinite(since) && since > 0;
+    // 메시지 · AI 이름 · 안 읽음을 왕복 한 번에 (창고 카드는 share 메시지가 있을 때만 한 번 더)
+    const [res, name, unread] = await env.DB.batch([
+      after ? env.DB.prepare("SELECT * FROM room_messages WHERE room = ? AND created_at > ? ORDER BY created_at, id LIMIT ?").bind(room, since, limit)
+        : env.DB.prepare("SELECT * FROM room_messages WHERE room = ? ORDER BY created_at DESC, id DESC LIMIT ?").bind(room, limit),
+      aiNameStmt(env), unreadStmt(env, user.id),
+    ]);
+    const rows = after ? res.results : res.results.reverse();
+    const [messages, ai_name, rooms] = [await attachItems(env, rows), aiNameOf(name), unreadOf(unread)];
     return json({ room, messages, ai_name, unread: rooms[room] || 0, rooms, now: now() });
   });
 
@@ -170,10 +170,11 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     if (text.length > MAX_BODY) fail(400, `메시지는 ${MAX_BODY}자까지 쓸 수 있어요.`);
     const reply_to = typeof b.reply_to === "string" && b.reply_to.length <= 64 ? b.reply_to : null;
     const message = await postRoomMessage(env, { id: uid(), room, user_id: user.id, kind: "text", body: text, ref_id: null, reply_to, created_at: now() });
-    await markRead(env, user.id, room, message.created_at);   // 내가 보낸 건 읽은 것으로
-    pushUsers(env, ec, await roomMembers(env, room, user.id), { room }); // 다른 사람 기기에 알림
+    // 내가 보낸 건 읽은 것으로 · 알림 받을 사람 · AI 이름을 동시에 (서로 기다리지 않게)
+    const [, members, aiName] = await Promise.all([markRead(env, user.id, room, message.created_at), roomMembers(env, room, user.id), getAiName(env)]);
+    pushUsers(env, ec, members, { room }); // 다른 사람 기기에 알림
     const out = { message };
-    if (mentionsAi(text, await getAiName(env))) {
+    if (mentionsAi(text, aiName)) {
       try { out.ai = await replyTo(env, message); }
       catch (e) { out.ai_error = e.message || "AI 답을 받지 못했어요."; }
     }
@@ -212,8 +213,8 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     let at = b.at == null ? now() : Math.round(Number(b.at));
     if (!Number.isFinite(at) || at <= 0) fail(400, "시각이 올바르지 않아요.");
     at = Math.min(at, now() + 60e3);
-    await markRead(env, user.id, room, at);
-    const rooms = await unreadRooms(env, user.id);
+    const [, unread] = await env.DB.batch([readStmt(env, user.id, room, at), unreadStmt(env, user.id)]); // 읽음 저장 + 새 개수를 한 번에
+    const rooms = unreadOf(unread);
     return json({ room, unread: rooms[room] || 0, rooms });
   });
 
@@ -226,17 +227,19 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
 
   on("GET", "/room/unread", async ({ env, q, user }) => {
     const room = roomOf(q.get("room"), user);
-    const rooms = await unreadRooms(env, user.id);
+    // 안 읽음 개수 + 알림용 '안 읽은 것 중 가장 최근 메시지 한 개'(AI 이름 포함)를 왕복 한 번에
+    const [unread, lastRes] = await env.DB.batch([
+      unreadStmt(env, user.id),
+      env.DB.prepare(`${MY_ROOMS} SELECT m.room, m.body, m.kind, m.user_id, u.display_name AS who, (SELECT value FROM room_settings WHERE key = 'ai_name') AS ai_name FROM room_messages m JOIN rooms r ON r.room = m.room LEFT JOIN users u ON u.id = m.user_id WHERE ${UNREAD} ORDER BY m.created_at DESC LIMIT 1`).bind(user.id),
+    ]);
+    const rooms = unreadOf(unread);
     const total = Object.values(rooms).reduce((a, n) => a + n, 0);
     // 알림용: 안 읽은 것 중 가장 최근 메시지 한 개 + 나를 @로 불렀는지
     let last = null;
-    if (total) {
-      const ids = Object.keys(rooms).filter((r) => rooms[r]);
-      const m = await env.DB.prepare(`SELECT m.room, m.body, m.kind, m.user_id, u.display_name AS who FROM room_messages m LEFT JOIN users u ON u.id = m.user_id WHERE m.room IN (${ids.map(() => "?").join(",")}) AND (m.user_id IS NULL OR m.user_id != ?) ORDER BY m.created_at DESC LIMIT 1`).bind(...ids, user.id).first();
-      if (m) {
-        const low = String(m.body || "").toLowerCase(), me = [user.display_name, user.username].filter(Boolean).map((x) => "@" + x.toLowerCase());
-        last = { room: m.room, who: m.kind === "ai" ? await getAiName(env) : m.who || "누군가", body: String(m.body || "").slice(0, 140), mention: me.some((x) => low.includes(x)), dm: m.room.startsWith("dm:") };
-      }
+    const m = total ? lastRes.results[0] : null;
+    if (m) {
+      const low = String(m.body || "").toLowerCase(), me = [user.display_name, user.username].filter(Boolean).map((x) => "@" + x.toLowerCase());
+      last = { room: m.room, who: m.kind === "ai" ? m.ai_name || "마피아" : m.who || "누군가", body: String(m.body || "").slice(0, 140), mention: me.some((x) => low.includes(x)), dm: m.room.startsWith("dm:") };
     }
     return json({ room, unread: rooms[room] || 0, rooms, total, last });
   });

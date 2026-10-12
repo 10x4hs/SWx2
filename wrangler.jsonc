@@ -3,6 +3,8 @@
   "name": "dsm-mafia",
   "main": "src/worker.js",
   "compatibility_date": "2026-09-01",
+  // 워커를 D1(아시아) 가까이에서 돌려요 — 쿼리마다 태평양을 건너지 않게
+  "placement": { "mode": "smart" },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",

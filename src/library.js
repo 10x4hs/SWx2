@@ -188,6 +188,9 @@ export function registerLibrary(on, { json, body, fail, uid, now }) {
     if (!items.length) return [];
     const ids = items.map((i) => i.id);
     const { results } = await env.DB.prepare(`SELECT item_id, user_id, state, note FROM library_marks WHERE item_id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all();
+    return joinMarks(items, results, me);
+  };
+  const joinMarks = (items, results, me) => {
     const by = new Map();
     for (const m of results) (by.get(m.item_id) || by.set(m.item_id, []).get(m.item_id)).push({ user_id: m.user_id, state: m.state, note: m.note });
     return items.map((it) => {
@@ -231,8 +234,13 @@ export function registerLibrary(on, { json, body, fail, uid, now }) {
     const where = [], args = [];
     if (kind) { where.push("kind = ?"); args.push(kind); }
     if (text) { const like = "%" + text.replace(/[%_\\]/g, "\\$&") + "%"; where.push("(title LIKE ? ESCAPE '\\' OR author LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')"); args.push(like, like, like); }
-    const { results } = await env.DB.prepare(`SELECT * FROM library_items ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY created_at DESC LIMIT ?`).bind(...args, LIST_LIMIT).all();
-    return json({ items: await withMarks(env, results, user.id) });
+    // 항목 + 그 항목들의 표시를 왕복 한 번에 (같은 목록 쿼리를 하위 쿼리로)
+    const list = `SELECT * FROM library_items ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY created_at DESC LIMIT ?`;
+    const [items, marks] = await env.DB.batch([
+      env.DB.prepare(list).bind(...args, LIST_LIMIT),
+      env.DB.prepare(`SELECT item_id, user_id, state, note FROM library_marks WHERE item_id IN (SELECT id FROM (${list}))`).bind(...args, LIST_LIMIT),
+    ]);
+    return json({ items: joinMarks(items.results, marks.results, user.id) });
   });
 
   on("POST", "/library", async ({ req, env, user }) => {

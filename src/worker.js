@@ -8,7 +8,7 @@ import { registerProxy, handleProxy } from "./proxy.js";
 import { registerPapers, cleanupPaperNotes } from "./papers.js";
 import { registerBooks } from "./books.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
-import { handleOAuth, oauthTokenUser } from "./oauth.js";
+import { handleOAuth, agentName } from "./oauth.js";
 import { registerHomePad } from "./homepad.js";
 import { registerCalendar } from "./calendar.js";
 import { registerTogether, weeklyReviewCron } from "./together.js";
@@ -63,7 +63,7 @@ export default {
       catch (e) { console.error("px", e); return new Response("프록시에서 문제가 생겼어요.", { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } }); }
     }
     if (url.pathname.startsWith("/pf/")) { // Dock 사용자 페이지 파일 (sandbox iframe 이 불러요)
-      try { return await servePageFile(req, env, url, await sessionUser(req, env)); }
+      try { return await servePageFile(req, env, url, () => sessionUser(req, env)); } // 로그인은 파일 토큰이 없을 때만 찾아봐요
       catch (e) { console.error("pf", e); return new Response("서버에서 문제가 생겼어요.", { status: 500 }); }
     }
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
@@ -115,19 +115,18 @@ async function route(req, env, url, ec) {
 
 // MCP 토큰 → { user, agent }. 직접 만든 토큰(api_tokens) 먼저, 아니면 OAuth 접근 토큰. 쓸 때마다 last_used_at 만 고쳐요
 async function tokenUser(env, token) {
-  const h = await sha256(token);
-  const row = await env.DB.prepare(
-    "SELECT t.token_hash, t.agent, u.id, u.username, u.display_name, u.color, u.day_goal FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?"
-  ).bind(h).first();
+  const h = await sha256(token), t = now();
+  // 한 번에(왕복 1번): 직접 토큰 찾기 + 쓴 시각, OAuth 토큰 찾기 + (직접 토큰이 아니고 안 끝났으면) 쓴 시각
+  const [api, , oa] = await env.DB.batch([
+    env.DB.prepare("SELECT t.agent, u.id, u.username, u.display_name, u.color, u.day_goal FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?").bind(h),
+    env.DB.prepare("UPDATE api_tokens SET last_used_at = ? WHERE token_hash = ?").bind(t, h),
+    env.DB.prepare("SELECT t.access_expires, c.client_name, c.client_id, u.id, u.username, u.display_name, u.color, u.day_goal FROM oauth_tokens t JOIN oauth_clients c ON c.client_id = t.client_id JOIN users u ON u.id = t.user_id WHERE t.access_hash = ?").bind(h),
+    env.DB.prepare("UPDATE oauth_tokens SET last_used_at = ?1 WHERE access_hash = ?2 AND access_expires >= ?1 AND NOT EXISTS (SELECT 1 FROM api_tokens WHERE token_hash = ?2)").bind(t, h),
+  ]);
   const shape = (u, agent) => ({ agent, user: { id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, must_change_pw: false } });
-  if (row) {
-    await env.DB.prepare("UPDATE api_tokens SET last_used_at = ? WHERE token_hash = ?").bind(now(), row.token_hash).run();
-    return shape(row, row.agent);
-  }
-  const o = await oauthTokenUser(env, h);
-  if (!o) return null;
-  const u = await env.DB.prepare("SELECT id, username, display_name, color, day_goal FROM users WHERE id = ?").bind(o.user_id).first();
-  return u ? shape(u, o.agent) : null;
+  const row = api.results[0], o = oa.results[0];
+  if (row) return shape(row, row.agent);
+  return o && o.access_expires >= t ? shape(o, agentName(o.client_name, o.client_id)) : null;
 }
 // OAuth 화면용: 앱에 이미 로그인돼 있으면 그 사람 (아니면 null)
 async function sessionUser(req, env) {
@@ -387,16 +386,18 @@ on("GET", "/plans", async ({ env, q, user }) => {
   const range = dm && dm[1] <= dm[2] && (Date.parse(dm[2]) - Date.parse(dm[1])) / 864e5 <= 62 ? ["D:" + dm[1], "D:" + dm[2]] : null;
   if (!periods.length && !range) return json({ plans: [] });
   const who = q.get("user") || user.id;
-  // 친구 계획은 그 사람이 공개(open)했을 때만. 아니면 빈 목록 + closed 표시
-  if (who !== user.id) {
-    const o = await env.DB.prepare("SELECT plans_open FROM users WHERE id = ?").bind(who).first();
-    if (!o || o.plans_open === 0) return json({ plans: [], closed: true });
-  }
   const where = [periods.length ? `period IN (${periods.map(() => "?").join(",")})` : "", range ? "(period >= ? AND period <= ?)" : ""].filter(Boolean).join(" OR ");
-  const { results } = await env.DB.prepare(
+  const list = env.DB.prepare(
     `SELECT plans.*, (SELECT COALESCE(SUM(l.mins), 0) FROM logs l WHERE l.plan_id = plans.id AND l.kind = 'focus') AS focus_mins
      FROM plans WHERE user_id = ? AND (${where}) ORDER BY CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort, created_at`
-  ).bind(who, ...periods, ...(range || [])).all();
+  ).bind(who, ...periods, ...(range || []));
+  // 친구 계획은 그 사람이 공개(open)했을 때만. 아니면 빈 목록 + closed 표시 (공개 여부와 목록을 한 번에 물어보고, 닫혀 있으면 목록은 버려요)
+  if (who !== user.id) {
+    const [o, l] = await env.DB.batch([env.DB.prepare("SELECT plans_open FROM users WHERE id = ?").bind(who), list]);
+    if (!o.results[0] || o.results[0].plans_open === 0) return json({ plans: [], closed: true });
+    return json({ plans: l.results });
+  }
+  const { results } = await list.all();
   // focus_mins = 그 할 일에 쌓인 집중 기록 분의 합 (logs.plan_id)
   // 친구 계획: open 한 사람 것은 내용까지 그대로 보여요 (not open 이면 위에서 이미 빈 목록)
   return json({ plans: results });
@@ -622,22 +623,26 @@ on("GET", "/notes/resolve", async ({ env, user, q }) => {
 });
 
 on("GET", "/notes/:id", async ({ env, user, params }) => {
-  const n = await visibleNote(env, params.id, user);
-  const [back, tags, children] = await env.DB.batch([
+  // 노트 · 백링크 · 태그 · 하위 노트 · 위 경로를 왕복 한 번에. 모두 내 노트(user_id = 나)만 보고, 노트가 없으면 나머지는 버리고 404
+  const [nr, back, tags, children, up] = await env.DB.batch([
+    env.DB.prepare(`SELECT n.* FROM notes n WHERE n.id = ?2 AND ${VISIBLE}`).bind(user.id, params.id),
     env.DB.prepare(
       `SELECT n.id, n.user_id, n.title, substr(n.body, 1, 160) AS snippet FROM note_links l JOIN notes n ON n.id = l.src_id
-       WHERE l.dst_title = ?2 AND n.id != ?3 AND ${VISIBLE} ORDER BY n.updated_at DESC`
-    ).bind(user.id, n.title, n.id),
-    env.DB.prepare("SELECT tag FROM note_tags WHERE note_id = ?").bind(n.id),
-    env.DB.prepare("SELECT id, title, updated_at FROM notes WHERE parent_id = ? AND user_id = ? ORDER BY created_at").bind(n.id, user.id),
+       WHERE l.dst_title = (SELECT title FROM notes WHERE id = ?2 AND user_id = ?1) AND n.id != ?2 AND ${VISIBLE} ORDER BY n.updated_at DESC`
+    ).bind(user.id, params.id),
+    env.DB.prepare("SELECT tag FROM note_tags WHERE note_id = ?").bind(params.id),
+    env.DB.prepare("SELECT id, title, updated_at FROM notes WHERE parent_id = ? AND user_id = ? ORDER BY created_at").bind(params.id, user.id),
+    // 위로 올라가는 경로 (부모 › 조부모 …, 최대 6단계) — 재귀 쿼리 하나로
+    env.DB.prepare(
+      `WITH RECURSIVE up(id, title, parent_id, depth) AS (
+         SELECT p.id, p.title, p.parent_id, 1 FROM notes c JOIN notes p ON p.id = c.parent_id AND p.user_id = ?1 WHERE c.id = ?2 AND c.user_id = ?1
+         UNION ALL SELECT p.id, p.title, p.parent_id, up.depth + 1 FROM up JOIN notes p ON p.id = up.parent_id AND p.user_id = ?1 WHERE up.depth < 6
+       ) SELECT id, title FROM up ORDER BY depth DESC`
+    ).bind(user.id, params.id),
   ]);
-  // 위로 올라가는 경로 (부모 › 조부모 …, 최대 6단계)
-  const crumbs = [];
-  for (let pid = n.parent_id, i = 0; pid && i < 6; i++) {
-    const p = await env.DB.prepare("SELECT id, title, parent_id FROM notes WHERE id = ? AND user_id = ?").bind(pid, user.id).first();
-    if (!p) break; crumbs.unshift({ id: p.id, title: p.title }); pid = p.parent_id;
-  }
-  return json({ note: n, backlinks: back.results, tags: tags.results.map((t) => t.tag), children: children.results, crumbs });
+  const n = nr.results[0];
+  if (!n) fail(404, "노트를 찾을 수 없어요.");
+  return json({ note: n, backlinks: back.results, tags: tags.results.map((t) => t.tag), children: children.results, crumbs: up.results });
 });
 
 on("POST", "/notes", async ({ req, env, user }) => {
@@ -830,13 +835,17 @@ async function aiScoreDay(env, u, day) {
 }
 // 한국 시간 기준 날짜 (자정 자동 저장용)
 const kstDay = (offsetDays = 0) => new Date(Date.now() + 9 * 3600e3 + offsetDays * 864e5).toISOString().slice(0, 10);
-// 어제 기록이 아직 없으면 만들어 둬요 (크론이 못 돈 날을 위한 대비책)
-async function ensureYesterday(env, u, ec = null) {
+// 어제 기록이 아직 없으면 만들어 둬요 (크론이 못 돈 날을 위한 대비책) — 그리고 main 쿼리 결과를 돌려줘요.
+// 확인과 main 을 왕복 한 번에 묻고, 어제 기록을 새로 만든 때만 main 을 다시 물어요
+async function ensureYesterday(env, u, ec, main) {
   const later = (p) => (ec ? ec.waitUntil(p.catch((e) => console.warn("AI 채점", e.message))) : p); // AI 채점은 뒤에서 (화면을 기다리게 하지 않게)
   const y = kstDay(-1);
-  const has = await env.DB.prepare("SELECT 1 FROM day_records WHERE user_id = ? AND day = ? AND data != '{}'").bind(u.id, y).first(); // 내 점수만 적힌 빈 기록은 없는 것으로
-  if (!has) { const s0 = await snapshotDay(env, u, y, true); if (s0) await later(aiScoreDay(env, u, y)); }
-  else { const a = await env.DB.prepare("SELECT ai_score FROM day_records WHERE user_id = ? AND day = ?").bind(u.id, y).first(); if (a && a.ai_score == null) await later(aiScoreDay(env, u, y)); } // 크론이 못 돌았으면 여기서
+  const [chk, res] = await env.DB.batch([env.DB.prepare("SELECT data != '{}' AS full, ai_score FROM day_records WHERE user_id = ? AND day = ?").bind(u.id, y), main]);
+  const has = chk.results[0]?.full ? chk.results[0] : null; // 내 점수만 적힌 빈 기록은 없는 것으로
+  let again = false;
+  if (!has) { const s0 = await snapshotDay(env, u, y, true); if (s0) { await later(aiScoreDay(env, u, y)); again = true; } }
+  else if (has.ai_score == null) { await later(aiScoreDay(env, u, y)); again = !ec; } // 크론이 못 돌았으면 여기서 (ec 없이 기다렸으면 새 점수로 다시)
+  return again ? (await main.all()).results : res.results;
 }
 export async function autoSaveYesterday(env) {
   const y = kstDay(-1);
@@ -875,15 +884,13 @@ on("GET", "/records/recent", async ({ env, q, user, ec }) => {
   const to = DAY_RE.test(q.get("to") || "") ? q.get("to") : kstDay(0);
   const n = Math.min(60, Math.max(3, +q.get("days") || 14));
   const from = new Date(new Date(to + "T00:00:00Z").getTime() - (n - 1) * 864e5).toISOString().slice(0, 10);
-  await ensureYesterday(env, user, ec);
-  const { results } = await env.DB.prepare("SELECT day, score, ai_score, ai_note, done, total FROM day_records WHERE user_id = ? AND day BETWEEN ? AND ? ORDER BY day").bind(user.id, from, to).all();
+  const results = await ensureYesterday(env, user, ec, env.DB.prepare("SELECT day, score, ai_score, ai_note, done, total FROM day_records WHERE user_id = ? AND day BETWEEN ? AND ? ORDER BY day").bind(user.id, from, to));
   return json({ from, to, days: results });
 });
 on("GET", "/records/days", async ({ env, q, user, ec }) => {
   const year = q.get("year") || "";
   if (!/^\d{4}$/.test(year)) fail(400, "연도를 알려 주세요.");
-  await ensureYesterday(env, user, ec);
-  const { results } = await env.DB.prepare("SELECT day, score, ai_score, done, total, auto FROM day_records WHERE user_id = ? AND day LIKE ? ORDER BY day").bind(user.id, year + "-%").all();
+  const results = await ensureYesterday(env, user, ec, env.DB.prepare("SELECT day, score, ai_score, done, total, auto FROM day_records WHERE user_id = ? AND day LIKE ? ORDER BY day").bind(user.id, year + "-%"));
   return json({ days: results });
 });
 

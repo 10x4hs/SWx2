@@ -83,9 +83,14 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
   };
 
   on("GET", "/ai/chats/:id", async ({ env, user, params }) => {
-    const chat = await ownChat(env, params.id, user);
-    const { results } = await env.DB.prepare("SELECT id, role, model, content, created_at FROM chat_messages WHERE chat_id = ? ORDER BY created_at, rowid").bind(chat.id).all();
-    return json({ chat, messages: results });
+    // 대화방 + 메시지를 왕복 한 번에 (내 대화가 아니면 메시지는 버리고 404)
+    const [c, m] = await env.DB.batch([
+      env.DB.prepare("SELECT * FROM chats WHERE id = ? AND user_id = ?").bind(params.id, user.id),
+      env.DB.prepare("SELECT id, role, model, content, created_at FROM chat_messages WHERE chat_id = ? ORDER BY created_at, rowid").bind(params.id),
+    ]);
+    const chat = c.results[0];
+    if (!chat) fail(404, "대화를 찾을 수 없어요.");
+    return json({ chat, messages: m.results });
   });
 
   on("PATCH", "/ai/chats/:id", async ({ req, env, user, params }) => {
