@@ -1,5 +1,5 @@
 // Dsm-mafia — app shell: auth, routing, sidebar, command palette, focus timer.
-import { api } from "./api.js";
+import { api, navStart } from "./api.js";
 import { syncAiPrefs } from "./ai-pick.js";
 import { $, $$, esc, initial, debounce, ymd, today, nowTime, toast, pad, planHash, avatar } from "./util.js";
 import { icon, appIcon } from "./icons.js";
@@ -43,6 +43,7 @@ let cleanup = null;
 
 // ---------- boot ----------
 async function boot() {
+  navStart(); // 다시 열 때는 받아 둔 내 정보 · 친구 목록으로 바로 들어가요 (sw.js)
   try {
     const { user } = await api.me();
     await enter(user);
@@ -418,8 +419,10 @@ function parseRoute() {
 const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
 let lastView = null;
 
-function route() {
+function route(redraw = false) {
   if (!ctx.me || ctx.me.must_change_pw) return; // 비밀번호를 바꾸기 전엔 화면을 열지 않아요
+  navStart(); routedAt = performance.now();
+  if (!redraw) redrawn = false;
   const r = parseRoute();
   $$("[data-nav]").forEach((a) => { if (a.dataset.nav === r.nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   const main = $("#main");
@@ -442,8 +445,34 @@ function route() {
   main.scrollTop = 0;
   lastView = inStudy ? "study" : r.view;
   cleanup = (lastView === "study" ? studyView : VIEWS[r.view]).mount(host, ctx, r) || null;
-  requestAnimationFrame(() => scrambleIn(host));
+  if (!redraw) requestAnimationFrame(() => scrambleIn(host));
 }
+
+// 서비스 워커가 '바로 준 답'(받아 둔 것)과 다른 새 답을 받았을 때 (sw.js · api.js navStart)
+// 아직 손대지 않은 화면이면 조용히 한 번 다시 그려요. 쓰거나 누르는 중이면 그대로 두고, 다음에 들어올 때 새 내용이 보여요.
+let routedAt = 0, touchedAt = 0, redrawn = false, freshT = null;
+const freshPaths = new Set();
+for (const t of ["pointerdown", "keydown"]) addEventListener(t, () => { touchedAt = performance.now(); }, { capture: true, passive: true });
+navigator.serviceWorker?.addEventListener("message", (e) => {
+  const d = e.data;
+  if (d?.type !== "api-fresh" || !ctx.me) return;
+  if (d.status === 401) { api.me().catch(() => { if (ctx.me) { toast("로그인이 만료됐어요. 다시 로그인해 주세요.", "err"); showAuth(); } }); return; }
+  freshPaths.add(new URL(d.url).pathname);
+  clearTimeout(freshT);
+  freshT = setTimeout(() => {
+    const ps = [...freshPaths]; freshPaths.clear();
+    if (ps.includes("/api/users")) syncStatuses();
+    if (ps.includes("/api/me")) api.me().then(({ user }) => window.dispatchEvent(new CustomEvent("trio:me", { detail: { ...ctx.me, ...user } }))).catch(() => {});
+    if (ps.includes("/api/pages")) loadDockPages();
+    if (!ps.some((p) => p !== "/api/users" && p !== "/api/me")) return;
+    const main = $("#main"), el = document.activeElement;
+    if (!main || redrawn || touchedAt > routedAt || (el && main.contains(el) && el.matches("input, textarea, select, [contenteditable]"))) return;
+    redrawn = true;
+    const top = main.scrollTop;
+    if (cleanup) { cleanup(); cleanup = null; }
+    lastView = null; route(true); main.scrollTop = top;
+  }, 250);
+});
 window.addEventListener("hashchange", () => { navDepth++; route(); });
 // 뒤로 가기 (페이지 왼쪽 위 ‹): 앱 안에서 왔으면 이전 화면, 바로 들어왔으면 홈
 let navDepth = 0;

@@ -1,11 +1,17 @@
 // Dsm-mafia service worker
-// - 코드(js·css·html·json): network-first (배포가 바로 보이게) · 글꼴·사진: stale-while-revalidate
-// - 페이지(navigate): network-first, 3초 안에 안 오면 캐시된 "/" (SPA 라서 어느 주소든 index.html)
-// - /api/* GET: network-first + 캐시 대체 (별도 캐시). /api/auth/*, GET 아닌 요청, ok 아닌 응답은 절대 저장 안 함
-// - /english/data.json: network-first
-// VERSION 은 deploy.sh 가 배포마다 새로 찍어요 → 새 SW 설치 → 옛 캐시 삭제 → 열린 탭에 "updated" 메시지.
+// 배포본(VERSION 이 찍힌 SW): 한국 ↔ Cloudflare 길이 느린 날에도 바로 뜨게, 서버에 묻는 횟수를 줄여요.
+// - 코드(js·css) · 앱 파일(json) · 첫 화면("/"): 캐시 먼저. 파일은 배포 때만 바뀌고, 배포하면 VERSION 이 바뀌어
+//   새 SW 가 코드 전체(PRECACHE)를 한 벌로 받아 두고 → 옛 캐시 삭제 → 열린 탭에 "updated" (새로고침하면 새 버전)
+// - 글꼴·사진: stale-while-revalidate
+// - /api/* GET: network-first + 캐시 대체 (별도 캐시). 화면을 막 열 때 부른 GET(x-swr 머리말)은 받아 둔 답을 바로 주고
+//   뒤에서 새로 받아요 → 내용이 다르면 열린 탭에 "api-fresh" (app.js 가 손대지 않은 화면이면 다시 그려요)
+// - GET 아닌 /api 요청(저장 · 지우기)이 지나가면 API 캐시를 비워요 → 내가 바꾼 건 항상 새로 받아요
+// - /api/auth/*, ok 아닌 응답은 절대 저장 안 함
+// 개발(VERSION "dev", 로컬): 코드는 network-first 그대로 (고친 게 바로 보이게).
 
-const VERSION = "v20260930000955";
+const VERSION = "dev"; // deploy.sh 가 배포마다 "v<시각>" 으로 찍어요
+const PRECACHE = []; // deploy.sh 가 코드 파일 전체 목록을 찍어요 (node scripts/assets.mjs --list)
+const DEV = VERSION === "dev";
 const STATIC_CACHE = `dsm-static-${VERSION}`;
 const API_CACHE = `dsm-api-${VERSION}`;
 const KEEP = new Set([STATIC_CACHE, API_CACHE]);
@@ -13,6 +19,8 @@ const KEEP = new Set([STATIC_CACHE, API_CACHE]);
 // 앱 껍데기만. 나머지 모듈·글꼴·사진은 쓰는 순간 캐시에 들어가요.
 const SHELL = ["/styles.css", "/css/tokens.css", "/js/app.js", "/css/pwa.css", "/js/pwa.js", "/manifest.webmanifest", "/icons/icon-192.png"];
 const NAV_TIMEOUT_MS = 3000;
+const SWR_FRESH_MS = 2000; // 받은 지 2초 안 된 API 답은 다시 묻지 않아요 (새 답으로 다시 그린 화면이 또 묻지 않게)
+let gen = 0; // 저장이 지나갈 때마다 +1 → 그 전에 출발한 '뒤에서 새로 받기'는 캐시에 넣지 않아요
 
 // ---------- lifecycle ----------
 self.addEventListener("install", (event) => {
@@ -21,7 +29,7 @@ self.addEventListener("install", (event) => {
     // "/" 는 꼭 필요 (오프라인 첫 화면). /index.html 은 307 → "/" 라서 같은 본문을 두 키에 넣어요.
     await putDocument(cache, await fetch("/", { cache: "reload" }));
     // 나머지는 하나가 없어져도 설치는 되게 (다른 작업으로 파일이 옮겨질 수 있어요)
-    await Promise.all(SHELL.map(async (url) => {
+    await Promise.all([...new Set([...SHELL, ...PRECACHE])].map(async (url) => {
       try {
         const res = await fetch(url, { cache: "reload" });
         if (res.ok) await cache.put(url, res);
@@ -35,7 +43,8 @@ self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const names = await caches.keys();
     await Promise.all(names.filter((n) => n.startsWith("dsm-") && !KEEP.has(n)).map((n) => caches.delete(n)));
-    if (self.registration.navigationPreload) { try { await self.registration.navigationPreload.enable(); } catch {} }
+    // 배포본은 첫 화면을 캐시에서 바로 줘서, 화면을 열 때마다 서버에 "/" 를 미리 묻는 기능은 꺼요 (쓸데없는 왕복)
+    if (self.registration.navigationPreload) { try { await (DEV ? self.registration.navigationPreload.enable() : self.registration.navigationPreload.disable()); } catch {} }
     await self.clients.claim();
     // 옛 버전 캐시가 있었을 때만(= 처음 설치가 아니라 업데이트) 열린 탭에 "새 버전" 이라고 알려요
     if (names.some((n) => n.startsWith("dsm-static-") && n !== STATIC_CACHE)) {
@@ -62,8 +71,9 @@ self.addEventListener("fetch", (event) => {
     if (req.method === "POST" && (url.pathname === "/api/auth/logout" || url.pathname === "/api/auth/login" || url.pathname === "/api/auth/signup")) {
       event.waitUntil(caches.delete(API_CACHE));
     }
-    if (req.method !== "GET" || url.pathname.startsWith("/api/auth/")) return; // 그대로 네트워크로
-    event.respondWith(apiNetworkFirst(event));
+    if (req.method !== "GET") { gen++; event.waitUntil(caches.delete(API_CACHE)); return; } // 저장 · 지우기 → 그대로 네트워크로, 캐시는 비워요
+    if (url.pathname.startsWith("/api/auth/")) return;
+    event.respondWith(req.headers.has("x-swr") ? apiCacheThenFresh(event) : apiNetworkFirst(event));
     return;
   }
 
@@ -71,9 +81,8 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname === "/sw.js") return;
 
   if (req.mode === "navigate") { event.respondWith(navigate(event)); return; }
-  if (url.pathname === "/english/data.json") { event.respondWith(staticNetworkFirst(req)); return; }
-  // 코드(js · css · html)는 항상 서버에서 먼저 → 배포하면 새로 고침 한 번에 바로 새 버전 (서버는 ETag 로 304 라서 가벼워요)
-  if (/\.(js|mjs|css|html|json|webmanifest)$/.test(url.pathname)) { event.respondWith(staticNetworkFirst(req)); return; }
+  // 코드 · 앱 파일: 배포본은 캐시 먼저(배포마다 새 SW 가 새로 받아요), 개발은 서버 먼저
+  if (/\.(js|mjs|css|html|json|webmanifest)$/.test(url.pathname)) { event.respondWith(DEV || /^\/(px|pf)\/|^\/manifest\.webmanifest$/.test(url.pathname) ? staticNetworkFirst(req) : cacheFirst(event)); return; } // /px · /pf 는 서버가 그때그때 만드는 것
   event.respondWith(staleWhileRevalidate(event)); // 글꼴 · 사진 · 아이콘은 캐시 먼저
 });
 
@@ -81,10 +90,10 @@ self.addEventListener("fetch", (event) => {
 async function apiNetworkFirst(event) {
   const req = event.request;
   try {
-    const res = await fetch(req);
+    const g = gen, res = await fetch(req);
     if (res.ok) {
       const copy = res.clone();
-      event.waitUntil(caches.open(API_CACHE).then((c) => c.put(req, copy)).catch(() => {}));
+      event.waitUntil(putApi(req, copy, g));
       setNet(true);
       return res;
     }
@@ -101,12 +110,52 @@ async function apiNetworkFirst(event) {
     throw err; // api.js 가 "서버에 연결할 수 없어요" 를 보여줘요
   }
 }
+// 화면을 막 열 때: 받아 둔 답을 바로 → 2초 넘게 묵었으면 뒤에서 새로 받아 비교 → 다르면 탭에 알려요
+async function apiCacheThenFresh(event) {
+  const req = event.request, cached = await matchApi(req);
+  if (!cached) return apiNetworkFirst(event);
+  const age = Date.now() - Number(cached.headers.get("x-sw-at") || 0);
+  const before = age > SWR_FRESH_MS ? cached.clone() : null; // 화면에 넘기기 전에 떠 둬요 (넘긴 본문은 다시 못 읽어요)
+  if (before) event.waitUntil((async () => {
+    const g = gen;
+    try {
+      const res = await fetch(req);
+      if (res.status === 401) { await caches.delete(API_CACHE); return tell({ type: "api-fresh", url: req.url, status: 401 }); }
+      if (!res.ok) return;
+      setNet(true);
+      const [a, b] = await Promise.all([res.clone().text(), before.text()]);
+      if (!(await putApi(req, res, g))) return;
+      const same = (x) => x.replace(/"now":\d+,?/g, ""); // 서버 시각만 다른 건 같은 답
+      if (same(a) !== same(b)) tell({ type: "api-fresh", url: req.url });
+    } catch {}
+  })());
+  return cached;
+}
+// 받은 시각(x-sw-at)을 붙여 저장. 저장(gen)이 끼어들었으면 넣지 않아요
+async function putApi(req, res, g) {
+  if (g !== gen) return false;
+  try {
+    const h = new Headers(res.headers); h.set("x-sw-at", String(Date.now()));
+    const body = await res.blob();
+    if (g !== gen) return false;
+    await (await caches.open(API_CACHE)).put(req, new Response(body, { status: res.status, statusText: res.statusText, headers: h }));
+    return true;
+  } catch { return false; }
+}
+async function tell(msg) { for (const c of await self.clients.matchAll({ type: "window" })) c.postMessage(msg); }
 async function matchApi(req) {
   const cache = await caches.open(API_CACHE);
   return cache.match(req, { ignoreVary: true });
 }
 
 async function navigate(event) {
+  if (!DEV) { // 배포본: 첫 화면도 캐시 먼저 (새 배포는 새 SW 가 가져와요)
+    const path = new URL(event.request.url).pathname;
+    if (path === "/" || path === "/index.html") {
+      const hit = await (await caches.open(STATIC_CACHE)).match("/");
+      if (hit) return hit;
+    }
+  }
   // 앱은 해시 주소(#/…)라 앱 화면은 항상 "/" 예요. 그 밖의 HTML(논문 쉽게 읽기 · 노트 속 현황판 iframe · OAuth 화면)은
   // 네트워크로만 받아요. 예전에는 이것들까지 앱 첫 화면("/")으로 덮어 저장해서, 느린 접속에서 앱 대신 그 페이지가 떴어요.
   const path = new URL(event.request.url).pathname;
@@ -144,6 +193,15 @@ async function staleWhileRevalidate(event) {
   });
   if (cached) { event.waitUntil(network.catch(() => {})); return cached; }
   return network;
+}
+
+async function cacheFirst(event) {
+  const req = event.request, cache = await caches.open(STATIC_CACHE);
+  const hit = await cache.match(req, { ignoreSearch: false });
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res.ok && res.type === "basic" && !res.redirected) event.waitUntil(cache.put(req, res.clone()).catch(() => {}));
+  return res;
 }
 
 async function staticNetworkFirst(req) {

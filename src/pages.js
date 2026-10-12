@@ -121,7 +121,13 @@ export function registerPages(on, { json, body, fail, uid, now }) {
     return json({ pages: results.map((p) => shape(p, user)) });
   });
   on("GET", "/pages/guide", async () => json({ guide: BRIDGE_GUIDE }));
-  on("GET", "/pages/:id", async ({ env, user, params }) => { const p = await visible(env, params.id, user); return json({ page: shape(p, user, await filesOf(env, p.id)) }); });
+  // 페이지 + 파일을 한 번에 (볼 수 없는 페이지면 파일은 버리고 404)
+  on("GET", "/pages/:id", async ({ env, user, params }) => {
+    const [pg, fs] = await env.DB.batch([env.DB.prepare("SELECT * FROM user_pages WHERE id = ?").bind(params.id), env.DB.prepare("SELECT path, content FROM user_page_files WHERE page_id = ? ORDER BY path").bind(params.id)]);
+    const p = pg.results[0];
+    if (!p || (p.user_id !== user.id && !p.shared)) fail(404, "페이지를 찾을 수 없어요.");
+    return json({ page: shape(p, user, Object.fromEntries(fs.results.map((r) => [r.path, r.content]))) });
+  });
   on("GET", "/pages/:id/versions", async ({ env, user, params }) => {
     await visible(env, params.id, user);
     const { results } = await env.DB.prepare("SELECT id, note, created_at, length(code) AS size FROM user_page_versions WHERE page_id = ? ORDER BY created_at DESC").bind(params.id).all();
@@ -184,16 +190,18 @@ export function registerPages(on, { json, body, fail, uid, now }) {
   });
   // 사람별 저장소 (trio.store): 내 것 읽기·쓰기. 공개 페이지면 셋의 것을 읽기(trio.others)
   on("GET", "/pages/:id/state", async ({ env, user, params }) => {
-    await visible(env, params.id, user);
-    const r = await env.DB.prepare("SELECT data FROM user_page_state WHERE page_id = ? AND user_id = ?").bind(params.id, user.id).first();
+    // 볼 수 있는 페이지일 때만 내 저장값 (쿼리 하나)
+    const r = await env.DB.prepare("SELECT s.data FROM user_pages p LEFT JOIN user_page_state s ON s.page_id = p.id AND s.user_id = ?1 WHERE p.id = ?2 AND (p.user_id = ?1 OR p.shared)").bind(user.id, params.id).first();
+    if (!r) fail(404, "페이지를 찾을 수 없어요.");
     let data = {}; try { data = JSON.parse(r?.data || "{}"); } catch {}
     return json({ data });
   });
   on("PUT", "/pages/:id/state", async ({ req, env, user, params }) => {
-    await visible(env, params.id, user);
     const b = await body(req), data = b && typeof b.data === "object" && b.data ? b.data : {};
     const text = JSON.stringify(data); if (text.length > MAX_STATE) fail(400, "저장할 게 너무 커요 (200KB 까지).");
-    await env.DB.prepare("INSERT INTO user_page_state (page_id, user_id, data, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT(page_id, user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at").bind(params.id, user.id, text, now()).run();
+    // 볼 수 있는 페이지일 때만 저장 (권한 확인 + 저장을 쿼리 하나로). 안 들어갔으면 404
+    const r = await env.DB.prepare("INSERT INTO user_page_state (page_id, user_id, data, updated_at) SELECT ?1, ?2, ?3, ?4 WHERE EXISTS (SELECT 1 FROM user_pages WHERE id = ?1 AND (user_id = ?2 OR shared)) ON CONFLICT(page_id, user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at").bind(params.id, user.id, text, now()).run();
+    if (!r.meta.changes) fail(404, "페이지를 찾을 수 없어요.");
     return json({ ok: true });
   });
   on("GET", "/pages/:id/state/all", async ({ env, user, params }) => {
@@ -268,16 +276,18 @@ async function fileTokenUser(env, token, pageId) {
 }
 
 // /pf/<id>/[~<토큰>/]<path> — 페이지 파일 서빙 (파일 토큰 또는 로그인 쿠키로 · 내 것 또는 공유된 것). html 에는 브리지를 끼워요. sandbox CSP 로 한 번 더 가둬요.
-export async function servePageFile(req, env, url, user) {
+// getUser: 로그인 쿠키의 사람을 찾는 함수 (토큰이 없을 때만 불러서 DB 왕복을 아껴요)
+export async function servePageFile(req, env, url, getUser) {
   const m = /^\/pf\/([^/]+)(?:\/~([^/]+))?\/?(.*)$/.exec(url.pathname);
   if (!m) return new Response("not found", { status: 404 });
-  const id = m[1], viewer = m[2] ? await fileTokenUser(env, m[2], id) : user?.id;
+  const id = m[1], viewer = m[2] ? await fileTokenUser(env, m[2], id) : (await getUser())?.id;
   if (!viewer) return new Response("로그인이 필요해요.", { status: 401, headers: { "content-type": "text/plain; charset=utf-8" } });
   let path = decodeURIComponent(m[3] || "") || "index.html";
   if (path.endsWith("/")) path += "index.html";
-  const p = await env.DB.prepare("SELECT id, user_id, shared, kind FROM user_pages WHERE id = ?").bind(id).first();
+  // 페이지 권한 + 파일을 쿼리 하나로 (f.page_id 가 NULL 이면 파일이 없는 것)
+  const p = await env.DB.prepare("SELECT p.user_id, p.shared, f.page_id AS has, f.content FROM user_pages p LEFT JOIN user_page_files f ON f.page_id = p.id AND f.path = ? WHERE p.id = ?").bind(path, id).first();
   if (!p || (p.user_id !== viewer && !p.shared)) return new Response("not found", { status: 404 });
-  const f = await env.DB.prepare("SELECT content FROM user_page_files WHERE page_id = ? AND path = ?").bind(id, path).first();
+  const f = p.has == null ? null : p;
   if (!f) return new Response(`파일이 없어요: ${path}`, { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
   const html = isHtml(path);
   return new Response(html ? withBridge(f.content) : f.content, { headers: {

@@ -54,7 +54,10 @@ step "Worker 배포"
 STAMP="v$(date +%Y%m%d%H%M%S)"
 cp public/sw.js /tmp/dsm-sw.js.orig
 trap 'cp /tmp/dsm-sw.js.orig public/sw.js 2>/dev/null || true' EXIT
-node -e 'const fs=require("fs"),[f,v]=process.argv.slice(1);fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/const VERSION = "[^"]*"/,`const VERSION = "${v}"`))' public/sw.js "$STAMP"
+node scripts/assets.mjs   # index.html 의 modulepreload 목록 (모듈을 한 번에 받게)
+# 서비스 워커가 설치 때 코드 전체를 한 벌로 받아 두게 목록도 찍어요
+node -e 'const fs=require("fs"),[f,v,l]=process.argv.slice(1);fs.writeFileSync(f,fs.readFileSync(f,"utf8").replace(/const VERSION = "[^"]*"/,`const VERSION = "${v}"`).replace(/const PRECACHE = \[[^\]]*\]/,`const PRECACHE = ${l}`))' public/sw.js "$STAMP" "$(node scripts/assets.mjs --list)"
+grep -q "const VERSION = \"$STAMP\"" public/sw.js && ! grep -q "const PRECACHE = \[\]" public/sw.js || { echo "sw.js 에 버전 · 목록을 찍지 못했어요" >&2; exit 1; }
 echo "sw 버전: $STAMP"
 OUT="$(npx wrangler deploy < /dev/null 2>&1)" || { echo "$OUT" >&2; exit 1; }
 cp /tmp/dsm-sw.js.orig public/sw.js
