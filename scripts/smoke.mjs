@@ -215,6 +215,12 @@ if (jar.b) {
 r = await call("a", "POST", "/logs", { day: "2026-09-28", at: "10:00", text: "집중 25분", kind: "focus", mins: 25 });
 r = await call("a", "GET", "/logs/focus?from=2026-09-28&to=2026-09-28"); ok(r.data.days.some((d) => d.mins === 25), "focus minutes");
 
+// ---- Dock customize (per account) ----
+r = await call("a", "PUT", "/custom/" + encodeURIComponent("nav:brain"), { css: ".host-brain{opacity:.9}", js: "" }); ok(r.data.custom?.slot === "nav:brain", "custom saved");
+r = await call("a", "GET", "/custom"); ok(r.data.custom.some((x) => x.slot === "nav:brain" && x.css.includes("opacity")), "custom read");
+r = await call("b", "GET", "/custom"); ok(!r.data.custom.some((x) => x.slot === "nav:brain"), "custom private to owner");
+r = await call("a", "PUT", "/custom/" + encodeURIComponent("evil slot"), { css: "x" }); ok(r.status === 400, "bad custom slot rejected");
+r = await call("a", "DELETE", "/custom/" + encodeURIComponent("nav:brain")); r = await call("a", "GET", "/custom"); ok(!r.data.custom.length, "custom reset");
 // ---- diary ----
 r = await call("a", "PUT", "/diary", { day: "2026-09-28", mood: 4, body: "오늘은 괜찮았다" }); ok(r.data.diary?.mood === 4, "diary saved");
 r = await call("a", "GET", "/diary?day=2026-09-28"); ok(r.data.diary?.body === "오늘은 괜찮았다", "diary read");

@@ -2,6 +2,14 @@
  "about": "업데이트 1번 = 우리가 체감하는 기능 묶음 하나. commits 는 그 묶음에 들어간 커밋. 새 커밋은 배포할 때 scripts/updates-check.mjs 가 빠졌는지 알려 줘요.",
  "updates": [
   {
+   "date": "2026-10-13",
+   "kind": "new",
+   "title": "Dock 아이콘 우클릭 → Customize — 화면마다 내 CSS · HTML · JS",
+   "body": "Dock 의 모든 아이콘(검색 · 홈 · 캘린더 · Brain · 대화 · 페이지 추가 · 타이머 · 프로필)을 오른쪽 클릭하면 Customize… 가 떠요. CSS · HTML · JS 탭에 내 코드를 쓰면 원본 위에 덮어씌워지고, Source 탭에서 원래 코드를 볼 수 있어요. 내 계정에만 적용돼서 친구 화면은 그대로예요. CSS 는 치는 대로 미리 보이고, ⌘S 로 저장, Reset 한 번이면 원래대로 돌아가요.",
+   "href": "#/",
+   "commits": []
+  },
+  {
    "date": "2026-10-12",
    "kind": "new",
    "title": "Study 탭마다 옵시디언 그래프 — 영어 · 논문 · AI · 과목, 노드 크기 직접 정하기",

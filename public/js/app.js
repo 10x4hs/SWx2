@@ -24,6 +24,7 @@ import * as studyView from "./views/study.js"; // 공부 = 영어 | 논문 (Dock
 import * as pageView from "./views/page.js"; // Dock 사용자 페이지 (#/p/new · #/p/<id>)
 import { wireDockDrag } from "./dock-drag.js";
 import { setHiddenMe } from "./hidden-pages.js";
+import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js"; // Dock 우클릭 → 내 CSS · HTML · JS
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
@@ -41,6 +42,7 @@ const ctx = {
   go: (hash) => { if (location.hash !== hash) location.hash = hash; else route(); },
   changed: (kind) => window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind } })),
   refreshSide: () => refreshSide(),
+  redraw: () => { lastView = null; route(true); }, // Customize 저장 뒤 지금 화면을 새로 그려요
   timer: null, // 아래 집중 타이머 (할 일 ▶ 에서 써요)
 };
 let cleanup = null;
@@ -75,6 +77,7 @@ async function enter(user) {
   setHiddenMe(ctx.me); // 내 화면에서 숨긴 친구 페이지
   document.documentElement.style.setProperty("--me", ctx.me.color);
   renderShell();
+  loadCustom();
   // 스터디장이 정해 준 비밀번호 그대로면: 화면을 열기 전에 먼저 바꾸게 해요
   if (ctx.me.must_change_pw) { openPassword({ force: true }); return; }
   route();
@@ -181,6 +184,7 @@ function renderMeRow() {
       <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
     </div>`;
   const menu = $("#me-menu"), btn = $("#me-btn");
+  applyUi("ui:me");
   // 메뉴는 화면 맨 위층(body)에 붙여요 — Dock 안에 두면 좁은 화면에서 본문 아래로 깔려 눌리지 않았어요
   document.querySelectorAll("body > #me-menu").forEach((m) => m !== menu && m.remove());
   document.body.append(menu);
@@ -254,6 +258,7 @@ async function refreshSide() {
 
 // Dock 배지 · 사용자 페이지 (dock.js) — 60초 폴링 · 'trio:changed' · 'room-live' · contextmenu 리스너를 여기서 한 번 걸어요
 initDock({ ctx, NAV, parseRoute, getLastView: () => lastView });
+initCustomize(ctx);
 
 // ---------- routing ----------
 // 예전 주소는 캘린더의 그날로 옮겨요 (뒤로 가기에 남지 않게 replaceState)
@@ -321,6 +326,8 @@ function route(redraw = false) {
   main.scrollTop = 0;
   lastView = inStudy ? "study" : r.view;
   cleanup = (lastView === "study" ? studyView : VIEWS[r.view]).mount(host, ctx, r) || null;
+  const undo = afterMount(lastView, host), base = cleanup;
+  if (undo) cleanup = () => { try { undo(); } catch {} base?.(); };
   if (!redraw) requestAnimationFrame(() => scrambleIn(host));
 }
 
