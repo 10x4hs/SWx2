@@ -14,7 +14,15 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const ZHIPU_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
 const KILO_URL = "https://api.kilo.ai/api/gateway/chat/completions";
 const OLLAMA_URL = "https://ollama.com/v1/chat/completions";
+// Qwen은 생각 과정을 따로 빼 달라고 해야 본문에 <think>가 안 섞여요 (gpt-oss는 원래 따로 줘요)
+const groqExtra = (model) => (model.startsWith("qwen/") ? { reasoning_format: "parsed" } : {});
+// json: JSON 한 번에 받기(openaiJson)에서만 쓰는 회사별 옵션. 안 적으면 JSON_DEFAULTS.
+//  suffix 시스템 프롬프트 끝에 붙일 말 · maxTokens · extra(model) 본문 앞쪽에 펼칠 것 · jsonMode response_format 보내기
+//  checkError 200 본문의 error 를 오류로 · stripThink <think> 벗기기 · routed 실제 답한 모델이 다르면 used 에 "model → j.model"
+const JSON_DEFAULTS = { suffix: "\n반드시 JSON 객체 하나만 출력해. 설명이나 코드 펜스 없이.", maxTokens: 8192, extra: null, jsonMode: false, checkError: true, stripThink: true, routed: true };
 const OPENAI_LIKE = {
+  groq: { url: GROQ_URL, name: "Groq", json: { suffix: "\n반드시 JSON 객체 하나만 출력해.", extra: groqExtra, jsonMode: true, checkError: false, stripThink: false, routed: false } },
+  mimo: { url: MIMO_URL, name: "MiMo", json: { suffix: "\n반드시 JSON 객체 하나만 출력해.", maxTokens: 16384, checkError: false, stripThink: false, routed: false } },
   openrouter: { url: OPENROUTER_URL, name: "OpenRouter", headers: { "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" } },
   zhipu: { url: ZHIPU_URL, name: "GLM", body: { thinking: { type: "disabled" } } },   // 생각 모드를 끄지 않으면 본문이 빈 채로 와요
   kilo: { url: KILO_URL, name: "Kilo", headers: { "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" } },
@@ -331,7 +339,7 @@ async function contextPrompt(env, user, b, message) {
 // Gemini(JSON 모드) → Groq → Cohere → MiMo 순서. 키가 하나도 없으면 503.
 // 한 회사 안에서는 붐빌 때만 다음 모델로, 그 회사가 아예 안 되면(키·요청 오류) 다음 회사로 넘어가요.
 export async function aiJson(env, system, prompt, prefer = null) {
-  const JSON_RUN = { gemini: geminiJson, groq: groqJson, cohere: cohereJson, mimo: mimoJson, zhipu: openaiJson("zhipu"), openrouter: openaiJson("openrouter"), kilo: openaiJson("kilo"), ollama: openaiJson("ollama") };
+  const JSON_RUN = { gemini: geminiJson, groq: openaiJson("groq"), cohere: cohereJson, mimo: openaiJson("mimo"), zhipu: openaiJson("zhipu"), openrouter: openaiJson("openrouter"), kilo: openaiJson("kilo"), ollama: openaiJson("ollama") };
   const pv = prefer && MODELS[prefer] ? MODELS[prefer].provider : null; // 고른 모델의 회사를 맨 앞에
   const groups = orderFrom(pv, JSON_ORDER).filter((p) => hasKey(env, p));
   if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
@@ -371,33 +379,6 @@ async function geminiJson(env, model, system, prompt) {
   return { data: parseJsonText(text, "Gemini"), used: model };
 }
 
-async function mimoJson(env, model, system, prompt) {
-  const res = await fetch(MIMO_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${env.MIMO_API_KEY}` },
-    body: JSON.stringify({ model, messages: [{ role: "system", content: system + "\n반드시 JSON 객체 하나만 출력해." }, { role: "user", content: prompt }], max_tokens: 16384, temperature: 0.3 }),
-  });
-  if (!res.ok) throw await providerError(res, "MiMo");
-  const j = await res.json();
-  const text = j.choices?.[0]?.message?.content || "";
-  if (!text) { const e = new Error("MiMo가 빈 답을 보냈어요."); e.retry = true; throw e; }
-  return { data: parseJsonText(text, "MiMo"), used: model };
-}
-
-// OpenAI 모양 API(Groq)에서 JSON 한 덩어리 받기
-async function groqJson(env, model, system, prompt) {
-  const res = await fetch(GROQ_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${env.GROQ_API_KEY}` },
-    body: JSON.stringify({ model, ...groqExtra(model), messages: [{ role: "system", content: system + "\n반드시 JSON 객체 하나만 출력해." }, { role: "user", content: prompt }], response_format: { type: "json_object" }, max_tokens: 8192, temperature: 0.3 }),
-  });
-  if (!res.ok) throw await providerError(res, "Groq");
-  const j = await res.json();
-  const text = j.choices?.[0]?.message?.content || "";
-  if (!text) { const e = new Error("Groq가 빈 답을 보냈어요."); e.retry = true; throw e; }
-  return { data: parseJsonText(text, "Groq"), used: model };
-}
-
 async function cohereJson(env, model, system, prompt) {
   const res = await fetch(COHERE_URL, {
     method: "POST",
@@ -411,24 +392,22 @@ async function cohereJson(env, model, system, prompt) {
   return { data: parseJsonText(text, "Cohere"), used: model };
 }
 
-// OpenAI 모양 API(Zhipu · OpenRouter · Kilo)에서 JSON 한 덩어리 받기. JSON 모드가 보장되지 않아서 코드 펜스를 벗기고 { } 만 골라 파싱해요
+// OpenAI 모양 API(Groq · MiMo · Zhipu · OpenRouter · Kilo · Ollama)에서 JSON 한 덩어리 받기. 회사별 차이는 OPENAI_LIKE[..].json 옵션.
+// JSON 모드가 보장되지 않는 곳은 코드 펜스를 벗기고 { } 만 골라 파싱해요
 const openaiJson = (provider) => async (env, model, system, prompt) => {
-  const p = OPENAI_LIKE[provider];
+  const p = OPENAI_LIKE[provider], o = { ...JSON_DEFAULTS, ...p.json };
   const res = await fetch(p.url, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${env[KEY[provider]]}`, ...(p.headers || {}) },
-    body: JSON.stringify({ model, ...(p.body || {}), messages: [{ role: "system", content: system + "\n반드시 JSON 객체 하나만 출력해. 설명이나 코드 펜스 없이." }, { role: "user", content: prompt }], max_tokens: 8192, temperature: 0.3 }),
+    body: JSON.stringify({ model, ...(p.body || {}), ...(o.extra ? o.extra(model) : {}), messages: [{ role: "system", content: system + o.suffix }, { role: "user", content: prompt }], ...(o.jsonMode ? { response_format: { type: "json_object" } } : {}), max_tokens: o.maxTokens, temperature: 0.3 }),
   });
   if (!res.ok) throw await providerError(res, p.name);
   const j = await res.json();
-  if (j.error) throw Object.assign(new Error(`${p.name} 오류: ${String(j.error.message || "").slice(0, 120)}`), { retry: true });
+  if (o.checkError && j.error) throw Object.assign(new Error(`${p.name} 오류: ${String(j.error.message || "").slice(0, 120)}`), { retry: true });
   const text = j.choices?.[0]?.message?.content || "";
   if (!text) { const e = new Error(`${p.name}가 빈 답을 보냈어요.`); e.retry = true; throw e; }
-  return { data: parseJsonText(text.replace(/<think>[\s\S]*?<\/think>/g, ""), p.name), used: j.model && j.model !== model ? `${model} → ${j.model}` : model };
+  return { data: parseJsonText(o.stripThink ? text.replace(/<think>[\s\S]*?<\/think>/g, "") : text, p.name), used: o.routed && j.model && j.model !== model ? `${model} → ${j.model}` : model };
 };
-
-// Qwen은 생각 과정을 따로 빼 달라고 해야 본문에 <think>가 안 섞여요 (gpt-oss는 원래 따로 줘요)
-const groqExtra = (model) => (model.startsWith("qwen/") ? { reasoning_format: "parsed" } : {});
 
 // ---------- providers ----------
 async function runModel(env, id, system, history, message, emit) {
