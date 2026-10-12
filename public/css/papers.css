@@ -261,20 +261,6 @@ iframe.pp-vid-frame { cursor: auto; }
 .pp-note-me .input { flex: 1; }
 .pp-note { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 11px; background: var(--glass-2); font-size: 14.5px; }
 
-/* AI 튜터 */
-.pp-chat { display: grid; gap: 10px; max-height: 520px; overflow-y: auto; margin-bottom: 12px; padding: 2px; }
-.pp-msg { padding: 11px 14px; border-radius: 14px; font-size: 14.5px; line-height: 1.65; max-width: 92%; }
-.pp-msg.user { justify-self: end; background: var(--ink); color: var(--on-ink); border-bottom-right-radius: 5px; white-space: pre-wrap; }
-.pp-msg.assistant { justify-self: start; background: var(--glass-2); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
-.pp-msg .md > :first-child { margin-top: 0; } .pp-msg .md > :last-child { margin-bottom: 0; }
-.pp-msg .md p { margin: 0 0 8px; }
-.pp-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-.pp-q-chip { border: 0; cursor: pointer; font-weight: 500; }
-.pp-q-chip:hover { background: var(--hover); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
-.pp-ask { display: flex; gap: 8px; align-items: flex-end; }
-.pp-ask .textarea { flex: 1; resize: none; font: 15px/1.5 var(--font); }
-.pp-ask.busy button { opacity: .5; pointer-events: none; }
-
 /* 다음 · 이전 */
 .pp-next { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 24px; }
 .pp-nav { display: grid; gap: 3px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); text-decoration: none; }

@@ -215,7 +215,6 @@
 .ez-pre-s { font-size: 14px; color: var(--ink-3); margin: 0 0 16px; }
 .ez-pre .qz { margin: 12px 0 0; background: var(--bg); }
 .ez-pre .qz-c button.pick { border-color: var(--d); background: var(--d-soft); }
-.ez-pre-done { margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
 .ez-guess { display: block; margin-top: 8px; font-size: 13.5px; color: var(--ink-3); }
 .ez-words-pre { margin: 18px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
 .ez-words-pre div { padding: 12px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
@@ -248,7 +247,6 @@
 /* 쉽게 읽기 AI 튜터: 오른쪽 아래 버튼 → 옆 패널 (넓은 화면은 본문 옆, 좁은 화면은 아래에서 올라와요) */
 .ez-ai-fab { position: fixed; right: 26px; bottom: 26px; z-index: 40; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border: 0; border-radius: 999px; background: var(--ink); color: var(--bg); font: 650 14.5px var(--font); cursor: pointer; box-shadow: 0 10px 30px -8px rgba(0,0,0,.45); transition: transform .2s var(--ease); }
 .ez-ai-fab:hover { transform: translateY(-2px); }
-.ez-ai-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 30%, transparent); }
 .ez-ai-fab.pulse { animation: ez-pulse 1.2s var(--ease) infinite; } @keyframes ez-pulse { 50% { transform: scale(1.06); } }
 .ezw.ai-open .ez-ai-fab { display: none; }
 .ez-ai { position: fixed; right: 20px; top: 84px; bottom: 20px; width: min(400px, calc(100vw - 40px)); z-index: 45; display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line-2); border-radius: 18px; box-shadow: 0 24px 60px -20px rgba(0,0,0,.5); overflow: hidden; }
