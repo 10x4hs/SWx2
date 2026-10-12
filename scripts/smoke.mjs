@@ -221,6 +221,8 @@ r = await call("a", "GET", "/custom"); ok(r.data.custom.some((x) => x.slot === "
 r = await call("b", "GET", "/custom"); ok(!r.data.custom.some((x) => x.slot === "nav:brain"), "custom private to owner");
 r = await call("a", "PUT", "/custom/" + encodeURIComponent("evil slot"), { css: "x" }); ok(r.status === 400, "bad custom slot rejected");
 r = await call("a", "DELETE", "/custom/" + encodeURIComponent("nav:brain")); r = await call("a", "GET", "/custom"); ok(!r.data.custom.length, "custom reset");
+r = await call("a", "GET", "/files/notion-missing.png"); ok(r.status === 404, "missing file 404");
+r = await call("x", "GET", "/files/notion-missing.png"); ok(r.status === 401, "files need login");
 // ---- diary ----
 r = await call("a", "PUT", "/diary", { day: "2026-09-28", mood: 4, body: "오늘은 괜찮았다" }); ok(r.data.diary?.mood === 4, "diary saved");
 r = await call("a", "GET", "/diary?day=2026-09-28"); ok(r.data.diary?.body === "오늘은 괜찮았다", "diary read");

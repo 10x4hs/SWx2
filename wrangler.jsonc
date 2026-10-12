@@ -26,6 +26,7 @@
     }
   ],
   // 실시간 대화: 웹소켓을 붙잡아 두는 Durable Object 하나 (src/hub.js)
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "dsm-mafia-files" }], // 노트 이미지 · 첨부 (Notion 에서 옮긴 사진 등)
   "durable_objects": { "bindings": [{ "name": "ROOM_HUB", "class_name": "RoomHub" }] },
   "migrations": [{ "tag": "hub-v1", "new_sqlite_classes": ["RoomHub"] }],
   "vars": { "MAX_USERS": "3", "PASSWORDLESS": "0", "VAPID_PUBLIC_KEY": "BM5EpcANa6q_5MpqXGMuxMIwwNlNfPCUoxf10NSsSEg6dBxu3pSZVgohkTtdDZ3fFHORgFThI9gEOTcRPR0T-h4" } // 배포본은 비밀번호 필수. 로컬은 .dev.vars 의 PASSWORDLESS=1 이 덮어써요

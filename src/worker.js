@@ -22,6 +22,7 @@ import { requireUser, sessionUser, tokenUser, loginWith, MUST_CHANGE_OPEN, regis
 import { registerPlans } from "./plans.js";
 import { registerDiary } from "./diary.js";
 import { registerCustom } from "./custom.js";
+import { registerFiles } from "./files.js";
 import { registerNotes, indexStmts, MAX_NOTE } from "./notes.js";
 import { registerRecords, autoSaveYesterday } from "./records.js";
 export { RoomHub } from "./hub.js"; // Durable Object 클래스는 main 모듈에서 내보내야 해요
@@ -112,6 +113,7 @@ registerDiary(on);
 registerNotes(on);
 registerRecords(on);
 registerCustom(on); // Dock 아이콘 우클릭 → 내 CSS · HTML · JS
+registerFiles(on); // 노트 이미지 (R2)
 
 // ---------- AI chat ----------
 registerAi(on, { json, body, fail, str, uid, now });
