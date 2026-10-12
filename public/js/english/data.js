@@ -38,7 +38,6 @@ export const BLOCKS = {
   pattern: { n: "④", name: "패턴 정리", short: "패턴", color: "var(--c-blue)" },
   review: { n: "⑤", name: "한 주 복습", short: "복습", color: "var(--c-green)" },
 };
-export const SPOKEN = ["sound", "speak"]; // 입을 연 시간
 
 export const todayKey = () => ymd(today());
 export const diffDays = (a, b) => Math.round((parseYmd(b) - parseYmd(a)) / 864e5);

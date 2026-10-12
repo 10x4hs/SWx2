@@ -1,9 +1,8 @@
 // 쉽게 읽기 공통 부품 — 논문 쉽게 읽기(easy.js)와 AI 공부책(books/)이 같이 써요.
 // 글 안 표시(inline) · 블록 그리기(blocks) · 장면/재생 그림 · 퀴즈 · 움직임(wireMotion) · 목차 · 진행 막대 · 위 막대.
 // 여기엔 서버(api) 호출이 없어요. 화면별 저장은 각자(easy.js · books/)가 해요.
-export const $ = (s, el = document) => el.querySelector(s);
-export const $$ = (s, el = document) => [...el.querySelectorAll(s)];
-export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+import { $, $$, esc } from "../util.js";
+export { $, $$, esc };
 export const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 const TONE = { a: "var(--a)", b: "var(--b)", c: "var(--c)", d: "var(--d)", n: "var(--n)" };
 export const tc = (t) => (TONE[t] ? `--tc:${TONE[t]};` : "");
@@ -101,7 +100,7 @@ function overlay(o) {
     default: return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx=".12" fill="${c}" fill-opacity=".08" stroke="${c}" stroke-width=".12"${dash}/>${tag(x, y)}`; // box
   }
 }
-export function sceneHtml(b) {
+function sceneHtml(b) {
   const W = +b.w || 16, H = +b.h || 9;
   const bg = { night: "sc-night", day: "sc-day", thermal: "sc-thermal" }[b.bg] || "sc-plain";
   return `<div class="ez-fig wide ez-scene" data-scene='${esc(JSON.stringify({ steps: b.steps || [] }))}'>
@@ -127,7 +126,7 @@ function sceneState(steps, k) {
 // rows: [{id, label, items: [{id, text, tone?, v?(0~1 막대)}]}]
 // steps: [{text, add: [{row, id, text, tone?, v?}], remove: [id], set: [{id, text?, v?, tone?}], hi: [id], link: [{from, to, w?(0~1), tone?, label?}]}]
 // hi 와 link 는 그 단계의 값으로 바뀌고(없으면 비움), add · remove · set 은 쌓여요.
-export function playHtml(b) {
+function playHtml(b) {
   const data = { rows: (b.rows || []).map((r) => ({ id: r.id, label: r.label || "", items: r.items || [] })), steps: b.steps || [] };
   return `<div class="ez-fig wide ez-play" data-play='${esc(JSON.stringify(data))}'>
     <div class="pl-stage"><div class="pl-rows">${data.rows.map((r) => `<div class="pl-row" data-row="${esc(r.id)}"><span class="pl-l">${inline(r.label)}</span><div class="pl-items"></div></div>`).join("")}</div><svg class="pl-links" aria-hidden="true"></svg></div>

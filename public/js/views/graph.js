@@ -18,15 +18,13 @@ const paperHash = (n) => {
   return id ? "#/papers/" + id : null;
 };
 
-// 주제 색: 차분한 파스텔 (유리 구슬이라 너무 진하면 촌스러워요)
+// 주제 색: 차분한 파스텔
 const PALETTE = ["#E9B872", "#8CC5B0", "#93A9E8", "#E39AA8", "#B9A3E6", "#84C6CC", "#D9C27A", "#E0A184", "#A7B6CB", "#B3CF8C"];
 const SETTINGS_KEY = "trio-graph";
 const DEFAULTS = { tags: false, ghosts: true, mocs: true, orphans: true, text: 11, node: 1, line: 1, pull: 1, push: 1, open: true, basis: "deg" };
 const load = () => { try { const v = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); if (v.text === 13 && !v.textV2) { v.text = 11; v.textV2 = 1; } return { ...DEFAULTS, ...v }; } catch { return { ...DEFAULTS }; } };
 const saveSet = (s) => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch {} };
 const DBL_MS = 280;
-// 유리 구슬 이미지 (투명 PNG, 256px 안에 224px 구슬). 색은 그 아래 원으로 깔아요.
-const ORB = new Image(); ORB.src = "/assets/graph/orb.png"; const ORB_K = 256 / 224;
 
 export function mount(root, ctx) {
   const set = load();
@@ -256,7 +254,6 @@ export function mount(root, ctx) {
     W = r.width; H = r.height; canvas.width = W * dpr; canvas.height = H * dpr; kick();
   }
   const ro = new ResizeObserver(resize); ro.observe(canvas);
-  if (!ORB.complete) ORB.addEventListener("load", () => kick(), { once: true });
   // 자동 테스트용: 화면 좌표로 점 위치 (데이터는 이미 화면에 다 보이는 것)
   canvas.__nodes = () => nodes.map((n) => ({ id: n.id, title: n.title, ghost: !!n.ghost, x: W / 2 + view.x + n.x * view.k, y: H / 2 + view.y + n.y * view.k }));
 

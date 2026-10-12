@@ -1,7 +1,7 @@
 // 원문 그림 속 영어 → 한국어 (content/<id>.figtr.json · 규격 scripts/papers/FIGTR_SPEC.md)
 // 그림 아래 [data-tr="파일이름"] 자리에 번역을 채워요. 제목 · 설명은 바로 보이고, 그림 속 글자 · 어려운 말은 펼쳐서.
 const cache = new Map();
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+import { esc } from "../util.js";
 export function loadFigtr(id) {
   if (!cache.has(id)) cache.set(id, fetch(`/papers/content/${encodeURIComponent(id)}.figtr.json`, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
   return cache.get(id);
