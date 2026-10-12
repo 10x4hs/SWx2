@@ -8,6 +8,7 @@ import { api } from "../api.js";
 import { icon } from "../icons.js";
 import { isHidden, hidePage } from "../hidden-pages.js";
 import { openMenu } from "../ctxmenu.js";
+import { mountStudyGraph } from "./study-graph.js";
 
 const SUBS = [
   { key: "english", label: "영어", hash: "#/english", view: englishView },
@@ -25,10 +26,18 @@ export function mount(root, ctx, r) {
   let sub = null, stop = null, cur = r;
   root.innerHTML = `
     <div class="study-wrap">
-      <nav class="seg study-switch glass" role="tablist" aria-label="공부 탭" id="study-switch"></nav>
+      <div class="study-bar"><nav class="seg study-switch glass" role="tablist" aria-label="공부 탭" id="study-switch"></nav><nav class="seg study-mode glass" aria-label="내용 · 그래프" id="study-mode"></nav></div>
       <div class="study-body" id="study-body"></div>
     </div>`;
-  const body = $("#study-body", root), nav = $("#study-switch", root);
+  const body = $("#study-body", root), nav = $("#study-switch", root), modeNav = $("#study-mode", root);
+  // 탭마다 [내용 | 그래프]: 그래프 주소 = #/english/graph · #/papers/graph · #/books/graph · #/study/<id>/graph
+  const graphOf = (nr) => nr.view === "english" ? (nr.tab === "graph" ? "english" : null) : nr.view === "papers" ? (nr.id === "graph" ? "papers" : null) : nr.view === "books" ? (nr.id === "graph" ? "books" : null) : nr.view === "page" && nr.id && nr.id !== "new" ? (nr.sub === "graph" ? "page:" + nr.id : null) : null;
+  const hashes = (nr) => nr.view === "english" ? ["#/english", "#/english/graph"] : nr.view === "papers" ? ["#/papers", "#/papers/graph"] : nr.view === "books" ? ["#/books", "#/books/graph"] : nr.view === "page" && nr.id && nr.id !== "new" ? ["#/study/" + nr.id, "#/study/" + nr.id + "/graph"] : null;
+  function drawMode(nr) {
+    const h = hashes(nr), g = !!graphOf(nr);
+    modeNav.hidden = !h;
+    if (h) modeNav.innerHTML = `<a href="${h[0]}" aria-current="${g ? "false" : "page"}">내용</a><a href="${h[1]}" aria-current="${g ? "page" : "false"}">그래프</a>`;
+  }
 
   function drawTabs() {
     const key = keyOf(cur);
@@ -46,7 +55,18 @@ export function mount(root, ctx, r) {
     cur = nr;
     const next = keyOf(nr);
     try { if (next !== "new") localStorage.setItem(KEY, next); } catch {}
-    drawTabs();
+    drawTabs(); drawMode(nr);
+    const gw = graphOf(nr);
+    if (gw) { // 그래프 화면: 그 탭의 과목만
+      root.classList.remove("study-fill");
+      root.classList.add("study-graph");
+      if (sub === "graph:" + gw) return;
+      stop?.(); sub = "graph:" + gw;
+      const host = document.createElement("div"); host.className = "host host-study-graph"; body.replaceChildren(host);
+      stop = mountStudyGraph(host, ctx, gw) || null;
+      return;
+    }
+    root.classList.remove("study-graph");
     const isPage = nr.view === "page";
     // 과목 페이지(iframe)는 화면 끝까지 채워야 해요. 처음 들어온 길(바로 주소 · 영어 · 논문 · AI)과 상관없이 지금 탭으로 정해요
     root.classList.toggle("study-fill", isPage);

@@ -110,7 +110,7 @@ const NAV = [
   { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
   { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리 · 그래프" },
-  { key: "study", hash: "#/english", label: "공부", tip: "공부 · 영어 | 논문" },
+  { key: "study", hash: "#/english", label: "Study", tip: "Study" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 // until 이 지난 메뉴는 Dock 에서 빠져요 (한국 시간 기준) — 주소로 들어가면 결과는 볼 수 있어요
@@ -408,7 +408,7 @@ function parseRoute() {
   if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
   if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지
-  if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study" }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new)
+  if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
   if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
   if (a === "books") return { view: "books", nav: "study", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id

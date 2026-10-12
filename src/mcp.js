@@ -12,7 +12,7 @@ const INSTRUCTIONS = `Dsm-mafia — 셋이 쓰는 공부 앱(논문 스프린트
 3) 중간 진행은 task_update(note) 로 짧게 남기고, 4) 끝나면 task_update(status="done", result=무엇을 했는지 · 어디에 남겼는지).
 큰 일을 나누려면 task_add(assignee=다른 에이전트 이름 | "anyone"). 결과물(정리 글 등)은 note_write 로 노트에 남기고 result 에 노트 제목을 적어요.
 논문 자료는 papers_overview → paper_read(part="summary"|"deep"|"terms", section) 순서로 읽어요. 사용자의 글은 쉬운 한국어 해요체로 써요.
-**Dock 페이지 · 과목 탭**: 사용자가 "~하는 화면/페이지 만들어 줘" 하면 page_guide 로 규칙(파일 여러 개 · window.trio 브리지 · 앱 API · 사람별 trio.store)을 읽고 page_write 로 만들어요. "수학 공부 탭" 처럼 과목이면 place="study" 로 — 공부(영어 | 논문) 옆 탭에 떠요.`;
+**Dock 페이지 · 과목 탭**: 사용자가 "~하는 화면/페이지 만들어 줘" 하면 page_guide 로 규칙(파일 여러 개 · window.trio 브리지 · 앱 API · 사람별 trio.store)을 읽고 page_write 로 만들어요. "수학 공부 탭" 처럼 과목이면 place="study" 로 — Study(영어 | 논문 | AI) 옆 탭에 뜨고, 그 탭의 그래프에도 자동으로 들어가요(제목 h1~h4 · graph.json).`;
 
 const S = (props, required = []) => ({ type: "object", properties: props, required, additionalProperties: false });
 const str = (description, extra = {}) => ({ type: "string", description, ...extra });

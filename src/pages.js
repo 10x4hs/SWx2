@@ -38,7 +38,12 @@ export const BRIDGE_GUIDE = `## 페이지 규칙
 - GET /search?q= · GET /tags · GET /graph
 - GET /english/day?day= → 그날 영어 기록 { day:{minutes,newwords,...} } · GET /english/days?from=&to= · PUT /english/day { day, minutes, ... }
 - GET /papers/progress → 논문 스프린트 진도(셋) · GET /logs/focus?from=&to=&user= → 집중 타이머 기록
-- GET /diary?day= · PUT /diary { day, body } · GET /records/recent · GET /users · GET /me`;
+- GET /diary?day= · PUT /diary { day, body } · GET /records/recent · GET /users · GET /me
+
+## Study 그래프 (place="study" 과목 페이지)
+Study 의 각 과목 탭에는 [내용 | 그래프] 가 있고, 그래프는 페이지에서 자동으로 만들어져요. 그래서 과목 페이지는 이렇게 만들어 주세요:
+- 내용의 구조를 **정적 HTML 제목(h1~h4)** 으로 써요 (JS 로만 그리면 그래프가 못 읽어요). 제목이 아닌 개념 하나하나는 \`data-node="개념 이름"\` 을 붙이면 점이 돼요.
+- 개념 사이 관계가 중요하면 \`graph.json\` 파일을 같이 넣어요: \`{"nodes":[{"id":"tok","title":"토큰","type":"section|topic|item"}],"links":[{"s":"root","t":"tok"}]}\` — 있으면 제목 대신 이걸로 그려요 ("root" = 과목).`;
 
 const PAGE_SYSTEM = `너는 작은 웹 사이트·앱 화면을 짜는 프런트엔드 개발자야. 사용자가 적은 '목적'에 맞는 페이지를 파일 여러 개로 만들어.
 ${BRIDGE_GUIDE}
@@ -234,7 +239,7 @@ export function registerPages(on, { json, body, fail, uid, now }) {
     }
     const purpose = String(b.purpose || "").trim().slice(0, 1000), place = b.place === "study" ? "study" : "dock";
     if (!purpose) fail(400, "이 페이지로 무엇을 하고 싶은지 적어 주세요.");
-    const { data, used } = await ask([me, place === "study" ? "이 페이지는 '공부' 탭 안의 과목 페이지야. 목표 · 일정 · 자료 · 체크 · 기록처럼 그 과목을 꾸준히 공부하게 돕는 구성으로. 체크 · 기록은 trio.store 에 저장하고(사람별), 공개 페이지면 trio.others() 로 친구 진도도 나란히 보여 줘." : "", `## 목적\n${purpose}`].filter(Boolean).join("\n\n"));
+    const { data, used } = await ask([me, place === "study" ? "이 페이지는 'Study' 탭 안의 과목 페이지야. 목표 · 일정 · 자료 · 체크 · 기록처럼 그 과목을 꾸준히 공부하게 돕는 구성으로. 내용 구조는 정적 h1~h4 제목으로 써 줘(Study 그래프가 자동으로 읽어요). 체크 · 기록은 trio.store 에 저장하고(사람별), 공개 페이지면 trio.others() 로 친구 진도도 나란히 보여 줘." : "", `## 목적\n${purpose}`].filter(Boolean).join("\n\n"));
     const r = pick(data);
     const p = { id: uid(), user_id: user.id, title: cleanTitle(r.title, purpose.slice(0, 12)), icon: cleanIcon(r.icon, place === "study" ? "📚" : "✨"), purpose, code: "", kind: "code", url: "", place, shared: 0, sort: await nextSort(env, user), created_at: now(), updated_at: now() };
     await env.DB.prepare("INSERT INTO user_pages (id, user_id, title, icon, purpose, code, kind, url, place, shared, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")

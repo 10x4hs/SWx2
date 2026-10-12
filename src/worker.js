@@ -221,7 +221,7 @@ async function requireUser(req, env) {
   const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/);
   if (!m) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.hidden_pages FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
+    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.hidden_pages, u.graph_prefs FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
   ).bind(await sha256(m[1]), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
   return { ...row, must_change_pw: mustChange(req, env, row) };
@@ -230,7 +230,8 @@ async function requireUser(req, env) {
 // 활동 상태: 정해진 단어만 · coding 이면 쓰는 AI 도구(여럿)
 const STATUSES = ["coding", "working", "studying", "reading", "resting", "sleeping", "away"], TOOLS = ["claude", "codex", "gemini"];
 const readStatus = (raw) => { try { const o = typeof raw === "string" ? JSON.parse(raw) : raw; return o && STATUSES.includes(o.s) ? { s: o.s, tools: o.s === "coding" ? (o.tools || []).filter((t) => TOOLS.includes(t)) : [], at: o.at || null } : null; } catch { return null; } };
-const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true, ai_model: u.ai_model || null, dock_order: readList(u.dock_order), hidden_pages: readList(u.hidden_pages) }); // 본인에게만 (로그인 · /me)
+const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true, ai_model: u.ai_model || null, dock_order: readList(u.dock_order), hidden_pages: readList(u.hidden_pages), graph_prefs: readObj(u.graph_prefs) }); // 본인에게만 (로그인 · /me)
+function readObj(v) { try { const o = JSON.parse(v || "null"); return o && typeof o === "object" && !Array.isArray(o) ? o : null; } catch { return null; } }
 function readList(v) { try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; } catch { return []; } }
 
 // ---------- auth ----------
@@ -324,6 +325,8 @@ on("PATCH", "/me", async ({ req, env, user }) => {
   const list = (v, re, max, name) => (Array.isArray(v) && v.length <= max && v.every((x) => typeof x === "string" && re.test(x)) ? JSON.stringify([...new Set(v)]) : fail(400, `${name} 모양이 아니에요.`));
   const dockOrder = b.dock_order === undefined ? (user.dock_order ?? null) : b.dock_order === null ? null : list(b.dock_order, /^(nav:[a-z-]{1,20}|page:[A-Za-z0-9-]{1,64})$/, 120, "Dock 순서");
   const hiddenPages = b.hidden_pages === undefined ? (user.hidden_pages ?? null) : b.hidden_pages === null ? null : list(b.hidden_pages, /^[A-Za-z0-9-]{1,64}$/, 300, "숨긴 페이지");
+  // 그래프 설정: 작은 객체 하나 (4KB 까지)
+  const graphPrefs = b.graph_prefs === undefined ? (user.graph_prefs ?? null) : b.graph_prefs === null ? null : b.graph_prefs && typeof b.graph_prefs === "object" && !Array.isArray(b.graph_prefs) && JSON.stringify(b.graph_prefs).length <= 4000 ? JSON.stringify(b.graph_prefs) : fail(400, "그래프 설정 모양이 아니에요.");
   const aiModel = b.ai_model === undefined ? user.ai_model || null : b.ai_model === "" || b.ai_model === null ? null : isModel(b.ai_model) ? b.ai_model : fail(400, "없는 AI 모델이에요.");
   const color = typeof b.color === "string" && /^#[0-9a-fA-F]{6}$/.test(b.color) ? b.color : user.color;
   let bio = user.bio || null;
@@ -345,8 +348,8 @@ on("PATCH", "/me", async ({ req, env, user }) => {
     else { status = readStatus({ ...b.status, at: Date.now() }); if (!status) fail(400, "상태 형식이 올바르지 않아요."); }
   }
   const plans_open = b.plans_open !== undefined ? !!b.plans_open : user.plans_open !== 0;
-  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ?, status = ?, plans_open = ?, ai_model = ?, dock_order = ?, hidden_pages = ? WHERE id = ?").bind(display, goal, color, bio, avatar, status ? JSON.stringify(status) : null, plans_open ? 1 : 0, aiModel, dockOrder, hiddenPages, user.id).run();
-  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar, status, plans_open, ai_model: aiModel, dock_order: readList(dockOrder), hidden_pages: readList(hiddenPages) } });
+  await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ?, status = ?, plans_open = ?, ai_model = ?, dock_order = ?, hidden_pages = ?, graph_prefs = ? WHERE id = ?").bind(display, goal, color, bio, avatar, status ? JSON.stringify(status) : null, plans_open ? 1 : 0, aiModel, dockOrder, hiddenPages, graphPrefs, user.id).run();
+  return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar, status, plans_open, ai_model: aiModel, dock_order: readList(dockOrder), hidden_pages: readList(hiddenPages), graph_prefs: readObj(graphPrefs) } });
 });
 
 on("GET", "/users", async ({ env }) => {

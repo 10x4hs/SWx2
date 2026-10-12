@@ -99,6 +99,10 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("b", "GET", "/me"); ok(!r.data.user.dock_order.length && !r.data.user.hidden_pages.length, "dock: per user");
   r = await call("a", "GET", "/users"); ok(r.data.users.every((u) => u.dock_order === undefined && u.hidden_pages === undefined), "dock: not exposed to friends");
   r = await call("a", "PATCH", "/me", { dock_order: null, hidden_pages: [] }); ok(r.status === 200 && !r.data.user.dock_order.length, "dock: reset");
+  r = await call("a", "PATCH", "/me", { graph_prefs: { basis: "tier", node: 1.5 } }); ok(r.status === 200 && r.data.user.graph_prefs.basis === "tier", "graph prefs: save");
+  r = await call("a", "PATCH", "/me", { graph_prefs: [1, 2] }); ok(r.status === 400, "graph prefs: array → 400");
+  r = await call("a", "PATCH", "/me", { graph_prefs: { big: "x".repeat(5000) } }); ok(r.status === 400, "graph prefs: too big → 400");
+  r = await call("a", "PATCH", "/me", { graph_prefs: null }); ok(r.status === 200 && r.data.user.graph_prefs === null, "graph prefs: reset");
   // 내 AI 모델: 계정에 저장 → /me · /ai/my-model 에 보이고, 모르는 id 는 400, "" 이면 자동으로
   r = await call("a", "GET", "/ai/models"); ok(r.status === 200 && r.data.models.some((m) => m.id === "groq" && Array.isArray(m.chain) && m.chain.length), "ai model: list has chains");
   r = await call("a", "PATCH", "/me", { ai_model: "groq" }); ok(r.status === 200 && r.data.user.ai_model === "groq", "ai model: set groq");
