@@ -192,10 +192,15 @@ try {
       await p.locator(".brain-list a", { hasText: "AI Books" }).click(); await sleep(1500);
       const study = await p.evaluate(() => location.hash);
       const dock = await p.evaluate(() => [...document.querySelectorAll("[data-nav]")].map((a) => a.dataset.nav));
+      const varId = (await (await ctx.request.get(BASE + "/api/notes/resolve?title=" + encodeURIComponent("검사 VaR"), { headers: H })).json()).id;
+      await go("#/notes/" + varId, 2500);
+      const path = await p.evaluate(() => document.querySelector(".ed-inner .crumbs")?.innerText.replace(/\s+/g, " ").trim());
+      await p.locator(".crumb-map").click(); await sleep(1500);
+      const mapped = await nodes();
       ok(first.created + first.kept === 5 && again.created === 0 && again.kept === 5 && ["AI & Dev", "Business & Finance", "Language", "Life", "Records"].every((t) => top.includes(t)) && top.length <= 6
         && inBiz.join() === "검사 CIM" && crumb === "Business & Finance" && inAi.includes("AI Books") && inAi.includes("검사 멘토링") && study === "#/books"
-        && dock.includes("brain") && !dock.includes("notes") && !dock.includes("study"),
-        `${tv} · Brain — 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study}`);
+        && dock.includes("brain") && !dock.includes("notes") && !dock.includes("study") && /^Brain › Business & Finance › 검사 CIM › 검사 VaR/.test(path || "") && mapped.join() === "검사 VaR",
+        `${tv} · Brain — 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
     } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
 
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
