@@ -10,6 +10,7 @@
 //   ⑧ Dock 순서 — '대화' 아이콘을 끌어서 맨 앞으로 → 계정에 저장, 새로고침해도 그대로, 끄는 동안 링크가 열리지 않아요
 //   ⑨ 친구 페이지 숨기기 — 친구가 공개한 Dock 페이지 · 공부 과목 탭을 '내 화면에서 숨기기', 프로필에서 다시 보이기
 //   ⑩ Study 그래프 — 영어 · 논문 · AI · 과목 페이지마다 [내용 | 그래프], 크기 기준 · 크기가 계정에 저장, 점을 누르면 그 내용으로
+//   ⑪ Brain — 노트 + 공부를 한 나무로: 맨 위엔 큰 개념 5개, 누르면 안으로, 공부 점은 원래 화면, 가져오기는 다시 올려도 그대로 (2026-10-13)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -168,9 +169,34 @@ try {
       ok(counts["영어"] > 100 && counts["논문"] > 30 && counts["AI"] > 300 && counts["과목"] >= 1 && ["영어탭", "논문탭", "AI탭", "과목탭"].every((k) => counts[k] === "그래프") && gp?.basis === "tier" && gp?.node === 2 && /^#\/books\/[a-z-]+\/[a-z0-9-]+$/.test(went),
         `${tv} · Study 그래프 — 점 영어 ${counts["영어"]} · 논문 ${counts["논문"]} · AI ${counts["AI"]} · 과목 ${counts["과목"]} · 저장 ${gp?.basis}/${gp?.node} · 점 누르기 → ${went}`);
       await ctx.request.patch(BASE + "/api/me", { headers: H, data: { graph_prefs: null } });
-      await go("#/graph", 2500);
-      ok(await p.evaluate(() => !!document.querySelector("#gc")) && await p.evaluate(() => !!document.querySelector('[data-set="basis"]')), `${tv} · 노트 그래프 — 열리고 크기 기준이 있어요`);
     } catch (e) { ok(false, `${tv} · Study 그래프 — ${String(e.message).split("\n")[0]}`); }
+
+    // ---------- ⑪ Brain — 맨 위엔 큰 개념만, 누르면 안으로, 공부 점은 원래 화면으로, 가져오기는 다시 올려도 그대로 ----------
+    try {
+      const items = [
+        { title: "Business & Finance", body: "" }, { title: "AI & Dev", body: "" },
+        { title: "검사 CIM", body: "[[검사 멘토링]]", parent_title: "Business & Finance" },
+        { title: "검사 VaR", body: "", parent_title: "검사 CIM" },
+        { title: "검사 멘토링", body: "", parent_title: "AI & Dev" },
+      ];
+      const imp = async () => (await ctx.request.post(BASE + "/api/notes/import", { headers: H, data: { items } })).json();
+      const first = await imp(), again = await imp();
+      const nodes = () => p.evaluate(() => (document.querySelector(".og-c")?.__nodes?.() || []).map((n) => n.title).sort());
+      await go("#/graph", 3000); // 예전 노트 그래프 주소 → Brain
+      const top = await nodes();
+      await p.locator(".brain-list a", { hasText: "Business & Finance" }).click(); await sleep(1500);
+      const inBiz = await nodes(), crumb = await p.evaluate(() => document.querySelector(".brain-crumbs b")?.textContent);
+      await go("#/brain", 2500);
+      await p.locator(".brain-list a", { hasText: "AI & Dev" }).click(); await sleep(1500);
+      const inAi = await nodes();
+      await p.locator(".brain-list a", { hasText: "AI Books" }).click(); await sleep(1500);
+      const study = await p.evaluate(() => location.hash);
+      const dock = await p.evaluate(() => [...document.querySelectorAll("[data-nav]")].map((a) => a.dataset.nav));
+      ok(first.created + first.kept === 5 && again.created === 0 && again.kept === 5 && ["AI & Dev", "Business & Finance", "Language", "Life", "Records"].every((t) => top.includes(t)) && top.length <= 6
+        && inBiz.join() === "검사 CIM" && crumb === "Business & Finance" && inAi.includes("AI Books") && inAi.includes("검사 멘토링") && study === "#/books"
+        && dock.includes("brain") && !dock.includes("notes") && !dock.includes("study"),
+        `${tv} · Brain — 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study}`);
+    } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
 
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
     const kst = (n) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);

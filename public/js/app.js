@@ -5,6 +5,7 @@ import { $, $$, esc, initial, ymd, today, toast, avatar } from "./util.js";
 import { icon, appIcon } from "./icons.js";
 import * as notesView from "./views/notes.js";
 import * as graphView from "./views/graph.js";
+import * as brainView from "./views/brain.js"; // Brain = 노트 + 공부를 한 나무로 (#/brain/<id>)
 import * as aiView from "./views/ai.js";
 import * as plannerView from "./views/planner.js";
 import * as diaryView from "./views/diary.js";
@@ -113,8 +114,7 @@ window.addEventListener("trio:me", (e) => {
 const NAV = [
   { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
-  { key: "notes", hash: "#/notes", label: "노트", tip: "노트 · 공부 정리 · 그래프" },
-  { key: "study", hash: "#/english", label: "Study", tip: "Study" },
+  { key: "brain", hash: "#/brain", label: "Brain", tip: "Brain · notes + study in one tree" }, // 노트 · 공부 아이콘을 하나로
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -268,9 +268,10 @@ function parseRoute() {
   const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
   const [a, b, c, d] = parts;
   if (a === "u") return { view: "home", nav: "home" }; // 서로는 차트만: 다른 사람의 하루 페이지는 없어요
-  if (a === "notes" && b === "tag") return { view: "notes", nav: "notes", tag: c };
-  if (a === "notes") return { view: "notes", nav: "notes", id: b || null };
-  if (a === "graph") return { view: "graph", nav: "notes" }; // 그래프는 노트 안의 탭
+  if (a === "brain") return { view: "brain", nav: "brain", id: b || null };
+  if (a === "notes" && b === "tag") return { view: "notes", nav: "brain", tag: c };
+  if (a === "notes") return { view: "notes", nav: "brain", id: b || null };
+  if (a === "graph") return { view: "brain", nav: "brain", id: null }; // 예전 노트 그래프 → Brain
   if (a === "team" || !a || a === "home") return { view: "home", nav: "home" };
   if (a === "ai") return { view: "ai", nav: "ai", id: b || null };
   if (a === "planner") return { view: "planner", nav: "ai", scope: b || null };
@@ -280,17 +281,17 @@ function parseRoute() {
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar" && b === "m") return { view: "calendar", nav: "calendar", mode: "month", day: c ? `m/${c}` : null }; // #/calendar/m/2026-10 = 그 달 달력만
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null, who: c === "u" && d ? d : null }; // #/calendar/2026-10-04 = 그날 전체 화면 · /u/<id> = 친구의 그날
-  if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
+  if (a === "english") return { view: "english", nav: "brain", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
   if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지
-  if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
-  if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
-  if (a === "books") return { view: "books", nav: "study", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
+  if (a === "study") return { view: "page", nav: "brain", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
+  if (a === "papers") return { view: "papers", nav: "brain", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
+  if (a === "books") return { view: "books", nav: "brain", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {
@@ -302,6 +303,7 @@ function route(redraw = false) {
   const main = $("#main");
   // notes view keeps its list mounted while switching notes
   if (lastView === "notes" && r.view === "notes" && notesView.update) { notesView.update(r); return; }
+  if (lastView === "brain" && r.view === "brain") { brainView.update(r); return; } // 층만 바뀌면 껍데기는 그대로
   if (lastView === "ai" && r.view === "ai") return; // the chat view follows its own hash changes
   if (lastView === "diary" && r.view === "diary") { diaryView.update(r); return; }
   if (lastView === "goals" && r.view === "goals") { goalsView.update(r); return; }

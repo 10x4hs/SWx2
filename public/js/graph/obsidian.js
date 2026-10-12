@@ -52,7 +52,7 @@ export function mountGraph(host, { data, types, onOpen, prefs: p0, savePrefs, em
   // ---------- 데이터 ----------
   const byId = new Map();
   const all = data.nodes.map((n, i) => { const a = i * 2.39996, r = 14 * Math.sqrt(i + 1); const o = { ...n, x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0, deg: 0 }; byId.set(n.id, o); return o; }); // 해바라기 씨앗처럼 고르게 퍼진 원에서 시작
-  const allLinks = data.links.map((l) => ({ ...l, s: byId.get(l.s), t: byId.get(l.t) })).filter((l) => l.s && l.t && l.s !== l.t);
+  const allLinks = (data.links || []).map((l) => ({ ...l, s: byId.get(l.s), t: byId.get(l.t) })).filter((l) => l.s && l.t && l.s !== l.t);
   let nodes = [], links = [], adj = new Map();
   function apply() {
     const hide = hidden(), orph = P.orphans !== false;
@@ -70,6 +70,7 @@ export function mountGraph(host, { data, types, onOpen, prefs: p0, savePrefs, em
   }
   const typeOf = (n) => types[n.type] || { label: n.type, color: "#9aa0a6", tier: 2 };
   const radius = (n) => {
+    if (n.size) return n.size * P.node; // 호출한 쪽이 크기를 정했으면 그대로 (Brain: 하위 개수)
     const b = P.basis === "same" ? 4.5 : P.basis === "tier" ? TIER_R[typeOf(n).tier ?? 2] : 3 + Math.sqrt(n.deg) * 1.9;
     return Math.max(1.5, b * P.node);
   };
@@ -139,7 +140,7 @@ export function mountGraph(host, { data, types, onOpen, prefs: p0, savePrefs, em
     for (const l of links) {
       const on = focus && (l.s === focus || l.t === focus);
       g.globalAlpha = on ? 0.9 : dim ? 0.05 : 0.32;
-      g.strokeStyle = on ? accent : line; g.lineWidth = ((on ? 1.4 : 0.8) * P.line) / view.k;
+      g.strokeStyle = on ? accent : line; g.lineWidth = ((on ? 1.4 : 0.8) * P.line * Math.min(4, Math.sqrt(l.w || 1))) / view.k; // w = 묶인 연결 수
       g.beginPath(); g.moveTo(l.s.x, l.s.y); g.lineTo(l.t.x, l.t.y); g.stroke();
     }
     for (const n of nodes) {
@@ -152,7 +153,7 @@ export function mountGraph(host, { data, types, onOpen, prefs: p0, savePrefs, em
     const fs = P.text / Math.max(0.6, view.k), fadeIn = Math.max(0, Math.min(1, (view.k - P.fade) / 0.4 + 0.15));
     g.font = `500 ${fs}px -apple-system, "SF Pro Text", "Pretendard Variable", sans-serif`; g.textAlign = "center"; g.textBaseline = "top";
     for (const n of nodes) {
-      const special = n === focus || near?.has(n) || (query && n.title.toLowerCase().includes(query)) || (typeOf(n).tier === 0 && !dim);
+      const special = n === focus || near?.has(n) || (query && n.title.toLowerCase().includes(query)) || (typeOf(n).tier === 0 && !dim) || (nodes.length <= 40 && !dim); // 점이 적으면 이름을 다 보여요
       const a = special ? 1 : lit(n) ? fadeIn * (dim ? 0.15 : 0.85) : 0;
       if (a < 0.03) continue;
       const t = n.title.length > 28 ? n.title.slice(0, 27) + "…" : n.title;
@@ -167,7 +168,7 @@ export function mountGraph(host, { data, types, onOpen, prefs: p0, savePrefs, em
   function fit() {
     if (!nodes.length) return;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const n of nodes) { x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y); x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y); }
+    for (const n of nodes) { const r = radius(n) + 14; x0 = Math.min(x0, n.x - r); y0 = Math.min(y0, n.y - r); x1 = Math.max(x1, n.x + r); y1 = Math.max(y1, n.y + r + 16); } // 점 크기 · 이름까지 화면 안에
     const pw = P.open && W > 760 ? 260 : 0;
     view.k = Math.max(0.15, Math.min(2.5, Math.min((W - pw - 60) / (x1 - x0 + 1), (H - 60) / (y1 - y0 + 1))));
     view.x = -((x0 + x1) / 2) * view.k - pw / 2; view.y = -((y0 + y1) / 2) * view.k; kick();

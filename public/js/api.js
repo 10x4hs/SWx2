@@ -66,6 +66,7 @@ export const api = {
   note: (id) => request("GET", "/notes/" + id),
   resolve: (title) => request("GET", "/notes/resolve?" + qs({ title })),
   addNote: (b) => request("POST", "/notes", b),
+  importNotes: (items) => request("POST", "/notes/import", { items }),
   saveNote: (id, b) => request("PUT", "/notes/" + id, b),
   deleteNote: (id) => request("DELETE", "/notes/" + id),
   linkNote: (id, title) => request("POST", "/notes/" + id + "/link", { title }),
