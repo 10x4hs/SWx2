@@ -29,6 +29,7 @@ export function mount(root, ctx, r) {
     if (focus && !L.here) { focus = null; return draw(); }
     $("[data-crumbs]", root).innerHTML = [`<a href="#/brain">Brain</a>`, ...L.crumbs.map((c, i) => i === L.crumbs.length - 1 ? `<b>${esc(c.title)}</b>` : `<a href="#/brain/${encodeURIComponent(c.id)}">${esc(c.title)}</a>`)].join(`<i aria-hidden="true">›</i>`);
     $("[data-actions]", root).innerHTML = (L.here?.note ? `<a class="btn" href="#/notes/${esc(L.here.id)}">Open page</a>` : "")
+      + `<a class="btn" href="#/brain/graph" title="All notes grouped into concepts">Graph view</a>`
       + `<button class="btn" type="button" data-new>+ New page</button>`
       + (focus ? "" : `<label class="btn" title="Import a brain JSON file ({ items: [{ title, body, parent_title }] })">Import<input type="file" accept=".json,application/json" data-import hidden></label>`);
     $("[data-list]", root).innerHTML = L.items.length

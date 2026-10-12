@@ -268,6 +268,7 @@ function parseRoute() {
   const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
   const [a, b, c, d] = parts;
   if (a === "u") return { view: "home", nav: "home" }; // 서로는 차트만: 다른 사람의 하루 페이지는 없어요
+  if (a === "brain" && b === "graph") return { view: "graph", nav: "brain" }; // 개념 그래프 (노트를 내용으로 묶은 8~20개 무리)
   if (a === "brain") return { view: "brain", nav: "brain", id: b || null };
   if (a === "notes" && b === "tag") return { view: "notes", nav: "brain", tag: c };
   if (a === "notes") return { view: "notes", nav: "brain", id: b || null };
