@@ -798,6 +798,15 @@ if (!process.env.SKIP_AI) {
   const fid = "smk-f" + tag, iid = "smk-i" + tag, t0 = Date.now();
   d1(`INSERT INTO news_feeds (id, url, name, topic, created_at) VALUES ('${fid}', 'https://example.com/${fid}', 'Smoke Feed', 'china', ${t0})`);
   d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, one_liner, geo, created_at) VALUES ('${iid}', '${fid}', 'https://example.com/${iid}', 'Beijing tightens rare earth smoke export', ${t0 - 3600e3}, 'China said on Monday it will tighten rare earth exports. Washington called the move coercive.', '중국이 희토류 수출을 죄어요', '["CN","US"]', ${t0})`);
+  const uid2 = "smk-u" + tag;
+  d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, dated, raw, created_at) VALUES ('${uid2}', '${fid}', 'https://example.com/${uid2}', 'Undated smoke item', ${t0}, 0, 'x', ${t0})`);
+  const yday = new Date(t0 + 9 * 3600e3 - 864e5).toISOString().slice(0, 10);
+  const hadToday = d1(`SELECT day FROM news_briefs WHERE day = '${new Date(t0 + 9 * 3600e3).toISOString().slice(0, 10)}'`).length;
+  d1(`INSERT OR IGNORE INTO news_briefs (day, headline, body, weights, item_count, created_at) VALUES ('${yday}', 'smoke brief', '', '[]', 0, ${t0})`);
+  r = await call("a", "GET", "/news/map");
+  ok(r.data.brief && r.data.brief.day && (hadToday || r.data.brief.day === yday), "news: map falls back to latest briefing with its date");
+  ok(r.data.live.find((i) => i.id === uid2)?.dated === 0, "news: undated item flagged dated=0 (shown as 'new')");
+  d1(`DELETE FROM news_items WHERE id = '${uid2}'`); if (!hadToday) d1(`DELETE FROM news_briefs WHERE day = '${yday}' AND headline = 'smoke brief'`);
   r = await call("a", "GET", "/news/map"); ok(r.status === 200 && Array.isArray(r.data.signals) && Array.isArray(r.data.threads) && typeof r.data.count === "number", "news: map shape");
   const sig = r.data.signals.find((s) => s.id === iid) || r.data.live.find((s) => s.id === iid);
   ok(sig && sig.geo.includes("CN") && Array.isArray(sig.readers), "news: map item has geo + readers");
@@ -812,6 +821,7 @@ if (!process.env.SKIP_AI) {
   r = await call("b", "POST", `/news/comments/${memo.id}/ai-rebut`);
   ok(r.status === 200 && r.data.comment.ai === 1 && r.data.comment.stance === "rebut" && r.data.notified[0] === uidA, "news: AI rebut returned + notifies memo author");
   ok(d1(`SELECT ai, stance FROM news_comments WHERE parent_id = '${memo.id}' AND ai = 1`).length === 1, "news: AI rebut stored with ai=1 (D1)");
+  ok(/^1\. .+\n> .+\n2\. /m.test(r.data.comment.body), "news: AI rebut = numbered counter-points, each with an evidence line");
   r = await call("b", "POST", `/news/comments/${memo.id}/ai-rebut`); ok(r.status === 409, "news: only one AI rebut per memo");
   r = await call("b", "POST", `/news/comments/${reply.id}/ai-rebut`); ok(r.status === 400, "news: AI rebut only on memos");
   r = await call("b", "PATCH", `/news/item/${iid}`, { read: true, flagged: true });

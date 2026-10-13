@@ -19,6 +19,8 @@ const ago = (t) => {
 const longDay = (d = new Date()) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }).toUpperCase();
 const shortDate = (t) => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const pad2 = (n) => String(n).padStart(2, "0");
+// 피드에 날짜가 없던 글(dated=0)은 "1m" 같은 가짜 시간 대신 NEW (published_at 은 처음 본 시각이라 정렬은 그대로)
+const when = (it) => (it.dated === 0 ? "new" : ago(it.published_at));
 
 let inst = null;
 export function update(r) { inst?.route(r); }
@@ -96,12 +98,12 @@ export function mount(root, ctx, r) {
   function paintLists() {
     const n = data.count;
     $("#nw-count").innerHTML = `Today, <b>${n}</b> signal${n === 1 ? "" : "s"}`;
-    $("#nw-brief").textContent = data.brief?.headline ? `${data.brief.headline} — ${data.brief.body || ""}` : "";
+    $("#nw-brief").textContent = data.brief?.headline ? `${data.brief.day && data.brief.day !== data.day ? `[${shortDate(Date.parse(data.brief.day))}] ` : ""}${data.brief.headline} — ${data.brief.body || ""}` : "";
     $("#nw-hud-n").textContent = `${pad2(data.signals.length)} SIG · ${pad2(data.threads.length)} THR`;
     $("#nw-signals").innerHTML = data.signals.map((s, i) => {
       const th = threadOf(s.thread_id);
       return `<li class="nw-sig${s.readers?.includes(ctx.me.id) ? " is-read" : ""}" style="--i:${i}" data-id="${s.id}" data-code="${esc(s.geo?.[0] || "")}" data-thread="${th ? th.id : ""}" tabindex="0">
-        <div class="nw-sig-top"><span class="nw-idx">${pad2(i + 1)}</span>${flags(s.geo)}<span class="nw-ago">${ago(s.published_at)}</span></div>
+        <div class="nw-sig-top"><span class="nw-idx">${pad2(i + 1)}</span>${flags(s.geo)}<span class="nw-ago">${when(s)}</span></div>
         <p class="nw-one">${esc(s.one_liner || s.title)}</p>
         <p class="nw-orig">${esc(s.title)}</p>
         <div class="nw-sig-foot">${th ? `<span class="nw-thr">⟿ ${esc(th.title)} · ${th.n}</span>` : `<span class="nw-feed">${esc(s.feed)}</span>`}${badges(s)}${marks(s)}</div>
@@ -109,7 +111,7 @@ export function mount(root, ctx, r) {
     }).join("") || `<li class="nw-empty">No signals in the last 36h. Feeds refresh hourly.</li>`;
     $("#nw-live").innerHTML = data.live.map((it, i) => `
       <li class="nw-li${it.readers?.includes(ctx.me.id) ? " is-read" : ""}" style="--i:${i}" data-id="${it.id}" data-code="${esc(it.geo?.[0] || "")}" tabindex="0">
-        <span class="nw-li-t">${ago(it.published_at)}</span>
+        <span class="nw-li-t${it.dated === 0 ? " is-new" : ""}">${when(it)}</span>
         <div class="nw-li-b"><p>${esc(it.one_liner || it.title)}</p><span class="nw-feed">${esc(it.feed)} ${flags(it.geo)}</span></div>
         <span class="nw-li-x">${badges(it)}${marks(it)}</span>
       </li>`).join("");
@@ -220,7 +222,7 @@ export function mount(root, ctx, r) {
     let mine = d.mine || {};
     const starBtn = () => `<button class="nw-btn${mine.flagged ? " on" : ""}" id="nw-star" type="button" style="--c:${ctx.me.color}">★ ${mine.flagged ? "Starred" : "Star"}</button>`;
     openPanel(`${panelHead("ARTICLE", back)}
-      <p class="nw-p-meta"><span class="nw-feed">${esc(it.feed)}</span> · ${ago(it.published_at)} ago · ${flags(it.geo)}</p>
+      <p class="nw-p-meta"><span class="nw-feed">${esc(it.feed)}</span> · ${it.dated === 0 ? "undated · first seen " + ago(it.published_at) + " ago" : ago(it.published_at) + " ago"} · ${flags(it.geo)}</p>
       <h2 class="nw-p-title nw-p-title-en">${esc(it.title)}</h2>
       <p class="nw-ko">${esc(it.one_liner || "요약을 준비하는 중이에요.")}</p>
       <div class="nw-acts" id="nw-acts">${starBtn()}<button class="nw-btn" id="nw-deep-btn" type="button">${d.deep ? "Deep summary ✓" : "Deep summary"}</button><a class="nw-btn" href="${esc(it.url)}" target="_blank" rel="noopener">Source ${icon.external(13)}</a><span class="nw-acts-marks" id="nw-marks"></span></div>
@@ -278,7 +280,7 @@ export function mount(root, ctx, r) {
           <div class="nw-memo-acts"><button type="button" class="nw-chip nw-chip-r" data-reply="rebut">Rebut</button><button type="button" class="nw-chip nw-chip-g" data-reply="agree">Agree</button>${hasAi ? "" : `<button type="button" class="nw-chip nw-chip-ai" data-ai="${m.id}">🤖 AI rebut</button>`}</div>
           ${kids.map((k) => { const ku = user(k.user_id); return `<div class="nw-reply nw-${k.stance}${k.ai ? " is-ai" : ""}">
             <header>${k.ai ? `<i class="nw-av nw-av-ai">🤖</i><b>AI</b><span>rebut · asked by ${esc(ku.display_name)} · ${when(k.created_at)}</span>` : `<i class="nw-av" style="--c:${ku.color}">${esc((ku.display_name || "?")[0])}</i><b>${esc(ku.display_name)}</b><span>${k.stance} · ${when(k.created_at)}</span>`}${k.user_id === ctx.me.id && !k.ai ? `<button class="nw-del" data-del="${k.id}" type="button" aria-label="Delete">${icon.trash(13)}</button>` : ""}</header>
-            <p>${esc(k.body).replace(/\n&gt; (.+)$/s, '<q>$1</q>')}</p></div>`; }).join("")}
+            <p>${esc(k.body).replace(/\n?^&gt; (.+)$\n?/gm, '<q>$1</q>')}</p></div>`; }).join("")}
         </article>`;
       }).join("") || `<p class="nw-faint">No memos yet. Be the first to read between the lines.</p>`;
     };

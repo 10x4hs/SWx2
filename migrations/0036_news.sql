@@ -24,6 +24,7 @@ CREATE TABLE news_items (
   author TEXT,
   published_at INTEGER NOT NULL,
   raw TEXT,                                  -- 피드가 준 본문
+  dated INTEGER NOT NULL DEFAULT 1,          -- 0 = 피드에 날짜가 없어서 published_at 은 처음 본 시각
   one_liner TEXT,                            -- 얕은 요약: 들어오는 전부에 한 줄 (한국어)
   deep TEXT,                                 -- 깊은 요약: 누가 열었을 때만 (JSON)
   created_at INTEGER NOT NULL

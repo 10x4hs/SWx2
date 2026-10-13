@@ -101,8 +101,9 @@ export async function fetchFeed(url) {
     const when =
       tag(b, "pubDate") || tag(b, "published") || tag(b, "updated") || tag(b, "dc:date");
     const at = when ? Date.parse(when) : NaN;
-    const published = Number.isFinite(at) ? at : Date.now();
-    if (published > latest) latest = published;
+    // 날짜가 없거나 미래(PIIE 는 행사 날짜를 pubDate 로 줘요)면 null → 넣을 때 처음 본 시각 + dated=0
+    const published = Number.isFinite(at) && at <= Date.now() + 36e5 ? at : null;
+    if (published && published > latest) latest = published;
 
     items.push({
       url: link,
@@ -127,13 +128,13 @@ async function pull(env, feed, now) {
   try {
     const { items, latest } = await fetchFeed(feed.url);
     const cutoff = now - MAX_AGE;
-    const fresh = items.filter((i) => i.published >= cutoff);
+    const fresh = items.filter((i) => i.published == null || i.published >= cutoff);
 
     let added = 0;
     for (const it of fresh) {
       const r = await env.DB.prepare(
-        "INSERT OR IGNORE INTO news_items (id, feed_id, url, title, author, published_at, raw, created_at) VALUES (?,?,?,?,?,?,?,?)"
-      ).bind(id(), feed.id, it.url, it.title.slice(0, 500), it.author, it.published, it.content, now).run();
+        "INSERT OR IGNORE INTO news_items (id, feed_id, url, title, author, published_at, dated, raw, created_at) VALUES (?,?,?,?,?,?,?,?,?)"
+      ).bind(id(), feed.id, it.url, it.title.slice(0, 500), it.author, it.published ?? now, it.published == null ? 0 : 1, it.content, now).run();
       if (r.meta?.changes) added += 1;
     }
 
@@ -474,10 +475,11 @@ async function aiRebut(env, item, memo) {
   const { data } = await aiJson(
     env,
     RULES,
-    `친구가 아래 기사를 읽고 메모를 남겼어. 이 메모에 대한 **가장 강한 반론 하나**를 써 줘.
+    `친구가 아래 기사를 읽고 메모를 남겼어. 이 메모에 대한 **반론**을 써 줘.
 - 반드시 기사 본문에 있는 사실을 근거로 들어. 본문에 없는 건 지어내지 마.
-- 2~3문장. '~예요' 체. 공격적이지 않게, 하지만 분명하게.
-- 근거가 된 본문 구절을 짧게 인용해 (원문 그대로, 20단어 이내).
+- 서로 다른 **구체적인 반론 2~3개.** 각각 한 문장, '~예요' 체. 일반론("다른 면도 있어요") 말고 메모의 어느 주장이 왜 틀릴 수 있는지 짚어.
+- 반론마다 근거 한 줄: 본문 구절을 원문 그대로 짧게 (20단어 이내).
+- 짧게. 전체 300자 안쪽. 반론 문장에 영어 단어를 섞지 마 (근거 구절만 원문).
 
 기사 제목: ${item.title}
 본문:
@@ -485,13 +487,16 @@ ${String(item.raw || "").slice(0, 12000)}
 
 친구 메모: ${memo.body}
 
-{"rebut":"2~3문장 반론","quote":"근거 구절"} 형식으로만 답해.`,
-    () => ({ rebut: `기사는 다른 면도 보여 줘요 — "${String(item.title).slice(0, 40)}" 라는 점에서 메모와 다르게 읽힐 수 있어요.`, quote: String(item.raw || item.title).slice(0, 60) })
+{"points":[{"claim":"반론 한 문장","evidence":"본문 구절"}]} 형식으로만 답해.`,
+    () => ({ points: [
+      { claim: `제목부터 메모와 다른 방향이에요 — "${String(item.title).slice(0, 40)}".`, evidence: String(item.raw || item.title).slice(0, 60) },
+      { claim: "본문은 반대 근거도 함께 들고 있어요.", evidence: String(item.raw || item.title).slice(60, 120) },
+    ] })
   );
-  const rebut = String(data?.rebut || "").trim();
-  if (!rebut) throw new Error("AI 가 반론을 만들지 못했어요.");
-  const quote = String(data?.quote || "").trim();
-  return (quote ? `${rebut}\n> ${quote}` : rebut).slice(0, 2000);
+  const points = (Array.isArray(data?.points) ? data.points : []).slice(0, 3)
+    .map((p) => ({ claim: String(p?.claim || "").trim(), evidence: String(p?.evidence || "").trim() })).filter((p) => p.claim);
+  if (!points.length) throw new Error("AI 가 반론을 만들지 못했어요.");
+  return points.map((p, i) => `${i + 1}. ${p.claim}${p.evidence ? `\n> ${p.evidence}` : ""}`).join("\n").slice(0, 2000);
 }
 
 async function talkOf(env, itemId) {
@@ -502,7 +507,7 @@ async function talkOf(env, itemId) {
 
 export function registerNewsSignal(on, { json, body, fail, now }) {
   const day = () => new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
-  const ITEM_COLS = "i.id, i.title, i.url, i.one_liner, i.published_at, i.geo, i.thread_id, f.name AS feed, f.topic";
+  const ITEM_COLS = "i.id, i.title, i.url, i.one_liner, i.published_at, i.dated, i.geo, i.thread_id, f.name AS feed, f.topic";
 
   // [GET /news/map] Signal Map 한 번에: 오늘의 신호 · 줄기(지도 호) · 최근 글 · 브리핑
   on("GET", "/news/map", async ({ env, user }) => {
@@ -527,7 +532,8 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     }
     const all = await decorate(env, [...signals, ...(live || []).filter((l) => !signals.some((s) => s.id === l.id))]);
     const dec = new Map(all.map((r) => [r.id, r]));
-    const b = await env.DB.prepare("SELECT headline, body, item_count FROM news_briefs WHERE day = ?").bind(day()).first();
+    // 오늘 브리핑이 아직 없으면 가장 최근 것을 날짜와 함께 보여 줘요
+    const b = await env.DB.prepare("SELECT day, headline, body, item_count FROM news_briefs WHERE day <= ? ORDER BY day DESC LIMIT 1").bind(day()).first();
     return json({
       day: day(),
       count: (today || []).length,
@@ -744,7 +750,7 @@ export function registerNews(on, { json, body, fail, now }) {
     if (filter === "flagged") where.push("COALESCE(r.flagged, 0) = 1");
 
     const { results } = await env.DB.prepare(
-      `SELECT i.id, i.title, i.url, i.one_liner, i.published_at, i.geo, i.thread_id, f.name AS feed, f.topic,
+      `SELECT i.id, i.title, i.url, i.one_liner, i.published_at, i.dated, i.geo, i.thread_id, f.name AS feed, f.topic,
               COALESCE(r.read,0) AS read, COALESCE(r.saved,0) AS saved, COALESCE(r.flagged,0) AS flagged,
               (SELECT COUNT(*) FROM news_reads s WHERE s.item_id = i.id AND s.user_id <> ? AND s.flagged = 1) AS others_flagged
          FROM news_items i
@@ -802,7 +808,7 @@ export function registerNews(on, { json, body, fail, now }) {
       item: {
         id: item.id, title: item.title, url: item.url, author: item.author,
         published_at: item.published_at, one_liner: item.one_liner,
-        feed: item.feed, topic: item.topic, thread_id: item.thread_id,
+        feed: item.feed, topic: item.topic, thread_id: item.thread_id, dated: item.dated,
         geo: marked.geo, readers: marked.readers, stars: marked.stars,
       },
       comments: await talkOf(env, item.id),
@@ -898,7 +904,13 @@ export function registerNews(on, { json, body, fail, now }) {
   on("POST", "/news/refresh", async ({ env }) => {
     const pulled = await ingest(env);
     const sum = await summarize(env, 20);
+    // 오늘 브리핑이 없으면 여기서 만들어요 (아침 크론 전에 새로고침해도 브리핑 줄이 비지 않게)
+    const today = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
+    let briefed = false;
+    try { if (!(await env.DB.prepare("SELECT 1 FROM news_briefs WHERE day = ?").bind(today).first())) briefed = !!(await brief(env, today)); }
+    catch (e) { console.log("브리핑 실패", String(e?.message || e)); }
     return json({
+      briefed,
       added: pulled.reduce((n, p) => n + p.added, 0),
       summarized: sum.done,
       broken: pulled.filter((p) => p.error).map((p) => ({ feed: p.feed, error: p.error })),
