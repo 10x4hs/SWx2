@@ -793,6 +793,44 @@ if (!process.env.SKIP_AI) {
   
 }
 
+// ---------- 뉴스 Signal Map: 지도 · 토론(2단) · 🤖 반박 · 반박 알림 (wrangler dev --var NEWS_FAKE_AI:1 이면 AI 없이) ----------
+{
+  const fid = "smk-f" + tag, iid = "smk-i" + tag, t0 = Date.now();
+  d1(`INSERT INTO news_feeds (id, url, name, topic, created_at) VALUES ('${fid}', 'https://example.com/${fid}', 'Smoke Feed', 'china', ${t0})`);
+  d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, one_liner, geo, created_at) VALUES ('${iid}', '${fid}', 'https://example.com/${iid}', 'Beijing tightens rare earth smoke export', ${t0 - 3600e3}, 'China said on Monday it will tighten rare earth exports. Washington called the move coercive.', '중국이 희토류 수출을 죄어요', '["CN","US"]', ${t0})`);
+  r = await call("a", "GET", "/news/map"); ok(r.status === 200 && Array.isArray(r.data.signals) && Array.isArray(r.data.threads) && typeof r.data.count === "number", "news: map shape");
+  const sig = r.data.signals.find((s) => s.id === iid) || r.data.live.find((s) => s.id === iid);
+  ok(sig && sig.geo.includes("CN") && Array.isArray(sig.readers), "news: map item has geo + readers");
+  r = await call("a", "POST", `/news/item/${iid}/comments`, { body: "희토류는 협상 카드일 뿐이에요" }); ok(r.status === 200 && r.data.comment.stance === "memo" && r.data.notified.length === 0, "news: memo saved, nobody notified");
+  const memo = r.data.comment;
+  r = await call("b", "POST", `/news/item/${iid}/comments`, { body: "카드가 아니라 실제 공급 차단이에요", stance: "rebut", parent_id: memo.id });
+  ok(r.status === 200 && r.data.comment.stance === "rebut" && r.data.notified.length === 1 && r.data.notified[0] === uidA, "news: friend's rebut notifies memo author (push trigger)");
+  const reply = r.data.comment;
+  r = await call("a", "POST", `/news/item/${iid}/comments`, { body: "3단?", stance: "agree", parent_id: reply.id }); ok(r.status === 400, "news: depth limit — no reply to a reply");
+  r = await call("a", "POST", `/news/item/${iid}/comments`, { body: "내 메모에 내가 동의", stance: "agree", parent_id: memo.id }); ok(r.status === 200 && r.data.notified.length === 0, "news: own reply does not notify self");
+  r = await call("a", "POST", `/news/item/${iid}/comments`, { body: "  " }); ok(r.status === 400, "news: empty comment 400");
+  r = await call("b", "POST", `/news/comments/${memo.id}/ai-rebut`);
+  ok(r.status === 200 && r.data.comment.ai === 1 && r.data.comment.stance === "rebut" && r.data.notified[0] === uidA, "news: AI rebut returned + notifies memo author");
+  ok(d1(`SELECT ai, stance FROM news_comments WHERE parent_id = '${memo.id}' AND ai = 1`).length === 1, "news: AI rebut stored with ai=1 (D1)");
+  r = await call("b", "POST", `/news/comments/${memo.id}/ai-rebut`); ok(r.status === 409, "news: only one AI rebut per memo");
+  r = await call("b", "POST", `/news/comments/${reply.id}/ai-rebut`); ok(r.status === 400, "news: AI rebut only on memos");
+  r = await call("b", "PATCH", `/news/item/${iid}`, { read: true, flagged: true });
+  r = await call("a", "GET", `/news/item/${iid}`);
+  ok(r.status === 200 && r.data.comments.length === 4 && r.data.item.readers.includes(uidB) && r.data.item.stars.includes(uidB), "news: item has discussion + read/star marks of friends");
+  r = await call("a", "GET", "/news/items?filter=all&balance=0&limit=200"); const li = r.data.items.find((i) => i.id === iid);
+  ok(li && li.comments === 4 && li.disputed === true, "news: list shows 💬 count + ⚡ disputed");
+  r = await call("a", "GET", "/news/inbox"); ok(r.status === 200 && r.data.n === 2 && r.data.last, "news: inbox has 2 replies from others");
+  await call("a", "PUT", "/news/inbox/seen"); r = await call("a", "GET", "/news/inbox"); ok(r.data.n === 0, "news: inbox cleared after seen");
+  r = await call("b", "DELETE", `/news/comments/${memo.id}`); ok(r.status === 404, "news: cannot delete others' memo");
+  r = await call("a", "POST", "/news/threads", { title: "희토류 스모크", keywords: ["rare earth smoke"] }); ok(r.status === 200 && r.data.attached >= 1, "news: manual thread back-attaches by keyword");
+  const th = r.data.id;
+  r = await call("a", "GET", `/news/thread/${th}`); ok(r.status === 200 && r.data.items.some((i) => i.id === iid), "news: thread timeline lists item");
+  r = await call("a", "POST", `/news/thread/${th}/story`); ok(r.status === 200 && typeof r.data.story === "string" && r.data.story.length > 0, "news: story so far generated");
+  r = await call("a", "DELETE", `/news/comments/${memo.id}`); ok(r.status === 200, "news: delete own memo");
+  ok(d1(`SELECT COUNT(*) AS n FROM news_comments WHERE item_id = '${iid}'`)[0].n === 0, "news: replies go with the memo");
+  d1(`DELETE FROM news_threads WHERE id = '${th}'`); d1(`DELETE FROM news_items WHERE id = '${iid}'`); d1(`DELETE FROM news_feeds WHERE id = '${fid}'`);
+}
+
 // ---------- 페이지 파일: sandbox iframe 은 쿠키가 없어서 /pf/<id>/~<토큰>/ 으로 불러요 ----------
 {
   const files = { "index.html": '<!doctype html><html><head><link rel="stylesheet" href="style.css"></head><body>hi</body></html>', "style.css": "body{color:red}" };
