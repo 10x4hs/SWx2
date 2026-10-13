@@ -127,13 +127,13 @@ export function mount(root, ctx, r) {
   };
   const myCos = () => new Set((companies || []).filter((c) => c.mine).map((c) => c.key));
   const coName = (k) => (companies || []).find((c) => c.key === k)?.name || k;
-  function row(it) {
+  function row(it, num) {
     const m = mine(it), t = titleOf(it);
     const sub = sentences(it.summary).filter((s) => strip(s) !== strip(t)).join(" ");
     const g = geoOf(it);
     return `<li class="gn-item${m.read ? " read" : ""}${cur === it.id ? " on" : ""}" data-id="${it.id}">
       <a class="gn-item-a" href="#/news/item/${it.id}">
-        <span class="gn-when"><b>${esc(when(it))}</b>${g.length ? `<span>${g.slice(0, 2).join(" · ")}</span>` : ""}</span>
+        <span class="gn-when">${num ? `<em class="gn-num${m.read ? " ok" : ""}">${m.read ? "✓" : num}</em>` : ""}<b>${esc(when(it))}</b>${g.length ? `<span>${g.slice(0, 2).join(" · ")}</span>` : ""}</span>
         <span class="gn-body">
           <span class="gn-t"${isKo(t) ? "" : ' lang="en"'}>${m.read ? "" : `<i class="gn-dot" aria-label="Unread"></i>`}${esc(t)}</span>
           ${sub ? `<span class="gn-s">${esc(sub)}</span>` : ""}
@@ -144,38 +144,57 @@ export function mount(root, ctx, r) {
       <button class="gn-star${m.star ? " on" : ""}" type="button" data-star="${it.id}" aria-pressed="${m.star}" aria-label="Save">${starSvg()}</button>
     </li>`;
   }
+  // 오늘 읽을 몫(할당량): 1면 → 분야마다 하나씩 → 최신 순으로 N편을 정해 줘요. N 은 사람마다(이 기기) 3 · 5 · 7
+  const QUOTAS = [3, 5, 7];
+  const quotaN = () => { const n = +(store.get("gn-quota") || 5); return QUOTAS.includes(n) ? n : 5; };
+  function quotaPicks() {
+    const n = quotaN(), out = [], seen = new Set();
+    const add = (it) => { if (it && !seen.has(it.id) && out.length < n) { seen.add(it.id); out.push(items.get(it.id) || it); } };
+    for (const f of ed.front || []) add(f.item);
+    for (const [k] of SECTIONS.slice(1)) add((ed.sections?.[k] || []).slice().sort((x, y) => y.published_at - x.published_at)[0]);
+    for (const it of [...items.values()].sort((x, y) => y.published_at - x.published_at)) add(it);
+    return out;
+  }
   function draw() {
     if (view !== "today" || !ed) return;
     const total = items.size, unread = [...items.values()].filter((it) => !mine(it).read).length;
     const mc = myCos();
-    const picked = !starred && sec === "all" && mc.size ? secItems("all").filter((it) => (it.co || []).some((k) => mc.has(k))) : [];
-    const pickedIds = new Set(picked.map((it) => it.id));
-    const shown = secItems(sec).filter((it) => !pickedIds.has(it.id));
-    list = [...picked, ...shown].map((it) => it.id);
+    const quota = !starred && sec === "all" ? quotaPicks() : [];
+    const done = quota.filter((it) => mine(it).read).length;
+    const qIds = new Set(quota.map((it) => it.id));
+    const picked = !starred && sec === "all" && mc.size ? secItems("all").filter((it) => !qIds.has(it.id) && (it.co || []).some((k) => mc.has(k))) : [];
+    const used = new Set([...qIds, ...picked.map((it) => it.id)]);
+    const shown = secItems(sec).filter((it) => !used.has(it.id));
+    list = [...quota, ...picked, ...shown].map((it) => it.id);
     const lead = (ed.front || []).find((f) => f.item);
     const head = ed.headline || (lead ? titleOf(lead.item) : "Today's stories");
     const counts = Object.fromEntries(SECTIONS.map(([k]) => [k, k === "all" ? total : (ed.sections?.[k] || []).length]));
     const status = ed.status === "closed" ? "Final edition" : ed.status === "draft" ? "Morning edition" : "Closes 11:10 PM";
+    const pct = quota.length ? Math.round((done / quota.length) * 100) : 0;
     page.innerHTML = `
       <section class="gn-hero">
+        <p class="gn-kicker gn-kicker-c"><span>${esc(status)}</span><span>${total} stories</span><b>${unread ? `${unread} unread` : "All read"}</b></p>
         <h1 class="gn-h1">${esc(head)}</h1>
+        ${ed.lede ? `<p class="gn-lede">${esc(ed.lede)}</p>` : lead?.why ? `<p class="gn-lede">${esc(lead.why)}</p>` : ""}
       </section>
-      <nav class="gn-seg" role="tablist" aria-label="Sections">${SECTIONS.map(([k, l], i) => `${i ? "<span>/</span>" : ""}<button type="button" role="tab" data-sec="${k}" aria-selected="${sec === k}">${l} <small>${counts[k]}</small></button>`).join("")}<span>/</span><button type="button" class="gn-seg-star" data-starred aria-pressed="${starred}">★ Saved</button></nav>
-      <div class="gn-cols">
-        <aside class="gn-side">
-          <div class="gn-brief"><p class="gn-brief-h">Today's Briefing</p>
-          <p class="gn-kicker"><span>${esc(status)}</span><span>${total} stories</span><b>${unread ? `${unread} unread` : "All read"}</b></p>
-          ${ed.lede ? `<p class="gn-lede">${esc(ed.lede)}</p>` : lead?.why ? `<p class="gn-lede">${esc(lead.why)}</p>` : ""}</div>
-          ${(ed.threads || []).length ? `<p class="gn-lab">Developing stories</p><ul class="gn-threads">${ed.threads.map((t) => `<li><b>${esc(t.title)}</b><span>${esc(t.move || "")}</span></li>`).join("")}</ul>` : ""}
-          ${mc.size ? `<p class="gn-lab">Your companies</p><p class="gn-cos">${[...mc].map((k) => `<a href="#/news/co/${k}">${esc(coName(k))}</a>`).join("")}</p>` : `<p class="gn-lab">Your companies</p><p class="gn-cos"><a href="#/news/co">Follow a company →</a></p>`}
-        </aside>
-        <div class="gn-main">
-          ${picked.length ? `<p class="gn-lab gn-lab-list">From companies you follow</p><ul class="gn-list">${picked.map(row).join("")}</ul><p class="gn-lab gn-lab-list">${sec === "all" ? "All stories" : SEC_KO[sec]}</p>` : ""}
-          ${shown.length ? `<ul class="gn-list">${shown.map(row).join("")}</ul>` : picked.length ? "" : `<p class="gn-empty">${starred ? "No saved stories yet." : sec === "ai" ? "No AI stories yet. New ones arrive at :10 every hour." : "No stories yet."}</p>`}
-          <footer class="gn-end">${unread ? `${unread} unread` : "You're all caught up"}${ed.prev ? ` · <a href="#/news/${ed.prev}">${dayKo(ed.prev)}</a>` : ""}</footer>
-        </div>
+      <nav class="gn-seg" role="tablist" aria-label="Sections">${SECTIONS.map(([k, l]) => `<button type="button" role="tab" data-sec="${k}" aria-selected="${sec === k}">${l} <small>${counts[k]}</small></button>`).join("")}<button type="button" class="gn-seg-star" data-starred aria-pressed="${starred}">★ Saved</button></nav>
+      <div class="gn-feed">
+        ${quota.length ? `<section class="gn-quota${done >= quota.length ? " done" : ""}">
+          <header class="gn-quota-h">
+            <div><h2>Today's reading</h2><p>${done >= quota.length ? "Done for today. Nice work." : `Read these ${quota.length} today · ${done} of ${quota.length} done`}</p></div>
+            <div class="gn-quota-n" role="group" aria-label="Stories per day">${QUOTAS.map((q) => `<button type="button" data-quota="${q}" aria-pressed="${q === quotaN()}">${q}</button>`).join("")}</div>
+          </header>
+          <div class="gn-bar-p" role="progressbar" aria-valuemin="0" aria-valuemax="${quota.length}" aria-valuenow="${done}"><i style="width:${pct}%"></i></div>
+          <ul class="gn-list gn-list-quota">${quota.map((it, i) => row(it, i + 1)).join("")}</ul>
+        </section>` : ""}
+        ${picked.length ? `<h2 class="gn-sec-h">From companies you follow</h2><ul class="gn-list">${picked.map((it) => row(it)).join("")}</ul>` : ""}
+        ${quota.length || picked.length ? `<h2 class="gn-sec-h">${sec === "all" ? "More stories" : SEC_KO[sec]}</h2>` : ""}
+        ${shown.length ? `<ul class="gn-list">${shown.map((it) => row(it)).join("")}</ul>` : `<p class="gn-empty">${starred ? "No saved stories yet." : sec === "ai" ? "No AI stories yet. New ones arrive at :10 every hour." : "No more stories."}</p>`}
+        ${(ed.threads || []).length ? `<h2 class="gn-sec-h">Developing stories</h2><ul class="gn-threads">${ed.threads.map((t) => `<li><b>${esc(t.title)}</b><span>${esc(t.move || "")}</span></li>`).join("")}</ul>` : ""}
+        <footer class="gn-end">${unread ? `${unread} unread` : "You're all caught up"}${ed.prev ? ` · <a href="#/news/${ed.prev}">${dayKo(ed.prev)}</a>` : ""}${mc.size ? "" : ` · <a href="#/news/co">Follow a company</a>`}</footer>
       </div>`;
   }
+
 
   // ---------- 세계 ----------
   let geoLib = null;
@@ -382,6 +401,7 @@ export function mount(root, ctx, r) {
   }
   function repaint(id) {
     const it = items.get(id); if (!it) return;
+    if (view === "today") { const sc = $("#gn-scroll"), y = sc.scrollTop; draw(); sc.scrollTop = y; return; } // 오늘 읽을 몫 진행 막대 · 번호까지 같이 바뀌게
     page.querySelectorAll(`li.gn-item[data-id="${id}"]`).forEach((el) => { const tmp = document.createElement("ul"); tmp.innerHTML = row(it); el.replaceWith(tmp.firstElementChild); });
     const k = page.querySelector(".gn-kicker b"); const n = [...items.values()].filter((x) => !mine(x).read).length;
     if (k) k.textContent = n ? `${n} unread` : "All read";
@@ -475,6 +495,7 @@ export function mount(root, ctx, r) {
     if (e.target.closest("[data-close]") || e.target === scrim) { e.preventDefault(); back(); return; }
     const b = e.target.closest("[data-sec]"); if (b) { sec = b.dataset.sec; store.set("gn-sec", sec); draw(); return; }
     if (e.target.closest("[data-starred]")) { starred = !starred; draw(); return; }
+    const q = e.target.closest("[data-quota]"); if (q) { store.set("gn-quota", q.dataset.quota); draw(); return; }
     const wd = e.target.closest("[data-wd]"); if (wd) { worldDays = +wd.dataset.wd; store.set("gn-wd", worldDays); worldCleanup?.(); drawWorld(); return; }
     const sub = e.target.closest("[data-cosub]"); if (sub) { toggleSub(sub.dataset.cosub); return; }
     const add = e.target.closest("[data-coadd]"); if (add) { const p = page.querySelector("#gn-copick"); p.hidden = !p.hidden; add.setAttribute("aria-expanded", !p.hidden); return; }
