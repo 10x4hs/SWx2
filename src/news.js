@@ -272,6 +272,7 @@ ${chunk.map((t, n) => `[${n}] ${t.title}   — 출처: ${t.feed}`).join("\n")}
  * opts.day 를 주면 그날 글만 (되채우기). 예산(lib/budget.js)이 모자라면 남은 묶음은 다음 번으로 미뤄요.
  */
 const SUM_CHUNK = 4;
+const FEED_CAP = 5; // 하루 신문에 한 매체가 올릴 수 있는 글 수
 const SUM_SKIP = 2; // AI 가 이만큼 답을 안 주면 그 글은 건너뛰어요 (sum_skip=1 · summary 는 비워 둔 채) → 그날 신문이 막히지 않게
 /** 답을 못 받은 횟수를 세고, SUM_SKIP 번이면 건너뛰기 표시 */
 const markMiss = (env, id) => env.DB.prepare("UPDATE news_items SET sum_miss = sum_miss + 1, sum_skip = CASE WHEN sum_miss + 1 >= ? THEN 1 ELSE 0 END WHERE id = ?").bind(SUM_SKIP, id).run();
@@ -289,13 +290,15 @@ async function fitOne(env, one) {
 }
 
 export async function summarize(env, limit = 10, opts = {}) {
-  const where = opts.day ? "i.day = ?" : "i.published_at > ?";
+  // opts.ids: 이 글들만 (기사를 연 사람이 기다릴 때 — 건너뛴 글도 다시 시도해요)
+  const ids = Array.isArray(opts.ids) ? opts.ids.slice(0, SUM_CHUNK) : null;
+  const where = ids ? `i.id IN (${ids.map(() => "?").join(",")})` : `i.sum_skip = 0 AND ${opts.day ? "i.day = ?" : "i.published_at > ?"}`;
   const { results } = await env.DB.prepare(
     `SELECT i.id, i.title, i.raw, i.one_liner, f.name AS feed, f.topic
        FROM news_items i JOIN news_feeds f ON f.id = i.feed_id
-      WHERE i.summary IS NULL AND i.sum_skip = 0 AND ${where}
+      WHERE i.summary IS NULL AND ${where}
       ORDER BY i.published_at DESC LIMIT ?`
-  ).bind(opts.day || Date.now() - MAX_AGE, limit).all();
+  ).bind(...(ids || [opts.day || Date.now() - MAX_AGE]), limit).all();
 
   const todo = results || [];
   if (!todo.length) return { done: 0, left: 0, failed: [] };
@@ -857,7 +860,11 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     if (!isDay(day)) fail(400, "날짜는 YYYY-MM-DD 로 주세요.");
     const e = await env.DB.prepare("SELECT * FROM news_editions WHERE day = ?").bind(day).first();
     const { results } = await env.DB.prepare(`SELECT ${ED_COLS} FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.day = ? ORDER BY i.published_at DESC LIMIT 400`).bind(day).all();
-    const items = new Map((await decorate(env, results || [])).map((r) => [r.id, shape(r)]));
+    // 한 매체가 하루를 덮지 않게 매체마다 최신 5편까지만 (1면에 오른 글은 빼지 않아요)
+    const frontIds = new Set((e ? parseJ(e.front, []) : []).map((f) => f.item_id));
+    const perFeed = new Map();
+    const capped = (results || []).filter((r) => { if (frontIds.has(r.id)) return true; const n = (perFeed.get(r.feed) || 0) + 1; perFeed.set(r.feed, n); return n <= FEED_CAP; });
+    const items = new Map((await decorate(env, capped)).map((r) => [r.id, shape(r)]));
     const secIds = e ? parseJ(e.sections, {}) : null;
     const sections = emptySections(), placed = new Set();
     if (secIds) for (const k of SECTIONS) for (const id of secIds[k] || []) { const it = items.get(id); if (it) { sections[k].push(it); placed.add(id); } }
@@ -1192,6 +1199,31 @@ export function registerNews(on, { json, body, fail, now }) {
   });
 
   // 3-1. [POST /news/item/:id/deep] 깊은 요약을 만들어요. 화면이 글을 연 뒤에 따로 불러요.
+  // [POST /news/item/:id/summarize] 기사를 열었는데 요약이 없으면 지금 이 글 하나만 만들어요 (AI 한 번)
+  on("POST", "/news/item/:id/summarize", async ({ env, params }) => {
+    const pick = () => env.DB.prepare("SELECT i.id, i.summary, i.title_ko, i.one_liner, i.section, i.geo, f.topic, f.name AS feed FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.id = ?").bind(params.id).first();
+    let r = await pick();
+    if (!r) fail(404, "그 글이 없어요.");
+    let error = null;
+    if (!r.summary) {
+      const out = await summarize(env, 1, { ids: [r.id] });
+      if (!out.done) error = out.failed[0] || "요약을 못 만들었어요.";
+      r = await pick();
+    }
+    return json({ item: { id: r.id, summary: r.summary, title_ko: r.title_ko ? cleanKoTitle(r.title_ko, r.feed) : null, one_liner: r.one_liner, section: sectionOf(r.topic, r.section), geo: parseGeo(r.geo) }, ...(error ? { error } : {}) });
+  });
+
+  // [GET /news/comments/recent] 모든 기사에 달린 최근 메모 · 반박 · 동의 (친구들이 뭐라고 했는지 한곳에서)
+  on("GET", "/news/comments/recent", async ({ env, q }) => {
+    const limit = Math.max(1, Math.min(100, Number(q?.get?.("limit")) || 30));
+    const { results } = await env.DB.prepare(
+      `SELECT c.id, c.item_id, c.user_id, c.stance, c.parent_id, c.ai, c.body, c.created_at, i.title, i.title_ko, i.one_liner, f.name AS feed
+         FROM news_comments c JOIN news_items i ON i.id = c.item_id JOIN news_feeds f ON f.id = i.feed_id
+        ORDER BY c.created_at DESC LIMIT ?`
+    ).bind(limit).all();
+    return json({ comments: (results || []).map((c) => ({ id: c.id, item_id: c.item_id, item_title: (c.title_ko ? cleanKoTitle(c.title_ko, c.feed) : null) || c.one_liner || c.title, user_id: c.user_id, stance: c.stance, parent_id: c.parent_id, ai: !!c.ai, body: c.body, created_at: c.created_at })) });
+  });
+
   on("POST", "/news/item/:id/deep", async ({ env, params }) => {
     const item = await env.DB.prepare("SELECT * FROM news_items WHERE id = ?").bind(params.id).first();
     if (!item) fail(404, "그 글이 없어요.");

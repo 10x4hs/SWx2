@@ -176,6 +176,8 @@ export const api = {
   newsCompanies: () => request("GET", "/news/companies"),
   newsCompanySub: (key, on) => request("PUT", "/news/companies/" + key, { on }),
   newsCompany: (key) => request("GET", "/news/company/" + key),
+  newsSummarize: (id) => request("POST", "/news/item/" + id + "/summarize", {}),
+  newsRecentComments: (n) => request("GET", "/news/comments/recent?limit=" + (n || 30)),
   newsItem: (id) => request("GET", "/news/item/" + id),
   newsDeep: (id) => request("POST", "/news/item/" + id + "/deep", {}),
   newsMark: (id, b) => request("PATCH", "/news/item/" + id, b),

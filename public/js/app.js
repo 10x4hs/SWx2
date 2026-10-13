@@ -296,7 +296,7 @@ function parseRoute() {
   if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
   if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
   if (a === "books") return { view: "books", nav: "study", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
-  if (a === "news") return { view: "news", nav: "news", sub: ["item", "world", "co"].includes(b) ? b : null, id: c || null, day: /^\d{4}-\d{2}-\d{2}$/.test(b || "") ? b : null }; // #/news · #/news/<day> · #/news/item/<id>
+  if (a === "news") return { view: "news", nav: "news", sub: ["item", "world", "co", "talk"].includes(b) ? b : null, id: c || null, day: /^\d{4}-\d{2}-\d{2}$/.test(b || "") ? b : null }; // #/news · #/news/<day> · #/news/item/<id>
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
