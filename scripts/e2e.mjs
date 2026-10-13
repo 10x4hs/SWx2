@@ -204,6 +204,89 @@ try {
         `${tv} · Brain — 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
     } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
 
+    // ---------- ⑫ 블록 편집기 — 토글 접기 · "/" 로 콜아웃 · 보드에서 끌면 상태가 바뀌어요 (2026-10-13) ----------
+    try {
+      errs = [];
+      const doc = { v: 1, blocks: [{ id: "b_tg1", type: "toggle", text: "Fold me", props: {}, children: [{ id: "b_in1", type: "paragraph", text: "hidden inside", props: {}, children: [] }] }, { id: "b_p1", type: "paragraph", text: "", props: {}, children: [] }] };
+      const bn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 블록 " + tv, blocks: doc } })).json()).note.id;
+      await go("#/notes/" + bn, 2200);
+      await p.evaluate(() => { const b = [...document.querySelectorAll('[data-mode="block"]')][0]; if (b && b.getAttribute("aria-selected") !== "true") b.click(); });
+      await p.waitForSelector('.nb[data-id="b_tg1"] .nb-tg', { timeout: 8000 });
+      const vis = () => p.evaluate(() => !!document.querySelector('.nb[data-id="b_in1"]'));
+      const v0 = await vis(); await p.click('.nb[data-id="b_tg1"] .nb-tg'); const v1 = await vis(); await p.click('.nb[data-id="b_tg1"] .nb-tg'); const v2 = await vis();
+      await p.click('.nb[data-id="b_p1"] .nb-text'); await p.keyboard.type("/callout"); await sleep(200);
+      const menuOk = await p.evaluate(() => !!document.querySelector('.nb-menu [data-type="callout"]'));
+      await p.keyboard.press("Enter"); await p.keyboard.type("Hello callout"); await sleep(1500);
+      const saved = await (await ctx.request.get(BASE + "/api/notes/" + bn)).json();
+      const sb = JSON.parse(saved.note.blocks || "{}").blocks || [];
+      ok(v0 !== v1 && v1 !== v2 && menuOk && sb.some((b) => b.type === "callout" && /Hello callout/.test(b.text)) && /\[!note\]/.test(saved.note.body) && !errs.length,
+        `${tv} · 블록 — 토글 ${v0}→${v1}→${v2} · "/" 메뉴 ${menuOk} · 콜아웃 저장 ${sb.map((b) => b.type).join(",")}${errs.length ? " — " + errs[0] : ""}`);
+      const dbn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 DB " + tv, kind: "database" } })).json()).note.id;
+      const row = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 카드 " + tv, parent_id: dbn, props: { status: "시작 전" } } })).json()).note.id;
+      await go("#/notes/" + dbn, 2200);
+      await p.waitForSelector(".db-tabs", { timeout: 8000 });
+      const tableOk = await p.evaluate(() => !!document.querySelector(".db-table .db-pill.st"));
+      await p.evaluate(() => [...document.querySelectorAll(".db-tabs [data-view]")].find((b) => /Board/.test(b.textContent))?.click());
+      await p.waitForSelector(`.db-card[data-row="${row}"]`, { timeout: 8000 });
+      await p.dragAndDrop(`.db-card[data-row="${row}"]`, '.db-col[data-group="완료"]'); await sleep(1200);
+      const rp = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + row)).json()).note.props || "{}");
+      const cnt = await p.evaluate(() => document.querySelector('.db-col[data-group="완료"] .db-count')?.textContent);
+      await p.screenshot({ path: `${process.env.SHOTS || "/tmp"}/e2e-board-${w}.png` }).catch(() => {});
+      ok(tableOk && rp.status === "완료" && cnt === "1", `${tv} · DB — 표 상태 알약 ${tableOk} · 보드 끌기 → ${rp.status} (완료 ${cnt})`);
+    } catch (e) { ok(false, `${tv} · 블록 편집기 — ${String(e.message).split("\n")[0]}`); }
+
+    // ---------- ⑬ 데이터베이스 — 필터로 줄이기 · 묶기 · 달력에서 날짜 옮기기 (컴퓨터는 마우스, 폰은 길게 눌러 끌기) ----------
+    try {
+      errs = [];
+      const shot = (n) => p.screenshot({ path: `${process.env.SHOTS || "/tmp"}/e2e-${n}-${w}.png` }).catch(() => {});
+      const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), mon = today.slice(0, 7);
+      const other = today.endsWith("-02") ? mon + "-03" : mon + "-02";
+      const dbn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 필터 DB " + tv, kind: "database" } })).json()).note.id;
+      const mkRow = async (title, props) => (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: title + " " + tv, parent_id: dbn, props } })).json()).note.id;
+      await mkRow("필터 하나", { status: "완료", date: today, tags: ["math"] });
+      await mkRow("필터 둘", { status: "진행 중", date: today, tags: ["eng"] });
+      const r3 = await mkRow("필터 셋", { status: "시작 전", date: other, tags: ["math", "eng"] });
+      await go("#/notes/" + dbn, 2200);
+      await p.waitForSelector(".db-table", { timeout: 8000 });
+      const before = await p.locator(".db-table tbody tr").count();
+      const listed = await p.evaluate(() => [...document.querySelectorAll("#nl .nt")].map((x) => x.textContent).join("|"));
+      await p.click("[data-add-filter]"); await p.click('.db-pop [data-p="status"]'); await p.click('.db-pop [data-fopt="완료"]'); await sleep(1200);
+      const after = await p.locator(".db-table tbody tr").count();
+      const sv = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + dbn)).json()).note.db).views[0];
+      await shot("db-filter");
+      ok(before === 3 && after === 1 && sv.filters?.[0]?.value === "완료" && !listed.includes("필터 하나") && listed.includes("검사 필터 DB"), `${tv} · DB 필터 — ${before}줄 → ${after}줄 · 저장 ${JSON.stringify(sv.filters)} · 왼쪽 목록에 행 숨김 ${!listed.includes("필터 하나")}`);
+      await p.click("[data-del-filter='0']"); await sleep(1000);
+      await p.click(".db-bar [data-group-menu]"); await p.click('.db-pop [data-g="tags"]'); await sleep(1200);
+      const groups = await p.locator(".db-tgroup").count();
+      const vb = (await p.locator(".db-tabs [data-view]").allTextContents()).findIndex((t) => /Board/.test(t));
+      await p.locator(".db-tabs [data-view]").nth(vb).click(); await sleep(300);
+      await p.click(".db-bar [data-group-menu]"); await p.click('.db-pop [data-g="tags"]'); await sleep(1200);
+      const cols = await p.locator(".db-col").count(), mathCnt = await p.evaluate(() => document.querySelector('.db-col[data-group="math"] .db-count')?.textContent);
+      await shot("db-board-grouped");
+      ok(groups >= 2 && cols >= 2 && mathCnt === "2", `${tv} · DB 묶기 — 표 묶음 ${groups}개 · 보드(태그) 칸 ${cols}개 · math ${mathCnt}`);
+      // 달력: 보기를 더하고 카드를 다른 날로
+      await p.click(".db-addview"); await p.click('.db-pop [data-v="calendar"]'); await sleep(1500);
+      await p.waitForSelector(`.db-cal-card[data-row="${r3}"]`, { timeout: 8000 });
+      if (w > 640) {
+        await p.dragAndDrop(`.db-cal-card[data-row="${r3}"]`, `.db-cal-cell[data-day="${today}"]`);
+      } else {
+        // 폰: 길게 누르고(350ms) 끌어서 오늘 칸에 놓아요 — pointerType touch
+        await p.evaluate(async ({ r3, today }) => {
+          const c = document.querySelector(`.db-cal-card[data-row="${r3}"]`), t = document.querySelector(`.db-ag-day[data-drop="${today}"]`);
+          const a = c.getBoundingClientRect(), b = t.getBoundingClientRect();
+          const ev = (type, x, y, el) => (el || document.elementFromPoint(x, y)).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", clientX: x, clientY: y }));
+          ev("pointerdown", a.left + 10, a.top + 10, c);
+          await new Promise((r) => setTimeout(r, 450));
+          const steps = 6; for (let i = 1; i <= steps; i++) ev("pointermove", a.left + 10, a.top + 10 + ((b.top + 12 - a.top - 10) * i) / steps, c);
+          ev("pointerup", a.left + 10, b.top + 12, c);
+        }, { r3, today });
+      }
+      await sleep(1500);
+      const moved = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + r3)).json()).note.props || "{}").date;
+      await shot("db-calendar");
+      ok(moved === today && !errs.length, `${tv} · DB 달력 — 카드 ${other} → ${moved}${errs.length ? " — " + errs[0] : ""}`);
+    } catch (e) { ok(false, `${tv} · DB 필터 · 달력 — ${String(e.message).split("\n")[0]}`); }
+
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
     const kst = (n) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
     execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `INSERT OR REPLACE INTO day_records (user_id, day, data, score, done, total, auto, saved_at, ai_score, ai_note, ai_model) SELECT id, '${kst(-1)}', '{"plans":[]}', 70, 1, 1, 1, 0, 82, '우선순위 높은 일을 끝냈어요.', 'openai/gpt-oss-120b' FROM users WHERE username = '${user}'`], { stdio: "ignore" });

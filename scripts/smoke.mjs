@@ -27,6 +27,7 @@ const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); if (!
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
 
 import { execFileSync } from "node:child_process";
+import { applyView, remindAt, isDue } from "../public/js/blocks/dbview.js";
 // ---------- 도구 줄 해석 · 거짓 "넣었어요" 검사 (모델 없이, 고정 입력) ----------
 {
   const { parseToolCall, stripToolLines, CLAIM_RE } = await import("../src/agent.js");
@@ -191,6 +192,80 @@ r = await call("a", "GET", "/notes/" + n1); ok(r.data.children.length === 1 && r
 r = await call("a", "POST", "/notes", { title: "부모 없음", parent_id: "nope" }); ok(r.status === 404, "page: unknown parent → 404");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: pg }); ok(r.status === 400, "page: self parent → 400");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status === 200 && r.data.note.parent_id === null, "page: move to top");
+// ---------- 블록 노트 (docs/blocks-schema.md): 블록 저장 → body 마크다운 사본 · 링크 · 태그 ----------
+{
+  const doc = { v: 1, blocks: [
+    { id: "b_1", type: "h2", text: "블록 제목", props: {}, children: [] },
+    { id: "b_2", type: "toggle", text: "접기", props: {}, children: [{ id: "b_3", type: "paragraph", text: "안쪽 [[자료구조]] #블록태그", props: {}, children: [] }] },
+    { id: "b_4", type: "callout", text: "팁", props: { icon: "🔥" }, children: [] },
+  ] };
+  r = await call("a", "POST", "/notes", { title: "블록 노트 " + tag, blocks: doc });
+  const bn = r.data?.note?.id;
+  ok(r.status === 201 && /<details><summary>접기<\/summary>/.test(r.data.note.body) && /> \[!note\] 🔥 팁/.test(r.data.note.body), "blocks: create → body mirror (toggle · callout)");
+  r = await call("a", "GET", "/notes/" + n1); ok(r.data.backlinks.some((x) => x.id === bn), "blocks: [[link]] inside a toggle indexed as backlink");
+  r = await call("a", "GET", "/notes/" + bn); ok(r.data.tags.includes("블록태그") && JSON.parse(r.data.note.blocks).blocks.length === 3 && r.data.note.kind === "page", "blocks: GET returns blocks · kind · tags");
+  const base = r.data.note.updated_at;
+  doc.blocks[1].children[0].text = "링크 없음";
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: doc, base_updated_at: base }); ok(r.status === 200 && !/자료구조/.test(r.data.note.body), "blocks: PUT regenerates mirror");
+  r = await call("a", "GET", "/notes/" + n1); ok(!r.data.backlinks.some((x) => x.id === bn), "blocks: removed link un-indexed");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: doc, base_updated_at: base }); ok(r.status === 409 && r.data.note?.id === bn, "blocks: stale base_updated_at → 409");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: { v: 1, blocks: [{ type: "divider", children: [{ type: "paragraph" }] }] } }); ok(r.status === 400, "blocks: children on divider → 400");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: { v: 1, blocks: [{ type: "nope" }] } }); ok(r.status === 400, "blocks: unknown type → 400");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: { v: 2, blocks: [] } }); ok(r.status === 400, "blocks: bad version → 400");
+  r = await call("a", "PUT", "/notes/" + bn, { body: "그냥 마크다운" }); ok(r.status === 200 && r.data.note.blocks === null, "blocks: markdown save drops blocks");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: doc }); r = await call("a", "POST", "/notes/" + bn + "/link", { title: "알고리즘" });
+  r = await call("a", "GET", "/notes/" + bn); ok(r.data.note.blocks === null && /\[\[알고리즘\]\]/.test(r.data.note.body), "blocks: body-only write elsewhere drops stale blocks");
+  // 데이터베이스: 만들기 · 행(하위 노트 + props) · 스키마 · 보기
+  r = await call("a", "POST", "/notes", { title: "할 일 DB " + tag, kind: "database" });
+  const db = r.data?.note?.id, schema = r.data?.note?.db ? JSON.parse(r.data.note.db) : null;
+  ok(r.status === 201 && r.data.note.kind === "database" && schema.props[0].type === "status" && schema.views.some((v) => v.type === "board"), "db: create with default schema + table/board views");
+  r = await call("a", "POST", "/notes", { title: "제목 없음", parent_id: db, props: { status: "진행 중", date: "2026-10-13", tags: ["a", "b"], bogus: 1 }, unique_title: true });
+  const row1 = r.data?.note?.id;
+  ok(r.status === 201 && JSON.parse(r.data.note.props).status === "진행 중" && !("bogus" in JSON.parse(r.data.note.props)), "db: create row with props (unknown keys dropped)");
+  r = await call("a", "POST", "/notes", { title: "제목 없음", parent_id: db, unique_title: true }); const row2 = r.data?.note?.id;
+  ok(r.status === 201 && r.data.note.title !== "제목 없음", "db: unique_title adds a suffix");
+  r = await call("a", "PUT", "/notes/" + row1, { props: { status: "완료", date: "bad" } }); const p1 = JSON.parse(r.data.note.props);
+  ok(r.status === 200 && p1.status === "완료" && p1.date === "2026-10-13" && p1.tags.length === 2, "db: update row props (merge, bad date ignored)");
+  r = await call("a", "GET", "/notes/" + db); ok(r.data.children.length === 2 && r.data.children.some((c) => c.props && JSON.parse(c.props).status === "완료") && /\| \[\[제목 없음\]\] \| 완료 \|/.test(r.data.note.body), "db: GET returns rows · body mirror table");
+  r = await call("a", "PUT", "/notes/" + n1, { props: { status: "완료" } }); ok(r.status === 400, "db: props on a non-row → 400");
+  schema.views.push({ id: "v3", name: "By status", type: "board", group_by: "status" });
+  schema.props.push({ key: "done", name: "Done", type: "checkbox" });
+  r = await call("a", "PUT", "/notes/" + db, { db: schema }); ok(r.status === 200 && JSON.parse(r.data.note.db).views.length === 3, "db: edit schema / views");
+  r = await call("a", "PUT", "/notes/" + db, { db: { props: [{ key: "Bad Key", type: "text" }] } }); ok(r.status === 400, "db: bad prop key → 400");
+  r = await call("a", "DELETE", "/notes/" + row2); r = await call("a", "GET", "/notes/" + db); ok(r.data.children.length === 1, "db: delete row");
+  r = await call("b", "PUT", "/notes/" + row1, { props: { status: "시작 전" } }); ok(r.status === 404, "db: other user cannot edit rows");
+  // 보기: 필터 · 정렬 · 묶기 · 달력 (서버가 검증해요)
+  const s2 = JSON.parse((await call("a", "GET", "/notes/" + db)).data.note.db);
+  s2.views[0].filters = [{ prop: "status", op: "is", value: "완료" }, { prop: "date", op: "after", value: "2026-01-01" }, { prop: "status", op: "gt", value: 3 }, { prop: "nope", op: "is", value: "x" }, { prop: "date", op: "before", value: "bad" }];
+  s2.views[0].sorts = [{ prop: "date", dir: "desc" }, { prop: "title", dir: "up" }, { prop: "date", dir: "asc" }];
+  s2.views[0].group_by = "tags";
+  s2.views.push({ id: "cal", name: "Calendar", type: "calendar", date_prop: "date" }, { id: "cal2", name: "C2", type: "calendar", date_prop: "status" });
+  r = await call("a", "PUT", "/notes/" + db, { db: s2 }); const vs = JSON.parse(r.data?.note?.db || "{}").views || [];
+  ok(r.status === 200 && JSON.stringify(vs[0].filters) === JSON.stringify([{ prop: "status", op: "is", value: "완료" }, { prop: "date", op: "after", value: "2026-01-01" }])
+    && JSON.stringify(vs[0].sorts) === JSON.stringify([{ prop: "date", dir: "desc" }, { prop: "title", dir: "asc" }]) && vs[0].group_by === "tags", "db views: filters/sorts/group saved, bad ones dropped");
+  ok(vs.find((v) => v.id === "cal")?.date_prop === "date" && vs.find((v) => v.id === "cal2")?.date_prop === "date", "db views: calendar date_prop validated (non-date → first date prop)");
+  r = await call("a", "GET", "/notes/" + db); ok(JSON.parse(r.data.note.db).views[0].filters.length === 2, "db views: persisted");
+  const rows = [{ id: 1, title: "b", props: { status: "완료", date: "2026-03-01" } }, { id: 2, title: "a", props: { status: "완료", date: "2026-05-01" } }, { id: 3, title: "c", props: { status: "시작 전", date: "2026-06-01" } }, { id: 4, title: "d", props: { status: "완료" } }];
+  const shown = applyView(rows, JSON.parse(r.data.note.db), JSON.parse(r.data.note.db).views[0]).map((x) => x.id);
+  ok(shown.join() === "2,1", "db views: applyView filters (AND) + sorts → " + shown.join());
+  ok(applyView(rows, { props: s2.props }, { sorts: [{ prop: "date", dir: "asc" }] }).map((x) => x.id).join() === "1,2,3,4", "db views: empty values sort last");
+  // 달력에서 카드를 다른 날로 옮기면 날짜 속성이 바뀌어요
+  r = await call("a", "PUT", "/notes/" + row1, { props: { date: "2026-10-20" } }); ok(r.status === 200 && JSON.parse(r.data.note.props).date === "2026-10-20", "db calendar: move card → date prop updated");
+  // 알림: props._remind → remind_at, 크론(매시) 이 보내고, 서비스 워커가 한 번만 가져가요
+  ok(remindAt({ date: "2026-10-20", _remind: { prop: "date", time: "09:00" } }) === Date.parse("2026-10-20T00:00:00Z"), "reminder: remind_at = date + time in KST");
+  const T0 = Date.parse("2026-10-20T00:00:00Z");
+  ok(isDue({ remind_at: T0 }, T0 + 1) && !isDue({ remind_at: T0 }, T0 - 1) && !isDue({ remind_at: T0, reminded_at: 1 }, T0 + 1) && !isDue({ remind_at: T0 }, T0 + 27 * 3600e3), "reminder: due selection (past · unsent · not too late)");
+  r = await call("a", "PUT", "/notes/" + row1, { props: { _remind: { prop: "date", time: "09:00" } } });
+  ok(r.status === 200 && r.data.note.remind_at === T0 && JSON.parse(r.data.note.props)._remind.time === "09:00", "reminder: saved on row");
+  r = await call("a", "PUT", "/notes/" + row1, { props: { _remind: { prop: "status", time: "09:00" } } }); ok(!JSON.parse(r.data.note.props)._remind && r.data.note.remind_at === null, "reminder: non-date prop rejected (cleared)");
+  r = await call("a", "PUT", "/notes/" + row1, { props: { _remind: { prop: "date", time: "25:99" } } }); ok(JSON.parse(r.data.note.props)._remind.time === "09:00", "reminder: bad time → 09:00");
+  r = await call("a", "POST", "/reminders/run?now=" + (T0 - 1000)); ok(r.status === 200 && !(r.data.sent > 0 && (await call("a", "POST", "/reminders/take")).data.reminders.some((x) => x.id === row1)), "reminder: not sent before time");
+  r = await call("a", "POST", "/reminders/run?now=" + (T0 + 60e3)); ok(r.status === 200 && r.data.sent >= 1, "reminder: cron sends when due");
+  r = await call("a", "POST", "/reminders/take"); ok(r.data.reminders.some((x) => x.id === row1 && x.date === "2026-10-20" && x.db_title === "할 일 DB " + tag), "reminder: owner takes it once");
+  r = await call("a", "POST", "/reminders/take"); ok(!r.data.reminders.some((x) => x.id === row1), "reminder: not delivered twice");
+  r = await call("b", "POST", "/reminders/take"); ok(!r.data.reminders.some((x) => x.id === row1), "reminder: other user never sees it");
+  r = await call("a", "POST", "/reminders/run?now=" + (T0 + 120e3)); ok(!r.data.sent, "reminder: cron does not resend");
+}
 r = await call("a", "POST", "/ai/ask", { note_id: n1, question: "" }); ok(r.status === 400, "ai/ask: empty question → 400");
 r = await call("a", "POST", "/ai/plan", { messages: [] }); ok(r.status === 400, "ai/plan: no messages → 400");
 r = await call("a", "POST", "/ai/command", { text: "" }); ok(r.status === 400, "ai/command: empty → 400");

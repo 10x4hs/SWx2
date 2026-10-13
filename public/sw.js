@@ -246,6 +246,13 @@ function reply(event, msg) {
 self.addEventListener("push", (event) => {
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    // 데이터베이스 행 알림 (src/reminders.js): 크론이 보낸 깨우기면 여기서 무엇인지 읽어 띄워요
+    try {
+      const r = await fetch("/api/reminders/take", { method: "POST", headers: { "x-trio": "1" }, credentials: "include" });
+      const list = r.ok ? (await r.json()).reminders || [] : [];
+      for (const x of list) await self.registration.showNotification(`⏰ ${x.title}`, { body: [x.db_title, x.date, x.time].filter(Boolean).join(" · "), icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "remind-" + x.id, data: { url: "/#/notes/" + x.id } });
+      if (list.length) return;
+    } catch {}
     if (wins.some((w) => w.visibilityState === "visible" && w.focused)) { for (const w of wins) w.postMessage({ type: "room-ping" }); return; }
     // 뉴스: 내 메모에 친구가 반박 · 동의를 달았으면 그걸 먼저 알려요 (푸시는 내용 없이 깨우기만 해서 여기서 물어봐요)
     try {
@@ -272,7 +279,7 @@ self.addEventListener("notificationclick", (event) => {
   const url = (event.notification.data && event.notification.data.url) || "/#/room";
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const w of wins) { if ("focus" in w) { await w.focus(); w.postMessage(url.includes("#/news") ? { type: "open-hash", hash: url.slice(url.indexOf("#")) } : { type: "open-room" }); return; } }
+    for (const w of wins) { if ("focus" in w) { await w.focus(); w.postMessage(url.includes("#/news") ? { type: "open-hash", hash: url.slice(url.indexOf("#")) } : url.includes("#/notes/") ? { type: "open-url", url } : { type: "open-room" }); return; } }
     await self.clients.openWindow(url);
   })());
 });
