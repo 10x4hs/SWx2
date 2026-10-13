@@ -2743,7 +2743,7 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 
 /* ---------- Brain: 노트 + 공부 한 나무 (views/brain.js) ---------- */
 .host-brain { height: 100%; }
-.brain { display: flex; flex-direction: column; height: 100%; gap: 10px; }
+.brain { display: flex; flex-direction: column; height: 100%; gap: 12px; box-sizing: border-box; padding: 18px 22px 20px; } /* 가장자리에 붙지 않게 */
 .brain-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .brain-crumbs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; min-width: 0; }
 .brain-crumbs a { color: var(--ink-2); text-decoration: none; }
@@ -2764,6 +2764,7 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .brain-empty { opacity: .6; font-size: 13px; padding: 10px; }
 @media (max-width: 760px) {
   .host-brain { height: auto; }
+  .brain { padding: 14px 4px 16px; }
   .brain-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
   .brain-graph { height: 58vh; }
   .brain-list { max-height: none; }

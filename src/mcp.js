@@ -32,8 +32,8 @@ const TOOLS = [
   // ---- 노트 ----
   { name: "notes_search", description: "내 노트 찾기(제목 · 앞부분). query 없이 부르면 최근 노트.", inputSchema: S({ query: str("찾을 말"), limit: { type: "integer", minimum: 1, maximum: 50 } }) },
   { name: "note_read", description: "노트 하나 읽기 (마크다운 원문).", inputSchema: S({ title: str("노트 제목"), id: str("노트 id") }) },
-  { name: "note_write", description: "노트 쓰기. mode=create(새로, 같은 제목이 있으면 실패) | append(끝에 덧붙이기, 기본) | replace(본문 통째로 바꾸기). [[제목]] 링크 · #태그는 그래프에 이어져요.",
-    inputSchema: S({ title: str("노트 제목 ([ ] | # 은 못 써요)"), body: str("마크다운 본문"), mode: str("create | append | replace", { enum: ["create", "append", "replace"] }), parent_title: str("create 일 때 상위 페이지 제목 (선택)") }, ["title", "body"]) },
+  { name: "note_write", description: "노트 쓰기. mode=create(새로, 같은 제목이 있으면 실패) | append(끝에 덧붙이기, 기본) | replace(본문 통째로 바꾸기). [[제목]] 링크 · #태그는 그래프에 이어져요. 있는 노트에 parent_title 을 주면 그 아래로 옮겨요(body 를 \"\" 로 두면 옮기기만).",
+    inputSchema: S({ title: str("노트 제목 ([ ] | # 은 못 써요)"), body: str("마크다운 본문"), mode: str("create | append | replace", { enum: ["create", "append", "replace"] }), parent_title: str("상위 페이지 제목 (선택) — create 면 그 아래에 만들고, 있는 노트면 그 아래로 옮겨요") }, ["title", "body"]) },
   // ---- Dock 페이지 (사용자가 추가하는 화면, HTML 한 파일) ----
   { name: "page_guide", description: "Dock 페이지 코드 규칙: HTML 한 파일 · sandbox iframe · window.trio 브리지(api/me/go/toast/store) · 쓸 수 있는 앱 API 목록. page_write 전에 꼭 읽어요.", inputSchema: S({}) },
   { name: "pages_list", description: "내 Dock 페이지와 셋이 공유한 페이지 목록 (id · 제목 · 아이콘 · 목적 · 공유 여부).", inputSchema: S({}) },
@@ -250,7 +250,7 @@ const CALL = {
 
   async note_write(a, c) {
     const mode = a.mode || "append", title = String(a.title || "").trim(), body = String(a.body || "");
-    if (!title || !body.trim()) bad("title 과 body 를 주세요.");
+    if (!title || (!body.trim() && !a.parent_title)) bad("title 과 body 를 주세요. (옮기기만 할 때는 parent_title 과 빈 body)");
     const found = (await api(c, "GET", "/notes/resolve?title=" + encodeURIComponent(title))).id;
     if (mode === "create" || !found) {
       if (found) bad(`'${title}' 노트가 이미 있어요. mode="append" 나 "replace" 로 써 주세요.`);
@@ -258,6 +258,12 @@ const CALL = {
       if (a.parent_title) { parent_id = (await api(c, "GET", "/notes/resolve?title=" + encodeURIComponent(a.parent_title))).id; if (!parent_id) bad(`상위 페이지 '${a.parent_title}' 가 없어요.`); }
       const r = await api(c, "POST", "/notes", { title, body: body.trimEnd() + `\n\n_— ${c.who.agent}, ${kstTime(Date.now())}_\n`, parent_id });
       return `새 노트를 만들었어요: ${title} (id ${r.note.id}) · ${c.origin}/#/notes/${r.note.id}`;
+    }
+    if (a.parent_title) { // 있는 노트를 다른 상위 페이지 아래로
+      const pid = (await api(c, "GET", "/notes/resolve?title=" + encodeURIComponent(a.parent_title))).id;
+      if (!pid) bad(`상위 페이지 '${a.parent_title}' 가 없어요.`);
+      await api(c, "PUT", "/notes/" + encodeURIComponent(found), { parent_id: pid });
+      if (!body.trim()) return `'${title}' 을(를) '${a.parent_title}' 아래로 옮겼어요 · ${c.origin}/#/notes/${found}`;
     }
     const { note } = await api(c, "GET", "/notes/" + encodeURIComponent(found));
     const next = mode === "replace" ? body : `${note.body.trimEnd()}\n\n${body.trim()}\n\n_— ${c.who.agent}, ${kstTime(Date.now())}_\n`;
