@@ -883,11 +883,11 @@ export async function backfillStep(env, perStep = 10) {
 
 export const NEWS_BUDGET = 40;
 
-/** 매시 10분 (DB 알림과 같은 크론): 피드 12곳 + 요약 2묶음(10편) + 되채우기 한 걸음 */
+/** 매시 10분 (DB 알림과 같은 크론): 피드 10곳 + 요약 1묶음(5편) + 되채우기 한 걸음(5편) — 보통 30개 안팎/40 (공급사 장애 조치 여유) */
 export async function newsHourly(env) {
-  const pulled = await ingest(env, Date.now(), 12);
-  const sum = left() >= 4 ? await summarize(env, 10) : { done: 0 };
-  const backfill = left() >= 6 ? await backfillStep(env, 10) : null;
+  const pulled = await ingest(env, Date.now(), 10);
+  const sum = left() >= 4 ? await summarize(env, 5) : { done: 0 };
+  const backfill = left() >= 6 ? await backfillStep(env, 5) : null;
   return { added: pulled.reduce((n, p) => n + p.added, 0), feeds: pulled.length, summed: sum.done, backfill };
 }
 /** 하위 호환 (예전 이름) */
