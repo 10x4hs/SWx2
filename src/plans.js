@@ -110,12 +110,18 @@ export function registerPlans(on) {
 
   // 연간 히트맵: 하루별 완료 수
   on("GET", "/plans/heatmap", async ({ env, q, user }) => {
-    const year = q.get("year");
+    const year = q.get("year"), who = q.get("user") || user.id;
     yearParam(year);
-    const { results } = await env.DB.prepare(
+    const heat = env.DB.prepare(
       "SELECT period, COUNT(*) AS total, SUM(done) AS done FROM plans WHERE user_id = ? AND scope = 'day' AND period LIKE ? GROUP BY period"
-    ).bind(q.get("user") || user.id, `D:${year}-%`).all();
-    return json({ days: results });
+    ).bind(who, `D:${year}-%`);
+    // 친구의 하루별 개수도 그 사람이 계획을 공개(open)했을 때만 — GET /plans 와 같은 규칙 (닫혀 있으면 빈 목록 + closed)
+    if (who !== user.id) {
+      const [o, h] = await env.DB.batch([env.DB.prepare("SELECT plans_open FROM users WHERE id = ?").bind(who), heat]);
+      if (!o.results[0] || o.results[0].plans_open === 0) return json({ days: [], closed: true });
+      return json({ days: h.results });
+    }
+    return json({ days: (await heat.all()).results });
   });
 
   // 우리 셋: 기간별 진행 요약

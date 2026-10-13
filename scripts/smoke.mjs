@@ -228,6 +228,12 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   const pp = (await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-28", text: "a만 아는 계획", start: "08:00", mins: 30 })).data.plan;
   r = await call("b", "GET", `/plans?periods=D:2026-09-28&user=${me.id}`); ok(r.data.plans.some((p) => p.id === pp.id && p.text === ""), "b sees a's plan shape without text");
   r = await call("b", "GET", `/logs?day=2026-09-28&user=${me.id}`); ok(r.status === 403, "b cannot read a's logs");
+  // 연간 히트맵도 계획을 닫아 둔(not open) 친구 것은 못 봐요 (GET /plans 와 같은 규칙)
+  r = await call("b", "GET", `/plans/heatmap?year=2026&user=${me.id}`); ok(r.status === 200 && !r.data.closed && r.data.days.some((d) => d.period === "D:2026-09-28"), "heatmap: b sees a's daily counts while open");
+  await call("a", "PATCH", "/me", { plans_open: false });
+  r = await call("b", "GET", `/plans/heatmap?year=2026&user=${me.id}`); ok(r.status === 200 && r.data.closed === true && r.data.days.length === 0, "heatmap: closed plans → no counts for b");
+  r = await call("a", "GET", "/plans/heatmap?year=2026"); ok(r.status === 200 && r.data.days.some((d) => d.period === "D:2026-09-28"), "heatmap: a still sees own counts while closed");
+  await call("a", "PATCH", "/me", { plans_open: true });
   r = await call("a", "POST", "/records", { day: "2026-09-28" }); ok(r.status === 200 && r.data.record.total >= 1, "a saves a day record");
   r = await call("a", "GET", "/records?day=2026-09-28"); ok(r.data.record?.data.plans.some((p) => p.text === "a만 아는 계획"), "record keeps plan text for owner");
   // 못함으로 표시한 계획은 하루 기록에도 missed 로 남아야 AI 채점이 '못함'으로 읽어요 (예전엔 빠졌어요)
