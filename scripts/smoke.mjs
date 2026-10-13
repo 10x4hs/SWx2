@@ -774,6 +774,13 @@ if (!process.env.SKIP_AI) {
   t = await tool(TB, "note_write", { title: "t mcp 노트 " + tag, body: "둘째 줄" }); t = await tool(TA, "note_read", { title: "t mcp 노트 " + tag });
   ok(t.text.includes("첫 줄") && t.text.includes("둘째 줄") && t.text.includes("smoke-b"), "mcp: append keeps body + signs agent");
   t = await tool(TA, "note_write", { title: "t mcp 노트 " + tag, body: "x", mode: "create" }); ok(t.err, "mcp: create on existing title → isError");
+  { // 옮기기: 있는 노트에 parent_title + 빈 body → 상위만 바뀌고 본문은 그대로
+    await tool(TA, "note_write", { title: "t mcp 상위 " + tag, body: "상위", mode: "create" });
+    t = await tool(TA, "note_write", { title: "t mcp 노트 " + tag, body: "", parent_title: "t mcp 상위 " + tag }); ok(!t.err && /옮겼어요/.test(t.text || ""), "mcp: note move under a parent");
+    t = await tool(TA, "note_read", { title: "t mcp 상위 " + tag }); ok(/하위 t mcp 노트/.test(t.text || ""), "mcp: moved note is a child of the parent");
+    t = await tool(TA, "note_write", { title: "t mcp 노트 " + tag, body: "", parent_title: "없는 상위 " + tag }); ok(t.err, "mcp: move to a missing parent → isError");
+    t = await tool(TA, "note_write", { title: "t mcp 노트 " + tag, body: "" }); ok(t.err, "mcp: empty body without parent → isError");
+  }
   execFileSync("node", ["scripts/mcp-token.mjs", "t_a" + tag, "smoke-b", "--revoke"], { stdio: "ignore" });
   r = await mcp(TB, "tools/list"); ok(r.status === 401, "mcp: revoked token → 401");
   // 웹 화면에서 각자 토큰 받기 (친구들도)
