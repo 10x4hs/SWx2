@@ -1,0 +1,77 @@
+/* Database views extras (public/js/blocks/db.js): filter/sort chips, grouped table, calendar, property menu, touch drag.
+   Base table/board/pill styles live in blocks.css. */
+.db-bar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 0 0 8px; min-height: 28px; }
+.db-tool { border: 0; background: none; color: var(--ink-3); font-size: 13.5px; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+.db-tool:hover { background: var(--hover); color: var(--ink); }
+.db-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: 4px; }
+.db-chip { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line-2); background: none; color: var(--ink-2); border-radius: 999px; font-size: 13px; padding: 0; height: 26px; cursor: pointer; }
+button.db-chip { padding: 0 10px; }
+.db-chip.on { border-color: color-mix(in srgb, #2383E2 45%, transparent); color: #2383E2; background: color-mix(in srgb, #2383E2 8%, transparent); }
+.db-chip b { font-weight: 600; }
+.db-chip-b { border: 0; background: none; color: inherit; font: inherit; padding: 0 4px 0 10px; height: 100%; cursor: pointer; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.db-chip-x { border: 0; background: none; color: inherit; font-size: 15px; line-height: 1; padding: 0; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; opacity: .7; flex: none; }
+.db-chip-x:hover { opacity: 1; background: var(--hover); }
+.db-shown { font-size: 12.5px; margin-left: auto; font-variant-numeric: tabular-nums; }
+.db-th { cursor: pointer; }
+.db-th:hover { background: var(--hover); }
+.db-tgroup { margin-bottom: 14px; }
+.db-tgroup > header { display: flex; align-items: center; gap: 6px; padding: 6px 2px; }
+.db-bell { font-size: 12px; }
+
+/* popovers */
+.db-pop { width: 260px; }
+.db-pop select.input { width: 100%; margin-bottom: 6px; }
+.db-sec { font-size: 12px; color: var(--ink-3); font-weight: 600; margin: 4px 2px 6px; }
+.db-hint { font-size: 12px; margin: 2px 2px 6px; }
+.db-danger { color: var(--tg-red-dot) !important; }
+.db-optrows { display: grid; gap: 6px; }
+.db-optrow { display: grid; grid-template-columns: 1fr auto; gap: 4px; align-items: center; }
+.db-optrow > .db-pill { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.db-optrow .db-chip-x { grid-column: 2; grid-row: 1; }
+.db-swatches { grid-column: 1 / -1; display: flex; gap: 4px; flex-wrap: wrap; }
+.db-sw { width: 18px; height: 18px; border-radius: 4px; border: 0; cursor: pointer; padding: 0; }
+.db-sw.on { outline: 2px solid #2383E2; outline-offset: 1px; }
+.db-sw.c-gray { background: var(--tg-gray-bg); } .db-sw.c-brown { background: var(--tg-brown-bg); } .db-sw.c-orange { background: var(--tg-orange-bg); }
+.db-sw.c-yellow { background: var(--tg-yellow-bg); } .db-sw.c-green { background: var(--tg-green-bg); } .db-sw.c-blue { background: var(--tg-blue-bg); }
+.db-sw.c-purple { background: var(--tg-purple-bg); } .db-sw.c-pink { background: var(--tg-pink-bg); } .db-sw.c-red { background: var(--tg-red-bg); }
+.db-sortrow { display: grid; grid-template-columns: 1fr 110px 24px; gap: 6px; align-items: center; margin-bottom: 4px; font-size: 13.5px; }
+.db-sortrow select.input { margin: 0; }
+.db-remind { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-top: 8px; color: var(--ink-2); }
+.db-remind .input { width: auto; margin: 0; flex: 1; }
+
+/* calendar */
+.db-cal-head { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+.db-cal-m { font-size: 15px; font-weight: 600; min-width: 130px; text-align: center; }
+.db-cal { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.db-cal-wd, .db-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.db-cal-wd span { font-size: 12px; color: var(--ink-3); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.db-cal-cell { min-height: 104px; padding: 4px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; min-width: 0; transition: background .12s; }
+.db-cal-cell:nth-child(7n) { border-right: 0; }
+.db-cal-cell.out { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.db-cal-cell.over, .db-ag-day.over { background: var(--hover); box-shadow: inset 0 0 0 2px #2383E2; }
+.db-cal-n { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--ink-3); padding: 0 2px; height: 22px; }
+.db-cal-cell.today .db-cal-n span { background: #EB5757; color: #fff; border-radius: 999px; padding: 1px 7px; font-weight: 600; }
+.db-cal-add { border: 0; background: none; color: var(--ink-3); width: 22px; height: 22px; border-radius: 5px; cursor: pointer; font-size: 15px; opacity: 0; }
+.db-cal-cell:hover .db-cal-add, .db-cal-add:focus-visible { opacity: 1; }
+.db-cal-add:hover { background: var(--hover); color: var(--ink); }
+.db-cal-card { display: flex; align-items: center; gap: 4px; background: var(--paper-solid); border-radius: 5px; padding: 3px 6px; font-size: 12.5px; box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0, 0, 0, .1); cursor: grab; min-width: 0; }
+.db-cal-card .db-open { color: inherit; text-decoration: none; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.db-cal-card.dragging, .db-card.dragging { opacity: .4; }
+.db-agenda { display: grid; gap: 10px; }
+.db-ag-day { border-radius: 8px; padding: 6px; display: grid; gap: 6px; transition: background .12s; }
+.db-ag-day > header { display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+.db-ag-day.today > header span { color: #EB5757; }
+.db-ag-day .db-cal-add { opacity: 1; }
+.db-ag-day .db-cal-card { padding: 9px 10px; font-size: 14px; }
+.db-ag-empty { font-size: 13px; padding: 2px 4px; }
+
+/* touch drag */
+.db-card, .db-cal-card { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.db-held { box-shadow: 0 0 0 2px #2383E2, 0 6px 16px rgba(0, 0, 0, .25) !important; }
+.db-ghost { position: fixed; left: 0; top: 0; z-index: 120; pointer-events: none; opacity: .92; box-shadow: 0 10px 28px rgba(0, 0, 0, .35) !important; }
+
+@media (max-width: 640px) {
+  .db-bar { gap: 2px; }
+  .db-shown { margin-left: 0; }
+  .db-chip-b { max-width: 200px; }
+}

@@ -1,5 +1,8 @@
 // 노트 · 그래프 · 태그 · 검색. indexStmts · MAX_NOTE 는 brain.js 에도 넘겨줘요 (worker.js 참고).
 import { fail, json, body, now, uid, str } from "./http.js";
+// 블록 ⇄ 마크다운은 브라우저 편집기와 같은 파일을 써요 (wrangler 가 함께 묶어요)
+import { remindAt } from "../public/js/blocks/dbview.js";
+import { blocksToMd, validateDoc, MAX_BLOCKS_JSON, validateDb, defaultDb, cleanRowProps, dbToMd } from "../public/js/blocks/md.js";
 
 export const MAX_NOTE = 200_000;
 
@@ -64,12 +67,47 @@ async function relink(env, n, text) {
   ]);
   return { ...n, body: text, updated_at: now() };
 }
+// ---------- blocks · databases ----------
+const parseJson = (t) => { try { return t ? JSON.parse(t) : null; } catch { return null; } };
+function readBlocks(v) {
+  let doc;
+  try { doc = validateDoc(v); } catch (e) { fail(400, e.message); }
+  const text = JSON.stringify(doc);
+  if (text.length > MAX_BLOCKS_JSON) fail(400, "페이지가 너무 커요. 나눠서 저장해 주세요.");
+  const md = blocksToMd(doc);
+  if (md.length > MAX_NOTE) fail(400, "노트가 너무 길어요. 나눠서 저장해 주세요.");
+  return { text, md };
+}
+function readDb(v) { try { return validateDb(v); } catch (e) { fail(400, e.message); } }
+// 데이터베이스 body = 행 표(마크다운) — 검색 · AI · 그래프가 계속 보도록. updated_at 은 건드리지 않아요 (열린 화면과 충돌하지 않게)
+async function refreshDbMirror(env, dbId, userId) {
+  const d = await env.DB.prepare("SELECT id, db FROM notes WHERE id = ? AND user_id = ? AND kind = 'database'").bind(dbId, userId).first();
+  if (!d) return;
+  const { results } = await env.DB.prepare("SELECT title, props FROM notes WHERE parent_id = ? AND user_id = ? ORDER BY created_at").bind(dbId, userId).all();
+  const md = dbToMd(parseJson(d.db), results.map((r) => ({ title: r.title, props: parseJson(r.props) || {} }))).slice(0, MAX_NOTE);
+  await env.DB.batch([env.DB.prepare("UPDATE notes SET body = ? WHERE id = ?").bind(md, dbId), ...indexStmts(env, dbId, md)]);
+}
+async function parentDb(env, parentId, userId) {
+  if (!parentId) return null;
+  const p = await env.DB.prepare("SELECT id, kind, db FROM notes WHERE id = ? AND user_id = ?").bind(parentId, userId).first();
+  return p && p.kind === "database" ? { id: p.id, db: parseJson(p.db) } : null;
+}
+// "제목 없음" 이 이미 있으면 "제목 없음 2" … (새 행 · 하위 페이지 블록)
+async function freeTitle(env, userId, title) {
+  for (let i = 1; i < 60; i++) {
+    const t = i === 1 ? title : `${title.slice(0, 112)} ${i}`;
+    const dup = await env.DB.prepare("SELECT id FROM notes WHERE user_id = ? AND title = ? COLLATE NOCASE").bind(userId, t).first();
+    if (!dup) return t;
+  }
+  fail(409, "같은 제목의 노트가 너무 많아요.");
+}
+
 export function registerNotes(on) {
   on("GET", "/notes", async ({ env, user, q }) => {
     const tag = q.get("tag");
     const sql = tag
-      ? `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n JOIN note_tags t ON t.note_id = n.id AND t.tag = ?2 WHERE ${VISIBLE} ORDER BY n.updated_at DESC`
-      : `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n WHERE ${VISIBLE} ORDER BY n.updated_at DESC`;
+      ? `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.kind, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n JOIN note_tags t ON t.note_id = n.id AND t.tag = ?2 WHERE ${VISIBLE} AND NOT EXISTS (SELECT 1 FROM notes p WHERE p.id = n.parent_id AND p.kind = 'database') ORDER BY n.updated_at DESC`
+      : `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.kind, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n WHERE ${VISIBLE} AND NOT EXISTS (SELECT 1 FROM notes p WHERE p.id = n.parent_id AND p.kind = 'database') ORDER BY n.updated_at DESC`;
     const stmt = tag ? env.DB.prepare(sql).bind(user.id, tag) : env.DB.prepare(sql).bind(user.id);
     const { results } = await stmt.all();
     return json({ notes: results });
@@ -119,11 +157,11 @@ export function registerNotes(on) {
     const [nr, back, tags, children, up] = await env.DB.batch([
       env.DB.prepare(`SELECT n.* FROM notes n WHERE n.id = ?2 AND ${VISIBLE}`).bind(user.id, params.id),
       env.DB.prepare(
-        `SELECT n.id, n.user_id, n.title, substr(n.body, 1, 160) AS snippet FROM note_links l JOIN notes n ON n.id = l.src_id
+        `SELECT n.id, n.user_id, n.title, substr(n.body, max(1, instr(lower(n.body), lower('[[' || (SELECT title FROM notes WHERE id = ?2))) - 60), 180) AS snippet FROM note_links l JOIN notes n ON n.id = l.src_id
        WHERE l.dst_title = (SELECT title FROM notes WHERE id = ?2 AND user_id = ?1) AND n.id != ?2 AND ${VISIBLE} ORDER BY n.updated_at DESC`
       ).bind(user.id, params.id),
       env.DB.prepare("SELECT tag FROM note_tags WHERE note_id = ?").bind(params.id),
-      env.DB.prepare("SELECT id, title, updated_at FROM notes WHERE parent_id = ? AND user_id = ? ORDER BY created_at").bind(params.id, user.id),
+      env.DB.prepare("SELECT id, title, kind, props, updated_at FROM notes WHERE parent_id = ? AND user_id = ? ORDER BY created_at").bind(params.id, user.id),
       // 위로 올라가는 경로 (부모 › 조부모 …, 최대 6단계) — 재귀 쿼리 하나로
       env.DB.prepare(
         `WITH RECURSIVE up(id, title, parent_id, depth) AS (
@@ -138,36 +176,62 @@ export function registerNotes(on) {
   });
 
   on("POST", "/notes", async ({ req, env, user }) => {
+    // 보통 노트 · 블록 노트(blocks) · 데이터베이스(kind: "database") · 데이터베이스 행(parent 가 데이터베이스 + props)
     const b = await body(req);
-    const title = noteTitle(b.title, "제목");
-    const text = typeof b.body === "string" ? b.body.slice(0, MAX_NOTE) : "";
+    let title = noteTitle(b.title, "제목");
+    let text = typeof b.body === "string" ? b.body.slice(0, MAX_NOTE) : "", blocks = null, kind = "page", db = null, props = null;
+    if (b.blocks !== undefined && b.blocks !== null) { const r = readBlocks(b.blocks); blocks = r.text; text = r.md; }
+    if (b.kind === "database") { kind = "database"; db = readDb(b.db || defaultDb()); text = ""; blocks = null; }
+    if (b.unique_title) title = await freeTitle(env, user.id, title);
     const dup = await env.DB.prepare("SELECT id FROM notes WHERE user_id = ? AND title = ? COLLATE NOCASE").bind(user.id, title).first();
     if (dup) return json({ error: "같은 제목의 노트가 이미 있어요.", id: dup.id }, 409);
-    let parent_id = null;
+    let parent_id = null, pdb = null;
     if (typeof b.parent_id === "string" && b.parent_id) {
       const p = await env.DB.prepare("SELECT id FROM notes WHERE id = ? AND user_id = ?").bind(b.parent_id, user.id).first();
       if (!p) fail(404, "상위 노트를 찾을 수 없어요.");
       parent_id = p.id;
+      pdb = await parentDb(env, parent_id, user.id);
+      if (pdb) props = JSON.stringify(cleanRowProps(b.props, pdb.db));
     }
-    const n = { id: uid(), user_id: user.id, title, body: text, shared: b.shared ? 1 : 0, parent_id, created_at: now(), updated_at: now() };
-    await env.DB.prepare("INSERT INTO notes (id, user_id, title, body, shared, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(n.id, n.user_id, n.title, n.body, n.shared, n.parent_id, n.created_at, n.updated_at).run();
+    const n = { id: uid(), user_id: user.id, title, body: text, shared: b.shared ? 1 : 0, parent_id, created_at: now(), updated_at: now(), blocks, kind, props, db: db ? JSON.stringify(db) : null, remind_at: props ? remindAt(JSON.parse(props)) : null };
+    await env.DB.prepare("INSERT INTO notes (id, user_id, title, body, shared, parent_id, created_at, updated_at, blocks, kind, props, db, remind_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(n.id, n.user_id, n.title, n.body, n.shared, n.parent_id, n.created_at, n.updated_at, n.blocks, n.kind, n.props, n.db, n.remind_at).run();
     await indexNote(env, n.id, text);
+    if (pdb) await refreshDbMirror(env, pdb.id, user.id);
     return json({ note: n }, 201);
   });
 
   on("PUT", "/notes/:id", async ({ req, env, user, params }) => {
     const n = await visibleNote(env, params.id, user);
     const b = await body(req);
+    // 다른 탭 · 기기에서 먼저 고쳤으면 덮어쓰지 않아요 (base_updated_at = 내가 마지막으로 받은 updated_at)
+    if (typeof b.base_updated_at === "number" && b.base_updated_at !== n.updated_at) return json({ error: "다른 곳에서 먼저 고친 노트예요. 새로 불러올게요.", note: n }, 409);
     const next = { ...n };
     if (b.title !== undefined) {
       next.title = noteTitle(b.title, "제목");
       const dup = await env.DB.prepare("SELECT id FROM notes WHERE user_id = ? AND title = ? COLLATE NOCASE AND id != ?").bind(user.id, next.title, n.id).first();
       if (dup) fail(409, "같은 제목의 노트가 이미 있어요.");
     }
-    if (typeof b.body === "string") {
+    let bodyChanged = false;
+    if (b.blocks !== undefined && b.blocks !== null) {
+      if (n.kind === "database") fail(400, "데이터베이스에는 블록을 넣을 수 없어요.");
+      const r = readBlocks(b.blocks); next.blocks = r.text; next.body = r.md; bodyChanged = true;
+    } else if (typeof b.body === "string") {
       if (b.body.length > MAX_NOTE) fail(400, "노트가 너무 길어요. 나눠서 저장해 주세요.");
-      next.body = b.body;
+      next.body = b.body; next.blocks = null; bodyChanged = true; // 마크다운으로 고치면 블록은 다음에 열 때 다시 만들어요
+    }
+    if (b.db !== undefined) {
+      if (n.kind !== "database") fail(400, "데이터베이스가 아니에요.");
+      next.db = JSON.stringify(readDb(b.db));
+    }
+    const pdb = b.props !== undefined || b.title !== undefined ? await parentDb(env, n.parent_id, user.id) : null;
+    if (b.props !== undefined) {
+      if (!pdb) fail(400, "데이터베이스 안의 페이지만 속성을 가질 수 있어요.");
+      const np = cleanRowProps(b.props, pdb.db, parseJson(n.props) || {});
+      next.props = JSON.stringify(np);
+      // 알림 시각이 바뀌면 다시 보낼 수 있게 보낸 기록을 지워요
+      const ra = remindAt(np);
+      if (ra !== (n.remind_at ?? null)) { next.remind_at = ra; next.reminded_at = null; next.remind_seen = null; }
     }
     if (b.shared !== undefined) next.shared = b.shared ? 1 : 0;
     if (b.parent_id !== undefined) {
@@ -180,9 +244,11 @@ export function registerNotes(on) {
       }
     }
     next.updated_at = now();
-    await env.DB.prepare("UPDATE notes SET title = ?, body = ?, shared = ?, parent_id = ?, updated_at = ? WHERE id = ?")
-      .bind(next.title, next.body, next.shared, next.parent_id ?? null, next.updated_at, n.id).run();
-    if (typeof b.body === "string") await indexNote(env, n.id, next.body);
+    await env.DB.prepare("UPDATE notes SET title = ?, body = ?, shared = ?, parent_id = ?, updated_at = ?, blocks = ?, props = ?, db = ?, remind_at = ?, reminded_at = ?, remind_seen = ? WHERE id = ?")
+      .bind(next.title, next.body, next.shared, next.parent_id ?? null, next.updated_at, next.blocks ?? null, next.props ?? null, next.db ?? null, next.remind_at ?? null, next.reminded_at ?? null, next.remind_seen ?? null, n.id).run();
+    if (bodyChanged) await indexNote(env, n.id, next.body);
+    if (pdb && (b.props !== undefined || next.title !== n.title)) await refreshDbMirror(env, pdb.id, user.id);
+    if (b.db !== undefined) { await refreshDbMirror(env, n.id, user.id); next.body = (await env.DB.prepare("SELECT body FROM notes WHERE id = ?").bind(n.id).first())?.body ?? next.body; }
     return json({ note: next });
   });
   on("POST", "/notes/:id/link", async ({ req, env, user, params }) => {
@@ -205,8 +271,10 @@ export function registerNotes(on) {
   });
 
   on("DELETE", "/notes/:id", async ({ env, user, params }) => {
+    const parent = await env.DB.prepare("SELECT parent_id FROM notes WHERE id = ? AND user_id = ?").bind(params.id, user.id).first();
     const r = await env.DB.prepare("DELETE FROM notes WHERE id = ? AND user_id = ?").bind(params.id, user.id).run();
     if (!r.meta.changes) fail(404, "노트를 찾을 수 없어요.");
+    if (parent?.parent_id && await parentDb(env, parent.parent_id, user.id)) await refreshDbMirror(env, parent.parent_id, user.id);
     return json({ ok: true });
   });
 

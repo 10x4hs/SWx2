@@ -15,6 +15,8 @@ import { registerTogether, weeklyReviewCron } from "./together.js";
 import { registerRoom } from "./room.js";
 import { registerLibrary } from "./library.js";
 import { registerPush } from "./push.js";
+import { registerNews, newsCron, newsPulse } from "./news.js";
+import { registerReminders, remindersCron, REMIND_CRON } from "./reminders.js";
 import { kstToday } from "./lib/day.js";
 import { HttpError, fail, json, body, now, uid, str } from "./http.js";
 import { on, match } from "./router.js";
@@ -28,6 +30,8 @@ import { registerRecords, autoSaveYesterday } from "./records.js";
 export { RoomHub } from "./hub.js"; // Durable Object 클래스는 main 모듈에서 내보내야 해요
 
 const WEEKLY_CRON = "0 13 * * SUN";
+const NEWS_CRON = "0 23 * * *";        // 08:00 한국 시간 — 뉴스 모으고 요약 · 지도 태그 · 줄기 · 브리핑
+const NEWS_PULSE_CRON = "20 * * * *";  // 매시 20분 — 글만 긁어 와요 (토큰 0)
 
 export default {
   async fetch(req, env, ec) {
@@ -62,7 +66,22 @@ export default {
   // wrangler.jsonc 의 triggers.crons
   //   "5 15 * * *"  매일 00:05 (한국 시간) — 지난 하루의 계획·기록을 모두 자동 저장
   //   "0 13 * * SUN" 일요일 22:00 (한국 시간) — 이번 주 활동이 있는 사람의 주간 회고를 미리 만들기
+  //   "0 * * * *"   매시 정각 — 데이터베이스 행 알림 (src/reminders.js · 한 시간 단위)
   async scheduled(event, env, ec) {
+    if (event.cron === NEWS_PULSE_CRON) {
+      ec.waitUntil(newsPulse(env).then((r) => r.added && console.log("속보 수집", r.added + "편")).catch((e) => console.log("속보 실패", String(e?.message || e))));
+      return;
+    }
+    if (event.cron === NEWS_CRON) {
+      ec.waitUntil(newsCron(env, kstToday(0))
+        .then((r) => console.log("뉴스", r.added + "편", "요약 " + r.summed, r.dying.length ? "죽어가는 피드 " + r.dying.join(",") : "", r.head || ""))
+        .catch((e) => console.log("뉴스 실패", String(e?.message || e))));
+      return;
+    }
+    if (event.cron === REMIND_CRON) {
+      ec.waitUntil(remindersCron(env).then((r) => r.sent && console.log("행 알림", r.sent + "개")));
+      return;
+    }
     if (event.cron === WEEKLY_CRON) {
       ec.waitUntil(weeklyReviewCron(env).then((r) => console.log("주간 회고", r.week, r.made + "명", r.skipped || "")));
       return;
@@ -129,4 +148,6 @@ registerCalendar(on, { json, fail });
 registerTogether(on, { json, body, fail, now });
 registerRoom(on, { json, body, fail, uid, now });
 registerPush(on, { json, body, fail, uid, now });
+registerReminders(on, { json, fail });
 registerLibrary(on, { json, body, fail, uid, now });
+registerNews(on, { json, body, fail, now }); // 뉴스 Signal Map (#/news)

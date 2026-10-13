@@ -26,6 +26,7 @@ import { wireDockDrag } from "./dock-drag.js";
 import { setHiddenMe } from "./hidden-pages.js";
 import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js"; // Dock 우클릭 → 내 CSS · HTML · JS
 import * as roomView from "./views/room.js";
+import * as newsView from "./views/news.js"; // 뉴스 Signal Map (#/news · #/news/item/<id> · #/news/thread/<id>)
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
 import { startLive, stopLive } from "./live.js";
@@ -119,6 +120,7 @@ const NAV = [
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
   { key: "brain", hash: "#/brain", label: "Brain", tip: "Brain · notes + study in one tree" }, // 노트 · 공부 아이콘을 하나로
   { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI" }, // Brain 안에 묻히면 AI 공부책을 못 찾아서 바로 가는 아이콘은 남겨요
+  { key: "news", hash: "#/news", label: "News", tip: "News · Signal Map" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -294,11 +296,12 @@ function parseRoute() {
   if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
   if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
   if (a === "books") return { view: "books", nav: "study", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
+  if (a === "news") return { view: "news", nav: "news", sub: b === "item" || b === "thread" ? b : null, id: c || null };
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {
@@ -319,6 +322,7 @@ function route(redraw = false) {
   const inStudy = r.view === "english" || r.view === "papers" || r.view === "books" || (r.view === "page" && r.place === "study");
   if (lastView === "study" && inStudy) { studyView.update(r); return; } // 영어 ↔ 논문 ↔ 과목 탭, 전환은 껍데기를 그대로
   if (lastView === "page" && r.view === "page" && !inStudy) { pageView.update(r); return; } // 페이지 사이 이동은 껍데기를 그대로
+  if (lastView === "news" && r.view === "news") { newsView.update(r); return; } // 지구본은 그대로, 패널만
   if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>

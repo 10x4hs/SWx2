@@ -88,6 +88,8 @@ if (CAN_SW) {
   navigator.serviceWorker.addEventListener("message", (e) => {
     const type = e.data && e.data.type;
     if (type === "updated") showUpdate();
+    else if (type === "open-hash") { if (/^#\/news\//.test(e.data.hash || "")) location.hash = e.data.hash; }
+    else if (type === "open-url" && /^\/#\/notes\/[\w-]+$/.test(e.data.url || "")) location.hash = e.data.url.slice(1);
     else if (type === "open-room") { if (!location.hash.startsWith("#/room")) location.hash = "#/room/chat"; }
     else if (type === "room-ping") window.dispatchEvent(new CustomEvent("room-ping"));
     else if (type === "net-offline") { swOffline = true; renderNet(); }

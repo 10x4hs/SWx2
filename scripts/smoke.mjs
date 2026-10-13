@@ -27,6 +27,7 @@ const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); if (!
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
 
 import { execFileSync } from "node:child_process";
+import { applyView, remindAt, isDue } from "../public/js/blocks/dbview.js";
 // ---------- 도구 줄 해석 · 거짓 "넣었어요" 검사 (모델 없이, 고정 입력) ----------
 {
   const { parseToolCall, stripToolLines, CLAIM_RE } = await import("../src/agent.js");
@@ -191,6 +192,90 @@ r = await call("a", "GET", "/notes/" + n1); ok(r.data.children.length === 1 && r
 r = await call("a", "POST", "/notes", { title: "부모 없음", parent_id: "nope" }); ok(r.status === 404, "page: unknown parent → 404");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: pg }); ok(r.status === 400, "page: self parent → 400");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status === 200 && r.data.note.parent_id === null, "page: move to top");
+// ---------- 블록 노트 (docs/blocks-schema.md): 블록 저장 → body 마크다운 사본 · 링크 · 태그 ----------
+{
+  const doc = { v: 1, blocks: [
+    { id: "b_1", type: "h2", text: "블록 제목", props: {}, children: [] },
+    { id: "b_2", type: "toggle", text: "접기", props: {}, children: [{ id: "b_3", type: "paragraph", text: "안쪽 [[자료구조]] #블록태그", props: {}, children: [] }] },
+    { id: "b_4", type: "callout", text: "팁", props: { icon: "🔥" }, children: [] },
+  ] };
+  r = await call("a", "POST", "/notes", { title: "블록 노트 " + tag, blocks: doc });
+  const bn = r.data?.note?.id;
+  ok(r.status === 201 && /<details><summary>접기<\/summary>/.test(r.data.note.body) && /> \[!note\] 🔥 팁/.test(r.data.note.body), "blocks: create → body mirror (toggle · callout)");
+  r = await call("a", "GET", "/notes/" + n1); ok(r.data.backlinks.some((x) => x.id === bn), "blocks: [[link]] inside a toggle indexed as backlink");
+  r = await call("a", "GET", "/notes/" + bn); ok(r.data.tags.includes("블록태그") && JSON.parse(r.data.note.blocks).blocks.length === 3 && r.data.note.kind === "page", "blocks: GET returns blocks · kind · tags");
+  const base = r.data.note.updated_at;
+  doc.blocks[1].children[0].text = "링크 없음";
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: doc, base_updated_at: base }); ok(r.status === 200 && !/자료구조/.test(r.data.note.body), "blocks: PUT regenerates mirror");
+  r = await call("a", "GET", "/notes/" + n1); ok(!r.data.backlinks.some((x) => x.id === bn), "blocks: removed link un-indexed");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: doc, base_updated_at: base }); ok(r.status === 409 && r.data.note?.id === bn, "blocks: stale base_updated_at → 409");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: { v: 1, blocks: [{ type: "divider", children: [{ type: "paragraph" }] }] } }); ok(r.status === 400, "blocks: children on divider → 400");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: { v: 1, blocks: [{ type: "nope" }] } }); ok(r.status === 400, "blocks: unknown type → 400");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: { v: 2, blocks: [] } }); ok(r.status === 400, "blocks: bad version → 400");
+  r = await call("a", "PUT", "/notes/" + bn, { body: "그냥 마크다운" }); ok(r.status === 200 && r.data.note.blocks === null, "blocks: markdown save drops blocks");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: doc }); r = await call("a", "POST", "/notes/" + bn + "/link", { title: "알고리즘" });
+  r = await call("a", "GET", "/notes/" + bn); ok(r.data.note.blocks === null && /\[\[알고리즘\]\]/.test(r.data.note.body), "blocks: body-only write elsewhere drops stale blocks");
+  // 색 (schema v2): 글자 색 · 형광펜은 text 안 태그 그대로, 블록 색은 props.color
+  r = await call("a", "POST", "/notes", { title: "색 노트 " + tag, blocks: { v: 1, blocks: [{ type: "paragraph", text: 'a <span class="c-red">빨강</span> <mark class="bg-yellow">노랑</mark>', props: { color: "blue_background" } }, { type: "h2", text: "x", props: { color: "hotpink" } }] } });
+  { const bl = JSON.parse(r.data.note.blocks).blocks; ok(r.status === 201 && /<span class="c-red">빨강<\/span>/.test(r.data.note.body) && bl[0].props.color === "blue_background" && !bl[1].props.color, "colors: inline spans kept in mirror · block color kept · bad color dropped"); }
+  // 데이터베이스: 만들기 · 행(하위 노트 + props) · 스키마 · 보기
+  r = await call("a", "POST", "/notes", { title: "할 일 DB " + tag, kind: "database" });
+  const db = r.data?.note?.id, schema = r.data?.note?.db ? JSON.parse(r.data.note.db) : null;
+  ok(r.status === 201 && r.data.note.kind === "database" && schema.props[0].type === "status" && schema.views.some((v) => v.type === "board"), "db: create with default schema + table/board views");
+  r = await call("a", "POST", "/notes", { title: "제목 없음", parent_id: db, props: { status: "진행 중", date: "2026-10-13", tags: ["a", "b"], bogus: 1 }, unique_title: true });
+  const row1 = r.data?.note?.id;
+  ok(r.status === 201 && JSON.parse(r.data.note.props).status === "진행 중" && !("bogus" in JSON.parse(r.data.note.props)), "db: create row with props (unknown keys dropped)");
+  r = await call("a", "POST", "/notes", { title: "제목 없음", parent_id: db, unique_title: true }); const row2 = r.data?.note?.id;
+  ok(r.status === 201 && r.data.note.title !== "제목 없음", "db: unique_title adds a suffix");
+  r = await call("a", "PUT", "/notes/" + row1, { props: { status: "완료", date: "bad" } }); const p1 = JSON.parse(r.data.note.props);
+  ok(r.status === 200 && p1.status === "완료" && p1.date === "2026-10-13" && p1.tags.length === 2, "db: update row props (merge, bad date ignored)");
+  r = await call("a", "GET", "/notes/" + db); ok(r.data.children.length === 2 && r.data.children.some((c) => c.props && JSON.parse(c.props).status === "완료") && /\| \[\[제목 없음\]\] \| 완료 \|/.test(r.data.note.body), "db: GET returns rows · body mirror table");
+  r = await call("a", "PUT", "/notes/" + n1, { props: { status: "완료" } }); ok(r.status === 400, "db: props on a non-row → 400");
+  schema.views.push({ id: "v3", name: "By status", type: "board", group_by: "status" });
+  schema.props.push({ key: "done", name: "Done", type: "checkbox" });
+  r = await call("a", "PUT", "/notes/" + db, { db: schema }); ok(r.status === 200 && JSON.parse(r.data.note.db).views.length === 3, "db: edit schema / views");
+  schema.views[0].filters = [{ prop: "status", op: "is", value: "완료" }, { prop: "nope", op: "is", value: "x" }, { prop: "title", op: "bogus" }, { prop: "title", op: "is_not_empty" }];
+  schema.views[0].sorts = [{ prop: "date", dir: "desc" }]; schema.views[0].group_by = "tags";
+  schema.views.push({ id: "vc", name: "Cal", type: "calendar" });
+  r = await call("a", "PUT", "/notes/" + db, { db: schema }); { const v = JSON.parse(r.data.note.db).views; ok(v[0].filters.length === 2 && v[0].filters[1].op === "not_empty" && v[0].sorts[0].dir === "desc" && v[0].group_by === "tags" && v.find((x) => x.id === "vc")?.date_prop === "date", "db: view filters (bad ones dropped) · sorts · table group · calendar date_by saved"); }
+  { const { applyView } = await import("../public/js/blocks/md.js"); /* same function as dbview.js (re-export) */ const sc = JSON.parse(r.data.note.db); const rs = [{ title: "a", props: { status: "완료", date: "2026-01-02" } }, { title: "b", props: { status: "시작 전" } }, { title: "c", props: { status: "완료", date: "2026-03-01" } }];
+    ok(applyView(rs, sc, sc.views[0]).map((x) => x.title).join() === "c,a", "db: applyView filters AND + sorts"); }
+  r = await call("a", "GET", "/notes"); ok(!r.data.notes.some((x) => x.id === row1) && r.data.notes.some((x) => x.id === db), "db: rows hidden from the notes list (shown under their DB)");
+  r = await call("a", "PUT", "/notes/" + db, { db: { props: [{ key: "Bad Key", type: "text" }] } }); ok(r.status === 400, "db: bad prop key → 400");
+  r = await call("a", "DELETE", "/notes/" + row2); r = await call("a", "GET", "/notes/" + db); ok(r.data.children.length === 1, "db: delete row");
+  r = await call("b", "PUT", "/notes/" + row1, { props: { status: "시작 전" } }); ok(r.status === 404, "db: other user cannot edit rows");
+  // 보기: 필터 · 정렬 · 묶기 · 달력 (서버가 검증해요)
+  const s2 = JSON.parse((await call("a", "GET", "/notes/" + db)).data.note.db);
+  s2.views[0].filters = [{ prop: "status", op: "is", value: "완료" }, { prop: "date", op: "after", value: "2026-01-01" }, { prop: "status", op: "gt", value: 3 }, { prop: "nope", op: "is", value: "x" }, { prop: "date", op: "before", value: "bad" }];
+  s2.views[0].sorts = [{ prop: "date", dir: "desc" }, { prop: "title", dir: "up" }, { prop: "date", dir: "asc" }];
+  s2.views[0].group_by = "tags";
+  s2.views.push({ id: "cal", name: "Calendar", type: "calendar", date_prop: "date" }, { id: "cal2", name: "C2", type: "calendar", date_prop: "status" });
+  r = await call("a", "PUT", "/notes/" + db, { db: s2 }); const vs = JSON.parse(r.data?.note?.db || "{}").views || [];
+  ok(r.status === 200 && JSON.stringify(vs[0].filters) === JSON.stringify([{ prop: "status", op: "is", value: "완료" }, { prop: "date", op: "after", value: "2026-01-01" }])
+    && JSON.stringify(vs[0].sorts) === JSON.stringify([{ prop: "date", dir: "desc" }, { prop: "title", dir: "asc" }]) && vs[0].group_by === "tags", "db views: filters/sorts/group saved, bad ones dropped");
+  ok(vs.find((v) => v.id === "cal")?.date_prop === "date" && vs.find((v) => v.id === "cal2")?.date_prop === "date", "db views: calendar date_prop validated (non-date → first date prop)");
+  r = await call("a", "GET", "/notes/" + db); ok(JSON.parse(r.data.note.db).views[0].filters.length === 2, "db views: persisted");
+  const rows = [{ id: 1, title: "b", props: { status: "완료", date: "2026-03-01" } }, { id: 2, title: "a", props: { status: "완료", date: "2026-05-01" } }, { id: 3, title: "c", props: { status: "시작 전", date: "2026-06-01" } }, { id: 4, title: "d", props: { status: "완료" } }];
+  const shown = applyView(rows, JSON.parse(r.data.note.db), JSON.parse(r.data.note.db).views[0]).map((x) => x.id);
+  ok(shown.join() === "2,1", "db views: applyView filters (AND) + sorts → " + shown.join());
+  ok(applyView(rows, { props: s2.props }, { sorts: [{ prop: "date", dir: "asc" }] }).map((x) => x.id).join() === "1,2,3,4", "db views: empty values sort last");
+  // 달력에서 카드를 다른 날로 옮기면 날짜 속성이 바뀌어요
+  r = await call("a", "PUT", "/notes/" + row1, { props: { date: "2026-10-20" } }); ok(r.status === 200 && JSON.parse(r.data.note.props).date === "2026-10-20", "db calendar: move card → date prop updated");
+  // 알림: props._remind → remind_at, 크론(매시) 이 보내고, 서비스 워커가 한 번만 가져가요
+  ok(remindAt({ date: "2026-10-20", _remind: { prop: "date", time: "09:00" } }) === Date.parse("2026-10-20T00:00:00Z"), "reminder: remind_at = date + time in KST");
+  const T0 = Date.parse("2026-10-20T00:00:00Z");
+  ok(isDue({ remind_at: T0 }, T0 + 1) && !isDue({ remind_at: T0 }, T0 - 1) && !isDue({ remind_at: T0, reminded_at: 1 }, T0 + 1) && !isDue({ remind_at: T0 }, T0 + 27 * 3600e3), "reminder: due selection (past · unsent · not too late)");
+  r = await call("a", "PUT", "/notes/" + row1, { props: { _remind: { prop: "date", time: "09:00" } } });
+  ok(r.status === 200 && r.data.note.remind_at === T0 && JSON.parse(r.data.note.props)._remind.time === "09:00", "reminder: saved on row");
+  r = await call("a", "PUT", "/notes/" + row1, { props: { _remind: { prop: "status", time: "09:00" } } }); ok(!JSON.parse(r.data.note.props)._remind && r.data.note.remind_at === null, "reminder: non-date prop rejected (cleared)");
+  r = await call("a", "PUT", "/notes/" + row1, { props: { _remind: { prop: "date", time: "25:99" } } }); ok(JSON.parse(r.data.note.props)._remind.time === "09:00", "reminder: bad time → 09:00");
+  r = await call("a", "POST", "/reminders/run?now=" + (T0 - 1000)); ok(r.status === 200 && !(r.data.sent > 0 && (await call("a", "POST", "/reminders/take")).data.reminders.some((x) => x.id === row1)), "reminder: not sent before time");
+  r = await call("a", "POST", "/reminders/run?now=" + (T0 + 60e3)); ok(r.status === 200 && r.data.sent >= 1, "reminder: cron sends when due");
+  r = await call("a", "POST", "/reminders/take"); ok(r.data.reminders.some((x) => x.id === row1 && x.date === "2026-10-20" && x.db_title === "할 일 DB " + tag), "reminder: owner takes it once");
+  r = await call("a", "POST", "/reminders/take"); ok(!r.data.reminders.some((x) => x.id === row1), "reminder: not delivered twice");
+  r = await call("b", "POST", "/reminders/take"); ok(!r.data.reminders.some((x) => x.id === row1), "reminder: other user never sees it");
+  r = await call("a", "POST", "/reminders/run?now=" + (T0 + 120e3)); ok(!r.data.sent, "reminder: cron does not resend");
+}
 r = await call("a", "POST", "/ai/ask", { note_id: n1, question: "" }); ok(r.status === 400, "ai/ask: empty question → 400");
 r = await call("a", "POST", "/ai/plan", { messages: [] }); ok(r.status === 400, "ai/plan: no messages → 400");
 r = await call("a", "POST", "/ai/command", { text: "" }); ok(r.status === 400, "ai/command: empty → 400");
@@ -791,6 +876,54 @@ if (!process.env.SKIP_AI) {
   r = await fetch(BASE + "/api/mcp/oauth/" + cl.client_id, { method: "DELETE", headers: { cookie, "x-trio": "1" } }); ok((await r.json()).removed, "oauth: revoke from app");
   r = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + t.d.access_token }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) }); ok(r.status === 401, "oauth: revoked grant → 401");
   
+}
+
+// ---------- 뉴스 Signal Map: 지도 · 토론(2단) · 🤖 반박 · 반박 알림 (wrangler dev --var NEWS_FAKE_AI:1 이면 AI 없이) ----------
+{
+  const fid = "smk-f" + tag, iid = "smk-i" + tag, t0 = Date.now();
+  d1(`INSERT INTO news_feeds (id, url, name, topic, created_at) VALUES ('${fid}', 'https://example.com/${fid}', 'Smoke Feed', 'china', ${t0})`);
+  d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, one_liner, geo, created_at) VALUES ('${iid}', '${fid}', 'https://example.com/${iid}', 'Beijing tightens rare earth smoke export', ${t0 - 3600e3}, 'China said on Monday it will tighten rare earth exports. Washington called the move coercive.', '중국이 희토류 수출을 죄어요', '["CN","US"]', ${t0})`);
+  const uid2 = "smk-u" + tag;
+  d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, dated, raw, created_at) VALUES ('${uid2}', '${fid}', 'https://example.com/${uid2}', 'Undated smoke item', ${t0}, 0, 'x', ${t0})`);
+  const yday = new Date(t0 + 9 * 3600e3 - 864e5).toISOString().slice(0, 10);
+  const hadToday = d1(`SELECT day FROM news_briefs WHERE day = '${new Date(t0 + 9 * 3600e3).toISOString().slice(0, 10)}'`).length;
+  d1(`INSERT OR IGNORE INTO news_briefs (day, headline, body, weights, item_count, created_at) VALUES ('${yday}', 'smoke brief', '', '[]', 0, ${t0})`);
+  r = await call("a", "GET", "/news/map");
+  ok(r.data.brief && r.data.brief.day && (hadToday || r.data.brief.day === yday), "news: map falls back to latest briefing with its date");
+  ok(r.data.live.find((i) => i.id === uid2)?.dated === 0, "news: undated item flagged dated=0 (shown as 'new')");
+  d1(`DELETE FROM news_items WHERE id = '${uid2}'`); if (!hadToday) d1(`DELETE FROM news_briefs WHERE day = '${yday}' AND headline = 'smoke brief'`);
+  r = await call("a", "GET", "/news/map"); ok(r.status === 200 && Array.isArray(r.data.signals) && Array.isArray(r.data.threads) && typeof r.data.count === "number", "news: map shape");
+  const sig = r.data.signals.find((s) => s.id === iid) || r.data.live.find((s) => s.id === iid);
+  ok(sig && sig.geo.includes("CN") && Array.isArray(sig.readers), "news: map item has geo + readers");
+  r = await call("a", "POST", `/news/item/${iid}/comments`, { body: "희토류는 협상 카드일 뿐이에요" }); ok(r.status === 200 && r.data.comment.stance === "memo" && r.data.notified.length === 0, "news: memo saved, nobody notified");
+  const memo = r.data.comment;
+  r = await call("b", "POST", `/news/item/${iid}/comments`, { body: "카드가 아니라 실제 공급 차단이에요", stance: "rebut", parent_id: memo.id });
+  ok(r.status === 200 && r.data.comment.stance === "rebut" && r.data.notified.length === 1 && r.data.notified[0] === uidA, "news: friend's rebut notifies memo author (push trigger)");
+  const reply = r.data.comment;
+  r = await call("a", "POST", `/news/item/${iid}/comments`, { body: "3단?", stance: "agree", parent_id: reply.id }); ok(r.status === 400, "news: depth limit — no reply to a reply");
+  r = await call("a", "POST", `/news/item/${iid}/comments`, { body: "내 메모에 내가 동의", stance: "agree", parent_id: memo.id }); ok(r.status === 200 && r.data.notified.length === 0, "news: own reply does not notify self");
+  r = await call("a", "POST", `/news/item/${iid}/comments`, { body: "  " }); ok(r.status === 400, "news: empty comment 400");
+  r = await call("b", "POST", `/news/comments/${memo.id}/ai-rebut`);
+  ok(r.status === 200 && r.data.comment.ai === 1 && r.data.comment.stance === "rebut" && r.data.notified[0] === uidA, "news: AI rebut returned + notifies memo author");
+  ok(d1(`SELECT ai, stance FROM news_comments WHERE parent_id = '${memo.id}' AND ai = 1`).length === 1, "news: AI rebut stored with ai=1 (D1)");
+  ok(/^1\. .+\n> .+\n2\. /m.test(r.data.comment.body), "news: AI rebut = numbered counter-points, each with an evidence line");
+  r = await call("b", "POST", `/news/comments/${memo.id}/ai-rebut`); ok(r.status === 409, "news: only one AI rebut per memo");
+  r = await call("b", "POST", `/news/comments/${reply.id}/ai-rebut`); ok(r.status === 400, "news: AI rebut only on memos");
+  r = await call("b", "PATCH", `/news/item/${iid}`, { read: true, flagged: true });
+  r = await call("a", "GET", `/news/item/${iid}`);
+  ok(r.status === 200 && r.data.comments.length === 4 && r.data.item.readers.includes(uidB) && r.data.item.stars.includes(uidB), "news: item has discussion + read/star marks of friends");
+  r = await call("a", "GET", "/news/items?filter=all&balance=0&limit=200"); const li = r.data.items.find((i) => i.id === iid);
+  ok(li && li.comments === 4 && li.disputed === true, "news: list shows 💬 count + ⚡ disputed");
+  r = await call("a", "GET", "/news/inbox"); ok(r.status === 200 && r.data.n === 2 && r.data.last, "news: inbox has 2 replies from others");
+  await call("a", "PUT", "/news/inbox/seen"); r = await call("a", "GET", "/news/inbox"); ok(r.data.n === 0, "news: inbox cleared after seen");
+  r = await call("b", "DELETE", `/news/comments/${memo.id}`); ok(r.status === 404, "news: cannot delete others' memo");
+  r = await call("a", "POST", "/news/threads", { title: "희토류 스모크", keywords: ["rare earth smoke"] }); ok(r.status === 200 && r.data.attached >= 1, "news: manual thread back-attaches by keyword");
+  const th = r.data.id;
+  r = await call("a", "GET", `/news/thread/${th}`); ok(r.status === 200 && r.data.items.some((i) => i.id === iid), "news: thread timeline lists item");
+  r = await call("a", "POST", `/news/thread/${th}/story`); ok(r.status === 200 && typeof r.data.story === "string" && r.data.story.length > 0, "news: story so far generated");
+  r = await call("a", "DELETE", `/news/comments/${memo.id}`); ok(r.status === 200, "news: delete own memo");
+  ok(d1(`SELECT COUNT(*) AS n FROM news_comments WHERE item_id = '${iid}'`)[0].n === 0, "news: replies go with the memo");
+  d1(`DELETE FROM news_threads WHERE id = '${th}'`); d1(`DELETE FROM news_items WHERE id = '${iid}'`); d1(`DELETE FROM news_feeds WHERE id = '${fid}'`);
 }
 
 // ---------- 페이지 파일: sandbox iframe 은 쿠키가 없어서 /pf/<id>/~<토큰>/ 으로 불러요 ----------

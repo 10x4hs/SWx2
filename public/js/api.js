@@ -167,6 +167,17 @@ export const api = {
 
   // 대화방 (셋이 같이 쓰는 방 하나) · 창고 (책 · 링크 · 영상)
   // room: 'all'(우리 셋) 또는 'dm:<id>:<id>'(두 사람, id 정렬). 안 주면 'all'.
+  // 뉴스 Signal Map (#/news)
+  newsMap: () => request("GET", "/news/map"),
+  newsItem: (id) => request("GET", "/news/item/" + id),
+  newsDeep: (id) => request("POST", "/news/item/" + id + "/deep", {}),
+  newsMark: (id, b) => request("PATCH", "/news/item/" + id, b),
+  newsThread: (id) => request("GET", "/news/thread/" + id),
+  newsStory: (id) => request("POST", "/news/thread/" + id + "/story", {}),
+  newsComment: (id, b) => request("POST", "/news/item/" + id + "/comments", b),
+  newsAiRebut: (cid) => request("POST", "/news/comments/" + cid + "/ai-rebut", {}),
+  newsDelComment: (cid) => request("DELETE", "/news/comments/" + cid),
+  newsSeen: () => request("PUT", "/news/inbox/seen", {}),
   room: (since, limit, room) => request("GET", "/room?" + qs({ since, limit, room })),
   sendRoom: (b) => request("POST", "/room", b),
   retryRoomAi: (message_id, room) => request("POST", "/room/ai", { message_id, room }),

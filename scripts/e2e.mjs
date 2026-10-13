@@ -11,6 +11,7 @@
 //   ⑨ 친구 페이지 숨기기 — 친구가 공개한 Dock 페이지 · 공부 과목 탭을 '내 화면에서 숨기기', 프로필에서 다시 보이기
 //   ⑩ Study 그래프 — 영어 · 논문 · AI · 과목 페이지마다 [내용 | 그래프], 크기 기준 · 크기가 계정에 저장, 점을 누르면 그 내용으로
 //   ⑪ Brain — 노트 + 공부를 한 나무로: 맨 위엔 큰 개념 5개, 누르면 안으로, 공부 점은 원래 화면, 가져오기는 다시 올려도 그대로 (2026-10-13)
+//   ⑫ 뉴스 Signal Map — 인트로가 뜨고 Space 로 건너뛰기 · 지구본 · 다시 오면 짧은 인트로 · 글 열기 · 메모 + 반박 (2026-10-13)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -203,6 +204,121 @@ try {
         `${tv} · Brain — 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
     } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
 
+    // ---------- ⑫ 블록 편집기 — 토글 접기 · "/" 로 콜아웃 · 보드에서 끌면 상태가 바뀌어요 (2026-10-13) ----------
+    try {
+      errs = [];
+      const doc = { v: 1, blocks: [{ id: "b_tg1", type: "toggle", text: "Fold me", props: {}, children: [{ id: "b_in1", type: "paragraph", text: "hidden inside", props: {}, children: [] }] }, { id: "b_p1", type: "paragraph", text: "", props: {}, children: [] }] };
+      const bn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 블록 " + tv, blocks: doc } })).json()).note.id;
+      await go("#/notes/" + bn, 2200);
+      await p.evaluate(() => { const b = [...document.querySelectorAll('[data-mode="block"]')][0]; if (b && b.getAttribute("aria-selected") !== "true") b.click(); });
+      await p.waitForSelector('.nb[data-id="b_tg1"] .nb-tg', { timeout: 8000 });
+      const vis = () => p.evaluate(() => !!document.querySelector('.nb[data-id="b_in1"]'));
+      const v0 = await vis(); await p.click('.nb[data-id="b_tg1"] .nb-tg'); const v1 = await vis(); await p.click('.nb[data-id="b_tg1"] .nb-tg'); const v2 = await vis();
+      await p.click('.nb[data-id="b_p1"] .nb-text'); await p.keyboard.type("/callout"); await sleep(200);
+      const menuOk = await p.evaluate(() => !!document.querySelector('.nb-menu [data-type="callout"]'));
+      await p.keyboard.press("Enter"); await p.keyboard.type("Hello callout");
+      for (let i = 0; i < 7; i++) await p.keyboard.press("Shift+ArrowLeft");
+      await p.waitForSelector(".nb-tb", { timeout: 3000 }).catch(() => {});
+      await p.click('.nb-tb [data-f="b"]').catch(() => {}); await sleep(1500);
+      const saved = await (await ctx.request.get(BASE + "/api/notes/" + bn)).json();
+      const sb = JSON.parse(saved.note.blocks || "{}").blocks || [];
+      ok(v0 !== v1 && v1 !== v2 && menuOk && sb.some((b) => b.type === "callout" && /Hello \*\*callout\*\*/.test(b.text)) && /\[!note\]/.test(saved.note.body) && !errs.length,
+        `${tv} · 블록 — 토글 ${v0}→${v1}→${v2} · "/" 메뉴 ${menuOk} · 콜아웃 저장 ${sb.map((b) => b.type).join(",")}${errs.length ? " — " + errs[0] : ""}`);
+      // "@" 멘션 → [[페이지]] 링크 · 그 페이지 아래 백링크 (제목 형광펜)
+      const tgt = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사대상" + tv, body: "x" } })).json()).note.id;
+      await p.goto("about:blank"); await go("#/notes/" + bn, 2200);
+      await p.click('.nb[data-id="b_p1"] .nb-text').catch(() => {});
+      const last = p.locator(".nb-doc > .nb").last().locator(".nb-text").first();
+      await last.click(); await p.keyboard.press("End"); await p.keyboard.press("Enter"); await p.keyboard.type("see @검사대상" + tv); await sleep(300);
+      const atMenu = await p.evaluate(() => [...document.querySelectorAll(".suggest button")].map((b) => b.textContent).join("|") + " / " + document.activeElement?.className + ":" + document.activeElement?.innerText + " / " + location.hash);
+      await p.keyboard.press("Enter"); await sleep(1500);
+      const s2 = await (await ctx.request.get(BASE + "/api/notes/" + bn)).json();
+      await go("#/notes/" + tgt, 2200);
+      const bl = await p.evaluate(() => ({ cnt: document.querySelector("#bl-count")?.textContent || "", mark: document.querySelector("#ed-back-list mark")?.textContent || "" }));
+      ok(new RegExp("\\[\\[검사대상" + tv + "\\]\\]").test(s2.note.body) && /1 backlink/.test(bl.cnt) && bl.mark === "검사대상" + tv, `${tv} · "@" 멘션 → 링크 · 백링크 ${bl.cnt} · 형광펜 ${bl.mark} (메뉴 ${atMenu.slice(0, 60)})`);
+      const dbn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 DB " + tv, kind: "database" } })).json()).note.id;
+      const row = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 카드 " + tv, parent_id: dbn, props: { status: "시작 전" } } })).json()).note.id;
+      const row2 = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 카드2 " + tv, parent_id: dbn, props: { status: "시작 전" } } })).json()).note.id;
+      await go("#/notes/" + dbn, 2200);
+      await p.waitForSelector(".db-tabs", { timeout: 8000 });
+      const tableOk = await p.evaluate(() => !!document.querySelector(".db-table .db-pill.st"));
+      await p.evaluate(() => [...document.querySelectorAll(".db-tabs [data-view]")].find((b) => /Board/.test(b.textContent))?.click());
+      await p.waitForSelector(`.db-card[data-row="${row}"]`, { timeout: 8000 });
+      await p.dragAndDrop(`.db-card[data-row="${row}"]`, '.db-col[data-group="완료"]'); await sleep(1200);
+      const rp = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + row)).json()).note.props || "{}");
+      const cnt = await p.evaluate(() => document.querySelector('.db-col[data-group="완료"] .db-count')?.textContent);
+      await p.screenshot({ path: `${process.env.SHOTS || "/tmp"}/e2e-board-${w}.png` }).catch(() => {});
+      ok(tableOk && rp.status === "완료" && cnt === "1", `${tv} · DB — 표 상태 알약 ${tableOk} · 보드 끌기 → ${rp.status} (완료 ${cnt})`);
+      // 손가락 끌기: 길게 눌러 들고 → 다른 열에 놓기 (pointer 이벤트, pointerType touch)
+      await p.evaluate(async (rid) => {
+        const c = document.querySelector(`.db-card[data-row="${rid}"]`), t = document.querySelector('.db-col[data-group="진행 중"]');
+        const a = c.getBoundingClientRect(), b = t.getBoundingClientRect(), ev = (type, x, y) => c.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", clientX: x, clientY: y }));
+        ev("pointerdown", a.x + 10, a.y + 10); await new Promise((r) => setTimeout(r, 550));
+        ev("pointermove", b.x + 20, b.y + 30); ev("pointerup", b.x + 20, b.y + 30);
+      }, row2);
+      await sleep(1200);
+      const rp2 = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + row2)).json()).note.props || "{}");
+      // 필터: 표 보기에서 Filter → + Add filter → 상태 = 완료 → 한 줄만
+      await p.evaluate(() => [...document.querySelectorAll(".db-tabs [data-view]")].find((b) => /Table/.test(b.textContent))?.click());
+      await p.waitForSelector(".db-table", { timeout: 8000 });
+      await p.click("[data-add-filter]"); await p.click('.db-pop [data-p="status"]'); await p.click('.db-pop [data-fopt="완료"]'); await sleep(1200);
+      const shown = await p.evaluate(() => document.querySelectorAll(".db-table tr[data-row]").length);
+      const listed = await (await ctx.request.get(BASE + "/api/notes")).json();
+      ok(rp2.status === "진행 중" && shown === 1 && !listed.notes.some((n) => n.id === row2), `${tv} · DB — 손가락 끌기 → ${rp2.status} · 필터 후 ${shown}줄 · 행은 왼쪽 목록에서 숨김`);
+    } catch (e) { ok(false, `${tv} · 블록 편집기 — ${String(e.message).split("\n")[0]}`); }
+
+    // ---------- ⑬ 데이터베이스 — 필터로 줄이기 · 묶기 · 달력에서 날짜 옮기기 (컴퓨터는 마우스, 폰은 길게 눌러 끌기) ----------
+    try {
+      errs = [];
+      const shot = (n) => p.screenshot({ path: `${process.env.SHOTS || "/tmp"}/e2e-${n}-${w}.png` }).catch(() => {});
+      const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), mon = today.slice(0, 7);
+      const other = today.endsWith("-02") ? mon + "-03" : mon + "-02";
+      const dbn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 필터 DB " + tv, kind: "database" } })).json()).note.id;
+      const mkRow = async (title, props) => (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: title + " " + tv, parent_id: dbn, props } })).json()).note.id;
+      await mkRow("필터 하나", { status: "완료", date: today, tags: ["math"] });
+      await mkRow("필터 둘", { status: "진행 중", date: today, tags: ["eng"] });
+      const r3 = await mkRow("필터 셋", { status: "시작 전", date: other, tags: ["math", "eng"] });
+      await go("#/notes/" + dbn, 2200);
+      await p.waitForSelector(".db-table", { timeout: 8000 });
+      const before = await p.locator(".db-table tbody tr").count();
+      const listed = await p.evaluate(() => [...document.querySelectorAll("#nl .nt")].map((x) => x.textContent).join("|"));
+      await p.click("[data-add-filter]"); await p.click('.db-pop [data-p="status"]'); await p.click('.db-pop [data-fopt="완료"]'); await sleep(1200);
+      const after = await p.locator(".db-table tbody tr").count();
+      const sv = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + dbn)).json()).note.db).views[0];
+      await shot("db-filter");
+      ok(before === 3 && after === 1 && sv.filters?.[0]?.value === "완료" && !listed.includes("필터 하나") && listed.includes("검사 필터 DB"), `${tv} · DB 필터 — ${before}줄 → ${after}줄 · 저장 ${JSON.stringify(sv.filters)} · 왼쪽 목록에 행 숨김 ${!listed.includes("필터 하나")}`);
+      await p.click("[data-del-filter='0']"); await sleep(1000);
+      await p.click(".db-bar [data-group-menu]"); await p.click('.db-pop [data-g="tags"]'); await sleep(1200);
+      const groups = await p.locator(".db-tgroup").count();
+      const vb = (await p.locator(".db-tabs [data-view]").allTextContents()).findIndex((t) => /Board/.test(t));
+      await p.locator(".db-tabs [data-view]").nth(vb).click(); await sleep(300);
+      await p.click(".db-bar [data-group-menu]"); await p.click('.db-pop [data-g="tags"]'); await sleep(1200);
+      const cols = await p.locator(".db-col").count(), mathCnt = await p.evaluate(() => document.querySelector('.db-col[data-group="math"] .db-count')?.textContent);
+      await shot("db-board-grouped");
+      ok(groups >= 2 && cols >= 2 && mathCnt === "2", `${tv} · DB 묶기 — 표 묶음 ${groups}개 · 보드(태그) 칸 ${cols}개 · math ${mathCnt}`);
+      // 달력: 보기를 더하고 카드를 다른 날로
+      await p.click(".db-addview"); await p.click('.db-pop [data-v="calendar"]'); await sleep(1500);
+      await p.waitForSelector(`.db-cal-card[data-row="${r3}"]`, { timeout: 8000 });
+      if (w > 640) {
+        await p.dragAndDrop(`.db-cal-card[data-row="${r3}"]`, `.db-cal-cell[data-day="${today}"]`);
+      } else {
+        // 폰: 길게 누르고(350ms) 끌어서 오늘 칸에 놓아요 — pointerType touch
+        await p.evaluate(async ({ r3, today }) => {
+          const c = document.querySelector(`.db-cal-card[data-row="${r3}"]`), t = document.querySelector(`.db-ag-day[data-drop="${today}"]`);
+          const a = c.getBoundingClientRect(), b = t.getBoundingClientRect();
+          const ev = (type, x, y, el) => (el || document.elementFromPoint(x, y)).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", clientX: x, clientY: y }));
+          ev("pointerdown", a.left + 10, a.top + 10, c);
+          await new Promise((r) => setTimeout(r, 450));
+          const steps = 6; for (let i = 1; i <= steps; i++) ev("pointermove", a.left + 10, a.top + 10 + ((b.top + 12 - a.top - 10) * i) / steps, c);
+          ev("pointerup", a.left + 10, b.top + 12, c);
+        }, { r3, today });
+      }
+      await sleep(1500);
+      const moved = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + r3)).json()).note.props || "{}").date;
+      await shot("db-calendar");
+      ok(moved === today && !errs.length, `${tv} · DB 달력 — 카드 ${other} → ${moved}${errs.length ? " — " + errs[0] : ""}`);
+    } catch (e) { ok(false, `${tv} · DB 필터 · 달력 — ${String(e.message).split("\n")[0]}`); }
+
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
     const kst = (n) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
     execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `INSERT OR REPLACE INTO day_records (user_id, day, data, score, done, total, auto, saved_at, ai_score, ai_note, ai_model) SELECT id, '${kst(-1)}', '{"plans":[]}', 70, 1, 1, 1, 0, 82, '우선순위 높은 일을 끝냈어요.', 'openai/gpt-oss-120b' FROM users WHERE username = '${user}'`], { stdio: "ignore" });
@@ -261,6 +377,43 @@ try {
     ok(pe.secs >= 9 && pe.scene >= 1 && pe.toc > 0 && answered && !errs.length, `${tv} · 논문 한 편 — 장 ${pe.secs} · 장면 ${pe.scene} · 목차 ${pe.toc} · 퀴즈 답하기 ${answered}${errs.length ? " — " + errs[0] : ""}`);
     await go("#/papers/easy/review", 2000);
     ok(await p.evaluate(() => !!document.querySelector(".ez-rv h2, .ez-rv .qz")), `${tv} · 논문 섞어서 복습 화면`);
+
+    // ---------- ⑫ 뉴스 Signal Map — 인트로 건너뛰기 · 지도 · 글 열기 · 메모 + 반박 (2026-10-13) ----------
+    errs = [];
+    if (!(await (await ctx.request.get(BASE + "/api/news/map")).json()).signals?.length) execFileSync("node", ["scripts/news-seed.mjs"], { stdio: "ignore" });
+    await p.goto(BASE + "/"); await sleep(600);
+    await p.evaluate(() => { try { localStorage.removeItem("nw-intro"); } catch {} location.hash = "#/news"; });
+    await p.waitForSelector(".nw.intro-on", { timeout: 8000 }).catch(() => {});
+    const introOn = await p.evaluate(() => document.querySelector(".nw")?.classList.contains("intro-on"));
+    await sleep(500); await p.keyboard.press("Space"); await sleep(700);
+    const skipped = await p.evaluate(() => { const n = document.querySelector(".nw"); return n.classList.contains("ready") && !n.classList.contains("intro-on"); });
+    ok(introOn && skipped, `${tv} · 뉴스 인트로가 뜨고 Space 로 건너뛰어요`);
+    await p.waitForSelector(".nw-sig", { timeout: 8000 }).catch(() => {});
+    const sigs = await p.evaluate(() => document.querySelectorAll(".nw-sig").length);
+    await p.waitForSelector(".nw.globe-on", { timeout: 15000 }).catch(() => {});
+    const hs = await p.evaluate(() => ({ globe: !!document.querySelector(".nw.globe-on .nw-globe canvas"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+    ok(sigs > 0 && hs.globe && !hs.over, `${tv} · 지도 홈 — 신호 ${sigs}개 · 지구본 ${hs.globe} · 가로 넘침 없음`);
+    // 다시 오면 짧은 인트로 (0.8초 안쪽)
+    await p.evaluate(() => { location.hash = "#/"; }); await sleep(500);
+    await p.evaluate(() => { location.hash = "#/news"; }); await sleep(1300);
+    ok(await p.evaluate(() => document.querySelector(".nw")?.classList.contains("ready")), `${tv} · 두 번째로 열면 짧은 인트로 뒤 바로 지도`);
+    const firstId = await p.evaluate(() => document.querySelector(".nw-live .nw-li")?.dataset.id);
+    await p.click(".nw-live .nw-li");
+    await p.waitForSelector("#nw-compose textarea", { timeout: 8000 }).catch(() => {});
+    ok(await p.evaluate((id) => location.hash === "#/news/item/" + id && !!document.querySelector(".nw.panel-on .nw-ko"), firstId), `${tv} · 글을 열면 한국어 요약 패널`);
+    await p.fill("#nw-compose textarea", "e2e memo " + tv);
+    await p.click("#nw-compose button"); await sleep(600);
+    const memoN = await p.evaluate(() => document.querySelectorAll(".nw-memo").length);
+    await p.locator(".nw-memo").last().locator("[data-reply=rebut]").click();
+    await p.locator(".nw-memo").last().locator(".nw-rform textarea").fill("e2e rebut");
+    await p.locator(".nw-memo").last().locator(".nw-rform button").click(); await sleep(600);
+    const talk = await p.evaluate(() => ({ rebut: !!document.querySelector(".nw-memo:last-of-type .nw-reply.nw-rebut"), n: document.querySelector("#nw-talk-n")?.textContent || "" }));
+    ok(memoN > 0 && talk.rebut && talk.n.includes("disputed"), `${tv} · 메모 + 반박(빨강) — ⚡ disputed 표시`);
+    await p.keyboard.press("Escape"); await sleep(600);
+    ok(await p.evaluate(() => location.hash === "#/news" && !document.querySelector(".nw.panel-on")) && !errs.length, `${tv} · Esc 로 패널 닫기 · 오류 없음${errs.length ? " — " + errs[0] : ""}`);
+    await ctx.request.fetch(BASE + "/api/news/item/" + firstId, { method: "GET", headers: H }).then(async (r) => {
+      for (const c of (await r.json()).comments || []) if (/^e2e /.test(c.body) && !c.parent_id) await ctx.request.fetch(BASE + "/api/news/comments/" + c.id, { method: "DELETE", headers: H });
+    }).catch(() => {});
 
     await ctx.close();
   }
