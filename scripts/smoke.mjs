@@ -191,6 +191,49 @@ r = await call("a", "GET", "/notes/" + n1); ok(r.data.children.length === 1 && r
 r = await call("a", "POST", "/notes", { title: "부모 없음", parent_id: "nope" }); ok(r.status === 404, "page: unknown parent → 404");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: pg }); ok(r.status === 400, "page: self parent → 400");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status === 200 && r.data.note.parent_id === null, "page: move to top");
+// ---------- 블록 노트 (docs/blocks-schema.md): 블록 저장 → body 마크다운 사본 · 링크 · 태그 ----------
+{
+  const doc = { v: 1, blocks: [
+    { id: "b_1", type: "h2", text: "블록 제목", props: {}, children: [] },
+    { id: "b_2", type: "toggle", text: "접기", props: {}, children: [{ id: "b_3", type: "paragraph", text: "안쪽 [[자료구조]] #블록태그", props: {}, children: [] }] },
+    { id: "b_4", type: "callout", text: "팁", props: { icon: "🔥" }, children: [] },
+  ] };
+  r = await call("a", "POST", "/notes", { title: "블록 노트 " + tag, blocks: doc });
+  const bn = r.data?.note?.id;
+  ok(r.status === 201 && /<details><summary>접기<\/summary>/.test(r.data.note.body) && /> \[!note\] 🔥 팁/.test(r.data.note.body), "blocks: create → body mirror (toggle · callout)");
+  r = await call("a", "GET", "/notes/" + n1); ok(r.data.backlinks.some((x) => x.id === bn), "blocks: [[link]] inside a toggle indexed as backlink");
+  r = await call("a", "GET", "/notes/" + bn); ok(r.data.tags.includes("블록태그") && JSON.parse(r.data.note.blocks).blocks.length === 3 && r.data.note.kind === "page", "blocks: GET returns blocks · kind · tags");
+  const base = r.data.note.updated_at;
+  doc.blocks[1].children[0].text = "링크 없음";
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: doc, base_updated_at: base }); ok(r.status === 200 && !/자료구조/.test(r.data.note.body), "blocks: PUT regenerates mirror");
+  r = await call("a", "GET", "/notes/" + n1); ok(!r.data.backlinks.some((x) => x.id === bn), "blocks: removed link un-indexed");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: doc, base_updated_at: base }); ok(r.status === 409 && r.data.note?.id === bn, "blocks: stale base_updated_at → 409");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: { v: 1, blocks: [{ type: "divider", children: [{ type: "paragraph" }] }] } }); ok(r.status === 400, "blocks: children on divider → 400");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: { v: 1, blocks: [{ type: "nope" }] } }); ok(r.status === 400, "blocks: unknown type → 400");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: { v: 2, blocks: [] } }); ok(r.status === 400, "blocks: bad version → 400");
+  r = await call("a", "PUT", "/notes/" + bn, { body: "그냥 마크다운" }); ok(r.status === 200 && r.data.note.blocks === null, "blocks: markdown save drops blocks");
+  r = await call("a", "PUT", "/notes/" + bn, { blocks: doc }); r = await call("a", "POST", "/notes/" + bn + "/link", { title: "알고리즘" });
+  r = await call("a", "GET", "/notes/" + bn); ok(r.data.note.blocks === null && /\[\[알고리즘\]\]/.test(r.data.note.body), "blocks: body-only write elsewhere drops stale blocks");
+  // 데이터베이스: 만들기 · 행(하위 노트 + props) · 스키마 · 보기
+  r = await call("a", "POST", "/notes", { title: "할 일 DB " + tag, kind: "database" });
+  const db = r.data?.note?.id, schema = r.data?.note?.db ? JSON.parse(r.data.note.db) : null;
+  ok(r.status === 201 && r.data.note.kind === "database" && schema.props[0].type === "status" && schema.views.some((v) => v.type === "board"), "db: create with default schema + table/board views");
+  r = await call("a", "POST", "/notes", { title: "제목 없음", parent_id: db, props: { status: "진행 중", date: "2026-10-13", tags: ["a", "b"], bogus: 1 }, unique_title: true });
+  const row1 = r.data?.note?.id;
+  ok(r.status === 201 && JSON.parse(r.data.note.props).status === "진행 중" && !("bogus" in JSON.parse(r.data.note.props)), "db: create row with props (unknown keys dropped)");
+  r = await call("a", "POST", "/notes", { title: "제목 없음", parent_id: db, unique_title: true }); const row2 = r.data?.note?.id;
+  ok(r.status === 201 && r.data.note.title !== "제목 없음", "db: unique_title adds a suffix");
+  r = await call("a", "PUT", "/notes/" + row1, { props: { status: "완료", date: "bad" } }); const p1 = JSON.parse(r.data.note.props);
+  ok(r.status === 200 && p1.status === "완료" && p1.date === "2026-10-13" && p1.tags.length === 2, "db: update row props (merge, bad date ignored)");
+  r = await call("a", "GET", "/notes/" + db); ok(r.data.children.length === 2 && r.data.children.some((c) => c.props && JSON.parse(c.props).status === "완료") && /\| \[\[제목 없음\]\] \| 완료 \|/.test(r.data.note.body), "db: GET returns rows · body mirror table");
+  r = await call("a", "PUT", "/notes/" + n1, { props: { status: "완료" } }); ok(r.status === 400, "db: props on a non-row → 400");
+  schema.views.push({ id: "v3", name: "By status", type: "board", group_by: "status" });
+  schema.props.push({ key: "done", name: "Done", type: "checkbox" });
+  r = await call("a", "PUT", "/notes/" + db, { db: schema }); ok(r.status === 200 && JSON.parse(r.data.note.db).views.length === 3, "db: edit schema / views");
+  r = await call("a", "PUT", "/notes/" + db, { db: { props: [{ key: "Bad Key", type: "text" }] } }); ok(r.status === 400, "db: bad prop key → 400");
+  r = await call("a", "DELETE", "/notes/" + row2); r = await call("a", "GET", "/notes/" + db); ok(r.data.children.length === 1, "db: delete row");
+  r = await call("b", "PUT", "/notes/" + row1, { props: { status: "시작 전" } }); ok(r.status === 404, "db: other user cannot edit rows");
+}
 r = await call("a", "POST", "/ai/ask", { note_id: n1, question: "" }); ok(r.status === 400, "ai/ask: empty question → 400");
 r = await call("a", "POST", "/ai/plan", { messages: [] }); ok(r.status === 400, "ai/plan: no messages → 400");
 r = await call("a", "POST", "/ai/command", { text: "" }); ok(r.status === 400, "ai/command: empty → 400");

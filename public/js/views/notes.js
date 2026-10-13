@@ -4,7 +4,9 @@ import { api } from "../api.js";
 import { $, esc, debounce, toast, initial, nowTime, ymd, parseYmd, DOW, avatar } from "../util.js";
 import { icon } from "../icons.js";
 import { renderMarkdown, outline } from "../md.js";
-import { createEditor } from "../notes/editor.js";
+import { createBlockEditor } from "../blocks/editor.js";
+import { mdToBlocks, blocksToMd } from "../blocks/md.js";
+import { mountDatabase, pill } from "../blocks/db.js";
 import { mountAiPick, aiPrefs } from "../ai-pick.js";
 import { attachImages } from "../imgattach.js";
 
@@ -164,42 +166,65 @@ export function mount(root, ctx, r) {
           <span>Created ${fmt(n.created_at)}</span>
           <span id="ed-tags" class="row" style="gap:4px">${S.tags.map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join("")}</span>
         </div>
-        ${mode === "block" ? `<div id="ed-blocks"></div>` : `<div class="${mode === "md" ? "ed-split" : ""}">
+        ${n.props ? `<div class="nb-props" id="ed-props"></div>` : ""}
+        ${mode === "block" || n.kind === "database" ? `<div id="ed-blocks"></div>` : `<div class="${mode === "md" ? "ed-split" : ""}">
           ${mode === "md" ? `<textarea class="ed-text" id="ed-text" spellcheck="false" placeholder="마크다운으로 쓰세요. [[ 를 치면 노트 제목이 떠요.">${esc(n.body)}</textarea>` : ""}
           <article class="md" id="ed-md"></article>
         </div>`}
         <div class="ed-meta">
-          <div class="row" style="justify-content:space-between;align-items:center"><div class="eyebrow">Pages · ${S.children.length}</div>${own ? `<button class="btn ghost sm" type="button" id="ed-newpage">${icon.plus(13)}Page</button>` : ""}</div>
-          <div class="pages" id="ed-pages">${S.children.length ? S.children.map((c) => `<a href="#/notes/${c.id}"><span class="pg-ic">📄</span><b>${esc(c.title)}</b></a>`).join("") : `<span class="faint" style="font-size:13px">Add pages inside this one to split it up.</span>`}</div>
+          ${n.kind === "database" ? "" : `<div class="row" style="justify-content:space-between;align-items:center"><div class="eyebrow">Pages · ${S.children.length}</div>${own ? `<button class="btn ghost sm" type="button" id="ed-newpage">${icon.plus(13)}Page</button>` : ""}</div>
+          <div class="pages" id="ed-pages">${S.children.length ? S.children.map((c) => `<a href="#/notes/${c.id}"><span class="pg-ic">📄</span><b>${esc(c.title)}</b></a>`).join("") : `<span class="faint" style="font-size:13px">Add pages inside this one to split it up.</span>`}</div>`}
           <div class="eyebrow">Backlinks · ${S.backlinks.length}</div>
           <div class="backlinks" id="ed-back-list">${S.backlinks.length ? S.backlinks.map((b) => `<a href="#/notes/${b.id}"><b>${esc(b.title)}</b><span>${esc(plain(b.snippet).slice(0, 120))}</span></a>`).join("") : `<span class="faint" style="font-size:13px">Nothing links here yet. Write <code>[[${esc(n.title)}]]</code> in another page.</span>`}</div>
           <div id="ed-outline"></div>
         </div>
       </div></div>`;
-    if (mode === "block") mountBlocks(own); else drawPreview();
+    if (mode === "block" || n.kind === "database") mountBlocks(own); else { drawPreview(); if (n.props) drawRowProps(); }
     bindEditor();
   }
+  const parseJ = (t) => { try { return t ? JSON.parse(t) : null; } catch { return null; } };
+  let DBV = null, lastSaved = ""; // 데이터베이스 보기 · 마지막으로 저장한 블록 JSON
   function mountBlocks(own) {
-    ED?.destroy();
+    ED?.destroy(); DBV?.destroy(); DBV = null;
     const host = $("#ed-blocks", root);
-    ED = createEditor(host, {
-      value: S.cur.body, readOnly: !own,
+    if (S.cur.kind === "database") { ED = null; DBV = mountDatabase(host, S.cur.id, { readOnly: !own, onOpen: (id) => ctx.go("#/notes/" + id) }); return; }
+    // 예전 노트(blocks 가 없으면)는 마크다운 body 를 블록으로 바꿔서 열어요 — 저장하면 그때부터 블록 노트
+    const doc = parseJ(S.cur.blocks) || mdToBlocks(S.cur.body);
+    lastSaved = S.cur.blocks || JSON.stringify(doc);
+    ED = createBlockEditor(host, {
+      doc, readOnly: !own,
       notes: () => S.notes.filter((n) => n.id !== S.cur?.id).map((n) => n.title),
       onChange: () => { setStatus("입력 중…"); save(); drawOutlineSoon(); },
       onOpenTitle: (t) => { save.flush(); const hit = S.notes.find((n) => n.title.toLowerCase() === t.toLowerCase()); if (hit) ctx.go("#/notes/" + hit.id); else openByTitle(ctx, t); },
+      onOpenNote: (id) => { save.flush(); ctx.go("#/notes/" + id); },
       onOpenTag: (t) => ctx.go("#/notes/tag/" + encodeURIComponent(t)),
-      onError: (e) => toast(e.message || "실패했어요.", "err"),
-      onAsk: async (question, context, images) => { const p = aiPrefs(); const r = await api.askAi({ note_id: S.cur.id, question, context, images, model: p.model || undefined, web: p.web }); return { text: r.text, model: r.model + stepNote(r.steps) }; },
-      onNewPage: (title) => newPage(title, false),
+      onNewPage: (title) => newPage(title, false, {}),
+      onNewDb: (title) => newPage(title, false, { kind: "database" }),
+      mountDb: (el, id) => mountDatabase(el, id, { inline: true, readOnly: !own, onOpen: (nid) => { save.flush(); ctx.go("#/notes/" + nid); } }),
     });
     drawOutline();
+    if (S.cur.props) drawRowProps();
   }
-  async function newPage(title, go = true) {
+  // 데이터베이스 행 페이지: 맨 위에 속성(상태 · 날짜 · 태그) 보여 주기
+  async function drawRowProps() {
+    const id = S.cur.id, props = parseJ(S.cur.props) || {}, box = $("#ed-props", root);
+    if (!box || !S.cur.parent_id) return;
+    try {
+      const { note } = await api.note(S.cur.parent_id);
+      const db = parseJ(note.db); if (!db || S.cur?.id !== id) return;
+      box.innerHTML = db.props.map((p) => {
+        const v = props[p.key], o = (n) => p.options?.find((x) => x.name === n)?.color;
+        const h = v === undefined ? '<span class="faint">Empty</span>' : p.type === "status" || p.type === "select" ? pill(v, o(v), p.type === "status") : p.type === "multi_select" ? v.map((x) => pill(x, o(x))).join("") : p.type === "checkbox" ? (v ? "✓" : "—") : esc(String(v));
+        return `<div class="nb-prop"><span class="faint">${esc(p.name)}</span><span>${h}</span></div>`;
+      }).join("") + `<a class="nb-prop-db faint" href="#/notes/${esc(note.id)}">▤ ${esc(note.title)}</a>`;
+    } catch {}
+  }
+  async function newPage(title, go = true, extra = null) {
     if (!mine()) return null;
     save.flush(); await chain;
     const parent = S.cur;
     try {
-      const { note } = await api.addNote({ title, parent_id: parent.id, body: `# ${title}\n\n` });
+      const { note } = await api.addNote(extra ? { title, parent_id: parent.id, unique_title: true, ...extra } : { title, parent_id: parent.id, body: `# ${title}\n\n` });
       S.children.push({ id: note.id, title: note.title, updated_at: note.updated_at });
       const pg = $("#ed-pages", root); if (pg) pg.innerHTML = S.children.map((c) => `<a href="#/notes/${c.id}"><span class="pg-ic">📄</span><b>${esc(c.title)}</b></a>`).join("");
       loadList(); ctx.refreshSide();
@@ -211,7 +236,7 @@ export function mount(root, ctx, r) {
     }
   }
   function drawOutline() {
-    const body = ED ? ED.getValue() : ($("#ed-text", root)?.value ?? S.cur?.body ?? "");
+    const body = ED ? blocksToMd(ED.getDoc()) : ($("#ed-text", root)?.value ?? S.cur?.body ?? "");
     const ol = outline(body), oe = $("#ed-outline", root);
     if (oe) oe.innerHTML = ol.length > 1 ? `<div class="eyebrow" style="margin:6px 0">개요</div><div style="display:grid;gap:3px;font-size:13px">${ol.map((h) => `<span class="muted" style="padding-left:${(h.level - 1) * 14}px">${esc(h.text)}</span>`).join("")}</div>` : "";
   }
@@ -232,27 +257,37 @@ export function mount(root, ctx, r) {
   const setStatus = (t) => { S.status = t; const el = $("#ed-status", root); if (el) el.textContent = t; };
   const save = debounce(() => {
     if (!mine()) return;
-    const id = S.cur.id, title = $("#ed-title", root)?.value.trim(), body = ED && S.mode === "block" ? ED.getValue() : $("#ed-text", root)?.value;
+    const id = S.cur.id, title = $("#ed-title", root)?.value.trim();
     const patch = {};
     if (title && title !== S.cur.title) patch.title = title;
-    if (body !== undefined && body !== S.cur.body) patch.body = body;
+    if (ED && S.mode === "block") { const j = JSON.stringify(ED.getDoc()); if (j !== lastSaved) { patch.blocks = ED.getDoc(); lastSaved = j; } }
+    else { const body = $("#ed-text", root)?.value; if (body !== undefined && body !== S.cur.body) patch.body = body; }
     if (!Object.keys(patch).length) return;
     chain = chain.then(async () => {
       try {
-        const { note } = await api.saveNote(id, patch);
+        // base_updated_at: 다른 탭 · 기기에서 먼저 고쳤으면 409 → 덮어쓰지 않고 새로 불러와요
+        const { note } = await api.saveNote(id, { ...patch, base_updated_at: S.cur?.id === id ? S.cur.updated_at : undefined });
         if (S.cur?.id === id) { S.cur = note; setStatus("저장됨 " + nowTime()); }
         const c = noteCache.get(id); if (c) c.data = { ...c.data, note };
         const li = S.notes.find((x) => x.id === id);
         if (li) { li.title = note.title; li.snippet = note.body.slice(0, 160); li.updated_at = note.updated_at; }
         drawList();
-        if (patch.body !== undefined || patch.title) ctx.refreshSide();
-      } catch (e) { setStatus("저장 실패"); toast(e.message, "err"); }
+        if (patch.body !== undefined || patch.blocks || patch.title) ctx.refreshSide();
+      } catch (e) {
+        if (e.status === 409 && e.data?.note) { toast("다른 곳에서 먼저 고친 노트라 새로 불러왔어요.", "err"); noteCache.delete(id); if (S.cur?.id === id) { S.cur = null; open(id); } return; }
+        setStatus("저장 실패"); toast(e.message, "err");
+      }
     });
   }, 650);
 
   function bindEditor() {
     const ta = $("#ed-text", root), title = $("#ed-title", root);
-    $$m("[data-mode]").forEach((b) => b.addEventListener("click", () => { if (ED && S.mode === "block") S.cur.body = ED.getValue(); else if (ta) S.cur.body = ta.value; save.flush(); S.mode = b.dataset.mode; setMode(S.mode); ED?.destroy(); ED = null; drawEditor(); }));
+    $$m("[data-mode]").forEach((b) => b.addEventListener("click", () => {
+      save.flush();
+      if (ED && S.mode === "block") { S.cur.body = blocksToMd(ED.getDoc()); S.cur.blocks = JSON.stringify(ED.getDoc()); }
+      else if (ta && ta.value !== (S.cur.body || "")) { S.cur.body = ta.value; S.cur.blocks = null; } // 마크다운에서 고쳤으면 블록은 다시 만들어요
+      S.mode = b.dataset.mode; setMode(S.mode); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; drawEditor();
+    }));
     const lt = $("#ed-list", root);
     if (lt) lt.addEventListener("click", () => { S.listOpen = !S.listOpen; setListOpen(S.listOpen); $("#notes", root).classList.toggle("list-hidden", !S.listOpen); lt.innerHTML = S.listOpen ? icon.left(15) : icon.right(15); lt.setAttribute("aria-expanded", String(S.listOpen)); lt.title = lt.ariaLabel = S.listOpen ? "찾기 패널 접기" : "찾기 패널 펴기"; });
     const np = $("#ed-newpage", root);
@@ -370,10 +405,10 @@ export function mount(root, ctx, r) {
   async function open(id) {
     save.flush();
     closeSuggest();
-    if (!id) { ED?.destroy(); ED = null; S.cur = null; drawEmpty(); drawList(); return; }
+    if (!id) { ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; S.cur = null; drawEmpty(); drawList(); return; }
     const show = (d) => {
       const { note, backlinks, tags, children = [], crumbs = [] } = d;
-      ED?.destroy(); ED = null;
+      ED?.destroy(); ED = null; DBV?.destroy(); DBV = null;
       S.cur = note; S.backlinks = backlinks; S.tags = tags; S.children = children; S.crumbs = crumbs; S.status = "";
       drawEditor(); drawList();
     };
@@ -446,7 +481,7 @@ export function mount(root, ctx, r) {
   live = { route };
   loadList(); open(r.id);
 
-  return () => { save.flush(); closeSuggest(); ED?.destroy(); ED = null; live = null; };
+  return () => { save.flush(); closeSuggest(); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; live = null; };
 }
 
 // "· 웹 검색 2 · 페이지 1 · 이미지 1" 처럼 AI 가 무엇을 찾아봤는지

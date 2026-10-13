@@ -203,6 +203,37 @@ try {
         `${tv} · Brain — 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
     } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
 
+    // ---------- ⑫ 블록 편집기 — 토글 접기 · "/" 로 콜아웃 · 보드에서 끌면 상태가 바뀌어요 (2026-10-13) ----------
+    try {
+      errs = [];
+      const doc = { v: 1, blocks: [{ id: "b_tg1", type: "toggle", text: "Fold me", props: {}, children: [{ id: "b_in1", type: "paragraph", text: "hidden inside", props: {}, children: [] }] }, { id: "b_p1", type: "paragraph", text: "", props: {}, children: [] }] };
+      const bn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 블록 " + tv, blocks: doc } })).json()).note.id;
+      await go("#/notes/" + bn, 2200);
+      await p.evaluate(() => { const b = [...document.querySelectorAll('[data-mode="block"]')][0]; if (b && b.getAttribute("aria-selected") !== "true") b.click(); });
+      await p.waitForSelector('.nb[data-id="b_tg1"] .nb-tg', { timeout: 8000 });
+      const vis = () => p.evaluate(() => !!document.querySelector('.nb[data-id="b_in1"]'));
+      const v0 = await vis(); await p.click('.nb[data-id="b_tg1"] .nb-tg'); const v1 = await vis(); await p.click('.nb[data-id="b_tg1"] .nb-tg'); const v2 = await vis();
+      await p.click('.nb[data-id="b_p1"] .nb-text'); await p.keyboard.type("/callout"); await sleep(200);
+      const menuOk = await p.evaluate(() => !!document.querySelector('.nb-menu [data-type="callout"]'));
+      await p.keyboard.press("Enter"); await p.keyboard.type("Hello callout"); await sleep(1500);
+      const saved = await (await ctx.request.get(BASE + "/api/notes/" + bn)).json();
+      const sb = JSON.parse(saved.note.blocks || "{}").blocks || [];
+      ok(v0 !== v1 && v1 !== v2 && menuOk && sb.some((b) => b.type === "callout" && /Hello callout/.test(b.text)) && /\[!note\]/.test(saved.note.body) && !errs.length,
+        `${tv} · 블록 — 토글 ${v0}→${v1}→${v2} · "/" 메뉴 ${menuOk} · 콜아웃 저장 ${sb.map((b) => b.type).join(",")}${errs.length ? " — " + errs[0] : ""}`);
+      const dbn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 DB " + tv, kind: "database" } })).json()).note.id;
+      const row = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 카드 " + tv, parent_id: dbn, props: { status: "시작 전" } } })).json()).note.id;
+      await go("#/notes/" + dbn, 2200);
+      await p.waitForSelector(".db-tabs", { timeout: 8000 });
+      const tableOk = await p.evaluate(() => !!document.querySelector(".db-table .db-pill.st"));
+      await p.evaluate(() => [...document.querySelectorAll(".db-tabs [data-view]")].find((b) => /Board/.test(b.textContent))?.click());
+      await p.waitForSelector(`.db-card[data-row="${row}"]`, { timeout: 8000 });
+      await p.dragAndDrop(`.db-card[data-row="${row}"]`, '.db-col[data-group="완료"]'); await sleep(1200);
+      const rp = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + row)).json()).note.props || "{}");
+      const cnt = await p.evaluate(() => document.querySelector('.db-col[data-group="완료"] .db-count')?.textContent);
+      await p.screenshot({ path: `${process.env.SHOTS || "/tmp"}/e2e-board-${w}.png` }).catch(() => {});
+      ok(tableOk && rp.status === "완료" && cnt === "1", `${tv} · DB — 표 상태 알약 ${tableOk} · 보드 끌기 → ${rp.status} (완료 ${cnt})`);
+    } catch (e) { ok(false, `${tv} · 블록 편집기 — ${String(e.message).split("\n")[0]}`); }
+
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
     const kst = (n) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
     execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `INSERT OR REPLACE INTO day_records (user_id, day, data, score, done, total, auto, saved_at, ai_score, ai_note, ai_model) SELECT id, '${kst(-1)}', '{"plans":[]}', 70, 1, 1, 1, 0, 82, '우선순위 높은 일을 끝냈어요.', 'openai/gpt-oss-120b' FROM users WHERE username = '${user}'`], { stdio: "ignore" });
