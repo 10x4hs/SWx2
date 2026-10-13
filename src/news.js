@@ -185,6 +185,17 @@ async function inBatches(list, size, fn) {
 /** 살아 있는 피드를 전부 긁어요. */
 // Workers 무료 플랜은 요청 한 번에 바깥 요청(fetch) 50개까지예요. 피드 46곳 + AI 요약을 한 번에 하면 넘쳐서
 // 한 번에 받는 피드 수(max)와 요약 수를 나눠요. 오래 안 받은 피드부터.
+// AI 가 붙이는 "출처 이름) 제목" · "[0] 제목" 같은 머리말을 걷어 내요
+export function cleanKoTitle(s, feed = "") {
+  let k = String(s || "").trim().replace(/^\[\d+\]\s*/, "");
+  const f = String(feed || "").trim();
+  for (const name of [f, f.replace(/\s*(Update|News|Blog|Newsletter)$/i, "")].filter(Boolean)) {
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    k = k.replace(new RegExp(`^\\(?${esc}[^)\\]]{0,12}[)\\]:：]\\s*`, "i"), "");
+  }
+  return k.slice(0, 200);
+}
+
 export async function ingest(env, now = Date.now(), max = 24) {
   max = Math.max(0, Math.min(max, left() - 1)); // 예산 안에서만 (lib/budget.js)
   if (!max) return [];
@@ -229,8 +240,9 @@ export async function translateTitles(env, opts = {}) {
 - 자연스러운 한국어 기사 제목처럼, 60자 이내. 뜻을 더하거나 빼지 마 — 제목에 없는 설명 · 부제를 덧붙이지 마. 영어 표현을 비슷한 소리의 다른 낱말로 바꾸지 마 (frontier model → 프런티어 모델).
 - 제품 · 모델 · 회사 이름(Claude, GPT-5, Gemini, OpenAI, Nvidia 등)은 원문 표기 그대로 둬도 돼.
 - 고유명사에 원어 괄호 병기는 하지 마.
+- 출처(매체) 이름은 참고만 해. 번역한 제목 앞뒤에 출처 이름이나 "출처)" 같은 머리말을 붙이지 마.
 
-${chunk.map((t, n) => `[${n}] (${t.feed}) ${t.title}`).join("\n")}
+${chunk.map((t, n) => `[${n}] ${t.title}   — 출처: ${t.feed}`).join("\n")}
 
 {"t":[{"i":0,"ko":"..."}]} 형식으로만 답해. i 는 번호.`,
         () => ({ t: chunk.map((t, n) => ({ i: n, ko: `(번역) ${t.title}`.slice(0, 120) })) }));
@@ -238,7 +250,7 @@ ${chunk.map((t, n) => `[${n}] (${t.feed}) ${t.title}`).join("\n")}
       const ups = [];
       for (const [n, t] of chunk.entries()) {
         const o = outs.find((x) => Number(x?.i) === n);
-        const k = String(o?.ko || "").trim().slice(0, 200);
+        const k = cleanKoTitle(o?.ko, t.feed);
         if (k) ups.push(env.DB.prepare("UPDATE news_items SET title_ko = ? WHERE id = ?").bind(k, t.id));
       }
       if (ups.length) await env.DB.batch(ups);
@@ -750,7 +762,7 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
   // ---------- 신문 (하루 한 부) ----------
   const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
   const ED_COLS = "i.id, i.title, i.title_ko, i.url, i.one_liner, i.summary, i.section, i.day, i.published_at, i.dated, i.geo, i.thread_id, f.name AS feed, f.topic";
-  const shape = (r) => ({ id: r.id, title: r.title, title_ko: r.title_ko || null, url: r.url, feed: r.feed, topic: r.topic, section: sectionOf(r.topic, r.section), one_liner: r.one_liner, summary: r.summary,
+  const shape = (r) => ({ id: r.id, title: r.title, title_ko: r.title_ko ? cleanKoTitle(r.title_ko, r.feed) : null, url: r.url, feed: r.feed, topic: r.topic, section: sectionOf(r.topic, r.section), one_liner: r.one_liner, summary: r.summary,
     published_at: r.published_at, dated: r.dated, thread_id: r.thread_id, geo: r.geo, readers: r.readers, stars: r.stars, comments: r.comments, disputed: r.disputed });
 
   // [GET /news/editions?from&to] 신문 목록 (달력용) — 기본 최근 60일
@@ -1097,7 +1109,7 @@ export function registerNews(on, { json, body, fail, now }) {
     const [marked] = await decorate(env, [{ id: item.id, geo: item.geo }]);
     return json({
       item: {
-        id: item.id, title: item.title, title_ko: item.title_ko || null, url: item.url, author: item.author,
+        id: item.id, title: item.title, title_ko: item.title_ko ? cleanKoTitle(item.title_ko, item.feed) : null, url: item.url, author: item.author,
         published_at: item.published_at, one_liner: item.one_liner, summary: item.summary, section: sectionOf(item.topic, item.section),
         feed: item.feed, topic: item.topic, thread_id: item.thread_id, dated: item.dated,
         geo: marked.geo, readers: marked.readers, stars: marked.stars,
