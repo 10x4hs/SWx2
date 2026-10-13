@@ -9,6 +9,8 @@ const NESTABLE = new Set(["bullet", "number", "todo", "toggle", "callout", "quot
 const LISTY = new Set(["bullet", "number", "todo"]);
 export const canNest = (b) => NESTABLE.has(b.type) || (/^h[123]$/.test(b.type) && !!b.props?.toggle);
 export const COLORS = ["default", "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"];
+const TEXTY = new Set(["paragraph", "h1", "h2", "h3", "bullet", "number", "todo", "toggle", "callout", "quote"]);
+const BLOCK_COLORS = new Set(["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"].flatMap((c) => [c, c + "_background"]));
 export const PROP_TYPES = ["status", "select", "multi_select", "date", "text", "number", "checkbox", "url"];
 
 export function bid() {
@@ -26,6 +28,7 @@ function cleanProps(type, p) {
   const o = {};
   if (/^h[123]$/.test(type) && p.toggle) o.toggle = true;
   if (type === "todo") o.checked = !!p.checked;
+  if (TEXTY.has(type) && typeof p.color === "string" && BLOCK_COLORS.has(p.color)) o.color = p.color;
   if (type === "callout") o.icon = str(p.icon, 16) || "💡";
   if (type === "code") o.lang = str(p.lang, 30);
   if (type === "image") { o.src = str(p.src, 2000); o.caption = str(p.caption, 500); }

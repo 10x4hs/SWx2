@@ -214,6 +214,9 @@ r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status ===
   r = await call("a", "PUT", "/notes/" + bn, { body: "그냥 마크다운" }); ok(r.status === 200 && r.data.note.blocks === null, "blocks: markdown save drops blocks");
   r = await call("a", "PUT", "/notes/" + bn, { blocks: doc }); r = await call("a", "POST", "/notes/" + bn + "/link", { title: "알고리즘" });
   r = await call("a", "GET", "/notes/" + bn); ok(r.data.note.blocks === null && /\[\[알고리즘\]\]/.test(r.data.note.body), "blocks: body-only write elsewhere drops stale blocks");
+  // 색 (schema v2): 글자 색 · 형광펜은 text 안 태그 그대로, 블록 색은 props.color
+  r = await call("a", "POST", "/notes", { title: "색 노트 " + tag, blocks: { v: 1, blocks: [{ type: "paragraph", text: 'a <span class="c-red">빨강</span> <mark class="bg-yellow">노랑</mark>', props: { color: "blue_background" } }, { type: "h2", text: "x", props: { color: "hotpink" } }] } });
+  { const bl = JSON.parse(r.data.note.blocks).blocks; ok(r.status === 201 && /<span class="c-red">빨강<\/span>/.test(r.data.note.body) && bl[0].props.color === "blue_background" && !bl[1].props.color, "colors: inline spans kept in mirror · block color kept · bad color dropped"); }
   // 데이터베이스: 만들기 · 행(하위 노트 + props) · 스키마 · 보기
   r = await call("a", "POST", "/notes", { title: "할 일 DB " + tag, kind: "database" });
   const db = r.data?.note?.id, schema = r.data?.note?.db ? JSON.parse(r.data.note.db) : null;

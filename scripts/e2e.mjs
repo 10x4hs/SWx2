@@ -215,10 +215,13 @@ try {
       const v0 = await vis(); await p.click('.nb[data-id="b_tg1"] .nb-tg'); const v1 = await vis(); await p.click('.nb[data-id="b_tg1"] .nb-tg'); const v2 = await vis();
       await p.click('.nb[data-id="b_p1"] .nb-text'); await p.keyboard.type("/callout"); await sleep(200);
       const menuOk = await p.evaluate(() => !!document.querySelector('.nb-menu [data-type="callout"]'));
-      await p.keyboard.press("Enter"); await p.keyboard.type("Hello callout"); await sleep(1500);
+      await p.keyboard.press("Enter"); await p.keyboard.type("Hello callout");
+      for (let i = 0; i < 7; i++) await p.keyboard.press("Shift+ArrowLeft");
+      await p.waitForSelector(".nb-tb", { timeout: 3000 }).catch(() => {});
+      await p.click('.nb-tb [data-f="b"]').catch(() => {}); await sleep(1500);
       const saved = await (await ctx.request.get(BASE + "/api/notes/" + bn)).json();
       const sb = JSON.parse(saved.note.blocks || "{}").blocks || [];
-      ok(v0 !== v1 && v1 !== v2 && menuOk && sb.some((b) => b.type === "callout" && /Hello callout/.test(b.text)) && /\[!note\]/.test(saved.note.body) && !errs.length,
+      ok(v0 !== v1 && v1 !== v2 && menuOk && sb.some((b) => b.type === "callout" && /Hello \*\*callout\*\*/.test(b.text)) && /\[!note\]/.test(saved.note.body) && !errs.length,
         `${tv} · 블록 — 토글 ${v0}→${v1}→${v2} · "/" 메뉴 ${menuOk} · 콜아웃 저장 ${sb.map((b) => b.type).join(",")}${errs.length ? " — " + errs[0] : ""}`);
       const dbn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 DB " + tv, kind: "database" } })).json()).note.id;
       const row = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 카드 " + tv, parent_id: dbn, props: { status: "시작 전" } } })).json()).note.id;

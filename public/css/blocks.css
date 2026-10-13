@@ -189,3 +189,51 @@
 /* keep wide tables/boards scrolling inside, never the page */
 .ed-inner > * { min-width: 0; }
 .db-host, .db-view, .nb-body { min-width: 0; max-width: 100%; }
+
+/* ---------- colors (schema v2): inline <span class=c-X> / <mark class=bg-X>, block props.color ---------- */
+:root { --hl-gray: #F1F1EF; --hl-brown: #F4EEEE; --hl-orange: #FBECDD; --hl-yellow: #FBF3DB; --hl-green: #EDF3EC; --hl-blue: #E7F3F8; --hl-purple: #F6F3F9; --hl-pink: #FAF1F5; --hl-red: #FDEBEC; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --hl-gray: #2F2F2F; --hl-brown: #4A3228; --hl-orange: #5C3B23; --hl-yellow: #564328; --hl-green: #243D30; --hl-blue: #143A4E; --hl-purple: #3C2D49; --hl-pink: #4E2C3C; --hl-red: #522E2A; } }
+:root[data-theme="dark"] { --hl-gray: #2F2F2F; --hl-brown: #4A3228; --hl-orange: #5C3B23; --hl-yellow: #564328; --hl-green: #243D30; --hl-blue: #143A4E; --hl-purple: #3C2D49; --hl-pink: #4E2C3C; --hl-red: #522E2A; }
+.nb-doc .c-gray, .md .c-gray, .nb-doc .nb-color-gray > .nb-row .nb-text { color: var(--tg-gray-dot); }
+.nb-doc mark.bg-gray, .md mark.bg-gray { background: var(--hl-gray); color: inherit; border-radius: 3px; padding: 0 2px; }
+.nb-doc .nb-bg-gray > .nb-row { background: var(--hl-gray); border-radius: 4px; }
+.nb-doc .c-brown, .md .c-brown, .nb-doc .nb-color-brown > .nb-row .nb-text { color: var(--tg-brown-dot); }
+.nb-doc mark.bg-brown, .md mark.bg-brown { background: var(--hl-brown); color: inherit; border-radius: 3px; padding: 0 2px; }
+.nb-doc .nb-bg-brown > .nb-row { background: var(--hl-brown); border-radius: 4px; }
+.nb-doc .c-orange, .md .c-orange, .nb-doc .nb-color-orange > .nb-row .nb-text { color: var(--tg-orange-dot); }
+.nb-doc mark.bg-orange, .md mark.bg-orange { background: var(--hl-orange); color: inherit; border-radius: 3px; padding: 0 2px; }
+.nb-doc .nb-bg-orange > .nb-row { background: var(--hl-orange); border-radius: 4px; }
+.nb-doc .c-yellow, .md .c-yellow, .nb-doc .nb-color-yellow > .nb-row .nb-text { color: var(--tg-yellow-dot); }
+.nb-doc mark.bg-yellow, .md mark.bg-yellow { background: var(--hl-yellow); color: inherit; border-radius: 3px; padding: 0 2px; }
+.nb-doc .nb-bg-yellow > .nb-row { background: var(--hl-yellow); border-radius: 4px; }
+.nb-doc .c-green, .md .c-green, .nb-doc .nb-color-green > .nb-row .nb-text { color: var(--tg-green-dot); }
+.nb-doc mark.bg-green, .md mark.bg-green { background: var(--hl-green); color: inherit; border-radius: 3px; padding: 0 2px; }
+.nb-doc .nb-bg-green > .nb-row { background: var(--hl-green); border-radius: 4px; }
+.nb-doc .c-blue, .md .c-blue, .nb-doc .nb-color-blue > .nb-row .nb-text { color: var(--tg-blue-dot); }
+.nb-doc mark.bg-blue, .md mark.bg-blue { background: var(--hl-blue); color: inherit; border-radius: 3px; padding: 0 2px; }
+.nb-doc .nb-bg-blue > .nb-row { background: var(--hl-blue); border-radius: 4px; }
+.nb-doc .c-purple, .md .c-purple, .nb-doc .nb-color-purple > .nb-row .nb-text { color: var(--tg-purple-dot); }
+.nb-doc mark.bg-purple, .md mark.bg-purple { background: var(--hl-purple); color: inherit; border-radius: 3px; padding: 0 2px; }
+.nb-doc .nb-bg-purple > .nb-row { background: var(--hl-purple); border-radius: 4px; }
+.nb-doc .c-pink, .md .c-pink, .nb-doc .nb-color-pink > .nb-row .nb-text { color: var(--tg-pink-dot); }
+.nb-doc mark.bg-pink, .md mark.bg-pink { background: var(--hl-pink); color: inherit; border-radius: 3px; padding: 0 2px; }
+.nb-doc .nb-bg-pink > .nb-row { background: var(--hl-pink); border-radius: 4px; }
+.nb-doc .c-red, .md .c-red, .nb-doc .nb-color-red > .nb-row .nb-text { color: var(--tg-red-dot); }
+.nb-doc mark.bg-red, .md mark.bg-red { background: var(--hl-red); color: inherit; border-radius: 3px; padding: 0 2px; }
+.nb-doc .nb-bg-red > .nb-row { background: var(--hl-red); border-radius: 4px; }
+.nb-doc mark:not([class]) { background: var(--hl-yellow); color: inherit; }
+.nb-sw { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 2px 4px 6px; }
+.nb-sw button { width: 100%; height: 28px; border: 0; border-radius: 6px; cursor: pointer; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--hover); padding: 0; }
+.nb-tb { position: fixed; z-index: 92; display: flex; gap: 2px; padding: 4px; border-radius: 8px; background: var(--paper-solid); box-shadow: 0 0 0 1px var(--line-2), 0 8px 24px -8px rgba(0,0,0,.45); }
+.nb-tb > button { border: 0; background: none; color: var(--ink); min-width: 30px; height: 28px; border-radius: 5px; cursor: pointer; font-size: 14px; padding: 0 6px; }
+.nb-tb > button:hover { background: var(--hover); }
+.nb-tb .nb-sw { position: absolute; top: 38px; right: 0; width: 220px; background: var(--paper-solid); border-radius: 8px; box-shadow: 0 0 0 1px var(--line-2), 0 8px 24px -8px rgba(0,0,0,.45); padding: 6px; }
+.nb-sw .c-gray { color: var(--tg-gray-dot); }
+.nb-sw .c-brown { color: var(--tg-brown-dot); }
+.nb-sw .c-orange { color: var(--tg-orange-dot); }
+.nb-sw .c-yellow { color: var(--tg-yellow-dot); }
+.nb-sw .c-green { color: var(--tg-green-dot); }
+.nb-sw .c-blue { color: var(--tg-blue-dot); }
+.nb-sw .c-purple { color: var(--tg-purple-dot); }
+.nb-sw .c-pink { color: var(--tg-pink-dot); }
+.nb-sw .c-red { color: var(--tg-red-dot); }
