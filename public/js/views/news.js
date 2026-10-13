@@ -27,22 +27,47 @@ let regionKo; try { regionKo = new Intl.DisplayNames(["ko"], { type: "region" })
 const countryKo = (c) => (c === "BE" ? "EU · 벨기에" : regionKo?.of(c) || c);
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 
+// 제호 양옆 세계 시계 (Semafor 처럼) — 우리가 기사로 자주 보는 도시
+const CLOCKS = [["워싱턴", "America/New_York"], ["브뤼셀", "Europe/Brussels"], ["키이우", "Europe/Kyiv"], ["베이징", "Asia/Shanghai"], ["타이베이", "Asia/Taipei"], ["서울", "Asia/Seoul"]];
+const clockHtml = ([name, tz]) => `<span class="gn-ck" data-tz="${tz}" title="${name}"><small>${name}</small><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="10.5"/><line class="h" x1="12" y1="12" x2="12" y2="7"/><line class="m" x1="12" y1="12" x2="12" y2="4"/></svg></span>`;
+function tickClocks(root) {
+  const now = new Date();
+  root.querySelectorAll(".gn-ck").forEach((el) => {
+    const [h, m] = now.toLocaleTimeString("en-GB", { timeZone: el.dataset.tz, hour: "2-digit", minute: "2-digit", hour12: false }).split(":").map(Number);
+    el.querySelector(".h").setAttribute("transform", `rotate(${(h % 12) * 30 + m / 2} 12 12)`);
+    el.querySelector(".m").setAttribute("transform", `rotate(${m * 6} 12 12)`);
+  });
+}
+
 let inst = null;
 export function update(r) { inst?.route(r); }
 
 export function mount(root, ctx, r) {
+  // 신문 활자(세리프) — 뉴스 화면에서만 처음 한 번 불러요
+  if (!document.getElementById("gn-font")) { const l = document.createElement("link"); l.id = "gn-font"; l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600;700;900&display=swap"; document.head.append(l); }
   root.innerHTML = `
     <div class="gn" id="gn">
       <main class="gn-scroll" id="gn-scroll" tabindex="-1">
-        <header class="gn-bar">
+        <header class="gn-mast">
+          <div class="gn-mast-l"><span id="gn-today"></span></div>
+          <div class="gn-mast-c">
+            <p class="gn-tagline">셋이 같이 읽는 하루 신문</p>
+            <div class="gn-mast-row">
+              <span class="gn-clocks" data-side="l">${CLOCKS.slice(0, 3).map(clockHtml).join("")}</span>
+              <a class="gn-wordmark" href="#/news">DSM 신문</a>
+              <span class="gn-clocks" data-side="r">${CLOCKS.slice(3).map(clockHtml).join("")}</span>
+            </div>
+          </div>
+          <div class="gn-mast-r"><span class="gn-clock"><i>KST</i> <b id="gn-clk"></b></span></div>
+        </header>
+        <div class="gn-bar">
           <nav class="gn-views" aria-label="뉴스 화면"><a href="#/news" data-view="today">오늘</a><a href="#/news/world" data-view="world">세계</a><a href="#/news/co" data-view="co">회사</a></nav>
           <div class="gn-daynav">
             <a class="gn-nav" id="gn-prev" href="#" aria-label="어제">←</a>
             <button class="gn-date" id="gn-date" type="button" aria-haspopup="dialog" aria-expanded="false"><span id="gn-date-t">오늘</span></button>
             <a class="gn-nav" id="gn-next" href="#" aria-label="내일">→</a>
-            <span class="gn-clock"><i>KST</i> <b id="gn-clk"></b></span>
           </div>
-        </header>
+        </div>
         <div class="gn-cal" id="gn-cal" hidden role="dialog" aria-label="지난 60일"></div>
         <div class="gn-page" id="gn-page"><p class="gn-soft">불러오는 중…</p></div>
       </main>
@@ -59,7 +84,11 @@ export function mount(root, ctx, r) {
   const items = new Map();
   const mine = (it) => ({ read: !!it.readers?.includes(ctx.me.id), star: !!it.stars?.includes(ctx.me.id), others: (it.readers || []).filter((u) => u !== ctx.me.id) });
   const avs = (ids) => ids.map((id) => { const u = user(id); return `<i class="gn-av" style="--c:${u.color}" title="${esc(u.display_name)}">${esc((u.display_name || "?")[0])}</i>`; }).join("");
-  const clk = () => { const el = $("#gn-clk"); if (el) el.textContent = new Date(Date.now() + 9 * 36e5).toISOString().slice(11, 19); };
+  const clk = () => {
+    const el = $("#gn-clk"); if (el) el.textContent = new Date(Date.now() + 9 * 36e5).toISOString().slice(11, 19);
+    const t = $("#gn-today"); if (t) t.textContent = `${dayKo(kstDay())}`;
+    if (new Date().getSeconds() === 0 || !root.dataset.ticked) { tickClocks(root); root.dataset.ticked = "1"; }
+  };
   clk(); const clkT = setInterval(clk, 1000);
 
   // ---------- 달력 ----------
@@ -132,8 +161,9 @@ export function mount(root, ctx, r) {
       <nav class="gn-seg" role="tablist" aria-label="분야">${SECTIONS.map(([k, l], i) => `${i ? "<span>/</span>" : ""}<button type="button" role="tab" data-sec="${k}" aria-selected="${sec === k}">${l} <small>${counts[k]}</small></button>`).join("")}<span>/</span><button type="button" class="gn-seg-star" data-starred aria-pressed="${starred}">★ 별표</button></nav>
       <div class="gn-cols">
         <aside class="gn-side">
+          <div class="gn-brief"><p class="gn-brief-h">오늘의 브리핑</p>
           <p class="gn-kicker"><span>${esc(status)}</span><span>${total}편</span><b>${unread ? `안 읽음 ${unread}` : "다 읽음"}</b></p>
-          ${ed.lede ? `<p class="gn-lede">${esc(ed.lede)}</p>` : lead?.why ? `<p class="gn-lede">${esc(lead.why)}</p>` : ""}
+          ${ed.lede ? `<p class="gn-lede">${esc(ed.lede)}</p>` : lead?.why ? `<p class="gn-lede">${esc(lead.why)}</p>` : ""}</div>
           ${(ed.threads || []).length ? `<p class="gn-lab">오늘의 흐름</p><ul class="gn-threads">${ed.threads.map((t) => `<li><b>${esc(t.title)}</b><span>${esc(t.move || "")}</span></li>`).join("")}</ul>` : ""}
           ${mc.size ? `<p class="gn-lab">구독한 회사</p><p class="gn-cos">${[...mc].map((k) => `<a href="#/news/co/${k}">${esc(coName(k))}</a>`).join("")}</p>` : `<p class="gn-lab">구독한 회사</p><p class="gn-cos"><a href="#/news/co">회사 구독하기 →</a></p>`}
         </aside>
@@ -159,7 +189,7 @@ export function mount(root, ctx, r) {
     return (geoLib = { d3: window.d3, land: fc, borders, byCode });
   }
   async function drawWorld() {
-    page.innerHTML = `<section class="gn-hero"><h1 class="gn-h1">기사가 나온 곳</h1></section><p class="gn-soft">지도를 펴는 중…</p>`;
+    page.innerHTML = `<section class="gn-hero"><h1 class="gn-h1 gn-h1-sec">세계</h1></section><p class="gn-soft">지도를 펴는 중…</p>`;
     let g;
     try { [g, worldData] = await Promise.all([loadGeo(), api.newsWorld(worldDays)]); } catch (e) { if (alive) page.innerHTML = `<p class="gn-soft">${esc(e.message)}</p>`; return; }
     if (!alive || view !== "world") return;
@@ -171,7 +201,7 @@ export function mount(root, ctx, r) {
     const DAYS = [[1, "오늘"], [7, "7일"], [30, "30일"]];
     page.innerHTML = `
       <section class="gn-hero gn-hero-world">
-        <h1 class="gn-h1">기사가<br>나온 곳</h1>
+        <h1 class="gn-h1 gn-h1-sec">세계</h1>
         <p class="gn-seg gn-seg-plain">${DAYS.map(([d, l], i) => `${i ? "<span>/</span>" : ""}<button type="button" data-wd="${d}" aria-pressed="${worldDays === d}">${l}</button>`).join("")}<span class="gn-lab-inline">${by.size}개 나라 · ${(worldData.items || []).length}편</span></p>
       </section>
       <div class="gn-world">
@@ -288,7 +318,7 @@ export function mount(root, ctx, r) {
   async function openItem(id) {
     cur = id;
     page.querySelectorAll("[data-id]").forEach((el) => el.classList.toggle("on", el.dataset.id === id));
-    sheet.hidden = false; scrim.hidden = false; requestAnimationFrame(() => gn.classList.add("sheet-on"));
+    sheet.hidden = false; scrim.hidden = false; void sheet.offsetWidth; gn.classList.add("sheet-on"); // 한 번 배치한 뒤 바로 켜야 미끄러짐이 보이고, 다음 프레임을 기다리다 늦게 켜지는 일도 없어요
     const known = items.get(id);
     sheet.innerHTML = `<div class="gn-sh">${sheetHead()}<p class="gn-soft">여는 중…</p></div>`;
     let d;
