@@ -4,7 +4,7 @@
 //   JS   — 화면은 열릴 때마다, 버튼은 그려질 때 한 번. (el, ctx, api) 를 받고, 함수를 돌려주면 화면을 닫을 때 불러요
 import { api } from "./api.js";
 import { esc, toast } from "./util.js";
-import { icon } from "./icons.js";
+import { icon, appIcon } from "./icons.js";
 import { openMenu } from "./ctxmenu.js";
 
 let ctx, map = {};
@@ -27,8 +27,8 @@ export async function initCustomize(c) {
     const slot = slotOf(e.target); if (!slot) return;
     openMenu(e, {
       title: nameOf(slot),
-      items: [{ k: "edit", label: "Customize…" }, ...(map[slot] ? [{ sep: true }, { k: "reset", label: "Reset to original", danger: true }] : [])],
-      onPick: (k) => (k === "edit" ? openEditor(slot) : reset(slot)),
+      items: [{ k: "name", label: "Rename & icon…" }, { k: "edit", label: "Customize…" }, ...(map[slot] ? [{ sep: true }, { k: "reset", label: "Reset to original", danger: true }] : [])],
+      onPick: (k) => (k === "name" ? openRename(slot) : k === "edit" ? openEditor(slot) : reset(slot)),
     });
   });
 }
@@ -38,6 +38,86 @@ export async function loadCustom() {
   try { map = Object.fromEntries(((await api.custom()).custom || []).map((x) => [x.slot, x])); } catch { map = {}; }
   applyCss();
   applyUi();
+  applyDock();
+  // Dock 은 순서를 바꾸거나 배지가 바뀔 때 다시 그려져요 — 그때마다 내 이름 · 아이콘을 다시 입혀요
+  const rail = document.querySelector(".rail");
+  if (rail && !rail.dataset.czObs) { rail.dataset.czObs = "1"; let t = 0; new MutationObserver(() => { clearTimeout(t); t = setTimeout(applyDock, 30); }).observe(rail, { childList: true, subtree: true }); }
+}
+
+// ---------- 이름 · 아이콘 ----------
+const ICON_KEYS = ["home", "today", "plans", "notes", "brain", "study", "papers", "english", "ai", "room", "news", "search", "timer"];
+const elOf = (slot) => (UI[slot] ? document.querySelector(UI[slot].sel) : document.querySelector(`[data-dock="${slot}"]`));
+function iconHtml(v) {
+  if (!v) return "";
+  if (v.startsWith("app:")) return appIcon(v.slice(4));
+  if (v.startsWith("emoji:")) return `<span class="app-ic cz-ic-emoji">${esc(v.slice(6))}</span>`;
+  if (v.startsWith("url:")) return `<span class="app-ic cz-ic-img"><img src="${esc(v.slice(4))}" alt="" referrerpolicy="no-referrer"></span>`;
+  return "";
+}
+function applyDock() {
+  for (const slot of new Set([...Object.keys(map), ...Object.keys(UI), ...[...document.querySelectorAll("[data-dock^='nav:']")].map((e) => e.dataset.dock)])) {
+    const el = elOf(slot); if (!el) continue;
+    const c = map[slot], sig = `${c?.label || ""}|${c?.icon || ""}`;
+    if (el.dataset.czSig === sig) continue;
+    if (el.dataset.czTip === undefined) { el.dataset.czTip = el.dataset.tip || ""; el.dataset.czAria = el.getAttribute("aria-label") || ""; }
+    el.dataset.tip = c?.label || el.dataset.czTip;
+    el.setAttribute("aria-label", c?.label || el.dataset.czAria);
+    const ic = el.querySelector(":scope > .app-ic, :scope > .cz-ic");
+    if (ic && ic.dataset.czOrig === undefined) ic.dataset.czOrig = ic.outerHTML;
+    if (ic) { const next = c?.icon ? iconHtml(c.icon) : ic.dataset.czOrig; const orig = ic.dataset.czOrig; const tmp = document.createElement("span"); tmp.innerHTML = next; const n = tmp.firstElementChild; if (n) { n.dataset.czOrig = orig; n.classList.add("cz-ic"); ic.replaceWith(n); } }
+    el.dataset.czSig = sig;
+  }
+}
+export function openRename(slot) {
+  if (document.querySelector(".cz-back")) return;
+  const cur = map[slot] || {}, el = elOf(slot);
+  let pick = cur.icon || "";
+  const orig = (el?.dataset.czTip ?? el?.dataset.tip ?? "").split(" · ")[0] || nameOf(slot);
+  const back = document.createElement("div");
+  back.className = "palette-back cz-back";
+  back.innerHTML = `
+    <div class="cz cz-rn glass" role="dialog" aria-modal="true" aria-labelledby="cz-rn-t">
+      <header class="cz-head"><h2 id="cz-rn-t">Rename & icon <span>${esc(orig)}</span></h2><button class="icon-btn sm" type="button" data-close aria-label="Close">${icon.x(16)}</button></header>
+      <div class="cz-rn-b">
+        <label class="cz-rn-l" for="cz-rn-name">Name</label>
+        <input id="cz-rn-name" class="cz-rn-in" maxlength="40" placeholder="${esc(orig)}" value="${esc(cur.label || "")}">
+        <p class="cz-rn-l">Icon</p>
+        <div class="cz-rn-grid" role="radiogroup" aria-label="Icon">
+          <button type="button" class="cz-rn-o" data-ic="" aria-pressed="${!pick}" title="Original">${el?.querySelector(".cz-ic, .app-ic")?.dataset.czOrig || "↺"}<small>Original</small></button>
+          ${ICON_KEYS.map((k) => `<button type="button" class="cz-rn-o" data-ic="app:${k}" aria-pressed="${pick === "app:" + k}" title="${k}">${appIcon(k)}</button>`).join("")}
+        </div>
+        <div class="cz-rn-row"><label class="cz-rn-l" for="cz-rn-emoji">Emoji</label><input id="cz-rn-emoji" class="cz-rn-in sm" maxlength="8" placeholder="🔥" value="${esc(pick.startsWith("emoji:") ? pick.slice(6) : "")}"></div>
+        <div class="cz-rn-row"><label class="cz-rn-l" for="cz-rn-url">Image URL</label><input id="cz-rn-url" class="cz-rn-in" placeholder="https://…/icon.png" value="${esc(pick.startsWith("url:") ? pick.slice(4) : "")}"></div>
+        <div class="cz-rn-prev"><span>Preview</span><span class="rail-btn cz-rn-p" id="cz-rn-p"></span><b id="cz-rn-pn"></b></div>
+      </div>
+      <footer class="cz-foot"><small>Only on your account</small><span><button class="btn ghost" type="button" data-clear>Use original</button><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn accent" type="button" data-save>Save</button></span></footer>
+    </div>`;
+  document.body.append(back);
+  const $ = (q) => back.querySelector(q);
+  const prev = () => { $("#cz-rn-p").innerHTML = pick ? iconHtml(pick) : (el?.querySelector(".cz-ic, .app-ic")?.dataset.czOrig || el?.querySelector(".app-ic")?.outerHTML || ""); $("#cz-rn-pn").textContent = $("#cz-rn-name").value.trim() || orig; back.querySelectorAll("[data-ic]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.ic === pick)); };
+  prev();
+  const close = () => { back.remove(); document.removeEventListener("keydown", onKey, true); };
+  const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); close(); } else if (e.key === "Enter" && e.target.matches("input")) { e.preventDefault(); save(); } };
+  document.addEventListener("keydown", onKey, true);
+  $("#cz-rn-name").addEventListener("input", prev);
+  $("#cz-rn-emoji").addEventListener("input", (e) => { const v = e.target.value.trim(); pick = v ? "emoji:" + v : ""; $("#cz-rn-url").value = ""; prev(); });
+  $("#cz-rn-url").addEventListener("input", (e) => { const v = e.target.value.trim(); pick = /^https:\/\//.test(v) ? "url:" + v : ""; $("#cz-rn-emoji").value = ""; prev(); });
+  async function save(clear) {
+    const label = clear ? "" : $("#cz-rn-name").value.trim(), ic = clear ? "" : pick;
+    try {
+      const r = await api.saveCustom(slot, { css: cur.css || "", html: cur.html || "", js: cur.js || "", label, icon: ic });
+      if (r.custom) map[slot] = r.custom; else delete map[slot];
+      close(); applyDock(); toast(clear ? "Back to the original name and icon." : "Saved · only you see it.");
+    } catch (err) { toast(err.message || "Failed to save."); }
+  }
+  back.addEventListener("click", (e) => {
+    const o = e.target.closest("[data-ic]");
+    if (o) { pick = o.dataset.ic; $("#cz-rn-emoji").value = ""; $("#cz-rn-url").value = ""; prev(); return; }
+    if (e.target === back || e.target.closest("[data-close]")) close();
+    else if (e.target.closest("[data-save]")) save();
+    else if (e.target.closest("[data-clear]")) save(true);
+  });
+  $("#cz-rn-name").focus();
 }
 function applyCss(preview) {
   let st = document.getElementById("custom-css");
@@ -58,7 +138,9 @@ export function applyUi(only) {
     el.innerHTML = c?.html?.trim() ? c.html : el.dataset.orig;
     if (kept) el.querySelector(u.keep)?.remove(), el.append(kept);
     if (c?.js?.trim() && el.dataset.ran !== String(c.updated_at)) { el.dataset.ran = String(c.updated_at); run(c.js, el, slot); }
+    delete el.dataset.czSig; // 아이콘을 다시 그렸으니 이름 · 아이콘도 다시 입혀요
   }
+  applyDock();
 }
 
 // 화면이 열린 뒤 (app.js route) — 돌려준 함수는 화면을 닫을 때 불러요
@@ -71,7 +153,7 @@ export function afterMount(view, host) {
 }
 
 async function reset(slot) {
-  try { await api.resetCustom(slot); delete map[slot]; applyCss(); applyUi(); toast("Back to original."); ctx.redraw?.(); } catch (err) { toast(err.message || "Failed."); }
+  try { await api.resetCustom(slot); delete map[slot]; applyCss(); applyUi(); applyDock(); toast("Back to original."); ctx.redraw?.(); } catch (err) { toast(err.message || "Failed."); }
 }
 
 function openEditor(slot) {
@@ -94,7 +176,7 @@ function openEditor(slot) {
       <footer class="cz-foot"><small>Only on your account · originals stay intact</small><span>${map[slot] ? `<button class="btn ghost" type="button" data-reset>Reset</button>` : ""}<button class="btn ghost" type="button" data-close>Cancel</button><button class="btn accent" type="button" data-save>Save</button></span></footer>
     </div>`;
   document.body.append(back);
-  const ta = (t) => back.querySelector(`[data-p="${t}"]`), val = () => ({ slot, css: ta("css").value, html: ta("html").value, js: ta("js").value });
+  const ta = (t) => back.querySelector(`[data-p="${t}"]`), val = () => ({ slot, css: ta("css").value, html: ta("html").value, js: ta("js").value, label: cur.label || "", icon: cur.icon || "" });
   const close = () => { back.remove(); document.removeEventListener("keydown", onKey, true); applyCss(); };
   const onKey = (e) => {
     if (e.key === "Escape") { e.preventDefault(); close(); }

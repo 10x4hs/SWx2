@@ -4,6 +4,7 @@ import { $, $$, esc, ymd, today, toast, kstDay } from "./util.js";
 import { appIcon } from "./icons.js";
 import * as studyView from "./views/study.js";
 import { openMenu } from "./ctxmenu.js";
+import { openRename } from "./customize.js";
 import { sortByOrder } from "./dock-drag.js";
 import { isHidden, hidePage } from "./hidden-pages.js";
 
@@ -65,13 +66,14 @@ export async function pageMenu(e, id) {
   openMenu(e, {
     title: `${p.icon} ${p.title}`,
     items: p.mine ? [
-      { k: "open", label: "열기" }, { k: "edit", label: "고치기 (AI · 코드 · 설정)" },
+      { k: "open", label: "열기" }, { k: "rename", label: "Rename & icon…" }, { k: "edit", label: "고치기 (AI · 코드 · 설정)" },
       { k: "share", label: p.shared ? "공개 끄기 (나만)" : "셋에게 공개 (친구는 보기만)" },
       { sep: true }, { k: "del", label: "삭제", danger: true },
-    ] : [{ k: "open", label: "열기" }, { k: "copy", label: "내 페이지로 복사해서 고치기" }, { sep: true }, { k: "hide", label: "내 화면에서 숨기기" }],
+    ] : [{ k: "open", label: "열기" }, { k: "rename", label: "Rename & icon…" }, { k: "copy", label: "내 페이지로 복사해서 고치기" }, { sep: true }, { k: "hide", label: "내 화면에서 숨기기" }],
     onPick: async (k) => {
       try {
         if (k === "open") ctx.go("#/p/" + id);
+        else if (k === "rename") { openRename("page:" + id); return; } // 내 Dock 에서만 바뀌는 이름 · 아이콘 (페이지 자체 제목은 그대로)
         else if (k === "edit") { ctx.go("#/p/" + id); setTimeout(() => $("#up-edit")?.click(), 400); }
         else if (k === "share") { await api.updatePage(id, { shared: !p.shared }); toast(p.shared ? "이제 나만 봐요." : "셋의 Dock 에 떠요. 친구는 보기만 해요."); }
         else if (k === "hide") { await hidePage(p); if (location.hash === "#/p/" + id) ctx.go("#/"); return; }
