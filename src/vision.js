@@ -28,24 +28,22 @@ const PROMPT = (q) => [
   q ? `(사용자가 함께 물은 말: ${q.slice(0, 300)})` : "",
 ].filter(Boolean).join("\n");
 
+// 두 회사 공통: JSON POST → 실패면 status 가 붙은 오류, 성공이면 본문 JSON
+async function postJson(name, url, headers, payload) {
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+  if (!res.ok) throw Object.assign(new Error(`${name} ${res.status}`), { status: res.status });
+  return res.json();
+}
 async function viaGemini(env, model, images, q) {
-  const res = await fetch(`${GEMINI_URL}${model}:generateContent`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
-    body: JSON.stringify({ contents: [{ role: "user", parts: [...images.map((i) => ({ inline_data: { mime_type: i.mime, data: i.data } })), { text: PROMPT(q) }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 4096 } }),
-  });
-  if (!res.ok) throw Object.assign(new Error(`Gemini ${res.status}`), { status: res.status });
-  const j = await res.json();
+  const j = await postJson("Gemini", `${GEMINI_URL}${model}:generateContent`,
+    { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+    { contents: [{ role: "user", parts: [...images.map((i) => ({ inline_data: { mime_type: i.mime, data: i.data } })), { text: PROMPT(q) }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 4096 } });
   return (j.candidates?.[0]?.content?.parts || []).filter((p) => p.text && !p.thought).map((p) => p.text).join("").trim();
 }
 async function viaOpenRouter(env, model, images, q) {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" },
-    body: JSON.stringify({ model, max_tokens: 4096, temperature: 0.1, messages: [{ role: "user", content: [{ type: "text", text: PROMPT(q) }, ...images.map((i) => ({ type: "image_url", image_url: { url: `data:${i.mime};base64,${i.data}` } }))] }] }),
-  });
-  if (!res.ok) throw Object.assign(new Error(`OpenRouter ${res.status}`), { status: res.status });
-  const j = await res.json();
+  const j = await postJson("OpenRouter", "https://openrouter.ai/api/v1/chat/completions",
+    { "content-type": "application/json", authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" },
+    { model, max_tokens: 4096, temperature: 0.1, messages: [{ role: "user", content: [{ type: "text", text: PROMPT(q) }, ...images.map((i) => ({ type: "image_url", image_url: { url: `data:${i.mime};base64,${i.data}` } }))] }] });
   return String(j.choices?.[0]?.message?.content || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
