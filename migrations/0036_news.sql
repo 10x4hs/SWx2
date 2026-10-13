@@ -1,7 +1,8 @@
+-- 뉴스 기본 테이블은 예전 배포(0029_news, 로컬 main)로 운영 DB 에 이미 있어요 → IF NOT EXISTS. 새 칸은 아래 ALTER 로.
 -- 뉴스: 지정학·AI·첨단기술 소식을 모아 한국어로 요약해 셋이 같이 읽어요.
 -- 피드와 글은 **공유**(한 명이 추가하면 모두 보임), 읽음·저장·메모만 사람별로 갈려요.
 
-CREATE TABLE news_feeds (
+CREATE TABLE IF NOT EXISTS news_feeds (
   id TEXT PRIMARY KEY,
   url TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
@@ -16,7 +17,7 @@ CREATE TABLE news_feeds (
   created_at INTEGER NOT NULL
 );
 
-CREATE TABLE news_items (
+CREATE TABLE IF NOT EXISTS news_items (
   id TEXT PRIMARY KEY,
   feed_id TEXT NOT NULL REFERENCES news_feeds(id) ON DELETE CASCADE,
   url TEXT NOT NULL UNIQUE,                  -- 같은 글이 두 번 쌓이지 않게
@@ -24,17 +25,16 @@ CREATE TABLE news_items (
   author TEXT,
   published_at INTEGER NOT NULL,
   raw TEXT,                                  -- 피드가 준 본문
-  dated INTEGER NOT NULL DEFAULT 1,          -- 0 = 피드에 날짜가 없어서 published_at 은 처음 본 시각
   one_liner TEXT,                            -- 얕은 요약: 들어오는 전부에 한 줄 (한국어)
   deep TEXT,                                 -- 깊은 요약: 누가 열었을 때만 (JSON)
   created_at INTEGER NOT NULL
 );
-CREATE INDEX news_items_pub ON news_items(published_at DESC);
-CREATE INDEX news_items_feed ON news_items(feed_id);
-CREATE INDEX news_items_todo ON news_items(published_at DESC) WHERE one_liner IS NULL;
+CREATE INDEX IF NOT EXISTS news_items_pub ON news_items(published_at DESC);
+CREATE INDEX IF NOT EXISTS news_items_feed ON news_items(feed_id);
+CREATE INDEX IF NOT EXISTS news_items_todo ON news_items(published_at DESC) WHERE one_liner IS NULL;
 
 -- 사람별 상태. flagged 는 "이거 봐" 표시라 셋에게 보여요.
-CREATE TABLE news_reads (
+CREATE TABLE IF NOT EXISTS news_reads (
   item_id TEXT NOT NULL REFERENCES news_items(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   read INTEGER NOT NULL DEFAULT 0,
@@ -44,11 +44,11 @@ CREATE TABLE news_reads (
   updated_at INTEGER NOT NULL,
   PRIMARY KEY (item_id, user_id)
 );
-CREATE INDEX news_reads_user ON news_reads(user_id, read);
+CREATE INDEX IF NOT EXISTS news_reads_user ON news_reads(user_id, read);
 
 -- 오늘의 브리핑. 하루 한 번만 만들어요 — 볼 때마다 문장이 바뀌면 "오늘"이 아니라
 -- "방금 만든 것"처럼 느껴져요.
-CREATE TABLE news_briefs (
+CREATE TABLE IF NOT EXISTS news_briefs (
   day TEXT PRIMARY KEY,                      -- YYYY-MM-DD (한국)
   headline TEXT NOT NULL,
   body TEXT NOT NULL,
@@ -56,6 +56,7 @@ CREATE TABLE news_briefs (
   item_count INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
+ALTER TABLE news_items ADD COLUMN dated INTEGER NOT NULL DEFAULT 1;  -- 0 = 피드에 날짜가 없어서 published_at 은 처음 본 시각
 
 -- ---------- Signal Map (2026-10-13) ----------
 -- 줄기(thread): 같은 이야기를 시간순으로 꿰어요. key 는 AI 가 붙인 짧은 영어 태그(소문자) — 같은 태그면 같은 줄기.
