@@ -405,6 +405,16 @@ try {
     const moved = await p.evaluate((id) => /^#\/news\/item\//.test(location.hash) && location.hash !== "#/news/item/" + id, firstId);
     await p.keyboard.press("Escape"); await sleep(600);
     ok(moved && await p.evaluate(() => /^#\/news(\/\d{4}-\d{2}-\d{2})?$/.test(location.hash) && !document.querySelector(".gn.sheet-on")) && !errs.length, `${tv} · j 로 다음 기사 · Esc 로 닫기 · 오류 없음${errs.length ? " — " + errs[0] : ""}`);
+    // 세계 — 진짜 지구본(캔버스) · 나라 목록 / 회사 — 구독하면 탭이 생겨요
+    await hop("#/news/world", ".gn-ranks [data-cc]", 1500);
+    const wv = await p.evaluate(() => ({ cv: (document.querySelector("#gn-globe")?.width || 0) > 100, n: document.querySelectorAll(".gn-ranks [data-cc]").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+    ok(wv.cv && wv.n > 0 && !wv.over, `${tv} · 세계 — 지구본 · 나라 ${wv.n}곳 · 가로 넘침 없음`);
+    await hop("#/news/co", ".gn-sub", 800);
+    const wasOn = await p.evaluate(() => document.querySelector(".gn-sub")?.getAttribute("aria-pressed") === "true");
+    await p.click(".gn-sub"); await sleep(900);
+    const coOk = await p.evaluate((w) => document.querySelector(".gn-sub")?.getAttribute("aria-pressed") === String(!w), wasOn);
+    await p.click(".gn-sub"); await sleep(600);
+    ok(coOk, `${tv} · 회사 — 구독 켜고 끄기`);
     await ctx.request.fetch(BASE + "/api/news/item/" + firstId, { method: "GET", headers: H }).then(async (r) => {
       for (const c of (await r.json()).comments || []) if (/^e2e /.test(c.body) && !c.parent_id) await ctx.request.fetch(BASE + "/api/news/comments/" + c.id, { method: "DELETE", headers: H });
     }).catch(() => {});

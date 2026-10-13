@@ -114,6 +114,8 @@ export async function fetchFeed(url) {
     const when =
       tag(b, "pubDate") || tag(b, "published") || tag(b, "updated") || tag(b, "dc:date");
     const at = when ? Date.parse(when) : NaN;
+    // 행사 안내(PIIE /events/ 등)는 기사가 아니에요 — 미래 날짜가 붙은 글도 행사 공지라 건너뛰어요
+    if (/\/events?\//i.test(link) || (Number.isFinite(at) && at > Date.now() + 36e5)) continue;
     // 날짜가 없거나 미래(PIIE 는 행사 날짜를 pubDate 로 줘요)면 null → 넣을 때 처음 본 시각 + dated=0
     const published = Number.isFinite(at) && at <= Date.now() + 36e5 ? at : null;
     if (published && published > latest) latest = published;
@@ -269,7 +271,7 @@ ${chunk.map((t, n) => `[${n}] ${t.title}   — 출처: ${t.feed}`).join("\n")}
  * 글 SUM_CHUNK 편을 **AI 한 번**에 묶어요 — 글마다 부르면 바깥 요청 50개 한도가 금방 차요.
  * opts.day 를 주면 그날 글만 (되채우기). 예산(lib/budget.js)이 모자라면 남은 묶음은 다음 번으로 미뤄요.
  */
-const SUM_CHUNK = 5;
+const SUM_CHUNK = 4;
 const SUM_SKIP = 2; // AI 가 이만큼 답을 안 주면 그 글은 건너뛰어요 (sum_skip=1 · summary 는 비워 둔 채) → 그날 신문이 막히지 않게
 /** 답을 못 받은 횟수를 세고, SUM_SKIP 번이면 건너뛰기 표시 */
 const markMiss = (env, id) => env.DB.prepare("UPDATE news_items SET sum_miss = sum_miss + 1, sum_skip = CASE WHEN sum_miss + 1 >= ? THEN 1 ELSE 0 END WHERE id = ?").bind(SUM_SKIP, id).run();
@@ -311,7 +313,7 @@ export async function summarize(env, limit = 10, opts = {}) {
   await inBatches(chunks, SUM_AT_ONCE, async (chunk) => {
     if (left() < 2) { failed.push("예산 부족 — 다음 번에"); return; }
     try {
-      const body = chunk.map((t, n) => `### [${n}] 출처: ${t.feed} (${t.topic})\n제목: ${t.title}\n${String(t.raw || "").slice(0, 2500)}`).join("\n\n");
+      const body = chunk.map((t, n) => `### [${n}] 출처: ${t.feed} (${t.topic})\n제목: ${t.title}\n${String(t.raw || "").slice(0, 4000)}`).join("\n\n");
       const { data } = await aiJson(
         env,
         RULES,
@@ -321,7 +323,7 @@ export async function summarize(env, limit = 10, opts = {}) {
 - 오늘은 ${kstToday(0)} (한국 시간)이야. 연도·날짜는 원문에 적힌 것만 쓰고, 원문에 없는 연도를 지어내지 마.
 - 고유명사·용어는 정확한 한국어 표준 표기로 (예: "language model" → "언어 모델", "rare earth" → "희토류"). 낯선 이름은 억지로 옮기지 말고 원문 표기 그대로.
 - one: **35~50자 한 문장.** 절대 55자를 넘기지 마. 한 가지 사실만. 끝은 "~했다 / ~한다" 체. 고유명사에 원어를 괄호로 병기하지 마. 제목을 되풀이하지 말고 알맹이를 담아.
-- summary: **2~3문장**, 합쳐서 90~160자. 신문 기사 요약처럼: 무슨 일이 있었고(누가·무엇을), 왜 중요한지. "~했다 / ~이다" 체. 원문에 없는 건 쓰지 마.
+- summary: **4~5문장**, 합쳐서 220~380자. 이것만 읽어도 내용을 알 수 있게: ① 무슨 일이 있었나(누가·언제·무엇을) ② 핵심 내용·수치 ③ 배경 ④ 왜 중요한지·다음에 볼 것. "~했다 / ~이다" 체. 원문에 없는 건 쓰지 마.
 - section: **기사 내용**으로 고른 신문 면 하나 (출처의 주제와 달라도 기사 내용을 따라. 예: AI 매체의 언론 자유·선거 기사는 "geopolitics") — "ai"(AI 모델·연구·정책 · AI 회사 소식: 새 모델 출시·예고, OpenAI·Anthropic·Google DeepMind·xAI·Meta AI 등의 발표·투자·인사. **출처가 어디든 AI 가 주인공인 기사는 "ai"**) | "geopolitics"(외교·안보·전쟁·국내정치) | "tech"(반도체·제조·우주·기술산업) | "economy"(거시·무역·에너지·금융).
 - geo: 무대가 되는 나라 ISO 3166-1 alpha-2 코드 1~3개 (EU 는 "BE"). 없으면 빈 배열.
 - tag: 이 글이 속한 **지속되는 이야기**를 2~4단어 영어 소문자로 (예: "us china chip controls", "ukraine war"). 몇 주 동안 이어질 이야기여야 해.
@@ -541,6 +543,27 @@ async function inChunks(env, sql, ids, size = 90) {
   }
   return out;
 }
+
+// ---------- 회사 ----------
+// 구독할 수 있는 회사와 기사에서 알아보는 이름들. 짧은 영어 이름(Meta · Apple · Grok …)은 단어 경계로만 맞춰요.
+export const COMPANIES = [
+  { key: "anthropic", name: "Anthropic", aliases: ["Anthropic", "Claude", "앤트로픽", "클로드"] },
+  { key: "openai", name: "OpenAI", aliases: ["OpenAI", "ChatGPT", "GPT-", "오픈AI", "Sam Altman"] },
+  { key: "google", name: "Google DeepMind", aliases: ["DeepMind", "Gemini", "Google AI", "구글", "딥마인드", "제미나이"] },
+  { key: "meta", name: "Meta AI", aliases: ["Meta AI", "Llama", "메타"] },
+  { key: "xai", name: "xAI", aliases: ["xAI", "Grok"] },
+  { key: "nvidia", name: "NVIDIA", aliases: ["Nvidia", "NVIDIA", "엔비디아"] },
+  { key: "microsoft", name: "Microsoft", aliases: ["Microsoft", "Copilot", "마이크로소프트"] },
+  { key: "apple", name: "Apple", aliases: ["Apple Intelligence", "Apple", "애플"] },
+  { key: "deepseek", name: "DeepSeek", aliases: ["DeepSeek", "딥시크"] },
+  { key: "mistral", name: "Mistral", aliases: ["Mistral", "미스트랄"] },
+  { key: "tsmc", name: "TSMC", aliases: ["TSMC"] },
+  { key: "samsung", name: "Samsung", aliases: ["Samsung", "삼성"] },
+];
+const reEsc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const CO_RE = COMPANIES.map((c) => [c.key, new RegExp(c.aliases.map((a) => /^[\x00-\x7f]+$/.test(a) ? `(?<![A-Za-z])${reEsc(a)}${/-$/.test(a) ? "" : "(?![A-Za-z])"}` : reEsc(a)).join("|"), "i")]);
+/** 기사에 나오는 회사 key 목록 (제목 · 한국어 제목 · 한 줄 요약에서) */
+export const coOf = (r) => { const t = `${r.title || ""} ${r.title_ko || ""} ${r.one_liner || ""}`; return CO_RE.filter(([, re]) => re.test(t)).map(([k]) => k); };
 
 const parseGeo = (g) => { if (Array.isArray(g)) return g; try { return JSON.parse(g || "[]") || []; } catch { return []; } };
 
@@ -763,7 +786,52 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
   const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
   const ED_COLS = "i.id, i.title, i.title_ko, i.url, i.one_liner, i.summary, i.section, i.day, i.published_at, i.dated, i.geo, i.thread_id, f.name AS feed, f.topic";
   const shape = (r) => ({ id: r.id, title: r.title, title_ko: r.title_ko ? cleanKoTitle(r.title_ko, r.feed) : null, url: r.url, feed: r.feed, topic: r.topic, section: sectionOf(r.topic, r.section), one_liner: r.one_liner, summary: r.summary,
-    published_at: r.published_at, dated: r.dated, thread_id: r.thread_id, geo: r.geo, readers: r.readers, stars: r.stars, comments: r.comments, disputed: r.disputed });
+    published_at: r.published_at, dated: r.dated, thread_id: r.thread_id, geo: r.geo, readers: r.readers, stars: r.stars, comments: r.comments, disputed: r.disputed, co: coOf(r) });
+
+  // [GET /news/world?days=1|7|30] 지구본용 — 나라 코드가 붙은 글만 (기본 7일)
+  on("GET", "/news/world", async ({ env, q }) => {
+    const days = Math.min(30, Math.max(1, Number(q.get("days")) || 7)), from = kstToday(1 - days), to = kstToday(0);
+    const { results } = await env.DB.prepare(`SELECT i.id, i.title, i.title_ko, i.one_liner, i.published_at, i.dated, i.section, i.geo, f.name AS feed, f.topic
+        FROM news_items i JOIN news_feeds f ON f.id = i.feed_id
+       WHERE i.day BETWEEN ? AND ? AND i.geo IS NOT NULL AND i.geo <> '[]' ORDER BY i.published_at DESC LIMIT 1500`).bind(from, to).all();
+    const items = (results || []).map((r) => ({ id: r.id, title: r.title, title_ko: r.title_ko ? cleanKoTitle(r.title_ko, r.feed) : null, one_liner: r.one_liner, feed: r.feed,
+      published_at: r.published_at, dated: r.dated, section: sectionOf(r.topic, r.section), geo: parseGeo(r.geo) })).filter((r) => r.geo.length);
+    return json({ from, to, items });
+  });
+
+  // [GET /news/companies] 회사 목록 · 누가 구독했는지 · 오늘 글 수
+  const subsOf = async (env) => {
+    const { results } = await env.DB.prepare("SELECT user_id, company FROM news_company_subs").all();
+    const m = new Map(COMPANIES.map((c) => [c.key, []]));
+    for (const r of results || []) m.get(r.company)?.push(r.user_id);
+    return m;
+  };
+  on("GET", "/news/companies", async ({ env, user }) => {
+    const [subs, { results }] = await Promise.all([subsOf(env),
+      env.DB.prepare("SELECT title, title_ko, one_liner FROM news_items WHERE day = ?").bind(kstToday(0)).all()]);
+    const today = new Map();
+    for (const r of results || []) for (const k of coOf(r)) today.set(k, (today.get(k) || 0) + 1);
+    return json({ companies: COMPANIES.map((c) => ({ key: c.key, name: c.name, subs: subs.get(c.key), mine: subs.get(c.key).includes(user.id), today: today.get(c.key) || 0 })) });
+  });
+  // [PUT /news/companies/:key] {on} 구독 켜기 · 끄기 (나만)
+  on("PUT", "/news/companies/:key", async ({ env, req, user, params }) => {
+    if (!COMPANIES.some((c) => c.key === params.key)) fail(404, "없는 회사예요.");
+    const b = await body(req), on_ = !!b.on;
+    await env.DB.prepare(on_ ? "INSERT OR IGNORE INTO news_company_subs (user_id, company, created_at) VALUES (?, ?, ?)" : "DELETE FROM news_company_subs WHERE user_id = ? AND company = ?")
+      .bind(...(on_ ? [user.id, params.key, now()] : [user.id, params.key])).run();
+    return json({ ok: true, mine: on_ });
+  });
+  // [GET /news/company/:key?days=14] 그 회사가 나온 글
+  on("GET", "/news/company/:key", async ({ env, q, user, params }) => {
+    const c = COMPANIES.find((x) => x.key === params.key); if (!c) fail(404, "없는 회사예요.");
+    const days = Math.min(60, Math.max(1, Number(q.get("days")) || 14));
+    const like = c.aliases.flatMap((a) => ["%" + a + "%", "%" + a + "%", "%" + a + "%"]);
+    const cond = c.aliases.map(() => "(i.title LIKE ? OR i.title_ko LIKE ? OR i.one_liner LIKE ?)").join(" OR ");
+    const [subs, { results }] = await Promise.all([subsOf(env),
+      env.DB.prepare(`SELECT ${ED_COLS} FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.day >= ? AND (${cond}) ORDER BY i.published_at DESC LIMIT 200`).bind(kstToday(1 - days), ...like).all()]);
+    const rows = (results || []).filter((r) => coOf(r).includes(c.key));
+    return json({ company: { key: c.key, name: c.name, subs: subs.get(c.key), mine: subs.get(c.key).includes(user.id) }, items: (await decorate(env, rows)).map(shape) });
+  });
 
   // [GET /news/editions?from&to] 신문 목록 (달력용) — 기본 최근 60일
   on("GET", "/news/editions", async ({ env, q }) => {

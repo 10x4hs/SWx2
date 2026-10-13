@@ -44,6 +44,11 @@ const ITEMS = [
   [null, "seed-f1", 22, ["BR"], "Brazil hosts BRICS payments summit", "브라질, 브릭스 결제망 회의를 열어요"],
   [null, "seed-f3", 26, ["SG"], "Singapore data-center moratorium partly lifted", "싱가포르가 데이터센터 신규 허가를 일부 풀어요"],
   [null, "seed-f2", 30, ["VN", "CN"], "Vietnam courts Chinese EV makers", "베트남이 중국 전기차 공장 유치에 나섰어요"],
+  [null, "seed-f3", 1, ["US"], "Anthropic previews its next Claude model", "Anthropic 이 다음 Claude 모델 출시 시점을 예고했어요"],
+  [null, "seed-f3", 5, ["US"], "OpenAI cuts prices for its reasoning model", "OpenAI 가 추론 모델 가격을 내렸어요"],
+  [null, "seed-f3", 9, ["US", "TW"], "Nvidia ships new data-center chips built by TSMC", "엔비디아, TSMC 가 만든 새 데이터센터 칩 출하"],
+  [null, "seed-f3", 14, ["GB"], "Google DeepMind publishes Gemini safety report", "구글 딥마인드, Gemini 안전 보고서를 냈어요"],
+  [null, "seed-f3", 18, ["KR"], "Samsung begins HBM4 deliveries", "삼성, HBM4 납품을 시작해요"],
 ];
 const RAW = (t, o) => `${t}. ${o}. Officials said the move reflects months of pressure and would be reviewed next quarter. Critics argue the measure may backfire, while supporters point to the data showing a 12 percent rise since January. The decision follows talks in Washington, Beijing and Brussels.`;
 
