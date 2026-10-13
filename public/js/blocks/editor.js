@@ -248,7 +248,7 @@ export function createBlockEditor(host, opts) {
   root.addEventListener("focusout", (e) => {
     if (e.target.closest?.(".db-host")) return;
     const el = e.target;
-    if (el.classList?.contains("nb-text") && !el.classList.contains("nb-code")) { const b = blockOf(el); delete el.dataset.raw; if (b) show(el, b); setTimeout(closeSug, 120); }
+    if (el.classList?.contains("nb-text") && !el.classList.contains("nb-code")) { const b = blockOf(el); delete el.dataset.raw; if (b) show(el, b); setTimeout(() => { const a = document.activeElement; if (!(a?.classList?.contains("nb-text") && root.contains(a))) closeSug(); }, 120); }
     if (el.tagName === "TD") { const b = blockOf(el); if (b) el.innerHTML = renderInline(b.props.rows[+el.dataset.r]?.[+el.dataset.c] || ""); }
   });
   root.addEventListener("mousedown", (e) => {
@@ -530,21 +530,35 @@ export function createBlockEditor(host, opts) {
   document.addEventListener("selectionchange", onSel);
 
   // ---------- [[ autocomplete ----------
-  let sugOpts = [], sugSel = 0, sugAt = -1, sugFor = null;
+  // "[[" → page titles · "@" → pages, dates and reminders (mention menu)
+  let sugOpts = [], sugSel = 0, sugAt = -1, sugFor = null, sugMode = "link";
+  const kst = (n = 0) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
   function linkCheck(b, el) {
     const off = caretOffset(el), before = b.text.slice(0, off), open = before.lastIndexOf("[[");
-    if (open < 0 || before.slice(open).includes("]]") || before.slice(open).includes("\n")) return closeSug();
-    sugAt = open + 2; sugFor = b;
-    const q = before.slice(sugAt).toLowerCase();
-    sugOpts = (opts.notes?.() || []).filter((t) => t.toLowerCase().includes(q)).slice(0, 8).map((t) => ({ t }));
-    if (q && !sugOpts.some((o) => o.t.toLowerCase() === q)) sugOpts.push({ t: before.slice(sugAt), fresh: true });
+    const at = /(^|\s)@([^\s@\[\]]{0,30})$/.exec(before);
+    if (open >= 0 && !before.slice(open).includes("]]") && !before.slice(open).includes("\n")) {
+      sugMode = "link"; sugAt = open + 2;
+      const q = before.slice(sugAt).toLowerCase();
+      sugOpts = (opts.notes?.() || []).filter((t) => t.toLowerCase().includes(q)).slice(0, 8).map((t) => ({ t }));
+      if (q && !sugOpts.some((o) => o.t.toLowerCase() === q)) sugOpts.push({ t: before.slice(sugAt), fresh: true });
+    } else if (at) {
+      sugMode = "at"; sugAt = off - at[2].length - 1;
+      const q = at[2].toLowerCase();
+      const dates = [["Today", kst(0)], ["Tomorrow", kst(1)], ["Next week", kst(7)]].map(([l, d]) => ({ label: `📅 ${l} · ${d}`, ins: "@" + d, key: l.toLowerCase() }));
+      const rem = [["Remind me tomorrow 9:00", kst(1) + " 09:00"], ["Remind me today 18:00", kst(0) + " 18:00"]].map(([l, d]) => ({ label: `⏰ ${l}`, ins: "⏰ " + d, key: "remind " + l.toLowerCase() }));
+      if (/^\d{4}-\d{2}-\d{2}$/.test(q)) dates.unshift({ label: "📅 " + q, ins: "@" + q, key: q }, { label: `⏰ Remind ${q} 9:00`, ins: `⏰ ${q} 09:00`, key: q });
+      const pages = (opts.notes?.() || []).filter((t) => t.toLowerCase().includes(q)).slice(0, 6).map((t) => ({ label: "📄 " + t, ins: `[[${t}]]`, key: t.toLowerCase() }));
+      const raw = at[2]; if (raw && !pages.some((x) => x.key === q)) pages.push({ label: "📄 Link to " + raw, ins: `[[${raw}]]`, key: q });
+      sugOpts = [...pages, ...dates.filter((x) => !q || x.key.includes(q)), ...rem.filter((x) => !q || x.key.includes(q))].slice(0, 10);
+    } else return closeSug();
+    sugFor = b;
     if (!sugOpts.length) return closeSug();
     sugSel = 0;
     if (!sug) { sug = document.createElement("div"); sug.className = "suggest"; sug.setAttribute("role", "listbox"); document.body.appendChild(sug); sug.addEventListener("mousedown", (e) => { e.preventDefault(); const x = e.target.closest("[data-i]"); if (x) { sugSel = +x.dataset.i; pickSug(); } }); }
     const r = el.getBoundingClientRect(); sug.style.left = Math.min(r.left, innerWidth - 260) + "px"; sug.style.top = r.bottom + 4 + "px";
     drawSug();
   }
-  function drawSug() { sug.innerHTML = sugOpts.map((o, i) => `<button type="button" role="option" data-i="${i}" aria-selected="${i === sugSel}">${o.fresh ? "+ New page: " : ""}${esc(o.t)}</button>`).join(""); }
+  function drawSug() { sug.innerHTML = sugOpts.map((o, i) => `<button type="button" role="option" data-i="${i}" aria-selected="${i === sugSel}">${o.label ? esc(o.label) : (o.fresh ? "+ New page: " : "") + esc(o.t)}</button>`).join(""); }
   function closeSug() { if (sug) { sug.remove(); sug = null; } sugAt = -1; }
   function sugKey(e) {
     if (e.key === "ArrowDown") { e.preventDefault(); sugSel = (sugSel + 1) % sugOpts.length; drawSug(); return true; }
@@ -556,9 +570,10 @@ export function createBlockEditor(host, opts) {
   function pickSug() {
     const o = sugOpts[sugSel], b = sugFor; if (!o || !b) return closeSug();
     const el = elOf(b.id), off = el ? caretOffset(el) : b.text.length;
-    const after = b.text.slice(off).replace(/^[^\]\n]*\]\]/, "");
-    b.text = b.text.slice(0, sugAt) + o.t + "]]" + after;
-    const c = sugAt + o.t.length + 2;
+    let ins, after;
+    if (sugMode === "at") { ins = o.ins + " "; after = b.text.slice(off); b.text = b.text.slice(0, sugAt) + ins + after; }
+    else { after = b.text.slice(off).replace(/^[^\]\n]*\]\]/, ""); ins = o.t + "]]"; b.text = b.text.slice(0, sugAt) + ins + after; }
+    const c = sugAt + ins.length;
     closeSug(); changed(); render({ id: b.id, off: c });
   }
 

@@ -156,7 +156,7 @@ export function registerNotes(on) {
     const [nr, back, tags, children, up] = await env.DB.batch([
       env.DB.prepare(`SELECT n.* FROM notes n WHERE n.id = ?2 AND ${VISIBLE}`).bind(user.id, params.id),
       env.DB.prepare(
-        `SELECT n.id, n.user_id, n.title, substr(n.body, 1, 160) AS snippet FROM note_links l JOIN notes n ON n.id = l.src_id
+        `SELECT n.id, n.user_id, n.title, substr(n.body, max(1, instr(lower(n.body), lower('[[' || (SELECT title FROM notes WHERE id = ?2))) - 60), 180) AS snippet FROM note_links l JOIN notes n ON n.id = l.src_id
        WHERE l.dst_title = (SELECT title FROM notes WHERE id = ?2 AND user_id = ?1) AND n.id != ?2 AND ${VISIBLE} ORDER BY n.updated_at DESC`
       ).bind(user.id, params.id),
       env.DB.prepare("SELECT tag FROM note_tags WHERE note_id = ?").bind(params.id),

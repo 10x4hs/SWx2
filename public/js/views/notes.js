@@ -20,6 +20,8 @@ const setListOpen = (v) => { try { localStorage.setItem("trio-nl", v ? "1" : "0"
 const noteCache = new Map(); // id → { at, data } 방금 본 노트는 바로 띄우고 뒤에서 새로 받아요
 // 목록·백링크 미리보기: AI 표시와 마크다운 기호를 걷어낸 글자만
 const plain = (t) => (t || "").replace(/<!--[\s\S]*?(-->|$)/g, " ").replace(/[#*>\-\[\]`]/g, "").replace(/\s+/g, " ").trim();
+// 백링크 미리보기에서 이 노트 제목을 형광펜으로
+const hiTitle = (text, title) => { const t = esc(text), q = esc(title); const i = t.toLowerCase().indexOf(q.toLowerCase()); return i < 0 ? t : t.slice(0, i) + "<mark>" + t.slice(i, i + q.length) + "</mark>" + t.slice(i + q.length); };
 const fmt = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}월 ${d.getDate()}일 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 
 export async function createNote(ctx, title, body = "") {
@@ -164,6 +166,7 @@ export function mount(root, ctx, r) {
         <div class="row faint" style="font-size:12px;gap:10px">
           <span class="row" style="gap:6px">${avatar({ ...(u || {}), color: u?.color || "#999" }, "sm")}${esc(u?.display_name || "")}</span>
           <span>Created ${fmt(n.created_at)}</span>
+          ${S.backlinks.length ? `<a href="#ed-back-list" class="bl-count" id="bl-count">↙ ${S.backlinks.length} backlink${S.backlinks.length > 1 ? "s" : ""}</a>` : ""}
           <span id="ed-tags" class="row" style="gap:4px">${S.tags.map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join("")}</span>
         </div>
         ${n.props ? `<div class="nb-props" id="ed-props"></div>` : ""}
@@ -174,8 +177,8 @@ export function mount(root, ctx, r) {
         <div class="ed-meta">
           ${n.kind === "database" ? "" : `<div class="row" style="justify-content:space-between;align-items:center"><div class="eyebrow">Pages · ${S.children.length}</div>${own ? `<button class="btn ghost sm" type="button" id="ed-newpage">${icon.plus(13)}Page</button>` : ""}</div>
           <div class="pages" id="ed-pages">${S.children.length ? S.children.map((c) => `<a href="#/notes/${c.id}"><span class="pg-ic">📄</span><b>${esc(c.title)}</b></a>`).join("") : `<span class="faint" style="font-size:13px">Add pages inside this one to split it up.</span>`}</div>`}
-          <div class="eyebrow">Backlinks · ${S.backlinks.length}</div>
-          <div class="backlinks" id="ed-back-list">${S.backlinks.length ? S.backlinks.map((b) => `<a href="#/notes/${b.id}"><b>${esc(b.title)}</b><span>${esc(plain(b.snippet).slice(0, 120))}</span></a>`).join("") : `<span class="faint" style="font-size:13px">Nothing links here yet. Write <code>[[${esc(n.title)}]]</code> in another page.</span>`}</div>
+          <div class="eyebrow" id="ed-back-h">${S.backlinks.length} backlink${S.backlinks.length === 1 ? "" : "s"}</div>
+          <div class="backlinks" id="ed-back-list">${S.backlinks.length ? S.backlinks.map((b) => `<a href="#/notes/${b.id}"><b>📄 ${esc(b.title)}</b><span>${hiTitle(plain(b.snippet).slice(0, 150), n.title)}</span></a>`).join("") : `<span class="faint" style="font-size:13px">Nothing links here yet. Write <code>[[${esc(n.title)}]]</code> in another page.</span>`}</div>
           <div id="ed-outline"></div>
         </div>
       </div></div>`;
@@ -281,6 +284,7 @@ export function mount(root, ctx, r) {
   }, 650);
 
   function bindEditor() {
+    $("#bl-count", root)?.addEventListener("click", (e) => { e.preventDefault(); $("#ed-back-h", root)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
     const ta = $("#ed-text", root), title = $("#ed-title", root);
     $$m("[data-mode]").forEach((b) => b.addEventListener("click", () => {
       save.flush();
