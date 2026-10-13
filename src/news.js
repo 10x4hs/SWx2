@@ -188,6 +188,12 @@ export async function summarize(env, limit = 30) {
   ).bind(Date.now() - MAX_AGE, limit).all();
 
   const todo = results || [];
+  // 이미 있는 줄기 태그를 보여 주고 맞으면 그대로 쓰게 해요 — 안 그러면 "ukraine war" · "russia ukraine war" 처럼 글마다 줄기가 갈라져요
+  const { results: known } = await env.DB.prepare(
+    `SELECT t.key, COUNT(i.id) AS n FROM news_threads t LEFT JOIN news_items i ON i.thread_id = t.id
+      WHERE t.key NOT LIKE 'user:%' AND t.updated_at > ? GROUP BY t.id ORDER BY n DESC, t.updated_at DESC LIMIT 60`
+  ).bind(Date.now() - 21 * 864e5).all();
+  const keys = (known || []).map((k) => k.key);
   let done = 0;
   const failed = [];
 
@@ -200,12 +206,17 @@ export async function summarize(env, limit = 30) {
         `다음 글을 **한 문장**으로 요약하고, 지도와 줄기 표시용 태그를 붙여 줘.
 
 규칙을 꼭 지켜:
-- **55자 이내.** 공백 포함. 이건 목록에 두 줄로 들어가야 해서 넘기면 잘려.
+- **35~50자.** 공백 포함, 절대 55자를 넘기지 마. 목록에 두 줄로 들어가야 해서 넘기면 잘려. 한 가지 사실만.
+- 끝은 "~했다 / ~한다" 체로 통일해.
 - 고유명사에 **원어를 괄호로 병기하지 마.** 한국어 이름만 써.
 - 제목을 되풀이하지 마. 제목에 없는 **알맹이**를 담아.
 - 직함·기관 전체 이름 대신 짧게. ("우크라이나 외무장관" → "우크라 외무장관")
 - geo: 이 글의 무대가 되는 나라 ISO 3166-1 alpha-2 코드 1~3개 (예: "US","CN","TW"). 특정 나라가 없으면 빈 배열.
 - tag: 이 글이 속한 **지속되는 이야기**를 2~4단어 영어 소문자로 (예: "us china chip controls", "ukraine war", "ai regulation eu"). 너무 구체적이면 안 돼 — 몇 주 동안 같은 태그로 이어질 이야기여야 해.
+  아래 기존 태그 중 **바로 그 이야기**(같은 사건 · 같은 갈등의 다음 장)가 있으면 그 태그를 글자 그대로 써.
+  분야만 비슷하면 묶지 마 (예: 라트비아 주류 파산은 "semiconductor industry trends" 가 아니야, 북아일랜드 정국은 "ukraine war" 가 아니야). 맞는 게 없으면 새 태그.
+  기존 태그: ${keys.length ? keys.join(" | ") : "(없음)"}
+- geo 는 실제 나라 코드만 (EU 같은 기구는 그 본부 나라 대신 빈칸 말고 "BE"). 같은 코드를 두 번 쓰지 마.
 - tag_ko: tag 의 한국어 제목 (12자 이내).
 
 출처: ${t.feed}
@@ -216,12 +227,18 @@ ${String(t.raw || "").slice(0, 6000)}
 {"one":"55자 이내 한 문장","geo":["US"],"tag":"...","tag_ko":"..."} 형식으로만 답해.`,
         () => ({ one: `${t.title}`.slice(0, 55), geo: guessGeo(text), tag: fakeTag(text, t.topic), tag_ko: "" })
       );
-      const one = String(data?.one || "").trim().slice(0, 140);
+      let one = String(data?.one || "").trim().slice(0, 140);
+      if (one.length > 58) { // 길면 한 번만 줄여 달라고 해요
+        const r2 = await aiJson(env, RULES, `다음 문장을 뜻은 그대로 두고 45자 이내로 줄여 줘. "~했다" 체.\n${one}\n{"one":"..."} 형식으로만 답해.`).catch(() => null);
+        const short = String(r2?.data?.one || "").trim();
+        if (short && short.length < one.length) one = short.slice(0, 140);
+      }
       if (!one) throw new Error("빈 요약");
-      let geo = (Array.isArray(data?.geo) ? data.geo : []).map((c) => String(c).toUpperCase().trim()).filter((c) => /^[A-Z]{2}$/.test(c)).slice(0, 3);
+      let geo = [...new Set((Array.isArray(data?.geo) ? data.geo : []).map((c) => String(c).toUpperCase().trim()).map((c) => (c === "EU" ? "BE" : c === "UK" ? "GB" : c)).filter((c) => /^[A-Z]{2}$/.test(c)))].slice(0, 3);
       if (!geo.length) geo = guessGeo(text);
       await env.DB.prepare("UPDATE news_items SET one_liner = ?, geo = ? WHERE id = ?").bind(one, JSON.stringify(geo), t.id).run();
       await attachThread(env, { id: t.id, text: `${t.title} ${one}` }, data?.tag, data?.tag_ko);
+      const k = normTag(data?.tag); if (k && !keys.includes(k)) keys.push(k);
       done += 1;
     } catch (e) {
       failed.push(`${t.title.slice(0, 30)}: ${String(e?.message || e).slice(0, 60)}`);
