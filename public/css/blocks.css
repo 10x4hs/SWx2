@@ -270,3 +270,4 @@ body.touch-dragging { user-select: none; -webkit-user-select: none; }
 .bl-count:hover { color: var(--ink); }
 #ed-back-list a { display: grid; gap: 2px; }
 #ed-back-list mark { background: var(--hl-yellow); color: inherit; border-radius: 3px; padding: 0 2px; }
+.nb-tb .nb-sw { border-radius: 8px 8px 0 0; } .nb-tb .nb-sw + .nb-sw { top: 110px; border-radius: 0 0 8px 8px; box-shadow: 0 0 0 1px var(--line-2); }
