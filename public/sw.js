@@ -247,6 +247,16 @@ self.addEventListener("push", (event) => {
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (wins.some((w) => w.visibilityState === "visible" && w.focused)) { for (const w of wins) w.postMessage({ type: "room-ping" }); return; }
+    // 뉴스: 내 메모에 친구가 반박 · 동의를 달았으면 그걸 먼저 알려요 (푸시는 내용 없이 깨우기만 해서 여기서 물어봐요)
+    try {
+      const r = await fetch("/api/news/inbox", { headers: { "x-trio": "1" }, credentials: "include" });
+      const j = r.ok ? await r.json() : null;
+      if (j?.n && j.last && Date.now() - j.last.created_at < 120000) {
+        const what = j.last.ai ? "🤖 반박" : j.last.stance === "rebut" ? "반박" : "동의";
+        await self.registration.showNotification(`${j.last.who}님이 내 메모에 ${what}했어요`, { body: String(j.last.body).slice(0, 140), icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "news", renotify: true, data: { url: "/#/news/item/" + j.last.item_id } });
+        return;
+      }
+    } catch {}
     let n = 0, last = null;
     try { const r = await fetch("/api/room/unread", { headers: { "x-trio": "1" }, credentials: "include" }); if (r.ok) { const j = await r.json(); n = j.total ?? j.unread ?? 0; last = j.last || null; } } catch {}
     if (!n) return;
@@ -262,7 +272,7 @@ self.addEventListener("notificationclick", (event) => {
   const url = (event.notification.data && event.notification.data.url) || "/#/room";
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const w of wins) { if ("focus" in w) { await w.focus(); w.postMessage({ type: "open-room" }); return; } }
+    for (const w of wins) { if ("focus" in w) { await w.focus(); w.postMessage(url.includes("#/news") ? { type: "open-hash", hash: url.slice(url.indexOf("#")) } : { type: "open-room" }); return; } }
     await self.clients.openWindow(url);
   })());
 });
