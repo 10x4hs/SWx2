@@ -202,12 +202,28 @@ export async function ingest(env, now = Date.now(), max = 24) {
  * opts.day 를 주면 그날 글만 (되채우기). 예산(lib/budget.js)이 모자라면 남은 묶음은 다음 번으로 미뤄요.
  */
 const SUM_CHUNK = 5;
+const SUM_SKIP = 2; // AI 가 이만큼 답을 안 주면 그 글은 건너뛰어요 (sum_skip=1 · summary 는 비워 둔 채) → 그날 신문이 막히지 않게
+/** 답을 못 받은 횟수를 세고, SUM_SKIP 번이면 건너뛰기 표시 */
+const markMiss = (env, id) => env.DB.prepare("UPDATE news_items SET sum_miss = sum_miss + 1, sum_skip = CASE WHEN sum_miss + 1 >= ? THEN 1 ELSE 0 END WHERE id = ?").bind(SUM_SKIP, id).run();
+
+/** 한 줄 요약은 55자까지. 넘으면 예산이 남을 때 한 번만 줄여 달라고 하고, 그래도 길면 잘라요. */
+async function fitOne(env, one) {
+  one = String(one || "").trim();
+  if (one.length <= 55) return one;
+  if (left() >= 3) {
+    const r = await aiJson(env, RULES, `다음 문장을 뜻은 그대로 두고 45자 이내로 줄여 줘. "~했다" 체.\n${one}\n{"one":"..."} 형식으로만 답해.`, () => ({ one: one.slice(0, 45) })).catch(() => null);
+    const short = String(r?.data?.one || "").trim();
+    if (short && short.length <= 55) return short;
+  }
+  return one.slice(0, 54).replace(/\s+\S*$/, "") + "…";
+}
+
 export async function summarize(env, limit = 10, opts = {}) {
   const where = opts.day ? "i.day = ?" : "i.published_at > ?";
   const { results } = await env.DB.prepare(
     `SELECT i.id, i.title, i.raw, i.one_liner, f.name AS feed, f.topic
        FROM news_items i JOIN news_feeds f ON f.id = i.feed_id
-      WHERE i.summary IS NULL AND ${where}
+      WHERE i.summary IS NULL AND i.sum_skip = 0 AND ${where}
       ORDER BY i.published_at DESC LIMIT ?`
   ).bind(opts.day || Date.now() - MAX_AGE, limit).all();
 
@@ -234,9 +250,11 @@ export async function summarize(env, limit = 10, opts = {}) {
         `다음 글 ${chunk.length}편을 각각 요약하고, 지도와 줄기 표시용 태그를 붙여 줘.
 
 글마다 규칙:
+- 오늘은 ${kstToday(0)} (한국 시간)이야. 연도·날짜는 원문에 적힌 것만 쓰고, 원문에 없는 연도를 지어내지 마.
+- 고유명사·용어는 정확한 한국어 표준 표기로 (예: "language model" → "언어 모델", "rare earth" → "희토류"). 낯선 이름은 억지로 옮기지 말고 원문 표기 그대로.
 - one: **35~50자 한 문장.** 절대 55자를 넘기지 마. 한 가지 사실만. 끝은 "~했다 / ~한다" 체. 고유명사에 원어를 괄호로 병기하지 마. 제목을 되풀이하지 말고 알맹이를 담아.
 - summary: **2~3문장**, 합쳐서 90~160자. 신문 기사 요약처럼: 무슨 일이 있었고(누가·무엇을), 왜 중요한지. "~했다 / ~이다" 체. 원문에 없는 건 쓰지 마.
-- section: 신문 면 하나 — "ai"(AI 모델·연구·정책) | "geopolitics"(외교·안보·전쟁·국내정치) | "tech"(반도체·제조·우주·기술산업) | "economy"(거시·무역·에너지·금융).
+- section: **기사 내용**으로 고른 신문 면 하나 (출처의 주제와 달라도 기사 내용을 따라. 예: AI 매체의 언론 자유·선거 기사는 "geopolitics") — "ai"(AI 모델·연구·정책) | "geopolitics"(외교·안보·전쟁·국내정치) | "tech"(반도체·제조·우주·기술산업) | "economy"(거시·무역·에너지·금융).
 - geo: 무대가 되는 나라 ISO 3166-1 alpha-2 코드 1~3개 (EU 는 "BE"). 없으면 빈 배열.
 - tag: 이 글이 속한 **지속되는 이야기**를 2~4단어 영어 소문자로 (예: "us china chip controls", "ukraine war"). 몇 주 동안 이어질 이야기여야 해.
   아래 기존 태그 중 **바로 그 이야기**가 있으면 글자 그대로 써. 분야만 비슷하면 묶지 마. 맞는 게 없으면 새 태그.
@@ -246,13 +264,13 @@ export async function summarize(env, limit = 10, opts = {}) {
 ${body}
 
 {"items":[{"i":0,"one":"...","summary":"...","section":"ai","geo":["US"],"tag":"...","tag_ko":"..."}]} 형식으로만 답해. i 는 글 번호.`,
-        () => ({ items: chunk.map((t, n) => ({ i: n, one: `${t.title}`.slice(0, 55), summary: `${t.title}. 시험용 요약 둘째 줄이에요.`, section: "", geo: guessGeo(`${t.title} ${t.raw || ""}`), tag: fakeTag(`${t.title} ${t.raw || ""}`, t.topic), tag_ko: "" })) })
+        () => ({ items: chunk.map((t, n) => /NOANSWER/.test(t.title) ? null : ({ i: n, one: `${t.title}`.slice(0, 55), summary: `${t.title}. 시험용 요약 둘째 줄이에요.`, section: "", geo: guessGeo(`${t.title} ${t.raw || ""}`), tag: fakeTag(`${t.title} ${t.raw || ""}`, t.topic), tag_ko: "" })).filter(Boolean) })
       );
       const outs = Array.isArray(data?.items) ? data.items : [];
       for (const [n, t] of chunk.entries()) {
-        const o = outs.find((x) => Number(x?.i) === n) || outs[n];
-        if (!o) { failed.push(`${t.title.slice(0, 30)}: 답 없음`); continue; }
-        const one = t.one_liner || String(o.one || "").trim().slice(0, 140);
+        const o = outs.find((x) => Number(x?.i) === n);
+        if (!o || !String(o.summary || "").trim()) { failed.push(`${t.title.slice(0, 30)}: 답 없음`); await markMiss(env, t.id); continue; }
+        const one = await fitOne(env, t.one_liner || String(o.one || "").trim());
         const summary = String(o.summary || "").trim().slice(0, 600);
         if (!one || !summary) { failed.push(`${t.title.slice(0, 30)}: 빈 요약`); continue; }
         const text = `${t.title} ${t.raw || ""}`.slice(0, 4000);
@@ -840,7 +858,7 @@ const putJob = (env, name, state) => env.DB.prepare("INSERT INTO news_jobs (name
 export async function backfillStep(env, perStep = 10) {
   const today = kstToday(0), from = kstToday(-BACKFILL_DAYS);
   const next = await env.DB.prepare(
-    `SELECT i.day, COUNT(*) AS n, SUM(i.summary IS NULL) AS todo FROM news_items i LEFT JOIN news_editions e ON e.day = i.day
+    `SELECT i.day, COUNT(*) AS n, SUM(i.summary IS NULL AND i.sum_skip = 0) AS todo FROM news_items i LEFT JOIN news_editions e ON e.day = i.day
       WHERE i.day >= ? AND i.day < ? AND (e.day IS NULL OR e.status <> 'closed') GROUP BY i.day ORDER BY i.day ASC LIMIT 1`
   ).bind(from, today).first();
   const st = await getJob(env, "backfill");
@@ -852,7 +870,7 @@ export async function backfillStep(env, perStep = 10) {
   }
   let summed = 0, failed = [];
   if (next.todo > 0) { const r = await summarize(env, perStep, { day: next.day }); summed = r.done; failed = r.failed; }
-  const todo = next.todo - summed;
+  const todo = next.todo > 0 ? (await env.DB.prepare("SELECT COUNT(*) AS n FROM news_items WHERE day = ? AND summary IS NULL AND sum_skip = 0").bind(next.day).first()).n : 0;
   const stuck = summed === 0 && next.todo > 0 ? (st.day === next.day ? (st.stuck || 0) + 1 : 1) : 0;
   let built = null;
   if ((todo <= 0 || stuck >= 3) && left() >= 1) built = await buildEdition(env, next.day, "closed");
@@ -865,11 +883,11 @@ export async function backfillStep(env, perStep = 10) {
 
 export const NEWS_BUDGET = 40;
 
-/** 매시 10분 (DB 알림과 같은 크론): 피드 12곳 + 요약 2묶음(10편) + 되채우기 한 걸음 */
+/** 매시 10분 (DB 알림과 같은 크론): 피드 10곳 + 요약 1묶음(5편) + 되채우기 한 걸음(5편) — 보통 30개 안팎/40 (공급사 장애 조치 여유) */
 export async function newsHourly(env) {
-  const pulled = await ingest(env, Date.now(), 12);
-  const sum = left() >= 4 ? await summarize(env, 10) : { done: 0 };
-  const backfill = left() >= 6 ? await backfillStep(env, 10) : null;
+  const pulled = await ingest(env, Date.now(), 10);
+  const sum = left() >= 4 ? await summarize(env, 5) : { done: 0 };
+  const backfill = left() >= 6 ? await backfillStep(env, 5) : null;
   return { added: pulled.reduce((n, p) => n + p.added, 0), feeds: pulled.length, summed: sum.done, backfill };
 }
 /** 하위 호환 (예전 이름) */

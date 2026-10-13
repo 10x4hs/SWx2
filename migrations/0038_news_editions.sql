@@ -2,7 +2,11 @@
 -- 글마다 2~3줄 한국어 요약(summary) · 신문 면(section) · 한국 날짜(day). one_liner 는 그대로 둬요.
 ALTER TABLE news_items ADD COLUMN summary TEXT;
 ALTER TABLE news_items ADD COLUMN section TEXT;   -- ai | geopolitics | tech | economy
-ALTER TABLE news_items ADD COLUMN day TEXT;       -- YYYY-MM-DD (한국) = published_at 의 날짜. 날짜 없는 글은 처음 본 날
+ALTER TABLE news_items ADD COLUMN day TEXT;
+ALTER TABLE news_items ADD COLUMN sum_miss INTEGER NOT NULL DEFAULT 0; -- AI 가 이 글에 답을 안 준 횟수
+ALTER TABLE news_items ADD COLUMN sum_skip INTEGER NOT NULL DEFAULT 0; -- 1 = 요약 건너뜀 (summary 비움) — 그날 신문은 이 글 없이 마감해요
+-- Tech Policy Press 는 AI 보다 언론·선거·플랫폼 규제 글이 많아요 → 지정학 면
+UPDATE news_feeds SET topic = 'geopolitics' WHERE url = 'https://techpolicy.press/rss/feed.xml';       -- YYYY-MM-DD (한국) = published_at 의 날짜. 날짜 없는 글은 처음 본 날
 UPDATE news_items SET day = strftime('%Y-%m-%d', published_at / 1000 + 9 * 3600, 'unixepoch');
 UPDATE news_items SET section = CASE (SELECT topic FROM news_feeds f WHERE f.id = news_items.feed_id)
   WHEN 'ai' THEN 'ai' WHEN 'semi' THEN 'tech' WHEN 'energy' THEN 'economy' WHEN 'macro' THEN 'economy' ELSE 'geopolitics' END;
