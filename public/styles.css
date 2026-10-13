@@ -859,36 +859,6 @@ a.btn { text-decoration: none; }
 /* ---------- Second Brain: Obsidian-style graph view ---------- */
 .main:has(.host-graph) { background: var(--paper-solid); overflow: hidden; }
 .host-graph { height: 100%; }
-.obs { position: relative; height: 100%; min-height: 520px; overflow: hidden; }
-.obs canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
-.obs canvas.dragging { cursor: grabbing; }
-.obs-top { position: absolute; }
-.obs-title { margin: 0; font: 700 28px/1.1 var(--font-display); letter-spacing: -.02em; color: var(--ink); }
-.obs-stat { margin: 0; font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
-.obs-hint { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
-.obs-zoom { position: absolute; left: 24px; bottom: 22px; display: grid; gap: 4px; padding: 4px; border-radius: 12px; background: var(--glass-3); border: 1px solid var(--line); }
-.obs-zoom .icon-btn { font-size: 16px; color: var(--ink-2); }
-.obs-toggle { position: absolute; right: 24px; top: 22px; background: var(--glass-3); }
-.obs-panel { position: absolute; right: 16px; top: 62px; bottom: 16px; width: 272px; overflow-y: auto; padding: 6px 16px 16px; border-radius: 16px; display: grid; align-content: start; gap: 4px; background: var(--glass-3); }
-.obs-panel section { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-.obs-panel section:last-child { border-bottom: 0; }
-.obs-panel h2 { margin: 0; font: 700 13px/1.2 var(--font); color: var(--ink); display: flex; gap: 8px; align-items: baseline; }
-.obs-panel h2 small { font-weight: 500; color: var(--ink-3); font-size: 12px; }
-.obs-panel .chk { display: flex; gap: 9px; align-items: center; font-size: 13.5px; color: var(--ink-2); cursor: pointer; }
-.obs-panel .chk input { accent-color: var(--ink); width: 15px; height: 15px; }
-.obs-panel .rng { display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
-.obs-panel input[type="range"] { width: 100%; accent-color: var(--ink); }
-.obs-groups { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.obs-groups button { display: grid; grid-template-columns: 12px 1fr auto; gap: 10px; align-items: center; width: 100%; border: 0; background: transparent; padding: 7px 8px; border-radius: 8px; font-size: 13.5px; color: var(--ink); text-align: left; }
-.obs-groups button:hover { background: var(--hover); }
-.obs-groups button[aria-pressed="true"] { background: var(--accent-soft); }
-.obs-groups i { width: 10px; height: 10px; border-radius: 50%; }
-.obs-groups b { font-weight: 500; color: var(--ink-3); font-size: 12.5px; }
-.obs-tip { position: absolute; left: 0; top: 0; pointer-events: none; display: grid; gap: 3px; padding: 9px 12px; border-radius: 10px; background: var(--glass-3); border: 1px solid var(--line-2); max-width: 280px; z-index: 5; }
-.obs-tip b { font-size: 14px; } .obs-tip span { font-size: 12.5px; color: var(--ink-2); }
-.obs-empty { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 360px; text-align: center; color: var(--ink-2); line-height: 1.7; }
-.obs-empty a { color: var(--ink); }
-@media (max-width: 860px) { .obs { height: 100%; } .obs-panel { left: 12px; right: 12px; width: auto; top: auto; max-height: 55%; } .obs-hint { display: none; } }
 
 /* home rings v8.1: elapsed time tinted in the ring's own color */
 .rh-seg { stroke: var(--rh-todo); }
@@ -1425,7 +1395,6 @@ a.btn { text-decoration: none; }
 /* ---------- 노트 | 그래프 탭 ---------- */
 .nt-tabs a { padding: 6px 14px; font-weight: 650; }
 .note-list .top .nt-tabs { justify-self: start; }
-.obs-tabs { pointer-events: auto; justify-self: start; margin-bottom: 10px; background: var(--glass); border: 1px solid var(--glass-edge); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 
 /* ---------- 홈: 지금 공부 중 · 응원 ---------- */
 .ws-live { display: inline-flex; align-items: center; gap: 6px; margin-left: 2px; padding-left: 8px; border-left: 1px solid var(--line-2); font: 600 11.5px/1 var(--font); letter-spacing: 0; color: var(--ink-2); white-space: nowrap; }
@@ -1823,29 +1792,8 @@ a.btn { text-decoration: none; }
 }
 
 /* 그래프: 고른 점 띠 · 선 팝오버 */
-.obs-sel { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border-radius: 999px; font-size: 13.5px; white-space: nowrap; max-width: calc(100% - 140px); z-index: 4; }
-.obs-sel .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--ink-3)); box-shadow: 0 0 10px var(--c, transparent); flex: none; }
-.obs-sel b { overflow: hidden; text-overflow: ellipsis; }
-.obs-sel .faint { font-size: 12.5px; }
-.obs-pop { position: absolute; z-index: 6; display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; width: 280px; font-size: 13px; }
-.obs-pop-t { display: flex; align-items: center; gap: 6px; font-weight: 600; flex-wrap: wrap; }
-.obs-pop-t i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.obs-pop p { margin: 0; font-size: 12.5px; line-height: 1.5; }
-.obs-pop .danger-btn { border: 1px solid color-mix(in srgb, var(--c-rose) 50%, var(--line-2)); color: var(--c-rose); background: transparent; }
-.obs-pop .danger-btn:hover { background: color-mix(in srgb, var(--c-rose) 12%, transparent); }
-.obs-tip em { font-style: normal; font-size: 12px; color: var(--ink); }
-.obs-cut { position: absolute; z-index: 5; transform: translate(-50%, -50%); width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--paper-solid); color: var(--ink); font: 600 12px/1 var(--font); display: grid; place-items: center; cursor: pointer; padding: 0; }
-.obs-cut:hover { background: var(--ink); color: var(--paper-solid); border-color: var(--ink); }
-@media (max-width: 860px) { .obs-sel { bottom: 70px; max-width: calc(100% - 24px); } .obs-sel .faint { display: none; } }
 
 /* v14.2: 그래프 — 유리 구슬 · 빈 곳 클릭 새 노트 · 새 버전 띠 */
-.obs-new { position: absolute; z-index: 7; display: grid; gap: 8px; padding: 12px; width: 270px; border-radius: 14px; font-size: 13px; }
-.obs-new .faint { font: 600 10.5px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
-.obs-new .chk { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--ink-2); }
-.obs-new .chk input { accent-color: var(--ink); }
-.obs-sel .danger-btn { color: var(--c-rose); }
-.obs-top .obs-title { font-weight: 600; }
-.obs-zoom, .obs-toggle, .obs-tip { backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 .toast.upd { display: flex; align-items: center; background: var(--glass-3); color: var(--ink); border: 1px solid var(--line-2); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 
 /* ---------- v15: AI 모델 고르기 · 웹 검색 · 도구 칩 · 계획 AI(유리) ---------- */
@@ -1917,15 +1865,8 @@ a.btn { text-decoration: none; }
 :root[data-theme="light"] .pl-plan { background: rgba(255,255,255,.55); }
 .pl-box .send { background: var(--glass-3); color: var(--ink); border: 1px solid var(--glass-edge); box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
 .pl-box .send:hover { background: var(--ink); color: var(--paper-solid); }
-.obs-top { background: var(--glass); border: 1px solid var(--glass-edge); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: inset 0 1px 0 rgba(255,255,255,.1); pointer-events: none; }
-.obs-sel, .obs-pop, .obs-new, .obs-tip, .obs-zoom, .obs-toggle, .obs-cut { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), var(--e-3); }
 
 /* v15.2: 그래프 우클릭 메뉴 · AI 비서 입력창 */
-.obs-menu { position: absolute; z-index: 8; display: grid; gap: 1px; padding: 5px; min-width: 190px; border-radius: 12px; box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 18px 40px -14px rgba(0,0,0,.5); }
-.obs-menu-t { font: 600 11px var(--mono); color: var(--ink-3); padding: 6px 10px 4px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.obs-menu button { text-align: left; border: 0; background: transparent; color: var(--ink); font: 500 13px var(--font); padding: 8px 10px; border-radius: 8px; cursor: pointer; }
-.obs-menu button:hover { background: var(--hover); }
-.obs-menu button.danger { color: var(--c-rose); }
 .aic { display: grid; gap: 8px; margin: 4px 0 14px; }
 .aic-box { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 10px; border-radius: 999px; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 .aic-box:focus-within { border-color: var(--ink-3); }
@@ -2799,12 +2740,6 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 @media (max-width: 720px) { .og-panel { left: 12px; width: auto; top: auto; max-height: 55%; } }
 
 /* 노트 그래프 머리말 — 작게: [노트|그래프] 와 제목을 한 줄에, 숫자 · 도움말은 작은 글씨로 */
-.obs-top { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 10px; left: 16px; top: 14px; max-width: 340px; padding: 8px 12px; border-radius: 12px; }
-.obs-top .obs-tabs { margin: 0; padding: 2px; border-radius: 9px; }
-.obs-top .obs-tabs a { padding: 3px 10px; font-size: 12px; border-radius: 7px; }
-.obs-top .obs-title { font-size: 16px; }
-.obs-top .obs-stat { flex-basis: 100%; font-size: 11.5px; font-weight: 500; color: var(--ink-3); }
-.obs-top .obs-hint { flex-basis: 100%; font-size: 11px; line-height: 1.4; }
 
 /* ---------- Brain: 노트 + 공부 한 나무 (views/brain.js) ---------- */
 .host-brain { height: 100%; }

@@ -4,7 +4,6 @@ import { syncAiPrefs } from "./ai-pick.js";
 import { $, $$, esc, initial, ymd, today, toast, avatar } from "./util.js";
 import { icon, appIcon } from "./icons.js";
 import * as notesView from "./views/notes.js";
-import * as graphView from "./views/graph.js";
 import * as brainView from "./views/brain.js"; // Brain = 노트 + 공부를 한 나무로 (#/brain/<id>)
 import * as aiView from "./views/ai.js";
 import * as plannerView from "./views/planner.js";
@@ -291,7 +290,7 @@ function parseRoute() {
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {
