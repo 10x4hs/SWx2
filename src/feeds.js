@@ -37,7 +37,7 @@ export const SEED = [
   ["Epoch AI", "https://epoch.ai/atom.xml", "ai", "en", false, "학습 compute·비용을 실제 측정"],
   ["Hyperdimensional (Dean Ball)", "https://www.hyperdimensional.co/feed", "ai", "en", false, "미국 AI 규제 법안을 조문 수준으로"],
   ["AI Snake Oil", "https://www.aisnakeoil.com/feed", "ai", "en", false, "과장을 체계적으로 반증. 낙관 소스와 대조용"],
-  ["Tech Policy Press", "https://techpolicy.press/rss/feed.xml", "ai", "en", false, "기술 거버넌스. www 붙이면 작동 안 함"],
+  ["Tech Policy Press", "https://techpolicy.press/rss/feed.xml", "geopolitics", "en", false, "기술 거버넌스. www 붙이면 작동 안 함"],
   ["High Capacity", "https://highcapacity.substack.com/feed", "semi", "en", false, "제조·산업역량. 미국 재산업화 논쟁의 실제 숫자"],
   ["Fabricated Knowledge", "https://www.fabricatedknowledge.com/feed", "semi", "en", false, "반도체 애널리스트 관점. 2026-08 이후 뜸함 — 지켜볼 것"],
   ["Construction Physics", "https://www.construction-physics.com/feed", "semi", "en", false, "왜 미국은 공장·원전을 빨리 못 짓나를 비용으로 분해"],

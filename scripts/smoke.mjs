@@ -944,6 +944,12 @@ if (!process.env.SKIP_AI) {
   d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, created_at, day, section) VALUES ` + ids.map((id, n) =>
     `('${id}', '${n < 3 ? fs : fa}', 'https://example.com/${id}', 'Smoke edition story ${n} TSMC Taiwan', ${DT + n * 60e3}, 'TSMC in Taiwan said story ${n}.', ${t0}, '${D}', '${n < 3 ? "tech" : "ai"}')`).join(","));
   // 되채우기: 가장 오래된 날(D)부터 — 요약 → 마감 신문
+  // AI 가 계속 답을 안 주는 글(가짜 AI: 제목에 NOANSWER) → 두 번째에 건너뛰기, 그날은 3걸음 규칙 없이 마감
+  const D0 = kstDay(t0 - 59 * 864e5), nx = "smk-nx" + tag;
+  d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, created_at, day, section) VALUES ('${nx}', '${fa}', 'https://example.com/${nx}', 'NOANSWER smoke', ${Date.parse(D0 + "T03:00:00Z")}, 'x', ${t0}, '${D0}', 'ai')`);
+  r = await call("a", "POST", "/news/backfill"); ok(r.data.day === D0 && r.data.built === false && r.data.todo === 1, "backfill: no answer once → retried later");
+  r = await call("a", "POST", "/news/backfill"); ok(r.data.day === D0 && r.data.built === true && r.data.stuck < 3, "backfill: no answer twice → item skipped, day closes normally");
+  ok(d1(`SELECT sum_skip, summary FROM news_items WHERE id = '${nx}'`)[0].sum_skip === 1, "backfill: skipped item flagged sum_skip=1, summary null (D1)");
   r = await call("a", "POST", "/news/backfill");
   ok(r.status === 200 && r.data.day === D && r.data.summed === 5 && r.data.built === true && r.data.subrequests <= 40, "backfill: step summarizes the oldest day and closes its edition");
   ok(d1(`SELECT COUNT(*) AS n FROM news_items WHERE day = '${D}' AND summary IS NOT NULL AND one_liner IS NOT NULL`)[0].n === 5, "backfill: summary + one_liner stored (D1)");
@@ -974,7 +980,7 @@ if (!process.env.SKIP_AI) {
   ok(d1(`SELECT status FROM news_editions WHERE day = '${kstDay(Date.now())}'`)[0]?.status === "closed", "cron close: today's edition closed");
   r = await call("a", "POST", "/cron/run?cron=am"); ok(d1(`SELECT status FROM news_editions WHERE day = '${kstDay(Date.now())}'`)[0]?.status === "closed", "cron am: draft never reopens a closed edition");
   d1(`DELETE FROM news_items WHERE id LIKE 'smk-%${tag}'`); d1(`DELETE FROM news_feeds WHERE id LIKE 'smk-f%${tag}'`);
-  d1(`DELETE FROM news_editions WHERE day = '${D}' OR day = '${kstDay(Date.now())}'`); d1(`DELETE FROM news_jobs`);
+  d1(`DELETE FROM news_editions WHERE day = '${D}' OR day = '${D0}' OR day = '${kstDay(Date.now())}'`); d1(`DELETE FROM news_jobs`);
 }
 
 // ---------- 페이지 파일: sandbox iframe 은 쿠키가 없어서 /pf/<id>/~<토큰>/ 으로 불러요 ----------
