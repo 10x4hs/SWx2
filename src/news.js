@@ -544,6 +544,27 @@ async function inChunks(env, sql, ids, size = 90) {
   return out;
 }
 
+// ---------- 회사 ----------
+// 구독할 수 있는 회사와 기사에서 알아보는 이름들. 짧은 영어 이름(Meta · Apple · Grok …)은 단어 경계로만 맞춰요.
+export const COMPANIES = [
+  { key: "anthropic", name: "Anthropic", aliases: ["Anthropic", "Claude", "앤트로픽", "클로드"] },
+  { key: "openai", name: "OpenAI", aliases: ["OpenAI", "ChatGPT", "GPT-", "오픈AI", "Sam Altman"] },
+  { key: "google", name: "Google DeepMind", aliases: ["DeepMind", "Gemini", "Google AI", "구글", "딥마인드", "제미나이"] },
+  { key: "meta", name: "Meta AI", aliases: ["Meta AI", "Llama", "메타"] },
+  { key: "xai", name: "xAI", aliases: ["xAI", "Grok"] },
+  { key: "nvidia", name: "NVIDIA", aliases: ["Nvidia", "NVIDIA", "엔비디아"] },
+  { key: "microsoft", name: "Microsoft", aliases: ["Microsoft", "Copilot", "마이크로소프트"] },
+  { key: "apple", name: "Apple", aliases: ["Apple Intelligence", "Apple", "애플"] },
+  { key: "deepseek", name: "DeepSeek", aliases: ["DeepSeek", "딥시크"] },
+  { key: "mistral", name: "Mistral", aliases: ["Mistral", "미스트랄"] },
+  { key: "tsmc", name: "TSMC", aliases: ["TSMC"] },
+  { key: "samsung", name: "Samsung", aliases: ["Samsung", "삼성"] },
+];
+const reEsc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const CO_RE = COMPANIES.map((c) => [c.key, new RegExp(c.aliases.map((a) => /^[\x00-\x7f]+$/.test(a) ? `(?<![A-Za-z])${reEsc(a)}${/-$/.test(a) ? "" : "(?![A-Za-z])"}` : reEsc(a)).join("|"), "i")]);
+/** 기사에 나오는 회사 key 목록 (제목 · 한국어 제목 · 한 줄 요약에서) */
+export const coOf = (r) => { const t = `${r.title || ""} ${r.title_ko || ""} ${r.one_liner || ""}`; return CO_RE.filter(([, re]) => re.test(t)).map(([k]) => k); };
+
 const parseGeo = (g) => { if (Array.isArray(g)) return g; try { return JSON.parse(g || "[]") || []; } catch { return []; } };
 
 /** 글 목록에 셋의 흔적을 붙여요: 읽은 사람 · ★ 한 사람 · 💬 수 · ⚡(반박이 있으면) · 나라 */
@@ -765,7 +786,52 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
   const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
   const ED_COLS = "i.id, i.title, i.title_ko, i.url, i.one_liner, i.summary, i.section, i.day, i.published_at, i.dated, i.geo, i.thread_id, f.name AS feed, f.topic";
   const shape = (r) => ({ id: r.id, title: r.title, title_ko: r.title_ko ? cleanKoTitle(r.title_ko, r.feed) : null, url: r.url, feed: r.feed, topic: r.topic, section: sectionOf(r.topic, r.section), one_liner: r.one_liner, summary: r.summary,
-    published_at: r.published_at, dated: r.dated, thread_id: r.thread_id, geo: r.geo, readers: r.readers, stars: r.stars, comments: r.comments, disputed: r.disputed });
+    published_at: r.published_at, dated: r.dated, thread_id: r.thread_id, geo: r.geo, readers: r.readers, stars: r.stars, comments: r.comments, disputed: r.disputed, co: coOf(r) });
+
+  // [GET /news/world?days=1|7|30] 지구본용 — 나라 코드가 붙은 글만 (기본 7일)
+  on("GET", "/news/world", async ({ env, q }) => {
+    const days = Math.min(30, Math.max(1, Number(q.get("days")) || 7)), from = kstToday(1 - days), to = kstToday(0);
+    const { results } = await env.DB.prepare(`SELECT i.id, i.title, i.title_ko, i.one_liner, i.published_at, i.dated, i.section, i.geo, f.name AS feed, f.topic
+        FROM news_items i JOIN news_feeds f ON f.id = i.feed_id
+       WHERE i.day BETWEEN ? AND ? AND i.geo IS NOT NULL AND i.geo <> '[]' ORDER BY i.published_at DESC LIMIT 1500`).bind(from, to).all();
+    const items = (results || []).map((r) => ({ id: r.id, title: r.title, title_ko: r.title_ko ? cleanKoTitle(r.title_ko, r.feed) : null, one_liner: r.one_liner, feed: r.feed,
+      published_at: r.published_at, dated: r.dated, section: sectionOf(r.topic, r.section), geo: parseGeo(r.geo) })).filter((r) => r.geo.length);
+    return json({ from, to, items });
+  });
+
+  // [GET /news/companies] 회사 목록 · 누가 구독했는지 · 오늘 글 수
+  const subsOf = async (env) => {
+    const { results } = await env.DB.prepare("SELECT user_id, company FROM news_company_subs").all();
+    const m = new Map(COMPANIES.map((c) => [c.key, []]));
+    for (const r of results || []) m.get(r.company)?.push(r.user_id);
+    return m;
+  };
+  on("GET", "/news/companies", async ({ env, user }) => {
+    const [subs, { results }] = await Promise.all([subsOf(env),
+      env.DB.prepare("SELECT title, title_ko, one_liner FROM news_items WHERE day = ?").bind(kstToday(0)).all()]);
+    const today = new Map();
+    for (const r of results || []) for (const k of coOf(r)) today.set(k, (today.get(k) || 0) + 1);
+    return json({ companies: COMPANIES.map((c) => ({ key: c.key, name: c.name, subs: subs.get(c.key), mine: subs.get(c.key).includes(user.id), today: today.get(c.key) || 0 })) });
+  });
+  // [PUT /news/companies/:key] {on} 구독 켜기 · 끄기 (나만)
+  on("PUT", "/news/companies/:key", async ({ env, req, user, params }) => {
+    if (!COMPANIES.some((c) => c.key === params.key)) fail(404, "없는 회사예요.");
+    const b = await body(req), on_ = !!b.on;
+    await env.DB.prepare(on_ ? "INSERT OR IGNORE INTO news_company_subs (user_id, company, created_at) VALUES (?, ?, ?)" : "DELETE FROM news_company_subs WHERE user_id = ? AND company = ?")
+      .bind(...(on_ ? [user.id, params.key, now()] : [user.id, params.key])).run();
+    return json({ ok: true, mine: on_ });
+  });
+  // [GET /news/company/:key?days=14] 그 회사가 나온 글
+  on("GET", "/news/company/:key", async ({ env, q, user, params }) => {
+    const c = COMPANIES.find((x) => x.key === params.key); if (!c) fail(404, "없는 회사예요.");
+    const days = Math.min(60, Math.max(1, Number(q.get("days")) || 14));
+    const like = c.aliases.flatMap((a) => ["%" + a + "%", "%" + a + "%", "%" + a + "%"]);
+    const cond = c.aliases.map(() => "(i.title LIKE ? OR i.title_ko LIKE ? OR i.one_liner LIKE ?)").join(" OR ");
+    const [subs, { results }] = await Promise.all([subsOf(env),
+      env.DB.prepare(`SELECT ${ED_COLS} FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.day >= ? AND (${cond}) ORDER BY i.published_at DESC LIMIT 200`).bind(kstToday(1 - days), ...like).all()]);
+    const rows = (results || []).filter((r) => coOf(r).includes(c.key));
+    return json({ company: { key: c.key, name: c.name, subs: subs.get(c.key), mine: subs.get(c.key).includes(user.id) }, items: (await decorate(env, rows)).map(shape) });
+  });
 
   // [GET /news/editions?from&to] 신문 목록 (달력용) — 기본 최근 60일
   on("GET", "/news/editions", async ({ env, q }) => {
