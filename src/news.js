@@ -170,10 +170,12 @@ async function inBatches(list, size, fn) {
 }
 
 /** 살아 있는 피드를 전부 긁어요. */
-export async function ingest(env, now = Date.now()) {
+// Workers 무료 플랜은 요청 한 번에 바깥 요청(fetch) 50개까지예요. 피드 46곳 + AI 요약을 한 번에 하면 넘쳐서
+// 한 번에 받는 피드 수(max)와 요약 수를 나눠요. 오래 안 받은 피드부터.
+export async function ingest(env, now = Date.now(), max = 24) {
   const { results } = await env.DB.prepare(
-    "SELECT id, url, name FROM news_feeds WHERE active = 1 AND fail_count < 5"
-  ).all();
+    "SELECT id, url, name FROM news_feeds WHERE active = 1 AND fail_count < 5 ORDER BY COALESCE(last_fetched_at, 0) ASC LIMIT ?"
+  ).bind(max).all();
   return inBatches(results || [], PULL_AT_ONCE, (f) => pull(env, f, now));
 }
 
@@ -654,23 +656,19 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
 // ---------- 크론 ----------
 
 /** 한 시간마다: **글만** 긁어 와요. AI 를 안 써서 토큰이 0이에요. 속보용이에요. */
+// 매시 20분: 피드 24곳 + 요약 6편 (fetch 50개 안쪽)
 export async function newsPulse(env) {
   const pulled = await ingest(env);
-  return { added: pulled.reduce((n, p) => n + p.added, 0) };
+  const sum = await summarize(env, 6);
+  return { added: pulled.reduce((n, p) => n + p.added, 0), summed: sum.done };
 }
 
 /** 아침 8시: 모으고, 요약을 채우고, 오늘의 브리핑을 만들어요. */
 export async function newsCron(env, day) {
-  const pulled = await ingest(env);
-  const added = pulled.reduce((n, p) => n + p.added, 0);
-
-  // 한 번에 다 요약하면 공급사 한도에 걸려요. 나눠서 채워요.
-  let summed = 0;
-  for (let i = 0; i < 4; i += 1) {
-    const r = await summarize(env, 25);
-    summed += r.done;
-    if (!r.done) break;
-  }
+  // 수집은 매시 크론이 해요. 여기선 요약 10편 + 브리핑만 (fetch 50개 안쪽)
+  const pulled = [];
+  const added = 0;
+  const summed = (await summarize(env, 10)).done;
 
   let head = null;
   try {
@@ -902,8 +900,10 @@ export function registerNews(on, { json, body, fail, now }) {
 
   // 7. [POST /news/refresh] 지금 모으기. 화면의 '새로고침'이 여기로 와요.
   on("POST", "/news/refresh", async ({ env }) => {
-    const pulled = await ingest(env);
-    const sum = await summarize(env, 20);
+    // 수집은 매시 크론이 해요. 글이 하나도 없을 때만 여기서 받아요 (fetch 50개 한도 — 위 ingest 설명)
+    const any = await env.DB.prepare("SELECT 1 FROM news_items LIMIT 1").first();
+    const pulled = any ? [] : await ingest(env);
+    const sum = await summarize(env, any ? 10 : 4);
     // 오늘 브리핑이 없으면 여기서 만들어요 (아침 크론 전에 새로고침해도 브리핑 줄이 비지 않게)
     const today = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
     let briefed = false;
