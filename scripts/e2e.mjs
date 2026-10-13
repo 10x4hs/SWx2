@@ -225,6 +225,7 @@ try {
         `${tv} · 블록 — 토글 ${v0}→${v1}→${v2} · "/" 메뉴 ${menuOk} · 콜아웃 저장 ${sb.map((b) => b.type).join(",")}${errs.length ? " — " + errs[0] : ""}`);
       const dbn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 DB " + tv, kind: "database" } })).json()).note.id;
       const row = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 카드 " + tv, parent_id: dbn, props: { status: "시작 전" } } })).json()).note.id;
+      const row2 = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 카드2 " + tv, parent_id: dbn, props: { status: "시작 전" } } })).json()).note.id;
       await go("#/notes/" + dbn, 2200);
       await p.waitForSelector(".db-tabs", { timeout: 8000 });
       const tableOk = await p.evaluate(() => !!document.querySelector(".db-table .db-pill.st"));
@@ -235,6 +236,22 @@ try {
       const cnt = await p.evaluate(() => document.querySelector('.db-col[data-group="완료"] .db-count')?.textContent);
       await p.screenshot({ path: `${process.env.SHOTS || "/tmp"}/e2e-board-${w}.png` }).catch(() => {});
       ok(tableOk && rp.status === "완료" && cnt === "1", `${tv} · DB — 표 상태 알약 ${tableOk} · 보드 끌기 → ${rp.status} (완료 ${cnt})`);
+      // 손가락 끌기: 길게 눌러 들고 → 다른 열에 놓기 (pointer 이벤트, pointerType touch)
+      await p.evaluate(async (rid) => {
+        const c = document.querySelector(`.db-card[data-row="${rid}"]`), t = document.querySelector('.db-col[data-group="진행 중"]');
+        const a = c.getBoundingClientRect(), b = t.getBoundingClientRect(), ev = (type, x, y) => c.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", clientX: x, clientY: y }));
+        ev("pointerdown", a.x + 10, a.y + 10); await new Promise((r) => setTimeout(r, 550));
+        ev("pointermove", b.x + 20, b.y + 30); ev("pointerup", b.x + 20, b.y + 30);
+      }, row2);
+      await sleep(1200);
+      const rp2 = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + row2)).json()).note.props || "{}");
+      // 필터: 표 보기에서 Filter → + Add filter → 상태 = 완료 → 한 줄만
+      await p.evaluate(() => [...document.querySelectorAll(".db-tabs [data-view]")].find((b) => /Table/.test(b.textContent))?.click());
+      await p.click('[data-tool="filter"]'); await p.click("[data-fadd]"); await sleep(800);
+      await p.selectOption(".db-pop .db-fv", "완료"); await sleep(1200);
+      const shown = await p.evaluate(() => document.querySelectorAll(".db-table tr[data-row]").length);
+      const listed = await (await ctx.request.get(BASE + "/api/notes")).json();
+      ok(rp2.status === "진행 중" && shown === 1 && !listed.notes.some((n) => n.id === row2), `${tv} · DB — 손가락 끌기 → ${rp2.status} · 필터 후 ${shown}줄 · 행은 왼쪽 목록에서 숨김`);
     } catch (e) { ok(false, `${tv} · 블록 편집기 — ${String(e.message).split("\n")[0]}`); }
 
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------

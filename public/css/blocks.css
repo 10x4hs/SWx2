@@ -237,3 +237,30 @@
 .nb-sw .c-purple { color: var(--tg-purple-dot); }
 .nb-sw .c-pink { color: var(--tg-pink-dot); }
 .nb-sw .c-red { color: var(--tg-red-dot); }
+
+/* ---------- db v2: filter · sort · group · menus ---------- */
+.db-tools { display: flex; gap: 2px; align-items: center; margin-left: auto; }
+.db-tool { border: 0; background: none; color: var(--ink-3); font-size: 13.5px; padding: 4px 8px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.db-tool:hover { background: var(--hover); }
+.db-tool.on { color: #2383E2; }
+.db-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 6px; }
+.db-chip { border: 1px solid rgba(35, 131, 226, .45); color: #2383E2; background: rgba(35, 131, 226, .08); border-radius: 999px; font-size: 12.5px; padding: 2px 10px; cursor: pointer; }
+.db-chip b { font-weight: 600; }
+.db-grow td { border-right: 0 !important; padding-top: 14px !important; height: auto; }
+.db-grow .db-count { margin-left: 6px; }
+.db-ph { cursor: pointer; } .db-ph:hover { background: var(--hover); }
+.db-pop.wide { width: 340px; }
+.db-sub { font-size: 12px; margin: 6px 2px 4px; }
+.db-olist { display: grid; gap: 4px; }
+.db-orow, .db-frow { display: flex; gap: 6px; align-items: center; }
+.db-orow .db-pill { flex: 1; justify-content: flex-start; overflow: hidden; }
+.db-ocol, .db-frow select, .db-frow .input { font: 13px var(--font); background: var(--hover); color: var(--ink); border: 0; border-radius: 6px; padding: 4px 6px; min-width: 0; }
+.db-frow { margin-bottom: 6px; } .db-frow > * { flex: 1; } .db-frow .db-x { flex: 0 0 24px; }
+.db-x { border: 0; background: none; color: var(--ink-3); width: 24px; height: 24px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+.db-x:hover { background: var(--hover); color: var(--ink); }
+.db-danger { border: 0; background: none; color: var(--err); padding: 6px; border-radius: 6px; width: 100%; text-align: left; margin-top: 6px; cursor: pointer; font-size: 14px; }
+.db-danger:hover { background: var(--hover); } .db-danger[disabled] { opacity: .4; cursor: default; }
+.touch-lift { transform: scale(1.03); box-shadow: 0 0 0 2px #2383E2, 0 10px 24px -6px rgba(0,0,0,.5) !important; }
+body.touch-dragging { user-select: none; -webkit-user-select: none; }
+.nb-handle, .db-card { -webkit-touch-callout: none; }
+@media (max-width: 640px) { .db-tools { margin-left: 0; width: 100%; } .db-tools .db-new { margin-left: auto; } }

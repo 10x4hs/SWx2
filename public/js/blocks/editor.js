@@ -4,6 +4,7 @@
 import { renderInline } from "../md.js";
 import { esc } from "../util.js";
 import { block, canNest, mdToBlocks } from "./md.js";
+import { touchDrag } from "./touchdrag.js";
 
 const LISTY = new Set(["bullet", "number", "todo"]);
 const WIDGET = new Set(["divider", "image", "table", "page", "database", "file", "bookmark", "embed", "equation"]);
@@ -570,20 +571,18 @@ export function createBlockEditor(host, opts) {
     try { e.dataTransfer.setDragImage(w, 10, 10); } catch {}
     w.classList.add("dragging");
   });
-  root.addEventListener("dragover", (e) => {
-    if (!dragId) return;
-    const w = e.target.closest?.(".nb"); if (!w || w.dataset.id === dragId || w.closest(`.nb[data-id="${dragId}"]`)) return;
-    e.preventDefault();
-    const row = w.querySelector(":scope > .nb-row"), r = row.getBoundingClientRect(), before = e.clientY < r.top + r.height / 2;
+  function showMarker(x, y, w) {
+    if (!w || !root.contains(w) || w.dataset.id === dragId || w.closest(`.nb[data-id="${dragId}"]`)) return false;
+    const row = w.querySelector(":scope > .nb-row"), r = row.getBoundingClientRect(), before = y < r.top + r.height / 2;
     if (!marker) { marker = document.createElement("div"); marker.className = "nb-drop"; }
     marker.dataset.target = w.dataset.id; marker.dataset.before = before ? "1" : "";
     const hr = root.getBoundingClientRect();
     Object.assign(marker.style, { top: (before ? r.top : r.bottom) - hr.top - 1 + "px", left: r.left - hr.left + "px", width: r.width + "px" });
     if (!marker.isConnected) root.appendChild(marker);
-  });
-  root.addEventListener("drop", (e) => {
-    if (!dragId || !marker?.dataset.target) return;
-    e.preventDefault();
+    return true;
+  }
+  function dropAtMarker() {
+    if (!dragId || !marker?.dataset.target) return endDrag();
     const tid = marker.dataset.target, before = marker.dataset.before === "1";
     const src = find(dragId);
     if (src && tid !== dragId) {
@@ -593,6 +592,16 @@ export function createBlockEditor(host, opts) {
       changed();
     }
     endDrag(); render();
+  }
+  root.addEventListener("dragover", (e) => {
+    if (!dragId) return;
+    if (showMarker(e.clientX, e.clientY, e.target.closest?.(".nb"))) e.preventDefault();
+  });
+  root.addEventListener("drop", (e) => { if (!dragId || !marker?.dataset.target) return; e.preventDefault(); dropAtMarker(); });
+  if (!ro) touchDrag(root, ".nb-handle", {
+    over: (x, y, h) => { dragId = h.closest(".nb").dataset.id; showMarker(x, y, document.elementFromPoint(x, y)?.closest?.(".nb")); },
+    drop: (x, y, h) => { dragId = h.closest(".nb").dataset.id; dropAtMarker(); },
+    end: () => { if (dragId) endDrag(); },
   });
   const endDrag = () => { dragId = null; marker?.remove(); marker = null; root.querySelectorAll(".dragging").forEach((x) => x.classList.remove("dragging")); };
   root.addEventListener("dragend", endDrag);

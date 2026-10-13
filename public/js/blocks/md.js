@@ -265,6 +265,45 @@ function parse(lines, depth) {
 
 // ---------- databases ----------
 const KEY_RE = /^[a-z0-9_]{1,30}$/;
+export const VIEW_TYPES = ["table", "board", "calendar"];
+export const FILTER_OPS = ["is", "is_not", "contains", "not_contains", "is_empty", "is_not_empty", "before", "after", "checked", "unchecked"];
+const GROUPABLE = new Set(["status", "select", "multi_select"]);
+// rows → filtered (AND) + sorted, for a view. Shared so the server could reuse it later.
+export function applyView(rows, view, db) {
+  const val = (r, k) => (k === "title" ? r.title : (r.props || {})[k]);
+  const ptype = (k) => (k === "title" ? "text" : db.props.find((p) => p.key === k)?.type || "text");
+  const empty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length);
+  const test = (r, f) => {
+    const v = val(r, f.prop), q = String(f.value || "").toLowerCase(), arr = Array.isArray(v) ? v.map((x) => String(x).toLowerCase()) : null, s = empty(v) ? "" : String(v).toLowerCase();
+    switch (f.op) {
+      case "is": return arr ? arr.includes(q) : s === q;
+      case "is_not": return arr ? !arr.includes(q) : s !== q;
+      case "contains": return arr ? arr.some((x) => x.includes(q)) : s.includes(q);
+      case "not_contains": return arr ? !arr.some((x) => x.includes(q)) : !s.includes(q);
+      case "is_empty": return empty(v);
+      case "is_not_empty": return !empty(v);
+      case "before": return !empty(v) && String(v) < f.value;
+      case "after": return !empty(v) && String(v) > f.value;
+      case "checked": return !!v;
+      case "unchecked": return !v;
+      default: return true;
+    }
+  };
+  let out = rows.filter((r) => (view.filters || []).every((f) => test(r, f)));
+  const sorts = view.sorts || [];
+  if (sorts.length) out = [...out].sort((a, b) => {
+    for (const s of sorts) {
+      const t = ptype(s.prop); let x = val(a, s.prop), y = val(b, s.prop);
+      if (empty(x) && empty(y)) continue; if (empty(x)) return 1; if (empty(y)) return -1;
+      if (t === "status" || t === "select") { const o = db.props.find((p) => p.key === s.prop)?.options || []; x = o.findIndex((z) => z.name === x); y = o.findIndex((z) => z.name === y); }
+      else if (Array.isArray(x)) { x = x.join(","); y = Array.isArray(y) ? y.join(",") : y; }
+      const c = typeof x === "number" && typeof y === "number" ? x - y : typeof x === "boolean" ? (x === y ? 0 : x ? -1 : 1) : String(x).localeCompare(String(y));
+      if (c) return s.dir === "desc" ? -c : c;
+    }
+    return 0;
+  });
+  return out;
+}
 export function defaultDb() {
   return {
     props: [
@@ -291,8 +330,16 @@ export function validateDb(db) {
     return o;
   });
   const views = (Array.isArray(db.views) ? db.views : []).slice(0, 10).map((v, i) => {
-    const o = { id: /^[\w-]{1,20}$/.test(v?.id || "") ? v.id : "v" + (i + 1), name: str(v?.name, 40) || "View", type: v?.type === "board" ? "board" : "table" };
-    if (o.type === "board") { const g = props.find((p) => p.key === v.group_by && (p.type === "status" || p.type === "select")) || props.find((p) => p.type === "status" || p.type === "select"); if (g) o.group_by = g.key; }
+    const o = { id: /^[\w-]{1,20}$/.test(v?.id || "") ? v.id : "v" + (i + 1), name: str(v?.name, 40) || "View", type: VIEW_TYPES.includes(v?.type) ? v.type : "table" };
+    const groupable = (p) => GROUPABLE.has(p.type);
+    if (o.type === "board") { const g = props.find((p) => p.key === v.group_by && groupable(p)) || props.find((p) => p.type === "status" || p.type === "select"); if (g) o.group_by = g.key; }
+    else if (o.type === "table" && props.some((p) => p.key === v?.group_by && groupable(p))) o.group_by = v.group_by;
+    if (o.type === "calendar") { const d = props.find((p) => p.key === v?.date_by && p.type === "date") || props.find((p) => p.type === "date"); if (d) o.date_by = d.key; }
+    const known = (k) => k === "title" || props.some((p) => p.key === k);
+    const f = (Array.isArray(v?.filters) ? v.filters : []).slice(0, 20).filter((x) => known(x?.prop) && FILTER_OPS.includes(x.op)).map((x) => ({ prop: x.prop, op: x.op, value: str(String(x.value ?? ""), 200) }));
+    if (f.length) o.filters = f;
+    const so = (Array.isArray(v?.sorts) ? v.sorts : []).slice(0, 5).filter((x) => known(x?.prop)).map((x) => ({ prop: x.prop, dir: x.dir === "desc" ? "desc" : "asc" }));
+    if (so.length) o.sorts = so;
     return o;
   });
   if (!views.length) views.push({ id: "v1", name: "Table", type: "table" });

@@ -105,8 +105,8 @@ export function registerNotes(on) {
   on("GET", "/notes", async ({ env, user, q }) => {
     const tag = q.get("tag");
     const sql = tag
-      ? `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.kind, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n JOIN note_tags t ON t.note_id = n.id AND t.tag = ?2 WHERE ${VISIBLE} ORDER BY n.updated_at DESC`
-      : `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.kind, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n WHERE ${VISIBLE} ORDER BY n.updated_at DESC`;
+      ? `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.kind, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n JOIN note_tags t ON t.note_id = n.id AND t.tag = ?2 WHERE ${VISIBLE} AND NOT EXISTS (SELECT 1 FROM notes p WHERE p.id = n.parent_id AND p.kind = 'database') ORDER BY n.updated_at DESC`
+      : `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.kind, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n WHERE ${VISIBLE} AND NOT EXISTS (SELECT 1 FROM notes p WHERE p.id = n.parent_id AND p.kind = 'database') ORDER BY n.updated_at DESC`;
     const stmt = tag ? env.DB.prepare(sql).bind(user.id, tag) : env.DB.prepare(sql).bind(user.id);
     const { results } = await stmt.all();
     return json({ notes: results });
