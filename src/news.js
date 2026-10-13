@@ -809,6 +809,16 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     for (const r of results || []) m.get(r.company)?.push(r.user_id);
     return m;
   };
+  // [GET /news/library?kind=starred|read] 내가 별표한 기사 · 직접 읽음 표시한 기사 — 날짜와 상관없이 전부 (최근 표시한 순)
+  on("GET", "/news/library", async ({ env, user, q }) => {
+    const kind = (q?.get ? q.get("kind") : q?.kind) === "read" ? "read" : "starred";
+    const col = kind === "read" ? "r.read = 1" : "r.flagged = 1", order = kind === "read" ? "COALESCE(r.read_at, r.updated_at)" : "r.updated_at";
+    const { results: rows } = await env.DB.prepare(`SELECT ${ED_COLS}, ${order} AS marked_at FROM news_reads r JOIN news_items i ON i.id = r.item_id JOIN news_feeds f ON f.id = i.feed_id
+      WHERE r.user_id = ? AND ${col} ORDER BY marked_at DESC LIMIT 500`).bind(user.id).all();
+    const at = new Map((rows || []).map((r) => [r.id, r.marked_at]));
+    return json({ kind, items: (await decorate(env, rows || [])).map((r) => ({ ...shape(r), marked_at: at.get(r.id) })) });
+  });
+
   // ---------- 읽기 대결 ----------
   // [GET /news/leaderboard] 셋의 오늘 · 이번 주(월요일부터, 한국 시간) · 전체 읽은 수 + 하루 몫 연속 달성 일수
   on("GET", "/news/leaderboard", async ({ env }) => {

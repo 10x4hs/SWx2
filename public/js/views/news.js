@@ -61,7 +61,7 @@ export function mount(root, ctx, r) {
           <div class="gn-mast-r"><span class="gn-clock"><i>KST</i> <b id="gn-clk"></b></span></div>
         </header>
         <div class="gn-bar">
-          <nav class="gn-views" aria-label="News sections"><a href="#/news" data-view="today">Today</a><a href="#/news/world" data-view="world">World</a><a href="#/news/co" data-view="co">Companies</a><a href="#/news/board" data-view="board">Leaderboard</a><a href="#/news/talk" data-view="talk">Comments <i class="gn-badge" id="gn-talk-badge" hidden></i></a></nav>
+          <nav class="gn-views" aria-label="News sections"><a href="#/news" data-view="today">Today</a><a href="#/news/world" data-view="world">World</a><a href="#/news/co" data-view="co">Companies</a><a href="#/news/library" data-view="library">My Library</a><a href="#/news/board" data-view="board">Leaderboard</a><a href="#/news/talk" data-view="talk">Comments <i class="gn-badge" id="gn-talk-badge" hidden></i></a></nav>
           <div class="gn-daynav">
             <a class="gn-nav" id="gn-prev" href="#" aria-label="Previous day">←</a>
             <button class="gn-date" id="gn-date" type="button" aria-haspopup="dialog" aria-expanded="false"><span id="gn-date-t">Today</span></button>
@@ -532,8 +532,29 @@ export function mount(root, ctx, r) {
         </a></li>`; }).join("") || `<li class="gn-soft">No comments yet. Open any story and add the first one.</li>`}</ul>`;
   }
 
+  // ---------- 내 서재 (#/news/library/starred|read) — 별표한 기사 · 읽은 기사, 날짜와 상관없이 전부 ----------
+  let libKind = "starred";
+  async function drawLibrary(kind) {
+    libKind = kind === "read" ? "read" : "starred";
+    const head = `<section class="gn-hero"><h1 class="gn-h1 gn-h1-sec">My Library</h1></section>
+      <nav class="gn-seg" role="tablist" aria-label="Library"><a role="tab" class="gn-segl" href="#/news/library/starred" aria-selected="${libKind === "starred"}">★ Starred</a><a role="tab" class="gn-segl" href="#/news/library/read" aria-selected="${libKind === "read"}">✓ Read</a></nav>`;
+    page.innerHTML = head + `<p class="gn-soft gn-feed">Loading…</p>`;
+    let d; try { d = await api.newsLibrary(libKind); } catch (e) { if (alive) page.innerHTML = head + `<p class="gn-soft gn-feed">${esc(e.message)}</p>`; return; }
+    if (!alive || view !== "library" || d.kind !== libKind) return;
+    for (const it of d.items || []) items.set(it.id, { ...items.get(it.id), ...it });
+    const its = (d.items || []).map((it) => items.get(it.id));
+    list = its.map((it) => it.id);
+    const groups = new Map();
+    for (const it of its) { const k = kstDay(it.marked_at || it.published_at); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); }
+    page.innerHTML = head + `<div class="gn-feed">
+      <p class="gn-lab gn-talk-sub">${its.length} ${libKind === "read" ? "stories you marked as read" : "starred stories"} · grouped by the day you ${libKind === "read" ? "read" : "starred"} them</p>
+      ${its.length ? [...groups].map(([day, g]) => `<h2 class="gn-sec-h">${day === kstDay() ? "Today" : dayKo(day)} <small>${g.length}</small></h2><ul class="gn-list">${g.map((it) => row(it)).join("")}</ul>`).join("")
+        : `<p class="gn-empty">${libKind === "read" ? "Nothing here yet. Tap ✓ on a story when you've finished it." : "Nothing here yet. Tap ★ on a story to keep it here."}</p>`}
+    </div>`;
+  }
+
   // ---------- 이벤트 ----------
-  const backHash = () => (view === "board" ? "#/news/board" : view === "talk" ? "#/news/talk" : view === "world" ? "#/news/world" : view === "co" ? "#/news/co/" + coKey : ed && ed.day !== kstDay() ? "#/news/" + ed.day : "#/news");
+  const backHash = () => (view === "library" ? "#/news/library/" + libKind : view === "board" ? "#/news/board" : view === "talk" ? "#/news/talk" : view === "world" ? "#/news/world" : view === "co" ? "#/news/co/" + coKey : ed && ed.day !== kstDay() ? "#/news/" + ed.day : "#/news");
   const back = () => ctx.go(backHash());
   const onClick = (e) => {
     const s = e.target.closest("[data-star]"); if (s) { e.preventDefault(); toggleStar(s.dataset.star); return; }
@@ -570,7 +591,7 @@ export function mount(root, ctx, r) {
       openItem(rr.id); return;
     }
     if (cur) closeSheet();
-    const next = rr.sub === "world" ? "world" : rr.sub === "co" ? "co" : rr.sub === "talk" ? "talk" : rr.sub === "board" ? "board" : "today";
+    const next = rr.sub === "world" ? "world" : rr.sub === "co" ? "co" : rr.sub === "talk" ? "talk" : rr.sub === "board" ? "board" : rr.sub === "library" ? "library" : "today";
     const changed = next !== view;
     if (changed) worldCleanup?.(), (worldCleanup = null);
     setView(next);
@@ -578,6 +599,7 @@ export function mount(root, ctx, r) {
     else if (next === "co") { await loadCompanies(); drawCo(rr.id); }
     else if (next === "talk") drawTalk();
     else if (next === "board") drawBoard();
+    else if (next === "library") drawLibrary(rr.id);
     else {
       const day = rr.day && DAY_RE.test(rr.day) ? rr.day : kstDay();
       store.set("gn-day", day);

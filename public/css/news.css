@@ -362,3 +362,8 @@ body:has(.host-news) .bg { opacity: .15; filter: blur(2px) grayscale(1); }
 .gn .gn-readbtn:hover { border-color: var(--g-tint); color: var(--g-tint); }
 .gn .gn-readbtn.on { background: var(--g-tint); border-color: var(--g-tint); color: var(--g-bg); }
 .gn .gn-readbtn-l.on { background: var(--g-tint) !important; border-color: var(--g-tint) !important; color: var(--g-bg); font-weight: 700; }
+
+/* 내 서재 탭 */
+.gn-segl { color: var(--g-ink2); font-size: 14px; padding: 2px 4px; }
+.gn-segl[aria-selected="true"] { color: var(--g-tint); font-weight: 700; }
+.gn-sec-h small { margin-left: 6px; color: var(--g-ink3); font-weight: 600; }
