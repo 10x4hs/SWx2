@@ -216,13 +216,29 @@ try {
       const v0 = await vis(); await p.click('.nb[data-id="b_tg1"] .nb-tg'); const v1 = await vis(); await p.click('.nb[data-id="b_tg1"] .nb-tg'); const v2 = await vis();
       await p.click('.nb[data-id="b_p1"] .nb-text'); await p.keyboard.type("/callout"); await sleep(200);
       const menuOk = await p.evaluate(() => !!document.querySelector('.nb-menu [data-type="callout"]'));
-      await p.keyboard.press("Enter"); await p.keyboard.type("Hello callout"); await sleep(1500);
+      await p.keyboard.press("Enter"); await p.keyboard.type("Hello callout");
+      for (let i = 0; i < 7; i++) await p.keyboard.press("Shift+ArrowLeft");
+      await p.waitForSelector(".nb-tb", { timeout: 3000 }).catch(() => {});
+      await p.click('.nb-tb [data-f="b"]').catch(() => {}); await sleep(1500);
       const saved = await (await ctx.request.get(BASE + "/api/notes/" + bn)).json();
       const sb = JSON.parse(saved.note.blocks || "{}").blocks || [];
-      ok(v0 !== v1 && v1 !== v2 && menuOk && sb.some((b) => b.type === "callout" && /Hello callout/.test(b.text)) && /\[!note\]/.test(saved.note.body) && !errs.length,
+      ok(v0 !== v1 && v1 !== v2 && menuOk && sb.some((b) => b.type === "callout" && /Hello \*\*callout\*\*/.test(b.text)) && /\[!note\]/.test(saved.note.body) && !errs.length,
         `${tv} · 블록 — 토글 ${v0}→${v1}→${v2} · "/" 메뉴 ${menuOk} · 콜아웃 저장 ${sb.map((b) => b.type).join(",")}${errs.length ? " — " + errs[0] : ""}`);
+      // "@" 멘션 → [[페이지]] 링크 · 그 페이지 아래 백링크 (제목 형광펜)
+      const tgt = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사대상" + tv, body: "x" } })).json()).note.id;
+      await p.goto("about:blank"); await go("#/notes/" + bn, 2200);
+      await p.click('.nb[data-id="b_p1"] .nb-text').catch(() => {});
+      const last = p.locator(".nb-doc > .nb").last().locator(".nb-text").first();
+      await last.click(); await p.keyboard.press("End"); await p.keyboard.press("Enter"); await p.keyboard.type("see @검사대상" + tv); await sleep(300);
+      const atMenu = await p.evaluate(() => [...document.querySelectorAll(".suggest button")].map((b) => b.textContent).join("|") + " / " + document.activeElement?.className + ":" + document.activeElement?.innerText + " / " + location.hash);
+      await p.keyboard.press("Enter"); await sleep(1500);
+      const s2 = await (await ctx.request.get(BASE + "/api/notes/" + bn)).json();
+      await go("#/notes/" + tgt, 2200);
+      const bl = await p.evaluate(() => ({ cnt: document.querySelector("#bl-count")?.textContent || "", mark: document.querySelector("#ed-back-list mark")?.textContent || "" }));
+      ok(new RegExp("\\[\\[검사대상" + tv + "\\]\\]").test(s2.note.body) && /1 backlink/.test(bl.cnt) && bl.mark === "검사대상" + tv, `${tv} · "@" 멘션 → 링크 · 백링크 ${bl.cnt} · 형광펜 ${bl.mark} (메뉴 ${atMenu.slice(0, 60)})`);
       const dbn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 DB " + tv, kind: "database" } })).json()).note.id;
       const row = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 카드 " + tv, parent_id: dbn, props: { status: "시작 전" } } })).json()).note.id;
+      const row2 = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 카드2 " + tv, parent_id: dbn, props: { status: "시작 전" } } })).json()).note.id;
       await go("#/notes/" + dbn, 2200);
       await p.waitForSelector(".db-tabs", { timeout: 8000 });
       const tableOk = await p.evaluate(() => !!document.querySelector(".db-table .db-pill.st"));
@@ -233,6 +249,22 @@ try {
       const cnt = await p.evaluate(() => document.querySelector('.db-col[data-group="완료"] .db-count')?.textContent);
       await p.screenshot({ path: `${process.env.SHOTS || "/tmp"}/e2e-board-${w}.png` }).catch(() => {});
       ok(tableOk && rp.status === "완료" && cnt === "1", `${tv} · DB — 표 상태 알약 ${tableOk} · 보드 끌기 → ${rp.status} (완료 ${cnt})`);
+      // 손가락 끌기: 길게 눌러 들고 → 다른 열에 놓기 (pointer 이벤트, pointerType touch)
+      await p.evaluate(async (rid) => {
+        const c = document.querySelector(`.db-card[data-row="${rid}"]`), t = document.querySelector('.db-col[data-group="진행 중"]');
+        const a = c.getBoundingClientRect(), b = t.getBoundingClientRect(), ev = (type, x, y) => c.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", clientX: x, clientY: y }));
+        ev("pointerdown", a.x + 10, a.y + 10); await new Promise((r) => setTimeout(r, 550));
+        ev("pointermove", b.x + 20, b.y + 30); ev("pointerup", b.x + 20, b.y + 30);
+      }, row2);
+      await sleep(1200);
+      const rp2 = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + row2)).json()).note.props || "{}");
+      // 필터: 표 보기에서 Filter → + Add filter → 상태 = 완료 → 한 줄만
+      await p.evaluate(() => [...document.querySelectorAll(".db-tabs [data-view]")].find((b) => /Table/.test(b.textContent))?.click());
+      await p.click('[data-tool="filter"]'); await p.click("[data-fadd]"); await sleep(800);
+      await p.selectOption(".db-pop .db-fv", "완료"); await sleep(1200);
+      const shown = await p.evaluate(() => document.querySelectorAll(".db-table tr[data-row]").length);
+      const listed = await (await ctx.request.get(BASE + "/api/notes")).json();
+      ok(rp2.status === "진행 중" && shown === 1 && !listed.notes.some((n) => n.id === row2), `${tv} · DB — 손가락 끌기 → ${rp2.status} · 필터 후 ${shown}줄 · 행은 왼쪽 목록에서 숨김`);
     } catch (e) { ok(false, `${tv} · 블록 편집기 — ${String(e.message).split("\n")[0]}`); }
 
     // ---------- ⑬ 데이터베이스 — 필터로 줄이기 · 묶기 · 달력에서 날짜 옮기기 (컴퓨터는 마우스, 폰은 길게 눌러 끌기) ----------

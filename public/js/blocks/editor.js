@@ -4,6 +4,7 @@
 import { renderInline } from "../md.js";
 import { esc } from "../util.js";
 import { block, canNest, mdToBlocks } from "./md.js";
+import { touchDrag } from "./touchdrag.js";
 
 const LISTY = new Set(["bullet", "number", "todo"]);
 const WIDGET = new Set(["divider", "image", "table", "page", "database", "file", "bookmark", "embed", "equation"]);
@@ -57,6 +58,10 @@ function setCaret(el, off) {
 }
 const readText = (el) => { let t = el.innerText.replace(/​/g, ""); if (t.endsWith("\n") && !el.textContent.endsWith("\n")) t = t.slice(0, -1); return t; };
 
+const COLS = ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"];
+const swatches = () => `<div class="nb-sw" role="group" aria-label="Text color">${COLS.map((c) => `<button type="button" data-col="${c}" data-kind="text" class="c-${c}" title="${c}">A</button>`).join("")}<button type="button" data-col="default" title="Default">A</button></div>`
+  + `<div class="nb-sw" role="group" aria-label="Background">${COLS.map((c) => `<button type="button" data-col="${c}" data-kind="bg" title="${c} background" style="background:var(--hl-${c})"></button>`).join("")}</div>`;
+
 export function createBlockEditor(host, opts) {
   const ro = !!opts.readOnly;
   let doc = opts.doc && Array.isArray(opts.doc.blocks) ? opts.doc : { v: 1, blocks: [] };
@@ -99,7 +104,8 @@ export function createBlockEditor(host, opts) {
   }
   function renderBlock(b, num) {
     const wrap = document.createElement("div");
-    wrap.className = "nb nb-" + b.type + (b.props?.toggle ? " nb-fold" : "");
+    const col = b.props?.color || "";
+    wrap.className = "nb nb-" + b.type + (b.props?.toggle ? " nb-fold" : "") + (col ? (col.endsWith("_background") ? " nb-bg-" + col.slice(0, -11) : " nb-color-" + col) : "");
     wrap.dataset.id = b.id; wrap.dataset.type = b.type;
     const row = document.createElement("div"); row.className = "nb-row";
     if (!ro) { const h = document.createElement("span"); h.className = "nb-handle"; h.draggable = true; h.title = "Drag to move · click for menu"; h.textContent = "⋮⋮"; row.appendChild(h); }
@@ -202,10 +208,10 @@ export function createBlockEditor(host, opts) {
   function convert(b, type) {
     let toggle = false;
     if (type === "toggle_h2") { type = "h2"; toggle = true; }
-    const keep = b.text;
+    const keep = b.text, color = b.props?.color;
     b.type = type;
     b.props = type === "todo" ? { checked: false } : type === "callout" ? { icon: "💡" } : type === "code" ? { lang: "" } : type === "table" ? { header: true, rows: [["", ""], ["", ""]] } : toggle ? { toggle: true } : {};
-    if (WIDGET.has(type)) b.text = ""; else b.text = keep;
+    if (WIDGET.has(type)) b.text = ""; else { b.text = keep; if (color && type !== "code") b.props.color = color; }
     if (b.children?.length && !canNest(b)) { const at = find(b.id); at.list.splice(at.i + 1, 0, ...b.children); b.children = []; }
     if (toggle || type === "toggle") setOpen(b.id, true);
   }
@@ -242,7 +248,7 @@ export function createBlockEditor(host, opts) {
   root.addEventListener("focusout", (e) => {
     if (e.target.closest?.(".db-host")) return;
     const el = e.target;
-    if (el.classList?.contains("nb-text") && !el.classList.contains("nb-code")) { const b = blockOf(el); delete el.dataset.raw; if (b) show(el, b); setTimeout(closeSug, 120); }
+    if (el.classList?.contains("nb-text") && !el.classList.contains("nb-code")) { const b = blockOf(el); delete el.dataset.raw; if (b) show(el, b); setTimeout(() => { const a = document.activeElement; if (!(a?.classList?.contains("nb-text") && root.contains(a))) closeSug(); }, 120); }
     if (el.tagName === "TD") { const b = blockOf(el); if (b) el.innerHTML = renderInline(b.props.rows[+el.dataset.r]?.[+el.dataset.c] || ""); }
   });
   root.addEventListener("mousedown", (e) => {
@@ -462,7 +468,7 @@ export function createBlockEditor(host, opts) {
   function openBlockMenu(b, anchor) {
     closeMenu();
     const m = document.createElement("div"); m.className = "nb-menu nb-bmenu"; document.body.appendChild(m); menu = m;
-    m.innerHTML = `<button type="button" data-a="turn"><span class="nb-menu-ic">↻</span><span><b>Turn into</b></span></button><button type="button" data-a="dup"><span class="nb-menu-ic">⧉</span><span><b>Duplicate</b></span></button><button type="button" data-a="del"><span class="nb-menu-ic">🗑</span><span><b>Delete</b></span></button>`;
+    m.innerHTML = `<button type="button" data-a="turn"><span class="nb-menu-ic">↻</span><span><b>Turn into</b></span></button><button type="button" data-a="dup"><span class="nb-menu-ic">⧉</span><span><b>Duplicate</b></span></button><button type="button" data-a="del"><span class="nb-menu-ic">🗑</span><span><b>Delete</b></span></button>${editable(b) && b.type !== "code" ? `<div class="nb-menu-h">Color</div>${swatches()}` : ""}`;
     const r = anchor.getBoundingClientRect(); m.style.left = Math.max(8, r.left) + "px"; m.style.top = r.bottom + 4 + "px";
     m.addEventListener("mousedown", (e) => {
       e.preventDefault(); const a = e.target.closest("[data-a]")?.dataset.a; if (!a) return;
@@ -470,25 +476,89 @@ export function createBlockEditor(host, opts) {
       if (a === "dup") { closeMenu(); const copy = JSON.parse(JSON.stringify(b)); const re = (x) => { x.id = block("paragraph").id; x.children?.forEach(re); }; re(copy); insertAfter(b.id, copy); changed(); render(); }
       if (a === "turn") { closeMenu(); menuFor = b; menuMode = "turn"; openMenu(anchor, ""); }
     });
+    m.addEventListener("mousedown", (e) => {
+      const sw = e.target.closest("[data-col]"); if (!sw) return;
+      const c = sw.dataset.col, kind = sw.dataset.kind;
+      if (c === "default") delete b.props.color; else b.props.color = kind === "bg" ? c + "_background" : c;
+      closeMenu(); changed(); render();
+    });
     setTimeout(() => addEventListener("mousedown", function off(ev) { if (!menu?.contains(ev.target)) { closeMenu(); removeEventListener("mousedown", off); } }), 0);
   }
 
+  // ---------- selection toolbar: Bold / Italic / Code / Link / Color (wraps raw markdown, no syntax typing needed) ----------
+  let tb = null, tbSel = null;
+  function selRange(el) {
+    const s = getSelection(); if (!s.rangeCount || s.isCollapsed) return null;
+    const r = s.getRangeAt(0); if (!el.contains(r.startContainer) || !el.contains(r.endContainer)) return null;
+    const a = document.createRange(); a.selectNodeContents(el); a.setEnd(r.startContainer, r.startOffset);
+    const start = a.toString().length; return { start, end: start + r.toString().length };
+  }
+  function closeTb() { if (tb) { tb.remove(); tb = null; } tbSel = null; }
+  const onSel = () => {
+    if (ro) return;
+    const s = getSelection(), n = s.anchorNode, el = (n?.nodeType === 1 ? n : n?.parentElement)?.closest?.(".nb-text");
+    if (!el || !root.contains(el) || el.classList.contains("nb-code") || el.dataset.raw !== "1" || s.isCollapsed) { if (!tb?.matches(":hover")) closeTb(); return; }
+    const r = selRange(el); if (!r || r.end <= r.start) return closeTb();
+    tbSel = { id: blockOf(el).id, ...r };
+    if (!tb) {
+      tb = document.createElement("div"); tb.className = "nb-tb"; document.body.appendChild(tb);
+      tb.innerHTML = `<button type="button" data-f="b" title="Bold"><b>B</b></button><button type="button" data-f="i" title="Italic"><i>i</i></button><button type="button" data-f="s" title="Strike"><s>S</s></button><button type="button" data-f="code" title="Code">&lt;/&gt;</button><button type="button" data-f="link" title="Link">🔗</button><button type="button" data-f="color" title="Color">A▾</button>`;
+      tb.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        const sw = e.target.closest("[data-col]");
+        if (sw) return wrapSel(sw.dataset.col === "default" ? null : sw.dataset.kind === "bg" ? [`<mark class="bg-${sw.dataset.col}">`, "</mark>"] : [`<span class="c-${sw.dataset.col}">`, "</span>"]);
+        const f = e.target.closest("[data-f]")?.dataset.f; if (!f) return;
+        if (f === "color") { const open = tb.querySelector(".nb-sw"); if (open) open.remove(); else tb.insertAdjacentHTML("beforeend", swatches()); return; }
+        if (f === "link") { const u = prompt("Link URL", "https://"); if (u && u.trim()) wrapSel(["[", "](" + u.trim() + ")"]); return; }
+        wrapSel({ b: ["**", "**"], i: ["*", "*"], s: ["~~", "~~"], code: ["`", "`"] }[f]);
+      });
+    }
+    const rect = s.getRangeAt(0).getBoundingClientRect();
+    tb.style.left = Math.max(8, Math.min(rect.left, innerWidth - 240)) + "px";
+    tb.style.top = Math.max(8, rect.top - 42) + "px";
+  };
+  function wrapSel(pair) {
+    if (!tbSel) return;
+    const at = find(tbSel.id); if (!at) return closeTb();
+    const b = at.b, t = b.text; let mid = t.slice(tbSel.start, tbSel.end);
+    if (!pair) mid = mid.replace(/<\/?(span|mark)[^>]*>/g, ""); // Default color: strip color tags
+    const out = pair ? pair[0] + mid + pair[1] : mid;
+    b.text = t.slice(0, tbSel.start) + out + t.slice(tbSel.end);
+    const end = tbSel.start + out.length;
+    closeTb(); changed(); render({ id: b.id, off: end });
+  }
+  document.addEventListener("selectionchange", onSel);
+
   // ---------- [[ autocomplete ----------
-  let sugOpts = [], sugSel = 0, sugAt = -1, sugFor = null;
+  // "[[" → page titles · "@" → pages, dates and reminders (mention menu)
+  let sugOpts = [], sugSel = 0, sugAt = -1, sugFor = null, sugMode = "link";
+  const kst = (n = 0) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
   function linkCheck(b, el) {
     const off = caretOffset(el), before = b.text.slice(0, off), open = before.lastIndexOf("[[");
-    if (open < 0 || before.slice(open).includes("]]") || before.slice(open).includes("\n")) return closeSug();
-    sugAt = open + 2; sugFor = b;
-    const q = before.slice(sugAt).toLowerCase();
-    sugOpts = (opts.notes?.() || []).filter((t) => t.toLowerCase().includes(q)).slice(0, 8).map((t) => ({ t }));
-    if (q && !sugOpts.some((o) => o.t.toLowerCase() === q)) sugOpts.push({ t: before.slice(sugAt), fresh: true });
+    const at = /(^|\s)@([^\s@\[\]]{0,30})$/.exec(before);
+    if (open >= 0 && !before.slice(open).includes("]]") && !before.slice(open).includes("\n")) {
+      sugMode = "link"; sugAt = open + 2;
+      const q = before.slice(sugAt).toLowerCase();
+      sugOpts = (opts.notes?.() || []).filter((t) => t.toLowerCase().includes(q)).slice(0, 8).map((t) => ({ t }));
+      if (q && !sugOpts.some((o) => o.t.toLowerCase() === q)) sugOpts.push({ t: before.slice(sugAt), fresh: true });
+    } else if (at) {
+      sugMode = "at"; sugAt = off - at[2].length - 1;
+      const q = at[2].toLowerCase();
+      const dates = [["Today", kst(0)], ["Tomorrow", kst(1)], ["Next week", kst(7)]].map(([l, d]) => ({ label: `📅 ${l} · ${d}`, ins: "@" + d, key: l.toLowerCase() }));
+      const rem = [["Remind me tomorrow 9:00", kst(1) + " 09:00"], ["Remind me today 18:00", kst(0) + " 18:00"]].map(([l, d]) => ({ label: `⏰ ${l}`, ins: "⏰ " + d, key: "remind " + l.toLowerCase() }));
+      if (/^\d{4}-\d{2}-\d{2}$/.test(q)) dates.unshift({ label: "📅 " + q, ins: "@" + q, key: q }, { label: `⏰ Remind ${q} 9:00`, ins: `⏰ ${q} 09:00`, key: q });
+      const pages = (opts.notes?.() || []).filter((t) => t.toLowerCase().includes(q)).slice(0, 6).map((t) => ({ label: "📄 " + t, ins: `[[${t}]]`, key: t.toLowerCase() }));
+      const raw = at[2]; if (raw && !pages.some((x) => x.key === q)) pages.push({ label: "📄 Link to " + raw, ins: `[[${raw}]]`, key: q });
+      sugOpts = [...pages, ...dates.filter((x) => !q || x.key.includes(q)), ...rem.filter((x) => !q || x.key.includes(q))].slice(0, 10);
+    } else return closeSug();
+    sugFor = b;
     if (!sugOpts.length) return closeSug();
     sugSel = 0;
     if (!sug) { sug = document.createElement("div"); sug.className = "suggest"; sug.setAttribute("role", "listbox"); document.body.appendChild(sug); sug.addEventListener("mousedown", (e) => { e.preventDefault(); const x = e.target.closest("[data-i]"); if (x) { sugSel = +x.dataset.i; pickSug(); } }); }
     const r = el.getBoundingClientRect(); sug.style.left = Math.min(r.left, innerWidth - 260) + "px"; sug.style.top = r.bottom + 4 + "px";
     drawSug();
   }
-  function drawSug() { sug.innerHTML = sugOpts.map((o, i) => `<button type="button" role="option" data-i="${i}" aria-selected="${i === sugSel}">${o.fresh ? "+ New page: " : ""}${esc(o.t)}</button>`).join(""); }
+  function drawSug() { sug.innerHTML = sugOpts.map((o, i) => `<button type="button" role="option" data-i="${i}" aria-selected="${i === sugSel}">${o.label ? esc(o.label) : (o.fresh ? "+ New page: " : "") + esc(o.t)}</button>`).join(""); }
   function closeSug() { if (sug) { sug.remove(); sug = null; } sugAt = -1; }
   function sugKey(e) {
     if (e.key === "ArrowDown") { e.preventDefault(); sugSel = (sugSel + 1) % sugOpts.length; drawSug(); return true; }
@@ -500,9 +570,10 @@ export function createBlockEditor(host, opts) {
   function pickSug() {
     const o = sugOpts[sugSel], b = sugFor; if (!o || !b) return closeSug();
     const el = elOf(b.id), off = el ? caretOffset(el) : b.text.length;
-    const after = b.text.slice(off).replace(/^[^\]\n]*\]\]/, "");
-    b.text = b.text.slice(0, sugAt) + o.t + "]]" + after;
-    const c = sugAt + o.t.length + 2;
+    let ins, after;
+    if (sugMode === "at") { ins = o.ins + " "; after = b.text.slice(off); b.text = b.text.slice(0, sugAt) + ins + after; }
+    else { after = b.text.slice(off).replace(/^[^\]\n]*\]\]/, ""); ins = o.t + "]]"; b.text = b.text.slice(0, sugAt) + ins + after; }
+    const c = sugAt + ins.length;
     closeSug(); changed(); render({ id: b.id, off: c });
   }
 
@@ -515,20 +586,18 @@ export function createBlockEditor(host, opts) {
     try { e.dataTransfer.setDragImage(w, 10, 10); } catch {}
     w.classList.add("dragging");
   });
-  root.addEventListener("dragover", (e) => {
-    if (!dragId) return;
-    const w = e.target.closest?.(".nb"); if (!w || w.dataset.id === dragId || w.closest(`.nb[data-id="${dragId}"]`)) return;
-    e.preventDefault();
-    const row = w.querySelector(":scope > .nb-row"), r = row.getBoundingClientRect(), before = e.clientY < r.top + r.height / 2;
+  function showMarker(x, y, w) {
+    if (!w || !root.contains(w) || w.dataset.id === dragId || w.closest(`.nb[data-id="${dragId}"]`)) return false;
+    const row = w.querySelector(":scope > .nb-row"), r = row.getBoundingClientRect(), before = y < r.top + r.height / 2;
     if (!marker) { marker = document.createElement("div"); marker.className = "nb-drop"; }
     marker.dataset.target = w.dataset.id; marker.dataset.before = before ? "1" : "";
     const hr = root.getBoundingClientRect();
     Object.assign(marker.style, { top: (before ? r.top : r.bottom) - hr.top - 1 + "px", left: r.left - hr.left + "px", width: r.width + "px" });
     if (!marker.isConnected) root.appendChild(marker);
-  });
-  root.addEventListener("drop", (e) => {
-    if (!dragId || !marker?.dataset.target) return;
-    e.preventDefault();
+    return true;
+  }
+  function dropAtMarker() {
+    if (!dragId || !marker?.dataset.target) return endDrag();
     const tid = marker.dataset.target, before = marker.dataset.before === "1";
     const src = find(dragId);
     if (src && tid !== dragId) {
@@ -538,6 +607,16 @@ export function createBlockEditor(host, opts) {
       changed();
     }
     endDrag(); render();
+  }
+  root.addEventListener("dragover", (e) => {
+    if (!dragId) return;
+    if (showMarker(e.clientX, e.clientY, e.target.closest?.(".nb"))) e.preventDefault();
+  });
+  root.addEventListener("drop", (e) => { if (!dragId || !marker?.dataset.target) return; e.preventDefault(); dropAtMarker(); });
+  if (!ro) touchDrag(root, ".nb-handle", {
+    over: (x, y, h) => { dragId = h.closest(".nb").dataset.id; showMarker(x, y, document.elementFromPoint(x, y)?.closest?.(".nb")); },
+    drop: (x, y, h) => { dragId = h.closest(".nb").dataset.id; dropAtMarker(); },
+    end: () => { if (dragId) endDrag(); },
   });
   const endDrag = () => { dragId = null; marker?.remove(); marker = null; root.querySelectorAll(".dragging").forEach((x) => x.classList.remove("dragging")); };
   root.addEventListener("dragend", endDrag);
@@ -547,6 +626,6 @@ export function createBlockEditor(host, opts) {
     getDoc: () => doc,
     setDoc: (d) => { doc = d; if (!doc.blocks.length) doc.blocks.push(block("paragraph")); render(); },
     focus: (where) => { const vis = flat().filter(editable); const b = where === "end" ? vis.at(-1) : vis[0]; if (b) render({ id: b.id, off: where === "end" ? "end" : 0 }); },
-    destroy: () => { closeMenu(); closeSug(); host.innerHTML = ""; },
+    destroy: () => { closeMenu(); closeSug(); closeTb(); document.removeEventListener("selectionchange", onSel); host.innerHTML = ""; },
   };
 }

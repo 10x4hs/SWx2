@@ -106,8 +106,8 @@ export function registerNotes(on) {
   on("GET", "/notes", async ({ env, user, q }) => {
     const tag = q.get("tag");
     const sql = tag
-      ? `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.kind, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n JOIN note_tags t ON t.note_id = n.id AND t.tag = ?2 WHERE ${VISIBLE} ORDER BY n.updated_at DESC`
-      : `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.kind, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n WHERE ${VISIBLE} ORDER BY n.updated_at DESC`;
+      ? `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.kind, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n JOIN note_tags t ON t.note_id = n.id AND t.tag = ?2 WHERE ${VISIBLE} AND NOT EXISTS (SELECT 1 FROM notes p WHERE p.id = n.parent_id AND p.kind = 'database') ORDER BY n.updated_at DESC`
+      : `SELECT n.id, n.user_id, n.title, n.shared, n.parent_id, n.kind, n.updated_at, substr(n.body, 1, 160) AS snippet FROM notes n WHERE ${VISIBLE} AND NOT EXISTS (SELECT 1 FROM notes p WHERE p.id = n.parent_id AND p.kind = 'database') ORDER BY n.updated_at DESC`;
     const stmt = tag ? env.DB.prepare(sql).bind(user.id, tag) : env.DB.prepare(sql).bind(user.id);
     const { results } = await stmt.all();
     return json({ notes: results });
@@ -157,7 +157,7 @@ export function registerNotes(on) {
     const [nr, back, tags, children, up] = await env.DB.batch([
       env.DB.prepare(`SELECT n.* FROM notes n WHERE n.id = ?2 AND ${VISIBLE}`).bind(user.id, params.id),
       env.DB.prepare(
-        `SELECT n.id, n.user_id, n.title, substr(n.body, 1, 160) AS snippet FROM note_links l JOIN notes n ON n.id = l.src_id
+        `SELECT n.id, n.user_id, n.title, substr(n.body, max(1, instr(lower(n.body), lower('[[' || (SELECT title FROM notes WHERE id = ?2))) - 60), 180) AS snippet FROM note_links l JOIN notes n ON n.id = l.src_id
        WHERE l.dst_title = (SELECT title FROM notes WHERE id = ?2 AND user_id = ?1) AND n.id != ?2 AND ${VISIBLE} ORDER BY n.updated_at DESC`
       ).bind(user.id, params.id),
       env.DB.prepare("SELECT tag FROM note_tags WHERE note_id = ?").bind(params.id),
