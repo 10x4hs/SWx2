@@ -1,7 +1,7 @@
 // 뉴스 — 하루 한 호. #/news (오늘) · #/news/<YYYY-MM-DD> · #/news/item/<id>
-// 한 줄로 내려 읽는 구성: 위 유리 막대(날짜 · 어제/내일 · 달력) → 헤드라인 → 분야 고르기(전체 · AI · 지정학 · 기술 · 경제) → 기사 목록.
-// 기사를 누르면 오른쪽(폰은 아래)에서 유리 시트가 올라와요: 한국어 요약 · 원문 · 별표 · 토론(메모 · 반박 · 동의 · AI 반박).
-// 키보드: j/k 다음·이전 기사 · [ ] 어제·내일 · s 별표 · Esc 닫기. 근거: docs/news-design-direction.md (refs.gallery + 애플 유리 재질)
+// 가독성만 보는 한 단 구성: 날짜 줄(어제 · 날짜 · 내일) → 헤드라인 → 분야 탭 → 기사 목록(제목 → 요약 한 줄 → 출처 · 시각).
+// 기사를 누르면 오른쪽(폰은 아래)에서 시트가 열려요: 요약 · 원문 · 별표 · 토론(메모 · 반박 · 동의 · AI 반박).
+// 키보드: j/k 다음·이전 기사 · [ ] 어제·내일 · s 별표 · Esc 닫기. 근거: docs/news-design-direction.md (Notion · Al Jazeera DESIGN.md 의 글자 규칙)
 import { api } from "../api.js";
 import { esc, toast } from "../util.js";
 import { icon } from "../icons.js";
@@ -14,7 +14,7 @@ const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
 const dayKo = (d) => { const x = new Date(d + "T12:00:00+09:00"); return `${x.getUTCMonth() + 1}월 ${x.getUTCDate()}일 ${WEEK[x.getUTCDay()]}요일`; };
 const dayShort = (d) => { const x = new Date(d + "T12:00:00+09:00"); return `${x.getUTCMonth() + 1}.${x.getUTCDate()}`; };
 const hhmm = (t) => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" });
-const when = (it) => (it.dated === 0 ? "새 글" : hhmm(it.published_at));
+const when = (it) => (it.dated === 0 ? "" : hhmm(it.published_at));
 const strip = (s) => String(s || "").replace(/[\s.。…]+$/g, "").trim();
 const sentences = (s) => String(s || "").split(/(?<=[.!?다요])\s+(?=\S)/).map((x) => x.trim()).filter(Boolean);
 // 보이는 제목: 한국어 제목 → 한 줄 요약 → 원문 제목
@@ -28,21 +28,20 @@ export function update(r) { inst?.route(r); }
 export function mount(root, ctx, r) {
   root.innerHTML = `
     <div class="gn" id="gn">
-      <div class="gn-aura" aria-hidden="true"><i></i><i></i><i></i></div>
       <main class="gn-scroll" id="gn-scroll" tabindex="-1">
-        <header class="gn-bar glass">
+        <header class="gn-bar">
           <a class="gn-nav" id="gn-prev" href="#" aria-label="어제">${chev("l")}</a>
           <button class="gn-date" id="gn-date" type="button" aria-haspopup="dialog" aria-expanded="false"><span id="gn-date-t">오늘</span>${chev("d")}</button>
           <a class="gn-nav" id="gn-next" href="#" aria-label="내일">${chev("r")}</a>
         </header>
-        <div class="gn-cal glass" id="gn-cal" hidden role="dialog" aria-label="지난 60일"></div>
+        <div class="gn-cal" id="gn-cal" hidden role="dialog" aria-label="지난 60일"></div>
         <div class="gn-page" id="gn-page"><p class="gn-soft">불러오는 중…</p></div>
       </main>
     </div>`;
   // 기사 시트는 body 에 붙여요 — 앱 껍데기(host · main)가 transform · 흐림을 써서 그 안의 position: fixed 가 화면이 아니라 긴 목록을 기준으로 잡혀요
   const portal = document.createElement("div");
   portal.className = "gn gn-portal";
-  portal.innerHTML = `<div class="gn-scrim" id="gn-scrim" hidden></div><aside class="gn-sheet glass" id="gn-sheet" aria-label="기사" hidden></aside>`;
+  portal.innerHTML = `<div class="gn-scrim" id="gn-scrim" hidden></div><aside class="gn-sheet" id="gn-sheet" aria-label="기사" hidden></aside>`;
   document.body.append(portal);
   const $ = (s) => root.querySelector(s);
   const page = $("#gn-page"), sheet = portal.querySelector("#gn-sheet"), gn = portal, cal = $("#gn-cal"), scrim = portal.querySelector("#gn-scrim");
@@ -69,7 +68,7 @@ export function mount(root, ctx, r) {
 
   // ---------- 그날 호 ----------
   async function loadEdition(day) {
-    page.innerHTML = `<p class="gn-soft">${day === kstDay() ? "오늘" : dayKo(day)} 신문을 펼치는 중…</p>`;
+    page.innerHTML = `<p class="gn-soft">불러오는 중…</p>`;
     try { ed = await api.newsEdition(day === kstDay() ? "today" : day); }
     catch (e) { if (alive) page.innerHTML = `<p class="gn-soft">${esc(e.message)}</p>`; return; }
     if (!alive) return;
@@ -87,12 +86,12 @@ export function mount(root, ctx, r) {
   };
   function row(it) {
     const m = mine(it), t = titleOf(it);
-    const sub = sentences(it.summary).find((s) => strip(s) !== strip(t)) || (isKo(t) ? "" : "번역 준비 중이에요");
+    const sub = sentences(it.summary).find((s) => strip(s) !== strip(t)) || "";
     return `<li class="gn-item${m.read ? " read" : ""}${cur === it.id ? " on" : ""}" data-id="${it.id}">
       <a class="gn-item-a" href="#/news/item/${it.id}">
-        <span class="gn-meta">${m.read ? "" : `<i class="gn-dot" aria-label="안 읽음"></i>`}<span>${esc(it.feed)}</span><span>${when(it)}</span>${sec === "all" && it.section ? `<span class="gn-tag">${SEC_KO[it.section] || ""}</span>` : ""}</span>
-        <span class="gn-t"${isKo(t) ? "" : ' lang="en"'}>${esc(t)}</span>
+        <span class="gn-t"${isKo(t) ? "" : ' lang="en"'}>${m.read ? "" : `<i class="gn-dot" aria-label="안 읽음"></i>`}${esc(t)}</span>
         ${sub ? `<span class="gn-s">${esc(sub)}</span>` : ""}
+        <span class="gn-meta">${sec === "all" && it.section ? `<span class="gn-tag">${SEC_KO[it.section] || ""}</span>` : ""}<span>${esc(it.feed)}</span>${when(it) ? `<span>${when(it)}</span>` : ""}</span>
         ${it.comments || it.disputed || m.others.length ? `<span class="gn-foot">${it.comments ? `<span class="gn-pill">메모 ${it.comments}</span>` : ""}${it.disputed ? `<span class="gn-pill hot">의견 갈림</span>` : ""}<span class="gn-avs">${avs(m.others)}</span></span>` : ""}
       </a>
       <button class="gn-star${m.star ? " on" : ""}" type="button" data-star="${it.id}" aria-pressed="${m.star}" aria-label="별표">${starSvg()}</button>
@@ -106,22 +105,22 @@ export function mount(root, ctx, r) {
     const head = ed.headline || (lead ? titleOf(lead.item) : "오늘 들어온 소식");
     const showLead = lead && sec === "all" && !starred && strip(titleOf(lead.item)) !== strip(head); // 헤드라인과 같은 문장이면 1면 카드는 빼요
     const counts = Object.fromEntries(SECTIONS.map(([k]) => [k, k === "all" ? total : (ed.sections?.[k] || []).length]));
-    const status = ed.status === "closed" ? "마감된 호" : ed.status === "draft" ? "아침판 · 계속 채워져요" : "오늘 밤 11시 10분에 마감돼요";
+    const status = ed.status === "closed" ? "마감" : ed.status === "draft" ? "아침판" : "밤 11:10 마감";
     page.innerHTML = `
       <section class="gn-hero">
-        <p class="gn-kicker">${esc(status)} · ${total}편${unread ? ` · <b>${unread}편 안 읽음</b>` : " · 다 읽었어요"}</p>
+        <p class="gn-kicker"><span>${esc(status)}</span><span>${total}편</span><b>${unread ? `안 읽음 ${unread}` : "다 읽음"}</b></p>
         <h1 class="gn-h1">${esc(head)}</h1>
         ${ed.lede ? `<p class="gn-lede">${esc(ed.lede)}</p>` : !showLead && lead?.why ? `<p class="gn-lede">${esc(lead.why)}</p>` : ""}
       </section>
-      ${showLead ? `<a class="gn-lead glass" href="#/news/item/${lead.item.id}" data-id="${lead.item.id}">
+      ${showLead ? `<a class="gn-lead" href="#/news/item/${lead.item.id}" data-id="${lead.item.id}">
         <span class="gn-meta"><span class="gn-tag strong">1면</span><span>${esc(lead.item.feed)}</span><span>${when(lead.item)}</span></span>
         <span class="gn-lead-t">${esc(titleOf(lead.item))}</span>
         ${lead.why ? `<span class="gn-lead-why">${esc(lead.why)}</span>` : ""}
       </a>` : ""}
-      ${(ed.threads || []).length && sec === "all" && !starred ? `<section class="gn-threads"><h2 class="gn-h2">오늘 움직인 흐름</h2><ul>${ed.threads.map((t) => `<li><b>${esc(t.title)}</b><span>${esc(t.move || "")}</span></li>`).join("")}</ul></section>` : ""}
-      <nav class="gn-seg glass" role="tablist" aria-label="분야">${SECTIONS.map(([k, l]) => `<button type="button" role="tab" data-sec="${k}" aria-selected="${sec === k}">${l}<small>${counts[k]}</small></button>`).join("")}<button type="button" class="gn-seg-star" data-starred aria-pressed="${starred}" aria-label="별표만">${starSvg()}</button></nav>
-      ${shown.length ? `<ul class="gn-list">${shown.map(row).join("")}</ul>` : `<p class="gn-empty">${starred ? "별표한 기사가 없어요." : sec === "ai" ? "오늘은 아직 AI 소식이 없어요. 매시간 새로 모아요." : "이 분야는 아직 비어 있어요."}</p>`}
-      <footer class="gn-end">${unread ? `${unread}편 남았어요` : "오늘 신문은 여기까지예요"}${ed.prev ? ` · <a href="#/news/${ed.prev}">${dayKo(ed.prev)} 신문 보기</a>` : ""}</footer>`;
+      ${(ed.threads || []).length && sec === "all" && !starred ? `<section class="gn-threads"><h2 class="gn-h2">오늘의 흐름</h2><ul>${ed.threads.map((t) => `<li><b>${esc(t.title)}</b><span>${esc(t.move || "")}</span></li>`).join("")}</ul></section>` : ""}
+      <nav class="gn-seg" role="tablist" aria-label="분야">${SECTIONS.map(([k, l]) => `<button type="button" role="tab" data-sec="${k}" aria-selected="${sec === k}">${l}<small>${counts[k]}</small></button>`).join("")}<button type="button" class="gn-seg-star" data-starred aria-pressed="${starred}" aria-label="별표만">${starSvg()}</button></nav>
+      ${shown.length ? `<ul class="gn-list">${shown.map(row).join("")}</ul>` : `<p class="gn-empty">${starred ? "별표한 기사가 없어요." : sec === "ai" ? "아직 AI 기사가 없어요. 매시 10분에 새로 모아요." : "아직 기사가 없어요."}</p>`}
+      <footer class="gn-end">${unread ? `안 읽은 기사 ${unread}편` : "여기까지예요"}${ed.prev ? ` · <a href="#/news/${ed.prev}">${dayKo(ed.prev)}</a>` : ""}</footer>`;
   }
 
   // ---------- 기사 시트 ----------
@@ -142,25 +141,25 @@ export function mount(root, ctx, r) {
       <span class="gn-meta"><span>${esc(it.feed)}</span><span>${it.dated === 0 ? "날짜 없음" : `${dayShort(kstDay(it.published_at))} ${hhmm(it.published_at)}`}</span>${it.section ? `<span class="gn-tag">${SEC_KO[it.section] || ""}</span>` : ""}</span>
       <h2 class="gn-sh-t">${esc(t)}</h2>
       ${t !== it.title ? `<p class="gn-sh-orig" lang="en">${esc(it.title)}</p>` : ""}
-      ${sum.length ? `<section class="gn-card"><h3>요약</h3><ul>${sum.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></section>` : `<section class="gn-card"><p class="gn-soft">아직 요약 전이에요. 잠시 뒤에 채워져요.</p></section>`}
+      ${sum.length ? `<section class="gn-card"><h3>요약</h3><ul>${sum.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></section>` : `<section class="gn-card"><p class="gn-soft">요약을 만드는 중이에요.</p></section>`}
       <div class="gn-acts">
         <button class="gn-btn${star() ? " on" : ""}" type="button" id="gn-sh-star" aria-pressed="${star()}">${starSvg()}<span>${star() ? "별표함" : "별표"}</span></button>
-        <button class="gn-btn" type="button" id="gn-sh-deep">${d.deep ? "자세히 ✓" : "자세히 읽기"}</button>
+        <button class="gn-btn" type="button" id="gn-sh-deep">${d.deep ? "더 읽기 ✓" : "더 읽기"}</button>
         <a class="gn-btn" href="${esc(it.url)}" target="_blank" rel="noopener">원문 ${icon.external(13)}</a>
         <span class="gn-avs" title="읽은 친구">${avs((it.readers || []).filter((u) => u !== ctx.me.id))}</span>
       </div>
       <section class="gn-card" id="gn-deep"${d.deep ? "" : " hidden"}></section>
       <section class="gn-talk"><h3>토론 <small id="gn-talk-n"></small></h3>
-        <form class="gn-compose" id="gn-compose"><textarea name="b" rows="2" maxlength="2000" placeholder="내 생각을 한두 줄로 남겨요"></textarea><button class="gn-btn pri" type="submit">메모 남기기</button></form>
+        <form class="gn-compose" id="gn-compose"><textarea name="b" rows="2" maxlength="2000" placeholder="메모 남기기"></textarea><button class="gn-btn pri" type="submit">남기기</button></form>
         <div id="gn-talk"></div>
       </section>
     </div>`;
-    const paintDeep = (deep) => { const el = sheet.querySelector("#gn-deep"); el.hidden = false; el.innerHTML = `<h3>자세히</h3><ul>${(deep.summary || []).map((s) => `<li>${esc(s)}</li>`).join("")}</ul>${deep.why ? `<p class="gn-why">왜 중요해요? ${esc(deep.why)}</p>` : ""}`; };
+    const paintDeep = (deep) => { const el = sheet.querySelector("#gn-deep"); el.hidden = false; el.innerHTML = `<h3>더 읽기</h3><ul>${(deep.summary || []).map((s) => `<li>${esc(s)}</li>`).join("")}</ul>${deep.why ? `<p class="gn-why">왜 중요한가 — ${esc(deep.why)}</p>` : ""}`; };
     if (d.deep) paintDeep(d.deep);
     sheet.querySelector("#gn-sh-deep").addEventListener("click", async (e) => {
       if (d.deep) return; const b = e.currentTarget; b.disabled = true; b.textContent = "읽는 중…";
-      try { const r2 = await api.newsDeep(id); d.deep = r2.deep || r2; paintDeep(d.deep); b.textContent = "자세히 ✓"; }
-      catch (err) { toast(err.message, "err"); b.disabled = false; b.textContent = "자세히 읽기"; }
+      try { const r2 = await api.newsDeep(id); d.deep = r2.deep || r2; paintDeep(d.deep); b.textContent = "더 읽기 ✓"; }
+      catch (err) { toast(err.message, "err"); b.disabled = false; b.textContent = "더 읽기"; }
     });
     sheet.querySelector("#gn-sh-star").addEventListener("click", () => toggleStar(id));
     talk(id, d.comments || []);
@@ -177,7 +176,7 @@ export function mount(root, ctx, r) {
     const it = items.get(id); if (!it) return;
     page.querySelectorAll(`li.gn-item[data-id="${id}"]`).forEach((el) => { const tmp = document.createElement("ul"); tmp.innerHTML = row(it); el.replaceWith(tmp.firstElementChild); });
     const k = page.querySelector(".gn-kicker b"); const n = [...items.values()].filter((x) => !mine(x).read).length;
-    if (k) k.textContent = n ? `${n}편 안 읽음` : "다 읽었어요";
+    if (k) k.textContent = n ? `안 읽음 ${n}` : "다 읽음";
   }
   async function toggleStar(id) {
     const it = items.get(id) || { stars: [] }, on = !(it.stars || []).includes(ctx.me.id);

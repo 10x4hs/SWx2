@@ -11,7 +11,7 @@
 //   ⑨ 친구 페이지 숨기기 — 친구가 공개한 Dock 페이지 · 공부 과목 탭을 '내 화면에서 숨기기', 프로필에서 다시 보이기
 //   ⑩ Study 그래프 — 영어 · 논문 · AI · 과목 페이지마다 [내용 | 그래프], 크기 기준 · 크기가 계정에 저장, 점을 누르면 그 내용으로
 //   ⑪ Brain — 노트 + 공부를 한 나무로: 맨 위엔 큰 개념 5개, 누르면 안으로, 공부 점은 원래 화면, 가져오기는 다시 올려도 그대로 (2026-10-13)
-//   ⑫ 뉴스 — 하루 한 호 (유리 재질 · 한국어) · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13)
+//   ⑫ 뉴스 — 하루 한 호 (가독성 · 한국어) · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -378,7 +378,7 @@ try {
     await go("#/papers/easy/review", 2000);
     ok(await p.evaluate(() => !!document.querySelector(".ez-rv h2, .ez-rv .qz")), `${tv} · 논문 섞어서 복습 화면`);
 
-    // ---------- ⑫ 뉴스 — 하루 한 호 (유리 재질 · 한국어): 헤드라인 · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13) ----------
+    // ---------- ⑫ 뉴스 — 하루 한 호 (가독성 · 한국어): 헤드라인 · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13) ----------
     errs = [];
     execFileSync("node", ["scripts/news-seed.mjs"], { stdio: "ignore" });
     await p.goto(BASE + "/#/news"); await p.waitForSelector(".gn-hero", { timeout: 10000 }).catch(() => {});
@@ -391,7 +391,7 @@ try {
     const firstId = await p.evaluate(() => document.querySelector(".gn-item[data-id]")?.dataset.id);
     await p.click(`.gn-item[data-id="${firstId}"] .gn-item-a`);
     await p.waitForSelector("#gn-compose textarea", { timeout: 8000 }).catch(() => {});
-    ok(await p.evaluate((id) => location.hash === "#/news/item/" + id && !!document.querySelector(".gn.sheet-on .gn-sh-t"), firstId), `${tv} · 기사를 열면 유리 시트`);
+    ok(await p.evaluate((id) => location.hash === "#/news/item/" + id && !!document.querySelector(".gn.sheet-on .gn-sh-t"), firstId), `${tv} · 기사를 열면 시트`);
     await p.fill("#gn-compose textarea", "e2e memo " + tv);
     await p.click("#gn-compose button"); await sleep(600);
     const memoN = await p.evaluate(() => document.querySelectorAll(".gn-memo").length);
