@@ -1,20 +1,25 @@
-// 뉴스 — 하루 한 호(號) 신문. #/news (오늘) · #/news/<YYYY-MM-DD> · #/news/item/<id>
-// 왼쪽: 오늘 · 60일 달력 · 오늘 움직인 줄기 · 별표 | 가운데: 그날 호(제호 → 헤드라인 → 1면 → 줄기 → 섹션 4개 → 다 봤어요) | 오른쪽: 기사 읽기 칸
-// 폰은 신문 → 기사로 넘어가요. 키보드: j/k 다음·이전 기사 · [ ] 어제·내일 · s 별표 · Esc 닫기.
-// 디자인 근거: docs/news-design-direction.md (refs.gallery). 움직임은 짧은 투명도 전환만.
+// 뉴스 — 하루 한 호. #/news (오늘) · #/news/<YYYY-MM-DD> · #/news/item/<id>
+// 한 줄로 내려 읽는 구성: 위 유리 막대(날짜 · 어제/내일 · 달력) → 헤드라인 → 분야 고르기(전체 · AI · 지정학 · 기술 · 경제) → 기사 목록.
+// 기사를 누르면 오른쪽(폰은 아래)에서 유리 시트가 올라와요: 한국어 요약 · 원문 · 별표 · 토론(메모 · 반박 · 동의 · AI 반박).
+// 키보드: j/k 다음·이전 기사 · [ ] 어제·내일 · s 별표 · Esc 닫기. 근거: docs/news-design-direction.md (refs.gallery + 애플 유리 재질)
 import { api } from "../api.js";
 import { esc, toast } from "../util.js";
 import { icon } from "../icons.js";
 
-const SECTIONS = [["ai", "AI"], ["geopolitics", "Geopolitics"], ["tech", "Chips & Tech"], ["economy", "Economy"]];
+const SECTIONS = [["all", "전체"], ["ai", "AI"], ["geopolitics", "지정학"], ["tech", "기술"], ["economy", "경제"]];
+const SEC_KO = Object.fromEntries(SECTIONS);
 const kstDay = (t = Date.now()) => new Date(t + 9 * 36e5).toISOString().slice(0, 10);
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
-const fmtLong = (d) => new Date(d + "T12:00:00+09:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "Asia/Seoul" });
-const fmtShort = (d) => new Date(d + "T12:00:00+09:00").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "Asia/Seoul" });
-const hhmm = (t) => new Date(t).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" });
-const when = (it) => (it.dated === 0 ? "new" : hhmm(it.published_at));
-// 요약(2~3문장)을 문장 단위로 나눠 불릿으로
-const bullets = (s) => String(s || "").split(/(?<=[.!?다요])\s+(?=\S)/).map((x) => x.trim()).filter(Boolean).slice(0, 4);
+const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
+const dayKo = (d) => { const x = new Date(d + "T12:00:00+09:00"); return `${x.getUTCMonth() + 1}월 ${x.getUTCDate()}일 ${WEEK[x.getUTCDay()]}요일`; };
+const dayShort = (d) => { const x = new Date(d + "T12:00:00+09:00"); return `${x.getUTCMonth() + 1}.${x.getUTCDate()}`; };
+const hhmm = (t) => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" });
+const when = (it) => (it.dated === 0 ? "새 글" : hhmm(it.published_at));
+const strip = (s) => String(s || "").replace(/[\s.。…]+$/g, "").trim();
+const sentences = (s) => String(s || "").split(/(?<=[.!?다요])\s+(?=\S)/).map((x) => x.trim()).filter(Boolean);
+// 보이는 제목: 한국어 제목 → 한 줄 요약 → 원문 제목
+const titleOf = (it) => it.title_ko || it.one_liner || it.title;
+const isKo = (s) => /[가-힣]/.test(s || "");
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 
 let inst = null;
@@ -22,235 +27,199 @@ export function update(r) { inst?.route(r); }
 
 export function mount(root, ctx, r) {
   root.innerHTML = `
-    <div class="np" id="np">
-      <aside class="np-rail" aria-label="Editions">
-        <a class="np-brand" href="#/news">The Trio <em>Daily</em></a>
-        <nav class="np-nav">
-          <a href="#/news" data-go="today">Today</a>
-          <button type="button" data-filter="starred">Starred</button>
-        </nav>
-        <section class="np-cal" aria-label="Last 60 days"><h3>Editions</h3><div class="np-cal-grid" id="np-cal"></div></section>
-        <section class="np-threads" aria-label="Threads"><h3>Threads today</h3><ul id="np-threads"></ul></section>
-      </aside>
-      <main class="np-paper" id="np-paper" tabindex="-1"><p class="np-loading">Printing today's edition…</p></main>
-      <aside class="np-reader" id="np-reader" aria-label="Article" hidden></aside>
+    <div class="gn" id="gn">
+      <div class="gn-aura" aria-hidden="true"><i></i><i></i><i></i></div>
+      <main class="gn-scroll" id="gn-scroll" tabindex="-1">
+        <header class="gn-bar glass">
+          <a class="gn-nav" id="gn-prev" href="#" aria-label="어제">${chev("l")}</a>
+          <button class="gn-date" id="gn-date" type="button" aria-haspopup="dialog" aria-expanded="false"><span id="gn-date-t">오늘</span>${chev("d")}</button>
+          <a class="gn-nav" id="gn-next" href="#" aria-label="내일">${chev("r")}</a>
+        </header>
+        <div class="gn-cal glass" id="gn-cal" hidden role="dialog" aria-label="지난 60일"></div>
+        <div class="gn-page" id="gn-page"><p class="gn-soft">불러오는 중…</p></div>
+      </main>
     </div>`;
+  // 기사 시트는 body 에 붙여요 — 앱 껍데기(host · main)가 transform · 흐림을 써서 그 안의 position: fixed 가 화면이 아니라 긴 목록을 기준으로 잡혀요
+  const portal = document.createElement("div");
+  portal.className = "gn gn-portal";
+  portal.innerHTML = `<div class="gn-scrim" id="gn-scrim" hidden></div><aside class="gn-sheet glass" id="gn-sheet" aria-label="기사" hidden></aside>`;
+  document.body.append(portal);
   const $ = (s) => root.querySelector(s);
-  const paper = $("#np-paper"), reader = $("#np-reader"), np = $("#np");
-  let alive = true, ed = null, list = [], editions = [], cur = null, starredOnly = false;
+  const page = $("#gn-page"), sheet = portal.querySelector("#gn-sheet"), gn = portal, cal = $("#gn-cal"), scrim = portal.querySelector("#gn-scrim");
+  let alive = true, ed = null, list = [], editions = [], cur = null, sec = store.get("gn-sec") || "all", starred = false;
   const user = (id) => ctx.user(id) || { display_name: "?", color: "var(--m0)" };
   const items = new Map();
+  const mine = (it) => ({ read: !!it.readers?.includes(ctx.me.id), star: !!it.stars?.includes(ctx.me.id), others: (it.readers || []).filter((u) => u !== ctx.me.id) });
+  const avs = (ids) => ids.map((id) => { const u = user(id); return `<i class="gn-av" style="--c:${u.color}" title="${esc(u.display_name)}">${esc((u.display_name || "?")[0])}</i>`; }).join("");
 
-  // ---------- 달력 (최근 60일) ----------
+  // ---------- 달력 (위 날짜를 누르면 내려와요) ----------
   async function loadEditions() {
-    try {
-      const d = await api.newsEditions();
-      editions = [...(d.editions || []).map((e) => ({ ...e, kind: e.status })), ...(d.pending || []).map((p) => ({ day: p.day, items: p.items, kind: "pending" }))];
-    } catch { editions = []; }
-    drawCal();
+    try { const d = await api.newsEditions(); editions = [...(d.editions || []), ...(d.pending || []).map((p) => ({ day: p.day, items: p.items, status: "pending" }))]; } catch { editions = []; }
   }
   function drawCal() {
-    const by = new Map(editions.map((e) => [e.day, e]));
-    const today = kstDay(), days = [];
+    const by = new Map(editions.map((e) => [e.day, e])), today = kstDay(), days = [];
     for (let i = 59; i >= 0; i--) days.push(kstDay(Date.now() - i * 864e5));
-    const lead = (new Date(days[0] + "T12:00:00+09:00").getUTCDay() + 6) % 7; // 월요일 시작
-    $("#np-cal").innerHTML = `${["M", "T", "W", "T", "F", "S", "S"].map((w) => `<b>${w}</b>`).join("")}${"<i></i>".repeat(lead)}${days.map((d) => {
-      const e = by.get(d), n = e?.items || 0, lvl = !n ? 0 : n < 6 ? 1 : n < 15 ? 2 : 3;
-      return `<a href="#/news/${d}" class="np-cd l${lvl}${d === today ? " is-today" : ""}${ed?.day === d ? " is-on" : ""}${e?.kind === "closed" ? " is-closed" : ""}" title="${fmtShort(d)}${n ? ` · ${n} stories` : ""}" aria-label="${fmtShort(d)}">${+d.slice(8)}</a>`;
-    }).join("")}`;
+    const lead = new Date(days[0] + "T12:00:00+09:00").getUTCDay();
+    cal.innerHTML = `<div class="gn-cal-h">지난 60일 <small>진할수록 기사가 많아요</small></div><div class="gn-cal-g">${WEEK.map((w) => `<b>${w}</b>`).join("")}${"<i></i>".repeat(lead)}${days.map((d) => {
+      const n = by.get(d)?.items || 0, l = !n ? 0 : n < 6 ? 1 : n < 15 ? 2 : 3;
+      return `<a href="#/news/${d}" class="gn-cd l${l}${d === today ? " today" : ""}${ed?.day === d ? " on" : ""}" title="${dayKo(d)}${n ? ` · ${n}편` : ""}">${+d.slice(8)}</a>`;
+    }).join("")}</div>`;
   }
+  const toggleCal = (open = cal.hidden) => { if (open) { drawCal(); } cal.hidden = !open; $("#gn-date").setAttribute("aria-expanded", open); };
 
   // ---------- 그날 호 ----------
   async function loadEdition(day) {
-    paper.innerHTML = `<p class="np-loading">Printing ${day === kstDay() ? "today's" : fmtShort(day)} edition…</p>`;
+    page.innerHTML = `<p class="gn-soft">${day === kstDay() ? "오늘" : dayKo(day)} 신문을 펼치는 중…</p>`;
     try { ed = await api.newsEdition(day === kstDay() ? "today" : day); }
-    catch (e) { if (alive) paper.innerHTML = `<p class="np-loading">${esc(e.message)}</p>`; return; }
+    catch (e) { if (alive) page.innerHTML = `<p class="gn-soft">${esc(e.message)}</p>`; return; }
     if (!alive) return;
     items.clear();
-    const all = [...(ed.front || []).map((f) => f.item), ...SECTIONS.flatMap(([k]) => ed.sections?.[k] || []), ...(ed.late || [])];
-    for (const it of all) if (it && !items.has(it.id)) items.set(it.id, it);
-    drawPaper(); drawThreads(); drawCal();
-    paper.scrollTop = 0;
+    for (const it of [...(ed.front || []).map((f) => f.item), ...SECTIONS.slice(1).flatMap(([k]) => ed.sections?.[k] || []), ...(ed.late || [])]) if (it && !items.has(it.id)) items.set(it.id, it);
+    $("#gn-date-t").textContent = day === kstDay() ? `오늘 · ${dayShort(day)}` : dayKo(day);
+    const nav = (el, d) => { el.href = d ? "#/news/" + d : "#"; el.classList.toggle("off", !d); };
+    nav($("#gn-prev"), ed.prev); nav($("#gn-next"), ed.next);
+    draw();
+    $("#gn-scroll").scrollTop = 0;
   }
-  const mark = (it) => {
-    const read = it.readers?.includes(ctx.me.id), star = it.stars?.includes(ctx.me.id);
-    const others = (it.readers || []).filter((u) => u !== ctx.me.id);
-    return { read, star, others };
+  const secItems = (k) => {
+    const all = k === "all" ? [...items.values()] : (ed.sections?.[k] || []).map((it) => items.get(it.id) || it);
+    return all.filter((it) => !starred || mine(it).star).sort((a, b) => b.published_at - a.published_at);
   };
-  const avatars = (ids) => ids.map((id) => { const u = user(id); return `<i class="np-av" style="--c:${u.color}" title="${esc(u.display_name)} read this">${esc((u.display_name || "?")[0])}</i>`; }).join("");
-  const chips = (it) => {
-    const th = it.thread_id && (ed.threads || []).find((t) => t.id === it.thread_id);
-    return `${th ? `<span class="np-chip">${esc(th.title)}</span>` : ""}${it.comments ? `<span class="np-chip">💬 ${it.comments}</span>` : ""}${it.disputed ? `<span class="np-chip np-chip-hot" title="Friends disagree">⚡ disputed</span>` : ""}`;
-  };
-  const row = (it) => {
-    const m = mark(it);
-    if (starredOnly && !m.star) return "";
-    return `<li class="np-item${m.read ? " is-read" : ""}${cur === it.id ? " is-on" : ""}" data-id="${it.id}">
-      <a href="#/news/item/${it.id}" class="np-item-a">
-        <span class="np-meta">${m.read ? "" : `<i class="np-dot" aria-label="Unread"></i>`}${esc(it.feed)} · <time>${when(it)}</time></span>
-        <span class="np-title">${esc(it.one_liner || it.title)}</span>
-        <span class="np-sum">${esc(bullets(it.summary).find((b) => b.replace(/[\s.]+$/, "") !== String(it.one_liner || "").replace(/[\s.…]+$/, "")) || (it.one_liner ? it.title : ""))}</span>
-        <span class="np-row-foot">${chips(it)}<span class="np-avs">${avatars(m.others)}</span></span>
+  function row(it) {
+    const m = mine(it), t = titleOf(it);
+    const sub = sentences(it.summary).find((s) => strip(s) !== strip(t)) || (isKo(t) ? "" : "번역 준비 중이에요");
+    return `<li class="gn-item${m.read ? " read" : ""}${cur === it.id ? " on" : ""}" data-id="${it.id}">
+      <a class="gn-item-a" href="#/news/item/${it.id}">
+        <span class="gn-meta">${m.read ? "" : `<i class="gn-dot" aria-label="안 읽음"></i>`}<span>${esc(it.feed)}</span><span>${when(it)}</span>${sec === "all" && it.section ? `<span class="gn-tag">${SEC_KO[it.section] || ""}</span>` : ""}</span>
+        <span class="gn-t"${isKo(t) ? "" : ' lang="en"'}>${esc(t)}</span>
+        ${sub ? `<span class="gn-s">${esc(sub)}</span>` : ""}
+        ${it.comments || it.disputed || m.others.length ? `<span class="gn-foot">${it.comments ? `<span class="gn-pill">메모 ${it.comments}</span>` : ""}${it.disputed ? `<span class="gn-pill hot">의견 갈림</span>` : ""}<span class="gn-avs">${avs(m.others)}</span></span>` : ""}
       </a>
-      <button class="np-star${m.star ? " on" : ""}" type="button" data-star="${it.id}" aria-pressed="${m.star}" aria-label="Star">★</button>
+      <button class="gn-star${m.star ? " on" : ""}" type="button" data-star="${it.id}" aria-pressed="${m.star}" aria-label="별표">${starSvg()}</button>
     </li>`;
-  };
-  function drawPaper() {
-    const isToday = ed.day === kstDay();
-    const status = ed.status === "closed" ? `Closed ${ed.built_at ? hhmm(ed.built_at) : ""}` : ed.status === "draft" ? "Morning edition · updating" : "Live · not yet printed";
-    const no = Math.max(1, Math.round((new Date(ed.day) - new Date("2026-08-14")) / 864e5) + 1);
-    const front = (ed.front || []).filter((f) => f.item);
-    const lead = front[0];
-    const rest = front.slice(1);
-    list = [];
-    const push = (it) => { if (it && !list.includes(it.id)) list.push(it.id); };
-    front.forEach((f) => push(f.item));
-    const secs = SECTIONS.map(([k, label]) => {
-      const its = (ed.sections?.[k] || []).filter((it) => !front.some((f) => f.item.id === it.id));
-      its.forEach(push);
-      const rows = its.map(row).join("");
-      return rows ? `<section class="np-sec" id="sec-${k}"><h2 class="np-sec-h"><span>${label}</span><small>${its.length}</small></h2><ul class="np-list">${rows}</ul></section>` : "";
-    }).join("");
-    (ed.late || []).forEach(push);
-    const unread = list.filter((id) => !items.get(id)?.readers?.includes(ctx.me.id)).length;
-    paper.innerHTML = `
-      <header class="np-mast">
-        <div class="np-mast-top">
-          <a class="np-day-btn" href="${ed.prev ? "#/news/" + ed.prev : "#"}" ${ed.prev ? "" : 'aria-disabled="true"'} aria-label="Previous day">‹ ${ed.prev ? fmtShort(ed.prev) : ""}</a>
-          <span class="np-mast-meta">No. ${no} · ${ed.count || list.length} stories · ${status}</span>
-          <a class="np-day-btn" href="${ed.next ? "#/news/" + ed.next : "#"}" ${ed.next ? "" : 'aria-disabled="true"'} aria-label="Next day">${ed.next ? fmtShort(ed.next) : ""} ›</a>
-        </div>
-        <h1 class="np-date">${fmtLong(ed.day)}${isToday ? ` <span class="np-today">Today</span>` : ""}</h1>
-        <nav class="np-secnav">${SECTIONS.map(([k, l]) => `<a href="#sec-${k}" data-jump="sec-${k}">${l} <small>${(ed.sections?.[k] || []).length}</small></a>`).join("")}<span class="np-unread">${unread ? `${unread} unread` : "All read"}</span></nav>
-      </header>
-      ${ed.headline ? `<section class="np-lead"><h2 class="np-headline">${esc(ed.headline)}</h2>${ed.lede ? `<p class="np-lede">${esc(ed.lede)}</p>` : ""}</section>` : `<section class="np-lead np-lead-empty"><p>Today's edition prints at <b>23:10</b>. Stories below are arriving live.</p></section>`}
-      ${lead ? `<section class="np-front">
-        <article class="np-top${mark(lead.item).read ? " is-read" : ""}" data-id="${lead.item.id}">
-          <a href="#/news/item/${lead.item.id}">
-            <span class="np-meta">${esc(lead.item.feed)} · <time>${when(lead.item)}</time></span>
-            <h3>${esc(lead.item.one_liner || lead.item.title)}</h3>
-            ${(() => { const rest = bullets(lead.item.summary).filter((b) => b.replace(/[\s.…]+$/, "") !== String(lead.item.one_liner || "").replace(/[\s.…]+$/, "")).join(" "); return rest ? `<p class="np-top-sum">${esc(rest)}</p>` : ""; })()}
-            ${lead.why ? `<p class="np-why"><b>Why it matters</b> ${esc(lead.why)}</p>` : ""}
-            <span class="np-row-foot">${chips(lead.item)}<span class="np-avs">${avatars(mark(lead.item).others)}</span></span>
-          </a>
-        </article>
-        ${rest.length ? `<ol class="np-front-list">${rest.map((f) => `<li class="${mark(f.item).read ? "is-read" : ""}" data-id="${f.item.id}"><a href="#/news/item/${f.item.id}"><span class="np-meta">${esc(f.item.feed)} · <time>${when(f.item)}</time></span><b>${esc(f.item.one_liner || f.item.title)}</b>${f.why ? `<span class="np-why-s">${esc(f.why)}</span>` : ""}</a></li>`).join("")}</ol>` : ""}
-      </section>` : ""}
-      ${(ed.threads || []).length ? `<section class="np-moves"><h2 class="np-sec-h"><span>How the threads moved</span></h2><ul>${ed.threads.map((t) => `<li><b>${esc(t.title)}</b><span>${esc(t.move || "")}</span><small>${t.n || ""}</small></li>`).join("")}</ul></section>` : ""}
-      ${secs}
-      ${(ed.late || []).length ? `<section class="np-sec"><h2 class="np-sec-h"><span>Late additions</span><small>${ed.late.length}</small></h2><ul class="np-list">${ed.late.map(row).join("")}</ul></section>` : ""}
-      <footer class="np-end">${list.length ? (unread ? `${unread} stories left in this edition.` : `You're all caught up for ${fmtShort(ed.day)}.`) : "No stories for this day."}${ed.prev ? ` <a href="#/news/${ed.prev}">Read ${fmtShort(ed.prev)} ›</a>` : ""}</footer>`;
   }
-  function drawThreads() {
-    $("#np-threads").innerHTML = (ed.threads || []).map((t) => `<li><b>${esc(t.title)}</b><span>${esc(t.move || "")}</span></li>`).join("") || `<li class="np-faint">No thread moved today.</li>`;
+  function draw() {
+    const shown = secItems(sec);
+    list = shown.map((it) => it.id);
+    const total = items.size, unread = [...items.values()].filter((it) => !mine(it).read).length;
+    const lead = (ed.front || []).find((f) => f.item);
+    const head = ed.headline || (lead ? titleOf(lead.item) : "오늘 들어온 소식");
+    const showLead = lead && sec === "all" && !starred && strip(titleOf(lead.item)) !== strip(head); // 헤드라인과 같은 문장이면 1면 카드는 빼요
+    const counts = Object.fromEntries(SECTIONS.map(([k]) => [k, k === "all" ? total : (ed.sections?.[k] || []).length]));
+    const status = ed.status === "closed" ? "마감된 호" : ed.status === "draft" ? "아침판 · 계속 채워져요" : "오늘 밤 11시 10분에 마감돼요";
+    page.innerHTML = `
+      <section class="gn-hero">
+        <p class="gn-kicker">${esc(status)} · ${total}편${unread ? ` · <b>${unread}편 안 읽음</b>` : " · 다 읽었어요"}</p>
+        <h1 class="gn-h1">${esc(head)}</h1>
+        ${ed.lede ? `<p class="gn-lede">${esc(ed.lede)}</p>` : !showLead && lead?.why ? `<p class="gn-lede">${esc(lead.why)}</p>` : ""}
+      </section>
+      ${showLead ? `<a class="gn-lead glass" href="#/news/item/${lead.item.id}" data-id="${lead.item.id}">
+        <span class="gn-meta"><span class="gn-tag strong">1면</span><span>${esc(lead.item.feed)}</span><span>${when(lead.item)}</span></span>
+        <span class="gn-lead-t">${esc(titleOf(lead.item))}</span>
+        ${lead.why ? `<span class="gn-lead-why">${esc(lead.why)}</span>` : ""}
+      </a>` : ""}
+      ${(ed.threads || []).length && sec === "all" && !starred ? `<section class="gn-threads"><h2 class="gn-h2">오늘 움직인 흐름</h2><ul>${ed.threads.map((t) => `<li><b>${esc(t.title)}</b><span>${esc(t.move || "")}</span></li>`).join("")}</ul></section>` : ""}
+      <nav class="gn-seg glass" role="tablist" aria-label="분야">${SECTIONS.map(([k, l]) => `<button type="button" role="tab" data-sec="${k}" aria-selected="${sec === k}">${l}<small>${counts[k]}</small></button>`).join("")}<button type="button" class="gn-seg-star" data-starred aria-pressed="${starred}" aria-label="별표만">${starSvg()}</button></nav>
+      ${shown.length ? `<ul class="gn-list">${shown.map(row).join("")}</ul>` : `<p class="gn-empty">${starred ? "별표한 기사가 없어요." : sec === "ai" ? "오늘은 아직 AI 소식이 없어요. 매시간 새로 모아요." : "이 분야는 아직 비어 있어요."}</p>`}
+      <footer class="gn-end">${unread ? `${unread}편 남았어요` : "오늘 신문은 여기까지예요"}${ed.prev ? ` · <a href="#/news/${ed.prev}">${dayKo(ed.prev)} 신문 보기</a>` : ""}</footer>`;
   }
 
-  // ---------- 기사 읽기 칸 ----------
+  // ---------- 기사 시트 ----------
   async function openItem(id) {
     cur = id;
-    paper.querySelectorAll("[data-id]").forEach((el) => el.classList.toggle("is-on", el.dataset.id === id));
-    reader.hidden = false; np.classList.add("has-reader");
+    page.querySelectorAll("[data-id]").forEach((el) => el.classList.toggle("on", el.dataset.id === id));
+    sheet.hidden = false; scrim.hidden = false; requestAnimationFrame(() => gn.classList.add("sheet-on"));
     const known = items.get(id);
-    reader.innerHTML = `<div class="np-r-in"><button class="np-back" type="button" data-close>‹ Edition</button><p class="np-loading">Opening…</p></div>`;
+    sheet.innerHTML = `<div class="gn-sh">${sheetHead()}<p class="gn-soft">여는 중…</p></div>`;
     let d;
-    try { d = await api.newsItem(id); } catch (e) { reader.innerHTML = `<div class="np-r-in"><button class="np-back" type="button" data-close>‹ Edition</button><p class="np-loading">${esc(e.message)}</p></div>`; return; }
+    try { d = await api.newsItem(id); } catch (e) { sheet.innerHTML = `<div class="gn-sh">${sheetHead()}<p class="gn-soft">${esc(e.message)}</p></div>`; return; }
     if (!alive || cur !== id) return;
-    const it = { ...known, ...d.item, summary: known?.summary || d.item.summary };
+    const it = { ...known, ...d.item, summary: known?.summary || d.item.summary, title_ko: known?.title_ko || d.item.title_ko };
+    const t = titleOf(it), sum = sentences(it.summary).filter((s) => strip(s) !== strip(t));
     const star = () => (it.stars || []).includes(ctx.me.id);
-    const norm = (x) => String(x || "").replace(/[\s.。…]+$/g, "").trim();
-    const sum = bullets(it.summary).filter((b) => norm(b) !== norm(it.one_liner)); // 첫 문장이 제목(한 줄 요약)과 같으면 빼요
-    reader.innerHTML = `<div class="np-r-in">
-      <button class="np-back" type="button" data-close>‹ Edition</button>
-      <span class="np-meta">${esc(it.feed)} · ${it.dated === 0 ? "undated" : `${fmtShort(kstDay(it.published_at))} ${hhmm(it.published_at)} KST`}</span>
-      <h2 class="np-r-title">${esc(it.one_liner || it.title)}</h2>
-      ${it.one_liner ? `<p class="np-r-orig" lang="en">${esc(it.title)}</p>` : ""}
-      ${sum.length ? `<section class="np-r-sum"><h4>Summary</h4><ul>${sum.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></section>` : ""}
-      <div class="np-r-acts">
-        <button class="np-btn${star() ? " on" : ""}" type="button" id="np-r-star" aria-pressed="${star()}">★ ${star() ? "Starred" : "Star"}</button>
-        <button class="np-btn" type="button" id="np-r-deep">${d.deep ? "Deep summary ✓" : "Deep summary"}</button>
-        <a class="np-btn" href="${esc(it.url)}" target="_blank" rel="noopener">Original ${icon.external(13)}</a>
-        <span class="np-avs" title="Read by">${avatars((it.readers || []).filter((u) => u !== ctx.me.id))}</span>
+    sheet.innerHTML = `<div class="gn-sh">
+      ${sheetHead()}
+      <span class="gn-meta"><span>${esc(it.feed)}</span><span>${it.dated === 0 ? "날짜 없음" : `${dayShort(kstDay(it.published_at))} ${hhmm(it.published_at)}`}</span>${it.section ? `<span class="gn-tag">${SEC_KO[it.section] || ""}</span>` : ""}</span>
+      <h2 class="gn-sh-t">${esc(t)}</h2>
+      ${t !== it.title ? `<p class="gn-sh-orig" lang="en">${esc(it.title)}</p>` : ""}
+      ${sum.length ? `<section class="gn-card"><h3>요약</h3><ul>${sum.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></section>` : `<section class="gn-card"><p class="gn-soft">아직 요약 전이에요. 잠시 뒤에 채워져요.</p></section>`}
+      <div class="gn-acts">
+        <button class="gn-btn${star() ? " on" : ""}" type="button" id="gn-sh-star" aria-pressed="${star()}">${starSvg()}<span>${star() ? "별표함" : "별표"}</span></button>
+        <button class="gn-btn" type="button" id="gn-sh-deep">${d.deep ? "자세히 ✓" : "자세히 읽기"}</button>
+        <a class="gn-btn" href="${esc(it.url)}" target="_blank" rel="noopener">원문 ${icon.external(13)}</a>
+        <span class="gn-avs" title="읽은 친구">${avs((it.readers || []).filter((u) => u !== ctx.me.id))}</span>
       </div>
-      <section class="np-r-deep" id="np-r-deep-box"${d.deep ? "" : " hidden"}></section>
-      ${d.excerpt ? `<details class="np-r-ex"><summary>Original excerpt</summary><p lang="en">${esc(d.excerpt)}</p></details>` : ""}
-      <section class="np-talk"><h4>Discussion <small id="np-talk-n"></small></h4>
-        <form class="np-compose" id="np-compose"><textarea name="b" rows="2" maxlength="2000" placeholder="Leave a memo — your take in one or two lines"></textarea><button class="np-btn np-btn-pri" type="submit">Post memo</button></form>
-        <div id="np-talk"></div>
+      <section class="gn-card" id="gn-deep"${d.deep ? "" : " hidden"}></section>
+      <section class="gn-talk"><h3>토론 <small id="gn-talk-n"></small></h3>
+        <form class="gn-compose" id="gn-compose"><textarea name="b" rows="2" maxlength="2000" placeholder="내 생각을 한두 줄로 남겨요"></textarea><button class="gn-btn pri" type="submit">메모 남기기</button></form>
+        <div id="gn-talk"></div>
       </section>
     </div>`;
-    const paintDeep = (deep) => {
-      const el = reader.querySelector("#np-r-deep-box"); el.hidden = false;
-      el.innerHTML = `<h4>Deep summary</h4><ul>${(deep.summary || []).map((s) => `<li>${esc(s)}</li>`).join("")}</ul>${deep.why ? `<p class="np-why"><b>Why it matters</b> ${esc(deep.why)}</p>` : ""}`;
-    };
+    const paintDeep = (deep) => { const el = sheet.querySelector("#gn-deep"); el.hidden = false; el.innerHTML = `<h3>자세히</h3><ul>${(deep.summary || []).map((s) => `<li>${esc(s)}</li>`).join("")}</ul>${deep.why ? `<p class="gn-why">왜 중요해요? ${esc(deep.why)}</p>` : ""}`; };
     if (d.deep) paintDeep(d.deep);
-    reader.querySelector("#np-r-deep").addEventListener("click", async (e) => {
-      if (d.deep) return; const b = e.currentTarget; b.disabled = true; b.textContent = "Reading the article…";
-      try { const r2 = await api.newsDeep(id); d.deep = r2.deep || r2; paintDeep(d.deep); b.textContent = "Deep summary ✓"; }
-      catch (err) { toast(err.message, "err"); b.disabled = false; b.textContent = "Deep summary"; }
+    sheet.querySelector("#gn-sh-deep").addEventListener("click", async (e) => {
+      if (d.deep) return; const b = e.currentTarget; b.disabled = true; b.textContent = "읽는 중…";
+      try { const r2 = await api.newsDeep(id); d.deep = r2.deep || r2; paintDeep(d.deep); b.textContent = "자세히 ✓"; }
+      catch (err) { toast(err.message, "err"); b.disabled = false; b.textContent = "자세히 읽기"; }
     });
-    reader.querySelector("#np-r-star").addEventListener("click", () => toggleStar(id));
+    sheet.querySelector("#gn-sh-star").addEventListener("click", () => toggleStar(id));
     talk(id, d.comments || []);
-    if (!(it.readers || []).includes(ctx.me.id)) {
-      api.newsMark(id, { read: true }).then(() => {
-        const k = items.get(id); if (k) { k.readers = [...(k.readers || []), ctx.me.id]; repaintRow(id); }
-      }).catch(() => {});
-    }
-    reader.scrollTop = 0;
+    if (!(it.readers || []).includes(ctx.me.id)) api.newsMark(id, { read: true }).then(() => { const k = items.get(id); if (k) { k.readers = [...(k.readers || []), ctx.me.id]; repaint(id); } }).catch(() => {});
+    sheet.scrollTop = 0;
   }
-  function closeReader() {
-    cur = null; reader.hidden = true; np.classList.remove("has-reader");
-    paper.querySelectorAll(".is-on[data-id]").forEach((el) => el.classList.remove("is-on"));
+  const sheetHead = () => `<div class="gn-sh-top"><span class="gn-grab" aria-hidden="true"></span><button class="gn-x" type="button" data-close aria-label="닫기">${icon.x(16)}</button></div>`;
+  function closeSheet() {
+    cur = null; gn.classList.remove("sheet-on"); scrim.hidden = true;
+    setTimeout(() => { if (!cur) sheet.hidden = true; }, 220);
+    page.querySelectorAll(".on[data-id]").forEach((el) => el.classList.remove("on"));
   }
-  function repaintRow(id) {
+  function repaint(id) {
     const it = items.get(id); if (!it) return;
-    paper.querySelectorAll(`[data-id="${id}"]`).forEach((el) => {
-      if (el.matches("li.np-item")) { const tmp = document.createElement("ul"); tmp.innerHTML = row(it); const n = tmp.firstElementChild; if (n) el.replaceWith(n); }
-      else el.classList.toggle("is-read", !!it.readers?.includes(ctx.me.id));
-    });
-    const u = paper.querySelector(".np-unread"); if (u) { const n = list.filter((x) => !items.get(x)?.readers?.includes(ctx.me.id)).length; u.textContent = n ? `${n} unread` : "All read"; }
+    page.querySelectorAll(`li.gn-item[data-id="${id}"]`).forEach((el) => { const tmp = document.createElement("ul"); tmp.innerHTML = row(it); el.replaceWith(tmp.firstElementChild); });
+    const k = page.querySelector(".gn-kicker b"); const n = [...items.values()].filter((x) => !mine(x).read).length;
+    if (k) k.textContent = n ? `${n}편 안 읽음` : "다 읽었어요";
   }
   async function toggleStar(id) {
-    const it = items.get(id) || { stars: [] }; const on = !(it.stars || []).includes(ctx.me.id);
+    const it = items.get(id) || { stars: [] }, on = !(it.stars || []).includes(ctx.me.id);
     it.stars = on ? [...(it.stars || []), ctx.me.id] : (it.stars || []).filter((u) => u !== ctx.me.id);
-    repaintRow(id);
-    const b = reader.querySelector("#np-r-star"); if (b && cur === id) { b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); b.textContent = `★ ${on ? "Starred" : "Star"}`; }
+    repaint(id);
+    const b = sheet.querySelector("#gn-sh-star"); if (b && cur === id) { b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); b.querySelector("span").textContent = on ? "별표함" : "별표"; }
     try { await api.newsMark(id, { flagged: on }); } catch (err) { toast(err.message, "err"); }
   }
 
-  // ---------- 토론: 메모 → 반박 · 동의 (2단) · 🤖 AI 반박 ----------
+  // ---------- 토론 ----------
   function talk(itemId, comments) {
     let all = comments.slice();
-    const box = reader.querySelector("#np-talk");
-    const ago = (t) => { const m = Math.max(1, Math.round((Date.now() - t) / 6e4)); return m < 60 ? m + "m" : m < 2880 ? Math.round(m / 60) + "h" : Math.round(m / 1440) + "d"; };
-    const head = (c, ai) => { const u = user(c.user_id); return ai ? `<i class="np-av np-av-ai">🤖</i><b>AI</b><span>rebut · asked by ${esc(u.display_name)} · ${ago(c.created_at)}</span>` : `<i class="np-av" style="--c:${u.color}">${esc((u.display_name || "?")[0])}</i><b>${esc(u.display_name)}</b><span>${c.stance} · ${ago(c.created_at)}</span>`; };
-    const del = (c) => (c.user_id === ctx.me.id && !c.ai ? `<button class="np-del" data-del="${c.id}" type="button" aria-label="Delete">${icon.trash(13)}</button>` : "");
+    const box = sheet.querySelector("#gn-talk");
+    const ago = (t) => { const m = Math.max(1, Math.round((Date.now() - t) / 6e4)); return m < 60 ? m + "분 전" : m < 2880 ? Math.round(m / 60) + "시간 전" : Math.round(m / 1440) + "일 전"; };
+    const KIND = { memo: "메모", rebut: "반박", agree: "동의" };
+    const head = (c, ai) => { const u = user(c.user_id); return ai ? `<i class="gn-av ai">AI</i><b>AI 반박</b><span>${esc(u.display_name)} 요청 · ${ago(c.created_at)}</span>` : `<i class="gn-av" style="--c:${u.color}">${esc((u.display_name || "?")[0])}</i><b>${esc(u.display_name)}</b><span>${KIND[c.stance] || ""} · ${ago(c.created_at)}</span>`; };
+    const del = (c) => (c.user_id === ctx.me.id && !c.ai ? `<button class="gn-del" data-del="${c.id}" type="button" aria-label="지우기">${icon.trash(13)}</button>` : "");
     const body = (s) => esc(s).replace(/\n?^&gt; (.+)$\n?/gm, "<q>$1</q>").replace(/\n/g, "<br>");
     const paint = () => {
       const memos = all.filter((c) => !c.parent_id);
-      reader.querySelector("#np-talk-n").textContent = all.length ? `${all.length}${all.some((c) => c.stance === "rebut") ? " · ⚡ disputed" : ""}` : "";
+      sheet.querySelector("#gn-talk-n").textContent = all.length ? `${all.length}${all.some((c) => c.stance === "rebut") ? " · 의견 갈림" : ""}` : "";
       box.innerHTML = memos.map((m) => {
         const kids = all.filter((c) => c.parent_id === m.id), hasAi = kids.some((k) => k.ai);
-        return `<article class="np-memo" data-id="${m.id}">
-          <header>${head(m)}${del(m)}</header><p>${body(m.body)}</p>
-          <div class="np-memo-acts"><button type="button" class="np-chip-btn r" data-reply="rebut">Rebut</button><button type="button" class="np-chip-btn g" data-reply="agree">Agree</button>${hasAi ? "" : `<button type="button" class="np-chip-btn" data-ai="${m.id}">🤖 AI rebut</button>`}</div>
-          ${kids.map((k) => `<div class="np-reply ${k.stance}${k.ai ? " ai" : ""}"><header>${head(k, k.ai)}${del(k)}</header><p>${body(k.body)}</p></div>`).join("")}
-        </article>`;
-      }).join("") || `<p class="np-faint">No memos yet.</p>`;
+        return `<article class="gn-memo" data-id="${m.id}"><header>${head(m)}${del(m)}</header><p>${body(m.body)}</p>
+          <div class="gn-memo-acts"><button type="button" class="gn-chip r" data-reply="rebut">반박</button><button type="button" class="gn-chip g" data-reply="agree">동의</button>${hasAi ? "" : `<button type="button" class="gn-chip" data-ai="${m.id}">AI 반박 받기</button>`}</div>
+          ${kids.map((k) => `<div class="gn-reply ${k.stance}${k.ai ? " ai" : ""}"><header>${head(k, k.ai)}${del(k)}</header><p>${body(k.body)}</p></div>`).join("")}</article>`;
+      }).join("") || `<p class="gn-soft">아직 메모가 없어요.</p>`;
     };
-    const sync = () => { const it = items.get(itemId); if (!it) return; it.comments = all.length; it.disputed = all.some((c) => c.stance === "rebut"); repaintRow(itemId); };
+    const sync = () => { const it = items.get(itemId); if (!it) return; it.comments = all.length; it.disputed = all.some((c) => c.stance === "rebut"); repaint(itemId); };
     paint();
-    reader.querySelector("#np-compose").addEventListener("submit", async (e) => {
+    sheet.querySelector("#gn-compose").addEventListener("submit", async (e) => {
       e.preventDefault(); const ta = e.target.b, b = ta.value.trim(); if (!b) return; ta.disabled = true;
       try { const { comment } = await api.newsComment(itemId, { body: b }); all.push(comment); ta.value = ""; paint(); sync(); } catch (err) { toast(err.message, "err"); }
       ta.disabled = false;
     });
     box.addEventListener("click", async (e) => {
-      const memo = e.target.closest(".np-memo"), rep = e.target.closest("[data-reply]");
+      const memo = e.target.closest(".gn-memo"), rep = e.target.closest("[data-reply]");
       if (rep && memo) {
-        memo.querySelector(".np-rform")?.remove();
+        memo.querySelector(".gn-rform")?.remove();
         const stance = rep.dataset.reply;
-        memo.insertAdjacentHTML("beforeend", `<form class="np-rform ${stance}"><textarea rows="2" maxlength="2000" placeholder="${stance === "rebut" ? "Why is this wrong?" : "What makes it right?"}"></textarea><button class="np-btn" type="submit">${stance === "rebut" ? "Rebut" : "Agree"}</button></form>`);
-        const f = memo.querySelector(".np-rform"); f.querySelector("textarea").focus();
+        memo.insertAdjacentHTML("beforeend", `<form class="gn-rform ${stance}"><textarea rows="2" maxlength="2000" placeholder="${stance === "rebut" ? "어디가 틀렸나요?" : "어디가 맞나요?"}"></textarea><button class="gn-btn" type="submit">${stance === "rebut" ? "반박하기" : "동의하기"}</button></form>`);
+        const f = memo.querySelector(".gn-rform"); f.querySelector("textarea").focus();
         f.addEventListener("submit", async (ev) => {
           ev.preventDefault(); const b = f.querySelector("textarea").value.trim(); if (!b) return;
           try { const { comment } = await api.newsComment(itemId, { body: b, stance, parent_id: memo.dataset.id }); all.push(comment); paint(); sync(); } catch (err) { toast(err.message, "err"); }
@@ -258,24 +227,25 @@ export function mount(root, ctx, r) {
         return;
       }
       const ai = e.target.closest("[data-ai]");
-      if (ai) {
-        ai.disabled = true; ai.textContent = "🤖 reading…";
-        try { const { comment } = await api.newsAiRebut(ai.dataset.ai); all.push(comment); paint(); sync(); } catch (err) { toast(err.message, "err"); ai.disabled = false; ai.textContent = "🤖 AI rebut"; }
-        return;
-      }
+      if (ai) { ai.disabled = true; ai.textContent = "기사 읽는 중…"; try { const { comment } = await api.newsAiRebut(ai.dataset.ai); all.push(comment); paint(); sync(); } catch (err) { toast(err.message, "err"); ai.disabled = false; ai.textContent = "AI 반박 받기"; } return; }
       const d = e.target.closest("[data-del]");
       if (d) { try { await api.newsDelComment(d.dataset.del); all = all.filter((c) => c.id !== d.dataset.del && c.parent_id !== d.dataset.del); paint(); sync(); } catch (err) { toast(err.message, "err"); } }
     });
   }
 
   // ---------- 이벤트 ----------
-  root.addEventListener("click", (e) => {
+  const back = () => ctx.go(ed && ed.day !== kstDay() ? "#/news/" + ed.day : "#/news");
+  const onClick = (e) => {
     const s = e.target.closest("[data-star]"); if (s) { e.preventDefault(); toggleStar(s.dataset.star); return; }
-    if (e.target.closest("[data-close]")) { e.preventDefault(); ctx.go(ed ? (ed.day === kstDay() ? "#/news" : "#/news/" + ed.day) : "#/news"); return; }
-    const j = e.target.closest("[data-jump]"); if (j) { e.preventDefault(); paper.querySelector("#" + j.dataset.jump)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
-    const f = e.target.closest("[data-filter]"); if (f) { starredOnly = !starredOnly; f.classList.toggle("on", starredOnly); if (ed) drawPaper(); return; }
-    if (e.target.closest('[aria-disabled="true"]')) e.preventDefault();
-  });
+    if (e.target.closest("[data-close]") || e.target === scrim) { e.preventDefault(); back(); return; }
+    const b = e.target.closest("[data-sec]"); if (b) { sec = b.dataset.sec; store.set("gn-sec", sec); draw(); return; }
+    if (e.target.closest("[data-starred]")) { starred = !starred; draw(); return; }
+    if (e.target.closest("#gn-date")) { toggleCal(); return; }
+    if (e.target.closest(".gn-nav.off")) { e.preventDefault(); return; }
+    if (!cal.hidden && !e.target.closest("#gn-cal")) toggleCal(false);
+  };
+  root.addEventListener("click", onClick);
+  portal.addEventListener("click", onClick);
   const onKey = (e) => {
     if (e.target.closest("input, textarea, [contenteditable]") || e.metaKey || e.ctrlKey || e.altKey) return;
     const i = cur ? list.indexOf(cur) : -1;
@@ -283,25 +253,29 @@ export function mount(root, ctx, r) {
     else if (e.key === "[" && ed?.prev) ctx.go("#/news/" + ed.prev);
     else if (e.key === "]" && ed?.next) ctx.go("#/news/" + ed.next);
     else if (e.key === "s" && cur) toggleStar(cur);
-    else if (e.key === "Escape" && cur) ctx.go(ed?.day === kstDay() ? "#/news" : "#/news/" + ed.day);
+    else if (e.key === "Escape") { if (!cal.hidden) toggleCal(false); else if (cur) back(); }
   };
   document.addEventListener("keydown", onKey);
 
-  // ---------- 주소 ----------
   async function route(rr) {
-    if (rr.sub === "item" && rr.id) {
-      if (!ed) await loadEdition(store.get("np-day") || kstDay());
-      openItem(rr.id);
-      return;
-    }
+    toggleCal(false);
+    if (rr.sub === "item" && rr.id) { if (!ed) await loadEdition(store.get("gn-day") || kstDay()); openItem(rr.id); return; }
     const day = rr.day && DAY_RE.test(rr.day) ? rr.day : kstDay();
-    store.set("np-day", day);
-    closeReader();
+    store.set("gn-day", day);
+    if (cur) closeSheet();
     if (!ed || ed.day !== day) await loadEdition(day);
   }
   inst = { route };
   loadEditions();
   route(r);
   api.newsSeen?.().catch(() => {});
-  return () => { alive = false; inst = null; document.removeEventListener("keydown", onKey); };
+  return () => { alive = false; inst = null; document.removeEventListener("keydown", onKey); portal.remove(); };
+}
+
+function chev(dir) {
+  const d = { l: "M14.5 5.5 8 12l6.5 6.5", r: "M9.5 5.5 16 12l-6.5 6.5", d: "M6.5 9.5 12 15l5.5-5.5" }[dir];
+  return `<svg viewBox="0 0 24 24" width="${dir === "d" ? 14 : 18}" height="${dir === "d" ? 14 : 18}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+}
+function starSvg() {
+  return `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6L12 16.6l-5.1 2.6 1-5.6-4.1-4 5.7-.8z" fill="currentColor"/></svg>`;
 }

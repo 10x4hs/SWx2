@@ -11,7 +11,7 @@
 //   ⑨ 친구 페이지 숨기기 — 친구가 공개한 Dock 페이지 · 공부 과목 탭을 '내 화면에서 숨기기', 프로필에서 다시 보이기
 //   ⑩ Study 그래프 — 영어 · 논문 · AI · 과목 페이지마다 [내용 | 그래프], 크기 기준 · 크기가 계정에 저장, 점을 누르면 그 내용으로
 //   ⑪ Brain — 노트 + 공부를 한 나무로: 맨 위엔 큰 개념 5개, 누르면 안으로, 공부 점은 원래 화면, 가져오기는 다시 올려도 그대로 (2026-10-13)
-//   ⑫ 뉴스 — 하루 한 호 신문 · 기사 읽기 · 메모 + 반박 · j/k · Esc (2026-10-13)
+//   ⑫ 뉴스 — 하루 한 호 (유리 재질 · 한국어) · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -378,30 +378,33 @@ try {
     await go("#/papers/easy/review", 2000);
     ok(await p.evaluate(() => !!document.querySelector(".ez-rv h2, .ez-rv .qz")), `${tv} · 논문 섞어서 복습 화면`);
 
-    // ---------- ⑫ 뉴스 — 하루 한 호 신문: 제호 · 섹션 · 달력 · 기사 읽기 · 메모 + 반박 · j/k · Esc (2026-10-13) ----------
+    // ---------- ⑫ 뉴스 — 하루 한 호 (유리 재질 · 한국어): 헤드라인 · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13) ----------
     errs = [];
     execFileSync("node", ["scripts/news-seed.mjs"], { stdio: "ignore" });
-    await p.goto(BASE + "/#/news"); await p.waitForSelector(".np-mast", { timeout: 10000 }).catch(() => {});
-    const np = await p.evaluate(() => ({ date: document.querySelector(".np-date")?.textContent || "", items: document.querySelectorAll(".np-item, .np-top, .np-front-list li").length, over: document.documentElement.scrollWidth > innerWidth + 1, cal: document.querySelectorAll(".np-cd").length, w: innerWidth }));
-    ok(np.date.length > 5 && np.items > 0 && !np.over && (np.w < 1100 || np.cal === 60), `${tv} · 신문 — 제호 · 기사 ${np.items}개 · 달력 ${np.cal} · 가로 넘침 없음`);
-    const firstId = await p.evaluate(() => document.querySelector(".np-item[data-id]")?.dataset.id);
-    await p.click(`.np-item[data-id="${firstId}"] .np-item-a`);
-    await p.waitForSelector("#np-compose textarea", { timeout: 8000 }).catch(() => {});
-    ok(await p.evaluate((id) => location.hash === "#/news/item/" + id && !!document.querySelector(".np-reader:not([hidden]) .np-r-title"), firstId), `${tv} · 기사를 열면 읽기 칸`);
-    await p.fill("#np-compose textarea", "e2e memo " + tv);
-    await p.click("#np-compose button"); await sleep(600);
-    const memoN = await p.evaluate(() => document.querySelectorAll(".np-memo").length);
-    await p.locator(".np-memo").last().locator("[data-reply=rebut]").click();
-    await p.locator(".np-memo").last().locator(".np-rform textarea").fill("e2e rebut");
-    await p.locator(".np-memo").last().locator(".np-rform button").click(); await sleep(600);
-    const talk = await p.evaluate(() => ({ rebut: !!document.querySelector(".np-memo:last-of-type .np-reply.rebut"), n: document.querySelector("#np-talk-n")?.textContent || "" }));
-    ok(memoN > 0 && talk.rebut && talk.n.includes("disputed"), `${tv} · 메모 + 반박 — ⚡ disputed 표시`);
-    await p.locator("#np-talk").click({ position: { x: 1, y: 1 } }).catch(() => {});
+    await p.goto(BASE + "/#/news"); await p.waitForSelector(".gn-hero", { timeout: 10000 }).catch(() => {});
+    const np = await p.evaluate(() => ({ h1: document.querySelector(".gn-h1")?.textContent || "", items: document.querySelectorAll(".gn-item").length, over: document.documentElement.scrollWidth > innerWidth + 1, seg: document.querySelectorAll(".gn-seg [data-sec]").length }));
+    ok(np.h1.length > 1 && np.items > 0 && !np.over && np.seg === 5, `${tv} · 신문 — 헤드라인 · 기사 ${np.items}개 · 분야 5칸 · 가로 넘침 없음`);
+    await p.click('.gn-seg [data-sec="geopolitics"]'); await sleep(300);
+    const geo = await p.evaluate(() => document.querySelectorAll(".gn-item").length);
+    await p.click('.gn-seg [data-sec="all"]'); await sleep(300);
+    ok(geo > 0 && geo < np.items, `${tv} · 분야 고르기 — 지정학만 ${geo}개`);
+    const firstId = await p.evaluate(() => document.querySelector(".gn-item[data-id]")?.dataset.id);
+    await p.click(`.gn-item[data-id="${firstId}"] .gn-item-a`);
+    await p.waitForSelector("#gn-compose textarea", { timeout: 8000 }).catch(() => {});
+    ok(await p.evaluate((id) => location.hash === "#/news/item/" + id && !!document.querySelector(".gn.sheet-on .gn-sh-t"), firstId), `${tv} · 기사를 열면 유리 시트`);
+    await p.fill("#gn-compose textarea", "e2e memo " + tv);
+    await p.click("#gn-compose button"); await sleep(600);
+    const memoN = await p.evaluate(() => document.querySelectorAll(".gn-memo").length);
+    await p.locator(".gn-memo").last().locator("[data-reply=rebut]").click();
+    await p.locator(".gn-memo").last().locator(".gn-rform textarea").fill("e2e rebut");
+    await p.locator(".gn-memo").last().locator(".gn-rform button").click(); await sleep(600);
+    const talk = await p.evaluate(() => ({ rebut: !!document.querySelector(".gn-memo:last-of-type .gn-reply.rebut"), n: document.querySelector("#gn-talk-n")?.textContent || "" }));
+    ok(memoN > 0 && talk.rebut && talk.n.includes("의견 갈림"), `${tv} · 메모 + 반박 — 의견 갈림 표시`);
     await p.evaluate(() => document.activeElement?.blur());
     await p.keyboard.press("j"); await sleep(900);
     const moved = await p.evaluate((id) => /^#\/news\/item\//.test(location.hash) && location.hash !== "#/news/item/" + id, firstId);
     await p.keyboard.press("Escape"); await sleep(600);
-    ok(moved && await p.evaluate(() => /^#\/news(\/\d{4}-\d{2}-\d{2})?$/.test(location.hash) && document.querySelector(".np-reader")?.hidden) && !errs.length, `${tv} · j 로 다음 기사 · Esc 로 닫기 · 오류 없음${errs.length ? " — " + errs[0] : ""}`);
+    ok(moved && await p.evaluate(() => /^#\/news(\/\d{4}-\d{2}-\d{2})?$/.test(location.hash) && !document.querySelector(".gn.sheet-on")) && !errs.length, `${tv} · j 로 다음 기사 · Esc 로 닫기 · 오류 없음${errs.length ? " — " + errs[0] : ""}`);
     await ctx.request.fetch(BASE + "/api/news/item/" + firstId, { method: "GET", headers: H }).then(async (r) => {
       for (const c of (await r.json()).comments || []) if (/^e2e /.test(c.body) && !c.parent_id) await ctx.request.fetch(BASE + "/api/news/comments/" + c.id, { method: "DELETE", headers: H });
     }).catch(() => {});
