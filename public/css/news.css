@@ -1,11 +1,11 @@
 /* 뉴스 — 세 화면(오늘 · 세계 · 회사) + 기사 시트 (views/news.js). semafor.com/vertical/tech 의 생김새를 옮겼어요:
-   세리프 신문 활자(Noto Serif KR — 제목 · 본문) · 작은 산세리프(메뉴 · 라벨) · 가운데 제호와 세계 시계 · 점선으로 나눈 여러 단 격자
+   세리프 신문 활자(지금은 Pretendard 하나) · 작은 산세리프(메뉴 · 라벨) · 가운데 제호와 세계 시계 · 점선으로 나눈 여러 단 격자
    · 브리핑 하나만 연한 청록 상자 · 강조색은 청록 하나. 바탕은 검정(따뜻한 먹색) — Semafor 는 활자 · 배치 · 점선 느낌만 가져왔어요. 제목 20px / 1.2, 요약 15px / 1.35 (Semafor 비율) */
 .gn {
   --g-bg: #0f0e0c; --g-ink: #ede7d0; --g-ink2: #bdb69d; --g-ink3: #847e6b; --g-line: #3b382f; --g-soft: #1b1a16; --g-land: #2b2923;
   --g-tint: #8cc6cc; --g-link: #b3bff2; --g-box: #132d2b; --g-red: #ff5b4f; --g-green: #5fbf86; --g-star: #ffcf4a;
-  --g-serif: "Noto Serif KR", "Times New Roman", serif;
-  --g-sans: Helvetica, "Helvetica Neue", "Pretendard Variable", Pretendard, Arial, sans-serif;
+  --g-serif: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; /* 글꼴은 하나 — 크기 · 굵기로만 구분 */
+  --g-sans: var(--g-serif);
   --g-display: var(--g-serif); --g-mono: var(--g-sans);
   position: relative; height: 100%; min-height: 0; overflow: hidden;
   background: var(--g-bg); color: var(--g-ink); border-radius: inherit;
@@ -186,9 +186,9 @@
 /* 기사 시트 (데스크톱: 오른쪽 · 폰: 아래에서) — body 에 붙은 .gn-portal 안에 있어요 */
 .gn.gn-portal { position: fixed; inset: 0; z-index: 80; height: auto; background: none; overflow: visible; pointer-events: none; border-radius: 0; }
 .gn-portal > * { pointer-events: auto; }
-.gn-scrim { position: absolute; inset: 0; z-index: 1; background: rgba(0, 0, 0, .55); opacity: 0; transition: opacity .2s; }
+.gn-scrim { position: absolute; inset: 0; z-index: 1; background: rgba(8, 8, 7, .88); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); opacity: 0; transition: opacity .2s; }
 .gn.sheet-on .gn-scrim { opacity: 1; }
-.gn-sheet { position: absolute; z-index: 2; top: 0; right: 0; bottom: 0; width: min(560px, 100%); background: var(--g-bg); border-left: 1px solid var(--g-line); overflow-y: auto; transform: translateX(24px); opacity: 0; transition: transform .2s ease-out, opacity .2s; }
+.gn-sheet { position: absolute; z-index: 2; top: 0; right: 0; bottom: 0; width: min(760px, 100%); background: var(--g-bg); border-left: 1px solid var(--g-line); overflow-y: auto; transform: translateX(24px); opacity: 0; transition: transform .2s ease-out, opacity .2s; }
 .gn.sheet-on .gn-sheet { transform: none; opacity: 1; }
 .gn-sh { padding: 0 28px 48px; }
 .gn-sh-top { position: sticky; top: 0; z-index: 1; display: flex; justify-content: flex-end; padding: 12px 0; background: var(--g-bg); }
@@ -314,3 +314,18 @@
   .gn-t { font-size: 19px; }
   .gn-quota { padding: 16px 14px 2px; }
 }
+
+/* ===== 가독성 정리: 글꼴 하나 · 앱 배경/유리 끄기 · 기사 창 뒤 가리기 ===== */
+/* 뉴스를 열면 앱 껍데기의 반투명 유리 · 배경 사진 · 그림자를 끄고 단색 종이 한 장만 남겨요 (글씨 뒤로 무늬가 비치지 않게) */
+.main:has(.host-news) { background: var(--news-bg, #0f0e0c) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important; border-color: #26241e !important; overflow: hidden; }
+body:has(.host-news) .bg { opacity: .15; filter: blur(2px) grayscale(1); }
+.host-news { animation: none; }
+.gn-wordmark { font-weight: 900; letter-spacing: -.04em; font-size: 46px; }
+.gn-h1 { font-weight: 800; letter-spacing: -.03em; }
+.gn-quota-h h2, .gn-brief-h, .gn-cn, .gn-sh-t, .gn-coname { font-weight: 800; letter-spacing: -.025em; }
+.gn-tagline { font-weight: 400; font-size: 12px; color: var(--g-ink3); }
+.gn-lab, .gn-kicker, .gn-meta, .gn-when, .gn-coord { letter-spacing: .01em; }
+.gn-card li, .gn-talk-body, .gn-lede { font-weight: 400; }
+.gn-sh { max-width: 680px; margin: 0 auto; padding: 0 32px 56px; }
+.gn-sh-t { font-size: 30px; line-height: 1.3; }
+.gn-card li { font-size: 17px; line-height: 1.7; color: var(--g-ink); }

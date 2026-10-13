@@ -21,7 +21,7 @@ const hhmm = (t) => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", m
 const when = (it) => (it.dated === 0 ? "No date" : kstDay(it.published_at) === kstDay() ? hhmm(it.published_at) : `${dayShort(kstDay(it.published_at))} ${hhmm(it.published_at)}`);
 const strip = (s) => String(s || "").replace(/[\s.。…]+$/g, "").trim();
 const sentences = (s) => String(s || "").split(/(?<=[.!?다요])\s+(?=\S)/).map((x) => x.trim()).filter(Boolean);
-const titleOf = (it) => it.title_ko || it.one_liner || it.title;
+const titleOf = (it) => String(it.title_ko || it.one_liner || it.title || "").replace(/^\s*[(\[]번역[)\]]\s*/, ""); // AI 가 붙인 "(번역)" 표시는 빼요
 const isKo = (s) => /[가-힣]/.test(s || "");
 const geoOf = (it) => (Array.isArray(it.geo) ? it.geo : []).filter((c) => /^[A-Z]{2}$/.test(c));
 let regionKo; try { regionKo = new Intl.DisplayNames(["en"], { type: "region" }); } catch { regionKo = null; }
@@ -45,8 +45,6 @@ let inst = null;
 export function update(r) { inst?.route(r); }
 
 export function mount(root, ctx, r) {
-  // 신문 활자(세리프) — 뉴스 화면에서만 처음 한 번 불러요
-  if (!document.getElementById("gn-font")) { const l = document.createElement("link"); l.id = "gn-font"; l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600;700;900&display=swap"; document.head.append(l); }
   root.innerHTML = `
     <div class="gn" id="gn">
       <main class="gn-scroll" id="gn-scroll" tabindex="-1">
