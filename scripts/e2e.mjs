@@ -199,7 +199,7 @@ try {
       const mapped = await nodes();
       ok(first.created + first.kept === 5 && again.created === 0 && again.kept === 5 && ["AI & Dev", "Business & Finance", "Language", "Life", "Records"].every((t) => top.includes(t)) && top.length <= 6
         && inBiz.join() === "검사 CIM" && crumb === "Business & Finance" && inAi.includes("AI Books") && inAi.includes("검사 멘토링") && study === "#/books"
-        && dock.includes("brain") && !dock.includes("notes") && !dock.includes("study") && /^Brain › Business & Finance › 검사 CIM › 검사 VaR/.test(path || "") && mapped.join() === "검사 VaR",
+        && dock.includes("brain") && !dock.includes("notes") && dock.includes("study") && /^Brain › Business & Finance › 검사 CIM › 검사 VaR/.test(path || "") && mapped.join() === "검사 VaR",
         `${tv} · Brain — 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
     } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
 
@@ -224,6 +224,13 @@ try {
     await go("#/books", 2200);
     const shelf = await p.evaluate(() => document.querySelectorAll(".bk-book").length);
     ok(shelf === idx.books.length, `${tv} · AI 책장 ${shelf} / ${idx.books.length}권`);
+    { // Dock 에서 바로 Study → AI 탭 → 책장이 보여야 해요 (Brain 안에만 묻히면 못 찾아요)
+      await go("#/", 1200);
+      const dock = await p.evaluate(() => !!document.querySelector('[data-nav="study"]'));
+      if (dock) { await p.evaluate(() => document.querySelector('[data-nav="study"]').click()); await p.waitForTimeout(1200); await p.evaluate(() => [...document.querySelectorAll("#study-switch a, #study-switch button")].find((x) => x.textContent.trim() === "AI")?.click()); await p.waitForTimeout(2200); }
+      const got = await p.evaluate(() => ({ h: location.hash, n: document.querySelectorAll(".bk-book").length, cur: document.querySelector('[data-nav="study"]')?.getAttribute("aria-current") }));
+      ok(dock && got.h.startsWith("#/books") && got.n === idx.books.length && got.cur === "page", `${tv} · Dock Study 아이콘 → AI 탭 책장 ${got.n}권 (${got.h})`);
+    }
     const bad = [];
     for (const b of idx.books) for (const c of b.chapters) {
       errs = [];

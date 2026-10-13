@@ -4,6 +4,7 @@ import { syncAiPrefs } from "./ai-pick.js";
 import { $, $$, esc, initial, ymd, today, toast, avatar } from "./util.js";
 import { icon, appIcon } from "./icons.js";
 import * as notesView from "./views/notes.js";
+import * as graphView from "./views/graph.js";
 import * as brainView from "./views/brain.js"; // Brain = 노트 + 공부를 한 나무로 (#/brain/<id>)
 import * as aiView from "./views/ai.js";
 import * as plannerView from "./views/planner.js";
@@ -23,6 +24,7 @@ import * as studyView from "./views/study.js"; // 공부 = 영어 | 논문 (Dock
 import * as pageView from "./views/page.js"; // Dock 사용자 페이지 (#/p/new · #/p/<id>)
 import { wireDockDrag } from "./dock-drag.js";
 import { setHiddenMe } from "./hidden-pages.js";
+import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js"; // Dock 우클릭 → 내 CSS · HTML · JS
 import * as roomView from "./views/room.js";
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
@@ -40,6 +42,7 @@ const ctx = {
   go: (hash) => { if (location.hash !== hash) location.hash = hash; else route(); },
   changed: (kind) => window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind } })),
   refreshSide: () => refreshSide(),
+  redraw: () => { lastView = null; route(true); }, // Customize 저장 뒤 지금 화면을 새로 그려요
   timer: null, // 아래 집중 타이머 (할 일 ▶ 에서 써요)
 };
 let cleanup = null;
@@ -74,6 +77,7 @@ async function enter(user) {
   setHiddenMe(ctx.me); // 내 화면에서 숨긴 친구 페이지
   document.documentElement.style.setProperty("--me", ctx.me.color);
   renderShell();
+  loadCustom();
   // 스터디장이 정해 준 비밀번호 그대로면: 화면을 열기 전에 먼저 바꾸게 해요
   if (ctx.me.must_change_pw) { openPassword({ force: true }); return; }
   route();
@@ -114,6 +118,7 @@ const NAV = [
   { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
   { key: "brain", hash: "#/brain", label: "Brain", tip: "Brain · notes + study in one tree" }, // 노트 · 공부 아이콘을 하나로
+  { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI" }, // Brain 안에 묻히면 AI 공부책을 못 찾아서 바로 가는 아이콘은 남겨요
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -180,6 +185,7 @@ function renderMeRow() {
       <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
     </div>`;
   const menu = $("#me-menu"), btn = $("#me-btn");
+  applyUi("ui:me");
   // 메뉴는 화면 맨 위층(body)에 붙여요 — Dock 안에 두면 좁은 화면에서 본문 아래로 깔려 눌리지 않았어요
   document.querySelectorAll("body > #me-menu").forEach((m) => m !== menu && m.remove());
   document.body.append(menu);
@@ -253,6 +259,7 @@ async function refreshSide() {
 
 // Dock 배지 · 사용자 페이지 (dock.js) — 60초 폴링 · 'trio:changed' · 'room-live' · contextmenu 리스너를 여기서 한 번 걸어요
 initDock({ ctx, NAV, parseRoute, getLastView: () => lastView });
+initCustomize(ctx);
 
 // ---------- routing ----------
 // 예전 주소는 캘린더의 그날로 옮겨요 (뒤로 가기에 남지 않게 replaceState)
@@ -267,6 +274,7 @@ function parseRoute() {
   const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
   const [a, b, c, d] = parts;
   if (a === "u") return { view: "home", nav: "home" }; // 서로는 차트만: 다른 사람의 하루 페이지는 없어요
+  if (a === "brain" && b === "graph") return { view: "graph", nav: "brain" }; // 개념 그래프 (노트를 내용으로 묶은 8~20개 무리)
   if (a === "brain") return { view: "brain", nav: "brain", id: b || null };
   if (a === "notes" && b === "tag") return { view: "notes", nav: "brain", tag: c };
   if (a === "notes") return { view: "notes", nav: "brain", id: b || null };
@@ -280,17 +288,17 @@ function parseRoute() {
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar" && b === "m") return { view: "calendar", nav: "calendar", mode: "month", day: c ? `m/${c}` : null }; // #/calendar/m/2026-10 = 그 달 달력만
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null, who: c === "u" && d ? d : null }; // #/calendar/2026-10-04 = 그날 전체 화면 · /u/<id> = 친구의 그날
-  if (a === "english") return { view: "english", nav: "brain", tab: b || null, day: c || null }; // 공부 탭 안
+  if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
   if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지
-  if (a === "study") return { view: "page", nav: "brain", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
-  if (a === "papers") return { view: "papers", nav: "brain", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
-  if (a === "books") return { view: "books", nav: "brain", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
+  if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
+  if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
+  if (a === "books") return { view: "books", nav: "study", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, calendar: calendarView, room: roomView, updates: updatesView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {
@@ -320,6 +328,8 @@ function route(redraw = false) {
   main.scrollTop = 0;
   lastView = inStudy ? "study" : r.view;
   cleanup = (lastView === "study" ? studyView : VIEWS[r.view]).mount(host, ctx, r) || null;
+  const undo = afterMount(lastView, host), base = cleanup;
+  if (undo) cleanup = () => { try { undo(); } catch {} base?.(); };
   if (!redraw) requestAnimationFrame(() => scrambleIn(host));
 }
 

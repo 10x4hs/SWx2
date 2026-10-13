@@ -103,6 +103,9 @@ export const api = {
   search: (q) => request("GET", "/search?" + qs({ q })),
   focus: (from, to, user) => request("GET", "/logs/focus?" + qs({ from, to, user })),
 
+  custom: () => request("GET", "/custom"),
+  saveCustom: (slot, b) => request("PUT", "/custom/" + encodeURIComponent(slot), b),
+  resetCustom: (slot) => request("DELETE", "/custom/" + encodeURIComponent(slot)),
   diary: (day) => request("GET", "/diary?" + qs({ day })),
   saveDiary: (b) => request("PUT", "/diary", b),
   diaryDays: (year) => request("GET", "/diary/days?" + qs({ year })),
