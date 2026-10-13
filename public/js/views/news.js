@@ -129,7 +129,7 @@ export function mount(root, ctx, r) {
           <a href="#/news/item/${lead.item.id}">
             <span class="np-meta">${esc(lead.item.feed)} · <time>${when(lead.item)}</time></span>
             <h3>${esc(lead.item.one_liner || lead.item.title)}</h3>
-            ${lead.item.summary ? `<p class="np-top-sum">${esc(lead.item.summary)}</p>` : ""}
+            ${(() => { const rest = bullets(lead.item.summary).filter((b) => b.replace(/[\s.…]+$/, "") !== String(lead.item.one_liner || "").replace(/[\s.…]+$/, "")).join(" "); return rest ? `<p class="np-top-sum">${esc(rest)}</p>` : ""; })()}
             ${lead.why ? `<p class="np-why"><b>Why it matters</b> ${esc(lead.why)}</p>` : ""}
             <span class="np-row-foot">${chips(lead.item)}<span class="np-avs">${avatars(mark(lead.item).others)}</span></span>
           </a>

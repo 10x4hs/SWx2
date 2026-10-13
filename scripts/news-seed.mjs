@@ -51,7 +51,9 @@ let sql = "DELETE FROM news_comments WHERE item_id LIKE 'seed-%';\nDELETE FROM n
 for (const [id, name, topic] of FEEDS) sql += `INSERT OR IGNORE INTO news_feeds (id, url, name, topic, created_at) VALUES (${q(id)}, ${q("https://example.com/" + id)}, ${q(name)}, ${q(topic)}, ${now});\n`;
 for (const [id, key, title, story] of THREADS) sql += `INSERT INTO news_threads (id, key, title, story, story_at, created_at, updated_at) VALUES (${q(id)}, ${q(key)}, ${q(title)}, ${q(story)}, ${story ? now : "NULL"}, ${now}, ${now});\n`;
 ITEMS.forEach(([t, f, h, geo, title, one], i) => {
-  sql += `INSERT INTO news_items (id, feed_id, url, title, published_at, raw, one_liner, geo, thread_id, created_at) VALUES (${q("seed-i" + i)}, ${q(f)}, ${q("https://example.com/a/" + i)}, ${q(title)}, ${now - h * H}, ${q(RAW(title, one))}, ${q(one)}, ${q(JSON.stringify(geo))}, ${q(t)}, ${now});\n`;
+  const at = now - h * H, kday = new Date(at + 9 * H).toISOString().slice(0, 10); // 신문 호는 한국 날짜(day) · 섹션으로 묶여요 (0038)
+  const sec = { "seed-f1": "geopolitics", "seed-f2": "geopolitics", "seed-f3": "tech" }[f] || "ai";
+  sql += `INSERT INTO news_items (id, feed_id, url, title, published_at, raw, one_liner, summary, section, day, geo, thread_id, created_at) VALUES (${q("seed-i" + i)}, ${q(f)}, ${q("https://example.com/a/" + i)}, ${q(title)}, ${at}, ${q(RAW(title, one))}, ${q(one)}, ${q(one + " 관계자들은 몇 달 동안 압박이 이어졌다고 말했어요. 다음 분기에 다시 검토해요.")}, ${q(sec)}, ${q(kday)}, ${q(JSON.stringify(geo))}, ${q(t)}, ${now});\n`;
 });
 sql += `INSERT OR REPLACE INTO news_briefs (day, headline, body, weights, item_count, created_at) VALUES (${q(day)}, ${q("칩 전선이 넓어졌어요")}, ${q("미국의 칩 통제가 클라우드까지 닿았고, 네덜란드 · 일본이 같은 날 보조를 맞췄어요. 글은 전쟁 쪽이 많지만 무게는 반도체에 실려 있어요.")}, '[]', ${ITEMS.length}, ${now});\n`;
 
