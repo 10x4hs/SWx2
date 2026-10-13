@@ -56,6 +56,16 @@ export const SEED = [
   ["The Diplomat", "https://thediplomat.com/feed/", "geopolitics", "en", false, "중앙아시아·남아시아 공백을 메움"],
   ["CFR", "https://feeds.feedburner.com/CouncilOnForeignRelations", "geopolitics", "en", false, "cfr.org 자체 피드는 404 — FeedBurner 경유만 동작"],
   ["Stimson Center", "https://www.stimson.org/feed/", "geopolitics", "en", false, "핵·군비통제·메콩"],
+  // 2026-10-13 추가: 매일 나오는 AI 산업 뉴스 (모델 출시 · 회사 소식). migrations/0039 에도 같은 목록이 있어요.
+  ["The Verge AI", "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", "ai", "en", true, "모델 출시 · 빅테크 AI 소식 일간"],
+  ["TechCrunch AI", "https://techcrunch.com/category/artificial-intelligence/feed/", "ai", "en", true, "AI 스타트업 · 투자 · 출시 일간"],
+  ["MIT Technology Review AI", "https://www.technologyreview.com/topic/artificial-intelligence/feed", "ai", "en", true, "AI 연구 · 산업 해설"],
+  ["The Decoder", "https://the-decoder.com/feed/", "ai", "en", true, "AI 모델 · 회사 소식을 매일 여러 편"],
+  ["Simon Willison", "https://simonwillison.net/atom/everything/", "ai", "en", true, "LLM 신모델을 직접 써 보고 바로 쓰는 블로그"],
+  ["Ars Technica AI", "https://arstechnica.com/ai/feed/", "ai", "en", true, "AI 산업 · 정책 일간"],
+  ["OpenAI News", "https://openai.com/news/rss.xml", "ai", "en", true, "OpenAI 공식 발표"],
+  ["Hugging Face Blog", "https://huggingface.co/blog/feed.xml", "ai", "en", true, "오픈 모델 · 도구 발표"],
+  ["Google AI Blog", "https://blog.google/technology/ai/rss/", "ai", "en", true, "Google · DeepMind 공식 AI 발표"],
 ];
 
 // 넣지 말 것 — 200 에 유효한 XML 을 주지만 실제로는 멈춘 피드.
@@ -68,4 +78,7 @@ export const DEAD = [
   ["Asianometry", "https://asianometry.substack.com/feed", "2025-01-21", "629일째 멈춤. 유튜브로 옮긴 듯"],
   ["Ember", "https://ember-energy.org/feed/", "-", "817바이트 빈 피드. 아이템 0개"],
   ["Lawfare", "https://www.lawfaremedia.org/feeds/articles", "-", "329바이트 빈 피드. 아이템 0개"],
+  ["VentureBeat AI", "https://venturebeat.com/category/ai/feed/", "-", "2026-10-13 HTTP 429 (봇 차단)"],
+  ["Google DeepMind", "https://deepmind.google/blog/rss.xml", "-", "2026-10-13 아이템 0개 → Google AI Blog 로 대신"],
+  ["Anthropic", "https://www.anthropic.com/rss.xml", "-", "공식 RSS 없음 (404)"],
 ];
