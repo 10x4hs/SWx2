@@ -39,3 +39,8 @@ A database is a note with `notes.kind = 'database'` and `notes.db` JSON:
 Rows are its child notes (`parent_id` = database note id) with `notes.props` JSON `{ "<key>": value }` (multi_select = array, date = "YYYY-MM-DD", checkbox = bool). Row title = note title. The title column is implicit.
 
 Database markdown mirror (`body`): a GFM table of rows (title as [[link]] + props) so search/AI still see it.
+
+## Colors (v2)
+Notion colors: gray, brown, orange, yellow, green, blue, purple, pink, red.
+- Inline text color: `<span class="c-red">text</span>`; inline highlight: `<mark class="bg-yellow">text</mark>` (inside `text`; kept in the markdown mirror as-is, DOMPurify keeps class).
+- Block color: `props.color = "red" | "red_background" | …` on any text block (whole-block color / background, like Notion).
