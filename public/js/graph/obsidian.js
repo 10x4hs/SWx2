@@ -63,7 +63,7 @@ export function mountGraph(host, { data, types, onOpen, prefs: p0, savePrefs, em
     nodes.forEach((n) => (n.deg = deg.get(n) || 0));
     adj = new Map(nodes.map((n) => [n, new Set()]));
     links.forEach((l) => { adj.get(l.s)?.add(l.t); adj.get(l.t)?.add(l.s); });
-    $("[data-stat]").textContent = `점 ${nodes.length} · 선 ${links.length}`;
+    $("[data-stat]").textContent = `${nodes.length} node${nodes.length === 1 ? "" : "s"} · ${links.length} link${links.length === 1 ? "" : "s"}`;
     $("[data-empty]").hidden = all.length > 0;
     drawGroups();
     alpha = Math.max(alpha, 0.6); kick();

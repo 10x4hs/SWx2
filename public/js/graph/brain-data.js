@@ -3,6 +3,8 @@
 //   notes: GET /graph 의 nodes (id, title, parent_id) · edges: { src_id, dst_title } · subjects: place=study 페이지
 // 한 층의 선 = 그 층 두 점의 '하위 전체' 사이에 있는 링크 수 (w). 그래서 맨 위에선 개념끼리의 연결만 굵게 보여요.
 
+import { similarPairs } from "./concepts.js";
+
 export const CONCEPTS = [
   { title: "Business & Finance", color: "#f2b84b" },
   { title: "AI & Dev", color: "#60a5fa" },
@@ -81,6 +83,8 @@ export function levelOf(tree, focus) {
   }
   nodes.sort((a, b) => b.kids - a.kids || a.title.localeCompare(b.title));
   const crumbs = []; { let cur = at, hop = 0; while (cur && hop++ < 40) { const n = N.get(cur); crumbs.unshift({ id: cur, title: n.title, note: n.note }); cur = n.parent; } }
+  // 하위 층: 링크가 없는 형제끼리도 제목이 비슷하면 약한 선으로 (따로 노는 점이 되지 않게)
+  if (at && nodes.length > 1) for (const { a, b } of similarPairs(nodes)) { const k = a < b ? a + "|" + b : b + "|" + a; if (!w.has(k)) w.set(k, 0.5); }
   const data = { nodes, links: [...w].map(([k, c]) => { const [s, t] = k.split("|"); return { s, t, w: c }; }) };
   return { data, types, crumbs, items: nodes, here: at ? N.get(at) : null };
 }
