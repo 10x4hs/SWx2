@@ -348,7 +348,8 @@ export async function aiJson(env, system, prompt, prefer = null) {
     // 고른 모델이 같은 회사의 다른 체인(예: gemini-pro · mimo-pro)이면 그 체인을 먼저 돌고, 막히면 회사 기본 체인으로
     const chain = p === pv && prefer !== p ? [...new Set([...MODELS[prefer].chain, ...MODELS[p].chain])] : MODELS[p].chain;
     for (const model of chain) {
-      try { return await JSON_RUN[p](env, model, system, prompt); }
+      // 답에 회사 · 모델 · 토큰 수(usage, 회사가 알려 주면)를 붙여 돌려줘요 — 뉴스 쪽이 ai_usage 에 기록해요
+      try { const r = await JSON_RUN[p](env, model, system, prompt); return { ...r, provider: p, model }; }
       catch (e) { lastErr = e; if (!e.retry) break; }
     }
   }
@@ -376,7 +377,8 @@ async function geminiJson(env, model, system, prompt) {
   const j = await res.json();
   const text = (j.candidates?.[0]?.content?.parts || []).filter((p) => p.text && !p.thought).map((p) => p.text).join("");
   if (!text) { const e = new Error("Gemini가 빈 답을 보냈어요."); e.retry = true; throw e; }
-  return { data: parseJsonText(text, "Gemini"), used: model };
+  const u = j.usageMetadata || {};
+  return { data: parseJsonText(text, "Gemini"), used: model, usage: u.promptTokenCount != null ? { in: u.promptTokenCount || 0, out: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0) } : null };
 }
 
 async function cohereJson(env, model, system, prompt) {
@@ -389,7 +391,8 @@ async function cohereJson(env, model, system, prompt) {
   const j = await res.json();
   const text = (j.message?.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
   if (!text) { const e = new Error("Cohere가 빈 답을 보냈어요."); e.retry = true; throw e; }
-  return { data: parseJsonText(text, "Cohere"), used: model };
+  const ct = j.usage?.tokens || j.usage?.billed_units || j.meta?.tokens || j.meta?.billed_units;
+  return { data: parseJsonText(text, "Cohere"), used: model, usage: ct ? { in: ct.input_tokens || 0, out: ct.output_tokens || 0 } : null };
 }
 
 // OpenAI 모양 API(Groq · MiMo · Zhipu · OpenRouter · Kilo · Ollama)에서 JSON 한 덩어리 받기. 회사별 차이는 OPENAI_LIKE[..].json 옵션.
@@ -406,7 +409,7 @@ const openaiJson = (provider) => async (env, model, system, prompt) => {
   if (o.checkError && j.error) throw Object.assign(new Error(`${p.name} 오류: ${String(j.error.message || "").slice(0, 120)}`), { retry: true });
   const text = j.choices?.[0]?.message?.content || "";
   if (!text) { const e = new Error(`${p.name}가 빈 답을 보냈어요.`); e.retry = true; throw e; }
-  return { data: parseJsonText(o.stripThink ? text.replace(/<think>[\s\S]*?<\/think>/g, "") : text, p.name), used: o.routed && j.model && j.model !== model ? `${model} → ${j.model}` : model };
+  return { data: parseJsonText(o.stripThink ? text.replace(/<think>[\s\S]*?<\/think>/g, "") : text, p.name), used: o.routed && j.model && j.model !== model ? `${model} → ${j.model}` : model, usage: j.usage ? { in: j.usage.prompt_tokens || 0, out: j.usage.completion_tokens || 0 } : null };
 };
 
 // ---------- providers ----------
