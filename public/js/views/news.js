@@ -61,7 +61,7 @@ export function mount(root, ctx, r) {
           <div class="gn-mast-r"><span class="gn-clock"><i>KST</i> <b id="gn-clk"></b></span></div>
         </header>
         <div class="gn-bar">
-          <nav class="gn-views" aria-label="News sections"><a href="#/news" data-view="today">Today</a><a href="#/news/world" data-view="world">World</a><a href="#/news/co" data-view="co">Companies</a><a href="#/news/talk" data-view="talk">Comments <i class="gn-badge" id="gn-talk-badge" hidden></i></a></nav>
+          <nav class="gn-views" aria-label="News sections"><a href="#/news" data-view="today">Today</a><a href="#/news/world" data-view="world">World</a><a href="#/news/co" data-view="co">Companies</a><a href="#/news/board" data-view="board">Leaderboard</a><a href="#/news/talk" data-view="talk">Comments <i class="gn-badge" id="gn-talk-badge" hidden></i></a></nav>
           <div class="gn-daynav">
             <a class="gn-nav" id="gn-prev" href="#" aria-label="Previous day">←</a>
             <button class="gn-date" id="gn-date" type="button" aria-haspopup="dialog" aria-expanded="false"><span id="gn-date-t">Today</span></button>
@@ -139,12 +139,48 @@ export function mount(root, ctx, r) {
           ${it.comments || it.disputed || m.others.length ? `<span class="gn-foot">${it.comments ? `<span class="gn-pill">${it.comments} comment${it.comments > 1 ? "s" : ""}</span>` : ""}${it.disputed ? `<span class="gn-pill hot">Disputed</span>` : ""}<span class="gn-avs">${avs(m.others)}</span></span>` : ""}
         </span>
       </a>
+      <button class="gn-readbtn${m.read ? " on" : ""}" type="button" data-read="${it.id}" aria-pressed="${m.read}" aria-label="${m.read ? "Mark as unread" : "Mark as read"}" title="${m.read ? "Read · tap to undo" : "Mark as read"}">✓</button>
       <button class="gn-star${m.star ? " on" : ""}" type="button" data-star="${it.id}" aria-pressed="${m.star}" aria-label="Save">${starSvg()}</button>
     </li>`;
   }
   // 오늘 읽을 몫(할당량): 1면 → 분야마다 하나씩 → 최신 순으로 N편을 정해 줘요. N 은 사람마다(이 기기) 3 · 5 · 7
   const QUOTAS = [3, 5, 7];
-  const quotaN = () => { const n = +(store.get("gn-quota") || 5); return QUOTAS.includes(n) ? n : 5; };
+  const quotaN = () => { const n = +((board && board.mine?.quota) || store.get("gn-quota") || 5); return QUOTAS.includes(n) ? n : 5; };
+  // ---------- 읽기 대결 ----------
+  let board = null, boardT = 0;
+  async function loadBoard() {
+    try { const d = await api.newsLeaderboard(); board = { ...d, mine: (d.board || []).find((b) => b.user_id === ctx.me.id) || null }; } catch { board = board || null; }
+    return board;
+  }
+  const refreshBoard = () => { clearTimeout(boardT); boardT = setTimeout(async () => { await loadBoard(); if (view === "today") { const sc = $("#gn-scroll"), y = sc.scrollTop; draw(); sc.scrollTop = y; } else if (view === "board") drawBoard(); }, 600); };
+  const rivals = () => (board?.board || []).map((b) => ({ ...b, u: user(b.user_id), me: b.user_id === ctx.me.id }));
+  function raceHtml() {
+    const rs = rivals(); if (!rs.length) return "";
+    return `<div class="gn-race" aria-label="Today's race">${rs.map((r) => { const pct = Math.min(100, Math.round((r.today / r.quota) * 100)); return `<div class="gn-race-r${r.me ? " me" : ""}">
+      <span class="gn-race-n"><i class="gn-av" style="--c:${r.u.color}">${esc((r.u.display_name || "?")[0])}</i>${esc(r.me ? "You" : r.u.display_name)}</span>
+      <span class="gn-race-b"><i style="width:${pct}%"></i></span>
+      <span class="gn-race-v" title="Read today / daily goal">${r.today}/${r.quota} read${r.streak ? ` <b title="Days in a row">🔥${r.streak}</b>` : ""}</span></div>`; }).join("")}<a class="gn-race-more" href="#/news/board">Leaderboard →</a></div>`;
+  }
+  function drawBoard() {
+    if (!board) { page.innerHTML = `<section class="gn-hero"><h1 class="gn-h1 gn-h1-sec">Leaderboard</h1></section><p class="gn-soft">Loading…</p>`; loadBoard().then(() => view === "board" && drawBoard()); return; }
+    const rs = rivals(), medal = ["🥇", "🥈", "🥉"];
+    page.innerHTML = `
+      <section class="gn-hero"><h1 class="gn-h1 gn-h1-sec">Leaderboard</h1><p class="gn-lab gn-talk-sub">Ranked by stories read this week (since Monday, KST) · 🔥 = days in a row hitting your daily goal</p></section>
+      <div class="gn-feed">
+        <ol class="gn-board">${rs.map((r, i) => `<li class="${r.me ? "me" : ""}">
+          <span class="gn-board-rank">${medal[i] || i + 1}</span>
+          <span class="gn-board-who"><i class="gn-av" style="--c:${r.u.color}">${esc((r.u.display_name || "?")[0])}</i><b>${esc(r.u.display_name)}${r.me ? " <small>(you)</small>" : ""}</b></span>
+          <span class="gn-board-big"><b>${r.week}</b><small>this week</small></span>
+          <span class="gn-board-stats">
+            <span><b>${r.today}/${r.quota}</b><small>today</small></span>
+            <span><b>${r.streak ? "🔥" + r.streak : "0"}</b><small>streak</small></span>
+            <span><b>${r.best}</b><small>best day</small></span>
+            <span><b>${r.total}</b><small>all time</small></span>
+          </span></li>`).join("") || `<li class="gn-soft">No reads yet. Open a story to get on the board.</li>`}</ol>
+        <p class="gn-lab">Your daily goal</p>
+        <div class="gn-quota-n gn-quota-n-l" role="group" aria-label="Stories per day">${QUOTAS.map((q) => `<button type="button" data-quota="${q}" aria-pressed="${q === quotaN()}">${q}</button>`).join("")}</div>
+      </div>`;
+  }
   function quotaPicks() {
     const n = quotaN(), out = [], seen = new Set();
     const add = (it) => { if (it && !seen.has(it.id) && out.length < n) { seen.add(it.id); out.push(items.get(it.id) || it); } };
@@ -183,6 +219,7 @@ export function mount(root, ctx, r) {
             <div class="gn-quota-n" role="group" aria-label="Stories per day">${QUOTAS.map((q) => `<button type="button" data-quota="${q}" aria-pressed="${q === quotaN()}">${q}</button>`).join("")}</div>
           </header>
           <div class="gn-bar-p" role="progressbar" aria-valuemin="0" aria-valuemax="${quota.length}" aria-valuenow="${done}"><i style="width:${pct}%"></i></div>
+          ${raceHtml()}
           <ul class="gn-list gn-list-quota">${quota.map((it, i) => row(it, i + 1)).join("")}</ul>
         </section>` : ""}
         ${picked.length ? `<h2 class="gn-sec-h">From companies you follow</h2><ul class="gn-list">${picked.map((it) => row(it)).join("")}</ul>` : ""}
@@ -360,6 +397,7 @@ export function mount(root, ctx, r) {
       ${t !== it.title ? `<p class="gn-sh-orig" lang="en">${esc(it.title)}</p>` : ""}
       ${sum.length ? `<section class="gn-card"><h3>Summary</h3><ul>${sum.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></section>` : `<section class="gn-card" id="gn-sum"><p class="gn-soft">Writing a summary…</p></section>`}
       <div class="gn-acts">
+        <button class="gn-btn gn-readbtn-l${mine(it).read ? " on" : ""}" type="button" id="gn-sh-read" aria-pressed="${mine(it).read}">${mine(it).read ? "✓ Read" : "Mark as read"}</button>
         <button class="gn-btn${star() ? " on" : ""}" type="button" id="gn-sh-star" aria-pressed="${star()}">${starSvg()}<span>${star() ? "Saved" : "Save"}</span></button>
         <button class="gn-btn" type="button" id="gn-sh-deep">${d.deep ? "Deep dive ✓" : "Deep dive"}</button>
         <a class="gn-btn" href="${esc(it.url)}" target="_blank" rel="noopener">Original ${icon.external(13)}</a>
@@ -379,6 +417,7 @@ export function mount(root, ctx, r) {
       catch (err) { toast(err.message, "err"); b.disabled = false; b.textContent = "Deep dive"; }
     });
     sheet.querySelector("#gn-sh-star").addEventListener("click", () => toggleStar(id));
+    sheet.querySelector("#gn-sh-read").addEventListener("click", () => toggleRead(id));
     // 아직 요약이 없으면 이 기사 하나만 바로 요약해요 (매시 정각 차례를 기다리지 않게)
     if (!sum.length) api.newsSummarize(id).then((r2) => {
       if (!alive || cur !== id || !r2?.item?.summary) return;
@@ -388,7 +427,7 @@ export function mount(root, ctx, r) {
       repaint(id);
     }).catch(() => { const box = sheet.querySelector("#gn-sum"); if (box) box.innerHTML = `<p class="gn-soft">Couldn't write a summary right now. Open the original for the full story.</p>`; });
     talk(id, d.comments || []);
-    if (!(it.readers || []).includes(ctx.me.id)) api.newsMark(id, { read: true }).then(() => { const k = items.get(id); if (k) { k.readers = [...(k.readers || []), ctx.me.id]; repaint(id); } }).catch(() => {});
+    // 읽음은 자동으로 찍지 않아요 — 다 읽고 나서 직접 "Mark as read" 를 눌러요 (읽기 대결 점수가 정직하게)
     sheet.scrollTop = 0;
   }
   const sheetHead = () => `<div class="gn-sh-top"><span class="gn-grab" aria-hidden="true"></span><button class="gn-x" type="button" data-close aria-label="Close">${icon.x(16)}</button></div>`;
@@ -403,6 +442,14 @@ export function mount(root, ctx, r) {
     page.querySelectorAll(`li.gn-item[data-id="${id}"]`).forEach((el) => { const tmp = document.createElement("ul"); tmp.innerHTML = row(it); el.replaceWith(tmp.firstElementChild); });
     const k = page.querySelector(".gn-kicker b"); const n = [...items.values()].filter((x) => !mine(x).read).length;
     if (k) k.textContent = n ? `${n} unread` : "All read";
+  }
+  async function toggleRead(id) {
+    const it = items.get(id) || { readers: [] }, on = !(it.readers || []).includes(ctx.me.id);
+    it.readers = on ? [...(it.readers || []), ctx.me.id] : (it.readers || []).filter((u) => u !== ctx.me.id);
+    if (items.has(id)) items.set(id, it);
+    const b = sheet.querySelector("#gn-sh-read"); if (b && cur === id) { b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); b.textContent = on ? "✓ Read" : "Mark as read"; }
+    repaint(id);
+    try { await api.newsMark(id, { read: on }); refreshBoard(); } catch (err) { toast(err.message, "err"); }
   }
   async function toggleStar(id) {
     const it = items.get(id) || { stars: [] }, on = !(it.stars || []).includes(ctx.me.id);
@@ -486,14 +533,15 @@ export function mount(root, ctx, r) {
   }
 
   // ---------- 이벤트 ----------
-  const backHash = () => (view === "talk" ? "#/news/talk" : view === "world" ? "#/news/world" : view === "co" ? "#/news/co/" + coKey : ed && ed.day !== kstDay() ? "#/news/" + ed.day : "#/news");
+  const backHash = () => (view === "board" ? "#/news/board" : view === "talk" ? "#/news/talk" : view === "world" ? "#/news/world" : view === "co" ? "#/news/co/" + coKey : ed && ed.day !== kstDay() ? "#/news/" + ed.day : "#/news");
   const back = () => ctx.go(backHash());
   const onClick = (e) => {
     const s = e.target.closest("[data-star]"); if (s) { e.preventDefault(); toggleStar(s.dataset.star); return; }
+    const rd = e.target.closest("[data-read]"); if (rd) { e.preventDefault(); toggleRead(rd.dataset.read); return; }
     if (e.target.closest("[data-close]") || e.target === scrim) { e.preventDefault(); back(); return; }
     const b = e.target.closest("[data-sec]"); if (b) { sec = b.dataset.sec; store.set("gn-sec", sec); draw(); return; }
     if (e.target.closest("[data-starred]")) { starred = !starred; draw(); return; }
-    const q = e.target.closest("[data-quota]"); if (q) { store.set("gn-quota", q.dataset.quota); draw(); return; }
+    const q = e.target.closest("[data-quota]"); if (q) { store.set("gn-quota", q.dataset.quota); if (board?.mine) board.mine.quota = +q.dataset.quota; api.newsPrefs({ quota: +q.dataset.quota }).then(refreshBoard).catch((err) => toast(err.message, "err")); view === "board" ? drawBoard() : draw(); return; }
     const wd = e.target.closest("[data-wd]"); if (wd) { worldDays = +wd.dataset.wd; store.set("gn-wd", worldDays); worldCleanup?.(); drawWorld(); return; }
     const sub = e.target.closest("[data-cosub]"); if (sub) { toggleSub(sub.dataset.cosub); return; }
     const add = e.target.closest("[data-coadd]"); if (add) { const p = page.querySelector("#gn-copick"); p.hidden = !p.hidden; add.setAttribute("aria-expanded", !p.hidden); return; }
@@ -510,6 +558,7 @@ export function mount(root, ctx, r) {
     else if (e.key === "[" && ed?.prev && view === "today") ctx.go("#/news/" + ed.prev);
     else if (e.key === "]" && ed?.next && view === "today") ctx.go("#/news/" + ed.next);
     else if (e.key === "s" && cur) toggleStar(cur);
+    else if (e.key === "r" && cur) toggleRead(cur);
     else if (e.key === "Escape") { if (!cal.hidden) toggleCal(false); else if (cur) back(); }
   };
   document.addEventListener("keydown", onKey);
@@ -521,18 +570,21 @@ export function mount(root, ctx, r) {
       openItem(rr.id); return;
     }
     if (cur) closeSheet();
-    const next = rr.sub === "world" ? "world" : rr.sub === "co" ? "co" : rr.sub === "talk" ? "talk" : "today";
+    const next = rr.sub === "world" ? "world" : rr.sub === "co" ? "co" : rr.sub === "talk" ? "talk" : rr.sub === "board" ? "board" : "today";
     const changed = next !== view;
     if (changed) worldCleanup?.(), (worldCleanup = null);
     setView(next);
     if (next === "world") { if (changed || !page.querySelector("#gn-globe")) drawWorld(); }
     else if (next === "co") { await loadCompanies(); drawCo(rr.id); }
     else if (next === "talk") drawTalk();
+    else if (next === "board") drawBoard();
     else {
       const day = rr.day && DAY_RE.test(rr.day) ? rr.day : kstDay();
       store.set("gn-day", day);
-      if (!ed || ed.day !== day) await loadEdition(day);
-      else if (changed) for (const it of [...(ed.front || []).map((f) => f.item), ...SECTIONS.slice(1).flatMap(([k]) => ed.sections?.[k] || [])]) if (it && !items.has(it.id)) items.set(it.id, it);
+      // 대결 막대도 첫 화면에 같이 그려요 — 나중에 다시 그리면 누르던 기사가 바뀌어요 (최대 1.5초만 기다려요)
+      const fresh = !ed || ed.day !== day;
+      await Promise.all([fresh ? loadEdition(day) : null, board ? null : Promise.race([loadBoard(), new Promise((r) => setTimeout(r, 1500))])]);
+      if (!fresh && changed) for (const it of [...(ed.front || []).map((f) => f.item), ...SECTIONS.slice(1).flatMap(([k]) => ed.sections?.[k] || [])]) if (it && !items.has(it.id)) items.set(it.id, it);
       draw();
       if (changed) $("#gn-scroll").scrollTop = 0;
     }
