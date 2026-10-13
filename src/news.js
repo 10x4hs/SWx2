@@ -15,10 +15,23 @@
 import { aiJson as realAiJson } from "./ai.js";
 import { SEED } from "./feeds.js";
 import { pushUsers } from "./push.js";
+import { charge, left, withBudget } from "./lib/budget.js";
+import { kstToday } from "./lib/day.js";
 
 // 로컬 시험용: NEWS_FAKE_AI=1 이면 AI 를 부르지 않고 정해진 답을 돌려줘요 (smoke · e2e 가 키 없이 돌게).
-const aiJson = (env, system, prompt, fake) =>
-  env.NEWS_FAKE_AI === "1" && fake ? Promise.resolve({ data: fake() }) : realAiJson(env, system, prompt);
+// 가짜도 바깥 요청 1개로 세요(lib/budget.js) — 시험에서 크론 예산을 실제처럼 확인하려고요.
+const aiJson = (env, system, prompt, fake) => {
+  if (env.NEWS_FAKE_AI === "1" && fake) { try { charge(1); } catch (e) { return Promise.reject(e); } return Promise.resolve({ data: fake() }); }
+  return realAiJson(env, system, prompt);
+};
+
+/** 한국 날짜 (YYYY-MM-DD) */
+export const kstDay = (ms) => new Date(ms + 9 * 36e5).toISOString().slice(0, 10);
+
+/** 신문 면 4개. 피드 주제로 먼저 정하고, AI 가 다른 면을 고르면 그걸 따라요. */
+export const SECTIONS = ["ai", "geopolitics", "tech", "economy"];
+const TOPIC_SECTION = { ai: "ai", semi: "tech", energy: "economy", macro: "economy", china: "geopolitics", europe: "geopolitics", geopolitics: "geopolitics" };
+export const sectionOf = (topic, ai) => (SECTIONS.includes(ai) ? ai : TOPIC_SECTION[topic] || "geopolitics");
 
 // ---------- 상수 ----------
 
@@ -133,8 +146,8 @@ async function pull(env, feed, now) {
     let added = 0;
     for (const it of fresh) {
       const r = await env.DB.prepare(
-        "INSERT OR IGNORE INTO news_items (id, feed_id, url, title, author, published_at, dated, raw, created_at) VALUES (?,?,?,?,?,?,?,?,?)"
-      ).bind(id(), feed.id, it.url, it.title.slice(0, 500), it.author, it.published ?? now, it.published == null ? 0 : 1, it.content, now).run();
+        "INSERT OR IGNORE INTO news_items (id, feed_id, url, title, author, published_at, dated, raw, created_at, day, section) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+      ).bind(id(), feed.id, it.url, it.title.slice(0, 500), it.author, it.published ?? now, it.published == null ? 0 : 1, it.content, now, kstDay(it.published ?? now), sectionOf(feed.topic)).run();
       if (r.meta?.changes) added += 1;
     }
 
@@ -173,24 +186,49 @@ async function inBatches(list, size, fn) {
 // Workers 무료 플랜은 요청 한 번에 바깥 요청(fetch) 50개까지예요. 피드 46곳 + AI 요약을 한 번에 하면 넘쳐서
 // 한 번에 받는 피드 수(max)와 요약 수를 나눠요. 오래 안 받은 피드부터.
 export async function ingest(env, now = Date.now(), max = 24) {
+  max = Math.max(0, Math.min(max, left() - 1)); // 예산 안에서만 (lib/budget.js)
+  if (!max) return [];
   const { results } = await env.DB.prepare(
-    "SELECT id, url, name FROM news_feeds WHERE active = 1 AND fail_count < 5 ORDER BY COALESCE(last_fetched_at, 0) ASC LIMIT ?"
+    "SELECT id, url, name, topic FROM news_feeds WHERE active = 1 AND fail_count < 5 ORDER BY COALESCE(last_fetched_at, 0) ASC LIMIT ?"
   ).bind(max).all();
   return inBatches(results || [], PULL_AT_ONCE, (f) => pull(env, f, now));
 }
 
 // ---------- 요약 ----------
 
-/** 요약이 없는 글에 한 줄씩 붙여요. 수집과 따로 도니 실패해도 글은 남아요. */
-export async function summarize(env, limit = 30) {
+/**
+ * 요약이 없는 글에 한 줄(one_liner) + 2~3줄 요약(summary) + 면(section) + 지도·줄기 태그를 붙여요.
+ * 글 SUM_CHUNK 편을 **AI 한 번**에 묶어요 — 글마다 부르면 바깥 요청 50개 한도가 금방 차요.
+ * opts.day 를 주면 그날 글만 (되채우기). 예산(lib/budget.js)이 모자라면 남은 묶음은 다음 번으로 미뤄요.
+ */
+const SUM_CHUNK = 5;
+const SUM_SKIP = 2; // AI 가 이만큼 답을 안 주면 그 글은 건너뛰어요 (sum_skip=1 · summary 는 비워 둔 채) → 그날 신문이 막히지 않게
+/** 답을 못 받은 횟수를 세고, SUM_SKIP 번이면 건너뛰기 표시 */
+const markMiss = (env, id) => env.DB.prepare("UPDATE news_items SET sum_miss = sum_miss + 1, sum_skip = CASE WHEN sum_miss + 1 >= ? THEN 1 ELSE 0 END WHERE id = ?").bind(SUM_SKIP, id).run();
+
+/** 한 줄 요약은 55자까지. 넘으면 예산이 남을 때 한 번만 줄여 달라고 하고, 그래도 길면 잘라요. */
+async function fitOne(env, one) {
+  one = String(one || "").trim();
+  if (one.length <= 55) return one;
+  if (left() >= 3) {
+    const r = await aiJson(env, RULES, `다음 문장을 뜻은 그대로 두고 45자 이내로 줄여 줘. "~했다" 체.\n${one}\n{"one":"..."} 형식으로만 답해.`, () => ({ one: one.slice(0, 45) })).catch(() => null);
+    const short = String(r?.data?.one || "").trim();
+    if (short && short.length <= 55) return short;
+  }
+  return one.slice(0, 54).replace(/\s+\S*$/, "") + "…";
+}
+
+export async function summarize(env, limit = 10, opts = {}) {
+  const where = opts.day ? "i.day = ?" : "i.published_at > ?";
   const { results } = await env.DB.prepare(
-    `SELECT i.id, i.title, i.raw, f.name AS feed, f.topic
+    `SELECT i.id, i.title, i.raw, i.one_liner, f.name AS feed, f.topic
        FROM news_items i JOIN news_feeds f ON f.id = i.feed_id
-      WHERE i.one_liner IS NULL AND i.published_at > ?
+      WHERE i.summary IS NULL AND i.sum_skip = 0 AND ${where}
       ORDER BY i.published_at DESC LIMIT ?`
-  ).bind(Date.now() - MAX_AGE, limit).all();
+  ).bind(opts.day || Date.now() - MAX_AGE, limit).all();
 
   const todo = results || [];
+  if (!todo.length) return { done: 0, left: 0, failed: [] };
   // 이미 있는 줄기 태그를 보여 주고 맞으면 그대로 쓰게 해요 — 안 그러면 "ukraine war" · "russia ukraine war" 처럼 글마다 줄기가 갈라져요
   const { results: known } = await env.DB.prepare(
     `SELECT t.key, COUNT(i.id) AS n FROM news_threads t LEFT JOIN news_items i ON i.thread_id = t.id
@@ -199,52 +237,53 @@ export async function summarize(env, limit = 30) {
   const keys = (known || []).map((k) => k.key);
   let done = 0;
   const failed = [];
+  const chunks = [];
+  for (let i = 0; i < todo.length; i += SUM_CHUNK) chunks.push(todo.slice(i, i + SUM_CHUNK));
 
-  await inBatches(todo, SUM_AT_ONCE, async (t) => {
+  await inBatches(chunks, SUM_AT_ONCE, async (chunk) => {
+    if (left() < 2) { failed.push("예산 부족 — 다음 번에"); return; }
     try {
-      const text = `${t.title} ${t.raw || ""}`.slice(0, 4000);
+      const body = chunk.map((t, n) => `### [${n}] 출처: ${t.feed} (${t.topic})\n제목: ${t.title}\n${String(t.raw || "").slice(0, 2500)}`).join("\n\n");
       const { data } = await aiJson(
         env,
         RULES,
-        `다음 글을 **한 문장**으로 요약하고, 지도와 줄기 표시용 태그를 붙여 줘.
+        `다음 글 ${chunk.length}편을 각각 요약하고, 지도와 줄기 표시용 태그를 붙여 줘.
 
-규칙을 꼭 지켜:
-- **35~50자.** 공백 포함, 절대 55자를 넘기지 마. 목록에 두 줄로 들어가야 해서 넘기면 잘려. 한 가지 사실만.
-- 끝은 "~했다 / ~한다" 체로 통일해.
-- 고유명사에 **원어를 괄호로 병기하지 마.** 한국어 이름만 써.
-- 제목을 되풀이하지 마. 제목에 없는 **알맹이**를 담아.
-- 직함·기관 전체 이름 대신 짧게. ("우크라이나 외무장관" → "우크라 외무장관")
-- geo: 이 글의 무대가 되는 나라 ISO 3166-1 alpha-2 코드 1~3개 (예: "US","CN","TW"). 특정 나라가 없으면 빈 배열.
-- tag: 이 글이 속한 **지속되는 이야기**를 2~4단어 영어 소문자로 (예: "us china chip controls", "ukraine war", "ai regulation eu"). 너무 구체적이면 안 돼 — 몇 주 동안 같은 태그로 이어질 이야기여야 해.
-  아래 기존 태그 중 **바로 그 이야기**(같은 사건 · 같은 갈등의 다음 장)가 있으면 그 태그를 글자 그대로 써.
-  분야만 비슷하면 묶지 마 (예: 라트비아 주류 파산은 "semiconductor industry trends" 가 아니야, 북아일랜드 정국은 "ukraine war" 가 아니야). 맞는 게 없으면 새 태그.
+글마다 규칙:
+- 오늘은 ${kstToday(0)} (한국 시간)이야. 연도·날짜는 원문에 적힌 것만 쓰고, 원문에 없는 연도를 지어내지 마.
+- 고유명사·용어는 정확한 한국어 표준 표기로 (예: "language model" → "언어 모델", "rare earth" → "희토류"). 낯선 이름은 억지로 옮기지 말고 원문 표기 그대로.
+- one: **35~50자 한 문장.** 절대 55자를 넘기지 마. 한 가지 사실만. 끝은 "~했다 / ~한다" 체. 고유명사에 원어를 괄호로 병기하지 마. 제목을 되풀이하지 말고 알맹이를 담아.
+- summary: **2~3문장**, 합쳐서 90~160자. 신문 기사 요약처럼: 무슨 일이 있었고(누가·무엇을), 왜 중요한지. "~했다 / ~이다" 체. 원문에 없는 건 쓰지 마.
+- section: **기사 내용**으로 고른 신문 면 하나 (출처의 주제와 달라도 기사 내용을 따라. 예: AI 매체의 언론 자유·선거 기사는 "geopolitics") — "ai"(AI 모델·연구·정책) | "geopolitics"(외교·안보·전쟁·국내정치) | "tech"(반도체·제조·우주·기술산업) | "economy"(거시·무역·에너지·금융).
+- geo: 무대가 되는 나라 ISO 3166-1 alpha-2 코드 1~3개 (EU 는 "BE"). 없으면 빈 배열.
+- tag: 이 글이 속한 **지속되는 이야기**를 2~4단어 영어 소문자로 (예: "us china chip controls", "ukraine war"). 몇 주 동안 이어질 이야기여야 해.
+  아래 기존 태그 중 **바로 그 이야기**가 있으면 글자 그대로 써. 분야만 비슷하면 묶지 마. 맞는 게 없으면 새 태그.
   기존 태그: ${keys.length ? keys.join(" | ") : "(없음)"}
-- geo 는 실제 나라 코드만 (EU 같은 기구는 그 본부 나라 대신 빈칸 말고 "BE"). 같은 코드를 두 번 쓰지 마.
 - tag_ko: tag 의 한국어 제목 (12자 이내).
 
-출처: ${t.feed}
-제목: ${t.title}
+${body}
 
-${String(t.raw || "").slice(0, 6000)}
-
-{"one":"55자 이내 한 문장","geo":["US"],"tag":"...","tag_ko":"..."} 형식으로만 답해.`,
-        () => ({ one: `${t.title}`.slice(0, 55), geo: guessGeo(text), tag: fakeTag(text, t.topic), tag_ko: "" })
+{"items":[{"i":0,"one":"...","summary":"...","section":"ai","geo":["US"],"tag":"...","tag_ko":"..."}]} 형식으로만 답해. i 는 글 번호.`,
+        () => ({ items: chunk.map((t, n) => /NOANSWER/.test(t.title) ? null : ({ i: n, one: `${t.title}`.slice(0, 55), summary: `${t.title}. 시험용 요약 둘째 줄이에요.`, section: "", geo: guessGeo(`${t.title} ${t.raw || ""}`), tag: fakeTag(`${t.title} ${t.raw || ""}`, t.topic), tag_ko: "" })).filter(Boolean) })
       );
-      let one = String(data?.one || "").trim().slice(0, 140);
-      if (one.length > 58) { // 길면 한 번만 줄여 달라고 해요
-        const r2 = await aiJson(env, RULES, `다음 문장을 뜻은 그대로 두고 45자 이내로 줄여 줘. "~했다" 체.\n${one}\n{"one":"..."} 형식으로만 답해.`).catch(() => null);
-        const short = String(r2?.data?.one || "").trim();
-        if (short && short.length < one.length) one = short.slice(0, 140);
+      const outs = Array.isArray(data?.items) ? data.items : [];
+      for (const [n, t] of chunk.entries()) {
+        const o = outs.find((x) => Number(x?.i) === n);
+        if (!o || !String(o.summary || "").trim()) { failed.push(`${t.title.slice(0, 30)}: 답 없음`); await markMiss(env, t.id); continue; }
+        const one = await fitOne(env, t.one_liner || String(o.one || "").trim());
+        const summary = String(o.summary || "").trim().slice(0, 600);
+        if (!one || !summary) { failed.push(`${t.title.slice(0, 30)}: 빈 요약`); continue; }
+        const text = `${t.title} ${t.raw || ""}`.slice(0, 4000);
+        let geo = [...new Set((Array.isArray(o.geo) ? o.geo : []).map((c) => String(c).toUpperCase().trim()).map((c) => (c === "EU" ? "BE" : c === "UK" ? "GB" : c)).filter((c) => /^[A-Z]{2}$/.test(c)))].slice(0, 3);
+        if (!geo.length) geo = guessGeo(text);
+        await env.DB.prepare("UPDATE news_items SET one_liner = ?, summary = ?, section = ?, geo = ? WHERE id = ?")
+          .bind(one, summary, sectionOf(t.topic, String(o.section || "").toLowerCase().trim()), JSON.stringify(geo), t.id).run();
+        await attachThread(env, { id: t.id, text: `${t.title} ${one}` }, o.tag, o.tag_ko);
+        const k = normTag(o.tag); if (k && !keys.includes(k)) keys.push(k);
+        done += 1;
       }
-      if (!one) throw new Error("빈 요약");
-      let geo = [...new Set((Array.isArray(data?.geo) ? data.geo : []).map((c) => String(c).toUpperCase().trim()).map((c) => (c === "EU" ? "BE" : c === "UK" ? "GB" : c)).filter((c) => /^[A-Z]{2}$/.test(c)))].slice(0, 3);
-      if (!geo.length) geo = guessGeo(text);
-      await env.DB.prepare("UPDATE news_items SET one_liner = ?, geo = ? WHERE id = ?").bind(one, JSON.stringify(geo), t.id).run();
-      await attachThread(env, { id: t.id, text: `${t.title} ${one}` }, data?.tag, data?.tag_ko);
-      const k = normTag(data?.tag); if (k && !keys.includes(k)) keys.push(k);
-      done += 1;
     } catch (e) {
-      failed.push(`${t.title.slice(0, 30)}: ${String(e?.message || e).slice(0, 60)}`);
+      failed.push(`${chunk.length}편 묶음: ${String(e?.message || e).slice(0, 80)}`);
     }
   });
 
@@ -651,37 +690,227 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     await env.DB.prepare("INSERT INTO news_inbox_seen (user_id, at) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET at = excluded.at").bind(user.id, now()).run();
     return json({ ok: true });
   });
+
+  // ---------- 신문 (하루 한 부) ----------
+  const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ""));
+  const ED_COLS = "i.id, i.title, i.url, i.one_liner, i.summary, i.section, i.day, i.published_at, i.dated, i.geo, i.thread_id, f.name AS feed, f.topic";
+  const shape = (r) => ({ id: r.id, title: r.title, url: r.url, feed: r.feed, topic: r.topic, section: sectionOf(r.topic, r.section), one_liner: r.one_liner, summary: r.summary,
+    published_at: r.published_at, dated: r.dated, thread_id: r.thread_id, geo: r.geo, readers: r.readers, stars: r.stars, comments: r.comments, disputed: r.disputed });
+
+  // [GET /news/editions?from&to] 신문 목록 (달력용) — 기본 최근 60일
+  on("GET", "/news/editions", async ({ env, q }) => {
+    const to = isDay(q.get("to")) ? q.get("to") : kstToday(0), from = isDay(q.get("from")) ? q.get("from") : kstToday(-60);
+    const [{ results: eds }, { results: days }] = await env.DB.batch([
+      env.DB.prepare("SELECT day, headline, status, item_count, sections, front, built_at FROM news_editions WHERE day BETWEEN ? AND ? ORDER BY day DESC").bind(from, to),
+      env.DB.prepare("SELECT day, COUNT(*) AS n, SUM(summary IS NOT NULL) AS summed FROM news_items WHERE day BETWEEN ? AND ? GROUP BY day").bind(from, to),
+    ]);
+    const byDay = new Map((days || []).map((d) => [d.day, d]));
+    const out = (eds || []).map((e) => {
+      const s = parseJ(e.sections, {});
+      return { day: e.day, headline: e.headline, status: e.status, built_at: e.built_at, items: byDay.get(e.day)?.n ?? e.item_count,
+        counts: Object.fromEntries(SECTIONS.map((k) => [k, (s[k] || []).length])), front: parseJ(e.front, []).length };
+    });
+    // 글은 있는데 아직 신문이 없는 날 (되채우기 전) — 달력에 흐리게
+    const pending = (days || []).filter((d) => !out.some((e) => e.day === d.day)).map((d) => ({ day: d.day, items: d.n, summed: d.summed })).sort((a, b) => (a.day < b.day ? 1 : -1));
+    return json({ from, to, editions: out, pending });
+  });
+
+  // [GET /news/edition/:day] 신문 한 부 (day = YYYY-MM-DD 또는 today)
+  on("GET", "/news/edition/:day", async ({ env, params }) => {
+    const day = params.day === "today" ? kstToday(0) : params.day;
+    if (!isDay(day)) fail(400, "날짜는 YYYY-MM-DD 로 주세요.");
+    const e = await env.DB.prepare("SELECT * FROM news_editions WHERE day = ?").bind(day).first();
+    const { results } = await env.DB.prepare(`SELECT ${ED_COLS} FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.day = ? ORDER BY i.published_at DESC LIMIT 400`).bind(day).all();
+    const items = new Map((await decorate(env, results || [])).map((r) => [r.id, shape(r)]));
+    const secIds = e ? parseJ(e.sections, {}) : null;
+    const sections = emptySections(), placed = new Set();
+    if (secIds) for (const k of SECTIONS) for (const id of secIds[k] || []) { const it = items.get(id); if (it) { sections[k].push(it); placed.add(id); } }
+    // 마감 뒤에 들어온 글(밤사이 추가)은 late 로 따로. 신문이 아직 없으면 전부 면별로 바로 보여 줘요(status "live").
+    const late = [];
+    for (const it of items.values()) if (!placed.has(it.id)) (secIds ? late : sections[it.section]).push(it);
+    const thRows = e ? parseJ(e.threads, []) : [];
+    const thInfo = thRows.length ? await inChunks(env, "SELECT t.id, t.title, t.story, (SELECT COUNT(*) FROM news_items x WHERE x.thread_id = t.id) AS n FROM news_threads t WHERE t.id IN (?)", thRows.map((t) => t.thread_id)) : [];
+    const [prev, next] = await env.DB.batch([
+      env.DB.prepare("SELECT day FROM news_editions WHERE day < ? ORDER BY day DESC LIMIT 1").bind(day),
+      env.DB.prepare("SELECT day FROM news_editions WHERE day > ? ORDER BY day ASC LIMIT 1").bind(day),
+    ]);
+    return json({
+      day,
+      status: e ? e.status : "live",
+      headline: e?.headline || null,
+      lede: e?.lede || "",
+      built_at: e?.built_at || null,
+      front: (e ? parseJ(e.front, []) : []).map((f) => ({ item: items.get(f.item_id) || null, why: f.why })).filter((f) => f.item),
+      threads: thRows.map((t) => { const i = thInfo.find((x) => x.id === t.thread_id); return i ? { id: i.id, title: i.title, story: i.story, n: i.n, move: t.move } : null; }).filter(Boolean),
+      sections,
+      late,
+      count: items.size,
+      prev: prev.results?.[0]?.day || null,
+      next: next.results?.[0]?.day || null,
+    });
+  });
+
+  // [POST /news/backfill] 되채우기 한 걸음 (지난 60일 중 마감 안 된 가장 오래된 날)
+  on("POST", "/news/backfill", async ({ env }) => {
+    const r = await withBudget(NEWS_BUDGET, () => backfillStep(env, 10));
+    return json({ ...r.result, subrequests: r.used });
+  });
+  on("GET", "/news/backfill", async ({ env }) => json({ state: await getJob(env, "backfill") }));
 }
 
-// ---------- 크론 ----------
+// ---------- 하루 한 부: 신문 (news_editions) ----------
 
-/** 한 시간마다: **글만** 긁어 와요. AI 를 안 써서 토큰이 0이에요. 속보용이에요. */
-// 매시 20분: 피드 24곳 + 요약 6편 (fetch 50개 안쪽)
-export async function newsPulse(env) {
-  const pulled = await ingest(env);
-  const sum = await summarize(env, 6);
-  return { added: pulled.reduce((n, p) => n + p.added, 0), summed: sum.done };
-}
+const parseJ = (s, d) => { try { return JSON.parse(s) ?? d; } catch { return d; } };
+const emptySections = () => Object.fromEntries(SECTIONS.map((k) => [k, []]));
 
-/** 아침 8시: 모으고, 요약을 채우고, 오늘의 브리핑을 만들어요. */
-export async function newsCron(env, day) {
-  // 수집은 매시 크론이 해요. 여기선 요약 10편 + 브리핑만 (fetch 50개 안쪽)
-  const pulled = [];
-  const added = 0;
-  const summed = (await summarize(env, 10)).done;
+/**
+ * 그날(한국 날짜) 신문을 짜요. 1면(헤드라인 · 리드 · 핵심 3~5편 · 줄기가 오늘 어떻게 움직였나) + 면별 글 목록.
+ * AI 는 한 번만 불러요. 마감(closed)된 신문은 draft 로 덮어쓰지 않아요.
+ */
+export async function buildEdition(env, day, status = "draft") {
+  const had = await env.DB.prepare("SELECT status FROM news_editions WHERE day = ?").bind(day).first();
+  if (had?.status === "closed" && status !== "closed") return { day, status: "closed", skipped: true };
 
-  let head = null;
-  try {
-    const b = await brief(env, day, true);
-    head = b?.headline || null;
-  } catch (e) {
-    console.log("브리핑 실패", String(e?.message || e));
+  const { results } = await env.DB.prepare(
+    `SELECT i.id, i.title, i.one_liner, i.summary, i.section, i.thread_id, i.published_at, f.topic
+       FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.day = ? ORDER BY i.published_at DESC LIMIT 400`
+  ).bind(day).all();
+  const items = results || [];
+  const sections = emptySections();
+  for (const it of items) sections[sectionOf(it.topic, it.section)].push(it.id);
+
+  // 오늘 움직인 줄기: 오늘 글이 있고, 전체로 2편 이상 이어진 이야기
+  const perThread = new Map();
+  for (const it of items) if (it.thread_id) perThread.set(it.thread_id, [...(perThread.get(it.thread_id) || []), it]);
+  let threads = [];
+  if (perThread.size) {
+    const ids = [...perThread.keys()];
+    const rows = await inChunks(env, "SELECT t.id, t.title, (SELECT COUNT(*) FROM news_items x WHERE x.thread_id = t.id) AS n FROM news_threads t WHERE t.id IN (?)", ids);
+    threads = rows.filter((t) => t.n >= 2).map((t) => ({ ...t, today: perThread.get(t.id) }))
+      .sort((a, b) => b.today.length - a.today.length || b.n - a.n).slice(0, 6);
   }
 
-  const broken = pulled.filter((p) => p.error).length;
-  const dying = pulled.filter((p) => p.staleDays).map((p) => p.feed);
-  return { added, summed, broken, dying, head };
+  const pool = items.filter((i) => i.one_liner).slice(0, 40);
+  let out = { headline: "조용한 하루", lede: "", front: [], threads: [] };
+  if (pool.length && left() >= 2) {
+    try {
+      const { data } = await aiJson(
+        env,
+        RULES,
+        `아래는 ${day} 하루 동안 들어온 기사 ${pool.length}편과, 오늘 새 글이 붙은 이어지는 이야기(줄기)야. 이걸로 **오늘 신문의 1면**을 짜 줘.
+
+- headline: 오늘을 대표하는 한 문장, 30자 이내. 단정적으로.
+- lede: 2~3문장. 오늘 기사들이 어떻게 이어지는지. '~예요' 체. 사실만.
+- front: 1면에 올릴 기사 3~5편. 글 수가 많은 쪽보다 **실제로 중요한 것**. 서로 다른 이야기로. why = 왜 1면인지 한 문장('~예요').
+- threads: 아래 줄기마다 오늘 어떻게 움직였는지 한 문장(move, '~예요'). 줄기가 없으면 빈 배열.
+
+기사:
+${pool.map((p, n) => `[${n}] (${sectionOf(p.topic, p.section)}) ${p.one_liner}`).join("\n")}
+
+줄기:
+${threads.length ? threads.map((t, n) => `[T${n}] ${t.title} — 오늘 ${t.today.length}편: ${t.today.slice(0, 3).map((x) => x.one_liner || x.title).join(" / ")}`).join("\n") : "(없음)"}
+
+{"headline":"...","lede":"...","front":[{"n":0,"why":"..."}],"threads":[{"t":0,"move":"..."}]} 형식으로만 답해.`,
+        () => ({ headline: String(pool[0].one_liner).slice(0, 30), lede: `${day} 기사 ${items.length}편이에요. 시험용 1면이에요.`,
+          front: pool.slice(0, 4).map((_, n) => ({ n, why: "시험용 1면 이유예요." })), threads: threads.map((_, t) => ({ t, move: "시험용 움직임이에요." })) })
+      );
+      const seen = new Set();
+      out = {
+        headline: String(data?.headline || "").trim().slice(0, 120) || String(pool[0].one_liner).slice(0, 60),
+        lede: String(data?.lede || "").trim().slice(0, 800),
+        front: (Array.isArray(data?.front) ? data.front : []).map((f) => ({ p: pool[Number(f?.n)], why: String(f?.why || "").trim().slice(0, 300) }))
+          .filter((f) => f.p && !seen.has(f.p.id) && seen.add(f.p.id)).slice(0, 5).map((f) => ({ item_id: f.p.id, why: f.why })),
+        threads: (Array.isArray(data?.threads) ? data.threads : []).map((x) => ({ t: threads[Number(String(x?.t).replace(/^T/i, ""))], move: String(x?.move || "").trim().slice(0, 300) }))
+          .filter((x) => x.t && x.move).map((x) => ({ thread_id: x.t.id, move: x.move })),
+      };
+    } catch (e) {
+      console.log("1면 실패", day, String(e?.message || e));
+      out = { headline: String(pool[0].one_liner).slice(0, 60), lede: "", front: [], threads: [] };
+    }
+  } else if (pool.length) out.headline = String(pool[0].one_liner).slice(0, 60);
+  // 1면은 최소 3편 (글이 그만큼 있으면) — AI 가 적게 주면 줄기가 굵은 순으로 채워요
+  for (const p of pool) {
+    if (out.front.length >= Math.min(3, pool.length)) break;
+    if (!out.front.some((f) => f.item_id === p.id)) out.front.push({ item_id: p.id, why: "" });
+  }
+
+  const row = [day, out.headline, out.lede, JSON.stringify(out.front), JSON.stringify(out.threads), JSON.stringify(sections), status, items.length, Date.now()];
+  await env.DB.prepare(
+    `INSERT INTO news_editions (day, headline, lede, front, threads, sections, status, item_count, built_at) VALUES (?,?,?,?,?,?,?,?,?)
+     ON CONFLICT(day) DO UPDATE SET headline = excluded.headline, lede = excluded.lede, front = excluded.front, threads = excluded.threads,
+       sections = excluded.sections, status = excluded.status, item_count = excluded.item_count, built_at = excluded.built_at`
+  ).bind(...row).run();
+  return { day, status, items: items.length, front: out.front.length, threads: out.threads.length, headline: out.headline };
 }
+
+// ---------- 지난 60일 되채우기 (한 번에 하루씩, 조금씩) ----------
+
+const BACKFILL_DAYS = 60;
+const getJob = async (env, name) => parseJ((await env.DB.prepare("SELECT state FROM news_jobs WHERE name = ?").bind(name).first())?.state, {});
+const putJob = (env, name, state) => env.DB.prepare("INSERT INTO news_jobs (name, state, updated_at) VALUES (?,?,?) ON CONFLICT(name) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at")
+  .bind(name, JSON.stringify(state), Date.now()).run();
+
+/**
+ * 한 걸음: 아직 마감 신문이 없는 가장 오래된 날(최근 60일 · 오늘 제외)의 글을 perStep 편 요약하고,
+ * 그날 요약할 게 다 끝났으면 그날 신문을 마감(closed)으로 짜요. 몇 번을 불러도 같은 결과(멱등).
+ * 요약이 계속 실패해서 3걸음째 진전이 없으면 요약 없는 글은 둔 채 신문을 짜요(멈춰 있지 않게).
+ */
+export async function backfillStep(env, perStep = 10) {
+  const today = kstToday(0), from = kstToday(-BACKFILL_DAYS);
+  const next = await env.DB.prepare(
+    `SELECT i.day, COUNT(*) AS n, SUM(i.summary IS NULL AND i.sum_skip = 0) AS todo FROM news_items i LEFT JOIN news_editions e ON e.day = i.day
+      WHERE i.day >= ? AND i.day < ? AND (e.day IS NULL OR e.status <> 'closed') GROUP BY i.day ORDER BY i.day ASC LIMIT 1`
+  ).bind(from, today).first();
+  const st = await getJob(env, "backfill");
+  const closedDays = (await env.DB.prepare("SELECT COUNT(*) AS n FROM news_editions WHERE status = 'closed' AND day >= ? AND day < ?").bind(from, today).first())?.n || 0;
+  if (!next) {
+    const s = { day: null, idle: true, closed_days: closedDays, at: Date.now() };
+    await putJob(env, "backfill", s);
+    return s;
+  }
+  let summed = 0, failed = [];
+  if (next.todo > 0) { const r = await summarize(env, perStep, { day: next.day }); summed = r.done; failed = r.failed; }
+  const todo = next.todo > 0 ? (await env.DB.prepare("SELECT COUNT(*) AS n FROM news_items WHERE day = ? AND summary IS NULL AND sum_skip = 0").bind(next.day).first()).n : 0;
+  const stuck = summed === 0 && next.todo > 0 ? (st.day === next.day ? (st.stuck || 0) + 1 : 1) : 0;
+  let built = null;
+  if ((todo <= 0 || stuck >= 3) && left() >= 1) built = await buildEdition(env, next.day, "closed");
+  const s = { day: next.day, items: next.n, summed, todo: Math.max(0, todo), stuck, built: !!built, closed_days: closedDays + (built ? 1 : 0), failed, at: Date.now() };
+  await putJob(env, "backfill", s);
+  return s;
+}
+
+// ---------- 크론 (전부 바깥 요청 40개 안 — lib/budget.js 가 세고 막아요) ----------
+
+export const NEWS_BUDGET = 40;
+
+/** 매시 10분 (DB 알림과 같은 크론): 피드 10곳 + 요약 1묶음(5편) + 되채우기 한 걸음(5편) — 보통 30개 안팎/40 (공급사 장애 조치 여유) */
+export async function newsHourly(env) {
+  const pulled = await ingest(env, Date.now(), 10);
+  const sum = left() >= 4 ? await summarize(env, 5) : { done: 0 };
+  const backfill = left() >= 6 ? await backfillStep(env, 5) : null;
+  return { added: pulled.reduce((n, p) => n + p.added, 0), feeds: pulled.length, summed: sum.done, backfill };
+}
+/** 하위 호환 (예전 이름) */
+export const newsPulse = newsHourly;
+
+/** 아침 8시: 요약 4묶음(20편) + 오늘 신문 초안 다시 짜기 + 예전 브리핑 */
+export async function newsCron(env, day = kstToday(0)) {
+  const summed = (await summarize(env, 20)).done;
+  const edition = await buildEdition(env, day, "draft");
+  let head = null;
+  try { if (left() >= 2) head = (await brief(env, day, true))?.headline || null; }
+  catch (e) { console.log("브리핑 실패", String(e?.message || e)); }
+  return { added: 0, summed, broken: 0, dying: [], head, edition };
+}
+
+/** 23:10 (한국): 마지막으로 모으고, 오늘 글을 요약하고, 오늘 신문을 마감해요 */
+export async function newsClose(env, day = kstToday(0)) {
+  const pulled = await ingest(env, Date.now(), 12);
+  const sum = await summarize(env, 20, { day });
+  const edition = await buildEdition(env, day, "closed");
+  return { added: pulled.reduce((n, p) => n + p.added, 0), summed: sum.done, edition };
+}
+
 
 // ---------- 소스 심기 ----------
 

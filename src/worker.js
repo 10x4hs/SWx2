@@ -1,23 +1,24 @@
 // Dsm-mafia API — Cloudflare Worker + D1.
+import "./lib/budget.js"; // 맨 먼저: fetch 를 세는 포장 (크론 예산)
 // Static files in ./public are served by the assets binding; only /api/* reaches this code.
 import { registerAi } from "./ai.js";
 import { registerBrain } from "./brain.js";
 import { registerEnglish } from "./english.js";
 import { registerPages, servePageFile } from "./pages.js";
 import { registerProxy, handleProxy } from "./proxy.js";
-import { registerPapers, cleanupPaperNotes } from "./papers.js";
+import { registerPapers } from "./papers.js";
 import { registerBooks } from "./books.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth } from "./oauth.js";
 import { registerHomePad } from "./homepad.js";
 import { registerCalendar } from "./calendar.js";
-import { registerTogether, weeklyReviewCron } from "./together.js";
+import { registerTogether } from "./together.js";
 import { registerRoom } from "./room.js";
 import { registerLibrary } from "./library.js";
 import { registerPush } from "./push.js";
-import { registerNews, newsCron, newsPulse } from "./news.js";
-import { registerReminders, remindersCron, REMIND_CRON } from "./reminders.js";
-import { kstToday } from "./lib/day.js";
+import { registerNews } from "./news.js";
+import { registerReminders } from "./reminders.js";
+import { registerCron, runCron } from "./cron.js";
 import { HttpError, fail, json, body, now, uid, str } from "./http.js";
 import { on, match } from "./router.js";
 import { requireUser, sessionUser, tokenUser, loginWith, MUST_CHANGE_OPEN, registerAuth } from "./auth.js";
@@ -26,12 +27,8 @@ import { registerDiary } from "./diary.js";
 import { registerCustom } from "./custom.js";
 import { registerFiles } from "./files.js";
 import { registerNotes, indexStmts, MAX_NOTE } from "./notes.js";
-import { registerRecords, autoSaveYesterday } from "./records.js";
+import { registerRecords } from "./records.js";
 export { RoomHub } from "./hub.js"; // Durable Object 클래스는 main 모듈에서 내보내야 해요
-
-const WEEKLY_CRON = "0 13 * * SUN";
-const NEWS_CRON = "0 23 * * *";        // 08:00 한국 시간 — 뉴스 모으고 요약 · 지도 태그 · 줄기 · 브리핑
-const NEWS_PULSE_CRON = "20 * * * *";  // 매시 20분 — 글만 긁어 와요 (토큰 0)
 
 export default {
   async fetch(req, env, ec) {
@@ -63,32 +60,11 @@ export default {
       return json({ error: "서버에서 문제가 생겼어요. 잠시 후 다시 시도해 주세요." }, 500);
     }
   },
-  // wrangler.jsonc 의 triggers.crons
-  //   "5 15 * * *"  매일 00:05 (한국 시간) — 지난 하루의 계획·기록을 모두 자동 저장
-  //   "0 13 * * SUN" 일요일 22:00 (한국 시간) — 이번 주 활동이 있는 사람의 주간 회고를 미리 만들기
-  //   "0 * * * *"   매시 정각 — 데이터베이스 행 알림 (src/reminders.js · 한 시간 단위)
+  // wrangler.jsonc 의 triggers.crons — 무엇이 언제 도는지는 src/cron.js 맨 위에 있어요
   async scheduled(event, env, ec) {
-    if (event.cron === NEWS_PULSE_CRON) {
-      ec.waitUntil(newsPulse(env).then((r) => r.added && console.log("속보 수집", r.added + "편")).catch((e) => console.log("속보 실패", String(e?.message || e))));
-      return;
-    }
-    if (event.cron === NEWS_CRON) {
-      ec.waitUntil(newsCron(env, kstToday(0))
-        .then((r) => console.log("뉴스", r.added + "편", "요약 " + r.summed, r.dying.length ? "죽어가는 피드 " + r.dying.join(",") : "", r.head || ""))
-        .catch((e) => console.log("뉴스 실패", String(e?.message || e))));
-      return;
-    }
-    if (event.cron === REMIND_CRON) {
-      ec.waitUntil(remindersCron(env).then((r) => r.sent && console.log("행 알림", r.sent + "개")));
-      return;
-    }
-    if (event.cron === WEEKLY_CRON) {
-      ec.waitUntil(weeklyReviewCron(env).then((r) => console.log("주간 회고", r.week, r.made + "명", r.skipped || "")));
-      return;
-    }
-    ec.waitUntil(autoSaveYesterday(env).then((r) => console.log("자동 저장", r.day, r.saved + "명")));
-    // 논문 스프린트가 끝났으면(10-06~) 노트의 논문 구역을 지워요
-    ec.waitUntil(cleanupPaperNotes(env, kstToday(0)).then((r) => r.deleted && console.log("논문 구역 정리", r.deleted + "개")));
+    ec.waitUntil(runCron(env, event.cron)
+      .then((r) => console.log("크론", event.cron, "바깥 요청 " + r.used + "/" + r.limit, JSON.stringify(r.result).slice(0, 600)))
+      .catch((e) => console.log("크론 실패", event.cron, String(e?.message || e))));
   },
 };
 
@@ -149,5 +125,6 @@ registerTogether(on, { json, body, fail, now });
 registerRoom(on, { json, body, fail, uid, now });
 registerPush(on, { json, body, fail, uid, now });
 registerReminders(on, { json, fail });
+registerCron(on, { json, fail }); // 로컬 시험: POST /api/cron/run?cron=hourly|am|close
 registerLibrary(on, { json, body, fail, uid, now });
 registerNews(on, { json, body, fail, now }); // 뉴스 Signal Map (#/news)

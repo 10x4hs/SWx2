@@ -3,6 +3,7 @@
   "name": "dsm-mafia",
   "main": "src/worker.js",
   "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_als"], // src/lib/budget.js 가 크론마다 바깥 요청 수를 세요 (AsyncLocalStorage)
   // 워커를 D1(아시아) 가까이에서 돌려요 — 쿼리마다 태평양을 건너지 않게
   "placement": { "mode": "smart" },
   "assets": {
@@ -11,9 +12,8 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*", "/pf/*", "/px/*", "/mcp", "/oauth/*", "/.well-known/*"]
   },
-  // 매일 15:05 UTC = 00:05 한국 시간: 지난 하루 기록 자동 저장
-  // 일요일 13:00 UTC = 22:00 한국 시간: 이번 주 회고 미리 만들기 (src/worker.js 의 scheduled 가 event.cron 으로 나눠요)
-  "triggers": { "crons": ["5 15 * * *", "0 13 * * SUN", "0 23 * * *", "20 * * * *", "0 * * * *"] }, // 뉴스 08:00 브리핑 · 매시 20분 수집 · 매시 정각 DB 알림
+  // 무료 플랜 최대 5개. 무엇이 언제 도는지는 src/cron.js 맨 위 (00:05 자동 저장 · 일 22:00 회고 · 08:00 뉴스 · 매시 10분 알림+뉴스 · 23:10 신문 마감)
+  "triggers": { "crons": ["5 15 * * *", "0 13 * * SUN", "0 23 * * *", "10 * * * *", "10 14 * * *"] },
   "d1_databases": [
     {
       "binding": "DB",

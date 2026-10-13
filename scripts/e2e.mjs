@@ -11,7 +11,7 @@
 //   ⑨ 친구 페이지 숨기기 — 친구가 공개한 Dock 페이지 · 공부 과목 탭을 '내 화면에서 숨기기', 프로필에서 다시 보이기
 //   ⑩ Study 그래프 — 영어 · 논문 · AI · 과목 페이지마다 [내용 | 그래프], 크기 기준 · 크기가 계정에 저장, 점을 누르면 그 내용으로
 //   ⑪ Brain — 노트 + 공부를 한 나무로: 맨 위엔 큰 개념 5개, 누르면 안으로, 공부 점은 원래 화면, 가져오기는 다시 올려도 그대로 (2026-10-13)
-//   ⑫ 뉴스 Signal Map — 인트로가 뜨고 Space 로 건너뛰기 · 지구본 · 다시 오면 짧은 인트로 · 글 열기 · 메모 + 반박 (2026-10-13)
+//   ⑫ 뉴스 — 하루 한 호 신문 · 기사 읽기 · 메모 + 반박 · j/k · Esc (2026-10-13)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -378,39 +378,30 @@ try {
     await go("#/papers/easy/review", 2000);
     ok(await p.evaluate(() => !!document.querySelector(".ez-rv h2, .ez-rv .qz")), `${tv} · 논문 섞어서 복습 화면`);
 
-    // ---------- ⑫ 뉴스 Signal Map — 인트로 건너뛰기 · 지도 · 글 열기 · 메모 + 반박 (2026-10-13) ----------
+    // ---------- ⑫ 뉴스 — 하루 한 호 신문: 제호 · 섹션 · 달력 · 기사 읽기 · 메모 + 반박 · j/k · Esc (2026-10-13) ----------
     errs = [];
-    if (!(await (await ctx.request.get(BASE + "/api/news/map")).json()).signals?.length) execFileSync("node", ["scripts/news-seed.mjs"], { stdio: "ignore" });
-    await p.goto(BASE + "/"); await sleep(600);
-    await p.evaluate(() => { try { localStorage.removeItem("nw-intro"); } catch {} location.hash = "#/news"; });
-    await p.waitForSelector(".nw.intro-on", { timeout: 8000 }).catch(() => {});
-    const introOn = await p.evaluate(() => document.querySelector(".nw")?.classList.contains("intro-on"));
-    await sleep(500); await p.keyboard.press("Space"); await sleep(700);
-    const skipped = await p.evaluate(() => { const n = document.querySelector(".nw"); return n.classList.contains("ready") && !n.classList.contains("intro-on"); });
-    ok(introOn && skipped, `${tv} · 뉴스 인트로가 뜨고 Space 로 건너뛰어요`);
-    await p.waitForSelector(".nw-sig", { timeout: 8000 }).catch(() => {});
-    const sigs = await p.evaluate(() => document.querySelectorAll(".nw-sig").length);
-    await p.waitForSelector(".nw.globe-on", { timeout: 15000 }).catch(() => {});
-    const hs = await p.evaluate(() => ({ globe: !!document.querySelector(".nw.globe-on .nw-globe canvas"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
-    ok(sigs > 0 && hs.globe && !hs.over, `${tv} · 지도 홈 — 신호 ${sigs}개 · 지구본 ${hs.globe} · 가로 넘침 없음`);
-    // 다시 오면 짧은 인트로 (0.8초 안쪽)
-    await p.evaluate(() => { location.hash = "#/"; }); await sleep(500);
-    await p.evaluate(() => { location.hash = "#/news"; }); await sleep(1300);
-    ok(await p.evaluate(() => document.querySelector(".nw")?.classList.contains("ready")), `${tv} · 두 번째로 열면 짧은 인트로 뒤 바로 지도`);
-    const firstId = await p.evaluate(() => document.querySelector(".nw-live .nw-li")?.dataset.id);
-    await p.click(".nw-live .nw-li");
-    await p.waitForSelector("#nw-compose textarea", { timeout: 8000 }).catch(() => {});
-    ok(await p.evaluate((id) => location.hash === "#/news/item/" + id && !!document.querySelector(".nw.panel-on .nw-ko"), firstId), `${tv} · 글을 열면 한국어 요약 패널`);
-    await p.fill("#nw-compose textarea", "e2e memo " + tv);
-    await p.click("#nw-compose button"); await sleep(600);
-    const memoN = await p.evaluate(() => document.querySelectorAll(".nw-memo").length);
-    await p.locator(".nw-memo").last().locator("[data-reply=rebut]").click();
-    await p.locator(".nw-memo").last().locator(".nw-rform textarea").fill("e2e rebut");
-    await p.locator(".nw-memo").last().locator(".nw-rform button").click(); await sleep(600);
-    const talk = await p.evaluate(() => ({ rebut: !!document.querySelector(".nw-memo:last-of-type .nw-reply.nw-rebut"), n: document.querySelector("#nw-talk-n")?.textContent || "" }));
-    ok(memoN > 0 && talk.rebut && talk.n.includes("disputed"), `${tv} · 메모 + 반박(빨강) — ⚡ disputed 표시`);
+    execFileSync("node", ["scripts/news-seed.mjs"], { stdio: "ignore" });
+    await p.goto(BASE + "/#/news"); await p.waitForSelector(".np-mast", { timeout: 10000 }).catch(() => {});
+    const np = await p.evaluate(() => ({ date: document.querySelector(".np-date")?.textContent || "", items: document.querySelectorAll(".np-item, .np-top, .np-front-list li").length, over: document.documentElement.scrollWidth > innerWidth + 1, cal: document.querySelectorAll(".np-cd").length, w: innerWidth }));
+    ok(np.date.length > 5 && np.items > 0 && !np.over && (np.w < 1100 || np.cal === 60), `${tv} · 신문 — 제호 · 기사 ${np.items}개 · 달력 ${np.cal} · 가로 넘침 없음`);
+    const firstId = await p.evaluate(() => document.querySelector(".np-item[data-id]")?.dataset.id);
+    await p.click(`.np-item[data-id="${firstId}"] .np-item-a`);
+    await p.waitForSelector("#np-compose textarea", { timeout: 8000 }).catch(() => {});
+    ok(await p.evaluate((id) => location.hash === "#/news/item/" + id && !!document.querySelector(".np-reader:not([hidden]) .np-r-title"), firstId), `${tv} · 기사를 열면 읽기 칸`);
+    await p.fill("#np-compose textarea", "e2e memo " + tv);
+    await p.click("#np-compose button"); await sleep(600);
+    const memoN = await p.evaluate(() => document.querySelectorAll(".np-memo").length);
+    await p.locator(".np-memo").last().locator("[data-reply=rebut]").click();
+    await p.locator(".np-memo").last().locator(".np-rform textarea").fill("e2e rebut");
+    await p.locator(".np-memo").last().locator(".np-rform button").click(); await sleep(600);
+    const talk = await p.evaluate(() => ({ rebut: !!document.querySelector(".np-memo:last-of-type .np-reply.rebut"), n: document.querySelector("#np-talk-n")?.textContent || "" }));
+    ok(memoN > 0 && talk.rebut && talk.n.includes("disputed"), `${tv} · 메모 + 반박 — ⚡ disputed 표시`);
+    await p.locator("#np-talk").click({ position: { x: 1, y: 1 } }).catch(() => {});
+    await p.evaluate(() => document.activeElement?.blur());
+    await p.keyboard.press("j"); await sleep(900);
+    const moved = await p.evaluate((id) => /^#\/news\/item\//.test(location.hash) && location.hash !== "#/news/item/" + id, firstId);
     await p.keyboard.press("Escape"); await sleep(600);
-    ok(await p.evaluate(() => location.hash === "#/news" && !document.querySelector(".nw.panel-on")) && !errs.length, `${tv} · Esc 로 패널 닫기 · 오류 없음${errs.length ? " — " + errs[0] : ""}`);
+    ok(moved && await p.evaluate(() => /^#\/news(\/\d{4}-\d{2}-\d{2})?$/.test(location.hash) && document.querySelector(".np-reader")?.hidden) && !errs.length, `${tv} · j 로 다음 기사 · Esc 로 닫기 · 오류 없음${errs.length ? " — " + errs[0] : ""}`);
     await ctx.request.fetch(BASE + "/api/news/item/" + firstId, { method: "GET", headers: H }).then(async (r) => {
       for (const c of (await r.json()).comments || []) if (/^e2e /.test(c.body) && !c.parent_id) await ctx.request.fetch(BASE + "/api/news/comments/" + c.id, { method: "DELETE", headers: H });
     }).catch(() => {});

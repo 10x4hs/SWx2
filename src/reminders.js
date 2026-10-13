@@ -1,11 +1,11 @@
 // 데이터베이스 행 알림 (docs/blocks-schema.md "Reminders").
-// 행 props._remind = { prop, time } → notes.remind_at (저장할 때 notes.js 가 계산). 크론이 한 시간마다(정각) 지난 알림을 찾아
+// 행 props._remind = { prop, time } → notes.remind_at (저장할 때 notes.js 가 계산). 크론이 한 시간마다(매시 10분) 지난 알림을 찾아
 // 행 주인에게 "깨우기" 푸시를 보내요 (push.js 는 내용 없는 푸시라, 서비스 워커가 POST /reminders/take 로 무엇인지 읽어 띄워요).
 //   POST /reminders/take → { reminders: [{ id, title, date, time, db_title }] } — 보냈지만 아직 안 띄운 것, 읽으면 띄운 걸로 표시
 import { isDue } from "../public/js/blocks/dbview.js";
 import { pushUsers } from "./push.js";
 
-export const REMIND_CRON = "0 * * * *";
+export const REMIND_CRON = "10 * * * *"; // src/cron.js 의 HOURLY (뉴스와 같은 크론)
 const MAX_LATE = 26 * 3600e3;
 
 export async function remindersCron(env, t = Date.now()) {
