@@ -114,6 +114,8 @@ export async function fetchFeed(url) {
     const when =
       tag(b, "pubDate") || tag(b, "published") || tag(b, "updated") || tag(b, "dc:date");
     const at = when ? Date.parse(when) : NaN;
+    // 행사 안내(PIIE /events/ 등)는 기사가 아니에요 — 미래 날짜가 붙은 글도 행사 공지라 건너뛰어요
+    if (/\/events?\//i.test(link) || (Number.isFinite(at) && at > Date.now() + 36e5)) continue;
     // 날짜가 없거나 미래(PIIE 는 행사 날짜를 pubDate 로 줘요)면 null → 넣을 때 처음 본 시각 + dated=0
     const published = Number.isFinite(at) && at <= Date.now() + 36e5 ? at : null;
     if (published && published > latest) latest = published;
@@ -269,7 +271,7 @@ ${chunk.map((t, n) => `[${n}] ${t.title}   — 출처: ${t.feed}`).join("\n")}
  * 글 SUM_CHUNK 편을 **AI 한 번**에 묶어요 — 글마다 부르면 바깥 요청 50개 한도가 금방 차요.
  * opts.day 를 주면 그날 글만 (되채우기). 예산(lib/budget.js)이 모자라면 남은 묶음은 다음 번으로 미뤄요.
  */
-const SUM_CHUNK = 5;
+const SUM_CHUNK = 4;
 const SUM_SKIP = 2; // AI 가 이만큼 답을 안 주면 그 글은 건너뛰어요 (sum_skip=1 · summary 는 비워 둔 채) → 그날 신문이 막히지 않게
 /** 답을 못 받은 횟수를 세고, SUM_SKIP 번이면 건너뛰기 표시 */
 const markMiss = (env, id) => env.DB.prepare("UPDATE news_items SET sum_miss = sum_miss + 1, sum_skip = CASE WHEN sum_miss + 1 >= ? THEN 1 ELSE 0 END WHERE id = ?").bind(SUM_SKIP, id).run();
@@ -311,7 +313,7 @@ export async function summarize(env, limit = 10, opts = {}) {
   await inBatches(chunks, SUM_AT_ONCE, async (chunk) => {
     if (left() < 2) { failed.push("예산 부족 — 다음 번에"); return; }
     try {
-      const body = chunk.map((t, n) => `### [${n}] 출처: ${t.feed} (${t.topic})\n제목: ${t.title}\n${String(t.raw || "").slice(0, 2500)}`).join("\n\n");
+      const body = chunk.map((t, n) => `### [${n}] 출처: ${t.feed} (${t.topic})\n제목: ${t.title}\n${String(t.raw || "").slice(0, 4000)}`).join("\n\n");
       const { data } = await aiJson(
         env,
         RULES,
@@ -321,7 +323,7 @@ export async function summarize(env, limit = 10, opts = {}) {
 - 오늘은 ${kstToday(0)} (한국 시간)이야. 연도·날짜는 원문에 적힌 것만 쓰고, 원문에 없는 연도를 지어내지 마.
 - 고유명사·용어는 정확한 한국어 표준 표기로 (예: "language model" → "언어 모델", "rare earth" → "희토류"). 낯선 이름은 억지로 옮기지 말고 원문 표기 그대로.
 - one: **35~50자 한 문장.** 절대 55자를 넘기지 마. 한 가지 사실만. 끝은 "~했다 / ~한다" 체. 고유명사에 원어를 괄호로 병기하지 마. 제목을 되풀이하지 말고 알맹이를 담아.
-- summary: **2~3문장**, 합쳐서 90~160자. 신문 기사 요약처럼: 무슨 일이 있었고(누가·무엇을), 왜 중요한지. "~했다 / ~이다" 체. 원문에 없는 건 쓰지 마.
+- summary: **4~5문장**, 합쳐서 220~380자. 이것만 읽어도 내용을 알 수 있게: ① 무슨 일이 있었나(누가·언제·무엇을) ② 핵심 내용·수치 ③ 배경 ④ 왜 중요한지·다음에 볼 것. "~했다 / ~이다" 체. 원문에 없는 건 쓰지 마.
 - section: **기사 내용**으로 고른 신문 면 하나 (출처의 주제와 달라도 기사 내용을 따라. 예: AI 매체의 언론 자유·선거 기사는 "geopolitics") — "ai"(AI 모델·연구·정책 · AI 회사 소식: 새 모델 출시·예고, OpenAI·Anthropic·Google DeepMind·xAI·Meta AI 등의 발표·투자·인사. **출처가 어디든 AI 가 주인공인 기사는 "ai"**) | "geopolitics"(외교·안보·전쟁·국내정치) | "tech"(반도체·제조·우주·기술산업) | "economy"(거시·무역·에너지·금융).
 - geo: 무대가 되는 나라 ISO 3166-1 alpha-2 코드 1~3개 (EU 는 "BE"). 없으면 빈 배열.
 - tag: 이 글이 속한 **지속되는 이야기**를 2~4단어 영어 소문자로 (예: "us china chip controls", "ukraine war"). 몇 주 동안 이어질 이야기여야 해.

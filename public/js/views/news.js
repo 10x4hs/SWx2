@@ -14,7 +14,8 @@ const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
 const dayKo = (d) => { const x = new Date(d + "T12:00:00+09:00"); return `${x.getUTCMonth() + 1}월 ${x.getUTCDate()}일 ${WEEK[x.getUTCDay()]}요일`; };
 const dayShort = (d) => { const x = new Date(d + "T12:00:00+09:00"); return `${x.getUTCMonth() + 1}.${x.getUTCDate()}`; };
 const hhmm = (t) => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Seoul" });
-const when = (it) => (it.dated === 0 ? "" : hhmm(it.published_at));
+// 올라온 때: 오늘이면 시각만, 다른 날이면 날짜까지, 원문에 날짜가 없으면 그렇다고 적어요
+const when = (it) => (it.dated === 0 ? "날짜 미상" : kstDay(it.published_at) === kstDay() ? hhmm(it.published_at) : `${dayShort(kstDay(it.published_at))} ${hhmm(it.published_at)}`);
 const strip = (s) => String(s || "").replace(/[\s.。…]+$/g, "").trim();
 const sentences = (s) => String(s || "").split(/(?<=[.!?다요])\s+(?=\S)/).map((x) => x.trim()).filter(Boolean);
 // 보이는 제목: 한국어 제목 → 한 줄 요약 → 원문 제목
@@ -86,7 +87,7 @@ export function mount(root, ctx, r) {
   };
   function row(it) {
     const m = mine(it), t = titleOf(it);
-    const sub = sentences(it.summary).find((s) => strip(s) !== strip(t)) || "";
+    const sub = sentences(it.summary).filter((s) => strip(s) !== strip(t)).join(" ");
     return `<li class="gn-item${m.read ? " read" : ""}${cur === it.id ? " on" : ""}" data-id="${it.id}">
       <a class="gn-item-a" href="#/news/item/${it.id}">
         <span class="gn-t"${isKo(t) ? "" : ' lang="en"'}>${m.read ? "" : `<i class="gn-dot" aria-label="안 읽음"></i>`}${esc(t)}</span>
@@ -138,7 +139,7 @@ export function mount(root, ctx, r) {
     const star = () => (it.stars || []).includes(ctx.me.id);
     sheet.innerHTML = `<div class="gn-sh">
       ${sheetHead()}
-      <span class="gn-meta"><span>${esc(it.feed)}</span><span>${it.dated === 0 ? "날짜 없음" : `${dayShort(kstDay(it.published_at))} ${hhmm(it.published_at)}`}</span>${it.section ? `<span class="gn-tag">${SEC_KO[it.section] || ""}</span>` : ""}</span>
+      <span class="gn-meta"><span>${esc(it.feed)}</span><span>${it.dated === 0 ? "날짜 미상" : `${dayShort(kstDay(it.published_at))} ${hhmm(it.published_at)} 올라옴`}</span>${it.section ? `<span class="gn-tag">${SEC_KO[it.section] || ""}</span>` : ""}</span>
       <h2 class="gn-sh-t">${esc(t)}</h2>
       ${t !== it.title ? `<p class="gn-sh-orig" lang="en">${esc(it.title)}</p>` : ""}
       ${sum.length ? `<section class="gn-card"><h3>요약</h3><ul>${sum.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></section>` : `<section class="gn-card"><p class="gn-soft">요약을 만드는 중이에요.</p></section>`}

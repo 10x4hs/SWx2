@@ -78,7 +78,7 @@
 .gn-t { display: block; font-size: 17px; line-height: 1.5; font-weight: 600; }
 .gn-item-a:hover .gn-t { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .gn-dot { display: inline-block; width: 7px; height: 7px; margin: 0 8px 2px 0; border-radius: 50%; background: var(--g-tint); vertical-align: middle; }
-.gn-s { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; font-size: 15px; line-height: 1.6; color: var(--g-ink2); }
+.gn-s { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; font-size: 15px; line-height: 1.6; color: var(--g-ink2); }
 .gn-item.read .gn-t { color: var(--g-ink2); font-weight: 500; }
 .gn-item.on { background: var(--g-soft); box-shadow: -12px 0 0 var(--g-soft), 12px 0 0 var(--g-soft); }
 .gn-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; margin-top: 6px; font-size: 13px; color: var(--g-ink3); }
