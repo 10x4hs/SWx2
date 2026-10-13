@@ -71,7 +71,7 @@
 .nb-check:checked { background: #2383E2; border-color: #2383E2; }
 .nb-check:checked::after { content: "✓"; color: #fff; font-size: 12px; font-weight: 700; line-height: 1; }
 .nb-todo.done > .nb-row .nb-text { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-3); }
-.nb-tg { border: 0; background: none; cursor: pointer; border-radius: 4px; color: var(--ink-2); font-size: 13px; transition: transform .15s; padding: 0; }
+.nb-tg { border: 0; background: none; cursor: pointer; border-radius: 4px; color: var(--ink-2); width: 22px; height: 22px; transition: transform .15s; padding: 0; }
 .nb-tg:hover { background: var(--hover); }
 .nb.open > .nb-row .nb-tg { transform: rotate(90deg); }
 .nb-empty-kid { border: 0; background: none; color: var(--ink-3); font-size: 14px; padding: 4px 2px; cursor: pointer; text-align: left; }

@@ -116,7 +116,7 @@ export function createBlockEditor(host, opts) {
     if (b.type === "bullet") mark = `<span class="nb-mk">•</span>`;
     else if (b.type === "number") mark = `<span class="nb-mk nb-num">${num}.</span>`;
     else if (b.type === "todo") mark = `<input type="checkbox" class="nb-mk nb-check" ${b.props.checked ? "checked" : ""} ${ro ? "disabled" : ""} aria-label="Done">`;
-    else if (fold) mark = `<button type="button" class="nb-mk nb-tg" aria-expanded="${open}" aria-label="Toggle">▸</button>`;
+    else if (fold) mark = `<button type="button" class="nb-mk nb-tg" aria-expanded="${open}" aria-label="Toggle"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M4 2.5 8.5 6 4 9.5z" fill="currentColor"/></svg></button>`;
     else if (b.type === "callout") mark = `<button type="button" class="nb-mk nb-icon" ${ro ? "disabled" : ""} aria-label="Icon">${esc(b.props.icon || "💡")}</button>`;
     if (mark) row.insertAdjacentHTML("beforeend", mark);
     if (b.type === "todo" && b.props.checked) wrap.classList.add("done");
