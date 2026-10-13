@@ -20,10 +20,27 @@ import { kstToday } from "./lib/day.js";
 
 // 로컬 시험용: NEWS_FAKE_AI=1 이면 AI 를 부르지 않고 정해진 답을 돌려줘요 (smoke · e2e 가 키 없이 돌게).
 // 가짜도 바깥 요청 1개로 세요(lib/budget.js) — 시험에서 크론 예산을 실제처럼 확인하려고요.
-const aiJson = (env, system, prompt, fake) => {
-  if (env.NEWS_FAKE_AI === "1" && fake) { try { charge(1); } catch (e) { return Promise.reject(e); } return Promise.resolve({ data: fake() }); }
-  return realAiJson(env, system, prompt);
+// AI 를 부를 때마다 ai_usage 에 한 줄 남겨요 (기능 · 회사 · 모델 · 토큰). 회사가 토큰 수를 안 주면 글자 수 ÷ 3.5 로 어림하고 estimated=1.
+// 기록도 바깥 요청 하나로 쳐서, 예산이 3개 미만이면 기록을 건너뛰어요 (크론이 기록 때문에 막히지 않게).
+const aiJson = async (env, system, prompt, fake, feature = "other") => {
+  let r, ok = 1;
+  try {
+    if (env.NEWS_FAKE_AI === "1" && fake) { charge(1); r = { data: fake(), provider: "fake", model: "fake" }; }
+    else r = await realAiJson(env, system, prompt);
+    return r;
+  } catch (e) { ok = 0; throw e; }
+  finally { await logUsage(env, feature, system, prompt, r, ok).catch(() => {}); }
 };
+async function logUsage(env, feature, system, prompt, r, ok) {
+  if (!env.DB || left() < 3) return;
+  try { charge(1); } catch { return; }
+  const est = !r?.usage;
+  const inT = est ? Math.round((String(system).length + String(prompt).length) / 3.5) : r.usage.in;
+  const outT = est ? (r ? Math.round(JSON.stringify(r.data ?? "").length / 3.5) : 0) : r.usage.out;
+  const t = Date.now();
+  await env.DB.prepare("INSERT INTO ai_usage (at, day, feature, provider, model, in_tokens, out_tokens, estimated, ok) VALUES (?,?,?,?,?,?,?,?,?)")
+    .bind(t, kstDay(t), feature, r?.provider || null, r?.used || r?.model || null, inT, outT, est ? 1 : 0, ok).run();
+}
 
 /** 한국 날짜 (YYYY-MM-DD) */
 export const kstDay = (ms) => new Date(ms + 9 * 36e5).toISOString().slice(0, 10);
@@ -247,7 +264,7 @@ export async function translateTitles(env, opts = {}) {
 ${chunk.map((t, n) => `[${n}] ${t.title}   — 출처: ${t.feed}`).join("\n")}
 
 {"t":[{"i":0,"ko":"..."}]} 형식으로만 답해. i 는 번호.`,
-        () => ({ t: chunk.map((t, n) => ({ i: n, ko: `(번역) ${t.title}`.slice(0, 120) })) }));
+        () => ({ t: chunk.map((t, n) => ({ i: n, ko: `(번역) ${t.title}`.slice(0, 120) })) }), "titles");
       const outs = Array.isArray(data?.t) ? data.t : Array.isArray(data?.items) ? data.items : [];
       const ups = [];
       for (const [n, t] of chunk.entries()) {
@@ -282,7 +299,7 @@ async function fitOne(env, one) {
   one = String(one || "").trim();
   if (one.length <= 55) return one;
   if (left() >= 3) {
-    const r = await aiJson(env, RULES, `다음 문장을 뜻은 그대로 두고 45자 이내로 줄여 줘. "~했다" 체.\n${one}\n{"one":"..."} 형식으로만 답해.`, () => ({ one: one.slice(0, 45) })).catch(() => null);
+    const r = await aiJson(env, RULES, `다음 문장을 뜻은 그대로 두고 45자 이내로 줄여 줘. "~했다" 체.\n${one}\n{"one":"..."} 형식으로만 답해.`, () => ({ one: one.slice(0, 45) }), "shorten").catch(() => null);
     const short = String(r?.data?.one || "").trim();
     if (short && short.length <= 55) return short;
   }
@@ -337,7 +354,7 @@ export async function summarize(env, limit = 10, opts = {}) {
 ${body}
 
 {"items":[{"i":0,"one":"...","summary":"...","section":"ai","geo":["US"],"tag":"...","tag_ko":"..."}]} 형식으로만 답해. i 는 글 번호.`,
-        () => ({ items: chunk.map((t, n) => /NOANSWER/.test(t.title) ? null : ({ i: n, one: `${t.title}`.slice(0, 55), summary: `${t.title}. 시험용 요약 둘째 줄이에요.`, section: "", geo: guessGeo(`${t.title} ${t.raw || ""}`), tag: fakeTag(`${t.title} ${t.raw || ""}`, t.topic), tag_ko: "" })).filter(Boolean) })
+        () => ({ items: chunk.map((t, n) => /NOANSWER/.test(t.title) ? null : ({ i: n, one: `${t.title}`.slice(0, 55), summary: `${t.title}. 시험용 요약 둘째 줄이에요.`, section: "", geo: guessGeo(`${t.title} ${t.raw || ""}`), tag: fakeTag(`${t.title} ${t.raw || ""}`, t.topic), tag_ko: "" })).filter(Boolean) }), opts.ids ? "summarize-one" : "summarize"
       );
       const outs = Array.isArray(data?.items) ? data.items : [];
       for (const [n, t] of chunk.entries()) {
@@ -379,7 +396,7 @@ summary 는 3~5개, 각 줄은 한 문장이야.
 제목: ${item.title}
 
 ${String(item.raw || "").slice(0, 20000)}`,
-    () => ({ summary: [String(item.title)], why: "배경: 시험용 요약이에요.", numbers: [] })
+    () => ({ summary: [String(item.title)], why: "배경: 시험용 요약이에요.", numbers: [] }), "deep"
   );
 
   const deep = {
@@ -438,7 +455,7 @@ export async function brief(env, day, force = false) {
 {"headline":"한 문장. 25자 이내. 단정적으로. 영화 자막처럼 짧고 묵직하게.","body":"2~3문장. 서로 다른 기사들이 어떻게 이어지는지. '~예요' 로. 사실만."}
 
 ${digest}`,
-    () => ({ headline: "오늘의 흐름", body: "시험용 브리핑이에요." })
+    () => ({ headline: "오늘의 흐름", body: "시험용 브리핑이에요." }), "briefing"
   );
 
   const row = {
@@ -562,11 +579,43 @@ export const COMPANIES = [
   { key: "mistral", name: "Mistral", aliases: ["Mistral", "미스트랄"] },
   { key: "tsmc", name: "TSMC", aliases: ["TSMC"] },
   { key: "samsung", name: "Samsung", aliases: ["Samsung", "삼성"] },
-];
+  { key: "amazon", name: "Amazon", aliases: ["Amazon", "AWS", "아마존"] },
+  { key: "tesla", name: "Tesla", aliases: ["Tesla", "테슬라"] },
+  { key: "intel", name: "Intel", aliases: ["Intel", "인텔"] },
+  { key: "amd", name: "AMD", aliases: ["AMD"] },
+  { key: "asml", name: "ASML", aliases: ["ASML"] },
+  { key: "huawei", name: "Huawei", aliases: ["Huawei", "화웨이"] },
+  { key: "alibaba", name: "Alibaba", aliases: ["Alibaba", "Qwen", "알리바바"] },
+  { key: "baidu", name: "Baidu", aliases: ["Baidu", "바이두"] },
+  { key: "bytedance", name: "ByteDance", aliases: ["ByteDance", "TikTok", "바이트댄스", "틱톡"] },
+  { key: "perplexity", name: "Perplexity", aliases: ["Perplexity", "퍼플렉시티"] },
+  { key: "huggingface", name: "Hugging Face", aliases: ["Hugging Face", "HuggingFace", "허깅페이스"] },
+  { key: "scaleai", name: "Scale AI", aliases: ["Scale AI"] },
+  { key: "palantir", name: "Palantir", aliases: ["Palantir", "팔란티어"] },
+  { key: "skhynix", name: "SK hynix", aliases: ["SK hynix", "SK Hynix", "SK하이닉스", "하이닉스"] },
+  { key: "qualcomm", name: "Qualcomm", aliases: ["Qualcomm", "퀄컴"] },
+  { key: "arm", name: "Arm", aliases: ["Arm Holdings", "Arm"] },
+  { key: "broadcom", name: "Broadcom", aliases: ["Broadcom", "브로드컴"] },
+  { key: "softbank", name: "SoftBank", aliases: ["SoftBank", "소프트뱅크"] },
+  { key: "cohere", name: "Cohere", aliases: ["Cohere", "코히어"] },
+  // 회사가 아니라 이야기 줄기를 따라가요 (kind: "topic") — 복수형도 잡게 단어 끝은 열어 둬요
+  { key: "chips-export", name: "Chip export controls", kind: "topic", aliases: ["export control", "Entity List", "수출 통제", "수출통제"] },
+  { key: "taiwan", name: "Taiwan", kind: "topic", aliases: ["Taiwan", "대만"] },
+  { key: "ukraine", name: "Ukraine war", kind: "topic", aliases: ["Ukrain", "우크라이나"] },
+  { key: "ai-regulation", name: "AI regulation", kind: "topic", aliases: ["AI Act", "regulat", "규제"] },
+  { key: "robotics", name: "Robotics", kind: "topic", aliases: ["robot", "humanoid", "로봇", "휴머노이드"] },
+  { key: "open-source-ai", name: "Open-source AI", kind: "topic", aliases: ["open-source", "open source", "open weights", "open-weight", "오픈소스"] },
+].map((c) => ({ kind: "company", ...c }));
 const reEsc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const CO_RE = COMPANIES.map((c) => [c.key, new RegExp(c.aliases.map((a) => /^[\x00-\x7f]+$/.test(a) ? `(?<![A-Za-z])${reEsc(a)}${/-$/.test(a) ? "" : "(?![A-Za-z])"}` : reEsc(a)).join("|"), "i")]);
+// 영어 이름은 단어 단위로만 (Arm ≠ "arms", AMD ≠ "amid"). 4글자 이하 짧은 이름은 대소문자까지 맞춰요 (Arm ≠ "arm"). 주제(topic)는 복수형도 잡게 끝을 열어 둬요.
+const aliasRe = (a, topic) => {
+  if (!/^[\x00-\x7f]+$/.test(a)) return new RegExp(reEsc(a));
+  const tail = topic || /-$/.test(a) ? "" : "(?![A-Za-z])";
+  return new RegExp(`(?<![A-Za-z])${reEsc(a)}${tail}`, a.length <= 4 ? "" : "i");
+};
+const CO_RE = COMPANIES.map((c) => [c.key, c.aliases.map((a) => aliasRe(a, c.kind === "topic"))]);
 /** 기사에 나오는 회사 key 목록 (제목 · 한국어 제목 · 한 줄 요약에서) */
-export const coOf = (r) => { const t = `${r.title || ""} ${r.title_ko || ""} ${r.one_liner || ""}`; return CO_RE.filter(([, re]) => re.test(t)).map(([k]) => k); };
+export const coOf = (r) => { const t = `${r.title || ""} ${r.title_ko || ""} ${r.one_liner || ""}`; return CO_RE.filter(([, res]) => res.some((re) => re.test(t))).map(([k]) => k); };
 
 const parseGeo = (g) => { if (Array.isArray(g)) return g; try { return JSON.parse(g || "[]") || []; } catch { return []; } };
 
@@ -597,7 +646,7 @@ async function storySoFar(env, thread, items) {
 ${lines}
 
 {"title":"이 이야기의 한국어 제목 (12자 이내)","story":"3~4문장"} 형식으로만 답해.`,
-    () => ({ title: thread.title, story: `기사 ${items.length}편이 이어진 이야기예요. 다음에 볼 것: 시험용이에요.` })
+    () => ({ title: thread.title, story: `기사 ${items.length}편이 이어진 이야기예요. 다음에 볼 것: 시험용이에요.` }), "story"
   );
   const story = String(data?.story || "").slice(0, 1200);
   const title = thread.title === thread.key && data?.title ? String(data.title).slice(0, 40) : thread.title;
@@ -626,7 +675,7 @@ ${String(item.raw || "").slice(0, 12000)}
     () => ({ points: [
       { claim: `제목부터 메모와 다른 방향이에요 — "${String(item.title).slice(0, 40)}".`, evidence: String(item.raw || item.title).slice(0, 60) },
       { claim: "본문은 반대 근거도 함께 들고 있어요.", evidence: String(item.raw || item.title).slice(60, 120) },
-    ] })
+    ] }), "ai-rebut"
   );
   const points = (Array.isArray(data?.points) ? data.points : []).slice(0, 3)
     .map((p) => ({ claim: String(p?.claim || "").trim(), evidence: String(p?.evidence || "").trim() })).filter((p) => p.claim);
@@ -819,6 +868,47 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     return json({ kind, items: (await decorate(env, rows || [])).map((r) => ({ ...shape(r), marked_at: at.get(r.id) })) });
   });
 
+  // ---------- 지난 기사 (History) ----------
+  // [GET /news/history?before=YYYY-MM-DD&days=7] before 날짜 전(그날 제외)부터 거꾸로, 기사가 있는 날만. 한 번에 최대 400편
+  on("GET", "/news/history", async ({ env, q }) => {
+    const before = /^\d{4}-\d{2}-\d{2}$/.test(q.get("before") || "") ? q.get("before") : kstToday(1);
+    const n = Math.min(14, Math.max(1, Number(q.get("days")) || 7));
+    const { results: dayRows } = await env.DB.prepare("SELECT day FROM news_items WHERE day < ? GROUP BY day ORDER BY day DESC LIMIT ?").bind(before, n).all();
+    const days = (dayRows || []).map((d) => d.day);
+    if (!days.length) return json({ days: [], next_before: null });
+    const { results } = await env.DB.prepare(`SELECT ${ED_COLS} FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.day BETWEEN ? AND ? ORDER BY i.published_at DESC LIMIT 400`).bind(days[days.length - 1], days[0]).all();
+    const dayOf = new Map((results || []).map((r) => [r.id, r.day])); // shape() 에는 day 가 없어요
+    const rows = (await decorate(env, results || [])).map((r) => ({ ...shape(r), day: dayOf.get(r.id) }));
+    const by = new Map(days.map((d) => [d, []]));
+    for (const r of rows) by.get(r.day)?.push(r);
+    const out = days.map((day) => ({ day, items: by.get(day) })).filter((d) => d.items.length);
+    return json({ days: out, next_before: out.length ? out[out.length - 1].day : null });
+  });
+  // [GET /news/search?q=..&limit=60] 제목 · 한국어 제목 · 한 줄 요약 · 요약에서 찾기 (최신순)
+  on("GET", "/news/search", async ({ env, q }) => {
+    const term = String(q.get("q") || "").trim().slice(0, 80);
+    if (term.length < 2) return json({ items: [] });
+    const lim = Math.min(200, Math.max(1, Number(q.get("limit")) || 60)), l = "%" + term.replace(/[%_]/g, "") + "%";
+    const { results } = await env.DB.prepare(`SELECT ${ED_COLS} FROM news_items i JOIN news_feeds f ON f.id = i.feed_id
+      WHERE i.title LIKE ? OR i.title_ko LIKE ? OR i.one_liner LIKE ? OR i.summary LIKE ? ORDER BY i.published_at DESC LIMIT ?`).bind(l, l, l, l, lim).all();
+    return json({ items: (await decorate(env, results || [])).map(shape) });
+  });
+
+  // ---------- AI 토큰 사용량 ----------
+  // [GET /news/usage?days=30] 날마다 · 기능별 · 회사/모델별 호출 수와 토큰
+  on("GET", "/news/usage", async ({ env, q }) => {
+    const n = Math.min(90, Math.max(1, Number(q.get("days")) || 30)), from = kstToday(1 - n), today = kstToday(0);
+    const S = "COUNT(*) AS calls, COALESCE(SUM(in_tokens),0) AS in_tokens, COALESCE(SUM(out_tokens),0) AS out_tokens";
+    const [d, f, p, t, all] = await env.DB.batch([
+      env.DB.prepare(`SELECT day, ${S} FROM ai_usage WHERE day >= ? GROUP BY day ORDER BY day`).bind(from),
+      env.DB.prepare(`SELECT feature, ${S} FROM ai_usage WHERE day >= ? GROUP BY feature ORDER BY in_tokens + out_tokens DESC`).bind(from),
+      env.DB.prepare(`SELECT provider, model, ${S} FROM ai_usage WHERE day >= ? GROUP BY provider, model ORDER BY calls DESC`).bind(from),
+      env.DB.prepare(`SELECT ${S} FROM ai_usage WHERE day = ?`).bind(today),
+      env.DB.prepare(`SELECT ${S}, SUM(estimated) AS estimated FROM ai_usage`),
+    ]);
+    return json({ days: d.results || [], by_feature: f.results || [], by_provider: p.results || [], today: t.results?.[0] || { calls: 0, in_tokens: 0, out_tokens: 0 }, total: all.results?.[0] || { calls: 0, in_tokens: 0, out_tokens: 0 } });
+  });
+
   // ---------- 읽기 대결 ----------
   // [GET /news/leaderboard] 셋의 오늘 · 이번 주(월요일부터, 한국 시간) · 전체 읽은 수 + 하루 몫 연속 달성 일수
   on("GET", "/news/leaderboard", async ({ env }) => {
@@ -858,7 +948,7 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
       env.DB.prepare("SELECT title, title_ko, one_liner FROM news_items WHERE day = ?").bind(kstToday(0)).all()]);
     const today = new Map();
     for (const r of results || []) for (const k of coOf(r)) today.set(k, (today.get(k) || 0) + 1);
-    return json({ companies: COMPANIES.map((c) => ({ key: c.key, name: c.name, subs: subs.get(c.key), mine: subs.get(c.key).includes(user.id), today: today.get(c.key) || 0 })) });
+    return json({ companies: COMPANIES.map((c) => ({ key: c.key, name: c.name, kind: c.kind, subs: subs.get(c.key), mine: subs.get(c.key).includes(user.id), today: today.get(c.key) || 0 })) });
   });
   // [PUT /news/companies/:key] {on} 구독 켜기 · 끄기 (나만)
   on("PUT", "/news/companies/:key", async ({ env, req, user, params }) => {
@@ -877,7 +967,7 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     const [subs, { results }] = await Promise.all([subsOf(env),
       env.DB.prepare(`SELECT ${ED_COLS} FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.day >= ? AND (${cond}) ORDER BY i.published_at DESC LIMIT 200`).bind(kstToday(1 - days), ...like).all()]);
     const rows = (results || []).filter((r) => coOf(r).includes(c.key));
-    return json({ company: { key: c.key, name: c.name, subs: subs.get(c.key), mine: subs.get(c.key).includes(user.id) }, items: (await decorate(env, rows)).map(shape) });
+    return json({ company: { key: c.key, name: c.name, kind: c.kind, subs: subs.get(c.key), mine: subs.get(c.key).includes(user.id) }, items: (await decorate(env, rows)).map(shape) });
   });
 
   // [GET /news/editions?from&to] 신문 목록 (달력용) — 기본 최근 60일
@@ -999,7 +1089,7 @@ ${threads.length ? threads.map((t, n) => `[T${n}] ${t.title} — 오늘 ${t.toda
 
 {"headline":"...","lede":"...","front":[{"n":0,"why":"..."}],"threads":[{"t":0,"move":"..."}]} 형식으로만 답해.`,
         () => ({ headline: String(pool[0].one_liner).slice(0, 30), lede: `${day} 기사 ${items.length}편이에요. 시험용 1면이에요.`,
-          front: pool.slice(0, 4).map((_, n) => ({ n, why: "시험용 1면 이유예요." })), threads: threads.map((_, t) => ({ t, move: "시험용 움직임이에요." })) })
+          front: pool.slice(0, 4).map((_, n) => ({ n, why: "시험용 1면 이유예요." })), threads: threads.map((_, t) => ({ t, move: "시험용 움직임이에요." })) }), "edition"
       );
       const seen = new Set();
       out = {
@@ -1237,6 +1327,8 @@ export function registerNews(on, { json, body, fail, now }) {
       thread: item.thread_id ? await env.DB.prepare("SELECT id, title FROM news_threads WHERE id = ?").bind(item.thread_id).first() : null,
       deep,
       excerpt: String(item.raw || "").slice(0, 700),
+      // 원문 본문(태그 · 겹친 공백을 걷어 낸 글) — History 에서 지난 기사 내용을 읽게
+      body: String(item.raw || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim().slice(0, 6000),
       mine: mine || { read: 0, saved: 0, flagged: 0, note: null },
       notes: notes || [],
     });

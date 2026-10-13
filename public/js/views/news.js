@@ -61,7 +61,7 @@ export function mount(root, ctx, r) {
           <div class="gn-mast-r"><span class="gn-clock"><i>KST</i> <b id="gn-clk"></b></span></div>
         </header>
         <div class="gn-bar">
-          <nav class="gn-views" aria-label="News sections"><a href="#/news" data-view="today">Today</a><a href="#/news/world" data-view="world">World</a><a href="#/news/co" data-view="co">Companies</a><a href="#/news/library" data-view="library">My Library</a><a href="#/news/board" data-view="board">Leaderboard</a><a href="#/news/talk" data-view="talk">Comments <i class="gn-badge" id="gn-talk-badge" hidden></i></a></nav>
+          <nav class="gn-views" aria-label="News sections"><a href="#/news" data-view="today">Today</a><a href="#/news/world" data-view="world">World</a><a href="#/news/history" data-view="history">History</a><a href="#/news/co" data-view="co">Following</a><a href="#/news/library" data-view="library">My Library</a><a href="#/news/board" data-view="board">Leaderboard</a><a href="#/news/talk" data-view="talk">Comments <i class="gn-badge" id="gn-talk-badge" hidden></i></a></nav>
           <div class="gn-daynav">
             <a class="gn-nav" id="gn-prev" href="#" aria-label="Previous day">←</a>
             <button class="gn-date" id="gn-date" type="button" aria-haspopup="dialog" aria-expanded="false"><span id="gn-date-t">Today</span></button>
@@ -179,7 +179,9 @@ export function mount(root, ctx, r) {
           </span></li>`).join("") || `<li class="gn-soft">No reads yet. Open a story to get on the board.</li>`}</ol>
         <p class="gn-lab">Your daily goal</p>
         <div class="gn-quota-n gn-quota-n-l" role="group" aria-label="Stories per day">${QUOTAS.map((q) => `<button type="button" data-quota="${q}" aria-pressed="${q === quotaN()}">${q}</button>`).join("")}</div>
+        <div id="gn-usage"></div>
       </div>`;
+    usageHtml().then((h) => { const el = page.querySelector("#gn-usage"); if (el && view === "board") el.innerHTML = h; });
   }
   function quotaPicks() {
     const n = quotaN(), out = [], seen = new Set();
@@ -196,7 +198,7 @@ export function mount(root, ctx, r) {
     const quota = !starred && sec === "all" ? quotaPicks() : [];
     const done = quota.filter((it) => mine(it).read).length;
     const qIds = new Set(quota.map((it) => it.id));
-    const picked = !starred && sec === "all" && mc.size ? secItems("all").filter((it) => !qIds.has(it.id) && (it.co || []).some((k) => mc.has(k))) : [];
+    const picked = []; // Today 에는 회사 소식을 따로 띄우지 않아요 (Following 탭에서 봐요)
     const used = new Set([...qIds, ...picked.map((it) => it.id)]);
     const shown = secItems(sec).filter((it) => !used.has(it.id));
     list = [...quota, ...picked, ...shown].map((it) => it.id);
@@ -226,7 +228,7 @@ export function mount(root, ctx, r) {
         ${quota.length || picked.length ? `<h2 class="gn-sec-h">${sec === "all" ? "More stories" : SEC_KO[sec]}</h2>` : ""}
         ${shown.length ? `<ul class="gn-list">${shown.map((it) => row(it)).join("")}</ul>` : `<p class="gn-empty">${starred ? "No saved stories yet." : sec === "ai" ? "No AI stories yet. New ones arrive at :10 every hour." : "No more stories."}</p>`}
         ${(ed.threads || []).length ? `<h2 class="gn-sec-h">Developing stories</h2><ul class="gn-threads">${ed.threads.map((t) => `<li><b>${esc(t.title)}</b><span>${esc(t.move || "")}</span></li>`).join("")}</ul>` : ""}
-        <footer class="gn-end">${unread ? `${unread} unread` : "You're all caught up"}${ed.prev ? ` · <a href="#/news/${ed.prev}">${dayKo(ed.prev)}</a>` : ""}${mc.size ? "" : ` · <a href="#/news/co">Follow a company</a>`}</footer>
+        <footer class="gn-end">${unread ? `${unread} unread` : "You're all caught up"}${ed.prev ? ` · <a href="#/news/${ed.prev}">${dayKo(ed.prev)}</a>` : ""}</footer>
       </div>`;
   }
 
@@ -310,7 +312,7 @@ export function mount(root, ctx, r) {
     const ask = () => { if (!raf) raf = requestAnimationFrame(paint); };
     const showCountry = () => {
       const box = page.querySelector("#gn-country"), its = (by.get(worldSel) || []).slice().sort((a, b) => b.published_at - a.published_at);
-      box.innerHTML = worldSel ? `<p class="gn-lab">Selected</p><h2 class="gn-cn">${esc(countryKo(worldSel))}</h2><p class="gn-lab">${worldSel} · ${its.length} stories</p><ul class="gn-list gn-list-tight">${its.map(row).join("")}</ul>` : `<p class="gn-soft">Tap a country.</p>`;
+      box.innerHTML = worldSel ? `<p class="gn-lab">Selected</p><h2 class="gn-cn">${esc(countryKo(worldSel))}</h2><p class="gn-lab">${worldSel} · ${its.length} stories</p><ul class="gn-list gn-list-tight">${its.map((it) => row(it)).join("")}</ul>` : `<p class="gn-soft">Tap a country.</p>`;
       page.querySelectorAll("#gn-ranks [data-cc]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.cc === worldSel));
       list = its.map((it) => it.id);
     };
@@ -345,20 +347,20 @@ export function mount(root, ctx, r) {
     await loadCompanies();
     if (!alive || view !== "co") return;
     const mineList = companies.filter((c) => c.mine);
-    coKey = key || (coKey && companies.some((c) => c.key === coKey) ? coKey : mineList[0]?.key || companies[0]?.key);
+    coKey = key && companies.some((c) => c.key === key) ? key : coKey && companies.some((c) => c.key === coKey) ? coKey : mineList[0]?.key || companies[0]?.key;
     if (!coKey) { page.innerHTML = `<p class="gn-soft">Couldn't load companies.</p>`; return; }
     store.set("gn-co", coKey);
     const c = companies.find((x) => x.key === coKey);
     const tabs = [...mineList, ...(c.mine ? [] : [c])];
     page.innerHTML = `
-      <nav class="gn-cotabs" role="tablist" aria-label="Companies you follow">${tabs.map((x) => `<a role="tab" href="#/news/co/${x.key}" aria-selected="${x.key === coKey}">${esc(x.name)}${x.today ? ` <small>${x.today}</small>` : ""}</a>`).join("")}<button type="button" class="gn-coadd" data-coadd aria-expanded="false">+ Follow</button></nav>
-      <div class="gn-copick" id="gn-copick" hidden>${companies.map((x) => `<button type="button" data-cosub="${x.key}" aria-pressed="${!!x.mine}">${x.mine ? "✓ " : "+ "}${esc(x.name)}</button>`).join("")}</div>
+      <nav class="gn-cotabs" role="tablist" aria-label="Companies you follow">${tabs.map((x) => `<a role="tab" href="#/news/co/${x.key}" aria-selected="${x.key === coKey}">${esc(x.name)}${x.today ? ` <small>${x.today}</small>` : ""}</a>`).join("")}<button type="button" class="gn-coadd" data-coadd aria-expanded="false">Manage follows</button></nav>
+      <div class="gn-copick" id="gn-copick" hidden>${["company", "topic"].map((kind) => { const xs = companies.filter((x) => (x.kind || "company") === kind); return xs.length ? `<div class="gn-copick-g"><p class="gn-lab">${kind === "topic" ? "Topics" : "Companies"}</p><div class="gn-copick-l">${xs.map((x) => `<span class="gn-copick-i${x.mine ? " on" : ""}"><a href="#/news/co/${x.key}">${esc(x.name)}</a><button type="button" data-cosub="${x.key}" aria-pressed="${!!x.mine}">${x.mine ? "Unfollow" : "Follow"}</button></span>`).join("")}</div></div>` : ""; }).join("")}</div>
       <div class="gn-cols">
         <aside class="gn-side">
           <p class="gn-kicker"><span>${c.mine ? "Following" : "Not following"}</span><span id="gn-co-n">…</span></p>
           <h1 class="gn-h1 gn-coname">${esc(c.name)}</h1>
-          <button type="button" class="gn-sub${c.mine ? " on" : ""}" data-cosub="${c.key}" aria-pressed="${!!c.mine}">${c.mine ? "Following ✓ · Unfollow" : "Follow"}</button>
-          <p class="gn-note">Follow to pin this company's stories to the top of Today.${(c.subs || []).filter((u) => u !== ctx.me.id).length ? ` Also following: ${(c.subs || []).filter((u) => u !== ctx.me.id).map((u) => esc(user(u).display_name)).join(", ")}` : ""}</p>
+          <button type="button" class="gn-sub${c.mine ? " on" : ""}" data-cosub="${c.key}" aria-pressed="${!!c.mine}">${c.mine ? "Unfollow" : "Follow"}</button>
+          <p class="gn-note">${c.mine ? "You follow this. Its stories collect here." : "Follow to collect its stories here."}${(c.subs || []).filter((u) => u !== ctx.me.id).length ? ` Also following: ${(c.subs || []).filter((u) => u !== ctx.me.id).map((u) => esc(user(u).display_name)).join(", ")}` : ""}</p>
         </aside>
         <div class="gn-main" id="gn-co-list"><p class="gn-soft">Loading…</p></div>
       </div>`;
@@ -368,13 +370,13 @@ export function mount(root, ctx, r) {
     const its = (coData.items || []).map((it) => items.get(it.id));
     list = its.map((it) => it.id);
     page.querySelector("#gn-co-n").textContent = `${its.length} stories · last 14 days`;
-    page.querySelector("#gn-co-list").innerHTML = its.length ? `<ul class="gn-list">${its.map(row).join("")}</ul>` : `<p class="gn-empty">No stories about this company in the last 14 days.</p>`;
+    page.querySelector("#gn-co-list").innerHTML = its.length ? `<ul class="gn-list">${its.map((it) => row(it)).join("")}</ul>` : `<p class="gn-empty">No stories about this company in the last 14 days.</p>`;
   }
   async function toggleSub(key) {
     const c = companies.find((x) => x.key === key); if (!c) return;
     const on = !c.mine; c.mine = on; c.subs = on ? [...(c.subs || []), ctx.me.id] : (c.subs || []).filter((u) => u !== ctx.me.id);
     try { await api.newsCompanySub(key, on); toast(on ? `Following ${c.name}.` : `Unfollowed ${c.name}.`); } catch (err) { c.mine = !on; toast(err.message, "err"); }
-    if (view === "co") drawCo(key);
+    if (view === "co") { const open = !page.querySelector("#gn-copick")?.hidden; await drawCo(coKey); if (open) { const p = page.querySelector("#gn-copick"); if (p) p.hidden = false; } }
   }
 
   // ---------- 기사 시트 ----------
@@ -403,6 +405,7 @@ export function mount(root, ctx, r) {
         <a class="gn-btn" href="${esc(it.url)}" target="_blank" rel="noopener">Original ${icon.external(13)}</a>
         <span class="gn-avs" title="Read by">${avs((it.readers || []).filter((u) => u !== ctx.me.id))}</span>
       </div>
+      ${d.body ? `<details class="gn-card gn-full"><summary>Full text <small>from the outlet's feed</small></summary><div class="gn-full-b">${esc(d.body).replace(/\n+/g, "<br><br>")}</div></details>` : ""}
       <section class="gn-card" id="gn-deep"${d.deep ? "" : " hidden"}></section>
       <section class="gn-talk"><h3>Comments <small id="gn-talk-n"></small></h3>
         <form class="gn-compose" id="gn-compose"><textarea name="b" rows="2" maxlength="2000" placeholder="Add a comment"></textarea><button class="gn-btn pri" type="submit">Post</button></form>
@@ -553,11 +556,54 @@ export function mount(root, ctx, r) {
     </div>`;
   }
 
+  // ---------- 지난 기사 (#/news/history) — 날짜별로 거슬러 올라가며 읽고, 검색도 해요 ----------
+  let hist = { days: [], next: null, q: "" };
+  async function drawHistory(more) {
+    if (!more) hist = { days: [], next: null, q: hist.q };
+    const head = `<section class="gn-hero"><h1 class="gn-h1 gn-h1-sec">History</h1></section>
+      <form class="gn-search gn-feed" id="gn-hsearch" role="search"><input id="gn-hq" type="search" placeholder="Search past stories (title or summary)" value="${esc(hist.q)}" autocomplete="off"><button type="submit">Search</button></form>`;
+    if (!more) page.innerHTML = head + `<p class="gn-soft gn-feed">Loading…</p>`;
+    let d;
+    try { d = hist.q ? await api.newsSearch(hist.q) : await api.newsHistory(hist.next); } catch (e) { if (alive) page.innerHTML = head + `<p class="gn-soft gn-feed">${esc(e.message)}</p>`; return; }
+    if (!alive || view !== "history") return;
+    if (hist.q) { hist.days = [{ day: "results", items: d.items || [] }]; hist.next = null; }
+    else { hist.days.push(...(d.days || [])); hist.next = d.next_before || null; }
+    for (const g of hist.days) for (const it of g.items) items.set(it.id, { ...items.get(it.id), ...it });
+    list = hist.days.flatMap((g) => g.items.map((it) => it.id));
+    const y = $("#gn-scroll").scrollTop;
+    page.innerHTML = head + `<div class="gn-feed">
+      ${hist.q ? `<p class="gn-lab gn-talk-sub">${(d.items || []).length} results for “${esc(hist.q)}” · <a href="#" data-hclear>Clear</a></p>` : ""}
+      ${hist.days.map((g) => `<h2 class="gn-sec-h">${g.day === "results" ? "Results" : g.day === kstDay() ? "Today" : dayKo(g.day)} <small>${g.items.length}</small>${g.day !== "results" ? ` <a class="gn-sec-a" href="#/news/${g.day}">Open that day's paper →</a>` : ""}</h2><ul class="gn-list">${g.items.map((it) => row(items.get(it.id))).join("")}</ul>`).join("") || `<p class="gn-empty">No stories found.</p>`}
+      ${hist.next ? `<button type="button" class="gn-more" data-hmore>Load older days</button>` : ""}
+    </div>`;
+    if (more) $("#gn-scroll").scrollTop = y;
+    page.querySelector("#gn-hsearch").addEventListener("submit", (e) => { e.preventDefault(); hist.q = page.querySelector("#gn-hq").value.trim(); if (hist.q && hist.q.length < 2) return toast("Type at least 2 characters."); drawHistory(); });
+  }
+
+  // ---------- AI 토큰 사용량 (Leaderboard 아래) ----------
+  async function usageHtml() {
+    let u; try { u = await api.newsUsage(30); } catch { return ""; }
+    const fmt = (n) => (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "k" : String(n || 0));
+    const days = (u.days || []).slice().sort((a, b) => (a.day < b.day ? -1 : 1));
+    const max = Math.max(1, ...days.map((d) => d.in_tokens + d.out_tokens));
+    const t = u.total || {}, td = u.today || {};
+    return `<h2 class="gn-sec-h">AI usage <small>last 30 days</small></h2>
+      <div class="gn-usage">
+        <div class="gn-usage-k"><span><b>${fmt((td.in_tokens || 0) + (td.out_tokens || 0))}</b><small>tokens today · ${td.calls || 0} calls</small></span><span><b>${fmt((t.in_tokens || 0) + (t.out_tokens || 0))}</b><small>tokens · 30 days</small></span><span><b>${fmt(t.in_tokens)}</b><small>input</small></span><span><b>${fmt(t.out_tokens)}</b><small>output</small></span></div>
+        <div class="gn-usage-bars" aria-label="Tokens per day">${days.map((d) => `<i style="height:${Math.max(2, Math.round(((d.in_tokens + d.out_tokens) / max) * 100))}%" title="${d.day}: ${fmt(d.in_tokens + d.out_tokens)} tokens, ${d.calls} calls"></i>`).join("")}</div>
+        <table class="gn-usage-t"><thead><tr><th>What</th><th>Calls</th><th>Input</th><th>Output</th></tr></thead><tbody>${(u.by_feature || []).map((f) => `<tr><td>${esc(f.feature)}</td><td>${f.calls}</td><td>${fmt(f.in_tokens)}</td><td>${fmt(f.out_tokens)}</td></tr>`).join("")}</tbody></table>
+        <table class="gn-usage-t"><thead><tr><th>Model</th><th>Calls</th><th>Input</th><th>Output</th></tr></thead><tbody>${(u.by_provider || []).map((f) => `<tr><td>${esc(f.provider || "?")} · ${esc(f.model || "")}</td><td>${f.calls}</td><td>${fmt(f.in_tokens)}</td><td>${fmt(f.out_tokens)}</td></tr>`).join("")}</tbody></table>
+        <p class="gn-note">Counted from each provider's own usage numbers. Rows marked estimated (when a provider doesn't report usage) are approximated from text length.</p>
+      </div>`;
+  }
+
   // ---------- 이벤트 ----------
-  const backHash = () => (view === "library" ? "#/news/library/" + libKind : view === "board" ? "#/news/board" : view === "talk" ? "#/news/talk" : view === "world" ? "#/news/world" : view === "co" ? "#/news/co/" + coKey : ed && ed.day !== kstDay() ? "#/news/" + ed.day : "#/news");
+  const backHash = () => (view === "history" ? "#/news/history" : view === "library" ? "#/news/library/" + libKind : view === "board" ? "#/news/board" : view === "talk" ? "#/news/talk" : view === "world" ? "#/news/world" : view === "co" ? "#/news/co/" + coKey : ed && ed.day !== kstDay() ? "#/news/" + ed.day : "#/news");
   const back = () => ctx.go(backHash());
   const onClick = (e) => {
     const s = e.target.closest("[data-star]"); if (s) { e.preventDefault(); toggleStar(s.dataset.star); return; }
+    if (e.target.closest("[data-hmore]")) { drawHistory(true); return; }
+    if (e.target.closest("[data-hclear]")) { e.preventDefault(); hist.q = ""; drawHistory(); return; }
     const rd = e.target.closest("[data-read]"); if (rd) { e.preventDefault(); toggleRead(rd.dataset.read); return; }
     if (e.target.closest("[data-close]") || e.target === scrim) { e.preventDefault(); back(); return; }
     const b = e.target.closest("[data-sec]"); if (b) { sec = b.dataset.sec; store.set("gn-sec", sec); draw(); return; }
@@ -591,7 +637,7 @@ export function mount(root, ctx, r) {
       openItem(rr.id); return;
     }
     if (cur) closeSheet();
-    const next = rr.sub === "world" ? "world" : rr.sub === "co" ? "co" : rr.sub === "talk" ? "talk" : rr.sub === "board" ? "board" : rr.sub === "library" ? "library" : "today";
+    const next = rr.sub === "world" ? "world" : rr.sub === "co" ? "co" : rr.sub === "talk" ? "talk" : rr.sub === "board" ? "board" : rr.sub === "library" ? "library" : rr.sub === "history" ? "history" : "today";
     const changed = next !== view;
     if (changed) worldCleanup?.(), (worldCleanup = null);
     setView(next);
@@ -600,6 +646,7 @@ export function mount(root, ctx, r) {
     else if (next === "talk") drawTalk();
     else if (next === "board") drawBoard();
     else if (next === "library") drawLibrary(rr.id);
+    else if (next === "history") { if (changed || !hist.days.length) drawHistory(); }
     else {
       const day = rr.day && DAY_RE.test(rr.day) ? rr.day : kstDay();
       store.set("gn-day", day);
