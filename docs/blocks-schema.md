@@ -61,7 +61,7 @@ The server (`validateDb` → `cleanView`) silently drops filters/sorts on unknow
 ## Reminders
 A row may carry `props._remind = { "prop": "<date key>", "time": "HH:MM" }` (KST). Old rows simply have no `_remind`; the date value itself stays a plain `"YYYY-MM-DD"` string.
 - On save the worker derives `notes.remind_at` (epoch ms UTC, migration 0036) = date + time in KST; changing it clears `reminded_at` / `remind_seen` so it can fire again. A non-date prop or a bad time is rejected (cleared / `09:00`).
-- Cron `0 * * * *` (`src/reminders.js`) sends a contentless web push (`src/push.js`) to the **row owner** for rows with `remind_at <= now`, not sent yet, and at most 26 h late. **Hourly granularity**: a 09:30 reminder arrives at 10:00.
+- Cron `10 * * * *` (`src/cron.js` → `src/reminders.js`, shared with the hourly news job) sends a contentless web push (`src/push.js`) to the **row owner** for rows with `remind_at <= now`, not sent yet, and at most 26 h late. **Hourly granularity**: a 09:30 reminder arrives at 10:10.
 - The service worker then calls `POST /api/reminders/take` (marks `remind_seen`) and shows "⏰ title · database · date · time"; clicking opens the row.
 - Local testing: `POST /api/reminders/run?now=<ms>` runs the cron once (only when `PASSWORDLESS=1`, i.e. `.dev.vars`).
 

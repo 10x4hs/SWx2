@@ -926,6 +926,57 @@ if (!process.env.SKIP_AI) {
   d1(`DELETE FROM news_threads WHERE id = '${th}'`); d1(`DELETE FROM news_items WHERE id = '${iid}'`); d1(`DELETE FROM news_feeds WHERE id = '${fid}'`);
 }
 
+// ---------- 뉴스 신문(하루 한 부) · 되채우기 · 크론 예산 (wrangler dev --var NEWS_FAKE_AI:1) ----------
+{
+  const { sectionOf, kstDay } = await import("../src/news.js");
+  ok(sectionOf("semi") === "tech" && sectionOf("macro") === "economy" && sectionOf("energy") === "economy" && sectionOf("china") === "geopolitics" && sectionOf("europe") === "geopolitics" && sectionOf("ai") === "ai" && sectionOf("china", "ai") === "ai" && sectionOf("ai", "bogus") === "ai", "edition: topic → section map (AI tag overrides)");
+  ok(kstDay(Date.parse("2026-10-12T15:30:00Z")) === "2026-10-13" && kstDay(Date.parse("2026-10-12T14:59:00Z")) === "2026-10-12", "edition: item day = KST date");
+  // 예산 포장: 한도를 넘는 fetch 는 막혀요 (Node 에서 같은 모듈)
+  const { withBudget, BudgetError } = await import("../src/lib/budget.js");
+  let blocked = null;
+  const rb = await withBudget(3, async () => { for (let i = 0; i < 5; i++) { try { await fetch(BASE + "/"); } catch (e) { blocked = e; break; } } });
+  ok(rb.used === 3 && blocked instanceof BudgetError, "budget: 4th fetch over a limit of 3 is refused");
+
+  const t0 = Date.now(), D = kstDay(t0 - 58 * 864e5), DT = Date.parse(D + "T03:00:00Z"); // 그날 정오(한국)
+  const fs = "smk-fs" + tag, fa = "smk-fa" + tag;
+  d1(`INSERT INTO news_feeds (id, url, name, topic, created_at) VALUES ('${fs}', 'http://127.0.0.1:1/${fs}', 'Smoke Semi', 'semi', ${t0}), ('${fa}', 'http://127.0.0.1:1/${fa}', 'Smoke AI', 'ai', ${t0})`);
+  const ids = [0, 1, 2, 3, 4].map((n) => `smk-e${n}${tag}`);
+  d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, created_at, day, section) VALUES ` + ids.map((id, n) =>
+    `('${id}', '${n < 3 ? fs : fa}', 'https://example.com/${id}', 'Smoke edition story ${n} TSMC Taiwan', ${DT + n * 60e3}, 'TSMC in Taiwan said story ${n}.', ${t0}, '${D}', '${n < 3 ? "tech" : "ai"}')`).join(","));
+  // 되채우기: 가장 오래된 날(D)부터 — 요약 → 마감 신문
+  r = await call("a", "POST", "/news/backfill");
+  ok(r.status === 200 && r.data.day === D && r.data.summed === 5 && r.data.built === true && r.data.subrequests <= 40, "backfill: step summarizes the oldest day and closes its edition");
+  ok(d1(`SELECT COUNT(*) AS n FROM news_items WHERE day = '${D}' AND summary IS NOT NULL AND one_liner IS NOT NULL`)[0].n === 5, "backfill: summary + one_liner stored (D1)");
+  const built1 = d1(`SELECT built_at, status FROM news_editions WHERE day = '${D}'`)[0];
+  ok(built1?.status === "closed", "backfill: edition row closed (D1)");
+  r = await call("a", "POST", "/news/backfill");
+  ok(r.status === 200 && r.data.day !== D && d1(`SELECT built_at FROM news_editions WHERE day = '${D}'`)[0].built_at === built1.built_at, "backfill: idempotent — closed day is not rebuilt");
+  r = await call("a", "GET", `/news/edition/${D}`);
+  const E = r.data;
+  ok(r.status === 200 && E.status === "closed" && E.headline && E.front.length >= 3 && E.front.length <= 5 && E.front.every((f) => f.item.summary && typeof f.why === "string"), "edition: front 3–5 with summaries");
+  ok(E.sections.tech.length === 3 && E.sections.ai.length === 2 && E.sections.geopolitics.length === 0 && E.sections.economy.length === 0 && Array.isArray(E.late) && E.count === 5, "edition: sections from feed topics");
+  ok(E.sections.tech[0].readers && typeof E.sections.tech[0].comments === "number" && E.sections.tech[0].summary, "edition: items carry summary + readers + comments");
+  r = await call("a", "GET", `/news/editions?from=${kstDay(t0 - 60 * 864e5)}&to=${kstDay(t0)}`);
+  const L = r.data.editions.find((e) => e.day === D);
+  ok(r.status === 200 && L && L.counts.tech === 3 && L.counts.ai === 2 && L.items === 5 && L.status === "closed", "editions: list with counts");
+  r = await call("a", "GET", "/news/edition/2026-13-99x"); ok(r.status === 400, "edition: bad day 400");
+  r = await call("a", "GET", "/news/edition/today"); ok(r.status === 200 && ["live", "draft", "closed"].includes(r.data.status), "edition: today works (live before any build)");
+
+  // 크론 예산: 피드 14곳(전부 실패하는 주소) + 요약 안 된 글 30편이 있어도 크론마다 바깥 요청 40개 안
+  const many = Array.from({ length: 14 }, (_, n) => `('smk-fm${n}${tag}', 'http://127.0.0.1:1/m${n}${tag}', 'Smoke M${n}', 'macro', ${t0})`);
+  d1(`INSERT INTO news_feeds (id, url, name, topic, created_at) VALUES ${many.join(",")}`);
+  d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, created_at, day, section) VALUES ` + Array.from({ length: 30 }, (_, n) =>
+    `('smk-c${n}${tag}', '${fa}', 'https://example.com/c${n}${tag}', 'Smoke cron story ${n}', ${t0 - n * 60e3}, 'x', ${t0}, '${kstDay(t0 - n * 60e3)}', 'ai')`).join(","));
+  for (const c of ["hourly", "am", "close"]) {
+    r = await call("a", "POST", `/cron/run?cron=${c}`);
+    ok(r.status === 200 && r.data.limit === 40 && r.data.used > 0 && r.data.used <= 40, `cron ${c}: ${r.data?.used} subrequests ≤ 40`);
+  }
+  ok(d1(`SELECT status FROM news_editions WHERE day = '${kstDay(Date.now())}'`)[0]?.status === "closed", "cron close: today's edition closed");
+  r = await call("a", "POST", "/cron/run?cron=am"); ok(d1(`SELECT status FROM news_editions WHERE day = '${kstDay(Date.now())}'`)[0]?.status === "closed", "cron am: draft never reopens a closed edition");
+  d1(`DELETE FROM news_items WHERE id LIKE 'smk-%${tag}'`); d1(`DELETE FROM news_feeds WHERE id LIKE 'smk-f%${tag}'`);
+  d1(`DELETE FROM news_editions WHERE day = '${D}' OR day = '${kstDay(Date.now())}'`); d1(`DELETE FROM news_jobs`);
+}
+
 // ---------- 페이지 파일: sandbox iframe 은 쿠키가 없어서 /pf/<id>/~<토큰>/ 으로 불러요 ----------
 {
   const files = { "index.html": '<!doctype html><html><head><link rel="stylesheet" href="style.css"></head><body>hi</body></html>', "style.css": "body{color:red}" };
