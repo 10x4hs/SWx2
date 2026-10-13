@@ -809,6 +809,50 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     for (const r of results || []) m.get(r.company)?.push(r.user_id);
     return m;
   };
+  // [GET /news/library?kind=starred|read] 내가 별표한 기사 · 직접 읽음 표시한 기사 — 날짜와 상관없이 전부 (최근 표시한 순)
+  on("GET", "/news/library", async ({ env, user, q }) => {
+    const kind = (q?.get ? q.get("kind") : q?.kind) === "read" ? "read" : "starred";
+    const col = kind === "read" ? "r.read = 1" : "r.flagged = 1", order = kind === "read" ? "COALESCE(r.read_at, r.updated_at)" : "r.updated_at";
+    const { results: rows } = await env.DB.prepare(`SELECT ${ED_COLS}, ${order} AS marked_at FROM news_reads r JOIN news_items i ON i.id = r.item_id JOIN news_feeds f ON f.id = i.feed_id
+      WHERE r.user_id = ? AND ${col} ORDER BY marked_at DESC LIMIT 500`).bind(user.id).all();
+    const at = new Map((rows || []).map((r) => [r.id, r.marked_at]));
+    return json({ kind, items: (await decorate(env, rows || [])).map((r) => ({ ...shape(r), marked_at: at.get(r.id) })) });
+  });
+
+  // ---------- 읽기 대결 ----------
+  // [GET /news/leaderboard] 셋의 오늘 · 이번 주(월요일부터, 한국 시간) · 전체 읽은 수 + 하루 몫 연속 달성 일수
+  on("GET", "/news/leaderboard", async ({ env }) => {
+    const KST = 9 * 36e5, day = (t) => new Date(t + KST).toISOString().slice(0, 10);
+    const today = day(Date.now());
+    const dow = (new Date(Date.now() + KST).getUTCDay() + 6) % 7; // 월=0
+    const weekFrom = day(Date.now() - dow * 864e5);
+    const [{ results: users }, { results: prefs }, { results: rows }] = await env.DB.batch([
+      env.DB.prepare("SELECT id FROM users WHERE username NOT LIKE 't\\_%' ESCAPE '\\'"),
+      env.DB.prepare("SELECT user_id, quota FROM news_prefs"),
+      env.DB.prepare("SELECT user_id, date((read_at + 32400000) / 1000, 'unixepoch') AS d, COUNT(*) AS n FROM news_reads WHERE read = 1 AND read_at IS NOT NULL AND read_at > ? GROUP BY user_id, d").bind(Date.now() - 400 * 864e5),
+    ]);
+    const quota = new Map((prefs || []).map((p) => [p.user_id, p.quota]));
+    const by = new Map();
+    for (const r of rows || []) { if (!by.has(r.user_id)) by.set(r.user_id, new Map()); by.get(r.user_id).set(r.d, r.n); }
+    const board = (users || []).map(({ id }) => {
+      const m = by.get(id) || new Map(), q = quota.get(id) || 5;
+      let week = 0, total = 0; for (const [d, n] of m) { total += n; if (d >= weekFrom) week += n; }
+      // 오늘 아직 몫을 못 채웠으면 어제부터 거꾸로 세요 (하루가 끝나기 전에 연속이 끊겨 보이지 않게)
+      let streak = 0, t = Date.now(); if ((m.get(today) || 0) < q) t -= 864e5;
+      while ((m.get(day(t)) || 0) >= q) { streak++; t -= 864e5; }
+      const best = Math.max(0, ...m.values());
+      return { user_id: id, quota: q, today: m.get(today) || 0, week, total, streak, best };
+    }).sort((a, b) => b.week - a.week || b.today - a.today || b.total - a.total);
+    return json({ today, week_from: weekFrom, board });
+  });
+
+  // [PUT /news/prefs] 내 하루 몫 { quota: 3 | 5 | 7 }
+  on("PUT", "/news/prefs", async ({ env, req, user }) => {
+    const b = await body(req), q = [3, 5, 7].includes(+b.quota) ? +b.quota : 5;
+    await env.DB.prepare("INSERT INTO news_prefs (user_id, quota, updated_at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET quota = excluded.quota, updated_at = excluded.updated_at").bind(user.id, q, now()).run();
+    return json({ ok: true, quota: q });
+  });
+
   on("GET", "/news/companies", async ({ env, user }) => {
     const [subs, { results }] = await Promise.all([subsOf(env),
       env.DB.prepare("SELECT title, title_ko, one_liner FROM news_items WHERE day = ?").bind(kstToday(0)).all()]);
@@ -1254,6 +1298,9 @@ export function registerNews(on, { json, body, fail, now }) {
     }
     if (!sets.length) return json({ ok: true });
 
+    // 처음 읽은 때만 남겨요 (읽기 대결 · 연속 달성은 이 시각의 한국 날짜로 세요)
+    if (b.read) sets.push("read_at = COALESCE(read_at, " + t + ")");
+    else if (b.read === false) sets.push("read_at = NULL"); // 읽음을 직접 취소하면 대결 점수에서도 빠져요
     await env.DB.prepare(`UPDATE news_reads SET ${sets.join(", ")}, updated_at = ? WHERE item_id = ? AND user_id = ?`)
       .bind(...bind, t, params.id, user.id).run();
     return json({ ok: true });
