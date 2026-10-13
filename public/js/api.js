@@ -169,6 +169,9 @@ export const api = {
   // room: 'all'(우리 셋) 또는 'dm:<id>:<id>'(두 사람, id 정렬). 안 주면 'all'.
   // 뉴스 Signal Map (#/news)
   newsMap: () => request("GET", "/news/map"),
+  newsEditions: () => request("GET", "/news/editions"),
+  newsEdition: (day) => request("GET", "/news/edition/" + day),
+  newsBackfill: () => request("POST", "/news/backfill", {}),
   newsItem: (id) => request("GET", "/news/item/" + id),
   newsDeep: (id) => request("POST", "/news/item/" + id + "/deep", {}),
   newsMark: (id, b) => request("PATCH", "/news/item/" + id, b),
