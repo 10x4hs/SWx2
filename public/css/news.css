@@ -1,21 +1,22 @@
 /* 뉴스 — 세 화면(오늘 · 세계 · 회사) + 기사 시트 (views/news.js). semafor.com/vertical/tech 의 생김새를 옮겼어요:
-   크림 바탕 · 세리프 신문 활자(Noto Serif KR — 제목 · 본문) · 작은 산세리프(메뉴 · 라벨) · 가운데 제호와 세계 시계 · 점선으로 나눈 여러 단 격자
-   · 브리핑 하나만 연한 청록 상자 · 강조색은 청록 하나. 앱이 다크 모드여도 신문은 늘 크림 종이예요 (Semafor 느낌 그대로). 제목 20px / 1.2, 요약 15px / 1.35 (Semafor 비율) */
+   세리프 신문 활자(Noto Serif KR — 제목 · 본문) · 작은 산세리프(메뉴 · 라벨) · 가운데 제호와 세계 시계 · 점선으로 나눈 여러 단 격자
+   · 브리핑 하나만 연한 청록 상자 · 강조색은 청록 하나. 바탕은 검정(따뜻한 먹색) — Semafor 는 활자 · 배치 · 점선 느낌만 가져왔어요. 제목 20px / 1.2, 요약 15px / 1.35 (Semafor 비율) */
 .gn {
-  --g-bg: #f8f5d7; --g-ink: #1f1d1a; --g-ink2: #4b4a47; --g-ink3: #7d7a6c; --g-line: #c9c39c; --g-soft: #efeac4; --g-land: #e4ddb4;
-  --g-tint: #3a6d78; --g-link: #1f2b6d; --g-box: #d4ebe3; --g-red: #c8102e; --g-green: #2f7a4f; --g-star: #c8102e;
+  --g-bg: #0f0e0c; --g-ink: #ede7d0; --g-ink2: #bdb69d; --g-ink3: #847e6b; --g-line: #3b382f; --g-soft: #1b1a16; --g-land: #2b2923;
+  --g-tint: #8cc6cc; --g-link: #b3bff2; --g-box: #132d2b; --g-red: #ff5b4f; --g-green: #5fbf86; --g-star: #ffcf4a;
   --g-serif: "Noto Serif KR", "Times New Roman", serif;
   --g-sans: Helvetica, "Helvetica Neue", "Pretendard Variable", Pretendard, Arial, sans-serif;
   --g-display: var(--g-serif); --g-mono: var(--g-sans);
   position: relative; height: 100%; min-height: 0; overflow: hidden;
   background: var(--g-bg); color: var(--g-ink); border-radius: inherit;
   font-family: var(--g-serif); font-size: 16px; line-height: 1.45;
-  -webkit-font-smoothing: antialiased; word-break: keep-all; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; color-scheme: light;
+  -webkit-font-smoothing: antialiased; word-break: keep-all; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; color-scheme: dark;
 }
 .gn a { color: inherit; text-decoration: none; }
 .gn button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 .gn :focus-visible { outline: 2px solid var(--g-tint); outline-offset: 2px; }
 
+.host-news { height: 100%; } /* 앱 껍데기는 min-height 만 있어서, 높이를 주지 않으면 종이가 내용 끝에서 잘려요 */
 .gn-scroll { height: 100%; overflow-y: auto; padding: 0 32px 80px; outline: none; }
 .gn-page, .gn-mast, .gn-bar { max-width: 1180px; margin: 0 auto; }
 .gn-soft { color: var(--g-ink3); font-size: 15px; padding: 24px 0; }
@@ -163,8 +164,8 @@
 .gn-copick button { padding: 5px 10px; border: 1px solid var(--g-line); font-family: var(--g-sans); font-size: 12px; }
 .gn-copick button[aria-pressed="true"] { border-color: var(--g-tint); background: var(--g-tint); color: var(--g-bg); }
 .gn-coname { font-size: clamp(30px, 3.4vw, 42px); margin: 10px 0 0; text-align: left; }
-.gn-sub { margin-top: 14px; padding: 8px 14px; background: var(--g-ink) !important; color: var(--g-bg) !important; font-family: var(--g-sans) !important; font-size: 12px !important; font-weight: 600; }
-.gn-sub.on { background: none !important; color: var(--g-ink) !important; box-shadow: inset 0 0 0 1px var(--g-ink); }
+.gn .gn-sub { margin-top: 14px; padding: 8px 14px; background: var(--g-ink) !important; color: var(--g-bg) !important; font-family: var(--g-sans) !important; font-size: 12px !important; font-weight: 600; }
+.gn .gn-sub.on { background: none !important; color: var(--g-ink) !important; box-shadow: inset 0 0 0 1px var(--g-ink); }
 .gn-note { margin: 12px 0 0; font-size: 14px; color: var(--g-ink2); }
 
 @media (max-width: 980px) { .gn-clocks { display: none; } .gn-mast { grid-template-columns: 1fr; text-align: center; } .gn-mast-l, .gn-mast-r { display: none; } }
@@ -185,7 +186,7 @@
 /* 기사 시트 (데스크톱: 오른쪽 · 폰: 아래에서) — body 에 붙은 .gn-portal 안에 있어요 */
 .gn.gn-portal { position: fixed; inset: 0; z-index: 80; height: auto; background: none; overflow: visible; pointer-events: none; border-radius: 0; }
 .gn-portal > * { pointer-events: auto; }
-.gn-scrim { position: absolute; inset: 0; z-index: 1; background: rgba(0, 0, 0, .25); opacity: 0; transition: opacity .2s; }
+.gn-scrim { position: absolute; inset: 0; z-index: 1; background: rgba(0, 0, 0, .55); opacity: 0; transition: opacity .2s; }
 .gn.sheet-on .gn-scrim { opacity: 1; }
 .gn-sheet { position: absolute; z-index: 2; top: 0; right: 0; bottom: 0; width: min(560px, 100%); background: var(--g-bg); border-left: 1px solid var(--g-line); overflow-y: auto; transform: translateX(24px); opacity: 0; transition: transform .2s ease-out, opacity .2s; }
 .gn.sheet-on .gn-sheet { transform: none; opacity: 1; }
@@ -204,8 +205,8 @@
 .gn-card li::marker { color: var(--g-ink3); }
 .gn-why { margin: 12px 0 0; font-size: 15px; color: var(--g-ink2); }
 .gn-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--g-line); }
-.gn-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 16px; border-radius: 0; border: 1px solid var(--g-ink2) !important; font-size: 14px; font-weight: 400; }
-.gn-btn:hover { background: var(--g-soft); }
+.gn .gn-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 16px; border-radius: 0; border: 1px solid var(--g-ink2) !important; font-size: 14px; font-weight: 400; }
+.gn .gn-btn:hover { background: var(--g-soft); }
 .gn-btn.on { color: var(--g-star); }
 .gn-btn.pri { background: var(--g-ink) !important; color: var(--g-bg) !important; border-color: var(--g-ink) !important; }
 .gn-btn:disabled { opacity: .5; }
@@ -217,7 +218,7 @@
 .gn-compose, .gn-rform { display: grid; gap: 8px; margin-bottom: 16px; }
 .gn-compose textarea, .gn-rform textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--g-line); border-radius: 8px; background: var(--g-bg); color: var(--g-ink); font: inherit; font-size: 15px; resize: vertical; }
 .gn-compose textarea:focus, .gn-rform textarea:focus { outline: none; border-color: var(--g-ink3); }
-.gn-compose .gn-btn, .gn-rform .gn-btn { justify-self: end; }
+.gn-compose .gn-btn, .gn-rform .gn .gn-btn { justify-self: end; }
 .gn-rform { margin: 10px 0 0; }
 .gn-memo { padding: 14px 0; border-top: 1px solid var(--g-line); }
 .gn-memo header, .gn-reply header { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--g-ink3); }
@@ -244,3 +245,19 @@
   .gn-sh-t { font-size: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { .gn *, .gn { animation: none !important; transition: none !important; } }
+
+/* 시계 아래 숫자 시각 · 알림 배지 · 댓글 모아 보기 */
+.gn-ck .t { font-family: var(--g-sans); font-size: 9px; font-weight: 600; color: var(--g-ink2); letter-spacing: .02em; }
+.gn-badge { display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; margin-left: 2px; border-radius: 8px; background: var(--g-red); color: #fff; font: 600 10px var(--g-sans); vertical-align: 1px; }
+.gn-talklist { list-style: none; margin: 16px auto 0; padding: 0; max-width: 760px; border-top: 1.5px solid var(--g-ink); }
+.gn-talklist li { border-bottom: 1px dotted var(--g-line); }
+.gn-talklist li.new { background: var(--g-soft); }
+.gn-talklist a { display: grid; gap: 6px; padding: 16px 8px; }
+.gn-talklist a:hover u { color: var(--g-tint); }
+.gn-talk-who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--g-sans); font-size: 12px; color: var(--g-ink3); }
+.gn-talk-who b { color: var(--g-ink); font-weight: 600; }
+.gn-talk-kind.rebut { color: var(--g-red); } .gn-talk-kind.agree { color: var(--g-green); }
+.gn-talk-body { font-size: 17px; line-height: 1.5; white-space: pre-line; }
+.gn-talk-on { font-family: var(--g-sans); font-size: 12px; color: var(--g-ink3); }
+.gn-talk-on u { text-decoration: none; color: var(--g-link); }
+.gn-talk-sub { text-align: center; text-transform: none; font-weight: 400; }

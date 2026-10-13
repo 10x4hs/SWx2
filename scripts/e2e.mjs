@@ -399,7 +399,7 @@ try {
     await p.locator(".gn-memo").last().locator(".gn-rform textarea").fill("e2e rebut");
     await p.locator(".gn-memo").last().locator(".gn-rform button").click(); await sleep(600);
     const talk = await p.evaluate(() => ({ rebut: !!document.querySelector(".gn-memo:last-of-type .gn-reply.rebut"), n: document.querySelector("#gn-talk-n")?.textContent || "" }));
-    ok(memoN > 0 && talk.rebut && talk.n.includes("의견 갈림"), `${tv} · 메모 + 반박 — 의견 갈림 표시`);
+    ok(memoN > 0 && talk.rebut && talk.n.includes("Disputed"), `${tv} · 메모 + 반박 — 의견 갈림 표시`);
     await p.evaluate(() => document.activeElement?.blur());
     await p.keyboard.press("j"); await sleep(900);
     const moved = await p.evaluate((id) => /^#\/news\/item\//.test(location.hash) && location.hash !== "#/news/item/" + id, firstId);
