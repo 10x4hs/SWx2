@@ -1,6 +1,7 @@
 // 노트 · 그래프 · 태그 · 검색. indexStmts · MAX_NOTE 는 brain.js 에도 넘겨줘요 (worker.js 참고).
 import { fail, json, body, now, uid, str } from "./http.js";
 // 블록 ⇄ 마크다운은 브라우저 편집기와 같은 파일을 써요 (wrangler 가 함께 묶어요)
+import { remindAt } from "../public/js/blocks/dbview.js";
 import { blocksToMd, validateDoc, MAX_BLOCKS_JSON, validateDb, defaultDb, cleanRowProps, dbToMd } from "../public/js/blocks/md.js";
 
 export const MAX_NOTE = 200_000;
@@ -192,9 +193,9 @@ export function registerNotes(on) {
       pdb = await parentDb(env, parent_id, user.id);
       if (pdb) props = JSON.stringify(cleanRowProps(b.props, pdb.db));
     }
-    const n = { id: uid(), user_id: user.id, title, body: text, shared: b.shared ? 1 : 0, parent_id, created_at: now(), updated_at: now(), blocks, kind, props, db: db ? JSON.stringify(db) : null };
-    await env.DB.prepare("INSERT INTO notes (id, user_id, title, body, shared, parent_id, created_at, updated_at, blocks, kind, props, db) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(n.id, n.user_id, n.title, n.body, n.shared, n.parent_id, n.created_at, n.updated_at, n.blocks, n.kind, n.props, n.db).run();
+    const n = { id: uid(), user_id: user.id, title, body: text, shared: b.shared ? 1 : 0, parent_id, created_at: now(), updated_at: now(), blocks, kind, props, db: db ? JSON.stringify(db) : null, remind_at: props ? remindAt(JSON.parse(props)) : null };
+    await env.DB.prepare("INSERT INTO notes (id, user_id, title, body, shared, parent_id, created_at, updated_at, blocks, kind, props, db, remind_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(n.id, n.user_id, n.title, n.body, n.shared, n.parent_id, n.created_at, n.updated_at, n.blocks, n.kind, n.props, n.db, n.remind_at).run();
     await indexNote(env, n.id, text);
     if (pdb) await refreshDbMirror(env, pdb.id, user.id);
     return json({ note: n }, 201);
@@ -226,7 +227,11 @@ export function registerNotes(on) {
     const pdb = b.props !== undefined || b.title !== undefined ? await parentDb(env, n.parent_id, user.id) : null;
     if (b.props !== undefined) {
       if (!pdb) fail(400, "데이터베이스 안의 페이지만 속성을 가질 수 있어요.");
-      next.props = JSON.stringify(cleanRowProps(b.props, pdb.db, parseJson(n.props) || {}));
+      const np = cleanRowProps(b.props, pdb.db, parseJson(n.props) || {});
+      next.props = JSON.stringify(np);
+      // 알림 시각이 바뀌면 다시 보낼 수 있게 보낸 기록을 지워요
+      const ra = remindAt(np);
+      if (ra !== (n.remind_at ?? null)) { next.remind_at = ra; next.reminded_at = null; next.remind_seen = null; }
     }
     if (b.shared !== undefined) next.shared = b.shared ? 1 : 0;
     if (b.parent_id !== undefined) {
@@ -239,8 +244,8 @@ export function registerNotes(on) {
       }
     }
     next.updated_at = now();
-    await env.DB.prepare("UPDATE notes SET title = ?, body = ?, shared = ?, parent_id = ?, updated_at = ?, blocks = ?, props = ?, db = ? WHERE id = ?")
-      .bind(next.title, next.body, next.shared, next.parent_id ?? null, next.updated_at, next.blocks ?? null, next.props ?? null, next.db ?? null, n.id).run();
+    await env.DB.prepare("UPDATE notes SET title = ?, body = ?, shared = ?, parent_id = ?, updated_at = ?, blocks = ?, props = ?, db = ?, remind_at = ?, reminded_at = ?, remind_seen = ? WHERE id = ?")
+      .bind(next.title, next.body, next.shared, next.parent_id ?? null, next.updated_at, next.blocks ?? null, next.props ?? null, next.db ?? null, next.remind_at ?? null, next.reminded_at ?? null, next.remind_seen ?? null, n.id).run();
     if (bodyChanged) await indexNote(env, n.id, next.body);
     if (pdb && (b.props !== undefined || next.title !== n.title)) await refreshDbMirror(env, pdb.id, user.id);
     if (b.db !== undefined) { await refreshDbMirror(env, n.id, user.id); next.body = (await env.DB.prepare("SELECT body FROM notes WHERE id = ?").bind(n.id).first())?.body ?? next.body; }

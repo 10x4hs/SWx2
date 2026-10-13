@@ -98,7 +98,9 @@ export function mount(root, ctx, r) {
   // ---------- list ----------
   function drawList() {
     const q = S.filter.toLowerCase();
-    const list = S.notes.filter((n) => !q || n.title.toLowerCase().includes(q) || (n.snippet || "").toLowerCase().includes(q));
+    // 데이터베이스 행은 그 데이터베이스 안에서만 보여요 (찾기에 글자를 넣으면 같이 나와요)
+    const dbs = new Set(S.notes.filter((n) => n.kind === "database").map((n) => n.id));
+    const list = S.notes.filter((n) => q ? n.title.toLowerCase().includes(q) || (n.snippet || "").toLowerCase().includes(q) : !dbs.has(n.parent_id));
     $("#tagbar", root).innerHTML = S.tag
       ? `<span class="row" style="gap:6px"><span class="tag" aria-pressed="true">#${esc(S.tag)}</span><a class="linkbtn faint" href="#/notes" style="font-size:12px">Clear tag</a></span>`
       : `<div class="tagcloud" style="padding:0">${(S.allTags || []).slice(0, 12).map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t.tag)}">#${esc(t.tag)}</a>`).join("")}</div>`;

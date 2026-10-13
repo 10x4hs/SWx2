@@ -1,5 +1,6 @@
 // Blocks ⇄ markdown — pure functions shared by the browser editor and the worker (src/notes.js imports this file).
-// Contract: docs/blocks-schema.md. No DOM, no imports, so both sides can load it.
+// Contract: docs/blocks-schema.md. No DOM; only imports the sibling pure dbview.js, so both sides can load it.
+import { cleanView, cleanRemind } from "./dbview.js";
 
 export const MAX_BLOCKS_JSON = 400_000;
 export const MAX_BLOCKS = 5000;
@@ -287,17 +288,14 @@ export function validateDb(db) {
     }
     return o;
   });
-  const views = (Array.isArray(db.views) ? db.views : []).slice(0, 10).map((v, i) => {
-    const o = { id: /^[\w-]{1,20}$/.test(v?.id || "") ? v.id : "v" + (i + 1), name: str(v?.name, 40) || "View", type: v?.type === "board" ? "board" : "table" };
-    if (o.type === "board") { const g = props.find((p) => p.key === v.group_by && (p.type === "status" || p.type === "select")) || props.find((p) => p.type === "status" || p.type === "select"); if (g) o.group_by = g.key; }
-    return o;
-  });
+  const views = (Array.isArray(db.views) ? db.views : []).slice(0, 10).map((v, i) => cleanView(v, i, props));
   if (!views.length) views.push({ id: "v1", name: "Table", type: "table" });
   return { props, views };
 }
 export function cleanRowProps(input, db, prev = {}) {
   const out = { ...(prev && typeof prev === "object" ? prev : {}) };
   if (!input || typeof input !== "object") return out;
+  if ("_remind" in input) { const r = cleanRemind(input._remind, db); if (r) out._remind = r; else delete out._remind; }
   for (const p of db?.props || []) {
     if (!(p.key in input)) continue;
     const v = input[p.key];

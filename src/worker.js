@@ -15,6 +15,7 @@ import { registerTogether, weeklyReviewCron } from "./together.js";
 import { registerRoom } from "./room.js";
 import { registerLibrary } from "./library.js";
 import { registerPush } from "./push.js";
+import { registerReminders, remindersCron, REMIND_CRON } from "./reminders.js";
 import { kstToday } from "./lib/day.js";
 import { HttpError, fail, json, body, now, uid, str } from "./http.js";
 import { on, match } from "./router.js";
@@ -62,7 +63,12 @@ export default {
   // wrangler.jsonc 의 triggers.crons
   //   "5 15 * * *"  매일 00:05 (한국 시간) — 지난 하루의 계획·기록을 모두 자동 저장
   //   "0 13 * * SUN" 일요일 22:00 (한국 시간) — 이번 주 활동이 있는 사람의 주간 회고를 미리 만들기
+  //   "0 * * * *"   매시 정각 — 데이터베이스 행 알림 (src/reminders.js · 한 시간 단위)
   async scheduled(event, env, ec) {
+    if (event.cron === REMIND_CRON) {
+      ec.waitUntil(remindersCron(env).then((r) => r.sent && console.log("행 알림", r.sent + "개")));
+      return;
+    }
     if (event.cron === WEEKLY_CRON) {
       ec.waitUntil(weeklyReviewCron(env).then((r) => console.log("주간 회고", r.week, r.made + "명", r.skipped || "")));
       return;
@@ -129,4 +135,5 @@ registerCalendar(on, { json, fail });
 registerTogether(on, { json, body, fail, now });
 registerRoom(on, { json, body, fail, uid, now });
 registerPush(on, { json, body, fail, uid, now });
+registerReminders(on, { json, fail });
 registerLibrary(on, { json, body, fail, uid, now });
