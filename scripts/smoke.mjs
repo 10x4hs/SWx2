@@ -234,12 +234,12 @@ r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status ===
   schema.views.push({ id: "v3", name: "By status", type: "board", group_by: "status" });
   schema.props.push({ key: "done", name: "Done", type: "checkbox" });
   r = await call("a", "PUT", "/notes/" + db, { db: schema }); ok(r.status === 200 && JSON.parse(r.data.note.db).views.length === 3, "db: edit schema / views");
-  schema.views[0].filters = [{ prop: "status", op: "is", value: "완료" }, { prop: "nope", op: "is", value: "x" }, { prop: "title", op: "bogus" }];
+  schema.views[0].filters = [{ prop: "status", op: "is", value: "완료" }, { prop: "nope", op: "is", value: "x" }, { prop: "title", op: "bogus" }, { prop: "title", op: "is_not_empty" }];
   schema.views[0].sorts = [{ prop: "date", dir: "desc" }]; schema.views[0].group_by = "tags";
   schema.views.push({ id: "vc", name: "Cal", type: "calendar" });
-  r = await call("a", "PUT", "/notes/" + db, { db: schema }); { const v = JSON.parse(r.data.note.db).views; ok(v[0].filters.length === 1 && v[0].sorts[0].dir === "desc" && v[0].group_by === "tags" && v.find((x) => x.id === "vc")?.date_by === "date", "db: view filters (bad ones dropped) · sorts · table group · calendar date_by saved"); }
-  { const { applyView } = await import("../public/js/blocks/md.js"); const sc = JSON.parse(r.data.note.db); const rs = [{ title: "a", props: { status: "완료", date: "2026-01-02" } }, { title: "b", props: { status: "시작 전" } }, { title: "c", props: { status: "완료", date: "2026-03-01" } }];
-    ok(applyView(rs, sc.views[0], sc).map((x) => x.title).join() === "c,a", "db: applyView filters AND + sorts"); }
+  r = await call("a", "PUT", "/notes/" + db, { db: schema }); { const v = JSON.parse(r.data.note.db).views; ok(v[0].filters.length === 2 && v[0].filters[1].op === "not_empty" && v[0].sorts[0].dir === "desc" && v[0].group_by === "tags" && v.find((x) => x.id === "vc")?.date_prop === "date", "db: view filters (bad ones dropped) · sorts · table group · calendar date_by saved"); }
+  { const { applyView } = await import("../public/js/blocks/md.js"); /* same function as dbview.js (re-export) */ const sc = JSON.parse(r.data.note.db); const rs = [{ title: "a", props: { status: "완료", date: "2026-01-02" } }, { title: "b", props: { status: "시작 전" } }, { title: "c", props: { status: "완료", date: "2026-03-01" } }];
+    ok(applyView(rs, sc, sc.views[0]).map((x) => x.title).join() === "c,a", "db: applyView filters AND + sorts"); }
   r = await call("a", "GET", "/notes"); ok(!r.data.notes.some((x) => x.id === row1) && r.data.notes.some((x) => x.id === db), "db: rows hidden from the notes list (shown under their DB)");
   r = await call("a", "PUT", "/notes/" + db, { db: { props: [{ key: "Bad Key", type: "text" }] } }); ok(r.status === 400, "db: bad prop key → 400");
   r = await call("a", "DELETE", "/notes/" + row2); r = await call("a", "GET", "/notes/" + db); ok(r.data.children.length === 1, "db: delete row");

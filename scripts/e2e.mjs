@@ -260,8 +260,8 @@ try {
       const rp2 = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + row2)).json()).note.props || "{}");
       // 필터: 표 보기에서 Filter → + Add filter → 상태 = 완료 → 한 줄만
       await p.evaluate(() => [...document.querySelectorAll(".db-tabs [data-view]")].find((b) => /Table/.test(b.textContent))?.click());
-      await p.click('[data-tool="filter"]'); await p.click("[data-fadd]"); await sleep(800);
-      await p.selectOption(".db-pop .db-fv", "완료"); await sleep(1200);
+      await p.waitForSelector(".db-table", { timeout: 8000 });
+      await p.click("[data-add-filter]"); await p.click('.db-pop [data-p="status"]'); await p.click('.db-pop [data-fopt="완료"]'); await sleep(1200);
       const shown = await p.evaluate(() => document.querySelectorAll(".db-table tr[data-row]").length);
       const listed = await (await ctx.request.get(BASE + "/api/notes")).json();
       ok(rp2.status === "진행 중" && shown === 1 && !listed.notes.some((n) => n.id === row2), `${tv} · DB — 손가락 끌기 → ${rp2.status} · 필터 후 ${shown}줄 · 행은 왼쪽 목록에서 숨김`);

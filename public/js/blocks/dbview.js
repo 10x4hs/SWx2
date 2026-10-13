@@ -17,6 +17,8 @@ export const OPS = {
 export const OP_LABEL = { is: "is", is_not: "is not", contains: "contains", not_contains: "does not contain", gt: ">", lt: "<", before: "is before", after: "is after", empty: "is empty", not_empty: "is not empty" };
 export const opsFor = (type) => Object.keys(OPS).filter((op) => OPS[op].includes(type));
 export const noValue = (op) => op === "empty" || op === "not_empty";
+// Op names used by early editor-branch views (pre-merge) → canonical op (+ fixed value). Accepted on save, never stored.
+const LEGACY_OPS = { is_empty: ["empty"], is_not_empty: ["not_empty"], checked: ["is", true], unchecked: ["is", false] };
 const TITLE = { key: "title", type: "title", name: "Name" };
 const s = (v, max) => (typeof v === "string" ? v.slice(0, max) : "");
 
@@ -28,8 +30,9 @@ export function cleanView(v, i, props) {
   const groupable = (k) => props.find((p) => p.key === k && GROUPABLE.includes(p.type));
   if (o.type === "board") { const g = groupable(v.group_by) || props.find((p) => p.type === "status" || p.type === "select"); if (g) o.group_by = g.key; }
   else if (o.type === "table" && v?.group_by && groupable(v.group_by)) o.group_by = v.group_by;
-  if (o.type === "calendar") { const d = props.find((p) => p.key === v.date_prop && p.type === "date") || props.find((p) => p.type === "date"); if (d) o.date_prop = d.key; }
+  if (o.type === "calendar") { const d = props.find((p) => p.key === (v.date_prop ?? v.date_by) && p.type === "date") || props.find((p) => p.type === "date"); if (d) o.date_prop = d.key; }
   const filters = (Array.isArray(v?.filters) ? v.filters : []).slice(0, 10).map((f) => {
+    const leg = LEGACY_OPS[f?.op]; if (leg) f = { ...f, op: leg[0], ...(leg.length > 1 ? { value: leg[1] } : {}) };
     const p = byKey(f?.prop); if (!p || !OPS[f.op]?.includes(p.type)) return null;
     const x = { prop: p.key, op: f.op };
     if (noValue(f.op)) return x;

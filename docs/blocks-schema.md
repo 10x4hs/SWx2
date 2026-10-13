@@ -54,6 +54,8 @@ Notion colors: gray, brown, orange, yellow, green, blue, purple, pink, red.
   "sorts":   [ { "prop": "<key>|title", "dir": "asc|desc" } ] }           // multi-level, max 5
 ```
 Ops per type (`public/js/blocks/dbview.js` `OPS`): `is` (text/url/title/number/select/status/date/checkbox) · `is_not` · `contains` / `not_contains` (text/url/title/multi_select) · `gt` / `lt` (number) · `before` / `after` (date) · `empty` / `not_empty` (no value).
+Single implementation: `dbview.js` (`cleanView` validates, `applyView(rows, db, view)` filters + sorts); `md.js` only re-exports `VIEW_TYPES` / `applyView`.
+Legacy input (early block-editor views) is accepted and normalized on save, never stored: ops `is_empty`→`empty`, `is_not_empty`→`not_empty`, `checked`→`is true`, `unchecked`→`is false`; calendar `date_by`→`date_prop`.
 The server (`validateDb` → `cleanView`) silently drops filters/sorts on unknown props, wrong ops or bad values, so deleting a property never breaks a saved view. Sorting puts empty values last; select/status sort by option order. Grouping by multi_select puts a row in every group it has; values that aren't options get their own group.
 
 ## Reminders
