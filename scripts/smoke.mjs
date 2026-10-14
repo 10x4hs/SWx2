@@ -140,7 +140,27 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("a", "PUT", "/mba/day", { minutes: 12 }); r = await call("a", "PUT", "/mba/day", { minutes: 5, plan: "내일 아침 지하철에서 퀴즈" });
   { const d = r.data.days?.find((x) => x.day === r.data.today); ok(r.status === 200 && d?.minutes === 17 && d.plan === "내일 아침 지하철에서 퀴즈", "mba: day minutes add up + plan"); }
   r = await call("a", "PUT", "/mba/day", {}); ok(r.status === 400, "mba: empty day → 400");
-  r = await call("b", "GET", "/mba/state"); ok(r.status === 200 && !r.data.items.length && !r.data.days.length, "mba: private per user");
+  // 케이스 · 연습문제 · 강의 끝냄 (v2) — id 는 index.json 에서 골라요
+  { const mi = await (await fetch(BASE + "/mba/index.json")).json(), mm = mi.modules.find((m) => m.cases?.length && m.problems?.length && m.lectures?.length);
+    ok(mi.modules.every((m) => m.cards.length >= 30), "mba: every module has 30+ cards");
+    if (!mm) ok(false, "mba: index has a module with cases · problems · lectures");
+    else {
+      const pr = mm.problems[0].id, cs = mm.cases[0].id, lc = mm.lectures[0].id;
+      r = await call("a", "PUT", "/mba/done", { module: mm.id, item: pr, kind: "problem", score: 1, total: 1 });
+      ok(r.status === 200 && r.data.done?.some((x) => x.item === pr && x.kind === "problem" && x.score === 1 && x.total === 1), "mba: problem done with score");
+      r = await call("a", "PUT", "/mba/done", { module: mm.id, item: pr, kind: "problem", score: 0, total: 1 });
+      ok(r.data.done?.filter((x) => x.item === pr).length === 1 && r.data.done.find((x) => x.item === pr).score === 0, "mba: problem retry keeps last attempt");
+      r = await call("a", "PUT", "/mba/done", { module: mm.id, item: cs, kind: "case" }); ok(r.status === 200 && r.data.done?.some((x) => x.item === cs && x.kind === "case"), "mba: case done");
+      r = await call("a", "PUT", "/mba/done", { module: mm.id, item: cs, kind: "case", done: false }); ok(r.status === 200 && !r.data.done?.some((x) => x.item === cs), "mba: case undo");
+      r = await call("a", "PUT", "/mba/done", { module: mm.id, item: lc, kind: "lecture" }); ok(r.status === 200 && r.data.done?.some((x) => x.item === lc && x.kind === "lecture"), "mba: lecture done");
+      r = await call("a", "PUT", "/mba/done", { module: mm.id, item: "nope", kind: "case" }); ok(r.status === 400, "mba: unknown item → 400");
+      r = await call("a", "PUT", "/mba/done", { module: mm.id, item: pr, kind: "case" }); ok(r.status === 400, "mba: item with wrong kind → 400");
+      r = await call("a", "PUT", "/mba/done", { module: mm.id, item: pr, kind: "problem", score: 2, total: 1 }); ok(r.status === 400, "mba: score > total → 400");
+      r = await call("a", "PUT", "/mba/done", { module: mm.id, item: pr, kind: "quiz" }); ok(r.status === 400, "mba: bad kind → 400");
+      r = await call("b", "GET", "/mba/state"); ok(r.status === 200 && !(r.data.done || []).length, "mba: done is private per user");
+    }
+  }
+  r = await call("b", "GET", "/mba/state"); ok(r.status === 200 && !r.data.items.length && !r.data.days.length && Array.isArray(r.data.done), "mba: private per user");
   r = await call("a", "POST", "/mba/ask", { module: "accounting", card: "nope", messages: [{ role: "user", content: "?" }] }); ok(r.status === 400, "mba: ask unknown card → 400");
   r = await call("a", "POST", "/mba/ask", { module: "accounting", card: "profit-vs-revenue", messages: [] }); ok(r.status === 400, "mba: ask without question → 400");
   // 1~5순위 (1 = 가장 급함) 로도 받아요 — 저장은 예전 값 그대로

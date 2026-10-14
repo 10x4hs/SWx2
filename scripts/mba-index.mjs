@@ -33,21 +33,33 @@ const modules = META.map(([id, no, title, sub, phase, schools, what]) => {
   const seen = new Set();
   for (const c of d.cards || []) {
     const w = `${id}/${c.id}`;
-    if (!ID.test(c.id || "") || seen.has(c.id)) problems.push(`${w}: 카드 id`); seen.add(c.id);
+    if (!ID.test(c.id || "") || seen.has(c.id) || c.id === "case" || c.id === "practice") problems.push(`${w}: 카드 id`); seen.add(c.id); // case · practice 는 주소에 써요
     if (!c.title || !c.recall?.q || !Array.isArray(c.idea) || !c.idea.length) problems.push(`${w}: title · recall · idea`);
     if (c.visual != null && !TYPES.has(c.visual.type)) problems.push(`${w}: 그림 종류 ${c.visual.type}`);
     for (const q of c.quiz || []) if (!Array.isArray(q.choices) || !(q.answer >= 0 && q.answer < q.choices.length)) problems.push(`${w}: 퀴즈 답 번호`);
   }
-  return { id, no, title, sub, phase, schools, what, cards: (d.cards || []).map((c) => ({ id: c.id, title: c.title, min: c.min })) };
+  for (const k of d.cases || []) if (!ID.test(k.id || "") || seen.has(k.id)) problems.push(`${id}/${k.id}: 케이스 id`); else seen.add(k.id);
+  for (const p of d.problems || []) {
+    if (!ID.test(p.id || "") || seen.has(p.id)) problems.push(`${id}/${p.id}: 문제 id`); else seen.add(p.id);
+    if (p.type === "number" ? !Number.isFinite(p.answer) : !(Array.isArray(p.choices) && p.answer >= 0 && p.answer < p.choices.length)) problems.push(`${id}/${p.id}: 문제 답`);
+  }
+  for (const l of d.lectures || []) { if (!ID.test(l.id || "") || seen.has(l.id)) problems.push(`${id}/${l.id}: 강의 id`); else seen.add(l.id); if (!/^https:\/\//.test(l.url || "")) problems.push(`${id}/${l.id}: 강의 주소`); }
+  return {
+    id, no, title, sub, phase, schools, what, intro: d.intro || "", goals: d.goals || [],
+    cards: (d.cards || []).map((c) => ({ id: c.id, title: c.title, min: c.min, day: c.day || 1 })),
+    cases: (d.cases || []).map((k) => ({ id: k.id, title: k.title, min: k.min, day: k.day })),
+    problems: (d.problems || []).map((p) => ({ id: p.id, day: p.day, card: p.card || null, type: p.type })),
+    lectures: (d.lectures || []).map((l) => ({ id: l.id, title: l.title, provider: l.provider, url: l.url, min: l.min, day: l.day, lang: l.lang || "" })),
+  };
 });
-const out = JSON.stringify({ version: 1, note: "node scripts/mba-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.", modules }, null, 2) + "\n";
+const out = JSON.stringify({ version: 2, note: "node scripts/mba-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.", modules }, null, 2) + "\n";
 const file = join(DIR, "index.json");
 if (process.argv[2] === "--check") {
   if (problems.length) { console.error("경영 마이크로디그리 모듈 파일 문제:\n  " + problems.join("\n  ")); process.exit(1); }
   if (!existsSync(file) || readFileSync(file, "utf8") !== out) { console.error("public/mba/index.json 이 낡았어요 → node scripts/mba-index.mjs"); process.exit(1); }
-  console.log(`mba 모듈 ${modules.length}개 · 카드 ${modules.reduce((n, m) => n + m.cards.length, 0)}장 최신`);
+  console.log(`mba 모듈 ${modules.length}개 · 카드 ${modules.reduce((n, m) => n + m.cards.length, 0)}장 · 케이스 ${modules.reduce((n, m) => n + m.cases.length, 0)} · 문제 ${modules.reduce((n, m) => n + m.problems.length, 0)} · 강의 ${modules.reduce((n, m) => n + m.lectures.length, 0)} 최신`);
 } else {
   if (problems.length) console.warn("주의:\n  " + problems.join("\n  "));
   writeFileSync(file, out);
-  console.log(`index.json 썼어요 — 모듈 ${modules.length}개 · 카드 ${modules.reduce((n, m) => n + m.cards.length, 0)}장`);
+  console.log(`index.json 썼어요 — 모듈 ${modules.length}개 · 카드 ${modules.reduce((n, m) => n + m.cards.length, 0)}장 · 케이스 ${modules.reduce((n, m) => n + m.cases.length, 0)} · 문제 ${modules.reduce((n, m) => n + m.problems.length, 0)} · 강의 ${modules.reduce((n, m) => n + m.lectures.length, 0)}`);
 }

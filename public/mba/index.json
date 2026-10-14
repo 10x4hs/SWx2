@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "note": "node scripts/mba-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.",
   "modules": [
     {
@@ -10,36 +10,422 @@
       "phase": "도구",
       "schools": "9/9",
       "what": "재무제표 세 장이 서로 어떻게 이어지는지, 이익과 현금이 왜 다른지 배워요.",
+      "intro": "회계는 회사의 돈 이야기를 읽는 공통 언어예요. 첫 주에는 재무제표 세 장을 읽고, 이익과 현금이 왜 다른지 숫자로 따져 봐요. 둘째 주에는 원가 · 손익분기 · 예산으로 결정을 내리는 법을 익히고, 마지막에 이익의 질과 위험 신호를 알아보는 눈을 길러요.",
+      "goals": [
+        "재무제표 세 장을 읽고, 숫자 하나가 다른 표의 어디로 이어지는지 설명할 수 있어요",
+        "이익과 현금이 어긋나는 이유(발생주의 · 감가상각 · 재고 · 매출채권)를 숫자로 짚을 수 있어요",
+        "마진 · 회전율 · ROE(듀폰 분석)로 두 회사의 돈 버는 방식을 비교할 수 있어요",
+        "공헌이익 · 손익분기 · 영업레버리지 · 관련원가로 가격과 주문을 결정할 수 있어요",
+        "원가 배분 · 예산 차이 · 이익의 질을 따져 숫자 뒤의 위험 신호를 찾을 수 있어요"
+      ],
       "cards": [
         {
           "id": "three-statements",
           "title": "회사의 성적표는 세 장이에요",
-          "min": 4
+          "min": 4,
+          "day": 1
         },
         {
-          "id": "fixed-variable-cost",
-          "title": "팔 때마다 드는 돈, 안 팔아도 드는 돈",
-          "min": 4
+          "id": "accounting-equation",
+          "title": "거래 하나는 언제나 두 곳을 바꿔요",
+          "min": 4,
+          "day": 1
         },
         {
-          "id": "profit-vs-revenue",
-          "title": "매출이 늘어도 이익은 줄 수 있어요",
-          "min": 5
-        },
-        {
-          "id": "break-even",
-          "title": "몇 잔을 팔아야 본전일까요",
-          "min": 4
+          "id": "income-statement-layers",
+          "title": "손익계산서는 층으로 나눠 읽어요",
+          "min": 4,
+          "day": 1
         },
         {
           "id": "profit-vs-cash",
           "title": "이익이 나도 통장은 빌 수 있어요",
-          "min": 5
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "accrual-timing",
+          "title": "현금이 먼저일까, 기록이 먼저일까",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "depreciation",
+          "title": "오래 쓰는 물건은 나눠서 비용이 돼요",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "inventory-cogs",
+          "title": "팔린 만큼만 비용이 돼요: 재고와 매출원가",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "working-capital",
+          "title": "받을 돈 · 줄 돈 · 쌓인 재고: 운전자본",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "growth-eats-cash",
+          "title": "잘 팔릴수록 현금이 모자랄 수 있어요",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "balance-sheet-reading",
+          "title": "재무상태표는 1년을 기준으로 나눠 읽어요",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "equity-vs-capital",
+          "title": "자본과 자본금은 달라요",
+          "min": 4,
+          "day": 4
+        },
+        {
+          "id": "cash-flow-statement",
+          "title": "현금흐름표는 순이익에서 출발해요",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "cash-flow-patterns",
+          "title": "세 칸의 부호로 회사의 나이를 읽어요",
+          "min": 4,
+          "day": 5
+        },
+        {
+          "id": "free-cash-flow",
+          "title": "잉여현금흐름: 정말로 쓸 수 있는 돈",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "accounting-midterm",
+          "title": "중간 정리 · 섞어 풀기: 재무제표 편",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "margins",
+          "title": "마진 세 가지: 100원 팔아 얼마 남기나",
+          "min": 4,
+          "day": 6
+        },
+        {
+          "id": "turnover",
+          "title": "회전율: 자산을 얼마나 바쁘게 돌리나",
+          "min": 4,
+          "day": 6
+        },
+        {
+          "id": "roe-dupont",
+          "title": "ROE를 셋으로 쪼개요: 듀폰 분석",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "fixed-variable-cost",
+          "title": "팔 때마다 드는 돈, 안 팔아도 드는 돈",
+          "min": 4,
+          "day": 7
+        },
+        {
+          "id": "profit-vs-revenue",
+          "title": "매출이 늘어도 이익은 줄 수 있어요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "break-even",
+          "title": "몇 잔을 팔아야 본전일까요",
+          "min": 4,
+          "day": 7
+        },
+        {
+          "id": "contribution-margin-ratio",
+          "title": "공헌이익률로 목표 이익을 거꾸로 구해요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "operating-leverage",
+          "title": "고정비가 크면 이익이 크게 출렁여요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "relevant-cost",
+          "title": "추가 주문은 ‘더 드는 돈’만 따져요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "cost-allocation",
+          "title": "공통비를 나누는 방식이 결정을 바꿔요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "activity-based-costing",
+          "title": "활동기준원가: 비용을 만든 활동으로 나눠요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "budget-variance",
+          "title": "예산과 실제의 차이를 가격과 양으로 나눠요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "earnings-quality",
+          "title": "이익의 질: 순이익과 현금을 나란히 봐요",
+          "min": 5,
+          "day": 10
+        },
+        {
+          "id": "red-flags",
+          "title": "숫자가 보내는 경고 신호 다섯 가지",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "accounting-review",
           "title": "회계 정리 · 섞어 풀기",
-          "min": 4
+          "min": 4,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-bakery-cash",
+          "title": "(가상의 회사) 빵굽는언덕: 주문은 넘치는데 통장이 비어요",
+          "min": 40,
+          "day": 5
+        },
+        {
+          "id": "case-banchan-menu",
+          "title": "(가상의 회사) 오늘반찬: 적자로 보이는 케이터링을 접을까",
+          "min": 45,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "accounting-equation",
+          "type": "number"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "income-statement-layers",
+          "type": "number"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "depreciation",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "accrual-timing",
+          "type": "number"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "inventory-cogs",
+          "type": "number"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "working-capital",
+          "type": "number"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "balance-sheet-reading",
+          "type": "number"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "cash-flow-statement",
+          "type": "number"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "free-cash-flow",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "cash-flow-patterns",
+          "type": "choice"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "margins",
+          "type": "number"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "roe-dupont",
+          "type": "number"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "break-even",
+          "type": "number"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "profit-vs-revenue",
+          "type": "choice"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "operating-leverage",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "relevant-cost",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "activity-based-costing",
+          "type": "number"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "budget-variance",
+          "type": "number"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "earnings-quality",
+          "type": "number"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "red-flags",
+          "type": "choice"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "2.1 Income Statement, Balance Sheet, Cash Flows and How They Interrelate",
+          "provider": "OpenStax (Principles of Accounting, Vol. 1)",
+          "url": "https://openstax.org/books/principles-financial-accounting/pages/2-1-describe-the-income-statement-statement-of-owners-equity-balance-sheet-and-statement-of-cash-flows-and-how-they-interrelate",
+          "min": 40,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "Lecture 2: Principles of Accrual Accounting (슬라이드)",
+          "provider": "MIT OpenCourseWare 15.515 Financial Accounting (Fall 2003)",
+          "url": "https://ocw.mit.edu/courses/15-515-financial-accounting-fall-2003/resources/lec2/",
+          "min": 40,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "11.3 Depreciation Methods",
+          "provider": "OpenStax (Principles of Accounting, Vol. 1)",
+          "url": "https://openstax.org/books/principles-financial-accounting/pages/11-3-explain-and-apply-depreciation-methods-to-allocate-capitalized-costs",
+          "min": 35,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "10.2 Cost of Goods Sold and Ending Inventory (Periodic)",
+          "provider": "OpenStax (Principles of Accounting, Vol. 1)",
+          "url": "https://openstax.org/books/principles-financial-accounting/pages/10-2-calculate-the-cost-of-goods-sold-and-ending-inventory-using-the-periodic-method",
+          "min": 35,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "Minimalist Accounting Sessions 1~4 (재무제표 개관 · 손익 · 재무상태 · 현금흐름)",
+          "provider": "Aswath Damodaran, NYU Stern",
+          "url": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/webcastacctg.htm",
+          "min": 70,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "16.3 Statement of Cash Flows Using the Indirect Method",
+          "provider": "OpenStax (Principles of Accounting, Vol. 1)",
+          "url": "https://openstax.org/books/principles-financial-accounting/pages/16-3-prepare-the-statement-of-cash-flows-using-the-indirect-method",
+          "min": 40,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "6.6 Profitability Ratios and the DuPont Method",
+          "provider": "OpenStax (Principles of Finance)",
+          "url": "https://openstax.org/books/principles-finance/pages/6-6-profitability-ratios-and-the-dupont-method",
+          "min": 30,
+          "day": 6,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "3.5 Margin of Safety and Operating Leverage",
+          "provider": "OpenStax (Principles of Accounting, Vol. 2)",
+          "url": "https://openstax.org/books/principles-managerial-accounting/pages/3-5-calculate-and-interpret-a-companys-margin-of-safety-and-operating-leverage",
+          "min": 30,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "6.3 Calculate Activity-Based Product Costs",
+          "provider": "OpenStax (Principles of Accounting, Vol. 2)",
+          "url": "https://openstax.org/books/principles-managerial-accounting/pages/6-3-calculate-activity-based-product-costs",
+          "min": 35,
+          "day": 9,
+          "lang": "en"
+        },
+        {
+          "id": "l10",
+          "title": "8.2 Compute and Evaluate Materials Variances",
+          "provider": "OpenStax (Principles of Accounting, Vol. 2)",
+          "url": "https://openstax.org/books/principles-managerial-accounting/pages/8-2-compute-and-evaluate-materials-variances",
+          "min": 30,
+          "day": 9,
+          "lang": "en"
         }
       ]
     },
@@ -51,36 +437,422 @@
       "phase": "도구",
       "schools": "9/9",
       "what": "숫자 한 개에 속지 않는 법. 표본과 실험으로 결정을 검증해요.",
+      "intro": "숫자 자체는 거짓말을 안 해도, 숫자를 읽는 사람은 자주 속아요. 2주 동안 데이터를 요약하고(평균 · 퍼짐 · 꼬리), 일부로 전체를 어림하고(표본 · 신뢰구간), 원인을 가려내고(상관 · 회귀 · A/B 실험), 불확실한 결정을 숫자로 비교하는(기댓값 · 의사결정나무 · 베이즈) 법을 배워요. 마지막에는 이 모두를 대시보드 지표 설계로 묶어요.",
+      "goals": [
+        "평균 · 중앙값 · 표준편차 · 백분위수로 데이터 한 묶음을 정직하게 요약할 수 있어요",
+        "표본의 크기와 치우침을 따지고, 비율의 신뢰구간과 오차범위를 어림할 수 있어요",
+        "상관 · 회귀 결과를 읽고, 원인이라고 말하려면 무엇이 더 필요한지 설명할 수 있어요",
+        "A/B 테스트의 표본 크기와 지표를 미리 정하고, p값을 바르게 해석할 수 있어요",
+        "기댓값 · 의사결정나무 · 기저율로 불확실한 결정을 비교하고, 짝을 이룬 지표를 설계할 수 있어요"
+      ],
       "cards": [
         {
           "id": "average-trap",
           "title": "평균만 보면 속을 수 있어요",
-          "min": 4
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "distribution-shape",
+          "title": "분포의 모양: 꼬리가 어느 쪽인가요",
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "spread-sd",
+          "title": "같은 평균, 다른 위험: 표준편차",
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "percentiles",
+          "title": "평균 대신 p90: 꼬리를 보는 숫자",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "normal-z",
+          "title": "종 모양 분포와 z점수",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "rates-percent-points",
+          "title": "%와 %p, 그리고 분모",
+          "min": 5,
+          "day": 2
         },
         {
           "id": "sample-bias",
           "title": "표본이 작으면 흔들리고, 치우치면 틀려요",
-          "min": 4
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "survey-bias",
+          "title": "누구에게 어떻게 물었나요: 설문의 함정",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "standard-error",
+          "title": "표본이 4배면 오차는 절반",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "confidence-interval",
+          "title": "숫자 하나 대신 범위로: 신뢰구간",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "margin-of-error",
+          "title": "‘오차범위 ± 3.1%p’ 읽는 법",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "regression-to-mean",
+          "title": "최고 다음엔 보통: 평균으로의 회귀",
+          "min": 5,
+          "day": 4
         },
         {
           "id": "correlation-causation",
           "title": "같이 움직인다고 원인은 아니에요",
-          "min": 4
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "correlation-coefficient",
+          "title": "상관계수 r: 직선 관계의 세기",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "data-midterm",
+          "title": "중간 정리 · 섞어 풀기",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "regression-basics",
+          "title": "회귀선: 1만큼 바뀌면 얼마나 바뀌나",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "regression-pitfalls",
+          "title": "회귀가 속이는 세 가지",
+          "min": 6,
+          "day": 6
+        },
+        {
+          "id": "simpson-paradox",
+          "title": "합치면 뒤집혀요: 심슨의 역설",
+          "min": 5,
+          "day": 6
         },
         {
           "id": "ab-test",
           "title": "원인을 알고 싶으면 무작위로 나눠요",
-          "min": 5
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "sample-size-power",
+          "title": "몇 명이 필요할까: 표본 크기와 검정력",
+          "min": 6,
+          "day": 7
+        },
+        {
+          "id": "p-value-myths",
+          "title": "p값이 말해 주는 것과 아닌 것",
+          "min": 6,
+          "day": 7
         },
         {
           "id": "expected-value",
           "title": "불확실할 땐 기댓값으로 비교해요",
-          "min": 4
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "decision-tree",
+          "title": "의사결정나무: 뒤에서부터 계산해요",
+          "min": 6,
+          "day": 8
+        },
+        {
+          "id": "value-of-information",
+          "title": "조사에 얼마까지 낼까: 정보의 가치",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "base-rate",
+          "title": "양성인데 아닐 수도: 기저율",
+          "min": 6,
+          "day": 9
+        },
+        {
+          "id": "bayes-update",
+          "title": "증거로 믿음을 고쳐요: 베이즈",
+          "min": 6,
+          "day": 9
+        },
+        {
+          "id": "survivorship-bias",
+          "title": "돌아온 비행기만 보면 틀려요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "metrics-design",
+          "title": "대시보드에 무엇을 올릴까: 지표 설계",
+          "min": 5,
+          "day": 10
+        },
+        {
+          "id": "goodhart-noise",
+          "title": "숫자에 상을 걸 때, 숫자가 흔들릴 때",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "data-review",
           "title": "데이터 정리 · 섞어 풀기",
-          "min": 4
+          "min": 6,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-mealkit-survey",
+          "title": "(가상의 회사) 오늘한끼: 만족도 88%를 믿고 광고비를 늘릴까",
+          "min": 40,
+          "day": 5
+        },
+        {
+          "id": "case-paywall-ab",
+          "title": "(가상의 회사) 핏로그: ‘B가 이겼다’는 결제 화면, 출시할까",
+          "min": 50,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "average-trap",
+          "type": "number"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "spread-sd",
+          "type": "number"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "normal-z",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "rates-percent-points",
+          "type": "number"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "standard-error",
+          "type": "number"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "survey-bias",
+          "type": "choice"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "confidence-interval",
+          "type": "number"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "margin-of-error",
+          "type": "number"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "correlation-coefficient",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "regression-to-mean",
+          "type": "choice"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "regression-basics",
+          "type": "number"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "simpson-paradox",
+          "type": "number"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "sample-size-power",
+          "type": "number"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "p-value-myths",
+          "type": "choice"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "decision-tree",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "value-of-information",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "base-rate",
+          "type": "number"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "survivorship-bias",
+          "type": "choice"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "metrics-design",
+          "type": "choice"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "ab-test",
+          "type": "number"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "2.6 Skewness and the Mean, Median, and Mode",
+          "provider": "OpenStax · Introductory Statistics 2e",
+          "url": "https://openstax.org/books/introductory-statistics-2e/pages/2-6-skewness-and-the-mean-median-and-mode",
+          "min": 15,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "2.7 Measures of the Spread of the Data",
+          "provider": "OpenStax · Introductory Statistics 2e",
+          "url": "https://openstax.org/books/introductory-statistics-2e/pages/2-7-measures-of-the-spread-of-the-data",
+          "min": 40,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "Statistics webcasts: Session 2 · 2A Sampling",
+          "provider": "Aswath Damodaran (NYU Stern)",
+          "url": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/webcaststatistics.htm",
+          "min": 45,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "1.2 Data, Sampling, and Variation in Data and Sampling",
+          "provider": "OpenStax · Introductory Statistics 2e",
+          "url": "https://openstax.org/books/introductory-statistics-2e/pages/1-2-data-sampling-and-variation-in-data-and-sampling",
+          "min": 45,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "8.3 A Population Proportion",
+          "provider": "OpenStax · Introductory Statistics 2e",
+          "url": "https://openstax.org/books/introductory-statistics-2e/pages/8-3-a-population-proportion",
+          "min": 35,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "Frequentist Inference: Confidence Interval",
+          "provider": "Seeing Theory (Brown University)",
+          "url": "https://seeing-theory.brown.edu/frequentist-inference/index.html",
+          "min": 15,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "12.3 The Regression Equation",
+          "provider": "OpenStax · Introductory Statistics 2e",
+          "url": "https://openstax.org/books/introductory-statistics-2e/pages/12-3-the-regression-equation",
+          "min": 30,
+          "day": 6,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "10.3 Comparing Two Independent Population Proportions",
+          "provider": "OpenStax · Introductory Statistics 2e",
+          "url": "https://openstax.org/books/introductory-statistics-2e/pages/10-3-comparing-two-independent-population-proportions",
+          "min": 25,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "15.060 Data, Models, and Decisions: Lecture Summaries (Decision Analysis I · II)",
+          "provider": "MIT OpenCourseWare",
+          "url": "https://ocw.mit.edu/courses/15-060-data-models-and-decisions-fall-2014/pages/lecture-summaries/",
+          "min": 15,
+          "day": 8,
+          "lang": "en"
+        },
+        {
+          "id": "l10",
+          "title": "18.05 Reading 3: Conditional Probability, Independence and Bayes' Theorem",
+          "provider": "MIT OpenCourseWare",
+          "url": "https://ocw.mit.edu/courses/18-05-introduction-to-probability-and-statistics-spring-2022/resources/mit18_05_s22_class03-prep_pdf/",
+          "min": 45,
+          "day": 9,
+          "lang": "en"
         }
       ]
     },
@@ -92,36 +864,422 @@
       "phase": "도구",
       "schools": "9/9",
       "what": "가격이 어떻게 정해지는지와 금리 · 환율이 회사에 닿는 길.",
+      "intro": "회사의 거의 모든 결정은 ‘무엇을 포기하나’, ‘하나 더 하면 무엇이 달라지나’, ‘시장은 값을 어떻게 정하나’로 바꿔 물을 수 있어요. 2주 동안 미시경제(선택 · 시장 · 경쟁 · 전략 · 시장 실패)와 거시경제(GDP · 물가 · 실업 · 금리 · 환율 · 경기)를 카페와 동네 가게의 눈으로 배우고, 마지막에는 사람의 판단이 어떻게 흔들리는지(행동경제학)까지 봐요.",
+      "goals": [
+        "기회비용 · 한계 · 매몰비용으로 하나의 결정을 숫자로 따져 말할 수 있어요.",
+        "수요 · 공급과 탄력성으로 가격을 바꿨을 때 매출과 이익이 어떻게 변할지 어림할 수 있어요.",
+        "시장 구조와 게임이론으로 경쟁자의 반응을 예상하고, 외부효과 · 공공재 · 정보 비대칭 같은 시장 실패를 알아볼 수 있어요.",
+        "GDP · 물가 · 실업 · 금리 · 환율 뉴스를 읽고 우리 사업의 원가 · 이자 · 가격에 미칠 영향으로 바꿔 말할 수 있어요.",
+        "손실 회피와 앵커링이 내 판단과 고객의 판단을 어떻게 흔드는지 알아차릴 수 있어요."
+      ],
       "cards": [
         {
           "id": "opportunity-cost",
           "title": "공짜는 없어요: 기회비용",
-          "min": 4
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "comparative-advantage",
+          "title": "더 잘해도 맡기는 게 이득이에요: 비교우위",
+          "min": 5,
+          "day": 1
         },
         {
           "id": "marginal-thinking",
           "title": "결정은 ‘하나 더’로 해요",
-          "min": 4
+          "min": 5,
+          "day": 1
         },
         {
           "id": "supply-demand",
           "title": "가격은 사려는 양과 팔려는 양이 정해요",
-          "min": 4
+          "min": 5,
+          "day": 2
         },
         {
           "id": "price-elasticity",
           "title": "값을 올리면 매출은 늘까요, 줄까요",
-          "min": 4
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "other-elasticities",
+          "title": "소득과 다른 상품 값에도 반응해요: 소득 · 교차 탄력성",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "surplus",
+          "title": "거래하면 둘 다 이득이에요: 소비자 · 생산자 잉여",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "tax-incidence",
+          "title": "세금은 덜 민감한 쪽이 더 내요",
+          "min": 6,
+          "day": 3
+        },
+        {
+          "id": "price-controls",
+          "title": "값을 억지로 묶으면 줄이 생겨요: 가격 상한 · 하한",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "perfect-competition",
+          "title": "누구도 값을 못 정하는 시장: 완전경쟁",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "monopoly",
+          "title": "혼자 파는 회사는 값을 고를 수 있어요: 독점",
+          "min": 6,
+          "day": 4
+        },
+        {
+          "id": "oligopoly-competition",
+          "title": "과점과 독점적 경쟁: 대부분의 시장은 그 사이예요",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "price-discrimination",
+          "title": "같은 커피, 다른 값: 가격 차별",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "prisoners-dilemma",
+          "title": "서로 못 믿으면 둘 다 손해: 죄수의 딜레마",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "economics-midterm",
+          "title": "중간 정리 · 섞어 풀기 (미시경제)",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "nash-equilibrium",
+          "title": "아무도 혼자 바꾸고 싶지 않은 상태: 내쉬균형",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "externalities",
+          "title": "거래 밖으로 새는 비용: 외부효과",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "public-goods",
+          "title": "모두 쓰지만 아무도 안 내려는 것: 공공재",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "information-asymmetry",
+          "title": "한쪽만 아는 정보가 시장을 망쳐요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "gdp",
+          "title": "나라 경제의 성적표: GDP",
+          "min": 5,
+          "day": 7
         },
         {
           "id": "money-prices",
           "title": "금리 · 물가 · 환율은 돈의 값이에요",
-          "min": 5
+          "min": 6,
+          "day": 7
+        },
+        {
+          "id": "inflation",
+          "title": "물가는 어떻게 재고, 왜 오를까요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "unemployment",
+          "title": "실업률은 어떻게 셀까요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "monetary-policy",
+          "title": "중앙은행이 돈의 값을 움직이는 법: 통화정책",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "fiscal-policy",
+          "title": "정부의 지출과 세금으로 경기를 다뤄요: 재정정책",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "exchange-rates",
+          "title": "환율은 왜 움직이고, 회사는 어떻게 대비할까요",
+          "min": 6,
+          "day": 9
+        },
+        {
+          "id": "business-cycle",
+          "title": "경제는 오르내려요: 경기 순환과 신호",
+          "min": 6,
+          "day": 9
+        },
+        {
+          "id": "loss-aversion",
+          "title": "잃는 아픔이 얻는 기쁨보다 커요: 손실 회피",
+          "min": 5,
+          "day": 10
+        },
+        {
+          "id": "anchoring",
+          "title": "처음 본 숫자가 판단을 끌어당겨요: 앵커링",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "economics-review",
           "title": "경제학 정리 · 섞어 풀기",
-          "min": 4
+          "min": 5,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-cafe-pricing",
+          "title": "골목 카페의 가격 실험: 얼마를 받아야 할까",
+          "min": 45,
+          "day": 5
+        },
+        {
+          "id": "case-import-shock",
+          "title": "원두를 수입하는 로스터리의 한 해: 환율 · 금리 · 물가",
+          "min": 50,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "opportunity-cost",
+          "type": "number"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "comparative-advantage",
+          "type": "number"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "supply-demand",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "price-elasticity",
+          "type": "number"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "surplus",
+          "type": "number"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "tax-incidence",
+          "type": "number"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "perfect-competition",
+          "type": "number"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "monopoly",
+          "type": "number"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "price-discrimination",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "prisoners-dilemma",
+          "type": "choice"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "nash-equilibrium",
+          "type": "choice"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "externalities",
+          "type": "number"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "information-asymmetry",
+          "type": "number"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "gdp",
+          "type": "number"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "inflation",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "unemployment",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "fiscal-policy",
+          "type": "number"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "exchange-rates",
+          "type": "number"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "loss-aversion",
+          "type": "choice"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "anchoring",
+          "type": "choice"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "Lec 18: Introduction to Trade",
+          "provider": "MIT OpenCourseWare — 14.01 Principles of Microeconomics (Fall 2023, Jonathan Gruber)",
+          "url": "https://ocw.mit.edu/courses/14-01-principles-of-microeconomics-fall-2023/resources/lec-18-introduction-to-trade/",
+          "min": 48,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "Ch. 5 Elasticity (5.1 · 5.3 · 5.4)",
+          "provider": "OpenStax — Principles of Economics 3e",
+          "url": "https://openstax.org/books/principles-economics-3e/pages/5-introduction-to-elasticity",
+          "min": 40,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "Lec 10: Welfare Economics",
+          "provider": "MIT OpenCourseWare — 14.01 Principles of Microeconomics (Fall 2023, Jonathan Gruber)",
+          "url": "https://ocw.mit.edu/courses/14-01-principles-of-microeconomics-fall-2023/resources/lec-10-welfare-economics/",
+          "min": 45,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "Lec 11: Monopoly I",
+          "provider": "MIT OpenCourseWare — 14.01 Principles of Microeconomics (Fall 2023, Jonathan Gruber)",
+          "url": "https://ocw.mit.edu/courses/14-01-principles-of-microeconomics-fall-2023/resources/lec-11-monopoly-i/",
+          "min": 47,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "ECON 159 Lecture 1 — Introduction: Five First Lessons",
+          "provider": "Open Yale Courses — ECON 159 Game Theory (Ben Polak)",
+          "url": "https://oyc.yale.edu/economics/econ-159/lecture-1",
+          "min": 69,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "Lec 24: Externalities",
+          "provider": "MIT OpenCourseWare — 14.01 Principles of Microeconomics (Fall 2023, Jonathan Gruber)",
+          "url": "https://ocw.mit.edu/courses/14-01-principles-of-microeconomics-fall-2023/resources/lec-24-externalities/",
+          "min": 47,
+          "day": 6,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "Lecture 2: Basic Macroeconomic Concepts",
+          "provider": "MIT OpenCourseWare — 14.02 Principles of Macroeconomics (Spring 2023, Ricardo Caballero)",
+          "url": "https://ocw.mit.edu/courses/14-02-principles-of-macroeconomics-spring-2023/resources/1402-sp23-lecture-2-v2_mp4/",
+          "min": 42,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "Lecture 4: The Financial Market",
+          "provider": "MIT OpenCourseWare — 14.02 Principles of Macroeconomics (Spring 2023, Ricardo Caballero)",
+          "url": "https://ocw.mit.edu/courses/14-02-principles-of-macroeconomics-spring-2023/resources/1402-sp23-lecture-4-v2_mp4/",
+          "min": 53,
+          "day": 8,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "Ch. 29 Exchange Rates and International Capital Flows (29.1~29.3)",
+          "provider": "OpenStax — Principles of Economics 3e",
+          "url": "https://openstax.org/books/principles-economics-3e/pages/29-introduction-to-exchange-rates-and-international-capital-flows",
+          "min": 45,
+          "day": 9,
+          "lang": "en"
+        },
+        {
+          "id": "l10",
+          "title": "Lec 25: Behavioral Economics",
+          "provider": "MIT OpenCourseWare — 14.01 Principles of Microeconomics (Fall 2023, Jonathan Gruber)",
+          "url": "https://ocw.mit.edu/courses/14-01-principles-of-microeconomics-fall-2023/resources/lec-25-behavioral-economics/",
+          "min": 48,
+          "day": 10,
+          "lang": "en"
         }
       ]
     },
@@ -133,36 +1291,422 @@
       "phase": "기능",
       "schools": "9/9",
       "what": "오늘의 1원과 내년의 1원이 왜 다른지부터 회사 가치까지.",
+      "intro": "재무는 ‘돈을 언제, 얼마나, 어떤 위험으로’ 주고받을지 정하는 기술이에요. 2주 동안 시간가치와 NPV로 투자를 고르고, 위험과 자본비용으로 할인율을 정하고, 회사의 값 · 자금 조달 · 배당 · 운전자본까지 실제 회사가 매일 내리는 결정을 직접 계산해 봐요. 계산기를 두드리는 것보다 ‘이 숫자가 무엇을 뜻하나’를 읽는 감각이 목표예요.",
+      "goals": [
+        "복리 · 할인 · 연금 · 영구연금으로 미래의 돈을 오늘 값으로 바꿀 수 있어요.",
+        "NPV · IRR · 회수기간으로 투자안을 비교하고, 기준이 엇갈릴 때 무엇을 믿을지 설명할 수 있어요.",
+        "분산투자 · 베타 · CAPM · WACC로 할인율을 정하고, 그 숫자의 한계를 말할 수 있어요.",
+        "DCF와 멀티플로 회사의 값을 어림하고, 시가총액과 기업가치(EV)를 구분할 수 있어요.",
+        "자본구조 · 배당 · 운전자본 · 자금 조달에서 무엇을 주고 무엇을 받는지 따질 수 있어요."
+      ],
       "cards": [
         {
           "id": "time-value",
           "title": "지금의 100만 원이 1년 뒤 100만 원보다 값져요",
-          "min": 4
+          "min": 5,
+          "day": 1
         },
         {
           "id": "npv",
           "title": "미래의 돈은 오늘 값으로 바꿔서 비교해요",
-          "min": 5
+          "min": 6,
+          "day": 1
+        },
+        {
+          "id": "annuity",
+          "title": "해마다 같은 돈은 한 번에 계산해요: 연금",
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "perpetuity",
+          "title": "영원히 받는 돈에도 값이 있어요: 영구연금",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "effective-rate",
+          "title": "같은 ‘연 12%’라도 실제 이자는 달라요",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "loan-schedule",
+          "title": "대출을 갚는 세 가지 방법",
+          "min": 6,
+          "day": 2
+        },
+        {
+          "id": "irr",
+          "title": "이 투자는 연 몇 %짜리일까요: IRR",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "payback",
+          "title": "빨리 돌아오면 좋은 투자일까요: 회수기간",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "decision-rules",
+          "title": "기준이 엇갈리면 NPV를 믿어요",
+          "min": 6,
+          "day": 3
+        },
+        {
+          "id": "incremental-cash",
+          "title": "투자 판단엔 ‘달라지는 현금’만 넣어요",
+          "min": 6,
+          "day": 4
+        },
+        {
+          "id": "bonds",
+          "title": "금리가 오르면 채권값은 내려가요",
+          "min": 6,
+          "day": 4
         },
         {
           "id": "risk-return",
           "title": "위험이 클수록 더 높은 수익을 요구해요",
-          "min": 4
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "diversification",
+          "title": "나눠 담으면 흔들림이 줄어요: 분산투자",
+          "min": 6,
+          "day": 5
+        },
+        {
+          "id": "beta-capm",
+          "title": "시장과 함께 흔들리는 만큼 보상받아요: 베타와 CAPM",
+          "min": 6,
+          "day": 5
+        },
+        {
+          "id": "finance-midterm",
+          "title": "중간 정리 · 섞어 풀기 (시간가치 · 투자 판단 · 위험)",
+          "min": 5,
+          "day": 5
         },
         {
           "id": "cost-of-capital",
           "title": "돈에도 값이 있어요: 빚은 싸고 지분은 비싸요",
-          "min": 5
+          "min": 6,
+          "day": 6
+        },
+        {
+          "id": "project-rate",
+          "title": "할인율은 회사가 아니라 사업의 위험에 맞춰요",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "capital-structure",
+          "title": "빚을 얼마나 쓸까요: 자본구조",
+          "min": 6,
+          "day": 6
         },
         {
           "id": "valuation",
           "title": "회사의 값은 앞으로 벌 현금의 오늘 값이에요",
-          "min": 5
+          "min": 6,
+          "day": 7
+        },
+        {
+          "id": "dcf-steps",
+          "title": "DCF를 직접 해 봐요: 예측 기간과 터미널 가치",
+          "min": 6,
+          "day": 7
+        },
+        {
+          "id": "multiples",
+          "title": "비슷한 회사와 견줘 값 매기기: 멀티플",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "payout",
+          "title": "번 돈을 돌려주는 두 방법: 배당과 자사주",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "working-capital",
+          "title": "이익이 나도 현금이 마르는 이유: 운전자본",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "financing-ladder",
+          "title": "돈을 구하는 사다리: 부채 · 지분 · 벤처",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "venture-math",
+          "title": "벤처캐피털은 회수할 값에서 거꾸로 계산해요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "options",
+          "title": "권리만 사고 의무는 없어요: 옵션 감각",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "real-options",
+          "title": "기다리고, 키우고, 접을 권리: 실물옵션",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "market-efficiency",
+          "title": "시장을 이기기 어려운 이유: 효율적 시장",
+          "min": 5,
+          "day": 10
+        },
+        {
+          "id": "finance-biases",
+          "title": "재무 결정을 흔드는 마음의 버릇",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "finance-review",
           "title": "재무 정리 · 섞어 풀기",
-          "min": 4
+          "min": 5,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-roaster-machine",
+          "title": "로스터리 카페(가상의 회사)의 새 로스팅 기계: 살까 말까",
+          "min": 45,
+          "day": 5
+        },
+        {
+          "id": "case-banchan-sale",
+          "title": "반찬 정기배송 회사(가상의 회사)에 온 매각 제안: 얼마면 팔까",
+          "min": 50,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "time-value",
+          "type": "number"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "npv",
+          "type": "number"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "loan-schedule",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "effective-rate",
+          "type": "number"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "irr",
+          "type": "number"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "decision-rules",
+          "type": "choice"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "incremental-cash",
+          "type": "number"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "bonds",
+          "type": "number"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "diversification",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "beta-capm",
+          "type": "number"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "cost-of-capital",
+          "type": "number"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "project-rate",
+          "type": "choice"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "dcf-steps",
+          "type": "number"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "multiples",
+          "type": "number"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "working-capital",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "payout",
+          "type": "choice"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "venture-math",
+          "type": "number"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "options",
+          "type": "number"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "market-efficiency",
+          "type": "number"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "finance-biases",
+          "type": "choice"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "15.401 Finance Theory I — Ses 2: Present Value Relations I",
+          "provider": "MIT OpenCourseWare",
+          "url": "https://ocw.mit.edu/courses/15-401-finance-theory-i-fall-2008/resources/part-i-of-present-value-relations/",
+          "min": 76,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "Principles of Finance — 8.1 Perpetuities ~ 8.4 Stated versus Effective Rates",
+          "provider": "OpenStax",
+          "url": "https://openstax.org/books/principles-finance/pages/8-1-perpetuities",
+          "min": 45,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "Principles of Finance — 16.1 Payback Period Method ~ 16.5 Choosing between Projects",
+          "provider": "OpenStax",
+          "url": "https://openstax.org/books/principles-finance/pages/16-1-payback-period-method",
+          "min": 45,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "15.401 Finance Theory I — Ses 4: Present Value Relations III & Fixed-Income Securities I",
+          "provider": "MIT OpenCourseWare",
+          "url": "https://ocw.mit.edu/courses/15-401-finance-theory-i-fall-2008/resources/part-i-of-fixed-income-securities/",
+          "min": 72,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "ECON 252 Financial Markets (2011) — Lecture 4: Portfolio Diversification and Supporting Financial Institutions",
+          "provider": "Open Yale Courses",
+          "url": "https://oyc.yale.edu/economics/econ-252-11/lecture-4",
+          "min": 78,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "Corporate Finance (Spring 2025) — Session 16: The Debt Equity Tradeoff",
+          "provider": "Aswath Damodaran (NYU Stern)",
+          "url": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/webcastcfspr25.htm",
+          "min": 95,
+          "day": 6,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "Valuation (Spring 2025) — Session 11: More on Growth and Terminal Value",
+          "provider": "Aswath Damodaran (NYU Stern)",
+          "url": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/webcasteqspr25.htm",
+          "min": 111,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "Principles of Finance — 19.1 What Is Working Capital? ~ 19.4 Receivables Management",
+          "provider": "OpenStax",
+          "url": "https://openstax.org/books/principles-finance/pages/19-1-what-is-working-capital",
+          "min": 45,
+          "day": 8,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "ECON 252 Financial Markets (2011) — Lecture 17: Options Markets",
+          "provider": "Open Yale Courses",
+          "url": "https://oyc.yale.edu/economics/econ-252-11/lecture-17",
+          "min": 72,
+          "day": 9,
+          "lang": "en"
+        },
+        {
+          "id": "l10",
+          "title": "ECON 252 Financial Markets (2011) — Lecture 7: Efficient Markets",
+          "provider": "Open Yale Courses",
+          "url": "https://oyc.yale.edu/economics/econ-252-11/lecture-7",
+          "min": 68,
+          "day": 10,
+          "lang": "en"
         }
       ]
     },
@@ -174,36 +1718,422 @@
       "phase": "기능",
       "schools": "9/9",
       "what": "누구에게, 무엇을, 얼마에 — 고르는 순서를 배워요.",
+      "intro": "2주 동안 ‘누가, 왜 사는가’에서 시작해 ‘얼마에, 어디서, 어떻게 알리고, 고객 한 명이 얼마를 남기는가’까지 마케팅을 한 바퀴 돌아요. 첫 주에는 고객 · 시장 · 자리 잡기 · 가격을, 둘째 주에는 브랜드 · 채널 · 퍼널 · 유닛 이코노믹스 · 광고 측정을 배워요. 감으로 정하지 않고, 숫자 예시와 케이스로 계산해서 판단하는 연습을 해요.",
+      "goals": [
+        "고객 인터뷰로 고객이 맡기는 ‘할 일’과 바꾸지 못하는 이유를 찾아낼 수 있어요.",
+        "시장 규모를 아래에서 위로 어림하고, 노릴 고객과 포지셔닝 문장을 정할 수 있어요.",
+        "가치 · 원가 · 심리 · 묶음 · 구독을 따져 가격안을 비교하고, 할인의 손익을 계산할 수 있어요.",
+        "퍼널 · 코호트 · CAC · LTV · 회수 기간으로 성장이 돈이 되는지 판단할 수 있어요.",
+        "광고 성과를 ROAS와 증분 실험으로 따져, 속기 쉬운 숫자를 가려낼 수 있어요."
+      ],
       "cards": [
         {
           "id": "jtbd",
           "title": "고객은 제품이 아니라 ‘할 일’을 사요",
-          "min": 4
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "customer-interview",
+          "title": "인터뷰는 의견 말고 지난 행동을 물어요",
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "switching-forces",
+          "title": "좋은 제품도 습관과 불안을 넘어야 팔려요",
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "market-size",
+          "title": "TAM · SAM · SOM: 시장은 좁혀 가며 재요",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "fermi-estimate",
+          "title": "시장 규모는 아래에서 위로 세어 봐요",
+          "min": 5,
+          "day": 2
         },
         {
           "id": "stp",
           "title": "모두를 노리면 아무도 못 잡아요",
-          "min": 4
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "positioning",
+          "title": "포지셔닝: ‘무엇 대신 우리인가’를 한 문장으로",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "value-proposition",
+          "title": "가치제안은 고객의 아픔과 바람에 맞춘 약속이에요",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "marketing-mix",
+          "title": "4P · 7P는 한 방향을 봐야 해요",
+          "min": 5,
+          "day": 3
         },
         {
           "id": "value-pricing",
           "title": "가격은 원가가 아니라 고객이 느끼는 가치로 정해요",
-          "min": 5
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "discount-math",
+          "title": "할인은 생각보다 훨씬 많이 팔아야 본전이에요",
+          "min": 6,
+          "day": 4
+        },
+        {
+          "id": "psychological-pricing",
+          "title": "사람은 가격을 비교해서 느껴요",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "bundling",
+          "title": "묶어 팔면 지불 의향의 빈틈이 메워져요",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "subscription",
+          "title": "구독은 매달 다시 파는 거예요",
+          "min": 6,
+          "day": 5
+        },
+        {
+          "id": "marketing-mid-review",
+          "title": "마케팅 중간 정리 · 섞어 풀기",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "brand",
+          "title": "브랜드는 고르는 수고를 덜어 주는 약속이에요",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "channels",
+          "title": "어디서 파느냐가 얼마 남느냐를 바꿔요",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "b2b-sales",
+          "title": "B2B는 여러 사람이 오래 고민해서 사요",
+          "min": 5,
+          "day": 6
         },
         {
           "id": "funnel",
           "title": "어디서 새는지 보려면 퍼널을 그려요",
-          "min": 4
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "cohort-retention",
+          "title": "평균 말고 코호트로 보면 남는 고객이 보여요",
+          "min": 5,
+          "day": 7
         },
         {
           "id": "cac-ltv",
           "title": "고객이 남기는 돈이 데려오는 돈보다 커야 해요",
-          "min": 5
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "payback",
+          "title": "CAC 회수 기간: 데려온 돈은 언제 돌아올까요",
+          "min": 6,
+          "day": 8
+        },
+        {
+          "id": "growth-loops",
+          "title": "퍼널 대신 루프: 고객이 다음 고객을 데려와요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "viral-coefficient",
+          "title": "바이럴 계수 K: 1보다 작아도 쓸모 있어요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "ad-metrics",
+          "title": "광고 숫자는 노출 → 클릭 → 전환으로 이어져요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "roas",
+          "title": "ROAS가 높아도 손해일 수 있어요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "incrementality",
+          "title": "광고가 데려온 고객일까, 원래 올 고객일까",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "vanity-metrics",
+          "title": "보기 좋은 숫자 말고 결정을 바꾸는 숫자",
+          "min": 5,
+          "day": 10
+        },
+        {
+          "id": "marketing-plan",
+          "title": "마케팅 계획 한 장: 목표에서 거꾸로 세워요",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "marketing-review",
           "title": "마케팅 정리 · 섞어 풀기",
-          "min": 4
+          "min": 5,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-pulja-pricing",
+          "title": "수학 풀이 앱 ‘풀자’의 첫 가격표 (가상의 회사)",
+          "min": 45,
+          "day": 5
+        },
+        {
+          "id": "case-hankki-budget",
+          "title": "밀키트 구독 ‘한끼정원’의 광고비 다시 나누기 (가상의 회사)",
+          "min": 50,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "customer-interview",
+          "type": "choice"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "switching-forces",
+          "type": "choice"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "market-size",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "fermi-estimate",
+          "type": "number"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "positioning",
+          "type": "choice"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "value-proposition",
+          "type": "choice"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "value-pricing",
+          "type": "number"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "discount-math",
+          "type": "number"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "bundling",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "subscription",
+          "type": "number"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "channels",
+          "type": "number"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "b2b-sales",
+          "type": "number"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "funnel",
+          "type": "number"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "cac-ltv",
+          "type": "number"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "payback",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "viral-coefficient",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "ad-metrics",
+          "type": "number"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "roas",
+          "type": "number"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "incrementality",
+          "type": "number"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "vanity-metrics",
+          "type": "choice"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "Session 3: Customer Analysis I (강의 슬라이드)",
+          "provider": "MIT OpenCourseWare · 15.810 Marketing Management (2010)",
+          "url": "https://ocw.mit.edu/courses/15-810-marketing-management-fall-2010/resources/mit15_810f10_lec03/",
+          "min": 30,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "Session 6: Segmentation, Targeting and Positioning (강의 슬라이드)",
+          "provider": "MIT OpenCourseWare · 15.810 Marketing Management (2010)",
+          "url": "https://ocw.mit.edu/courses/15-810-marketing-management-fall-2010/resources/mit15_810f10_lec06/",
+          "min": 30,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "5.6 Product Positioning",
+          "provider": "OpenStax · Principles of Marketing",
+          "url": "https://openstax.org/books/principles-marketing/pages/5-6-product-positioning",
+          "min": 15,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "Session 4: Economic Value to the Customer (EVC) and Customer Lifetime Value (강의 슬라이드)",
+          "provider": "MIT OpenCourseWare · 15.810 Marketing Management (2010)",
+          "url": "https://ocw.mit.edu/courses/15-810-marketing-management-fall-2010/resources/mit15_810f10_lec04/",
+          "min": 45,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "12.5 Pricing Strategies and Tactics for Existing Products",
+          "provider": "OpenStax · Principles of Marketing",
+          "url": "https://openstax.org/books/principles-marketing/pages/12-5-pricing-strategies-and-tactics-for-existing-products",
+          "min": 10,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "4.4 Stages in the B2B Buying Process",
+          "provider": "OpenStax · Principles of Marketing",
+          "url": "https://openstax.org/books/principles-marketing/pages/4-4-stages-in-the-b2b-buying-process",
+          "min": 10,
+          "day": 6,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "16.3 Metrics Used to Evaluate the Success of Online Marketing",
+          "provider": "OpenStax · Principles of Marketing",
+          "url": "https://openstax.org/books/principles-marketing/pages/16-3-metrics-used-to-evaluate-the-success-of-online-marketing",
+          "min": 20,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "Lecture 13: How do you make money off your product? (강의 슬라이드)",
+          "provider": "MIT OpenCourseWare · 15.390 New Enterprises (2013)",
+          "url": "https://ocw.mit.edu/courses/15-390-new-enterprises-spring-2013/resources/mit15_390s13_lec13/",
+          "min": 30,
+          "day": 8,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "14.3 The Use of Metrics to Measure Advertising Campaign Effectiveness",
+          "provider": "OpenStax · Principles of Marketing",
+          "url": "https://openstax.org/books/principles-marketing/pages/14-3-the-use-of-metrics-to-measure-advertising-campaign-effectiveness",
+          "min": 10,
+          "day": 9,
+          "lang": "en"
+        },
+        {
+          "id": "l10",
+          "title": "2.4 Marketing Plan Progress Using Metrics",
+          "provider": "OpenStax · Principles of Marketing",
+          "url": "https://openstax.org/books/principles-marketing/pages/2-4-marketing-plan-progress-using-metrics",
+          "min": 25,
+          "day": 10,
+          "lang": "en"
         }
       ]
     },
@@ -215,36 +2145,422 @@
       "phase": "기능",
       "schools": "9/9*",
       "what": "일이 막히는 한 지점(병목)을 찾는 눈을 길러요. (*MIT는 4과목 중 하나를 고르는 필수)",
+      "intro": "2주 동안 일을 ‘흐름’으로 보고, 더 빨리 · 더 싸게 · 더 믿을 수 있게 만드는 도구를 배워요. 첫 주에는 능력 · 병목 · 대기행렬 · 서비스 · 품질을, 둘째 주에는 변동 관리 · 재고 · 공급망 · 린 · 프로젝트를 다뤄요. 가게와 카페의 숫자로 직접 계산하고, 케이스에서 무엇부터 고칠지 정해 봐요.",
+      "goals": [
+        "단계별 처리 능력 · 병목 · 가동률을 계산하고, 어디를 고쳐야 전체가 빨라지는지 말할 수 있어요.",
+        "리틀의 법칙과 대기행렬 감각으로 가동률이 높을 때 왜 줄이 폭발하는지 설명하고 대책을 고를 수 있어요.",
+        "품질 비용 · 공정 능력 · 관리도로 불량의 원인을 찾고 구조로 막는 방법을 고를 수 있어요.",
+        "EOQ · 재주문점 · 안전재고 · 신문팔이 모형으로 재고를 얼마나, 언제 둘지 계산할 수 있어요.",
+        "린의 낭비 · 칸반 · 임계 경로로 일의 흐름과 일정을 고칠 수 있어요."
+      ],
       "cards": [
         {
           "id": "process",
           "title": "일을 ‘흐름’으로 보면 숨은 기다림이 보여요",
-          "min": 4
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "capacity",
+          "title": "한 단계의 능력 = 사람 수 ÷ 한 건에 걸리는 시간",
+          "min": 5,
+          "day": 1
         },
         {
           "id": "bottleneck",
           "title": "전체 속도는 가장 느린 단계가 정해요",
-          "min": 5
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "utilization",
+          "title": "가동률: 수요가 모자라면 병목은 시장이에요",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "constraint-mix",
+          "title": "병목이 있으면 ‘병목 1분당 이익’으로 골라요",
+          "min": 6,
+          "day": 2
         },
         {
           "id": "littles-law",
           "title": "리틀의 법칙: 쌓인 양 = 처리량 × 머무는 시간",
-          "min": 4
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "queue-utilization",
+          "title": "가동률이 100%에 가까우면 줄이 폭발해요",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "variability",
+          "title": "들쭉날쭉함이 기다림을 만들어요",
+          "min": 6,
+          "day": 3
+        },
+        {
+          "id": "pooling",
+          "title": "줄을 하나로 합치면 기다림이 줄어요",
+          "min": 6,
+          "day": 3
+        },
+        {
+          "id": "service-ops",
+          "title": "서비스는 재고로 쌓아 둘 수 없어요",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "capacity-planning",
+          "title": "능력은 수요보다 먼저 늘릴까, 나중에 늘릴까",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "forecasting",
+          "title": "예측은 늘 틀려요: 얼마나 틀리는지 재요",
+          "min": 5,
+          "day": 4
         },
         {
           "id": "quality",
           "title": "불량은 늦게 찾을수록 비싸져요",
-          "min": 4
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "cost-of-quality",
+          "title": "품질 비용: 예방에 쓴 돈이 실패 비용을 줄여요",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "operations-mid-review",
+          "title": "운영 중간 정리 · 섞어 풀기",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "six-sigma",
+          "title": "6시그마 감각: 평균보다 퍼짐을 줄여요",
+          "min": 6,
+          "day": 6
+        },
+        {
+          "id": "control-chart",
+          "title": "관리도: 흔한 흔들림과 진짜 신호를 가려요",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "root-cause",
+          "title": "실수는 사람 탓보다 구조로 막아요",
+          "min": 5,
+          "day": 6
         },
         {
           "id": "inventory-lean",
           "title": "재고는 안심이지만 돈과 문제를 숨겨요",
-          "min": 5
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "eoq",
+          "title": "한 번에 얼마나 주문할까: EOQ",
+          "min": 6,
+          "day": 7
+        },
+        {
+          "id": "reorder-point",
+          "title": "언제 주문할까: 재주문점",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "safety-stock",
+          "title": "안전재고는 들쭉날쭉함의 값이에요",
+          "min": 6,
+          "day": 8
+        },
+        {
+          "id": "newsvendor",
+          "title": "한 번 팔고 끝나는 물건은 얼마나 준비할까",
+          "min": 6,
+          "day": 8
+        },
+        {
+          "id": "bullwhip",
+          "title": "채찍 효과: 작은 흔들림이 위로 갈수록 커져요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "supply-risk",
+          "title": "공급망은 가장 약한 고리에서 끊겨요",
+          "min": 6,
+          "day": 9
+        },
+        {
+          "id": "seven-wastes",
+          "title": "린의 눈: 고객이 돈 내지 않는 일 일곱 가지",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "pull-kanban",
+          "title": "밀어내기 말고 당기기: 칸반으로 흐름을 지켜요",
+          "min": 6,
+          "day": 9
+        },
+        {
+          "id": "critical-path",
+          "title": "프로젝트 기간은 가장 긴 경로가 정해요",
+          "min": 6,
+          "day": 10
+        },
+        {
+          "id": "operations-strategy",
+          "title": "운영 전략: 무엇으로 이길지 고르면 운영이 정해져요",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "operations-review",
           "title": "운영 정리 · 섞어 풀기",
-          "min": 4
+          "min": 5,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-haemil-brunch",
+          "title": "주말 브런치 카페 ‘해밀’의 줄 줄이기 (가상의 회사)",
+          "min": 45,
+          "day": 5
+        },
+        {
+          "id": "case-oneulchan-ops",
+          "title": "온라인 반찬 가게 ‘오늘찬’의 재고 · 품질 · 공급망 정비 (가상의 회사)",
+          "min": 50,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "process",
+          "type": "number"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "capacity",
+          "type": "number"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "utilization",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "constraint-mix",
+          "type": "number"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "littles-law",
+          "type": "number"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "queue-utilization",
+          "type": "number"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "pooling",
+          "type": "choice"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "capacity-planning",
+          "type": "number"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "forecasting",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "cost-of-quality",
+          "type": "number"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "six-sigma",
+          "type": "number"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "control-chart",
+          "type": "choice"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "root-cause",
+          "type": "choice"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "eoq",
+          "type": "number"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "reorder-point",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "safety-stock",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "newsvendor",
+          "type": "number"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "supply-risk",
+          "type": "number"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "pull-kanban",
+          "type": "number"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "critical-path",
+          "type": "number"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "Class 3: Capacity (강의 슬라이드)",
+          "provider": "MIT OpenCourseWare · 15.760B Introduction to Operations Management (2004)",
+          "url": "https://ocw.mit.edu/courses/15-760b-introduction-to-operations-management-spring-2004/resources/lec3_capacity/",
+          "min": 25,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "Lecture 06: Capacity Planning and Production Flow Control (The Goal)",
+          "provider": "MIT OpenCourseWare · 15.772J D-Lab: Supply Chains (2014)",
+          "url": "https://ocw.mit.edu/courses/15-772j-d-lab-supply-chains-fall-2014/resources/mit15_772jf14_lec06/",
+          "min": 25,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "Class 10: University Health Service — 대기행렬 사례 (강의 노트)",
+          "provider": "MIT OpenCourseWare · 15.760A Operations Management (2002)",
+          "url": "https://ocw.mit.edu/courses/15-760a-operations-management-spring-2002/resources/lecture10_feb27/",
+          "min": 20,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "Lecture 04–05: Supply Chain Examples and Challenges (수요 관리 · 예측 부분)",
+          "provider": "MIT OpenCourseWare · 15.772J D-Lab: Supply Chains (2014)",
+          "url": "https://ocw.mit.edu/courses/15-772j-d-lab-supply-chains-fall-2014/resources/mit15_772jf14_lec04-lec05/",
+          "min": 40,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "Class 12: Quality (강의 슬라이드)",
+          "provider": "MIT OpenCourseWare · 15.760B Introduction to Operations Management (2004)",
+          "url": "https://ocw.mit.edu/courses/15-760b-introduction-to-operations-management-spring-2004/resources/lec12_quality/",
+          "min": 25,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "TQM: Process Capability (1쪽 노트)",
+          "provider": "MIT OpenCourseWare · 15.760A Operations Management (2002)",
+          "url": "https://ocw.mit.edu/courses/15-760a-operations-management-spring-2002/resources/tqmprocesscapab/",
+          "min": 10,
+          "day": 6,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "Class 6: Inventory (강의 슬라이드)",
+          "provider": "MIT OpenCourseWare · 15.760B Introduction to Operations Management (2004)",
+          "url": "https://ocw.mit.edu/courses/15-760b-introduction-to-operations-management-spring-2004/resources/lec6_invntry/",
+          "min": 30,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "Lecture 03: Supply Chain Dynamics; Beer Game Debrief (강의 슬라이드)",
+          "provider": "MIT OpenCourseWare · 15.772J D-Lab: Supply Chains (2014)",
+          "url": "https://ocw.mit.edu/courses/15-772j-d-lab-supply-chains-fall-2014/resources/mit15_772jf14_lec03/",
+          "min": 30,
+          "day": 8,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "Class 13: Just-in-Time / Toyota Production System (강의 노트)",
+          "provider": "MIT OpenCourseWare · 15.760A Operations Management (2002)",
+          "url": "https://ocw.mit.edu/courses/15-760a-operations-management-spring-2002/resources/lecture13_mar6/",
+          "min": 15,
+          "day": 9,
+          "lang": "en"
+        },
+        {
+          "id": "l10",
+          "title": "10.5 Production and Operations Control",
+          "provider": "OpenStax · Introduction to Business",
+          "url": "https://openstax.org/books/introduction-business/pages/10-5-production-and-operations-control",
+          "min": 10,
+          "day": 10,
+          "lang": "en"
         }
       ]
     },
@@ -256,36 +2572,422 @@
       "phase": "기능",
       "schools": "9/9",
       "what": "사람은 보상과 구조대로 움직여요. 팀이 잘 되는 조건.",
+      "intro": "사람은 보상받는 대로 움직이지만, 오래가는 힘은 자율성과 의미에서 나와요. 2주 동안 동기 → 인센티브 → 판단의 함정 → 채용 → 팀 → 평가와 보상 → 조직 구조 · 문화 · 변화 순서로, 사람이 모인 곳에서 결과가 어떻게 만들어지는지 배워요. 다짐보다 구조(짝 지표 · 같은 질문 · 각자 먼저 적기)를 바꾸는 법에 집중해요.",
+      "goals": [
+        "자기결정이론 · 기대이론 · 목표 설정으로 사람이 왜 움직이고 왜 멈추는지 진단할 수 있어요",
+        "인센티브와 지표를 설계할 때 생길 부작용(굿하트의 법칙)을 미리 찾고 짝 지표로 막을 수 있어요",
+        "확증편향 · 앵커링 · 과신 · 집단사고 · 잡음을 줄이는 회의와 채용 절차(구조화 면접 · 업무 표본)를 짤 수 있어요",
+        "팀 · 평가 · 보상 · 이직을 숫자(보고율 · 비교 비율 · 이직률)로 읽고 먼저 고칠 곳을 고를 수 있어요",
+        "조직 구조 · 관리 폭 · 위임 · 문화 · 변화 계획 · 하이브리드 근무를 일의 성격에 맞게 고를 수 있어요"
+      ],
       "cards": [
         {
           "id": "motivation",
           "title": "돈보다 오래가는 동기가 있어요",
-          "min": 4
+          "min": 4,
+          "day": 1
+        },
+        {
+          "id": "expectancy-theory",
+          "title": "노력할지는 세 가지 믿음의 곱으로 정해져요",
+          "min": 4,
+          "day": 1
+        },
+        {
+          "id": "goal-setting",
+          "title": "‘최선을 다해’보다 구체적이고 어려운 목표가 나아요",
+          "min": 4,
+          "day": 1
         },
         {
           "id": "incentives",
           "title": "사람은 보상받는 대로 움직여요",
-          "min": 4
+          "min": 4,
+          "day": 2
         },
         {
-          "id": "psychological-safety",
-          "title": "좋은 팀은 실수를 더 많이 말해요",
-          "min": 4
+          "id": "metric-design",
+          "title": "숫자 하나에 걸면 숫자만 좋아져요: 짝 지표",
+          "min": 4,
+          "day": 2
+        },
+        {
+          "id": "pay-for-performance",
+          "title": "성과급은 잘 세어지는 일에서 힘이 세요",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "confirmation-bias",
+          "title": "보고 싶은 증거만 찾게 돼요: 확증편향",
+          "min": 4,
+          "day": 3
+        },
+        {
+          "id": "anchoring",
+          "title": "먼저 본 숫자가 판단을 끌어당겨요: 앵커링",
+          "min": 4,
+          "day": 3
+        },
+        {
+          "id": "overconfidence",
+          "title": "‘90% 확실’은 생각보다 자주 틀려요: 과신",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "groupthink",
+          "title": "모두 찬성하는 회의가 가장 위험할 수 있어요",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "noise",
+          "title": "같은 일, 다른 판단: 잡음도 오류예요",
+          "min": 5,
+          "day": 4
         },
         {
           "id": "structured-judgment",
           "title": "편향은 구조로 줄여요: 채용 면접부터",
-          "min": 5
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "work-sample",
+          "title": "말보다 일을 시켜 보면 더 잘 보여요: 업무 표본",
+          "min": 4,
+          "day": 5
+        },
+        {
+          "id": "psychological-safety",
+          "title": "좋은 팀은 실수를 더 많이 말해요",
+          "min": 4,
+          "day": 5
+        },
+        {
+          "id": "people-midreview",
+          "title": "중간 정리 · 섞어 풀기: 동기에서 팀까지",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "team-design",
+          "title": "팀은 작게, 내 몫이 보이게 짜요",
+          "min": 4,
+          "day": 6
+        },
+        {
+          "id": "conflict",
+          "title": "일에 대한 다툼과 사람에 대한 다툼은 달라요",
+          "min": 4,
+          "day": 6
+        },
+        {
+          "id": "debrief",
+          "title": "일이 끝나면 함께 돌아봐요: 회고",
+          "min": 4,
+          "day": 6
+        },
+        {
+          "id": "performance-review",
+          "title": "평가 점수에는 평가자의 버릇이 섞여요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "feedback-system",
+          "title": "피드백도 셋 중 하나는 성과를 떨어뜨려요",
+          "min": 4,
+          "day": 7
+        },
+        {
+          "id": "compensation",
+          "title": "보상은 액수보다 ‘공정해 보이는가’가 먼저예요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "turnover",
+          "title": "사람이 떠나는 비용을 계산해 봐요: 이직률",
+          "min": 4,
+          "day": 8
         },
         {
           "id": "org-structure",
           "title": "조직 구조는 누가 누구와 말할지 정해요",
-          "min": 4
+          "min": 4,
+          "day": 8
+        },
+        {
+          "id": "conway-law",
+          "title": "조직도는 제품에 그대로 찍혀요: 콘웨이 법칙",
+          "min": 4,
+          "day": 8
+        },
+        {
+          "id": "span-of-control",
+          "title": "한 관리자가 몇 명을 맡을까: 관리 폭",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "delegation",
+          "title": "맡기는 건 일과 함께 결정권을 넘기는 거예요",
+          "min": 4,
+          "day": 9
+        },
+        {
+          "id": "culture",
+          "title": "문화는 벽의 표어가 아니라 실제로 보상받는 행동이에요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "change-management",
+          "title": "변화는 발표가 아니라 과정이에요",
+          "min": 5,
+          "day": 10
+        },
+        {
+          "id": "remote-hybrid",
+          "title": "원격 · 하이브리드: 일의 종류에 따라 답이 달라요",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "people-review",
           "title": "사람과 조직 정리 · 섞어 풀기",
-          "min": 4
+          "min": 5,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-callcenter-bonus",
+          "title": "나무상점 고객센터의 성과급은 왜 역효과가 났을까",
+          "min": 40,
+          "day": 5
+        },
+        {
+          "id": "case-startup-reorg",
+          "title": "120명이 된 ‘오늘배송’, 조직을 어떻게 다시 짤까",
+          "min": 45,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "motivation",
+          "type": "choice"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "expectancy-theory",
+          "type": "number"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "incentives",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "pay-for-performance",
+          "type": "number"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "confirmation-bias",
+          "type": "choice"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "overconfidence",
+          "type": "number"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "groupthink",
+          "type": "choice"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "noise",
+          "type": "number"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "work-sample",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "psychological-safety",
+          "type": "number"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "team-design",
+          "type": "number"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "conflict",
+          "type": "choice"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "performance-review",
+          "type": "number"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "compensation",
+          "type": "number"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "turnover",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "conway-law",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "span-of-control",
+          "type": "number"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "delegation",
+          "type": "number"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "change-management",
+          "type": "choice"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "remote-hybrid",
+          "type": "number"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "7.3 Process Theories of Motivation (Goal Theory · Expectancy Theory)",
+          "provider": "OpenStax Organizational Behavior",
+          "url": "https://openstax.org/books/organizational-behavior/pages/7-3-process-theories-of-motivation",
+          "min": 25,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "Session 5: Reward Systems & Incentives (Lincoln Electric)",
+          "provider": "MIT OpenCourseWare 15.322 Leading Organizations II",
+          "url": "https://ocw.mit.edu/courses/15-322-leading-organizations-ii-fall-2003/resources/ses5_lincoln_electric/",
+          "min": 15,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "Lecture 8: Decision Making",
+          "provider": "MIT OpenCourseWare 15.301 Managerial Psychology",
+          "url": "https://ocw.mit.edu/courses/15-301-managerial-psychology-fall-2006/resources/lec8/",
+          "min": 25,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "Lecture 13: Group Decision Making",
+          "provider": "MIT OpenCourseWare 15.301 Managerial Psychology",
+          "url": "https://ocw.mit.edu/courses/15-301-managerial-psychology-fall-2006/resources/lec13/",
+          "min": 20,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "Work Samples and Simulations",
+          "provider": "미국 인사관리처(OPM) Assessment & Selection",
+          "url": "https://www.opm.gov/policy-data-oversight/assessment-and-selection/other-assessment-methods/work-samples-and-simulations/",
+          "min": 10,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "Lecture 12: Groups and Teams",
+          "provider": "MIT OpenCourseWare 15.301 Managerial Psychology",
+          "url": "https://ocw.mit.edu/courses/15-301-managerial-psychology-fall-2006/resources/lec12/",
+          "min": 20,
+          "day": 6,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "8.1 Performance Appraisal Systems",
+          "provider": "OpenStax Organizational Behavior",
+          "url": "https://openstax.org/books/organizational-behavior/pages/8-1-performance-appraisal-systems",
+          "min": 12,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "15.311 Organizational Processes — Syllabus (세 렌즈)",
+          "provider": "MIT OpenCourseWare 15.311 Organizational Processes",
+          "url": "https://ocw.mit.edu/courses/15-311-organizational-processes-fall-2003/pages/syllabus/",
+          "min": 10,
+          "day": 8,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "Lecture 16: Organizational Culture",
+          "provider": "MIT OpenCourseWare 15.301 Managerial Psychology",
+          "url": "https://ocw.mit.edu/courses/15-301-managerial-psychology-fall-2006/resources/lec16/",
+          "min": 15,
+          "day": 9,
+          "lang": "en"
+        },
+        {
+          "id": "l10",
+          "title": "16.3 Managing Change",
+          "provider": "OpenStax Organizational Behavior",
+          "url": "https://openstax.org/books/organizational-behavior/pages/16-3-managing-change",
+          "min": 35,
+          "day": 10,
+          "lang": "en"
         }
       ]
     },
@@ -297,36 +2999,413 @@
       "phase": "통합",
       "schools": "9/9",
       "what": "어디서 싸우고, 무엇으로 이기는지 고르는 일.",
+      "intro": "2주 동안 ‘어디서 싸우고 어떻게 이길지’를 고르는 도구를 배워요. 산업 구조와 실제 수익성 숫자로 판을 읽고, 위치 · 해자 · 플랫폼으로 이기는 법과 지키는 법을 본 뒤, 성장 · 인수 · 경쟁 대응 · 불확실성 · 실행까지 한 장 전략으로 묶어요.",
+      "goals": [
+        "5 Forces와 산업별 투하자본이익률로 어떤 산업이 왜 돈을 잘 버는지 설명할 수 있어요.",
+        "원가 우위 · 차별화 · 집중, 가치 막대, 해자 · VRIO로 한 회사의 경쟁우위를 진단할 수 있어요.",
+        "앤소프 · 다각화 시험 · 시너지 − 프리미엄 계산으로 성장안과 인수안을 숫자로 비교할 수 있어요.",
+        "보수표 · 시나리오 · 실물옵션으로 경쟁사의 반응과 불확실성을 고려해 결정할 수 있어요.",
+        "진단부터 OKR · 예산 배분까지 이어진 한 장 전략을 쓸 수 있어요."
+      ],
       "cards": [
+        {
+          "id": "strategy-kernel",
+          "title": "좋은 전략은 진단 · 방침 · 행동 세 가지예요",
+          "min": 4,
+          "day": 1
+        },
         {
           "id": "five-forces",
           "title": "산업마다 남는 돈이 다른 이유: 5 Forces",
-          "min": 5
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "industry-profitability",
+          "title": "산업마다 버는 돈은 실제로 열 배 넘게 달라요",
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "complements",
+          "title": "보완재: 남이 잘돼야 나도 잘되는 관계",
+          "min": 4,
+          "day": 2
         },
         {
           "id": "value-chain",
           "title": "가치사슬: 어느 활동에서 이길지 정해요",
-          "min": 4
+          "min": 4,
+          "day": 2
+        },
+        {
+          "id": "generic-strategies",
+          "title": "이기는 길은 셋: 싸게, 다르게, 좁게",
+          "min": 4,
+          "day": 2
+        },
+        {
+          "id": "scale-experience",
+          "title": "많이 만들수록 싸져요: 규모와 경험 곡선",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "willingness-to-pay",
+          "title": "가치 막대: 고객이 낼 마음과 원가 사이",
+          "min": 5,
+          "day": 3
         },
         {
           "id": "moat",
           "title": "해자: 따라 하기 어려워야 오래가요",
-          "min": 5
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "network-effects",
+          "title": "네트워크 효과: 쓰는 사람이 쓰는 사람을 불러요",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "vrio",
+          "title": "VRIO: 내 강점이 진짜 무기인지 거르는 네 질문",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "platform",
+          "title": "플랫폼은 한쪽을 보조하고 다른 쪽에서 벌어요",
+          "min": 5,
+          "day": 4
         },
         {
           "id": "disruption",
           "title": "파괴적 혁신은 아래에서 올라와요",
-          "min": 5
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "blue-ocean",
+          "title": "블루오션: 경쟁 요소를 다시 그려요",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "strategy-midreview",
+          "title": "중간 정리 · 섞어 풀기: 산업과 우위",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "ansoff",
+          "title": "어디로 클까: 앤소프의 네 갈래",
+          "min": 4,
+          "day": 6
+        },
+        {
+          "id": "diversification",
+          "title": "다각화는 세 가지 시험을 통과해야 해요",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "m-and-a",
+          "title": "인수는 시너지보다 비싸게 사면 져요",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "game-theory",
+          "title": "게임이론: 상대의 수까지 계산해요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "competitive-response",
+          "title": "계속 만나는 상대와는 맞대응이 통해요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "first-mover",
+          "title": "먼저 들어가면 늘 이길까요: 선점과 후발",
+          "min": 4,
+          "day": 7
+        },
+        {
+          "id": "scenario-planning",
+          "title": "미래를 맞히지 말고 대비해요: 시나리오",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "real-options",
+          "title": "작게 걸고, 알게 되면 키워요: 실물옵션",
+          "min": 5,
+          "day": 8
         },
         {
           "id": "trade-offs",
           "title": "전략은 무엇을 안 할지 정하는 거예요",
-          "min": 5
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "activity-fit",
+          "title": "활동이 서로 맞물리면 따라 하기 어려워요",
+          "min": 4,
+          "day": 9
+        },
+        {
+          "id": "emergent-strategy",
+          "title": "전략은 계획대로만 생기지 않아요",
+          "min": 4,
+          "day": 9
+        },
+        {
+          "id": "okr",
+          "title": "전략을 분기의 목표로 바꿔요: OKR",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "resource-allocation",
+          "title": "진짜 전략은 예산과 사람 배치에 드러나요",
+          "min": 4,
+          "day": 10
+        },
+        {
+          "id": "strategy-one-page",
+          "title": "한 장 전략: 진단부터 OKR까지 이어 써요",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "strategy-review",
           "title": "전략 정리 · 섞어 풀기",
-          "min": 4
+          "min": 5,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-local-market-app",
+          "title": "동네 중고거래 앱 2위 ‘이웃장터’의 선택",
+          "min": 40,
+          "day": 5
+        },
+        {
+          "id": "case-food-growth",
+          "title": "중견 식품회사 ‘한결식품’의 다음 5년",
+          "min": 45,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "five-forces",
+          "type": "number"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "industry-profitability",
+          "type": "choice"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "value-chain",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "generic-strategies",
+          "type": "choice"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "scale-experience",
+          "type": "number"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "willingness-to-pay",
+          "type": "number"
+        },
+        {
+          "id": "p07",
+          "day": 3,
+          "card": "moat",
+          "type": "number"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "network-effects",
+          "type": "number"
+        },
+        {
+          "id": "p09",
+          "day": 4,
+          "card": "platform",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "disruption",
+          "type": "number"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "ansoff",
+          "type": "choice"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "m-and-a",
+          "type": "number"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "game-theory",
+          "type": "choice"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "first-mover",
+          "type": "choice"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "scenario-planning",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "real-options",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 8,
+          "card": "trade-offs",
+          "type": "number"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "activity-fit",
+          "type": "number"
+        },
+        {
+          "id": "p19",
+          "day": 9,
+          "card": "okr",
+          "type": "number"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "resource-allocation",
+          "type": "number"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "8.4 A Firm’s Micro Environment: Porter’s Five Forces",
+          "provider": "OpenStax Principles of Management",
+          "url": "https://openstax.org/books/principles-management/pages/8-4-a-firms-micro-environment-porters-five-forces",
+          "min": 15,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "Margins by Sector (US)",
+          "provider": "Aswath Damodaran (NYU Stern)",
+          "url": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/margin.html",
+          "min": 15,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "8.6 Competition, Strategy, and Competitive Advantage",
+          "provider": "OpenStax Principles of Management",
+          "url": "https://openstax.org/books/principles-management/pages/8-6-competition-strategy-and-competitive-advantage",
+          "min": 15,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "Strategic Management I — 강의 노트(자원기반관점 등)",
+          "provider": "MIT OpenCourseWare 15.902",
+          "url": "https://ocw.mit.edu/courses/15-902-strategic-management-i-fall-2006/",
+          "min": 30,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "Technology Strategy — 강의 노트(플랫폼 · 혁신)",
+          "provider": "MIT OpenCourseWare 15.912",
+          "url": "https://ocw.mit.edu/courses/15-912-technology-strategy-fall-2008/",
+          "min": 30,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "ECON 159 Game Theory — Lecture 1: Introduction: Five First Lessons",
+          "provider": "Open Yale Courses ECON 159 (Ben Polak)",
+          "url": "https://oyc.yale.edu/economics/econ-159/lecture-1",
+          "min": 70,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "Game Theory for Strategic Advantage — Lecture Notes",
+          "provider": "MIT OpenCourseWare 15.025",
+          "url": "https://ocw.mit.edu/courses/15-025-game-theory-for-strategic-advantage-spring-2015/",
+          "min": 30,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "Advanced Strategy — 강의 노트",
+          "provider": "MIT OpenCourseWare 15.963",
+          "url": "https://ocw.mit.edu/courses/15-963-advanced-strategy-spring-2008/",
+          "min": 30,
+          "day": 8,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "9.5 Planning Firm Actions to Implement Strategies",
+          "provider": "OpenStax Principles of Management",
+          "url": "https://openstax.org/books/principles-management/pages/9-5-planning-firm-actions-to-implement-strategies",
+          "min": 15,
+          "day": 9,
+          "lang": "en"
         }
       ]
     },
@@ -338,36 +3417,422 @@
       "phase": "통합",
       "schools": "5/9 · 협상 3/9",
       "what": "말과 글로 사람을 움직이고, 협상에서 가치를 키워요.",
+      "intro": "2주 동안 사람을 이끄는 기술과 협상하는 기술을 배워요. 앞 5일은 피드백 · 코칭 · 위임 · 회의 · 글쓰기 · 발표 · 결정처럼 팀을 통해 결과를 내는 방법을, 뒤 5일은 BATNA부터 조건부 계약 · 다자 협상 · 합의 뒤 관리까지 협상을 준비하고 이끄는 방법을 다뤄요. 둘 다 읽어서가 아니라 해 봐서 느는 기술이라, 카드마다 이번 주에 써 볼 일을 하나씩 정해요.",
+      "goals": [
+        "팀원과 일에 맞춰 리더 행동을 고르고, 결과 · 기한 · 권한을 담아 위임할 수 있어요.",
+        "SBI 피드백과 GROW 코칭 질문으로 1:1과 어려운 대화를 이끌 수 있어요.",
+        "결론부터 쓴 한 장 메모와 짧은 회의 · 발표로 설득하고, 되돌릴 수 있는지에 따라 결정의 속도와 방식을 정할 수 있어요.",
+        "BATNA · 유보가격 · ZOPA를 숫자로 계산하고, 점수표 · MESO · 조건부 계약으로 파이를 키운 합의를 설계할 수 있어요.",
+        "협상 준비표를 한 장으로 만들고, 윤리의 선을 지키며 합의를 글로 마무리할 수 있어요."
+      ],
       "cards": [
+        {
+          "id": "leader-what",
+          "title": "리더십은 직함이 아니라 영향력이에요",
+          "min": 4,
+          "day": 1
+        },
+        {
+          "id": "leadership-styles",
+          "title": "같은 리더도 상황에 따라 다르게 이끌어요",
+          "min": 5,
+          "day": 1
+        },
         {
           "id": "feedback",
           "title": "피드백은 사람이 아니라 행동에 해요",
-          "min": 4
+          "min": 4,
+          "day": 1
+        },
+        {
+          "id": "coaching-questions",
+          "title": "답을 주기 전에 질문해요: GROW",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "one-on-one",
+          "title": "1:1 미팅은 팀원의 시간이에요",
+          "min": 4,
+          "day": 2
+        },
+        {
+          "id": "delegation",
+          "title": "일이 아니라 결과와 권한을 맡겨요",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "meeting-design",
+          "title": "회의는 목적 · 사람 · 결정 방식부터 정해요",
+          "min": 5,
+          "day": 3
         },
         {
           "id": "write-first",
           "title": "결론부터 쓰고, 회의 전에 함께 읽어요",
-          "min": 5
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "scqa-memo",
+          "title": "한 장 메모는 SCQA로 열고 MECE로 묶어요",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "presentation-story",
+          "title": "발표는 메시지 하나를 이야기로 전해요",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "persuasion",
+          "title": "설득의 원리: 사람은 무엇에 움직일까",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "hard-conversations",
+          "title": "어려운 대화는 세 겹으로 나눠 봐요",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "reversible-decisions",
+          "title": "되돌릴 수 있는 결정은 빠르게 내려요",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "decision-rights",
+          "title": "누가 어떻게 정할지 먼저 정해요",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "leadership-mid-review",
+          "title": "중간 정리 · 섞어 풀기: 사람 · 글 · 결정",
+          "min": 5,
+          "day": 5
         },
         {
           "id": "batna",
           "title": "협상의 힘은 ‘안 해도 되는 능력’이에요",
-          "min": 4
+          "min": 4,
+          "day": 6
+        },
+        {
+          "id": "batna-value",
+          "title": "불확실한 BATNA는 기댓값으로 재요",
+          "min": 5,
+          "day": 6
         },
         {
           "id": "zopa-anchoring",
           "title": "ZOPA 안에서, 첫 숫자가 끌어당겨요",
-          "min": 5
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "concessions",
+          "title": "양보는 작아지게, 그리고 대가와 바꿔요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "interests-questions",
+          "title": "입장 밑의 이해관계를 질문으로 찾아요",
+          "min": 5,
+          "day": 7
         },
         {
           "id": "create-value",
           "title": "파이를 키운 다음에 나눠요",
-          "min": 5
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "scoring-meso",
+          "title": "점수표로 이슈를 재고, 안을 여러 개 내요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "contingent-deal",
+          "title": "미래를 다르게 보면 조건부 계약으로 풀어요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "objective-criteria",
+          "title": "기준으로 다투면 감정이 줄어요",
+          "min": 4,
+          "day": 8
+        },
+        {
+          "id": "multiparty",
+          "title": "셋 이상이 협상하면 연합과 순서가 중요해요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "emotions-fairness",
+          "title": "공정하지 않다고 느끼면 손해도 감수해요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "negotiation-ethics",
+          "title": "말하지 않을 수는 있어도, 지어내면 안 돼요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "negotiation-plan",
+          "title": "협상 준비는 한 장으로 끝내요",
+          "min": 5,
+          "day": 10
+        },
+        {
+          "id": "after-the-deal",
+          "title": "합의는 글로 남기고, 실행까지가 협상이에요",
+          "min": 4,
+          "day": 10
         },
         {
           "id": "leadership-review",
           "title": "리더십 · 협상 정리 · 섞어 풀기",
-          "min": 4
+          "min": 5,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-new-team-lead",
+          "title": "새 팀장의 첫 달: 회의 · 위임 · 결정",
+          "min": 40,
+          "day": 5
+        },
+        {
+          "id": "case-bean-contract",
+          "title": "원두 공급 재계약: 점수표에서 합의문까지",
+          "min": 45,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "leadership-styles",
+          "type": "choice"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "leader-what",
+          "type": "number"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "one-on-one",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "delegation",
+          "type": "number"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "meeting-design",
+          "type": "number"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "scqa-memo",
+          "type": "choice"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "persuasion",
+          "type": "choice"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "presentation-story",
+          "type": "number"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "reversible-decisions",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "decision-rights",
+          "type": "choice"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "batna",
+          "type": "number"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "batna-value",
+          "type": "number"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "zopa-anchoring",
+          "type": "number"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "concessions",
+          "type": "number"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "interests-questions",
+          "type": "choice"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "scoring-meso",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "contingent-deal",
+          "type": "number"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "emotions-fairness",
+          "type": "number"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "multiparty",
+          "type": "choice"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "negotiation-plan",
+          "type": "number"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "12.6 Situational (Contingency) Approaches to Leadership",
+          "provider": "OpenStax · Organizational Behavior",
+          "url": "https://openstax.org/books/organizational-behavior/pages/12-6-situational-contingency-approaches-to-leadership",
+          "min": 20,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "Lecture 5: Listening and Feedback",
+          "provider": "MIT OpenCourseWare 15.279",
+          "url": "https://ocw.mit.edu/courses/15-279-management-communication-for-undergraduates-fall-2012/resources/mit15_279f12_lec05/",
+          "min": 15,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "Lectures 1 and 2: Communicating Strategically",
+          "provider": "MIT OpenCourseWare 15.279",
+          "url": "https://ocw.mit.edu/courses/15-279-management-communication-for-undergraduates-fall-2012/resources/mit15_279f12_lec01and02/",
+          "min": 15,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "Think Fast, Talk Smart: Communication Techniques",
+          "provider": "Stanford Graduate School of Business (YouTube)",
+          "url": "https://www.youtube.com/watch?v=HAnw168huqA",
+          "min": 58,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "Teaching Note: Persuasion: What the Research Tells Us",
+          "provider": "MIT OpenCourseWare 15.279",
+          "url": "https://ocw.mit.edu/courses/15-279-management-communication-for-undergraduates-fall-2012/resources/mit15_279f12_prsuasnrsrch/",
+          "min": 20,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "2016 Letter to Shareholders",
+          "provider": "Amazon (aboutamazon.com)",
+          "url": "https://www.aboutamazon.com/news/company-news/2016-letter-to-shareholders",
+          "min": 7,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "Lecture 1: Street Streaker — 분배적 협상 · 첫 제안",
+          "provider": "MIT OpenCourseWare 15.067",
+          "url": "https://ocw.mit.edu/courses/15-067-competitive-decision-making-and-negotiation-spring-2011/resources/mit15_067s11_lec01/",
+          "min": 40,
+          "day": 6,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "Lecture 4: Nelson Contracting · CP Hong Kong vs. MegaMarket USA — 통합적 협상",
+          "provider": "MIT OpenCourseWare 15.067",
+          "url": "https://ocw.mit.edu/courses/15-067-competitive-decision-making-and-negotiation-spring-2011/resources/mit15_067s11_lec04/",
+          "min": 35,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "Lecture 6: The Rothman Art Collection — 조건부 계약 · 공정한 나누기",
+          "provider": "MIT OpenCourseWare 15.067",
+          "url": "https://ocw.mit.edu/courses/15-067-competitive-decision-making-and-negotiation-spring-2011/resources/mit15_067s11_lec06/",
+          "min": 50,
+          "day": 8,
+          "lang": "en"
+        },
+        {
+          "id": "l10",
+          "title": "Lecture 13: Welsh Water Debrief · 과정 정리",
+          "provider": "MIT OpenCourseWare 15.067",
+          "url": "https://ocw.mit.edu/courses/15-067-competitive-decision-making-and-negotiation-spring-2011/resources/mit15_067s11_lec13/",
+          "min": 20,
+          "day": 9,
+          "lang": "en"
         }
       ]
     },
@@ -379,36 +3844,422 @@
       "phase": "통합",
       "schools": "5/9",
       "what": "회사가 지켜야 할 선과, 법이 닿는 순간들.",
+      "intro": "회사는 주주만이 아니라 고객 · 직원 · 거래처 · 사회의 신뢰 위에서 돈을 벌어요. 이 2주 동안 회사의 목적과 지배구조, 숫자의 정직함, 고객 · 경쟁 · 노동 · 지식재산에 닿는 법, 그리고 ESG · AI · 내부고발처럼 법보다 한 걸음 앞선 윤리 문제를 차례로 배워요. 법은 2026년 기준으로 ‘어떤 순간에 닿는지’를 익히고, 판단이 어려운 선에서는 변호사 · 노무사 · 변리사 · 세무사를 찾는 법도 함께 익혀요.",
+      "goals": [
+        "결정 하나를 두고 이해관계자를 나누고, 결과 · 의무 · 덕 세 렌즈로 판단할 수 있어요.",
+        "주주총회 · 이사회 · 대표이사의 역할과 충실의무 · 이해상충 · 내부통제를 설명할 수 있어요.",
+        "회원가입 · 온라인 판매 · 약관 · 외주 · 첫 채용 · 이름 짓기처럼 법이 닿는 순간과 핵심 조문을 짚을 수 있어요(2026년 기준).",
+        "선수금 · 기대 손실 · HHI · 최저임금 · 연장근로 · 선발률 비율 같은 숫자를 직접 계산할 수 있어요.",
+        "그린워싱 · AI 편향 · 내부고발 · 리베이트 같은 회색 지대에서 무엇을 확인하고 누구에게 물을지 정할 수 있어요."
+      ],
       "cards": [
         {
           "id": "who-firm-serves",
           "title": "회사는 누구를 위해 돈을 벌까요",
-          "min": 4
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "stakeholder-map",
+          "title": "이해관계자는 영향력과 관심으로 나눠 봐요",
+          "min": 4,
+          "day": 1
+        },
+        {
+          "id": "ethics-lenses",
+          "title": "윤리 판단은 세 렌즈로: 결과 · 의무 · 덕",
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "governance-basics",
+          "title": "주주총회 · 이사회 · 대표이사: 누가 무엇을 정하나",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "duty-of-loyalty",
+          "title": "경영진은 주인의 돈을 맡은 대리인이에요",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "conflict-of-interest",
+          "title": "이해상충은 숨기지 말고 공개 · 제외 · 비교해요",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "accounting-ethics",
+          "title": "숫자를 꾸미면 모두가 잘못 결정해요",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "internal-control",
+          "title": "내부통제: 한 사람이 처음부터 끝까지 하지 않게",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "company-money",
+          "title": "회사 돈은 대표 돈이 아니에요",
+          "min": 4,
+          "day": 3
         },
         {
           "id": "regulation-trust",
           "title": "규제는 시장의 신뢰를 대신 보증해요",
-          "min": 4
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "ecommerce-rules",
+          "title": "온라인으로 팔 때: 신고 · 표시 · 7일 철회",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "terms-and-ads",
+          "title": "약관과 광고: 작은 글씨로도 못 빼는 것",
+          "min": 5,
+          "day": 4
         },
         {
           "id": "privacy",
           "title": "개인정보는 받는 순간 책임도 같이 받아요",
-          "min": 4
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "data-risk",
+          "title": "정보 사고는 확률 × 피해로 미리 따져요",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "ethics-law-mid-review",
+          "title": "중간 정리 · 섞어 풀기: 목적에서 개인정보까지",
+          "min": 5,
+          "day": 5
         },
         {
           "id": "fair-competition",
           "title": "이기는 건 괜찮지만, 반칙으로 이기면 안 돼요",
-          "min": 4
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "cartel-economics",
+          "title": "담합은 왜 생기고, 왜 깨질까요",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "unfair-trade",
+          "title": "큰 회사가 거래 상대를 누를 때",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "merger-hhi",
+          "title": "합치면 경쟁이 줄까: 집중도 HHI로 봐요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "subcontract",
+          "title": "하도급: 서면이 먼저, 대금은 60일 안에",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "first-employee",
+          "title": "첫 직원을 뽑는 순간 닿는 법",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "hours-and-pay",
+          "title": "일하는 시간과 돈: 40시간 · 50% · 퇴직금",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "headcount-laws",
+          "title": "직원이 5명 · 10명이 되면 새 법이 닿아요",
+          "min": 4,
+          "day": 8
         },
         {
           "id": "intellectual-property",
           "title": "이름과 기술은 먼저 출원한 사람 편이에요",
-          "min": 5
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "ip-at-work",
+          "title": "직원 발명 · 외주 코드 · 비밀: 누구 것일까",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "esg-greenwashing",
+          "title": "ESG와 그린워싱: 말보다 숫자로",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "ai-data-ethics",
+          "title": "AI와 데이터: 공정 · 설명 · 책임",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "whistleblowing",
+          "title": "내부고발: 말할 수 있는 길을 만들어요",
+          "min": 5,
+          "day": 10
+        },
+        {
+          "id": "anti-corruption",
+          "title": "선물 · 접대 · 리베이트: 선은 어디일까",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "ethics-law-review",
           "title": "정리 · 섞어 풀기: 윤리 · 법 · 사회",
-          "min": 5
+          "min": 5,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-board-meeting",
+          "title": "반찬 구독 스타트업의 이사회: 친척 거래 · 선불 매출 · 고객 정보",
+          "min": 40,
+          "day": 5
+        },
+        {
+          "id": "case-green-claims",
+          "title": "의류 브랜드의 ‘친환경’ 광고와 협력 공장",
+          "min": 45,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "who-firm-serves",
+          "type": "number"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "stakeholder-map",
+          "type": "choice"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "governance-basics",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "duty-of-loyalty",
+          "type": "choice"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "accounting-ethics",
+          "type": "number"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "internal-control",
+          "type": "choice"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "ecommerce-rules",
+          "type": "number"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "terms-and-ads",
+          "type": "choice"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "privacy",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "data-risk",
+          "type": "number"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "fair-competition",
+          "type": "number"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "cartel-economics",
+          "type": "choice"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "merger-hhi",
+          "type": "number"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "subcontract",
+          "type": "number"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "hours-and-pay",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "first-employee",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "ip-at-work",
+          "type": "choice"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "ai-data-ethics",
+          "type": "number"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "anti-corruption",
+          "type": "number"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "esg-greenwashing",
+          "type": "number"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "3.1 Adopting a Stakeholder Orientation",
+          "provider": "OpenStax · Business Ethics",
+          "url": "https://openstax.org/books/business-ethics/pages/3-1-adopting-a-stakeholder-orientation",
+          "min": 20,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "4.1 Corporate Law and Corporate Responsibility",
+          "provider": "OpenStax · Business Ethics",
+          "url": "https://openstax.org/books/business-ethics/pages/4-1-corporate-law-and-corporate-responsibility",
+          "min": 20,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "상법 제382조의3(이사의 충실의무 등)",
+          "provider": "국가법령정보센터",
+          "url": "https://www.law.go.kr/법령/상법/제382조의3",
+          "min": 10,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l04",
+          "title": "8.2 Define and Explain Internal Controls",
+          "provider": "OpenStax · Principles of Accounting, Vol. 1",
+          "url": "https://openstax.org/books/principles-financial-accounting/pages/8-2-define-and-explain-internal-controls-and-their-purpose-within-an-organization",
+          "min": 25,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "12.1 Unfair Trade Practices",
+          "provider": "OpenStax · Business Law I Essentials",
+          "url": "https://openstax.org/books/business-law-i-essentials/pages/12-1-unfair-trade-practices",
+          "min": 20,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "개인정보 보호법 제15조(개인정보의 수집 · 이용)",
+          "provider": "국가법령정보센터",
+          "url": "https://www.law.go.kr/법령/개인정보보호법/제15조",
+          "min": 10,
+          "day": 5,
+          "lang": "ko"
+        },
+        {
+          "id": "l07",
+          "title": "11.2 Antitrust Laws",
+          "provider": "OpenStax · Business Law I Essentials",
+          "url": "https://openstax.org/books/business-law-i-essentials/pages/11-2-antitrust-laws",
+          "min": 20,
+          "day": 6,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "근로기준법 제17조(근로조건의 명시)",
+          "provider": "국가법령정보센터",
+          "url": "https://www.law.go.kr/법령/근로기준법/제17조",
+          "min": 10,
+          "day": 7,
+          "lang": "ko"
+        },
+        {
+          "id": "l09",
+          "title": "Ethics of AI — Chapter 6: What is fairness",
+          "provider": "University of Helsinki",
+          "url": "https://ethics-of-ai.mooc.fi/chapter-6/1-what-is-fairness",
+          "min": 30,
+          "day": 9,
+          "lang": "en"
+        },
+        {
+          "id": "l10",
+          "title": "7.5 Criticism of the Company and Whistleblowing",
+          "provider": "OpenStax · Business Ethics",
+          "url": "https://openstax.org/books/business-ethics/pages/7-5-criticism-of-the-company-and-whistleblowing",
+          "min": 20,
+          "day": 10,
+          "lang": "en"
         }
       ]
     },
@@ -420,36 +4271,422 @@
       "phase": "실행",
       "schools": "2/9",
       "what": "아이디어를 검증하고 회사를 실제로 세우는 절차.",
+      "intro": "이 모듈 2주 동안 아이디어를 싸게 검증하고, 숫자로 버틸 수 있는지 확인하고, 회사를 세워 투자 · 채용 · 세금을 챙기는 순서를 배워요. 창업에서 흔한 실수는 좋은 일을 틀린 순서로 하는 거예요(만든 뒤에 고객 찾기, 공고를 보기 전에 법인부터 세우기). 법 · 세금 숫자는 2026년 기준이에요.",
+      "goals": [
+        "고객 인터뷰와 MVP 실험으로 문제 가설을 싸게 검증하고, 미리 정한 기준으로 계속할지 피벗할지 판단할 수 있어요.",
+        "유닛 이코노믹스(CAC · LTV · 회수 기간), 번레이트 · 런웨이, 잔존 곡선으로 사업이 버틸 수 있는지 설명할 수 있어요.",
+        "개인사업자와 법인 중 고르고, 주식회사 설립의 순서 · 기한 · 비용과 정관 핵심 조항을 말할 수 있어요(2026년 기준).",
+        "지분표로 투자 · SAFE 전환 · 옵션풀의 희석과 청산우선권을 계산해 투자 조건을 비교할 수 있어요.",
+        "첫 직원 채용, 세무 캘린더, 지원사업 일정을 챙기고, 증거 중심의 피치를 짤 수 있어요."
+      ],
       "cards": [
         {
           "id": "validate-mvp",
           "title": "만들기 전에, 문제가 진짜인지 싸게 확인해요",
-          "min": 4
+          "min": 4,
+          "day": 1
+        },
+        {
+          "id": "problem-discovery",
+          "title": "좋은 문제는 자주, 아프게, 돈을 쓰며 겪는 문제예요",
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "customer-interview",
+          "title": "고객 인터뷰는 지난 장면을 구체적으로 묻는 일이에요",
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "hypothesis-experiment",
+          "title": "가장 위험한 가정부터 숫자 기준을 걸고 실험해요",
+          "min": 6,
+          "day": 2
+        },
+        {
+          "id": "mvp-types",
+          "title": "어떤 위험을 시험하느냐에 따라 MVP를 골라요",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "lean-canvas",
+          "title": "린 캔버스: 사업 가설을 한 장에 적어요",
+          "min": 5,
+          "day": 2
+        },
+        {
+          "id": "business-model",
+          "title": "수익 모델이 봐야 할 숫자를 정해요",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "unit-economics",
+          "title": "고객 한 명이 남기는 돈이 데려오는 돈보다 커야 해요",
+          "min": 6,
+          "day": 3
+        },
+        {
+          "id": "burn-runway",
+          "title": "번레이트와 런웨이: 우리 회사의 생존 시계",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "pmf-signals",
+          "title": "PMF 신호: 남는 고객 곡선이 평평해지나요",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "cofounder-equity",
+          "title": "공동창업자 지분은 앞으로의 일과 베스팅으로 나눠요",
+          "min": 5,
+          "day": 4
         },
         {
           "id": "entity-choice",
           "title": "개인사업자로 시작할까, 법인을 세울까",
-          "min": 5
+          "min": 5,
+          "day": 4
         },
         {
           "id": "incorporation-basics",
           "title": "주식회사는 등기로 태어나고 기한이 줄줄이 와요",
-          "min": 5
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "articles-key-clauses",
+          "title": "정관은 회사의 헌법: 바꾸기 어려운 조항부터 챙겨요",
+          "min": 6,
+          "day": 5
+        },
+        {
+          "id": "startup-midterm",
+          "title": "중간 정리 · 섞어 풀기: 검증에서 설립까지",
+          "min": 5,
+          "day": 5
         },
         {
           "id": "cap-table-dilution",
           "title": "투자를 받으면 지분율은 줄어도 몫은 커질 수 있어요",
-          "min": 5
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "funding-stages",
+          "title": "투자 단계: 단계마다 증명할 것이 달라요",
+          "min": 5,
+          "day": 6
         },
         {
           "id": "safe-and-options",
           "title": "SAFE와 스톡옵션: 지금 돈, 나중에 주식",
-          "min": 5
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "safe-conversion",
+          "title": "SAFE 전환을 숫자로: 상한과 할인 중 낮은 가격",
+          "min": 6,
+          "day": 7
+        },
+        {
+          "id": "preferred-terms",
+          "title": "우선주 핵심 조건: 청산우선권 · 전환 · 상환",
+          "min": 6,
+          "day": 7
+        },
+        {
+          "id": "term-sheet",
+          "title": "텀시트에서 투자계약까지: 숫자 밖의 조건을 읽어요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "stock-option-design",
+          "title": "스톡옵션 설계: 몇 %를, 누구에게, 얼마에",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "first-hire",
+          "title": "첫 직원: 월급보다 큰 인건비와 첫날의 서류",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "growing-team-law",
+          "title": "직원이 5명 · 10명이 되면 새 법이 닿아요",
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "ip-and-compliance",
+          "title": "이름 · 기술 · 고객 정보를 지키는 법",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "tax-calendar",
+          "title": "세무 캘린더: 매달 10일, 분기마다 25일, 3월 31일",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "grants-policy-funds",
+          "title": "지원사업과 감면: 공고 조건이 설립 순서를 정해요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "pitch-deck",
+          "title": "피치덱: 짧게, 증거로, 요청까지",
+          "min": 5,
+          "day": 10
+        },
+        {
+          "id": "failure-pivot",
+          "title": "실패의 흔한 길과 피벗: 비전은 두고 방향을 바꿔요",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "startup-review",
           "title": "정리 · 섞어 풀기: 창업과 법인",
-          "min": 5
+          "min": 5,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-hankki-mvp",
+          "title": "(가상의 회사) 한끼랩: 계속할까, 피벗할까, 법인은 언제?",
+          "min": 45,
+          "day": 5
+        },
+        {
+          "id": "case-seed-offers",
+          "title": "(가상의 회사) 모아랩: 밸류가 높은 시드 제안이 더 좋은 제안일까?",
+          "min": 50,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "customer-interview",
+          "type": "number"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "validate-mvp",
+          "type": "number"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "hypothesis-experiment",
+          "type": "choice"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "mvp-types",
+          "type": "number"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "unit-economics",
+          "type": "number"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "burn-runway",
+          "type": "number"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "pmf-signals",
+          "type": "number"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "cofounder-equity",
+          "type": "number"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "incorporation-basics",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "articles-key-clauses",
+          "type": "number"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "cap-table-dilution",
+          "type": "number"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "funding-stages",
+          "type": "number"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "safe-conversion",
+          "type": "number"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "preferred-terms",
+          "type": "number"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "stock-option-design",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "first-hire",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "tax-calendar",
+          "type": "choice"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "grants-policy-funds",
+          "type": "number"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "pitch-deck",
+          "type": "number"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "failure-pivot",
+          "type": "choice"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "15.390 New Enterprises — Video Tutorials 1~7 (What is Entrepreneurship ~ What is a Beachhead Market)",
+          "provider": "MIT OpenCourseWare (Bill Aulet, Spring 2013)",
+          "url": "https://ocw.mit.edu/courses/15-390-new-enterprises-spring-2013/video_galleries/video-tutorials/",
+          "min": 30,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l02",
+          "title": "How to talk to users",
+          "provider": "Y Combinator Startup School (Gustaf Alströmer)",
+          "url": "https://www.ycombinator.com/library/Iq-how-to-talk-to-users",
+          "min": 18,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "How to plan an MVP",
+          "provider": "Y Combinator Startup School (Michael Seibel)",
+          "url": "https://www.ycombinator.com/library/6f-how-to-plan-an-mvp",
+          "min": 14,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "11.2 Designing the Business Model",
+          "provider": "OpenStax (Entrepreneurship)",
+          "url": "https://openstax.org/books/entrepreneurship/pages/11-2-designing-the-business-model",
+          "min": 22,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l05",
+          "title": "Default alive or default dead",
+          "provider": "Y Combinator Startup Library (Paul Graham, 2015)",
+          "url": "https://www.ycombinator.com/library/95-default-alive-or-default-dead",
+          "min": 10,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "10 questions to discuss with a potential co-founder",
+          "provider": "Y Combinator Startup Library",
+          "url": "https://www.ycombinator.com/library/Hj-10-questions-to-discuss-with-a-potential-co-founder",
+          "min": 10,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "찾기쉬운 생활법령정보: 주식회사 설립",
+          "provider": "법제처",
+          "url": "https://easylaw.go.kr/CSP/CsmMain.laf?csmSeq=736",
+          "min": 25,
+          "day": 5,
+          "lang": "ko"
+        },
+        {
+          "id": "l08",
+          "title": "Understanding SAFEs and priced equity rounds",
+          "provider": "Y Combinator Startup School (Kirsty Nathoo)",
+          "url": "https://www.ycombinator.com/library/6m-understanding-safes-and-priced-equity-rounds",
+          "min": 45,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "K-Startup 사업공고(모집중)",
+          "provider": "창업진흥원 K-Startup",
+          "url": "https://www.k-startup.go.kr/web/contents/bizpbanc-ongoing.do",
+          "min": 20,
+          "day": 9,
+          "lang": "ko"
+        },
+        {
+          "id": "l10",
+          "title": "How to Pitch Your Startup",
+          "provider": "Y Combinator Startup School (Kevin Hale)",
+          "url": "https://www.ycombinator.com/library/6q-how-to-pitch-your-startup",
+          "min": 28,
+          "day": 10,
+          "lang": "en"
         }
       ]
     },
@@ -461,36 +4698,422 @@
       "phase": "실행",
       "schools": "3/9 (구조)",
       "what": "1~11의 도구로 실제 상장사 하나를 끝까지 분석해요.",
+      "intro": "캡스톤은 실제 상장회사 한 곳을 골라 1~11모듈의 도구로 끝까지 읽어 보는 2주예요. DART 공시 원문에서 숫자를 찾고 재무 · 사업 · 산업 · 조직 · 위험 · 가치를 차례로 본 뒤, AI로 돕되 원문과 대조해 한 장 보고서와 5분 발표로 묶어요.",
+      "goals": [
+        "DART에서 사업보고서를 찾아 열두 장 중 질문에 맞는 곳을 바로 펼칠 수 있어요.",
+        "3년 재무제표로 성장 · 수익성 · 현금 · 안정성 비율을 계산하고, 일회성 · 기준 차이 같은 함정을 걸러 낼 수 있어요.",
+        "부문 · 산업 구조 · 가치사슬 · 경쟁사 · 고객으로 회사의 자리를 설명할 수 있어요.",
+        "멀티플과 간단한 DCF · 역DCF로 지금 가격이 무엇을 기대하는지 감을 잡을 수 있어요.",
+        "AI 결과를 검증표로 원문과 대조하고, 결론 한 문장 · 한 장 보고서 · 5분 발표로 전할 수 있어요."
+      ],
       "cards": [
         {
           "id": "pick-company",
           "title": "분석할 회사 한 곳을 고르고 공시부터 열어요",
-          "min": 4
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "dart-search",
+          "title": "DART에서 원하는 공시를 찾는 법",
+          "min": 5,
+          "day": 1
+        },
+        {
+          "id": "report-structure",
+          "title": "사업보고서 목차 지도: 열두 장을 어디부터 읽나",
+          "min": 5,
+          "day": 1
         },
         {
           "id": "read-financials",
           "title": "재무제표로 읽기: 3년, 세 가지 질문",
-          "min": 5
+          "min": 6,
+          "day": 2
+        },
+        {
+          "id": "growth-profitability",
+          "title": "성장과 수익성: CAGR · 이익률 · ROE를 쪼개요",
+          "min": 6,
+          "day": 2
+        },
+        {
+          "id": "cash-quality",
+          "title": "현금의 질: FCF와 매출채권회전일수",
+          "min": 6,
+          "day": 2
+        },
+        {
+          "id": "stability-ratios",
+          "title": "버틸 수 있나: 부채비율 · 유동비율 · 이자보상배율",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "ratio-pitfalls",
+          "title": "비율의 함정: 숫자가 속이는 여섯 가지",
+          "min": 5,
+          "day": 3
+        },
+        {
+          "id": "business-segments",
+          "title": "사업 구조 읽기: 부문별로 쪼개면 다르게 보여요",
+          "min": 5,
+          "day": 3
         },
         {
           "id": "read-industry",
           "title": "산업 구조로 읽기: 이 회사가 서 있는 땅",
-          "min": 4
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "value-chain-profit",
+          "title": "가치사슬: 소비자가 낸 돈은 누구에게 가나",
+          "min": 5,
+          "day": 4
+        },
+        {
+          "id": "competitor-compare",
+          "title": "경쟁사 비교표: 같은 잣대로 나란히 놓아요",
+          "min": 5,
+          "day": 4
         },
         {
           "id": "read-customers-price",
           "title": "고객과 가격으로 읽기: 누가 왜 돈을 내나",
-          "min": 4
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "channel-concentration",
+          "title": "채널과 고객 집중도: 한 고객에 기대면 생기는 일",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "capstone-midterm",
+          "title": "중간 정리 · 섞어 풀기: 숫자와 자리",
+          "min": 5,
+          "day": 5
+        },
+        {
+          "id": "operations-read",
+          "title": "운영 읽기: 생산능력 · 가동률 · 설비투자",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "people-read",
+          "title": "조직 읽기: 직원 수 · 근속 · 1인당 매출",
+          "min": 5,
+          "day": 6
+        },
+        {
+          "id": "governance-read",
+          "title": "지배구조 읽기: 누가 결정하고 누가 감시하나",
+          "min": 6,
+          "day": 6
+        },
+        {
+          "id": "risk-factors",
+          "title": "위험 읽기: 흩어진 위험을 한곳에 모아요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "scenarios-premortem",
+          "title": "시나리오와 사전 부검: 틀릴 길을 미리 그려요",
+          "min": 5,
+          "day": 7
+        },
+        {
+          "id": "valuation-multiples",
+          "title": "멀티플로 값 감각 잡기: PER · PBR · EV/EBITDA",
+          "min": 6,
+          "day": 7
+        },
+        {
+          "id": "simple-dcf",
+          "title": "간단 DCF: 앞으로 벌 현금을 오늘 값으로",
+          "min": 6,
+          "day": 8
+        },
+        {
+          "id": "reverse-dcf",
+          "title": "역DCF: 지금 가격은 무엇을 믿고 있나",
+          "min": 5,
+          "day": 8
         },
         {
           "id": "ai-assist-verify",
           "title": "AI로 분석을 돕되, 숫자는 원문과 대조해요",
-          "min": 4
+          "min": 5,
+          "day": 8
+        },
+        {
+          "id": "ai-check-table",
+          "title": "AI 결과 검증표: 한 줄씩 원문과 맞춰요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "one-line-conclusion",
+          "title": "결론 한 문장: 주장 · 이유 · 조건",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "chart-one-page",
+          "title": "표 · 그림 한 장: 숫자를 정직하게 보여 줘요",
+          "min": 5,
+          "day": 9
+        },
+        {
+          "id": "present-5min",
+          "title": "5분 발표: 결론 → 근거 → 위험 → 요청",
+          "min": 5,
+          "day": 10
+        },
+        {
+          "id": "track-hypotheses",
+          "title": "다음에 볼 숫자: 분석은 분기마다 이어져요",
+          "min": 5,
+          "day": 10
         },
         {
           "id": "capstone-review",
           "title": "정리 · 섞어 풀기: 한 장 보고서로 묶어요",
-          "min": 5
+          "min": 6,
+          "day": 10
+        }
+      ],
+      "cases": [
+        {
+          "id": "case-cash-squeeze",
+          "title": "(가상의 회사) A: 흑자인데 현금이 마른다?",
+          "min": 40,
+          "day": 5
+        },
+        {
+          "id": "case-ai-draft",
+          "title": "(가상의 회사) K사 보고서: AI 초안을 검증하고 한 장으로",
+          "min": 45,
+          "day": 10
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "day": 1,
+          "card": "pick-company",
+          "type": "number"
+        },
+        {
+          "id": "p02",
+          "day": 1,
+          "card": "report-structure",
+          "type": "choice"
+        },
+        {
+          "id": "p03",
+          "day": 2,
+          "card": "growth-profitability",
+          "type": "number"
+        },
+        {
+          "id": "p04",
+          "day": 2,
+          "card": "cash-quality",
+          "type": "number"
+        },
+        {
+          "id": "p05",
+          "day": 3,
+          "card": "stability-ratios",
+          "type": "number"
+        },
+        {
+          "id": "p06",
+          "day": 3,
+          "card": "business-segments",
+          "type": "number"
+        },
+        {
+          "id": "p07",
+          "day": 4,
+          "card": "value-chain-profit",
+          "type": "number"
+        },
+        {
+          "id": "p08",
+          "day": 4,
+          "card": "competitor-compare",
+          "type": "choice"
+        },
+        {
+          "id": "p09",
+          "day": 5,
+          "card": "channel-concentration",
+          "type": "number"
+        },
+        {
+          "id": "p10",
+          "day": 5,
+          "card": "read-customers-price",
+          "type": "number"
+        },
+        {
+          "id": "p11",
+          "day": 6,
+          "card": "operations-read",
+          "type": "number"
+        },
+        {
+          "id": "p12",
+          "day": 6,
+          "card": "people-read",
+          "type": "number"
+        },
+        {
+          "id": "p13",
+          "day": 7,
+          "card": "risk-factors",
+          "type": "number"
+        },
+        {
+          "id": "p14",
+          "day": 7,
+          "card": "scenarios-premortem",
+          "type": "number"
+        },
+        {
+          "id": "p15",
+          "day": 8,
+          "card": "simple-dcf",
+          "type": "number"
+        },
+        {
+          "id": "p16",
+          "day": 8,
+          "card": "reverse-dcf",
+          "type": "number"
+        },
+        {
+          "id": "p17",
+          "day": 9,
+          "card": "ai-check-table",
+          "type": "number"
+        },
+        {
+          "id": "p18",
+          "day": 9,
+          "card": "one-line-conclusion",
+          "type": "choice"
+        },
+        {
+          "id": "p19",
+          "day": 10,
+          "card": "track-hypotheses",
+          "type": "number"
+        },
+        {
+          "id": "p20",
+          "day": 10,
+          "card": "valuation-multiples",
+          "type": "number"
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l01",
+          "title": "DART 전자공시시스템: 회사별 검색과 사업보고서 열기",
+          "provider": "금융감독원",
+          "url": "https://dart.fss.or.kr/",
+          "min": 20,
+          "day": 1,
+          "lang": "ko"
+        },
+        {
+          "id": "l02",
+          "title": "How to Read a 10-K/10-Q",
+          "provider": "U.S. SEC Investor.gov",
+          "url": "https://www.investor.gov/introduction-investing/general-resources/news-alerts/alerts-bulletins/investor-bulletins/how-read",
+          "min": 17,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l03",
+          "title": "Appendix A Financial Statement Analysis",
+          "provider": "OpenStax (Principles of Accounting, Volume 1)",
+          "url": "https://openstax.org/books/principles-financial-accounting/pages/a-financial-statement-analysis",
+          "min": 29,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l04",
+          "title": "기업공시 길라잡이: 이사의 경영진단 및 분석의견",
+          "provider": "금융감독원 DART",
+          "url": "https://dart.fss.or.kr/info/main.do?menu=120",
+          "min": 15,
+          "day": 3,
+          "lang": "ko"
+        },
+        {
+          "id": "l05",
+          "title": "15.535 Business Analysis Using Financial Statements — Lecture Notes 3 · 7 (Cash Flow Analysis: Is Cash King? / How Companies Cook the Books)",
+          "provider": "MIT OpenCourseWare (Prof. Peter Wysocki, Spring 2003)",
+          "url": "https://ocw.mit.edu/courses/15-535-business-analysis-using-financial-statements-spring-2003/pages/lecture-notes/",
+          "min": 40,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l06",
+          "title": "8.4 A Firm's Micro Environment: Porter's Five Forces",
+          "provider": "OpenStax (Principles of Management)",
+          "url": "https://openstax.org/books/principles-management/pages/8-4-a-firms-micro-environment-porters-five-forces",
+          "min": 11,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l07",
+          "title": "Valuation Online Class — Session 14 Relative Valuation: First Principles · Session 15 PE Ratios",
+          "provider": "NYU Stern (Aswath Damodaran)",
+          "url": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/webcastvalonline.htm",
+          "min": 35,
+          "day": 7,
+          "lang": "en"
+        },
+        {
+          "id": "l08",
+          "title": "Valuation Online Class — Session 2 Intrinsic Value: Foundations · Session 9 Terminal Value",
+          "provider": "NYU Stern (Aswath Damodaran)",
+          "url": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/webcastvalonline.htm",
+          "min": 22,
+          "day": 8,
+          "lang": "en"
+        },
+        {
+          "id": "l09",
+          "title": "NIST AI 600-1 Generative AI Profile — 2.2 Confabulation · 2.7 Human-AI Configuration · 2.8 Information Integrity",
+          "provider": "NIST",
+          "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf",
+          "min": 20,
+          "day": 8,
+          "lang": "en"
+        },
+        {
+          "id": "l10",
+          "title": "15.279 Management Communication — Lecture Notes: Communicating Strategically · Giving Presentations",
+          "provider": "MIT OpenCourseWare",
+          "url": "https://ocw.mit.edu/courses/15-279-management-communication-for-undergraduates-fall-2012/pages/lecture-notes/",
+          "min": 30,
+          "day": 10,
+          "lang": "en"
         }
       ]
     }

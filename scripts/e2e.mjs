@@ -12,7 +12,7 @@
 //   ⑩ Study 그래프 — 영어 · 논문 · AI · 과목 페이지마다 [내용 | 그래프], 크기 기준 · 크기가 계정에 저장, 점을 누르면 그 내용으로
 //   ⑪ Brain — 노트 + 공부를 한 나무로: 맨 위엔 큰 개념 5개, 누르면 안으로, 공부 점은 원래 화면, 가져오기는 다시 올려도 그대로 (2026-10-13)
 //   ⑫ 뉴스 — 하루 한 호 (가독성 · 한국어) · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13)
-//   ⑬ 경영 마이크로디그리 — 모듈 지도 · 정적 이익 지도 카드(3D 없음) · 퀴즈 · AI 튜터 · 회사 세우기 세금 계산 · 용어 찾기 (2026-10-14)
+//   ⑬ 경영 마이크로디그리 — 모듈 지도 · 현황판 · 하루 60/90/120분 · 2주 계획 · 카드(정적 이익 지도 · 더 자세히 · 퀴즈 · AI 튜터) · 케이스(내 답 먼저) · 연습문제 채점 · 오늘 · 회사 세우기 세금 계산 · 용어 찾기 (2026-10-14)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -533,24 +533,54 @@ try {
       for (const c of (await r.json()).comments || []) if (/^e2e /.test(c.body) && !c.parent_id) await ctx.request.fetch(BASE + "/api/news/comments/" + c.id, { method: "DELETE", headers: H });
     }).catch(() => {});
 
-    // ---------- ⑬ 경영 마이크로디그리 — 모듈 지도 · 카드(정적 이익 지도 · 퀴즈 · AI 튜터) · 회사 세우기 계산기 · 용어 찾기 (2026-10-14) ----------
+    // ---------- ⑬ 경영 마이크로디그리 — 모듈 지도 · 현황판 · 2주 계획 · 카드 · 케이스 · 연습문제 · 오늘 · 회사 세우기 · 용어 (2026-10-14) ----------
     {
       errs = [];
       await go("#/mba", 2600);
-      const hm = await p.evaluate(() => ({ map: !!document.querySelector("#mb-map:not([hidden])") || !!document.querySelector("#mb-fallback:not([hidden])"), nav: document.querySelectorAll(".mb-nav .mb-pill").length, rows: document.querySelectorAll(".mb-table tbody tr").length, steps: document.querySelectorAll(".mb-steps li").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
-      await p.click('.mb-today [data-min="40"]').catch(() => {}); await sleep(200);
-      const m40 = await p.evaluate(() => document.querySelector("#mb-tmin")?.textContent.startsWith("40") && document.querySelector("#mb-pmin")?.textContent === "40");
-      await p.click('.mb-today [data-min="25"]').catch(() => {});
-      ok(hm.map && hm.nav === 4 && hm.rows === 12 && hm.steps === 5 && m40 && !hm.over && !errs.length, `${tv} · 경영 홈 — 지도 ${hm.map} · 내비 ${hm.nav} · 모듈 ${hm.rows} · 순서 ${hm.steps} · 40분 바꾸기 ${m40} · 가로 넘침 ${hm.over}${errs.length ? " — " + errs[0] : ""}`);
+      const hm = await p.evaluate(() => ({ map: !!document.querySelector("#mb-map:not([hidden])") || !!document.querySelector("#mb-fallback:not([hidden])"), nav: document.querySelectorAll(".mb-nav .mb-pill").length, rows: document.querySelectorAll(".mb-table tbody tr").length, steps: document.querySelectorAll(".mb-steps li").length,
+        dash: document.querySelectorAll(".mbd-wrap > .mbd").length, heat: document.querySelectorAll(".mbd-grid i").length, mods: document.querySelectorAll(".mbd-mods li").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await p.click('.mb-today [data-min="60"]').catch(() => {}); await sleep(200);
+      const m60 = await p.evaluate(() => document.querySelector("#mb-tmin")?.textContent.startsWith("60") && document.querySelector("#mb-pmin")?.textContent === "60" && /300분/.test(document.querySelector(".mbd-week .mbd-big")?.textContent || ""));
+      await p.click('.mb-today [data-min="90"]').catch(() => {});
+      ok(hm.map && hm.nav === 4 && hm.rows === 12 && hm.steps === 5 && hm.dash === 6 && hm.heat === 168 && hm.mods === 12 && m60 && !hm.over && !errs.length, `${tv} · 경영 홈 — 지도 ${hm.map} · 내비 ${hm.nav} · 모듈 ${hm.rows} · 순서 ${hm.steps} · 현황판 ${hm.dash}칸 · 24주 ${hm.heat}칸 · 60분 바꾸기 ${m60} · 가로 넘침 ${hm.over}${errs.length ? " — " + errs[0] : ""}`);
+      const mi = await (await ctx.request.get(BASE + "/mba/index.json")).json(), acc = mi.modules.find((m) => m.id === "accounting");
+      const doc = await (await ctx.request.get(BASE + "/mba/accounting.json")).json();
+      errs = [];
+      await hop("#/mba/accounting", ".mb-days", 500);
+      const mp = await p.evaluate(() => ({ days: document.querySelectorAll(".mb-day").length, goals: document.querySelectorAll(".mb-goals li").length, cs: document.querySelectorAll(".mb-it.case").length, pr: document.querySelectorAll('a.mb-it[href*="/practice/"]').length, lec: document.querySelectorAll("li.mb-it.lec a[target=_blank]").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(mp.days === 10 && mp.goals >= 3 && mp.cs === acc.cases.length && mp.pr >= 5 && mp.lec === acc.lectures.length && !mp.over && !errs.length, `${tv} · 경영 2주 계획 — ${mp.days}일 · 목표 ${mp.goals} · 케이스 ${mp.cs} · 문제 묶음 ${mp.pr} · 강의 ${mp.lec} · 가로 넘침 ${mp.over}${errs.length ? " — " + errs[0] : ""}`);
       errs = [];
       await hop("#/mba/accounting/profit-vs-revenue", ".mb-read h1", 600);
-      const c0 = await p.evaluate(() => ({ svg: !!document.querySelector("#mb-vis svg.mbc .k-be"), read: document.querySelector("[data-read] dd.pos, [data-read] dd.neg")?.textContent || "", canvas3d: document.querySelectorAll("#mb-vis canvas").length, ai: !!document.querySelector(".mb-ai .ppc-form"), q: document.querySelectorAll(".mb-q").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      const c0 = await p.evaluate(() => ({ svg: !!document.querySelector("#mb-vis svg.mbc .k-be"), read: document.querySelector("[data-read] dd.pos, [data-read] dd.neg")?.textContent || "", canvas3d: document.querySelectorAll("#mb-vis canvas").length, ai: !!document.querySelector(".mb-ai .ppc-form"), q: document.querySelectorAll(".mb-q").length, deep: document.querySelectorAll(".mb-deepblk .mb-p").length, outline: document.querySelectorAll(".mb-outline li:not(.mb-ol-day)").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await p.evaluate(() => { const s = document.querySelector('#mb-vis input[data-k="price"]'); s.value = "2300"; s.dispatchEvent(new Event("input", { bubbles: true })); });
       await sleep(150);
       const c1 = await p.evaluate(() => document.querySelector("[data-read] dd.pos, [data-read] dd.neg")?.textContent || "");
       await p.click(".mb-q .mb-choice").catch(() => {}); await sleep(150);
       const why = await p.evaluate(() => !document.querySelector(".mb-q .mb-q-why").hidden);
-      ok(c0.svg && c0.canvas3d === 0 && c0.read && c1 && c0.read !== c1 && why && c0.ai && c0.q >= 2 && !c0.over && !errs.length, `${tv} · 경영 카드 — 정적 이익 지도 ${c0.svg} (3D ${c0.canvas3d}) · 가격 바꾸면 ${c0.read} → ${c1} · 퀴즈 풀이 ${why} · AI 튜터 ${c0.ai} · 가로 넘침 ${c0.over}${errs.length ? " — " + errs[0] : ""}`);
+      ok(c0.svg && c0.canvas3d === 0 && c0.read && c1 && c0.read !== c1 && why && c0.ai && c0.q >= 2 && c0.deep >= 2 && c0.outline === doc.cards.length && !c0.over && !errs.length, `${tv} · 경영 카드 — 정적 이익 지도 ${c0.svg} (3D ${c0.canvas3d}) · 가격 바꾸면 ${c0.read} → ${c1} · 더 자세히 ${c0.deep}문단 · 목차 ${c0.outline}장 · 퀴즈 풀이 ${why} · AI 튜터 ${c0.ai} · 가로 넘침 ${c0.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop(`#/mba/accounting/case/${acc.cases[0].id}`, ".mb-cq", 500);
+      const k0 = await p.evaluate(() => ({ q: document.querySelectorAll(".mb-cq").length, table: !!document.querySelector("#mb-c-data table"), ai: !!document.querySelector(".mb-ai .ppc-form") }));
+      await p.fill('[data-ans="0"]', ""); await p.click('[data-model="0"]'); await sleep(100);
+      const nudge = await p.evaluate(() => !document.querySelector('[data-nudge="0"]').hidden && document.querySelector('[data-model-t="0"]').hidden);
+      await p.fill('[data-ans="0"]', "매출보다 현금 흐름을 먼저 봐요"); await p.click('[data-model="0"]'); await sleep(100);
+      const model = await p.evaluate(() => !document.querySelector('[data-model-t="0"]').hidden);
+      await p.click("#mb-case-done"); await p.waitForSelector("#mb-case-undo", { timeout: 5000 }).catch(() => {});
+      const kd = await p.evaluate(() => ({ undo: !!document.querySelector("#mb-case-undo"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(k0.q >= 3 && k0.table && k0.ai && nudge && model && kd.undo && !kd.over && !errs.length, `${tv} · 경영 케이스 — 질문 ${k0.q} · 데이터 표 ${k0.table} · 빈 답이면 먼저 쓰라고 ${nudge} · 쓰고 나면 모범 답안 ${model} · 끝 기록 ${kd.undo} · AI 코치 ${k0.ai} · 가로 넘침 ${kd.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      const d1 = doc.problems.filter((x) => x.day === doc.problems[0].day), pn = d1.find((x) => x.type === "number"), pc = d1.find((x) => x.type === "choice");
+      await hop(`#/mba/accounting/practice/${doc.problems[0].day}`, ".mb-prob", 500);
+      const n0 = await p.evaluate(() => document.querySelectorAll(".mb-prob").length);
+      let numOk = true, chOk = true;
+      if (pn) { const li = `.mb-prob[data-pid="${pn.id}"]`; await p.fill(`${li} input`, Number(pn.answer).toLocaleString("en-US")); await p.click(`${li} button[type=submit]`); await sleep(250); numOk = await p.evaluate((s) => !!document.querySelector(`${s} .mb-in.right`) && !!document.querySelector(`${s} .mb-solve li`), li); }
+      if (pc) { const li = `.mb-prob[data-pid="${pc.id}"]`, wrong = pc.answer === 0 ? 1 : 0; await p.click(`${li} .mb-choice[data-ci="${wrong}"]`); await sleep(250); chOk = await p.evaluate((s) => !!document.querySelector(`${s} .mb-choice.wrong`) && !!document.querySelector(`${s} .mb-choice.right`) && !document.querySelector(`${s} .mb-prob-r`).hidden, li); }
+      const sc = await p.evaluate(() => ({ t: document.querySelector("#mb-score")?.textContent || "", over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(n0 === d1.length && (pn || pc) && numOk && chOk && /맞힘/.test(sc.t) && !sc.over && !errs.length, `${tv} · 경영 연습문제 — ${n0}문제 · 숫자 채점(쉼표 써도) ${numOk} · 틀린 고르기 풀이 ${chOk} · "${sc.t}" · 가로 넘침 ${sc.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/mba/today", ".mb-tsteps", 600);
+      const td = await p.evaluate(() => ({ steps: document.querySelectorAll(".mb-tsteps li").length, recall: !!document.querySelector("#mb-recall-t"), fresh: document.querySelectorAll(".mb-nexts a.mb-it").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(td.steps === 5 && td.recall && td.fresh >= 3 && !td.over && !errs.length, `${tv} · 경영 오늘 — 순서 ${td.steps} · 떠올리기 ${td.recall} · 새 카드 · 문제 ${td.fresh} · 가로 넘침 ${td.over}${errs.length ? " — " + errs[0] : ""}`);
       errs = [];
       await hop("#/mba/company", ".mb-stepbox", 500);
       const t0 = await p.evaluate(() => document.querySelector("#mb-tax dd.acc")?.textContent || "");
