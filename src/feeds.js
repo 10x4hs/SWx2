@@ -66,6 +66,22 @@ export const SEED = [
   ["OpenAI News", "https://openai.com/news/rss.xml", "ai", "en", true, "OpenAI 공식 발표"],
   ["Hugging Face Blog", "https://huggingface.co/blog/feed.xml", "ai", "en", true, "오픈 모델 · 도구 발표"],
   ["Google AI Blog", "https://blog.google/technology/ai/rss/", "ai", "en", true, "Google · DeepMind 공식 AI 발표"],
+  // 세계 일간지 (2026-10-14) — 싱크탱크 · AI 매체만으로는 하루치가 AI 로 쏠려서
+  ["BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml", "geopolitics", "en", true, "세계 뉴스 기본 — 매일 수십 편"],
+  ["Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml", "geopolitics", "en", true, "중동 · 아프리카 · 남반구 시각"],
+  ["The Guardian World", "https://www.theguardian.com/world/rss", "geopolitics", "en", true, "유럽 시각의 세계 뉴스"],
+  ["NPR World", "https://feeds.npr.org/1004/rss.xml", "geopolitics", "en", true, "미국 공영방송 세계면"],
+  ["DW World", "https://rss.dw.com/rdf/rss-en-world", "europe", "en", true, "독일 공영방송 — 유럽 · 세계"],
+  ["France 24", "https://www.france24.com/en/rss", "europe", "en", true, "프랑스 공영 — 아프리카 · 유럽"],
+  ["Nikkei Asia", "https://asia.nikkei.com/rss/feed/nar", "china", "en", true, "아시아 경제 · 정치"],
+  ["SCMP China", "https://www.scmp.com/rss/91/feed", "china", "en", true, "홍콩에서 보는 중국"],
+  ["AllAfrica", "https://allafrica.com/tools/headlines/rdf/latest/headlines.rdf", "geopolitics", "en", true, "아프리카 각국 언론 모음"],
+  ["MercoPress", "https://en.mercopress.com/rss/", "geopolitics", "en", true, "남미 뉴스"],
+  ["Japan Times", "https://www.japantimes.co.jp/feed/", "geopolitics", "en", true, "일본 · 동아시아"],
+  ["Foreign Policy", "https://foreignpolicy.com/feed/", "geopolitics", "en", true, "외교 · 안보 분석"],
+  ["FT World", "https://www.ft.com/world?format=rss", "macro", "en", true, "파이낸셜타임스 세계면 (제목·요약만)"],
+  ["CNBC World", "https://www.cnbc.com/id/100727362/device/rss/rss.html", "macro", "en", true, "세계 시장 · 경제"],
+  ["BBC Business", "https://feeds.bbci.co.uk/news/business/rss.xml", "macro", "en", true, "세계 경제 · 기업"],
 ];
 
 // 넣지 말 것 — 200 에 유효한 XML 을 주지만 실제로는 멈춘 피드.

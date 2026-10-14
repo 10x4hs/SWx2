@@ -186,8 +186,10 @@ export function mount(root, ctx, r) {
   function quotaPicks() {
     const n = quotaN(), out = [], seen = new Set();
     const add = (it) => { if (it && !seen.has(it.id) && out.length < n) { seen.add(it.id); out.push(items.get(it.id) || it); } };
+    // 면을 돌아가며 한 편씩 (세계 · AI · 경제 · 기술) — 하루 몫이 한 분야로 쏠리지 않게
+    const bySec = ["geopolitics", "ai", "economy", "tech"].map((k) => [...items.values()].filter((it) => (it.section || "geopolitics") === k && it.summary).sort((x, y) => y.published_at - x.published_at));
+    for (let i = 0; out.length < n && i < 10; i++) for (const lst of bySec) add(lst[i]);
     for (const f of ed.front || []) add(f.item);
-    for (const [k] of SECTIONS.slice(1)) add((ed.sections?.[k] || []).slice().sort((x, y) => y.published_at - x.published_at)[0]);
     for (const it of [...items.values()].sort((x, y) => y.published_at - x.published_at)) add(it);
     return out;
   }
@@ -424,7 +426,8 @@ export function mount(root, ctx, r) {
     sheet.querySelector("#gn-sh-read").addEventListener("click", () => toggleRead(id));
     // 아직 요약이 없으면 이 기사 하나만 바로 요약해요 (매시 정각 차례를 기다리지 않게)
     if (!sum.length) api.newsSummarize(id).then((r2) => {
-      if (!alive || cur !== id || !r2?.item?.summary) return;
+      if (!alive || cur !== id) return;
+      if (!r2?.item?.summary) throw new Error("no summary"); // 멈춰 있지 말고 아래 안내로
       const k = items.get(id); if (k) Object.assign(k, r2.item);
       const lines = sentences(r2.item.summary).filter((x) => strip(x) !== strip(t));
       const box = sheet.querySelector("#gn-sum"); if (box) box.innerHTML = `<h3>Summary</h3><ul>${lines.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
