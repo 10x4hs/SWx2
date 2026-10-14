@@ -1336,6 +1336,16 @@ export function registerNews(on, { json, body, fail, now }) {
 
   // 3-1. [POST /news/item/:id/deep] 깊은 요약을 만들어요. 화면이 글을 연 뒤에 따로 불러요.
   // [POST /news/item/:id/summarize] 기사를 열었는데 요약이 없으면 지금 이 글 하나만 만들어요 (AI 한 번)
+  // 목록에 보이는 요약 없는 글들 (한 번에 4편, AI 호출 1번)
+  on("POST", "/news/summarize", async ({ env, req }) => {
+    const b = await req.json().catch(() => ({}));
+    const ids = (Array.isArray(b.ids) ? b.ids : []).map(String).slice(0, SUM_CHUNK);
+    if (!ids.length) return json({ items: [] });
+    await summarize(env, ids.length, { ids });
+    const { results } = await env.DB.prepare(`SELECT i.id, i.summary, i.section, f.topic FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all();
+    return json({ items: results.filter((r) => r.summary).map((r) => ({ id: r.id, summary: r.summary, section: sectionOf(r.topic, r.section) })) });
+  });
+
   on("POST", "/news/item/:id/summarize", async ({ env, params }) => {
     const pick = () => env.DB.prepare("SELECT i.id, i.summary, i.title_ko, i.one_liner, i.section, i.geo, f.topic, f.name AS feed FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.id = ?").bind(params.id).first();
     let r = await pick();

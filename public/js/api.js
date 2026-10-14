@@ -185,6 +185,7 @@ export const api = {
   newsLibrary: (kind) => request("GET", "/news/library?kind=" + kind),
   newsLeaderboard: () => request("GET", "/news/leaderboard"),
   newsPrefs: (b) => request("PUT", "/news/prefs", b),
+  newsSummarizeMany: (ids) => request("POST", "/news/summarize", { ids }),
   newsSummarize: (id) => request("POST", "/news/item/" + id + "/summarize", {}),
   newsRecentComments: (n) => request("GET", "/news/comments/recent?limit=" + (n || 30)),
   newsItem: (id) => request("GET", "/news/item/" + id),
