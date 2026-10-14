@@ -3,11 +3,14 @@
 // Enter / Backspace / Tab / Shift-Tab, "/" menu, ⋮⋮ drag handle, markdown shortcuts, [[ autocomplete, toggles that remember open state.
 import { renderInline } from "../md.js";
 import { esc } from "../util.js";
-import { block, canNest, mdToBlocks } from "./md.js";
+import { block, canNest, mdToBlocks, MAX_COLS } from "./md.js";
+import { inlineWithMath, paintMath } from "./math.js";
 import { touchDrag } from "./touchdrag.js";
 
 const LISTY = new Set(["bullet", "number", "todo"]);
-const WIDGET = new Set(["divider", "image", "table", "page", "database", "file", "bookmark", "embed", "equation"]);
+const WIDGET = new Set(["divider", "image", "table", "page", "database", "file", "bookmark", "embed", "equation", "columns", "column"]);
+const COLISH = new Set(["columns", "column"]);
+const nestOk = (b) => canNest(b) && !COLISH.has(b.type); // 들여쓰기(Tab)로 단 안에 넣지는 않아요
 export const MENU = [
   ["paragraph", "Text", "Plain text", "T"],
   ["h1", "Heading 1", "Big section heading", "H1"],
@@ -26,6 +29,8 @@ export const MENU = [
   ["image", "Image", "Embed an image by URL", "🖼"],
   ["bookmark", "Bookmark", "Link with a caption", "🔗"],
   ["equation", "Equation", "Block math", "∑"],
+  ["columns2", "2 columns", "Side-by-side blocks", "▥"],
+  ["columns3", "3 columns", "Three columns", "▥"],
   ["page", "Page", "Sub-page inside this page", "📄"],
   ["database", "Database", "Table and board views", "▤"],
 ];
@@ -70,7 +75,20 @@ export function createBlockEditor(host, opts) {
   root.className = "nb-doc" + (ro ? " ro" : "");
   host.innerHTML = ""; host.appendChild(root);
   let menu = null, sug = null, dragId = null;
-  const changed = () => opts.onChange?.(doc);
+  const changed = () => { tidy(); opts.onChange?.(doc); };
+  // 단 정리: 빈 단은 지우고, 단이 하나만 남으면 단 나누기를 풀어요
+  function tidy(list = doc.blocks) {
+    for (let i = 0; i < list.length; i++) {
+      const b = list[i];
+      if (b.type === "columns") {
+        b.children = (b.children || []).filter((c) => c.children?.length);
+        if (b.children.length < 2) { list.splice(i, 1, ...(b.children[0]?.children || [])); i--; continue; }
+      }
+      if (b.children?.length) tidy(b.children);
+    }
+    if (!doc.blocks.length) doc.blocks.push(block("paragraph"));
+  }
+  const newColumns = (n, first = []) => block("columns", "", {}, Array.from({ length: n }, (_, i) => block("column", "", {}, i < first.length ? [first[i]] : [block("paragraph")])));
 
   // ---------- tree helpers ----------
   function find(id, list = doc.blocks, parent = null) {
@@ -95,6 +113,7 @@ export function createBlockEditor(host, opts) {
     root.innerHTML = "";
     root.appendChild(renderList(doc.blocks));
     if (focus) { const el = elOf(focus.id); if (el) setCaret(el, focus.off === "end" ? 1e9 : focus.off || 0); }
+    paintMath(root);
   }
   function renderList(list) {
     const f = document.createDocumentFragment();
@@ -120,6 +139,16 @@ export function createBlockEditor(host, opts) {
     else if (b.type === "callout") mark = `<button type="button" class="nb-mk nb-icon" ${ro ? "disabled" : ""} aria-label="Icon">${esc(b.props.icon || "💡")}</button>`;
     if (mark) row.insertAdjacentHTML("beforeend", mark);
     if (b.type === "todo" && b.props.checked) wrap.classList.add("done");
+    if (b.type === "columns") { // 단 나누기: 각 단은 .nb 가 아닌 .nb-col (드래그 표시가 단 자체를 겨누지 않게)
+      const cols = document.createElement("div"); cols.className = "nb-body nb-cols"; cols.style.setProperty("--n", b.children.length);
+      for (const c of b.children) {
+        const cd = document.createElement("div"); cd.className = "nb-col"; cd.dataset.cid = c.id;
+        cd.appendChild(renderList(c.children || []));
+        if (!c.children?.length && !ro) cd.insertAdjacentHTML("beforeend", `<button type="button" class="nb-empty-kid" data-col="${c.id}">Click to add a block.</button>`);
+        cols.appendChild(cd);
+      }
+      row.appendChild(cols); wrap.appendChild(row); return wrap;
+    }
     row.appendChild(body(b));
     wrap.appendChild(row);
     if (b.children?.length || (fold && open)) {
@@ -141,7 +170,7 @@ export function createBlockEditor(host, opts) {
     show(el, b);
     return el;
   }
-  function show(el, b) { el.innerHTML = b.text ? (el.classList.contains("nb-comment") ? esc(b.text) : renderInline(b.text)) : ""; }
+  function show(el, b) { el.innerHTML = b.text ? (el.classList.contains("nb-comment") ? esc(b.text) : inlineWithMath(b.text, renderInline)) : ""; }
   function body(b) {
     const p = b.props || {};
     switch (b.type) {
@@ -167,7 +196,10 @@ export function createBlockEditor(host, opts) {
         return d;
       }
       case "equation": {
-        const d = document.createElement("div"); d.className = "nb-body nb-eq"; d.textContent = p.expr || (ro ? "" : "Click to add an equation"); d.tabIndex = 0; return d;
+        const box = document.createElement("div"); box.className = "nb-body nb-eqbox";
+        const d = document.createElement("div"); d.className = "nb-eq" + (p.expr ? "" : " empty"); d.tabIndex = 0;
+        if (p.expr) { d.dataset.expr = p.expr; d.textContent = p.expr; } else d.textContent = ro ? "" : "Click to add an equation";
+        box.appendChild(d); return box;
       }
       case "table": return tableEl(b);
       case "page": case "database": {
@@ -218,14 +250,14 @@ export function createBlockEditor(host, opts) {
   function indent(id) {
     const at = find(id); if (!at || at.i === 0) return false;
     const prev = at.list[at.i - 1];
-    if (!canNest(prev)) return false;
+    if (!nestOk(prev)) return false;
     at.list.splice(at.i, 1);
     (prev.children ||= []).push(at.b);
     if (isFoldable(prev)) setOpen(prev.id, true);
     return true;
   }
   function outdent(id) {
-    const at = find(id); if (!at || !at.parent) return false;
+    const at = find(id); if (!at || !at.parent || at.parent.type === "column") return false;
     const pa = find(at.parent.id);
     at.list.splice(at.i, 1);
     pa.list.splice(pa.i + 1, 0, at.b);
@@ -248,7 +280,7 @@ export function createBlockEditor(host, opts) {
   root.addEventListener("focusout", (e) => {
     if (e.target.closest?.(".db-host")) return;
     const el = e.target;
-    if (el.classList?.contains("nb-text") && !el.classList.contains("nb-code")) { const b = blockOf(el); delete el.dataset.raw; if (b) show(el, b); setTimeout(() => { const a = document.activeElement; if (!(a?.classList?.contains("nb-text") && root.contains(a))) closeSug(); }, 120); }
+    if (el.classList?.contains("nb-text") && !el.classList.contains("nb-code")) { const b = blockOf(el); delete el.dataset.raw; if (b) { show(el, b); paintMath(el); } setTimeout(() => { const a = document.activeElement; if (!(a?.classList?.contains("nb-text") && root.contains(a))) closeSug(); }, 120); }
     if (el.tagName === "TD") { const b = blockOf(el); if (b) el.innerHTML = renderInline(b.props.rows[+el.dataset.r]?.[+el.dataset.c] || ""); }
   });
   root.addEventListener("mousedown", (e) => {
@@ -269,6 +301,7 @@ export function createBlockEditor(host, opts) {
     if (tg) { const b = blockOf(tg); setOpen(b.id, !opened().has(b.id)); render(); return; }
     if (ro) return;
     const ek = e.target.closest(".nb-empty-kid");
+    if (ek?.dataset.col) { const c = find(ek.dataset.col)?.b; if (c) { const nb = block("paragraph"); c.children = [nb]; changed(); render({ id: nb.id }); } return; }
     if (ek) { const b = blockOf(ek); const nb = insertAfter(b.id, block("paragraph"), true); changed(); render({ id: nb.id }); return; }
     const ic = e.target.closest(".nb-icon");
     if (ic) { const b = blockOf(ic); const v = prompt("Callout icon (emoji)", b.props.icon || "💡"); if (v && v.trim()) { b.props.icon = [...v.trim()].slice(0, 2).join(""); changed(); render(); } return; }
@@ -281,7 +314,7 @@ export function createBlockEditor(host, opts) {
       changed(); render(); return;
     }
     const eq = e.target.closest(".nb-eq");
-    if (eq) { const b = blockOf(eq); const v = prompt("Equation (LaTeX)", b.props.expr || ""); if (v !== null) { b.props.expr = v; changed(); render(); } return; }
+    if (eq) { eqEdit(blockOf(eq)); return; }
     const hd = e.target.closest(".nb-handle");
     if (hd) { openBlockMenu(blockOf(hd), hd); return; }
     // clicking empty space below the last block → focus/add a paragraph
@@ -291,6 +324,23 @@ export function createBlockEditor(host, opts) {
       else { const nb = block("paragraph"); doc.blocks.push(nb); changed(); render({ id: nb.id }); }
     }
   });
+  // 수식 블록: LaTeX 를 바로 아래 칸에 쓰면 위 미리보기가 따라 바뀌어요 (Enter · Esc · 밖 클릭 = 끝)
+  function eqEdit(b) {
+    const box = root.querySelector(`.nb[data-id="${b.id}"] .nb-eqbox`); if (!box) return;
+    let ta = box.querySelector(".nb-eqsrc");
+    if (!ta) {
+      ta = document.createElement("textarea"); ta.className = "nb-eqsrc"; ta.rows = 2; ta.spellcheck = false; ta.placeholder = "E = mc^2"; ta.value = b.props.expr || ""; ta.setAttribute("aria-label", "Equation (LaTeX)");
+      box.appendChild(ta);
+      ta.addEventListener("blur", () => setTimeout(() => { if (ta.isConnected && document.activeElement !== ta) render(); }, 0));
+    }
+    ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+  }
+  function eqPreview(b, ta) {
+    const d = ta.closest(".nb-eqbox").querySelector(".nb-eq");
+    b.props.expr = ta.value; changed();
+    delete d.dataset.done; d.classList.toggle("empty", !ta.value.trim());
+    if (ta.value.trim()) { d.dataset.expr = ta.value; d.textContent = ta.value; paintMath(d.parentNode); } else { delete d.dataset.expr; d.textContent = "Click to add an equation"; }
+  }
   root.addEventListener("change", (e) => {
     if (e.target.closest?.(".db-host")) return;
     const t = e.target, b = blockOf(t); if (!b) return;
@@ -303,6 +353,7 @@ export function createBlockEditor(host, opts) {
     if (el.classList.contains("nb-cap")) { b.props.caption = el.textContent.trim(); changed(); return; }
     if (el.tagName === "TD") { const r = +el.dataset.r, c = +el.dataset.c; while (b.props.rows[r].length <= c) b.props.rows[r].push(""); b.props.rows[r][c] = el.innerText.replace(/\n/g, " ").trim(); changed(); return; }
     if (el.classList.contains("nb-lang")) return;
+    if (el.classList.contains("nb-eqsrc")) return eqPreview(b, el);
     if (!el.classList.contains("nb-text")) return;
     b.text = readText(el);
     if (b.type === "paragraph" && !el.classList.contains("nb-code") && shortcut(b, el)) return;
@@ -320,6 +371,7 @@ export function createBlockEditor(host, opts) {
       changed(); render(); return;
     }
     if (el.tagName === "TD" && e.key === "Enter") { e.preventDefault(); el.blur(); return; }
+    if (el.classList.contains("nb-eqsrc")) { if ((e.key === "Enter" && !e.shiftKey && !e.isComposing) || e.key === "Escape") { e.preventDefault(); el.blur(); } return; }
     if (!el.classList?.contains("nb-text")) return;
     if (menu && menuKey(e)) return;
     if (sug && sugKey(e)) return;
@@ -359,7 +411,7 @@ export function createBlockEditor(host, opts) {
       if (at.parent && at.i === at.list.length - 1 && outdent(b.id)) { changed(); return render({ id: b.id, off: 0 }); }
       const vis = flat(), idx = vis.indexOf(b);
       const prev = vis.slice(0, idx).reverse().find(() => true);
-      if (!prev) return;
+      if (!prev || COLISH.has(prev.type)) return; // 단의 첫 줄 · 단 바로 뒤: 단 구조는 지우지 않아요
       if (!editable(prev) || prev.type === "code") { if (!editable(prev)) { remove(prev.id); changed(); return render({ id: b.id, off: 0 }); } return; }
       const join = prev.text.length;
       prev.text += b.text;
@@ -417,7 +469,7 @@ export function createBlockEditor(host, opts) {
   }
   function openMenu(anchor, q) {
     menuItems = MENU.filter(([t, label]) => !q || label.toLowerCase().includes(q.trim()) || t.includes(q.trim()));
-    if (menuMode === "turn") menuItems = menuItems.filter(([t]) => !["page", "database"].includes(t));
+    if (menuMode === "turn") menuItems = menuItems.filter(([t]) => !["page", "database", "columns2", "columns3"].includes(t));
     if (!menuItems.length) return closeMenu();
     menuSel = 0;
     if (!menu) {
@@ -445,6 +497,11 @@ export function createBlockEditor(host, opts) {
     closeMenu();
     let target = b;
     if (mode === "insert" && b.text.trim()) target = insertAfter(b.id, block("paragraph"));
+    if (type === "columns2" || type === "columns3") {
+      const cols = newColumns(type === "columns2" ? 2 : 3), at = find(target.id);
+      at.list.splice(at.i, 1, cols); // target 은 늘 빈 줄 (글이 있으면 위에서 새 줄을 만들었어요)
+      changed(); render({ id: cols.children[0].children[0].id }); return;
+    }
     if (type === "page" || type === "database") {
       let note = null;
       try { note = await (type === "page" ? opts.onNewPage?.("Untitled") : opts.onNewDb?.("Untitled database")); } catch {}
@@ -468,7 +525,7 @@ export function createBlockEditor(host, opts) {
   function openBlockMenu(b, anchor) {
     closeMenu();
     const m = document.createElement("div"); m.className = "nb-menu nb-bmenu"; document.body.appendChild(m); menu = m;
-    m.innerHTML = `<button type="button" data-a="turn"><span class="nb-menu-ic">↻</span><span><b>Turn into</b></span></button><button type="button" data-a="dup"><span class="nb-menu-ic">⧉</span><span><b>Duplicate</b></span></button><button type="button" data-a="del"><span class="nb-menu-ic">🗑</span><span><b>Delete</b></span></button>${editable(b) && b.type !== "code" ? `<div class="nb-menu-h">Color</div>${swatches()}` : ""}`;
+    m.innerHTML = `${COLISH.has(b.type) ? "" : `<button type="button" data-a="turn"><span class="nb-menu-ic">↻</span><span><b>Turn into</b></span></button>`}<button type="button" data-a="dup"><span class="nb-menu-ic">⧉</span><span><b>Duplicate</b></span></button><button type="button" data-a="del"><span class="nb-menu-ic">🗑</span><span><b>Delete</b></span></button>${editable(b) && b.type !== "code" ? `<div class="nb-menu-h">Color</div>${swatches()}` : ""}`;
     const r = anchor.getBoundingClientRect(); m.style.left = Math.max(8, r.left) + "px"; m.style.top = r.bottom + 4 + "px";
     m.addEventListener("mousedown", (e) => {
       e.preventDefault(); const a = e.target.closest("[data-a]")?.dataset.a; if (!a) return;
@@ -592,18 +649,34 @@ export function createBlockEditor(host, opts) {
     if (!marker) { marker = document.createElement("div"); marker.className = "nb-drop"; }
     marker.dataset.target = w.dataset.id; marker.dataset.before = before ? "1" : "";
     const hr = root.getBoundingClientRect();
-    Object.assign(marker.style, { top: (before ? r.top : r.bottom) - hr.top - 1 + "px", left: r.left - hr.left + "px", width: r.width + "px" });
+    // 블록 왼쪽 · 오른쪽 끝에 놓으면 단 나누기 (단 안이면 그 옆에 새 단, 3단까지)
+    const edge = Math.min(48, r.width * 0.15), side = x < r.left + edge ? "left" : x > r.right - edge ? "right" : "";
+    marker.dataset.side = side && sideOk(w.dataset.id) ? side : "";
+    marker.classList.toggle("side", !!marker.dataset.side);
+    if (marker.dataset.side) Object.assign(marker.style, { top: r.top - hr.top + "px", left: (side === "left" ? r.left : r.right) - hr.left - 1 + "px", width: "3px", height: r.height + "px" });
+    else Object.assign(marker.style, { top: (before ? r.top : r.bottom) - hr.top - 1 + "px", left: r.left - hr.left + "px", width: r.width + "px", height: "" });
     if (!marker.isConnected) root.appendChild(marker);
     return true;
   }
+  // 단 안으로 옮길 때 규칙: 단 나누기를 단 안에 넣지 않기 · 단 블록 자체 옆에는 안 붙이기
+  function sideOk(tid) {
+    const src = find(dragId), dst = find(tid); if (!src || !dst || dst.b.type === "columns" || src.b.type === "columns") return false;
+    if (dst.parent?.type !== "column") return true;
+    const cols = find(dst.parent.id).parent; // 3단이면, 옮기는 블록이 같은 단 묶음에서 혼자 있던 단을 비울 때만 (그 단은 tidy 가 지워요)
+    return src.b.type !== "columns" && (cols.children.length < MAX_COLS || (cols.children.includes(src.parent) && src.parent.children.length === 1));
+  }
   function dropAtMarker() {
     if (!dragId || !marker?.dataset.target) return endDrag();
-    const tid = marker.dataset.target, before = marker.dataset.before === "1";
+    const tid = marker.dataset.target, before = marker.dataset.before === "1", side = marker.dataset.side;
     const src = find(dragId);
-    if (src && tid !== dragId) {
+    if (src && tid !== dragId && !(src.b.type === "columns" && find(tid)?.parent?.type === "column")) {
       src.list.splice(src.i, 1);
       const dst = find(tid);
-      dst.list.splice(before ? dst.i : dst.i + 1, 0, src.b);
+      if (side && dst.parent?.type === "column") { // 이미 단 안: 그 단 옆에 새 단
+        const col = find(dst.parent.id);
+        col.list.splice(side === "left" ? col.i : col.i + 1, 0, block("column", "", {}, [src.b]));
+      } else if (side) dst.list.splice(dst.i, 1, newColumns(2, side === "left" ? [src.b, dst.b] : [dst.b, src.b]));
+      else dst.list.splice(before ? dst.i : dst.i + 1, 0, src.b);
       changed();
     }
     endDrag(); render();

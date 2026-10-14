@@ -8,7 +8,8 @@ Stored in `notes.blocks` (JSON text). `notes.body` stays the markdown mirror (ge
 
 Block = `{ "id": "b_xxxxxxxx", "type": "...", "text": "inline md", "props": {}, "children": [Block] }`
 - `text` is inline markdown: **bold**, *italic*, `code`, ~~strike~~, [label](url), [[Wiki link]].
-- `children` only for: bullet, number, todo, toggle, callout, quote, and headings with `props.toggle: true`.
+- `children` only for: bullet, number, todo, toggle, callout, quote, columns, column, and headings with `props.toggle: true`.
+- `text` may hold inline math `$...$` (KaTeX, rendered when the block isn't being edited; `$5 and $6` is not math — the content must not start/end with a space).
 
 | type | props | markdown mirror |
 |---|---|---|
@@ -24,10 +25,17 @@ Block = `{ "id": "b_xxxxxxxx", "type": "...", "text": "inline md", "props": {}, 
 | image | src, caption | `![caption](src)` |
 | file | src, name | `[📎 name](src)` |
 | bookmark / embed | url, caption? | `[caption or url](url)` |
-| equation | expr | `$$expr$$` |
+| equation | expr (LaTeX) | `$$expr$$` |
+| columns | — (children: 2–3 `column`) | each column's contents, one after another |
+| column | — (children: blocks; only directly inside `columns`) | its children |
 | table | header: bool, rows: [[cell inline md]] | GFM table |
 | page | note_id, title | `[[title]]` (sub-page) |
 | database | note_id, title | `[[title]]` (inline DB, rendered as its default view) |
+
+## Columns & math
+- `columns` → `column` → blocks. A `column` may only sit directly in `columns`; `columns` can't be nested inside a column; max 3 columns (`MAX_COLS` in md.js). The editor dissolves a column that becomes empty and unwraps `columns` left with one column.
+- Insert: "/" → "2 columns" / "3 columns", or drag a block's ⋮⋮ to the left/right edge of another block (inside a column this adds a column next to it). Columns stack under 600px width.
+- KaTeX 0.16.11 (`public/js/blocks/math.js`) loads from cdn.jsdelivr.net only when the rendered note contains an equation block or inline `$...$`.
 
 ## Databases
 A database is a note with `notes.kind = 'database'` and `notes.db` JSON:

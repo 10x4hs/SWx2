@@ -4,9 +4,10 @@ import { cleanView, cleanRemind } from "./dbview.js";
 
 export const MAX_BLOCKS_JSON = 400_000;
 export const MAX_BLOCKS = 5000;
-export const BLOCK_TYPES = ["paragraph", "h1", "h2", "h3", "bullet", "number", "todo", "toggle", "callout", "quote", "divider", "code", "image", "file", "bookmark", "embed", "equation", "table", "page", "database"];
+export const BLOCK_TYPES = ["paragraph", "h1", "h2", "h3", "bullet", "number", "todo", "toggle", "callout", "quote", "divider", "code", "image", "file", "bookmark", "embed", "equation", "table", "page", "database", "columns", "column"];
 const TYPESET = new Set(BLOCK_TYPES);
-const NESTABLE = new Set(["bullet", "number", "todo", "toggle", "callout", "quote"]);
+const NESTABLE = new Set(["bullet", "number", "todo", "toggle", "callout", "quote", "columns", "column"]);
+export const MAX_COLS = 3;
 const LISTY = new Set(["bullet", "number", "todo"]);
 export const canNest = (b) => NESTABLE.has(b.type) || (/^h[123]$/.test(b.type) && !!b.props?.toggle);
 export const COLORS = ["default", "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"];
@@ -47,7 +48,7 @@ function cleanProps(type, p) {
 export function validateDoc(doc) {
   if (!doc || typeof doc !== "object" || doc.v !== 1 || !Array.isArray(doc.blocks)) throw new Error("blocks 는 { v: 1, blocks: [] } 모양이어야 해요.");
   let count = 0;
-  const walk = (list, depth) => {
+  const walk = (list, depth, pt = "") => {
     if (depth > 12) throw new Error("블록이 너무 깊게 들어가 있어요.");
     return list.map((b) => {
       if (!b || typeof b !== "object" || !TYPESET.has(b.type)) throw new Error("모르는 블록 종류예요: " + String(b?.type).slice(0, 20));
@@ -55,8 +56,11 @@ export function validateDoc(doc) {
       const out = { id: typeof b.id === "string" && /^[\w-]{1,40}$/.test(b.id) ? b.id : bid(), type: b.type, text: str(b.text, 20000), props: cleanProps(b.type, b.props), children: [] };
       if (Array.isArray(b.children) && b.children.length) {
         if (!canNest(out)) throw new Error(`'${b.type}' 블록에는 안쪽 블록을 둘 수 없어요.`);
-        out.children = walk(b.children, depth + 1);
+        out.children = walk(b.children, depth + 1, out.type);
       }
+      // 단(column)은 columns 바로 안에만, columns 안에는 column 만 (2~3개), 단 안에 또 단 나누기는 안 돼요
+      if ((out.type === "column") !== (pt === "columns")) throw new Error("column 블록은 columns 안에만 둘 수 있어요.");
+      if (out.type === "columns" && (pt === "column" || out.children.length > MAX_COLS)) throw new Error("단 나누기는 겹치거나 3단을 넘을 수 없어요.");
       return out;
     });
   };
@@ -119,6 +123,7 @@ function renderOne(b, num) {
     case "equation": return p.expr ? ["$$" + p.expr.replace(/\n/g, " ") + "$$"] : [];
     case "table": return p.rows?.length ? tableMd(p.rows, p.header) : [];
     case "page": case "database": return p.title ? [`[[${p.title}]]`] : [];
+    case "columns": case "column": return kids; // 단 나누기는 마크다운에선 차례대로 이어 붙여요
     default: return textLines(t);
   }
 }

@@ -204,6 +204,40 @@ try {
         `${tv} · Brain — 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
     } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
 
+    // ---------- ⑫-b 단 나누기 · 수식 — 끝에 끌어 놓기 → 2단, "/2 columns", "/equation" KaTeX, 글 속 $..$ (2026-10-14) ----------
+    try {
+      errs = [];
+      const P = (id, text) => ({ id, type: "paragraph", text, props: {}, children: [] });
+      const doc = { v: 1, blocks: [P("b_cl", "Left side"), P("b_cr", "Right side"), P("b_cm", "area $a^2$ here"), P("b_ce", "")] };
+      const cn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 단 " + tv, blocks: doc } })).json()).note.id;
+      await go("#/notes/" + cn, 2200);
+      await p.evaluate(() => { const b = [...document.querySelectorAll('[data-mode="block"]')][0]; if (b && b.getAttribute("aria-selected") !== "true") b.click(); });
+      await p.waitForSelector('.nb[data-id="b_cl"]', { timeout: 8000 });
+      const inl = await p.waitForSelector('.nb[data-id="b_cm"] .nb-math .katex', { timeout: 15000 }).then(() => true, () => false);
+      const box = await p.locator('.nb[data-id="b_cl"] > .nb-row').boundingBox();
+      await p.hover('.nb[data-id="b_cr"] > .nb-row'); const hb = await p.locator('.nb[data-id="b_cr"] .nb-handle').boundingBox();
+      await p.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await p.mouse.down();
+      await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 5 }); await p.mouse.move(box.x + box.width - 6, box.y + box.height / 2, { steps: 5 }); await p.mouse.up().catch(() => {});
+      await sleep(300);
+      const dragCols = await p.evaluate(() => [...document.querySelectorAll(".nb-columns .nb-col")].map((c) => [...c.querySelectorAll(".nb-text")].map((t) => t.textContent.trim()).join(" ")).join("|"));
+      await p.click('.nb[data-id="b_ce"] .nb-text'); await p.keyboard.type("/2 col"); await sleep(200);
+      const cm = await p.evaluate(() => !!document.querySelector('.nb-menu [data-type="columns2"]'));
+      await p.keyboard.press("Enter"); await sleep(200);
+      await p.keyboard.type("/equation"); await sleep(200); await p.keyboard.press("Enter");
+      await p.waitForSelector(".nb-eqsrc", { timeout: 3000 }).catch(() => {});
+      await p.keyboard.type("\\frac{a}{b}"); await sleep(200);
+      const live = await p.waitForSelector(".nb-eq .katex", { timeout: 15000 }).then(() => true, () => false);
+      await p.keyboard.press("Enter"); await sleep(1500);
+      const stack = await p.evaluate(() => { const g = document.querySelector(".nb-cols"); return g ? getComputedStyle(g).gridTemplateColumns.split(" ").length : 0; });
+      const vw = await p.evaluate(() => innerWidth);
+      const sv = (await (await ctx.request.get(BASE + "/api/notes/" + cn)).json()).note;
+      const sb = JSON.parse(sv.blocks || "{}").blocks || [];
+      const cols = sb.filter((b) => b.type === "columns");
+      const eqIn = cols.some((c) => c.children.some((k) => k.children.some((x) => x.type === "equation" && x.props.expr === "\\frac{a}{b}")));
+      ok(inl && /Left side\|Right side/.test(dragCols) && cm && live && cols.length === 2 && eqIn && sv.body.includes("$$\\frac{a}{b}$$") && sv.body.includes("$a^2$") && /Left side\s+Right side/.test(sv.body) && (vw < 600 ? stack === 1 : stack === 2) && !errs.length,
+        `${tv} · 단 · 수식 — 글 속 수식 ${inl} · 끌기 ${dragCols} · "/2 columns" ${cm} · 수식 미리보기 ${live} · 저장 ${sb.map((b) => b.type).join(",")} · 수식 ${eqIn} · 폭 ${vw} 단 ${stack}${errs.length ? " — " + errs[0] : ""}`);
+    } catch (e) { ok(false, `${tv} · 단 · 수식 — ${String(e.message).split("\n")[0]}`); }
+
     // ---------- ⑫ 블록 편집기 — 토글 접기 · "/" 로 콜아웃 · 보드에서 끌면 상태가 바뀌어요 (2026-10-13) ----------
     try {
       errs = [];
