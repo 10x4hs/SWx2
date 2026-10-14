@@ -149,6 +149,7 @@ export function mount(root, ctx, r) {
     VN?.destroy(); VN = null;
     const n = S.cur, own = mine(), u = ctx.user(n.user_id);
     // 위쪽에 YouTube 영상 줄이 있는 노트는 보기 방식을 고르기 전까지 '영상 + 정리 + 스크립트' 한 화면으로
+    if (S.pick !== n.id) try { if (sessionStorage.getItem("trio-ed-pick") === n.id) { S.pick = n.id; sessionStorage.removeItem("trio-ed-pick"); } } catch {} // Brain 우클릭 Edit 로 왔어요 (note-menu.js)
     const vid = n.kind !== "database" && videoOf(n.body), mode = own ? (vid && S.pick !== n.id ? "view" : S.mode) : "view", vn = vid && mode === "view";
     $("#notes", root).classList.add("has-note");
     $("#ed", root).innerHTML = `
@@ -541,7 +542,7 @@ export function mount(root, ctx, r) {
   bindNoteMenu($("#nl", root), "a[href^='#/notes/']", (a) => { const n = S.notes.find((x) => a.getAttribute("href") === "#/notes/" + x.id); return n && { id: n.id, title: n.title, parent_id: n.parent_id, note: true }; }, {
     ctx, open: (n) => ctx.go("#/notes/" + n.id),
     before: async () => { save.flush(); await chain; }, // 열린 노트에 저장 안 된 글이 있으면 먼저 보내요
-    edit: (id) => { if (S.cur?.id !== id) { S.mode = "block"; setMode("block"); ctx.go("#/notes/" + id); } else if (S.mode !== "block") $('[data-mode="block"]', root)?.click(); },
+    edit: (id) => { if (S.cur?.id !== id) { S.mode = "block"; S.pick = id; setMode("block"); ctx.go("#/notes/" + id); } else if (S.mode !== "block" || S.pick !== id) $('[data-mode="block"]', root)?.click(); }, // 영상 노트도 Edit 를 고르면 편집으로
   });
   // 메뉴가 바꾼 것(trio:changed 의 note)만 받아요. 열린 노트를 지우면 목록으로 나가고 Undo 면 다시 열어요
   let leftFor = null;

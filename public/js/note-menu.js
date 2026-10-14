@@ -123,7 +123,7 @@ function rename(n, h) {
 // Edit = 블록 편집으로 열기. 노트 화면이 떠 있으면 그쪽(h.edit)이, 아니면 보기 방식 칸(notes.js 의 trio-ed-mode)을 block 으로 두고 가요
 function edit(id, h) {
   if (h.edit) return h.edit(id);
-  try { localStorage.setItem("trio-ed-mode", "block"); } catch {}
+  try { localStorage.setItem("trio-ed-mode", "block"); sessionStorage.setItem("trio-ed-pick", id); } catch {} // trio-ed-pick: 영상 노트도 보기 대신 편집으로 열게 (notes.js)
   h.ctx.go("#/notes/" + id);
 }
 function newSub(n, h) {

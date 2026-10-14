@@ -730,6 +730,16 @@ try {
       const b = await p.evaluate(() => ({ from: document.querySelector(".vn-from")?.textContent || "", open: !!document.querySelector(".vn-script[open]"), h: document.querySelectorAll(".vn-main h3").length }));
       const e2 = mineErr();
       ok(/정리/.test(b.from) && b.open && b.h === 1 && !e2.length, `${tv} · 스크립트 노트도 같은 화면 — 오른쪽 '${b.from}' · 스크립트 펼침 ${b.open}${e2.length ? " — " + e2[0] : ""}`);
+      // 우클릭 Edit 로 고르면 영상 노트도 보기 대신 편집으로 (목록 · 그래프 모두 같은 길)
+      if (w > 600) {
+        await p.evaluate(async () => { for (const n of await caches.keys()) if (n.startsWith("dsm-api-")) await caches.delete(n); }).catch(() => {});
+        await go("#/notes", 1800);
+        const li = `#nl a[href="#/notes/${sum.id}"]`;
+        await p.waitForSelector(li, { timeout: 8000 }).catch(() => {});
+        await p.locator(li).click({ button: "right" }); await p.click('.cm [data-k="edit"]'); await sleep(1500);
+        const ed = await p.evaluate(() => ({ vn: !!document.querySelector(".vn"), mode: document.querySelector('[data-mode][aria-selected="true"]')?.dataset.mode }));
+        ok(!ed.vn && ed.mode === "block", `${tv} · 우클릭 Edit → 영상 노트도 편집 (${ed.mode})`);
+      }
       // 첫 줄이 YouTube 주소뿐인 노트(공유 링크 ?si=)도 영상 노트 — 본문은 그대로, 시간 링크만 버튼으로
       const bare = await mkN({ title: "영상 주소 검사 " + tv, body: `[https://youtu.be/${V}?si=abc](https://youtu.be/${V}?si=abc)\n\n## 요약\n첫 이야기 [⏱0:10](${u(10)})\n\n## 내 생각\n좋았어요.` });
       errs = [];
