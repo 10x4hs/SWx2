@@ -1,20 +1,20 @@
 // 우클릭 메뉴 (공용) — 계획표 블록 · 체크리스트 · 목표 목록에서 같은 모양으로.
-// openMenu(e, { title, items: [{ k, label, danger?, sep? } | { k: "prio", prio: current }], onPick(k, value) })
-// 우선순위 줄은 알약 다섯 개(1순위 → 5순위)라 한 번에 바꿀 수 있어요. Esc · 바깥 클릭으로 닫혀요.
+// openMenu(e, { title, items: [{ k, label, danger?, sep? } | { k: "prio", prio: current }], onPick(k, value), back? })
+// 우선순위 줄은 알약 다섯 개(1순위 → 5순위)라 한 번에 바꿀 수 있어요. Esc · 바깥 클릭으로 닫혀요. back = Esc 로 닫으면 초점이 돌아갈 곳 (키보드로 연 메뉴)
 // openDrop(anchor, { label, items: [{ v, label, sub?, p?, on?, clear? }], onPick(v) }) — 버튼 아래로 펼쳐지는 고르기 (우선순위 · 예상 시간)
 import { esc } from "./util.js";
 
 // 저장값 → 보이는 이름 (1순위 = 가장 급함). public/js/prio.js 의 PRIOS 와 같은 순서예요
 const PRIOS = [["max", "1"], ["xhigh", "2"], ["high", "3"], ["medium", "4"], ["low", "5"]];
-let cur = null, curAnchor = null, closedBy = null; // closedBy = 방금 바깥 클릭으로 닫게 한 알약 (같은 알약을 다시 누르면 토글로 닫히게)
+let cur = null, curAnchor = null, closedBy = null, curBack = null; // closedBy = 방금 바깥 클릭으로 닫게 한 알약 (같은 알약을 다시 누르면 토글로 닫히게)
 
 export function closeMenu() {
-  if (cur) { cur.remove(); cur = null; curAnchor?.removeAttribute("aria-expanded"); curAnchor = null; document.removeEventListener("pointerdown", outside, true); document.removeEventListener("keydown", onKey, true); window.removeEventListener("resize", closeMenu); window.removeEventListener("scroll", closeMenu, true); }
+  if (cur) { cur.remove(); cur = null; curAnchor?.removeAttribute("aria-expanded"); curAnchor = null; curBack = null; document.removeEventListener("pointerdown", outside, true); document.removeEventListener("keydown", onKey, true); window.removeEventListener("resize", closeMenu); window.removeEventListener("scroll", closeMenu, true); }
 }
 const outside = (e) => { if (cur && !cur.contains(e.target)) { closedBy = curAnchor && curAnchor.contains(e.target) ? { a: curAnchor, t: Date.now() } : null; closeMenu(); } };
 const onKey = (e) => {
   if (!cur) return;
-  if (e.key === "Escape") { e.preventDefault(); closeMenu(); return; }
+  if (e.key === "Escape") { e.preventDefault(); const b = curBack; closeMenu(); if (b?.isConnected) b.focus({ preventScroll: true }); return; }
   if (e.key === "ArrowDown" || e.key === "ArrowUp") { // 드롭다운 안에서 위아래로
     const bs = [...cur.querySelectorAll("button:not([disabled])")], i = bs.indexOf(document.activeElement);
     if (!bs.length) return; e.preventDefault();
@@ -28,7 +28,7 @@ function show(m, left, top) {
   setTimeout(() => { if (cur !== m) return; document.addEventListener("pointerdown", outside, true); document.addEventListener("keydown", onKey, true); window.addEventListener("resize", closeMenu); window.addEventListener("scroll", closeMenu, true); }, 0);
 }
 
-export function openMenu(e, { title = "", items = [], onPick }) {
+export function openMenu(e, { title = "", items = [], onPick, back = null }) {
   e.preventDefault(); closeMenu();
   const m = document.createElement("div");
   m.className = "cm glass"; m.setAttribute("role", "menu");
@@ -41,7 +41,9 @@ export function openMenu(e, { title = "", items = [], onPick }) {
   const w = m.offsetWidth, h = m.offsetHeight;
   m.remove();
   show(m, Math.min(e.clientX, innerWidth - w - 8), Math.min(e.clientY, innerHeight - h - 8));
+  curBack = back;
   m.addEventListener("click", (ev) => { const b = ev.target.closest("[data-k]"); if (!b) return; const k = b.dataset.k, v = b.dataset.v; closeMenu(); onPick?.(k, v); });
+  m.addEventListener("contextmenu", (ev) => ev.preventDefault()); // 메뉴 위에선 브라우저 메뉴를 띄우지 않아요 (Windows 는 ContextMenu 키를 뗄 때 한 번 더 보내요)
   m.querySelector("button")?.focus({ preventScroll: true });
 }
 

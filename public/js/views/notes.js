@@ -10,6 +10,7 @@ import { mdToBlocks, blocksToMd } from "../blocks/md.js";
 import { mountDatabase, pill } from "../blocks/db.js";
 import { mountAiPick, aiPrefs } from "../ai-pick.js";
 import { attachImages } from "../imgattach.js";
+import { bindNoteMenu, deleteWithUndo, isGone } from "../note-menu.js";
 
 let live = null; // the mounted notes view, so route changes can swap notes without remounting
 
@@ -104,7 +105,7 @@ export function mount(root, ctx, r) {
     const q = S.filter.toLowerCase();
     // 데이터베이스 행은 그 데이터베이스 안에서만 보여요 (찾기에 글자를 넣으면 같이 나와요)
     const dbs = new Set(S.notes.filter((n) => n.kind === "database").map((n) => n.id));
-    const list = S.notes.filter((n) => q ? n.title.toLowerCase().includes(q) || (n.snippet || "").toLowerCase().includes(q) : !dbs.has(n.parent_id));
+    const list = S.notes.filter((n) => !isGone(n.id) && (q ? n.title.toLowerCase().includes(q) || (n.snippet || "").toLowerCase().includes(q) : !dbs.has(n.parent_id))); // 지우는 중(5초 Undo)인 노트는 빼요
     $("#tagbar", root).innerHTML = S.tag
       ? `<span class="row" style="gap:6px"><span class="tag" aria-pressed="true">#${esc(S.tag)}</span><a class="linkbtn faint" href="#/notes" style="font-size:12px">Clear tag</a></span>`
       : `<div class="tagcloud" style="padding:0">${(S.allTags || []).slice(0, 12).map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t.tag)}">#${esc(t.tag)}</a>`).join("")}</div>`;
@@ -148,6 +149,7 @@ export function mount(root, ctx, r) {
     VN?.destroy(); VN = null;
     const n = S.cur, own = mine(), u = ctx.user(n.user_id);
     // 위쪽에 YouTube 영상 줄이 있는 노트는 보기 방식을 고르기 전까지 '영상 + 정리 + 스크립트' 한 화면으로
+    if (S.pick !== n.id) try { if (sessionStorage.getItem("trio-ed-pick") === n.id) { S.pick = n.id; sessionStorage.removeItem("trio-ed-pick"); } } catch {} // Brain 우클릭 Edit 로 왔어요 (note-menu.js)
     const vid = n.kind !== "database" && videoOf(n.body), mode = own ? (vid && S.pick !== n.id ? "view" : S.mode) : "view", vn = vid && mode === "view";
     $("#notes", root).classList.add("has-note");
     $("#ed", root).innerHTML = `
@@ -338,15 +340,9 @@ export function mount(root, ctx, r) {
       afterGenerate(r);
     }));
     $("#ed-hist", root)?.addEventListener("click", openHistory);
+    // 지우기: 우클릭 메뉴와 같이 바로 빠지고 5초 동안 Undo (note-menu.js) — 목록으로 나가는 건 아래 trio:changed 가 해요
     const del = $("#ed-del", root);
-    if (del) del.addEventListener("click", () => {
-      if (del.dataset.armed) {
-        api.deleteNote(S.cur.id).then(() => { toast("노트를 지웠어요."); S.cur = null; ctx.refreshSide(); ctx.go("#/notes"); loadList(); }).catch((e) => toast(e.message, "err"));
-      } else {
-        del.dataset.armed = "1"; del.innerHTML = `<span style="font-size:12px;font-weight:600;padding:0 4px;white-space:nowrap">정말 지울까요?</span>`; del.style.width = "auto";
-        setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.innerHTML = icon.trash(15); del.style.width = ""; } }, 3000);
-      }
-    });
+    if (del) del.addEventListener("click", async () => { const n = S.cur; if (!n) return; save.flush(); await chain; deleteWithUndo({ id: n.id, title: n.title, parent_id: n.parent_id }, ctx); });
     if (title && mine()) {
       title.addEventListener("input", () => { setStatus("입력 중…"); save(); });
       title.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); ta?.focus(); } });
@@ -542,12 +538,30 @@ export function mount(root, ctx, r) {
   $("#new", root).addEventListener("click", () => createNote(ctx, ""));
   $("#daily", root).addEventListener("click", () => openDaily(ctx, ymd(new Date())));
   $("#filter", root).addEventListener("input", (e) => { S.filter = e.target.value.trim(); drawList(); });
+  // 우클릭 메뉴 (note-menu.js): 오른쪽 클릭 · 길게 누르기 · ContextMenu 키 / Shift+F10
+  bindNoteMenu($("#nl", root), "a[href^='#/notes/']", (a) => { const n = S.notes.find((x) => a.getAttribute("href") === "#/notes/" + x.id); return n && { id: n.id, title: n.title, parent_id: n.parent_id, note: true }; }, {
+    ctx, open: (n) => ctx.go("#/notes/" + n.id),
+    before: async () => { save.flush(); await chain; }, // 열린 노트에 저장 안 된 글이 있으면 먼저 보내요
+    edit: (id) => { if (S.cur?.id !== id) { S.mode = "block"; S.pick = id; setMode("block"); ctx.go("#/notes/" + id); } else if (S.mode !== "block" || S.pick !== id) $('[data-mode="block"]', root)?.click(); }, // 영상 노트도 Edit 를 고르면 편집으로
+  });
+  // 메뉴가 바꾼 것(trio:changed 의 note)만 받아요. 열린 노트를 지우면 목록으로 나가고 Undo 면 다시 열어요
+  let leftFor = null;
+  const onChanged = (e) => {
+    const c = e.detail?.kind === "notes" && e.detail.note; if (!c) return;
+    if (c.op === "hide" && S.cur?.id === c.id) { leftFor = c.id; S.cur = null; ctx.go("#/notes"); }
+    else if (c.op === "show" && c.id === leftFor) { leftFor = null; if (location.hash === "#/notes") ctx.go("#/notes/" + c.id); }
+    if (c.local) return drawList();
+    loadList();
+    // 열린 노트 · 그 경로 · 하위 페이지가 서버에서 바뀌었으면(이름 · 링크 · 옮기기 · 지우기) 새로 받아요
+    if (c.op !== "create" && S.cur && (S.cur.id === c.id || c.relinked?.includes(S.cur.id) || S.crumbs.some((x) => x.id === c.id) || S.children.some((x) => x.id === c.id))) { noteCache.delete(S.cur.id); open(S.cur.id); }
+  };
+  window.addEventListener("trio:changed", onChanged);
 
   S.tag = r.tag || null;
   live = { route };
   loadList(); open(r.id);
 
-  return () => { save.flush(); closeSuggest(); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; VN?.destroy(); VN = null; live = null; };
+  return () => { save.flush(); closeSuggest(); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; VN?.destroy(); VN = null; live = null; window.removeEventListener("trio:changed", onChanged); };
 }
 
 // "· 웹 검색 2 · 페이지 1 · 이미지 1" 처럼 AI 가 무엇을 찾아봤는지

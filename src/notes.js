@@ -67,6 +67,46 @@ async function relink(env, n, text) {
   ]);
   return { ...n, body: text, updated_at: now() };
 }
+// 이름 바꾸기 (옵시디언처럼): [[옛 제목]] · [[옛 제목|별칭]] · [[옛 제목#절]] 의 제목만 새 것으로. 대소문자 · 앞뒤 빈칸은 parseLinks 처럼 느슨하게
+function renameLink(text, from, to) {
+  return text.replace(new RegExp("\\[\\[[ \\t]*" + from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[ \\t]*(?=[#|\\]])", "gi"), () => "[[" + to);
+}
+// 블록 노트: 글 · 표 칸의 링크와, 그 노트를 가리키는 하위 페이지 블록(note_id)의 제목. 바뀐 게 있으면 true
+function renameInDoc(doc, id, from, to) {
+  let hit = false;
+  const fix = (s) => { if (typeof s !== "string") return s; const t = renameLink(s, from, to); if (t !== s) hit = true; return t; };
+  const walk = (list) => { for (const b of list || []) {
+    b.text = fix(b.text);
+    if (b.type === "table" && Array.isArray(b.props?.rows)) b.props.rows = b.props.rows.map((r) => (Array.isArray(r) ? r.map(fix) : r));
+    if ((b.type === "page" || b.type === "database") && b.props?.note_id === id && b.props.title !== to) { b.props.title = to; hit = true; }
+    walk(b.children);
+  } };
+  walk(doc.blocks);
+  return hit;
+}
+// 이름이 바뀌면 내 다른 노트의 링크도 새 제목으로 — 보통 저장처럼 고치기 전 상태를 기록에 남기고 링크 표(note_links)도 새로 써요. 고친 노트 id 들
+async function relinkTitle(env, userId, id, from, to) {
+  const { results } = await env.DB.prepare(
+    `SELECT n.id, n.body, n.blocks FROM notes n WHERE n.user_id = ?1 AND n.id != ?2 AND coalesce(n.kind, 'page') != 'database'
+     AND n.id IN (SELECT src_id FROM note_links WHERE dst_title = ?3)`
+  ).bind(userId, id, from).all();
+  const stmts = [], ids = [];
+  for (const n of results) {
+    let body, blocks = null;
+    const doc = parseJson(n.blocks);
+    if (doc) { // 블록이 원본이에요 — body 는 블록에서 다시 만들어요
+      if (!renameInDoc(doc, id, from, to)) continue;
+      try { ({ text: blocks, md: body } = readBlocks(doc)); } catch { continue; }
+    } else {
+      body = renameLink(n.body || "", from, to);
+      if (body === (n.body || "") || body.length > MAX_NOTE) continue;
+    }
+    ids.push(n.id);
+    stmts.push(...snapStmts(env, n.id, false), env.DB.prepare("UPDATE notes SET body = ?, blocks = ?, updated_at = ? WHERE id = ? AND user_id = ?").bind(body, blocks, now(), n.id, userId), ...indexStmts(env, n.id, body));
+  }
+  if (stmts.length) await env.DB.batch(stmts);
+  return ids;
+}
 // ---------- blocks · databases ----------
 const parseJson = (t) => { try { return t ? JSON.parse(t) : null; } catch { return null; } };
 function readBlocks(v) {
@@ -263,6 +303,10 @@ export function registerNotes(on) {
         if (b.parent_id === n.id) fail(400, "자기 자신 아래에 둘 수 없어요.");
         const p = await env.DB.prepare("SELECT id FROM notes WHERE id = ? AND user_id = ?").bind(b.parent_id, user.id).first();
         if (!p) fail(404, "상위 노트를 찾을 수 없어요.");
+        // 내 하위 노트 아래로는 못 가요 (고리가 생겨요): 새 부모에서 위로 올라가다 나를 만나면 400. UNION 이라 예전 고리가 있어도 끝나요
+        const loop = await env.DB.prepare(`WITH RECURSIVE up(id) AS (SELECT ?1 UNION SELECT n.parent_id FROM notes n JOIN up ON n.id = up.id WHERE n.user_id = ?3 AND n.parent_id IS NOT NULL)
+          SELECT 1 FROM up WHERE id = ?2 LIMIT 1`).bind(p.id, n.id, user.id).first();
+        if (loop) fail(400, "하위 노트 아래로는 옮길 수 없어요.");
         next.parent_id = p.id;
       }
     }
@@ -273,6 +317,8 @@ export function registerNotes(on) {
     if (bodyChanged) await indexNote(env, n.id, next.body);
     if (pdb && (b.props !== undefined || next.title !== n.title)) await refreshDbMirror(env, pdb.id, user.id);
     if (b.db !== undefined) { await refreshDbMirror(env, n.id, user.id); next.body = (await env.DB.prepare("SELECT body FROM notes WHERE id = ?").bind(n.id).first())?.body ?? next.body; }
+    // 제목이 바뀌면 내 다른 노트의 [[링크]] 도 따라가요 (relinked = 고친 노트 id — 열려 있으면 화면이 새로 불러와요)
+    if (next.title !== n.title) return json({ note: next, relinked: await relinkTitle(env, user.id, n.id, n.title, next.title) });
     return json({ note: next });
   });
 
@@ -329,7 +375,12 @@ export function registerNotes(on) {
 
   on("DELETE", "/notes/:id", async ({ env, user, params }) => {
     const parent = await env.DB.prepare("SELECT parent_id FROM notes WHERE id = ? AND user_id = ?").bind(params.id, user.id).first();
-    const r = await env.DB.prepare("DELETE FROM notes WHERE id = ? AND user_id = ?").bind(params.id, user.id).run();
+    if (!parent) fail(404, "노트를 찾을 수 없어요.");
+    // 하위 노트는 지운 노트의 부모 밑으로 한 칸 올려요 (맨 위로 흩어지지 않게) — 같은 batch 라 한꺼번에
+    const [, r] = await env.DB.batch([
+      env.DB.prepare("UPDATE notes SET parent_id = ?1 WHERE parent_id = ?2 AND user_id = ?3 AND id IS NOT ?1").bind(parent.parent_id ?? null, params.id, user.id),
+      env.DB.prepare("DELETE FROM notes WHERE id = ? AND user_id = ?").bind(params.id, user.id),
+    ]);
     if (!r.meta.changes) fail(404, "노트를 찾을 수 없어요.");
     if (parent?.parent_id && await parentDb(env, parent.parent_id, user.id)) await refreshDbMirror(env, parent.parent_id, user.id);
     return json({ ok: true });
