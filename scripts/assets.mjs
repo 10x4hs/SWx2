@@ -26,8 +26,10 @@ export function modules() {
 }
 
 const walk = (d) => readdirSync(join(ROOT, d)).flatMap((f) => { const p = d + "/" + f; return statSync(join(ROOT, p)).isDirectory() ? walk(p) : [p]; });
+// 한 화면에서만 쓰는 큰 파일은 설치 때 미리 받지 않아요 (느린 길에서 설치가 길어지지 않게) — 처음 열 때 받아서 캐시에 둬요
+const LAZY = new Set(["/vendor/three.min.js"]);
 export function precache() {
-  return [...walk("/js"), ...walk("/vendor"), ...walk("/css"), "/styles.css"].filter((p) => /\.(m?js|css)$/.test(p)).sort();
+  return [...walk("/js"), ...walk("/vendor"), ...walk("/css"), "/styles.css"].filter((p) => /\.(m?js|css)$/.test(p) && !LAZY.has(p)).sort();
 }
 
 function block() {
