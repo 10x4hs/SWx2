@@ -18,7 +18,7 @@ import { registerLibrary } from "./library.js";
 import { registerPush } from "./push.js";
 import { registerNews } from "./news.js";
 import { registerReminders } from "./reminders.js";
-import { registerCron, runCron } from "./cron.js";
+import { registerCron, runCron, cronCatchUp } from "./cron.js";
 import { HttpError, fail, json, body, now, uid, str } from "./http.js";
 import { on, match } from "./router.js";
 import { requireUser, sessionUser, tokenUser, loginWith, MUST_CHANGE_OPEN, registerAuth } from "./auth.js";
@@ -52,6 +52,7 @@ export default {
       catch (e) { console.error("pf", e); return new Response("서버에서 문제가 생겼어요.", { status: 500 }); }
     }
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
+    ec.waitUntil(cronCatchUp(env).catch((e) => console.log("크론 대신 실패", String(e?.message || e))));
     try {
       return await route(req, env, url, ec);
     } catch (e) {
