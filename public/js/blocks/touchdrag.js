@@ -30,7 +30,7 @@ export function touchDrag(root, sel, o) {
     o.end?.();
   };
   root.addEventListener("pointerup", up);
-  root.addEventListener("pointercancel", () => { clear(); o.end?.(); });
+  root.addEventListener("pointercancel", () => { if (!st) return; clear(); o.end?.(); }); // 마우스 HTML5 끌기가 시작될 때도 pointercancel 이 와요 — 그건 건드리지 않기
   // stop the page from scrolling while an item is lifted
   root.addEventListener("touchmove", (e) => { if (st?.ready) e.preventDefault(); }, { passive: false });
   root.addEventListener("contextmenu", (e) => { if (st) e.preventDefault(); });

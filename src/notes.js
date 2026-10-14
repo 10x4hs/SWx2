@@ -102,6 +102,28 @@ async function freeTitle(env, userId, title) {
   fail(409, "같은 제목의 노트가 너무 많아요.");
 }
 
+// ---------- 페이지 기록 (note_versions, 0046) ----------
+// 저장 직전 상태를 남겨요: 같은 노트는 10분에 한 번만 (force 면 늘 — 되돌리기 직전) · 마지막 기록과 같으면 건너뛰고 · 최신 30개만.
+// INSERT … SELECT 로 D1 안에서 복사하니 큰 본문도 문장 크기(100KB) 한도에 걸리지 않아요.
+const SNAP_GAP = 10 * 60_000, SNAP_KEEP = 30;
+function snapStmts(env, noteId, force) {
+  return [
+    env.DB.prepare(`INSERT INTO note_versions (id, note_id, user_id, title, blocks, body, created_at)
+      SELECT ?1, n.id, n.user_id, n.title, n.blocks, coalesce(n.body, ''), ?3 FROM notes n WHERE n.id = ?2 AND coalesce(n.kind, 'page') != 'database'
+      AND (?4 OR NOT EXISTS (SELECT 1 FROM note_versions v WHERE v.note_id = ?2 AND v.created_at > ?3 - ${SNAP_GAP}))
+      AND NOT EXISTS (SELECT 1 FROM (SELECT title, body FROM note_versions WHERE note_id = ?2 ORDER BY created_at DESC LIMIT 1) l WHERE l.title = n.title AND l.body = coalesce(n.body, ''))`)
+      .bind(uid(), noteId, now(), force ? 1 : 0),
+    env.DB.prepare(`DELETE FROM note_versions WHERE note_id = ?1 AND id NOT IN (SELECT id FROM note_versions WHERE note_id = ?1 ORDER BY created_at DESC LIMIT ${SNAP_KEEP})`).bind(noteId),
+  ];
+}
+// "+120 / −40 chars": 앞뒤 같은 부분을 빼고 남은 길이
+function diffSize(a, b) {
+  let i = 0, j = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  while (j < a.length - i && j < b.length - i && a[a.length - 1 - j] === b[b.length - 1 - j]) j++;
+  return { add: b.length - i - j, del: a.length - i - j };
+}
+
 export function registerNotes(on) {
   on("GET", "/notes", async ({ env, user, q }) => {
     const tag = q.get("tag");
@@ -161,7 +183,8 @@ export function registerNotes(on) {
        WHERE l.dst_title = (SELECT title FROM notes WHERE id = ?2 AND user_id = ?1) AND n.id != ?2 AND ${VISIBLE} ORDER BY n.updated_at DESC`
       ).bind(user.id, params.id),
       env.DB.prepare("SELECT tag FROM note_tags WHERE note_id = ?").bind(params.id),
-      env.DB.prepare("SELECT id, title, kind, props, updated_at FROM notes WHERE parent_id = ? AND user_id = ? ORDER BY created_at").bind(params.id, user.id),
+      // cover = 행 페이지의 첫 이미지 (갤러리 보기 표지)
+      env.DB.prepare("SELECT id, title, kind, props, updated_at, CASE WHEN json_valid(blocks) THEN (SELECT json_extract(j.value, '$.props.src') FROM json_tree(blocks) j WHERE j.type = 'object' AND json_extract(j.value, '$.type') = 'image' LIMIT 1) END AS cover FROM notes WHERE parent_id = ? AND user_id = ? ORDER BY created_at").bind(params.id, user.id),
       // 위로 올라가는 경로 (부모 › 조부모 …, 최대 6단계) — 재귀 쿼리 하나로
       env.DB.prepare(
         `WITH RECURSIVE up(id, title, parent_id, depth) AS (
@@ -244,12 +267,46 @@ export function registerNotes(on) {
       }
     }
     next.updated_at = now();
+    if (bodyChanged || next.title !== n.title) await env.DB.batch(snapStmts(env, n.id, b.snapshot === true)); // 고치기 전 상태를 기록에 (snapshot: true 면 10분 안이어도)
     await env.DB.prepare("UPDATE notes SET title = ?, body = ?, shared = ?, parent_id = ?, updated_at = ?, blocks = ?, props = ?, db = ?, remind_at = ?, reminded_at = ?, remind_seen = ? WHERE id = ?")
       .bind(next.title, next.body, next.shared, next.parent_id ?? null, next.updated_at, next.blocks ?? null, next.props ?? null, next.db ?? null, next.remind_at ?? null, next.reminded_at ?? null, next.remind_seen ?? null, n.id).run();
     if (bodyChanged) await indexNote(env, n.id, next.body);
     if (pdb && (b.props !== undefined || next.title !== n.title)) await refreshDbMirror(env, pdb.id, user.id);
     if (b.db !== undefined) { await refreshDbMirror(env, n.id, user.id); next.body = (await env.DB.prepare("SELECT body FROM notes WHERE id = ?").bind(n.id).first())?.body ?? next.body; }
     return json({ note: next });
+  });
+
+  // 페이지 기록: 목록 · 하나 · 되돌리기 — 노트를 읽고 고칠 수 있는 사람(지금은 본인)만
+  on("GET", "/notes/:id/versions", async ({ env, user, params }) => {
+    const n = await visibleNote(env, params.id, user);
+    const { results } = await env.DB.prepare("SELECT v.id, v.created_at, v.user_id, v.title, v.body, u.display_name, u.color FROM note_versions v LEFT JOIN users u ON u.id = v.user_id WHERE v.note_id = ? ORDER BY v.created_at DESC").bind(n.id).all();
+    const versions = results.map((v, i) => {
+      const older = results[i + 1]?.body ?? "", d = diffSize(older, v.body || "");
+      return { id: v.id, created_at: v.created_at, user: { id: v.user_id, display_name: v.display_name, color: v.color }, title: v.title, size: (v.body || "").length, add: d.add, del: d.del, summary: `+${d.add} / −${d.del} chars` };
+    });
+    return json({ versions });
+  });
+  const versionOf = async (env, n, vid) => {
+    const v = await env.DB.prepare("SELECT * FROM note_versions WHERE id = ? AND note_id = ?").bind(vid, n.id).first();
+    if (!v) fail(404, "그 기록을 찾을 수 없어요.");
+    return v;
+  };
+  on("GET", "/notes/:id/versions/:vid", async ({ env, user, params }) => {
+    const n = await visibleNote(env, params.id, user);
+    return json({ version: await versionOf(env, n, params.vid) });
+  });
+  on("POST", "/notes/:id/versions/:vid/restore", async ({ env, user, params }) => {
+    const n = await visibleNote(env, params.id, user);
+    const v = await versionOf(env, n, params.vid);
+    // 제목이 그 사이 다른 노트와 겹치면 지금 제목을 그대로 둬요
+    const dup = v.title !== n.title && await env.DB.prepare("SELECT id FROM notes WHERE user_id = ? AND title = ? COLLATE NOCASE AND id != ?").bind(user.id, v.title, n.id).first();
+    const next = { ...n, title: dup ? n.title : v.title, body: v.body || "", blocks: v.blocks ?? null, updated_at: now() };
+    await env.DB.batch([
+      ...snapStmts(env, n.id, true), // 되돌리기 전 지금 상태를 먼저 남겨요
+      env.DB.prepare("UPDATE notes SET title = ?, body = ?, blocks = ?, updated_at = ? WHERE id = ?").bind(next.title, next.body, next.blocks, next.updated_at, n.id),
+      ...indexStmts(env, n.id, next.body),
+    ]);
+    return json({ note: next, kept_title: !!dup });
   });
   on("POST", "/notes/:id/link", async ({ req, env, user, params }) => {
     const n = await visibleNote(env, params.id, user);

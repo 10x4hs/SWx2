@@ -159,6 +159,7 @@ export function mount(root, ctx, r) {
         </div>
         <button class="btn ghost sm ai-btn" type="button" id="ed-ai" title="Add topic, #tags and [[links]] to this page">${icon.spark(14)}AI tidy</button>
         <button class="btn ghost sm ai-btn" type="button" id="ed-split-ai" title="이 노트를 개념 하나당 노트 하나로 쪼개 새로 만들어요">Split</button>
+        ${n.kind === "database" ? "" : `<button class="icon-btn sm" type="button" id="ed-hist" aria-label="Page history" title="Page history">${icon.reset(15)}</button>`}
         <button class="icon-btn sm danger" type="button" id="ed-del" aria-label="노트 삭제">${icon.trash(15)}</button>` : ""}
       </div>
       ${own ? `<form class="ai-refine" id="ed-refine" title="AI 와 이 페이지를 같이 고쳐요"><span class="ai-refine-ic">${icon.spark(14)}</span><input class="input" id="ed-refine-in" maxlength="1000" placeholder="Ask AI: make this a table · add a review section · shorter" aria-label="AI 에게 고쳐 달라고 하기"><button class="btn sm accent" type="submit">Apply</button></form>` : ""}
@@ -217,9 +218,10 @@ export function mount(root, ctx, r) {
     try {
       const { note } = await api.note(S.cur.parent_id);
       const db = parseJ(note.db); if (!db || S.cur?.id !== id) return;
-      box.innerHTML = db.props.map((p) => {
+      // rollup · formula 는 데이터베이스 화면에서 계산해요 (여기선 숨김) · relation 은 개수만
+      box.innerHTML = (props._tpl ? `<div class="nb-prop"><span class="faint">Template</span><span>⧉ starter blocks for new rows</span></div>` : "") + db.props.filter((p) => p.type !== "rollup" && p.type !== "formula").map((p) => {
         const v = props[p.key], o = (n) => p.options?.find((x) => x.name === n)?.color;
-        const h = v === undefined ? '<span class="faint">Empty</span>' : p.type === "status" || p.type === "select" ? pill(v, o(v), p.type === "status") : p.type === "multi_select" ? v.map((x) => pill(x, o(x))).join("") : p.type === "checkbox" ? (v ? "✓" : "—") : esc(String(v));
+        const h = v === undefined ? '<span class="faint">Empty</span>' : p.type === "relation" ? `↗ ${v.length} linked` : p.type === "status" || p.type === "select" ? pill(v, o(v), p.type === "status") : p.type === "multi_select" ? v.map((x) => pill(x, o(x))).join("") : p.type === "checkbox" ? (v ? "✓" : "—") : esc(String(v));
         return `<div class="nb-prop"><span class="faint">${esc(p.name)}</span><span>${h}</span></div>`;
       }).join("") + `<a class="nb-prop-db faint" href="#/notes/${esc(note.id)}">▤ ${esc(note.title)}</a>`;
     } catch {}
@@ -327,6 +329,7 @@ export function mount(root, ctx, r) {
       const r = await api.generate({ note_id: S.cur.id, model: aiPrefs().model || undefined });
       afterGenerate(r);
     }));
+    $("#ed-hist", root)?.addEventListener("click", openHistory);
     const del = $("#ed-del", root);
     if (del) del.addEventListener("click", () => {
       if (del.dataset.armed) {
@@ -407,9 +410,58 @@ export function mount(root, ctx, r) {
     return { x: sr.left, y: sr.top - ta.scrollTop };
   }
 
+
+  // ---------- 페이지 기록: 오른쪽 패널 · 읽기 전용 미리보기 · 되돌리기 (안에서 한 번 더 묻기) ----------
+  const ago = (ms) => { const s = (Date.now() - ms) / 1000; return s < 60 ? "방금" : s < 3600 ? `${Math.floor(s / 60)}분 전` : s < 86400 ? `${Math.floor(s / 3600)}시간 전` : s < 86400 * 7 ? `${Math.floor(s / 86400)}일 전` : fmt(ms); };
+  let HP = null; // { el, ed }
+  function closeHistory() { HP?.ed?.destroy(); HP?.el.remove(); HP = null; }
+  async function openHistory() {
+    if (HP) return closeHistory();
+    save.flush(); await chain;
+    const id = S.cur.id;
+    const el = document.createElement("aside");
+    el.className = "vh-panel glass"; el.setAttribute("aria-label", "Page history");
+    el.innerHTML = `<div class="vh-head"><b>Page history</b><button class="icon-btn sm" type="button" data-x aria-label="닫기">${icon.x(15)}</button></div><div class="vh-list"><span class="faint">불러오는 중…</span></div><div class="vh-prev" hidden></div>`;
+    document.body.appendChild(el); HP = { el, ed: null };
+    el.querySelector("[data-x]").addEventListener("click", closeHistory);
+    let versions = [];
+    try { versions = (await api.noteVersions(id)).versions; } catch (e) { toast(e.message, "err"); return closeHistory(); }
+    if (HP?.el !== el) return;
+    const list = el.querySelector(".vh-list");
+    list.innerHTML = versions.length ? versions.map((v) => `<button type="button" class="vh-item" data-vid="${esc(v.id)}"><span><b>${esc(ago(v.created_at))}</b> · ${esc(v.user?.display_name || "")}</span><span class="faint">${esc(v.title)} · <span class="vh-add">+${v.add}</span> / <span class="vh-del">−${v.del}</span> chars</span></button>`).join("")
+      : `<span class="faint" style="font-size:13px">아직 기록이 없어요. 고치면 10분에 한 번씩 남아요.</span>`;
+    list.querySelectorAll("[data-vid]").forEach((b) => b.addEventListener("click", () => showVersion(id, b.dataset.vid, b)));
+  }
+  async function showVersion(id, vid, btn) {
+    const el = HP?.el; if (!el) return;
+    el.querySelectorAll(".vh-item").forEach((b) => b.classList.toggle("on", b === btn));
+    const box = el.querySelector(".vh-prev"); box.hidden = false; box.innerHTML = `<span class="faint">불러오는 중…</span>`;
+    let v; try { v = (await api.noteVersion(id, vid)).version; } catch (e) { box.innerHTML = ""; return toast(e.message, "err"); }
+    if (HP?.el !== el) return;
+    box.innerHTML = `<div class="vh-bar"><b class="vh-title">${esc(v.title)}</b>${mine() ? `<span class="vh-act"><button class="btn sm accent" type="button" data-restore>Restore this version</button></span>` : ""}</div><div class="vh-doc"></div>`;
+    HP.ed?.destroy();
+    HP.ed = createBlockEditor(box.querySelector(".vh-doc"), { doc: parseJ(v.blocks) || mdToBlocks(v.body || ""), readOnly: true, notes: () => [],
+      onChange: () => {}, onOpenTitle: () => {}, onOpenNote: () => {}, onOpenTag: () => {}, onNewPage: () => {}, onNewDb: () => {},
+      mountDb: (h, dbid) => mountDatabase(h, dbid, { inline: true, readOnly: true, onOpen: () => {} }) });
+    const act = box.querySelector(".vh-act");
+    act?.addEventListener("click", async (e) => {
+      if (e.target.closest("[data-restore]")) { act.innerHTML = `<span style="font-size:12px">지금 내용은 기록에 남겨 둘게요. 되돌릴까요?</span><button class="btn sm accent" type="button" data-yes>Restore</button><button class="btn ghost sm" type="button" data-no>Cancel</button>`; return; }
+      if (e.target.closest("[data-no]")) { act.innerHTML = `<button class="btn sm accent" type="button" data-restore>Restore this version</button>`; return; }
+      if (!e.target.closest("[data-yes]")) return;
+      try {
+        save.flush(); await chain;
+        const r = await api.restoreNote(id, vid);
+        toast(r.kept_title ? "되돌렸어요. 제목은 다른 노트와 겹쳐서 그대로 뒀어요." : "이 버전으로 되돌렸어요.");
+        closeHistory(); noteCache.delete(id);
+        if (S.cur?.id === id) { S.cur = null; open(id); }
+        loadList(); ctx.refreshSide();
+      } catch (err) { toast(err.message, "err"); }
+    });
+  }
+
   // ---------- routing ----------
   async function open(id) {
-    save.flush();
+    save.flush(); if (HP && S.cur?.id !== id) closeHistory();
     closeSuggest();
     if (!id) { ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; S.cur = null; drawEmpty(); drawList(); return; }
     const show = (d) => {

@@ -1,18 +1,19 @@
 // Blocks ⇄ markdown — pure functions shared by the browser editor and the worker (src/notes.js imports this file).
 // Contract: docs/blocks-schema.md. No DOM; only imports the sibling pure dbview.js, so both sides can load it.
-import { cleanView, cleanRemind } from "./dbview.js";
+import { cleanView, cleanRemind, ROLLUP_FNS } from "./dbview.js";
 
 export const MAX_BLOCKS_JSON = 400_000;
 export const MAX_BLOCKS = 5000;
-export const BLOCK_TYPES = ["paragraph", "h1", "h2", "h3", "bullet", "number", "todo", "toggle", "callout", "quote", "divider", "code", "image", "file", "bookmark", "embed", "equation", "table", "page", "database"];
+export const BLOCK_TYPES = ["paragraph", "h1", "h2", "h3", "bullet", "number", "todo", "toggle", "callout", "quote", "divider", "code", "image", "file", "bookmark", "embed", "equation", "table", "page", "database", "columns", "column"];
 const TYPESET = new Set(BLOCK_TYPES);
-const NESTABLE = new Set(["bullet", "number", "todo", "toggle", "callout", "quote"]);
+const NESTABLE = new Set(["bullet", "number", "todo", "toggle", "callout", "quote", "columns", "column"]);
+export const MAX_COLS = 3;
 const LISTY = new Set(["bullet", "number", "todo"]);
 export const canNest = (b) => NESTABLE.has(b.type) || (/^h[123]$/.test(b.type) && !!b.props?.toggle);
 export const COLORS = ["default", "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"];
 const TEXTY = new Set(["paragraph", "h1", "h2", "h3", "bullet", "number", "todo", "toggle", "callout", "quote"]);
 const BLOCK_COLORS = new Set(["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"].flatMap((c) => [c, c + "_background"]));
-export const PROP_TYPES = ["status", "select", "multi_select", "date", "text", "number", "checkbox", "url"];
+export const PROP_TYPES = ["status", "select", "multi_select", "date", "text", "number", "checkbox", "url", "relation", "rollup", "formula"];
 
 export function bid() {
   const a = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -47,7 +48,7 @@ function cleanProps(type, p) {
 export function validateDoc(doc) {
   if (!doc || typeof doc !== "object" || doc.v !== 1 || !Array.isArray(doc.blocks)) throw new Error("blocks 는 { v: 1, blocks: [] } 모양이어야 해요.");
   let count = 0;
-  const walk = (list, depth) => {
+  const walk = (list, depth, pt = "") => {
     if (depth > 12) throw new Error("블록이 너무 깊게 들어가 있어요.");
     return list.map((b) => {
       if (!b || typeof b !== "object" || !TYPESET.has(b.type)) throw new Error("모르는 블록 종류예요: " + String(b?.type).slice(0, 20));
@@ -55,8 +56,11 @@ export function validateDoc(doc) {
       const out = { id: typeof b.id === "string" && /^[\w-]{1,40}$/.test(b.id) ? b.id : bid(), type: b.type, text: str(b.text, 20000), props: cleanProps(b.type, b.props), children: [] };
       if (Array.isArray(b.children) && b.children.length) {
         if (!canNest(out)) throw new Error(`'${b.type}' 블록에는 안쪽 블록을 둘 수 없어요.`);
-        out.children = walk(b.children, depth + 1);
+        out.children = walk(b.children, depth + 1, out.type);
       }
+      // 단(column)은 columns 바로 안에만, columns 안에는 column 만 (2~3개), 단 안에 또 단 나누기는 안 돼요
+      if ((out.type === "column") !== (pt === "columns")) throw new Error("column 블록은 columns 안에만 둘 수 있어요.");
+      if (out.type === "columns" && (pt === "column" || out.children.length > MAX_COLS)) throw new Error("단 나누기는 겹치거나 3단을 넘을 수 없어요.");
       return out;
     });
   };
@@ -119,6 +123,7 @@ function renderOne(b, num) {
     case "equation": return p.expr ? ["$$" + p.expr.replace(/\n/g, " ") + "$$"] : [];
     case "table": return p.rows?.length ? tableMd(p.rows, p.header) : [];
     case "page": case "database": return p.title ? [`[[${p.title}]]`] : [];
+    case "columns": case "column": return kids; // 단 나누기는 마크다운에선 차례대로 이어 붙여요
     default: return textLines(t);
   }
 }
@@ -291,6 +296,10 @@ export function validateDb(db) {
       const names = new Set();
       o.options = (Array.isArray(p.options) ? p.options : []).slice(0, 60).map((x) => ({ name: str(x?.name, 60).trim(), color: COLORS.includes(x?.color) ? x.color : "gray" })).filter((x) => x.name && !names.has(x.name) && names.add(x.name));
     }
+    // relation: target = 가리키는 데이터베이스 note id ("" = 자기 자신) · rollup: relation key + target prop key + fn · formula: expr
+    if (p.type === "relation") o.target = /^[\w-]{1,40}$/.test(p.target || "") ? p.target : "";
+    if (p.type === "rollup") { o.relation = str(p.relation, 30); o.target = str(p.target, 30) || "title"; o.fn = ROLLUP_FNS.includes(p.fn) ? p.fn : "count"; }
+    if (p.type === "formula") o.expr = str(p.expr, 1000);
     return o;
   });
   const views = (Array.isArray(db.views) ? db.views : []).slice(0, 10).map((v, i) => cleanView(v, i, props));
@@ -300,6 +309,7 @@ export function validateDb(db) {
 export function cleanRowProps(input, db, prev = {}) {
   const out = { ...(prev && typeof prev === "object" ? prev : {}) };
   if (!input || typeof input !== "object") return out;
+  if ("_tpl" in input) { if (input._tpl) out._tpl = true; else delete out._tpl; } // 템플릿 행 (보기 · 미러에서 숨김)
   if ("_remind" in input) { const r = cleanRemind(input._remind, db); if (r) out._remind = r; else delete out._remind; }
   for (const p of db?.props || []) {
     if (!(p.key in input)) continue;
@@ -308,6 +318,8 @@ export function cleanRowProps(input, db, prev = {}) {
     if (p.type === "checkbox") out[p.key] = !!v;
     else if (p.type === "number") { const n = Number(v); if (Number.isFinite(n)) out[p.key] = n; else delete out[p.key]; }
     else if (p.type === "date") { const s = String(v).slice(0, 10); if (/^\d{4}-\d{2}-\d{2}$/.test(s)) out[p.key] = s; }
+    else if (p.type === "rollup" || p.type === "formula") delete out[p.key]; // 계산 속성은 저장 안 해요
+    else if (p.type === "relation") out[p.key] = [...new Set((Array.isArray(v) ? v : [v]).map((x) => String(x)).filter((x) => /^[\w-]{1,40}$/.test(x)))].slice(0, 100);
     else if (p.type === "multi_select") out[p.key] = (Array.isArray(v) ? v : [v]).map((x) => String(x).slice(0, 60)).filter(Boolean).slice(0, 30);
     else out[p.key] = String(v).slice(0, p.type === "text" || p.type === "url" ? 2000 : 60);
   }
@@ -320,7 +332,8 @@ export function propText(p, v) {
   return String(v);
 }
 export function dbToMd(db, rows) {
-  const props = db?.props || [];
+  const props = (db?.props || []).filter((p) => !["relation", "rollup", "formula"].includes(p.type));
+  rows = rows.filter((r) => !(r.props || {})._tpl);
   if (!rows.length) return "";
   const head = ["Name", ...props.map((p) => p.name)];
   const body = rows.map((r) => [`[[${r.title}]]`, ...props.map((p) => propText(p, (r.props || {})[p.key]))]);
