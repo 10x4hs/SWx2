@@ -134,7 +134,7 @@ export function mount(root, ctx, r) {
         <span class="gn-when">${num ? `<em class="gn-num${m.read ? " ok" : ""}">${m.read ? "✓" : num}</em>` : ""}<b>${esc(when(it))}</b>${g.length ? `<span>${g.slice(0, 2).join(" · ")}</span>` : ""}</span>
         <span class="gn-body">
           <span class="gn-t"${isKo(t) ? "" : ' lang="en"'}>${m.read ? "" : `<i class="gn-dot" aria-label="Unread"></i>`}${esc(t)}</span>
-          ${sub ? `<span class="gn-s">${esc(sub)}</span>` : ""}
+          ${sub ? `<span class="gn-s">${esc(sub)}</span>` : `<span class="gn-s gn-soft">Writing a summary…</span>`}
           <span class="gn-meta">${it.section ? `<span>${SEC_KO[it.section] || ""}</span>` : ""}<span>${esc(it.feed)}</span>${(it.co || []).slice(0, 2).map((k) => `<span class="gn-co">${esc(coName(k))}</span>`).join("")}</span>
           ${it.comments || it.disputed || m.others.length ? `<span class="gn-foot">${it.comments ? `<span class="gn-pill">${it.comments} comment${it.comments > 1 ? "s" : ""}</span>` : ""}${it.disputed ? `<span class="gn-pill hot">Disputed</span>` : ""}<span class="gn-avs">${avs(m.others)}</span></span>` : ""}
         </span>
@@ -230,6 +230,7 @@ export function mount(root, ctx, r) {
         ${(ed.threads || []).length ? `<h2 class="gn-sec-h">Developing stories</h2><ul class="gn-threads">${ed.threads.map((t) => `<li><b>${esc(t.title)}</b><span>${esc(t.move || "")}</span></li>`).join("")}</ul>` : ""}
         <footer class="gn-end">${unread ? `${unread} unread` : "You're all caught up"}${ed.prev ? ` · <a href="#/news/${ed.prev}">${dayKo(ed.prev)}</a>` : ""}</footer>
       </div>`;
+    setTimeout(fillSummaries, 0);
   }
 
 
@@ -438,6 +439,27 @@ export function mount(root, ctx, r) {
     cur = null; gn.classList.remove("sheet-on"); scrim.hidden = true;
     setTimeout(() => { if (!cur) sheet.hidden = true; }, 220);
     page.querySelectorAll(".on[data-id]").forEach((el) => el.classList.remove("on"));
+  }
+  // 목록에 요약 없는 글이 보이면 4편씩 바로 요약해서 그 줄만 바꿔요 (전체를 다시 그리지 않아요 — 클릭이 끊기지 않게)
+  let filling = false;
+  async function fillSummaries() {
+    if (filling) return; filling = true;
+    try {
+      for (let round = 0; round < 4 && alive; round++) {
+        const ids = [...page.querySelectorAll("li.gn-item")].map((el) => el.dataset.id)
+          .filter((id, i, a) => a.indexOf(id) === i && items.get(id) && !items.get(id).summary && !items.get(id)._tried).slice(0, 4);
+        if (!ids.length) break;
+        ids.forEach((id) => { items.get(id)._tried = true; });
+        const r = await api.newsSummarizeMany(ids).catch(() => null);
+        for (const x of r?.items || []) {
+          const it = items.get(x.id); if (!it) continue;
+          Object.assign(it, x);
+          const t = titleOf(it), sub = sentences(it.summary).filter((s) => strip(s) !== strip(t)).join(" ");
+          page.querySelectorAll(`li.gn-item[data-id="${x.id}"] .gn-s`).forEach((el) => { el.textContent = sub; el.classList.remove("gn-soft"); });
+        }
+        for (const id of ids) if (!items.get(id)?.summary) page.querySelectorAll(`li.gn-item[data-id="${id}"] .gn-s.gn-soft`).forEach((el) => el.remove());
+      }
+    } finally { filling = false; }
   }
   function repaint(id) {
     const it = items.get(id); if (!it) return;

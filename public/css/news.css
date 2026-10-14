@@ -395,3 +395,4 @@ body:has(.host-news) .bg { opacity: .15; filter: blur(2px) grayscale(1); }
 .gn-usage-t th { text-align: left; font-size: 11px; color: var(--g-ink3); text-transform: uppercase; font-weight: 600; padding: 6px 4px; border-bottom: 1px solid var(--g-line); }
 .gn-usage-t td { padding: 7px 4px; border-bottom: 1px dotted var(--g-line); }
 .gn-usage-t td:not(:first-child), .gn-usage-t th:not(:first-child) { text-align: right; }
+.gn .gn-s.gn-soft { padding: 0; font-size: inherit; font-style: italic; }
