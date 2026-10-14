@@ -11,6 +11,7 @@
 //   ⑨ 친구 페이지 숨기기 — 친구가 공개한 Dock 페이지 · 공부 과목 탭을 '내 화면에서 숨기기', 프로필에서 다시 보이기
 //   ⑩ Study 그래프 — 영어 · 논문 · AI · 과목 페이지마다 [내용 | 그래프], 크기 기준 · 크기가 계정에 저장, 점을 누르면 그 내용으로
 //   ⑪ Brain — 노트 + 공부를 한 나무로: 맨 위엔 큰 개념 5개, 누르면 안으로, 공부 점은 원래 화면, 가져오기는 다시 올려도 그대로 (2026-10-13)
+//   ⑪-b 노트 우클릭 — 목록 · Brain 점 · Brain 목록에서 (폰은 길게 누르기, 키보드 Shift+F10): 이름 바꾸기(다른 노트 [[링크]] 도) · 새 하위 노트(Edit) · 옮기기 · 지우기 Undo / 5초 뒤 · 화면을 떠나면 바로 (2026-10-15)
 //   ⑫ 뉴스 — 하루 한 호 (가독성 · 한국어) · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13)
 //   ⑬ 경영 마이크로디그리 — 모듈 지도 · 현황판 · 하루 60/90/120분 · 2주 계획 · 카드(정적 이익 지도 · 더 자세히 · 퀴즈 · AI 튜터) · 케이스(내 답 먼저) · 연습문제 채점 · 오늘 · 회사 세우기 세금 계산 · 용어 찾기 (2026-10-14)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
@@ -204,6 +205,113 @@ try {
         && dock.includes("brain") && !dock.includes("notes") && dock.includes("study") && /^Brain › Business & Finance › 검사 CIM › 검사 VaR/.test(path || "") && mapped.join() === "검사 VaR",
         `${tv} · Brain — 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
     } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
+
+    // ---------- ⑪-b 노트 우클릭 — 열기(오른쪽 클릭 · 폰은 길게 누르기 · Shift+F10) · 이름 바꾸기 · 새 하위 노트 · 옮기기 · 지우기 Undo / 5초 뒤 (2026-10-15) ----------
+    let step = "준비";
+    try {
+      errs = [];
+      const T = (s) => `우클릭 ${s} ${tv}`, FULL = "Open|Rename|Edit|New sub-note|Move to…|Delete";
+      const add = async (data) => (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data })).json()).note?.id;
+      const note = async (id) => { const res = await ctx.request.get(BASE + "/api/notes/" + id); return res.ok() ? (await res.json()).note : null; };
+      const idOf = async (t) => (await (await ctx.request.get(BASE + "/api/notes/resolve?title=" + encodeURIComponent(t))).json()).id;
+      const aiDev = await idOf("AI & Dev");
+      const P = await add({ title: T("부모"), body: "", parent_id: aiDev }), C = await add({ title: T("대상"), body: "", parent_id: P });
+      const Q = await add({ title: T("이동처"), body: "", parent_id: aiDev }), L = await add({ title: T("링크"), body: `[[${T("대상")}]] · [[${T("대상")}|별칭]]` });
+      const D = await add({ title: T("지우기"), body: "", parent_id: P }), DK = await add({ title: T("지우기 하위"), body: "", parent_id: D });
+      const labels = () => p.evaluate(() => [...document.querySelectorAll(".cm [data-k]")].map((b) => b.textContent.trim()).join("|"));
+      // 폰은 손가락으로 0.5초 누르기 (pointer 이벤트, pointerType touch) · 컴퓨터는 오른쪽 클릭
+      const holdAt = (sel, x, y) => p.evaluate(async ([s, x, y]) => {
+        const el = document.querySelector(s), r = el.getBoundingClientRect(), cx = x ?? r.left + Math.min(40, r.width / 2), cy = y ?? r.top + r.height / 2;
+        const ev = (t) => el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 9, pointerType: "touch", isPrimary: true, clientX: cx, clientY: cy }));
+        ev("pointerdown"); await new Promise((res) => setTimeout(res, 650)); ev("pointerup");
+      }, [sel, x ?? null, y ?? null]);
+      const menuOn = async (sel) => { await p.waitForSelector(sel, { timeout: 8000 }); await p.locator(sel).scrollIntoViewIfNeeded(); if (w > 600) await p.locator(sel).click({ button: "right" }); else await holdAt(sel); await p.waitForSelector(".cm", { timeout: 4000 }); return labels(); };
+      const item = (id) => `#nl a[href="#/notes/${id}"]`, listed = (id) => p.evaluate((s) => !!document.querySelector(s), item(id));
+      // 그래프 점: 움직임이 멎은 자리를 찾아서
+      const nodeAt = async (title) => { let a = null; for (let i = 0; i < 20; i++) { const b = await p.evaluate((t) => { const c = document.querySelector(".og-c"), r = c.getBoundingClientRect(), n = c.__nodes().find((x) => x.title === t); return n && { x: n.x + r.left, y: n.y + r.top, top: document.elementFromPoint(n.x + r.left, n.y + r.top) === c }; }, title); if (a && b && Math.hypot(a.x - b.x, a.y - b.y) < 0.5) return b; a = b; await sleep(150); } return a; };
+      const menuOnNode = async (title) => {
+        const at = await nodeAt(title); if (!at) return "(점 없음)";
+        if (w > 600 && at.top) await p.mouse.click(at.x, at.y, { button: "right" });
+        else if (w > 600) await p.evaluate(({ x, y }) => document.querySelector(".og-c").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: x, clientY: y })), at);
+        else await holdAt(".og-c", at.x, at.y);
+        await p.waitForSelector(".cm", { timeout: 4000 }).catch(() => {});
+        return labels();
+      };
+      const nodes = () => p.evaluate(() => (document.querySelector(".og-c")?.__nodes?.() || []).map((n) => n.title).sort().join("|"));
+      // 준비 노트는 API 로 바로 넣어서(서비스 워커를 안 거쳐요) 받아 둔 목록이 낡았을 수 있어요 → API 캐시를 비워요 (pwa.js 가 로그아웃 때 하듯이)
+      const fresh = () => p.evaluate(async () => { for (const n of await caches.keys()) if (n.startsWith("dsm-api-")) await caches.delete(n); }).catch(() => {});
+
+      // 1) 목록 칸 메뉴 → Rename (Enter) → 다른 노트의 [[링크]] · [[링크|별칭]] 도 · 키보드 Shift+F10 → Esc 면 초점이 그 칸으로
+      step = "1 목록 · Rename"; await fresh(); await go("#/notes", 2200);
+      const m1 = await menuOn(item(C)), danger = await p.evaluate(() => !!document.querySelector('.cm .cm-sep + [data-k="del"].danger'));
+      await p.click('.cm [data-k="rename"]');
+      const v0 = await p.locator(".nm input").inputValue();
+      await p.locator(".nm input").fill(T("새이름")); await p.keyboard.press("Enter"); await sleep(1500);
+      const ren = (await note(C))?.title, lb = (await note(L))?.body, shown = await p.evaluate((s) => document.querySelector(s + " .nt")?.textContent.trim(), item(C));
+      await p.focus(item(C)); await p.keyboard.press("Shift+F10"); await p.waitForSelector(".cm", { timeout: 3000 }).catch(() => {});
+      const kb = await labels(); await sleep(150); await p.keyboard.press("Escape"); await sleep(150); // 메뉴는 열린 다음 차례부터 Esc 를 들어요
+      const back = await p.evaluate((s) => document.activeElement === document.querySelector(s) && !document.querySelector(".cm"), item(C));
+      ok(m1 === FULL && danger && v0 === T("대상") && ren === T("새이름") && lb === `[[${T("새이름")}]] · [[${T("새이름")}|별칭]]` && shown === T("새이름") && kb === FULL && back,
+        `${tv} · 노트 우클릭 — 목록 메뉴 ${m1} · Rename → ${ren} · 링크한 노트 "${lb}" · 목록 "${shown}" · Shift+F10 ${kb === FULL} · Esc 뒤 초점 ${back}`);
+
+      // 2) New sub-note → 그 노트가 Edit 로 열려요 · 3) Move to…: 나와 하위는 후보에서 빠지고, 찾아서 Enter → 이동처 아래 → 맨 위로
+      step = "2 New sub-note"; await menuOn(item(C)); await p.click('.cm [data-k="sub"]');
+      await p.locator(".nm input").fill(T("하위")); await p.keyboard.press("Enter"); await sleep(1800);
+      const subId = await idOf(T("하위")), sub = subId ? await note(subId) : null, hash1 = await p.evaluate(() => location.hash);
+      const editMode = await p.evaluate(() => document.querySelector('[data-mode="block"]')?.getAttribute("aria-selected") === "true" && !!document.querySelector("#ed-blocks"));
+      step = "3 Move to"; await go("#/notes", 2200);
+      await menuOn(item(C)); await p.click('.cm [data-k="move"]');
+      await p.waitForSelector(".nm-move [role=option]", { timeout: 5000 });
+      const opts = await p.evaluate(() => [...document.querySelectorAll(".nm-move [role=option] .t")].map((x) => x.textContent));
+      await p.locator(".nm-move input").fill(T("이동처")); await sleep(150); await p.keyboard.press("Enter"); await sleep(1500);
+      const movedTo = (await note(C))?.parent_id;
+      await menuOn(item(C)); await p.click('.cm [data-k="move"]');
+      await p.locator(".nm-move [role=option]", { hasText: "Top level (no parent)" }).click(); await sleep(1500);
+      const top = (await note(C))?.parent_id;
+      ok(sub?.parent_id === C && hash1 === "#/notes/" + subId && editMode && opts[0] === "Top level (no parent)" && opts.includes(T("이동처")) && !opts.includes(T("새이름")) && !opts.includes(T("하위")) && movedTo === Q && top === null,
+        `${tv} · 노트 우클릭 — New sub-note ${sub?.parent_id === C ? "부모 맞음" : "부모 틀림"} · 열림 ${hash1 === "#/notes/" + subId} · Edit ${editMode} · Move 후보 ${opts.length}개 (나 · 하위 빠짐 ${!opts.includes(T("새이름")) && !opts.includes(T("하위"))}) · 이동처 ${movedTo === Q} · 맨 위 ${top === null}`);
+
+      // 4) 그래프 점 · 오른쪽 목록: 개념은 Open · New sub-note 만, 공부 점은 Open 만, 노트는 전부
+      step = "4 그래프 메뉴"; await go("#/brain", 3500);
+      const gConcept = await menuOnNode("AI & Dev"); await p.keyboard.press("Escape");
+      await go("#/brain/" + encodeURIComponent(aiDev), 3500);
+      const gNote = await menuOnNode(T("이동처")); await p.keyboard.press("Escape");
+      const gStudy = await menuOnNode("AI Books"); await p.keyboard.press("Escape");
+      const gList = await menuOn(`.brain-list a[data-id="${Q}"]`); await p.keyboard.press("Escape");
+      ok(gConcept === "Open|New sub-note" && gNote === FULL && gStudy === "Open" && gList === FULL, `${tv} · 노트 우클릭 — 그래프 개념 점 ${gConcept} · 노트 점 ${gNote} · 공부 점 ${gStudy} · Brain 목록 ${gList}`);
+
+      // 5) Delete + Undo (그래프): 바로 빠지고 하위가 한 칸 위로 → Undo 면 돌아와요 (서버엔 아무것도 안 갔어요)
+      step = "5 그래프 Delete · Undo"; await go("#/brain/" + encodeURIComponent(P), 3500);
+      const before = await nodes();
+      await menuOnNode(T("지우기")); await p.click('.cm [data-k="del"]'); await sleep(300);
+      const hidden = await nodes(), toasted = await p.locator(".nm-undo").count();
+      await p.click(".nm-undo button"); await sleep(400);
+      const restored = await nodes();
+      await sleep(5300);
+      const kept = !!(await note(D)), dk1 = (await note(DK))?.parent_id;
+      // 6) Delete + 5초 (목록): 바로 빠지고, 5초 뒤 서버에서 지워지고, 하위는 지운 노트의 부모 밑으로
+      step = "6 목록 Delete · 5초"; await go("#/notes", 2200);
+      await menuOn(item(D)); await p.click('.cm [data-k="del"]'); await sleep(300);
+      const goneNow = !(await listed(D)), onServer = !!(await note(D));
+      await sleep(5800);
+      const goneLater = !(await note(D)), dk2 = (await note(DK))?.parent_id, notBack = !(await listed(D));
+      ok(before === T("지우기") && hidden === T("지우기 하위") && toasted === 1 && restored === T("지우기") && kept && dk1 === D && goneNow && onServer && goneLater && dk2 === P && notBack,
+        `${tv} · 노트 우클릭 — 그래프 Delete: "${before}" → "${hidden}" · Undo → "${restored}" · 5초 뒤에도 서버에 ${kept} · 목록 Delete: 바로 빠짐 ${goneNow} (서버엔 아직 ${onServer}) · 5초 뒤 지워짐 ${goneLater} · 하위는 부모 밑 ${dk2 === P}`);
+
+      // 7) 편집기의 휴지통 버튼도 같은 흐름: 목록으로 나갔다가 Undo 면 그 노트로 · 8) 지우고 바로 다른 화면으로 가면 그때 서버로 (keepalive)
+      step = "7 편집기 휴지통"; const E = await add({ title: T("편집기"), body: "x" }), F = await add({ title: T("떠나기"), body: "" });
+      await fresh(); await go("#/notes/" + E, 2200);
+      await p.click("#ed-del"); await sleep(400);
+      const left = await p.evaluate(() => location.hash);
+      await p.click(".nm-undo button"); await sleep(1200);
+      const reopened = await p.evaluate(() => location.hash), eKept = !!(await note(E));
+      step = "8 지우고 떠나기"; await go("#/notes", 2200);
+      await menuOn(item(F)); await p.click('.cm [data-k="del"]'); await sleep(200);
+      await go("#/brain", 1500);
+      const fGone = !(await note(F));
+      ok(left === "#/notes" && reopened === "#/notes/" + E && eKept && fGone && !errs.length,
+        `${tv} · 노트 우클릭 — 편집기 지우기 → ${left} · Undo → ${reopened === "#/notes/" + E ? "다시 열림" : reopened} · 지우고 바로 떠나면 서버에서 지워짐 ${fGone}${errs.length ? " — " + errs[0] : ""}`);
+    } catch (e) { ok(false, `${tv} · 노트 우클릭 (${step}) — ${String(e.message).split("\n")[0]}`); }
 
     // ---------- ⑫-b 단 나누기 · 수식 — 끝에 끌어 놓기 → 2단, "/2 columns", "/equation" KaTeX, 글 속 $..$ (2026-10-14) ----------
     try {

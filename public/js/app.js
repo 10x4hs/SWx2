@@ -42,7 +42,7 @@ const ctx = {
   users: [],
   user: (id) => ctx.users.find((u) => u.id === id),
   go: (hash) => { if (location.hash !== hash) location.hash = hash; else route(); },
-  changed: (kind) => window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind } })),
+  changed: (kind, more) => window.dispatchEvent(new CustomEvent("trio:changed", { detail: { kind, ...more } })), // more: 무엇이 바뀌었는지 (예: 노트 메뉴 { note: { op, id } })
   refreshSide: () => refreshSide(),
   redraw: () => { lastView = null; route(true); }, // Customize 저장 뒤 지금 화면을 새로 그려요
   timer: null, // 아래 집중 타이머 (할 일 ▶ 에서 써요)

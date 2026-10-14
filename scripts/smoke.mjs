@@ -230,6 +230,43 @@ r = await call("a", "GET", "/notes/" + n1); ok(r.data.children.length === 1 && r
 r = await call("a", "POST", "/notes", { title: "부모 없음", parent_id: "nope" }); ok(r.status === 404, "page: unknown parent → 404");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: pg }); ok(r.status === 400, "page: self parent → 400");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status === 200 && r.data.note.parent_id === null, "page: move to top");
+// ---------- 노트 우클릭 메뉴 (note-menu.js) — 이름 바꾸기는 내 다른 노트의 [[링크]] 도 · 지우면 하위는 한 칸 위로 · 내 하위 아래로 옮기기는 400 ----------
+{
+  const T = (s) => `${s} ${tag}`, OLD = T("옛 이름"), NEW = T("새 이름");
+  const add = async (who, b) => (await call(who, "POST", "/notes", b)).data?.note?.id;
+  const x = await add("a", { title: OLD, body: "본문" });
+  const l1 = await add("a", { title: T("링크 1"), body: `앞 [[${OLD}]] 과 [[${OLD}|별칭]] · [[${OLD}#절]] · [[ ${OLD.toUpperCase()} ]] · [[${OLD} 아님]] 끝` });
+  const l2 = await add("a", { title: T("링크 2"), blocks: { v: 1, blocks: [{ type: "paragraph", text: `블록 속 [[${OLD}]]` }, { type: "page", props: { note_id: x, title: OLD } }] } });
+  const bo = await add("b", { title: T("남의 노트"), body: `[[${OLD}]] 은 b 의 것` });
+  r = await call("a", "PUT", "/notes/" + x, { title: NEW });
+  ok(r.status === 200 && r.data.note.title === NEW && r.data.relinked?.length === 2 && [l1, l2].every((id) => r.data.relinked.includes(id)), `rename: relinks my other notes (${r.data?.relinked?.length})`);
+  r = await call("a", "GET", "/notes/" + l1); const b1 = r.data.note.body;
+  ok(b1 === `앞 [[${NEW}]] 과 [[${NEW}|별칭]] · [[${NEW}#절]] · [[${NEW}]] · [[${OLD} 아님]] 끝`, "rename: [[old]] · [[old|alias]] · [[old#h]] · [[ OLD ]] → new title, a longer title stays");
+  r = await call("a", "GET", "/notes/" + l2); const d2 = JSON.parse(r.data.note.blocks).blocks;
+  ok(d2[0].text === `블록 속 [[${NEW}]]` && d2[1].props.title === NEW && r.data.note.body.includes(`[[${NEW}]]`) && !r.data.note.body.includes(OLD), "rename: block text · sub-page block title · body mirror follow");
+  r = await call("a", "GET", "/notes/" + x); ok([l1, l2].every((id) => r.data.backlinks.some((y) => y.id === id)), "rename: backlinks follow (note_links refreshed)");
+  r = await call("a", "GET", "/notes/" + l1 + "/versions"); const v1 = r.data.versions?.[0];
+  r = v1 ? await call("a", "GET", `/notes/${l1}/versions/${v1.id}`) : { data: {} };
+  ok(r.data.version?.body?.includes(`[[${OLD}|별칭]]`), "rename: linking note keeps its old text in page history");
+  r = await call("b", "GET", "/notes/" + bo); ok(r.data.note.body === `[[${OLD}]] 은 b 의 것`, "rename: other users' notes untouched");
+  // 지우기: 하위는 지운 노트의 부모 밑으로 (예전엔 맨 위로 흩어졌어요)
+  const g = await add("a", { title: T("조부모"), body: "" }), p = await add("a", { title: T("부모"), body: "", parent_id: g });
+  const c1 = await add("a", { title: T("자식 1"), body: "", parent_id: p }), c2 = await add("a", { title: T("자식 2"), body: "", parent_id: p });
+  r = await call("b", "DELETE", "/notes/" + p); ok(r.status === 404, "delete: other user's note → 404");
+  r = await call("a", "DELETE", "/notes/" + p);
+  const par = async (id) => (await call("a", "GET", "/notes/" + id)).data?.note?.parent_id;
+  ok(r.status === 200 && await par(c1) === g && await par(c2) === g, "delete: children move up to the deleted note's parent");
+  r = await call("a", "DELETE", "/notes/" + p); ok(r.status === 404, "delete: twice → 404");
+  // 옮기기: 내 하위 · 그 아래로는 400, 형제 밑 · 맨 위는 돼요
+  const gc = await add("a", { title: T("손자"), body: "", parent_id: c1 });
+  r = await call("a", "PUT", "/notes/" + g, { parent_id: c1 }); ok(r.status === 400, "move: under own child → 400");
+  r = await call("a", "PUT", "/notes/" + g, { parent_id: gc }); ok(r.status === 400 && await par(g) === null, "move: under own grandchild → 400 (nothing changed)");
+  r = await call("a", "PUT", "/notes/" + g, { parent_id: bo }); ok(r.status === 404, "move: under other user's note → 404");
+  r = await call("a", "PUT", "/notes/" + c2, { parent_id: c1 }); ok(r.status === 200 && r.data.note.parent_id === c1, "move: under a sibling");
+  r = await call("a", "PUT", "/notes/" + c1, { parent_id: null }); ok(r.status === 200 && r.data.note.parent_id === null, "move: to the top level");
+  r = await call("a", "GET", "/notes/" + c1); ok(r.data.crumbs.length === 0 && r.data.children.length === 2, "move: top-level note keeps its children");
+  r = await call("a", "DELETE", "/notes/" + c1); ok(r.status === 200 && await par(gc) === null && await par(c2) === null, "delete: children of a top-level note become top-level");
+}
 // ---------- 블록 노트 (docs/blocks-schema.md): 블록 저장 → body 마크다운 사본 · 링크 · 태그 ----------
 {
   const doc = { v: 1, blocks: [

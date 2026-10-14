@@ -1,15 +1,17 @@
 // Brain — 노트 + 공부를 한 나무로. 맨 위엔 큰 개념 5개만, 점을 누르면 그 안으로 (#/brain/<id>).
 //   하위가 있는 점: 안으로 · 하위가 없는 노트: 노트 페이지 · 공부 점: 원래 공부 화면
+//   점 · 오른쪽 목록을 오른쪽 클릭(폰은 길게 누르기) → 노트 메뉴 (note-menu.js)
 import { api } from "../api.js";
 import { $, esc, toast } from "../util.js";
 import { mountGraph } from "../graph/obsidian.js";
 import { buildBrain, levelOf } from "../graph/brain-data.js";
+import { openNoteMenu, bindNoteMenu, withoutGone } from "../note-menu.js";
 
 let inst = null;
 export function update(r) { inst?.update(r); }
 
 export function mount(root, ctx, r) {
-  let tree = null, stop = null, focus = r.id || null, alive = true;
+  let tree = null, raw = null, parents = new Map(), stop = null, drawn = "", focus = r.id || null, alive = true;
   root.innerHTML = `
     <div class="brain">
       <header class="brain-bar">
@@ -22,6 +24,9 @@ export function mount(root, ctx, r) {
       </div>
     </div>`;
   const hrefOf = (n) => n.href || (n.kids ? "#/brain/" + encodeURIComponent(n.id) : "#/notes/" + n.id);
+  // 메뉴에 넘길 점: 나무(tree.N)의 종류(개념 · 공부 · 노트) + 받은 노트의 진짜 부모. Open = 누른 것과 같아요
+  const pointOf = (id) => { const t = tree?.N.get(id); return t && { id, title: t.title, kind: t.kind, note: !!t.note, parent_id: parents.get(id) || null }; };
+  const menu = { ctx, open: (p) => ctx.go(hrefOf({ id: p.id, href: tree.N.get(p.id)?.href, kids: tree.kids.get(p.id)?.length })) };
 
   function draw() {
     if (!tree || !alive) return;
@@ -33,24 +38,35 @@ export function mount(root, ctx, r) {
       + `<button class="btn" type="button" data-new>+ New page</button>`
       + (focus ? "" : `<label class="btn" title="Import a brain JSON file ({ items: [{ title, body, parent_title }] })">Import<input type="file" accept=".json,application/json" data-import hidden></label>`);
     $("[data-list]", root).innerHTML = L.items.length
-      ? `<ul>${L.items.map((n) => `<li><a href="${esc(hrefOf(n))}"><i style="background:${L.types[n.type]?.color || "#9aa0a6"}"></i><span>${esc(n.title)}</span>${n.kids ? `<small>${n.kids}</small>` : n.href ? `<small>↗</small>` : ""}</a></li>`).join("")}</ul>`
+      ? `<ul>${L.items.map((n) => `<li><a href="${esc(hrefOf(n))}" data-id="${esc(n.id)}"><i style="background:${L.types[n.type]?.color || "#9aa0a6"}"></i><span>${esc(n.title)}</span>${n.kids ? `<small>${n.kids}</small>` : n.href ? `<small>↗</small>` : ""}</a></li>`).join("")}</ul>`
       : `<p class="brain-empty">Nothing inside yet.</p>`;
-    stop?.();
+    const sig = JSON.stringify([L.data, L.types]);
+    if (sig === drawn) return; // 같은 층 · 같은 점이면 그래프를 다시 놓지 않아요 (지운 뒤 서버 답 · 친구 상태 새로고침에 튀지 않게)
+    stop?.(); drawn = sig;
     stop = mountGraph($("[data-graph]", root), {
       data: L.data, types: L.types, scope: "brain", empty: "Nothing inside yet.",
       prefs: { ...(ctx.me.graph_prefs || {}), open: false },
       savePrefs: async (p) => { try { const res = await api.updateMe({ graph_prefs: { ...p, open: ctx.me.graph_prefs?.open } }); ctx.me.graph_prefs = res.user.graph_prefs; } catch {} },
       onOpen: (n) => ctx.go(hrefOf(n)),
+      onMenu: (n, e) => { const p = pointOf(n.id); if (p) openNoteMenu(e, p, menu); },
     });
+  }
+  // 받아 둔 것(raw)으로 나무를 다시 — 지우는 중인 노트는 빼고 그 하위는 한 칸 위로 (지우기 · Undo 는 다시 받지 않고 이것만)
+  function build() {
+    if (!raw || !alive) return;
+    const notes = withoutGone(raw.g.nodes || []);
+    parents = new Map(notes.map((n) => [n.id, n.parent_id]));
+    tree = buildBrain({ notes, edges: raw.g.edges || [], subjects: (raw.pages.pages || []).filter((p) => p.place === "study") });
+    draw();
   }
   async function load() {
     try {
       const [g, pages] = await Promise.all([api.graph(), api.pages().catch(() => ({ pages: [] }))]);
       if (!alive) return;
-      tree = buildBrain({ notes: g.nodes || [], edges: g.edges || [], subjects: (pages.pages || []).filter((p) => p.place === "study") });
-      draw();
-    } catch (e) { if (alive) $("[data-graph]", root).innerHTML = `<p class="og-loading">Could not load the brain. ${esc(e.message || "")}</p>`; }
+      raw = { g, pages }; build();
+    } catch (e) { if (alive) { stop?.(); stop = null; drawn = ""; $("[data-graph]", root).innerHTML = `<p class="og-loading">Could not load the brain. ${esc(e.message || "")}</p>`; } }
   }
+  bindNoteMenu($("[data-list]", root), "a[data-id]", (a) => pointOf(a.dataset.id), menu);
   root.addEventListener("click", async (e) => {
     if (!e.target.closest("[data-new]")) return;
     const title = prompt("New page title"); if (!title?.trim()) return;
@@ -75,7 +91,7 @@ export function mount(root, ctx, r) {
     } catch (err) { toast(`Stopped at ${sum.created + sum.moved + sum.kept} / ${items.length}: ${err.message || ""} — upload again to continue.`, "err"); }
     input.value = ""; ctx.changed?.("notes"); load();
   });
-  const onChanged = () => load();
+  const onChanged = (e) => (e.detail?.note?.local ? build() : load());
   window.addEventListener("trio:changed", onChanged);
   inst = { update: (nr) => { focus = nr.id || null; draw(); } };
   load();
