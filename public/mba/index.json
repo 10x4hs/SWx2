@@ -1,0 +1,498 @@
+{
+  "version": 1,
+  "note": "node scripts/mba-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.",
+  "modules": [
+    {
+      "id": "accounting",
+      "no": "01",
+      "title": "회계",
+      "sub": "재무제표 세 장 · 원가 · 손익분기",
+      "phase": "도구",
+      "schools": "9/9",
+      "what": "재무제표 세 장이 서로 어떻게 이어지는지, 이익과 현금이 왜 다른지 배워요.",
+      "cards": [
+        {
+          "id": "three-statements",
+          "title": "회사의 성적표는 세 장이에요",
+          "min": 4
+        },
+        {
+          "id": "fixed-variable-cost",
+          "title": "팔 때마다 드는 돈, 안 팔아도 드는 돈",
+          "min": 4
+        },
+        {
+          "id": "profit-vs-revenue",
+          "title": "매출이 늘어도 이익은 줄 수 있어요",
+          "min": 5
+        },
+        {
+          "id": "break-even",
+          "title": "몇 잔을 팔아야 본전일까요",
+          "min": 4
+        },
+        {
+          "id": "profit-vs-cash",
+          "title": "이익이 나도 통장은 빌 수 있어요",
+          "min": 5
+        },
+        {
+          "id": "accounting-review",
+          "title": "회계 정리 · 섞어 풀기",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "no": "02",
+      "title": "데이터와 결정",
+      "sub": "평균의 함정 · 표본 · 실험 · 편향",
+      "phase": "도구",
+      "schools": "9/9",
+      "what": "숫자 한 개에 속지 않는 법. 표본과 실험으로 결정을 검증해요.",
+      "cards": [
+        {
+          "id": "average-trap",
+          "title": "평균만 보면 속을 수 있어요",
+          "min": 4
+        },
+        {
+          "id": "sample-bias",
+          "title": "표본이 작으면 흔들리고, 치우치면 틀려요",
+          "min": 4
+        },
+        {
+          "id": "correlation-causation",
+          "title": "같이 움직인다고 원인은 아니에요",
+          "min": 4
+        },
+        {
+          "id": "ab-test",
+          "title": "원인을 알고 싶으면 무작위로 나눠요",
+          "min": 5
+        },
+        {
+          "id": "expected-value",
+          "title": "불확실할 땐 기댓값으로 비교해요",
+          "min": 4
+        },
+        {
+          "id": "data-review",
+          "title": "데이터 정리 · 섞어 풀기",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "id": "economics",
+      "no": "03",
+      "title": "경제학",
+      "sub": "기회비용 · 수요와 공급 · 금리 · 환율",
+      "phase": "도구",
+      "schools": "9/9",
+      "what": "가격이 어떻게 정해지는지와 금리 · 환율이 회사에 닿는 길.",
+      "cards": [
+        {
+          "id": "opportunity-cost",
+          "title": "공짜는 없어요: 기회비용",
+          "min": 4
+        },
+        {
+          "id": "marginal-thinking",
+          "title": "결정은 ‘하나 더’로 해요",
+          "min": 4
+        },
+        {
+          "id": "supply-demand",
+          "title": "가격은 사려는 양과 팔려는 양이 정해요",
+          "min": 4
+        },
+        {
+          "id": "price-elasticity",
+          "title": "값을 올리면 매출은 늘까요, 줄까요",
+          "min": 4
+        },
+        {
+          "id": "money-prices",
+          "title": "금리 · 물가 · 환율은 돈의 값이에요",
+          "min": 5
+        },
+        {
+          "id": "economics-review",
+          "title": "경제학 정리 · 섞어 풀기",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "id": "finance",
+      "no": "04",
+      "title": "재무",
+      "sub": "현재가치 · 위험과 수익 · 자금 조달",
+      "phase": "기능",
+      "schools": "9/9",
+      "what": "오늘의 1원과 내년의 1원이 왜 다른지부터 회사 가치까지.",
+      "cards": [
+        {
+          "id": "time-value",
+          "title": "지금의 100만 원이 1년 뒤 100만 원보다 값져요",
+          "min": 4
+        },
+        {
+          "id": "npv",
+          "title": "미래의 돈은 오늘 값으로 바꿔서 비교해요",
+          "min": 5
+        },
+        {
+          "id": "risk-return",
+          "title": "위험이 클수록 더 높은 수익을 요구해요",
+          "min": 4
+        },
+        {
+          "id": "cost-of-capital",
+          "title": "돈에도 값이 있어요: 빚은 싸고 지분은 비싸요",
+          "min": 5
+        },
+        {
+          "id": "valuation",
+          "title": "회사의 값은 앞으로 벌 현금의 오늘 값이에요",
+          "min": 5
+        },
+        {
+          "id": "finance-review",
+          "title": "재무 정리 · 섞어 풀기",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "id": "marketing",
+      "no": "05",
+      "title": "마케팅",
+      "sub": "고객 · 포지셔닝 · 가격 · 퍼널",
+      "phase": "기능",
+      "schools": "9/9",
+      "what": "누구에게, 무엇을, 얼마에 — 고르는 순서를 배워요.",
+      "cards": [
+        {
+          "id": "jtbd",
+          "title": "고객은 제품이 아니라 ‘할 일’을 사요",
+          "min": 4
+        },
+        {
+          "id": "stp",
+          "title": "모두를 노리면 아무도 못 잡아요",
+          "min": 4
+        },
+        {
+          "id": "value-pricing",
+          "title": "가격은 원가가 아니라 고객이 느끼는 가치로 정해요",
+          "min": 5
+        },
+        {
+          "id": "funnel",
+          "title": "어디서 새는지 보려면 퍼널을 그려요",
+          "min": 4
+        },
+        {
+          "id": "cac-ltv",
+          "title": "고객이 남기는 돈이 데려오는 돈보다 커야 해요",
+          "min": 5
+        },
+        {
+          "id": "marketing-review",
+          "title": "마케팅 정리 · 섞어 풀기",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "no": "06",
+      "title": "운영",
+      "sub": "프로세스 · 병목 · 품질 · 재고",
+      "phase": "기능",
+      "schools": "9/9*",
+      "what": "일이 막히는 한 지점(병목)을 찾는 눈을 길러요. (*MIT는 4과목 중 하나를 고르는 필수)",
+      "cards": [
+        {
+          "id": "process",
+          "title": "일을 ‘흐름’으로 보면 숨은 기다림이 보여요",
+          "min": 4
+        },
+        {
+          "id": "bottleneck",
+          "title": "전체 속도는 가장 느린 단계가 정해요",
+          "min": 5
+        },
+        {
+          "id": "littles-law",
+          "title": "리틀의 법칙: 쌓인 양 = 처리량 × 머무는 시간",
+          "min": 4
+        },
+        {
+          "id": "quality",
+          "title": "불량은 늦게 찾을수록 비싸져요",
+          "min": 4
+        },
+        {
+          "id": "inventory-lean",
+          "title": "재고는 안심이지만 돈과 문제를 숨겨요",
+          "min": 5
+        },
+        {
+          "id": "operations-review",
+          "title": "운영 정리 · 섞어 풀기",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "id": "people",
+      "no": "07",
+      "title": "사람과 조직",
+      "sub": "동기 · 인센티브 · 팀 · 편향",
+      "phase": "기능",
+      "schools": "9/9",
+      "what": "사람은 보상과 구조대로 움직여요. 팀이 잘 되는 조건.",
+      "cards": [
+        {
+          "id": "motivation",
+          "title": "돈보다 오래가는 동기가 있어요",
+          "min": 4
+        },
+        {
+          "id": "incentives",
+          "title": "사람은 보상받는 대로 움직여요",
+          "min": 4
+        },
+        {
+          "id": "psychological-safety",
+          "title": "좋은 팀은 실수를 더 많이 말해요",
+          "min": 4
+        },
+        {
+          "id": "structured-judgment",
+          "title": "편향은 구조로 줄여요: 채용 면접부터",
+          "min": 5
+        },
+        {
+          "id": "org-structure",
+          "title": "조직 구조는 누가 누구와 말할지 정해요",
+          "min": 4
+        },
+        {
+          "id": "people-review",
+          "title": "사람과 조직 정리 · 섞어 풀기",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "id": "strategy",
+      "no": "08",
+      "title": "전략",
+      "sub": "5 Forces · 경쟁우위 · 파괴적 혁신",
+      "phase": "통합",
+      "schools": "9/9",
+      "what": "어디서 싸우고, 무엇으로 이기는지 고르는 일.",
+      "cards": [
+        {
+          "id": "five-forces",
+          "title": "산업마다 남는 돈이 다른 이유: 5 Forces",
+          "min": 5
+        },
+        {
+          "id": "value-chain",
+          "title": "가치사슬: 어느 활동에서 이길지 정해요",
+          "min": 4
+        },
+        {
+          "id": "moat",
+          "title": "해자: 따라 하기 어려워야 오래가요",
+          "min": 5
+        },
+        {
+          "id": "disruption",
+          "title": "파괴적 혁신은 아래에서 올라와요",
+          "min": 5
+        },
+        {
+          "id": "trade-offs",
+          "title": "전략은 무엇을 안 할지 정하는 거예요",
+          "min": 5
+        },
+        {
+          "id": "strategy-review",
+          "title": "전략 정리 · 섞어 풀기",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "id": "leadership",
+      "no": "09",
+      "title": "리더십 · 협상",
+      "sub": "피드백 · 설득 · BATNA · 앵커링",
+      "phase": "통합",
+      "schools": "5/9 · 협상 3/9",
+      "what": "말과 글로 사람을 움직이고, 협상에서 가치를 키워요.",
+      "cards": [
+        {
+          "id": "feedback",
+          "title": "피드백은 사람이 아니라 행동에 해요",
+          "min": 4
+        },
+        {
+          "id": "write-first",
+          "title": "결론부터 쓰고, 회의 전에 함께 읽어요",
+          "min": 5
+        },
+        {
+          "id": "batna",
+          "title": "협상의 힘은 ‘안 해도 되는 능력’이에요",
+          "min": 4
+        },
+        {
+          "id": "zopa-anchoring",
+          "title": "ZOPA 안에서, 첫 숫자가 끌어당겨요",
+          "min": 5
+        },
+        {
+          "id": "create-value",
+          "title": "파이를 키운 다음에 나눠요",
+          "min": 5
+        },
+        {
+          "id": "leadership-review",
+          "title": "리더십 · 협상 정리 · 섞어 풀기",
+          "min": 4
+        }
+      ]
+    },
+    {
+      "id": "ethics-law",
+      "no": "10",
+      "title": "윤리 · 법 · 사회",
+      "sub": "이해관계자 · 규제 · 개인정보 · 지식재산",
+      "phase": "통합",
+      "schools": "5/9",
+      "what": "회사가 지켜야 할 선과, 법이 닿는 순간들.",
+      "cards": [
+        {
+          "id": "who-firm-serves",
+          "title": "회사는 누구를 위해 돈을 벌까요",
+          "min": 4
+        },
+        {
+          "id": "regulation-trust",
+          "title": "규제는 시장의 신뢰를 대신 보증해요",
+          "min": 4
+        },
+        {
+          "id": "privacy",
+          "title": "개인정보는 받는 순간 책임도 같이 받아요",
+          "min": 4
+        },
+        {
+          "id": "fair-competition",
+          "title": "이기는 건 괜찮지만, 반칙으로 이기면 안 돼요",
+          "min": 4
+        },
+        {
+          "id": "intellectual-property",
+          "title": "이름과 기술은 먼저 출원한 사람 편이에요",
+          "min": 5
+        },
+        {
+          "id": "ethics-law-review",
+          "title": "정리 · 섞어 풀기: 윤리 · 법 · 사회",
+          "min": 5
+        }
+      ]
+    },
+    {
+      "id": "startup",
+      "no": "11",
+      "title": "창업과 법인",
+      "sub": "검증 · 법인 설립 · 지분 · 투자",
+      "phase": "실행",
+      "schools": "2/9",
+      "what": "아이디어를 검증하고 회사를 실제로 세우는 절차.",
+      "cards": [
+        {
+          "id": "validate-mvp",
+          "title": "만들기 전에, 문제가 진짜인지 싸게 확인해요",
+          "min": 4
+        },
+        {
+          "id": "entity-choice",
+          "title": "개인사업자로 시작할까, 법인을 세울까",
+          "min": 5
+        },
+        {
+          "id": "incorporation-basics",
+          "title": "주식회사는 등기로 태어나고 기한이 줄줄이 와요",
+          "min": 5
+        },
+        {
+          "id": "cap-table-dilution",
+          "title": "투자를 받으면 지분율은 줄어도 몫은 커질 수 있어요",
+          "min": 5
+        },
+        {
+          "id": "safe-and-options",
+          "title": "SAFE와 스톡옵션: 지금 돈, 나중에 주식",
+          "min": 5
+        },
+        {
+          "id": "startup-review",
+          "title": "정리 · 섞어 풀기: 창업과 법인",
+          "min": 5
+        }
+      ]
+    },
+    {
+      "id": "capstone",
+      "no": "12",
+      "title": "캡스톤",
+      "sub": "실제 회사 한 곳 + AI로 분석",
+      "phase": "실행",
+      "schools": "3/9 (구조)",
+      "what": "1~11의 도구로 실제 상장사 하나를 끝까지 분석해요.",
+      "cards": [
+        {
+          "id": "pick-company",
+          "title": "분석할 회사 한 곳을 고르고 공시부터 열어요",
+          "min": 4
+        },
+        {
+          "id": "read-financials",
+          "title": "재무제표로 읽기: 3년, 세 가지 질문",
+          "min": 5
+        },
+        {
+          "id": "read-industry",
+          "title": "산업 구조로 읽기: 이 회사가 서 있는 땅",
+          "min": 4
+        },
+        {
+          "id": "read-customers-price",
+          "title": "고객과 가격으로 읽기: 누가 왜 돈을 내나",
+          "min": 4
+        },
+        {
+          "id": "ai-assist-verify",
+          "title": "AI로 분석을 돕되, 숫자는 원문과 대조해요",
+          "min": 4
+        },
+        {
+          "id": "capstone-review",
+          "title": "정리 · 섞어 풀기: 한 장 보고서로 묶어요",
+          "min": 5
+        }
+      ]
+    }
+  ]
+}

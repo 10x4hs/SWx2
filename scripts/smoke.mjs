@@ -125,6 +125,24 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("a", "PUT", "/books/task", { task: "big/data-tokens/1", done: false }); ok(r.status === 200 && !r.data.tasks.includes("big/data-tokens/1"), "books: task undone");
   r = await call("a", "PUT", "/books/task", { task: "../x" }); ok(r.status === 400, "books: bad task → 400");
   r = await call("b", "GET", "/books/state"); ok(r.status === 200 && !r.data.items.some((x) => x.book === "big"), "books: private per user");
+  // 경영 마이크로디그리: 카드 읽음 → 복습(1 → 3 → 7 → 21 → 60일) → 하루 기록 (모듈 · 카드 id 는 public/mba/index.json 에 있어야 해요)
+  r = await call("a", "GET", "/mba/state"); ok(r.status === 200 && Array.isArray(r.data.items) && Array.isArray(r.data.due) && Array.isArray(r.data.days), "mba: state");
+  r = await call("a", "PUT", "/mba/read", { module: "accounting", card: "profit-vs-revenue", correct: 2, total: 3 });
+  { const it = r.data.items?.find((x) => x.module === "accounting" && x.card === "profit-vs-revenue"); ok(r.status === 200 && it?.stage === 1 && it.correct === 2 && it.due_day > r.data.today, "mba: read → stage 1, due tomorrow"); }
+  r = await call("a", "PUT", "/mba/read", { module: "accounting", card: "nope" }); ok(r.status === 400, "mba: unknown card → 400");
+  r = await call("a", "PUT", "/mba/read", { module: "../x", card: "profit-vs-revenue" }); ok(r.status === 400, "mba: bad module id → 400");
+  r = await call("a", "PUT", "/mba/read", { module: "accounting", card: "profit-vs-revenue", correct: 4, total: 3 }); ok(r.status === 400, "mba: correct > total → 400");
+  r = await call("a", "PUT", "/mba/review", { results: [{ module: "accounting", card: "profit-vs-revenue", correct: 1, total: 1 }] });
+  { const it = r.data.items?.find((x) => x.card === "profit-vs-revenue"); ok(r.status === 200 && it?.stage === 2 && it.reviews === 1, "mba: review pass → stage 2 (3일 뒤)"); }
+  r = await call("a", "PUT", "/mba/review", { results: [{ module: "accounting", card: "profit-vs-revenue", correct: 0, total: 1 }] });
+  { const it = r.data.items?.find((x) => x.card === "profit-vs-revenue"); ok(it?.stage === 1 && it.reviews === 2 && it.due_day > r.data.today, "mba: review fail → one stage back, tomorrow"); }
+  r = await call("a", "PUT", "/mba/review", { results: "x" }); ok(r.status === 400, "mba: review without list → 400");
+  r = await call("a", "PUT", "/mba/day", { minutes: 12 }); r = await call("a", "PUT", "/mba/day", { minutes: 5, plan: "내일 아침 지하철에서 퀴즈" });
+  { const d = r.data.days?.find((x) => x.day === r.data.today); ok(r.status === 200 && d?.minutes === 17 && d.plan === "내일 아침 지하철에서 퀴즈", "mba: day minutes add up + plan"); }
+  r = await call("a", "PUT", "/mba/day", {}); ok(r.status === 400, "mba: empty day → 400");
+  r = await call("b", "GET", "/mba/state"); ok(r.status === 200 && !r.data.items.length && !r.data.days.length, "mba: private per user");
+  r = await call("a", "POST", "/mba/ask", { module: "accounting", card: "nope", messages: [{ role: "user", content: "?" }] }); ok(r.status === 400, "mba: ask unknown card → 400");
+  r = await call("a", "POST", "/mba/ask", { module: "accounting", card: "profit-vs-revenue", messages: [] }); ok(r.status === 400, "mba: ask without question → 400");
   // 1~5순위 (1 = 가장 급함) 로도 받아요 — 저장은 예전 값 그대로
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: "1" }); ok(r.status === 200 && r.data.plan.priority === "max", "plan priority: '1' → max");
   r = await call("a", "PATCH", "/plans/" + ppid, { priority: 5 }); ok(r.status === 200 && r.data.plan.priority === "low", "plan priority: 5 → low");

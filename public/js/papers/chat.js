@@ -12,7 +12,7 @@ const QUICK = ["이 논문을 처음 보는 사람에게 3문장으로", "핵심
 // opts.quick: 빠른 질문 목록 · opts.sub: 머리 줄 설명 · opts.empty: 빈 대화 안내 · opts.ph: 입력창 안내 · opts.stream: 다른 튜터 API(streamPaperAsk 와 같은 모양)
 export function chatMarkup(variant, opts = {}) {
   const mini = variant === "mini";
-  return `<div class="ppc ${mini ? "mini" : ""}" data-ppc="${variant}">
+  return `<div class="ppc ${mini ? "mini" : ""}" data-ppc="${variant}"${opts.empty ? ` data-ppc-empty="${esc(opts.empty)}"` : ""}>
     <div class="ppc-head">${icon.spark(13)} <b>AI 튜터</b><span class="faint">${esc(opts.sub || (mini ? "읽다가 바로" : "이 논문 자료를 다 읽은 AI 예요"))}</span><button type="button" class="ppc-clear" data-ppc-clear title="대화 지우기" hidden>${icon.x(12)}</button></div>
     <div class="ppc-log" data-ppc-log><div class="ppc-empty faint">${opts.empty ? esc(opts.empty) : mini ? "모르는 걸 바로 물어봐요. 본문 글자를 긁으면 그 문장으로 물어볼 수 있어요." : "무엇이든 물어봐요. 답은 옆 칸에도 똑같이 보여요."}</div></div>
     <div class="ppc-quick">${(opts.quick || QUICK).map((q) => `<button type="button" class="chip ppc-q" data-ppc-quick="${esc(q)}">${esc(q)}</button>`).join("")}</div>
@@ -38,7 +38,7 @@ export function mountChat(root, id, article, decorate = null, opts = {}) {
     panels.forEach((p) => {
       const log = $("[data-ppc-log]", p);
       const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
-      log.innerHTML = html || `<div class="ppc-empty faint">${p.dataset.ppc === "mini" ? "모르는 걸 바로 물어봐요. 본문 글자를 긁으면 그 문장으로 물어볼 수 있어요." : "무엇이든 물어봐요. 답은 옆 칸에도 똑같이 보여요."}</div>`;
+      log.innerHTML = html || `<div class="ppc-empty faint">${p.dataset.ppcEmpty ? esc(p.dataset.ppcEmpty) : p.dataset.ppc === "mini" ? "모르는 걸 바로 물어봐요. 본문 글자를 긁으면 그 문장으로 물어볼 수 있어요." : "무엇이든 물어봐요. 답은 옆 칸에도 똑같이 보여요."}</div>`; // chatMarkup 의 opts.empty 를 그대로 (다시 그려도 안내가 바뀌지 않게)
       if (stick || streamingIdx < 0) log.scrollTop = log.scrollHeight;
       if (decorate && streamingIdx < 0) log.querySelectorAll(".ppc-msg.assistant .ppc-bub").forEach((x) => decorate(x)); // 다 받은 답에도 용어 밑줄
       $("[data-ppc-clear]", p).hidden = !chat.length;

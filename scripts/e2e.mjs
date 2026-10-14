@@ -12,6 +12,7 @@
 //   ⑩ Study 그래프 — 영어 · 논문 · AI · 과목 페이지마다 [내용 | 그래프], 크기 기준 · 크기가 계정에 저장, 점을 누르면 그 내용으로
 //   ⑪ Brain — 노트 + 공부를 한 나무로: 맨 위엔 큰 개념 5개, 누르면 안으로, 공부 점은 원래 화면, 가져오기는 다시 올려도 그대로 (2026-10-13)
 //   ⑫ 뉴스 — 하루 한 호 (가독성 · 한국어) · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13)
+//   ⑬ 경영 마이크로디그리 — 모듈 지도 · 정적 이익 지도 카드(3D 없음) · 퀴즈 · AI 튜터 · 회사 세우기 세금 계산 · 용어 찾기 (2026-10-14)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -531,6 +532,40 @@ try {
     await ctx.request.fetch(BASE + "/api/news/item/" + firstId, { method: "GET", headers: H }).then(async (r) => {
       for (const c of (await r.json()).comments || []) if (/^e2e /.test(c.body) && !c.parent_id) await ctx.request.fetch(BASE + "/api/news/comments/" + c.id, { method: "DELETE", headers: H });
     }).catch(() => {});
+
+    // ---------- ⑬ 경영 마이크로디그리 — 모듈 지도 · 카드(정적 이익 지도 · 퀴즈 · AI 튜터) · 회사 세우기 계산기 · 용어 찾기 (2026-10-14) ----------
+    {
+      errs = [];
+      await go("#/mba", 2600);
+      const hm = await p.evaluate(() => ({ map: !!document.querySelector("#mb-map:not([hidden])") || !!document.querySelector("#mb-fallback:not([hidden])"), nav: document.querySelectorAll(".mb-nav .mb-pill").length, rows: document.querySelectorAll(".mb-table tbody tr").length, steps: document.querySelectorAll(".mb-steps li").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await p.click('.mb-today [data-min="40"]').catch(() => {}); await sleep(200);
+      const m40 = await p.evaluate(() => document.querySelector("#mb-tmin")?.textContent.startsWith("40") && document.querySelector("#mb-pmin")?.textContent === "40");
+      await p.click('.mb-today [data-min="25"]').catch(() => {});
+      ok(hm.map && hm.nav === 4 && hm.rows === 12 && hm.steps === 5 && m40 && !hm.over && !errs.length, `${tv} · 경영 홈 — 지도 ${hm.map} · 내비 ${hm.nav} · 모듈 ${hm.rows} · 순서 ${hm.steps} · 40분 바꾸기 ${m40} · 가로 넘침 ${hm.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/mba/accounting/profit-vs-revenue", ".mb-read h1", 600);
+      const c0 = await p.evaluate(() => ({ svg: !!document.querySelector("#mb-vis svg.mbc .k-be"), read: document.querySelector("[data-read] dd.pos, [data-read] dd.neg")?.textContent || "", canvas3d: document.querySelectorAll("#mb-vis canvas").length, ai: !!document.querySelector(".mb-ai .ppc-form"), q: document.querySelectorAll(".mb-q").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await p.evaluate(() => { const s = document.querySelector('#mb-vis input[data-k="price"]'); s.value = "2300"; s.dispatchEvent(new Event("input", { bubbles: true })); });
+      await sleep(150);
+      const c1 = await p.evaluate(() => document.querySelector("[data-read] dd.pos, [data-read] dd.neg")?.textContent || "");
+      await p.click(".mb-q .mb-choice").catch(() => {}); await sleep(150);
+      const why = await p.evaluate(() => !document.querySelector(".mb-q .mb-q-why").hidden);
+      ok(c0.svg && c0.canvas3d === 0 && c0.read && c1 && c0.read !== c1 && why && c0.ai && c0.q >= 2 && !c0.over && !errs.length, `${tv} · 경영 카드 — 정적 이익 지도 ${c0.svg} (3D ${c0.canvas3d}) · 가격 바꾸면 ${c0.read} → ${c1} · 퀴즈 풀이 ${why} · AI 튜터 ${c0.ai} · 가로 넘침 ${c0.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/mba/company", ".mb-stepbox", 500);
+      const t0 = await p.evaluate(() => document.querySelector("#mb-tax dd.acc")?.textContent || "");
+      await p.click('[data-dense="1"]'); await sleep(150);
+      const t1 = await p.evaluate(() => document.querySelector("#mb-tax dd.acc")?.textContent || "");
+      await p.click('.mb-step[data-i="8"]'); await sleep(150);
+      const st = await p.evaluate(() => ({ h: document.querySelector(".mb-stepbox h2")?.textContent || "", n: document.querySelectorAll(".mb-step").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(t0 === "135,000원" && t1 === "405,000원" && /사업자/.test(st.h) && st.n === 12 && !st.over && !errs.length, `${tv} · 회사 세우기 — 세금 ${t0} → 과밀 ${t1} · 단계 ${st.n}칸 · 8번 "${st.h}" · 가로 넘침 ${st.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/mba/words", "#mb-q", 500);
+      const w0 = await p.evaluate(() => document.querySelectorAll(".mb-term").length);
+      await p.fill("#mb-q", "EBITDA"); await sleep(150);
+      const w1 = await p.evaluate(() => document.querySelectorAll(".mb-term").length);
+      ok(w0 >= 100 && w1 >= 1 && w1 < w0 && !errs.length, `${tv} · 경영 용어 — 전체 ${w0} · 'EBITDA' 찾기 ${w1}${errs.length ? " — " + errs[0] : ""}`);
+    }
 
     await ctx.close();
   }

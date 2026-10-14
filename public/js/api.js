@@ -148,6 +148,10 @@ export const api = {
   booksState: () => request("GET", "/books/state"),
   bookRead: (book, chapter, recall, total) => request("PUT", "/books/read", { book, chapter, recall, total }),
   bookReview: (results) => request("PUT", "/books/review", { results }),
+  mbaState: () => request("GET", "/mba/state"),
+  mbaRead: (module, card, correct, total) => request("PUT", "/mba/read", { module, card, correct, total }),
+  mbaReview: (results) => request("PUT", "/mba/review", { results }),
+  mbaDay: (minutes, plan) => request("PUT", "/mba/day", { minutes, ...(plan != null ? { plan } : {}) }),
   bookTask: (task, done) => request("PUT", "/books/task", { task, done }),
   paperCheck: (paper, step, done) => request("PUT", "/papers/check", { paper, step, done }),
   paperNote: (paper, text) => request("PUT", "/papers/note", { paper, text }),
@@ -258,6 +262,10 @@ export async function streamChat(payload, onEvent, signal) {
 // AI 공부책 튜터 — /books/ask 로, 나머지는 논문 튜터와 같아요
 export function streamBookAsk(book, chapter, messages, onEvent, signal, level) {
   return streamAsk("/api/books/ask", { book, chapter, messages, ...(level ? { level } : {}) }, onEvent, signal);
+}
+// 경영 마이크로디그리 튜터 — /mba/ask. context = 화면의 지금 값(슬라이더 등) 한 줄
+export function streamMbaAsk(module, card, messages, onEvent, signal, level, context) {
+  return streamAsk("/api/mba/ask", { module, card, messages, ...(level ? { level } : {}), ...(context ? { context } : {}) }, onEvent, signal);
 }
 export function streamPaperAsk(paper, messages, onEvent, signal, level) {
   return streamAsk("/api/papers/ask", { paper, messages, ...(level ? { level } : {}) }, onEvent, signal);
