@@ -217,9 +217,10 @@ export function mount(root, ctx, r) {
     try {
       const { note } = await api.note(S.cur.parent_id);
       const db = parseJ(note.db); if (!db || S.cur?.id !== id) return;
-      box.innerHTML = db.props.map((p) => {
+      // rollup · formula 는 데이터베이스 화면에서 계산해요 (여기선 숨김) · relation 은 개수만
+      box.innerHTML = (props._tpl ? `<div class="nb-prop"><span class="faint">Template</span><span>⧉ starter blocks for new rows</span></div>` : "") + db.props.filter((p) => p.type !== "rollup" && p.type !== "formula").map((p) => {
         const v = props[p.key], o = (n) => p.options?.find((x) => x.name === n)?.color;
-        const h = v === undefined ? '<span class="faint">Empty</span>' : p.type === "status" || p.type === "select" ? pill(v, o(v), p.type === "status") : p.type === "multi_select" ? v.map((x) => pill(x, o(x))).join("") : p.type === "checkbox" ? (v ? "✓" : "—") : esc(String(v));
+        const h = v === undefined ? '<span class="faint">Empty</span>' : p.type === "relation" ? `↗ ${v.length} linked` : p.type === "status" || p.type === "select" ? pill(v, o(v), p.type === "status") : p.type === "multi_select" ? v.map((x) => pill(x, o(x))).join("") : p.type === "checkbox" ? (v ? "✓" : "—") : esc(String(v));
         return `<div class="nb-prop"><span class="faint">${esc(p.name)}</span><span>${h}</span></div>`;
       }).join("") + `<a class="nb-prop-db faint" href="#/notes/${esc(note.id)}">▤ ${esc(note.title)}</a>`;
     } catch {}
