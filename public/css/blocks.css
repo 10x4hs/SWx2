@@ -271,3 +271,13 @@ body.touch-dragging { user-select: none; -webkit-user-select: none; }
 #ed-back-list a { display: grid; gap: 2px; }
 #ed-back-list mark { background: var(--hl-yellow); color: inherit; border-radius: 3px; padding: 0 2px; }
 .nb-tb .nb-sw { border-radius: 8px 8px 0 0; } .nb-tb .nb-sw + .nb-sw { top: 110px; border-radius: 0 0 8px 8px; box-shadow: 0 0 0 1px var(--line-2); }
+/* 페이지 기록 패널 */
+.vh-panel { position: fixed; top: 12px; right: 12px; bottom: 12px; width: min(440px, calc(100vw - 24px)); z-index: 60; display: flex; flex-direction: column; overflow: hidden; background: var(--panel); }
+.vh-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.vh-list { display: grid; gap: 2px; padding: 8px; max-height: 38%; overflow: auto; flex-shrink: 0; }
+.vh-item { display: grid; gap: 2px; text-align: left; padding: 8px 10px; border-radius: 10px; border: 0; background: none; color: var(--ink); font-size: 13px; cursor: pointer; }
+.vh-item:hover, .vh-item.on { background: var(--line); }
+.vh-add { color: #2f9e44; } .vh-del { color: #e03131; }
+.vh-prev { flex: 1; overflow: auto; border-top: 1px solid var(--line); padding: 10px 14px; }
+.vh-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; position: sticky; top: -10px; background: var(--panel); padding: 6px 0; z-index: 1; }
+.vh-act { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
