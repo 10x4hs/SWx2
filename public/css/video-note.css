@@ -1,0 +1,70 @@
+/* 영상 노트 한 화면 (public/js/video-note.js) — 왼쪽 영상 · 정보 · 목차 · 스크립트, 오른쪽 정리 */
+.vn { display: grid; grid-template-columns: clamp(260px, 36%, 400px) minmax(0, 1fr); gap: 34px; align-items: start; margin-top: 6px; }
+.vn-side { position: sticky; top: 12px; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 12px; max-height: calc(100vh - 150px); max-height: calc(100dvh - 150px); }
+.vn button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+.vn-player { aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; }
+.vn-player iframe, .vn-player .vn-yt, .vn .vn-thumb { display: block; width: 100%; height: 100%; border: 0; }
+.vn .vn-thumb { position: relative; background: #000; }
+.vn-thumb img { width: 100%; height: 100%; object-fit: cover; opacity: .9; transition: opacity var(--d-fast, .15s) var(--ease, ease); }
+.vn-thumb:hover img { opacity: 1; }
+.vn-play { position: absolute; inset: 0; margin: auto; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, .62); color: #fff; }
+.vn-play svg { margin-left: 3px; }
+
+.vn-info { font-size: 12.5px; line-height: 1.65; color: var(--ink-2); max-width: none; }
+.vn-info p { margin: 0; }
+
+.vn-more { min-height: 0; overflow-y: auto; position: relative; overscroll-behavior: contain; }
+.vn-more details { border-top: 1px solid var(--line); }
+.vn-more summary { display: flex; align-items: center; gap: 6px; padding: 10px 2px; font-size: 13.5px; font-weight: 650; cursor: pointer; list-style: none; }
+.vn-more summary::-webkit-details-marker { display: none; }
+.vn-more summary::after { content: ""; margin-left: auto; width: 7px; height: 7px; border-right: 1.5px solid var(--ink-3); border-bottom: 1.5px solid var(--ink-3); transform: rotate(45deg) translate(-2px, -2px); transition: transform var(--d-fast, .15s) var(--ease, ease); }
+.vn-more details[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+.vn-toc-l { display: grid; gap: 1px; padding: 0 0 12px; }
+.vn .vn-toc-l button { text-align: left; font-size: 13px; line-height: 1.45; padding: 5px 8px; border-radius: 7px; color: var(--ink-2); }
+.vn .vn-toc-l button.sub { padding-left: 20px; color: var(--ink-3); font-size: 12.5px; }
+.vn .vn-toc-l button:hover { background: var(--hover); color: var(--ink); }
+.vn-open { display: inline-block; margin: 0 0 8px 2px; font-size: 12px; color: var(--ink-3); }
+
+.vn-lines { list-style: none; margin: 0; padding: 0 0 14px; display: grid; gap: 1px; }
+.vn-lines li { display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: start; gap: 8px; padding: 7px 8px; border-radius: 8px; font-size: 13.5px; line-height: 1.65; color: var(--ink-2); cursor: pointer; }
+.vn-lines li:hover { background: var(--hover); }
+.vn-lines li.on { background: var(--accent-soft); color: var(--ink); }
+.vn .vn-time { font: 500 11.5px/1.95 var(--mono); color: var(--ink-3); text-align: left; font-variant-numeric: tabular-nums; }
+.vn-lines li.on .vn-time { color: var(--accent); }
+.vn-lines-main li { font-size: 15px; color: var(--ink); padding: 8px 10px; }
+
+/* 오른쪽 정리 */
+.vn-main.md { max-width: 74ch; font-size: 16px; line-height: 1.8; }
+.vn-main h3 { font-size: 1.42em; line-height: 1.35; margin: 1.9em 0 .55em; }
+.vn-main h4 { font-size: 1.12em; line-height: 1.4; margin: 1.6em 0 .45em; }
+.vn-main > :is(h1, h2, h3):first-child, .vn-main > .vn-lead:first-child + h3 { margin-top: .4em; }
+.vn-lilys h2 { font-size: 12px; font-weight: 650; letter-spacing: .04em; color: var(--ink-3); margin: 2.6em 0 .7em; padding-top: 1.3em; border-top: 1px solid var(--line); } /* Lilys 의 ## 는 '연결' 같은 뒤쪽 구역 이름 */
+.vn-kw { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 1em; }
+.vn-kw span { padding: 3px 10px; border-radius: 999px; background: var(--hover); border: 1px solid var(--line); font-size: 13px; line-height: 1.6; }
+.vn-main ul, .vn-main ol { padding-left: 1.25em; }
+.vn-main li { margin: .3em 0; }
+.vn-main li > ul { margin: .3em 0 .5em; }
+.vn-main strong { font-weight: 700; }
+.vn-lead { padding: 15px 18px; border-radius: var(--r, 12px); background: var(--accent-soft); font-size: 1.04em; line-height: 1.75; margin: 0 0 1.6em; }
+.vn-lead p:last-child { margin-bottom: 0; }
+.vn-from { font-size: 13px; color: var(--ink-3); }
+.vn-fig { margin: 14px 0 20px; }
+.vn-fig img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
+.vn-fig.vn-shot { position: relative; cursor: pointer; }
+.vn-fig.vn-shot figcaption { position: absolute; left: 10px; bottom: 10px; padding: 4px 9px; border-radius: 999px; background: rgba(0, 0, 0, .66); color: #fff; font: 600 12px/1.2 var(--mono); }
+.vn-fig.vn-shot:hover img { border-color: var(--accent); }
+.vn .vn-ts { display: inline-block; margin-left: 6px; padding: 2px 7px; border: 1px solid var(--line); border-radius: 999px; font: 500 11px/1.5 var(--mono); color: var(--ink-3); vertical-align: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vn .vn-ts:hover { color: var(--accent); border-color: var(--accent); }
+.vn-main h3 .vn-ts, .vn-main h4 .vn-ts { vertical-align: 4px; }
+
+/* 폰 · 좁은 창: 한 줄로. 재생을 시작하면 영상이 위에 붙어 따라와요 */
+@media (max-width: 960px) {
+  .vn { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .vn-side { display: contents; }
+  .vn.playing .vn-player { position: sticky; top: 0; z-index: 3; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+  .vn-more { overflow: visible; }
+  .vn-script .vn-lines { max-height: 52vh; overflow-y: auto; position: relative; }
+  .vn-main.md { font-size: 15.5px; }
+}
+@media (prefers-reduced-motion: reduce) { .vn-thumb img, .vn-more summary::after { transition: none; } }
