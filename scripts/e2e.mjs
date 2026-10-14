@@ -301,6 +301,28 @@ try {
       ok(rp2.status === "진행 중" && shown === 1 && !listed.notes.some((n) => n.id === row2), `${tv} · DB — 손가락 끌기 → ${rp2.status} · 필터 후 ${shown}줄 · 행은 왼쪽 목록에서 숨김`);
     } catch (e) { ok(false, `${tv} · 블록 편집기 — ${String(e.message).split("\n")[0]}`); }
 
+    // ---------- ⑫-b 페이지 기록 — 두 번 고치고(강제 기록) Page history 에서 되돌리면 내용이 그때로 (2026-10-14) ----------
+    try {
+      errs = [];
+      const blk = (t) => ({ v: 1, blocks: [{ id: "b_h1", type: "paragraph", text: t, props: {}, children: [] }] });
+      const hn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 기록 " + tv, blocks: blk("첫 버전 " + tv) } })).json()).note.id;
+      const put = async (t) => ctx.request.put(BASE + "/api/notes/" + hn, { headers: H, data: { blocks: blk(t), snapshot: true } });
+      await put("둘째 버전 " + tv); await put("셋째 버전 " + tv);
+      const vs = (await (await ctx.request.get(BASE + "/api/notes/" + hn + "/versions")).json()).versions || [];
+      await go("#/notes/" + hn, 2200);
+      await p.click("#ed-hist"); await p.waitForSelector(".vh-item", { timeout: 6000 });
+      const first = vs.find((v) => v.size && v === vs.at(-1)); // 가장 오래된 기록 = 첫 버전
+      await p.click(`.vh-item[data-vid="${first.id}"]`); await p.waitForSelector(".vh-doc .nb", { timeout: 6000 });
+      const prev = await p.evaluate(() => document.querySelector(".vh-doc")?.innerText || "");
+      await p.click("[data-restore]"); await p.click("[data-yes]"); await sleep(1500);
+      const after = await (await ctx.request.get(BASE + "/api/notes/" + hn)).json();
+      const shown = await p.evaluate(() => document.querySelector("#ed-blocks")?.innerText || "");
+      const vs2 = (await (await ctx.request.get(BASE + "/api/notes/" + hn + "/versions")).json()).versions || [];
+      ok(vs.length === 2 && /\+\d+ \/ −\d+ chars/.test(vs[0].summary) && prev.includes("첫 버전") && after.note.body.includes("첫 버전 " + tv) && shown.includes("첫 버전") && vs2.length === 3 && !(await p.$(".vh-panel")) && !errs.length,
+        `${tv} · 페이지 기록 — 기록 ${vs.length}→${vs2.length} · 미리보기 "${prev.slice(0, 20)}" · 되돌린 뒤 "${shown.slice(0, 20)}"${errs.length ? " — " + errs[0] : ""}`);
+    } catch (e) { ok(false, `${tv} · 페이지 기록 — ${String(e.message).split("\n")[0]}`); }
+    await sleep(2100); // 되돌린 뒤 받은 노트 목록이 SW 의 2초 "갓 받은 답" 창을 벗어나게 (다음 DB 검사가 새 목록을 받도록)
+
     // ---------- ⑬ 데이터베이스 — 필터로 줄이기 · 묶기 · 달력에서 날짜 옮기기 (컴퓨터는 마우스, 폰은 길게 눌러 끌기) ----------
     try {
       errs = [];

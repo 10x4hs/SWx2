@@ -95,3 +95,11 @@ A row may carry `props._remind = { "prop": "<date key>", "time": "HH:MM" }` (KST
 
 ## Notes list
 Rows of a database are hidden from the left notes list (they show inside their database); typing in the list filter or global search still finds them.
+
+## Page history (migration 0046)
+`note_versions(id, note_id → notes ON DELETE CASCADE, user_id, title, blocks, body, created_at)`, index `(note_id, created_at DESC)`.
+- On `PUT /api/notes/:id` that changes body/blocks or title, the worker first copies the **previous** state (`INSERT … SELECT` inside D1, so big pages never hit the 100KB statement limit; `blocks` is kept as-is, `body` always). Coalesced: at most one snapshot per note per 10 minutes, skipped when identical to the newest snapshot. `{"snapshot": true}` in the PUT body forces one (tests). Databases are not versioned.
+- Restore always snapshots the current state first. Only the newest 30 per note are kept.
+- `GET /api/notes/:id/versions` → `{ versions: [{ id, created_at, user: { id, display_name, color }, title, size, add, del, summary: "+120 / −40 chars" }] }` (newest first; diff = vs. the next older snapshot, common prefix/suffix trimmed).
+- `GET /api/notes/:id/versions/:vid` → `{ version }` (full row). `POST /api/notes/:id/versions/:vid/restore` → `{ note, kept_title }` (title kept if it now clashes with another note). Same permission as the note (owner only).
+- UI: note header ⟲ button → "Page history" side panel; click a version for a read-only block preview; "Restore this version" asks inline.
