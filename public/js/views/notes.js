@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import { $, esc, debounce, toast, initial, nowTime, ymd, parseYmd, DOW, avatar } from "../util.js";
 import { icon } from "../icons.js";
 import { renderMarkdown, outline } from "../md.js";
+import { videoOf, mountVideoNote } from "../video-note.js";
 import { createBlockEditor } from "../blocks/editor.js";
 import { mdToBlocks, blocksToMd } from "../blocks/md.js";
 import { mountDatabase, pill } from "../blocks/db.js";
@@ -55,8 +56,9 @@ export async function openDaily(ctx, day) {
 export function update(r) { if (live) live.route(r); }
 
 export function mount(root, ctx, r) {
-  const S = { notes: [], filter: "", tag: null, cur: null, backlinks: [], tags: [], children: [], crumbs: [], mode: getMode(), status: "", listOpen: getListOpen() };
+  const S = { notes: [], filter: "", tag: null, cur: null, backlinks: [], tags: [], children: [], crumbs: [], mode: getMode(), status: "", listOpen: getListOpen(), pick: null }; // pick = 보기 방식을 직접 고른 노트 (영상 노트는 그 전까지 보기로 열어요)
   let ED = null; // 블록 편집기
+  let VN = null; // 영상 노트 한 화면 (보기)
 
   root.innerHTML = `
     <div class="notes${S.listOpen ? "" : " list-hidden"}" id="notes">
@@ -143,8 +145,10 @@ export function mount(root, ctx, r) {
   }
 
   function drawEditor() {
+    VN?.destroy(); VN = null;
     const n = S.cur, own = mine(), u = ctx.user(n.user_id);
-    const mode = own ? S.mode : "view";
+    // 위쪽에 YouTube 영상 줄이 있는 노트는 보기 방식을 고르기 전까지 '영상 + 정리 + 스크립트' 한 화면으로
+    const vid = n.kind !== "database" && videoOf(n.body), mode = own ? (vid && S.pick !== n.id ? "view" : S.mode) : "view", vn = vid && mode === "view";
     $("#notes", root).classList.add("has-note");
     $("#ed", root).innerHTML = `
       <div class="ed-bar">
@@ -163,7 +167,7 @@ export function mount(root, ctx, r) {
         <button class="icon-btn sm danger" type="button" id="ed-del" aria-label="노트 삭제">${icon.trash(15)}</button>` : ""}
       </div>
       ${own ? `<form class="ai-refine" id="ed-refine" title="AI 와 이 페이지를 같이 고쳐요"><span class="ai-refine-ic">${icon.spark(14)}</span><input class="input" id="ed-refine-in" maxlength="1000" placeholder="Ask AI: make this a table · add a review section · shorter" aria-label="AI 에게 고쳐 달라고 하기"><button class="btn sm accent" type="submit">Apply</button></form>` : ""}
-      <div class="ed-body"><div class="ed-inner" style="${mode === "md" ? "max-width:1180px" : ""}">
+      <div class="ed-body"><div class="ed-inner" style="${mode === "md" ? "max-width:1180px" : vn ? "max-width:1240px" : ""}">
         <nav class="crumbs" aria-label="Path"><a href="#/brain">Brain</a><span>›</span>${S.crumbs.map((c) => `<a href="#/notes/${c.id}">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b><a class="crumb-map" href="#/brain/${encodeURIComponent(S.children.length ? n.id : S.crumbs.at(-1)?.id || "")}" title="See this page in the Brain graph">◎ Map</a></nav>
         <input class="ed-title" id="ed-title" value="${esc(n.title)}" aria-label="노트 제목" ${own ? "" : "readonly"} maxlength="120">
         <div class="row faint" style="font-size:12px;gap:10px">
@@ -173,7 +177,7 @@ export function mount(root, ctx, r) {
           <span id="ed-tags" class="row" style="gap:4px">${S.tags.map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join("")}</span>
         </div>
         ${n.props ? `<div class="nb-props" id="ed-props"></div>` : ""}
-        ${mode === "block" || n.kind === "database" ? `<div id="ed-blocks"></div>` : `<div class="${mode === "md" ? "ed-split" : ""}">
+        ${mode === "block" || n.kind === "database" ? `<div id="ed-blocks"></div>` : vn ? `<div class="vn" id="ed-vn"><aside class="vn-side" aria-label="영상 · 스크립트"></aside><article class="md vn-main" id="ed-md"></article></div>` : `<div class="${mode === "md" ? "ed-split" : ""}">
           ${mode === "md" ? `<textarea class="ed-text" id="ed-text" spellcheck="false" placeholder="마크다운으로 쓰세요. [[ 를 치면 노트 제목이 떠요.">${esc(n.body)}</textarea>` : ""}
           <article class="md" id="ed-md"></article>
         </div>`}
@@ -250,14 +254,18 @@ export function mount(root, ctx, r) {
   const drawOutlineSoon = debounce(drawOutline, 400);
 
   function drawPreview() {
-    const md = $("#ed-md", root), body = $("#ed-text", root)?.value ?? S.cur.body;
-    if (md) {
-      md.innerHTML = renderMarkdown(body || "_비어 있는 노트예요._");
-      const titles = new Set(S.notes.map((n) => n.title.toLowerCase()));
-      md.querySelectorAll("[data-wikilink]").forEach((a) => a.classList.toggle("missing", !titles.has(a.dataset.wikilink.toLowerCase())));
+    const md = $("#ed-md", root), body = $("#ed-text", root)?.value ?? S.cur.body, vbox = $("#ed-vn", root);
+    if (vbox) { // 영상 노트: 스크립트(하위 노트) · 정리(부모 노트)는 video-note.js 가 불러요
+      VN?.destroy();
+      VN = mountVideoNote(vbox, { note: S.cur, children: S.children, mark: markLinks, open: (t) => { save.flush(); openByTitle(ctx, t); },
+        load: (id) => api.note(id).then((d) => { noteCache.set(id, { at: Date.now(), data: d }); return d.note; }) });
+      return;
     }
+    if (md) { md.innerHTML = renderMarkdown(body || "_비어 있는 노트예요._"); markLinks(md); }
     drawOutline();
   }
+  // 없는 노트를 가리키는 [[링크]]는 흐리게
+  const markLinks = (el) => { const titles = new Set(S.notes.map((n) => n.title.toLowerCase())); el.querySelectorAll("[data-wikilink]").forEach((a) => a.classList.toggle("missing", !titles.has(a.dataset.wikilink.toLowerCase()))); };
 
   // ---------- saving ----------
   let chain = Promise.resolve();
@@ -294,7 +302,7 @@ export function mount(root, ctx, r) {
       save.flush();
       if (ED && S.mode === "block") { S.cur.body = blocksToMd(ED.getDoc()); S.cur.blocks = JSON.stringify(ED.getDoc()); }
       else if (ta && ta.value !== (S.cur.body || "")) { S.cur.body = ta.value; S.cur.blocks = null; } // 마크다운에서 고쳤으면 블록은 다시 만들어요
-      S.mode = b.dataset.mode; setMode(S.mode); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; drawEditor();
+      S.mode = b.dataset.mode; S.pick = S.cur.id; setMode(S.mode); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; drawEditor();
     }));
     const lt = $("#ed-list", root);
     if (lt) lt.addEventListener("click", () => { S.listOpen = !S.listOpen; setListOpen(S.listOpen); $("#notes", root).classList.toggle("list-hidden", !S.listOpen); lt.innerHTML = S.listOpen ? icon.left(15) : icon.right(15); lt.setAttribute("aria-expanded", String(S.listOpen)); lt.title = lt.ariaLabel = S.listOpen ? "찾기 패널 접기" : "찾기 패널 펴기"; });
@@ -463,7 +471,7 @@ export function mount(root, ctx, r) {
   async function open(id) {
     save.flush(); if (HP && S.cur?.id !== id) closeHistory();
     closeSuggest();
-    if (!id) { ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; S.cur = null; drawEmpty(); drawList(); return; }
+    if (!id) { ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; VN?.destroy(); VN = null; S.cur = null; drawEmpty(); drawList(); return; }
     const show = (d) => {
       const { note, backlinks, tags, children = [], crumbs = [] } = d;
       ED?.destroy(); ED = null; DBV?.destroy(); DBV = null;
@@ -539,7 +547,7 @@ export function mount(root, ctx, r) {
   live = { route };
   loadList(); open(r.id);
 
-  return () => { save.flush(); closeSuggest(); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; live = null; };
+  return () => { save.flush(); closeSuggest(); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; VN?.destroy(); VN = null; live = null; };
 }
 
 // "· 웹 검색 2 · 페이지 1 · 이미지 1" 처럼 AI 가 무엇을 찾아봤는지

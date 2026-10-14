@@ -503,6 +503,9 @@ try {
     await p.click('.gn-seg [data-sec="all"]'); await sleep(300);
     ok(geo > 0 && geo < np.items, `${tv} · 분야 고르기 — 지정학만 ${geo}개`);
     const firstId = await p.evaluate(() => document.querySelector(".gn-item[data-id]")?.dataset.id);
+    // 심은 글은 '몇 시간 전'이라 자정 직후엔 모두 어제 호로 가요 — 오늘 호가 비면 아래 기사 검사는 실패로 적고 넘어가요 (뒤 검사까지 멈추지 않게)
+    if (!firstId) ok(false, `${tv} · 기사 시트 · 메모 · j/k — 오늘 호에 기사가 없어 건너뜀 (자정 직후면 news-seed 의 글이 어제 호로 가요)`);
+    else {
     await p.click(`.gn-item[data-id="${firstId}"] .gn-item-a`);
     await p.waitForSelector("#gn-compose textarea", { timeout: 8000 }).catch(() => {});
     ok(await p.evaluate((id) => location.hash === "#/news/item/" + id && !!document.querySelector(".gn.sheet-on .gn-sh-t"), firstId), `${tv} · 기사를 열면 시트`);
@@ -519,6 +522,7 @@ try {
     const moved = await p.evaluate((id) => /^#\/news\/item\//.test(location.hash) && location.hash !== "#/news/item/" + id, firstId);
     await p.keyboard.press("Escape"); await sleep(600);
     ok(moved && await p.evaluate(() => /^#\/news(\/\d{4}-\d{2}-\d{2})?$/.test(location.hash) && !document.querySelector(".gn.sheet-on")) && !errs.length, `${tv} · j 로 다음 기사 · Esc 로 닫기 · 오류 없음${errs.length ? " — " + errs[0] : ""}`);
+    }
     // 세계 — 진짜 지구본(캔버스) · 나라 목록 / 회사 — 구독하면 탭이 생겨요
     await hop("#/news/world", ".gn-ranks [data-cc]", 1500);
     const wv = await p.evaluate(() => ({ cv: (document.querySelector("#gn-globe")?.width || 0) > 100, n: document.querySelectorAll(".gn-ranks [data-cc]").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
@@ -529,7 +533,7 @@ try {
     const coOk = await p.evaluate((w) => document.querySelector(".gn-sub")?.getAttribute("aria-pressed") === String(!w), wasOn);
     await p.click(".gn-sub"); await sleep(600);
     ok(coOk, `${tv} · 회사 — 구독 켜고 끄기`);
-    await ctx.request.fetch(BASE + "/api/news/item/" + firstId, { method: "GET", headers: H }).then(async (r) => {
+    if (firstId) await ctx.request.fetch(BASE + "/api/news/item/" + firstId, { method: "GET", headers: H }).then(async (r) => {
       for (const c of (await r.json()).comments || []) if (/^e2e /.test(c.body) && !c.parent_id) await ctx.request.fetch(BASE + "/api/news/comments/" + c.id, { method: "DELETE", headers: H });
     }).catch(() => {});
 
@@ -595,6 +599,37 @@ try {
       await p.fill("#mb-q", "EBITDA"); await sleep(150);
       const w1 = await p.evaluate(() => document.querySelectorAll(".mb-term").length);
       ok(w0 >= 100 && w1 >= 1 && w1 < w0 && !errs.length, `${tv} · 경영 용어 — 전체 ${w0} · 'EBITDA' 찾기 ${w1}${errs.length ? " — " + errs[0] : ""}`);
+    }
+
+    // ---------- ⑭ 영상 노트 한 화면 — 맨 위 인용에 YouTube 영상이 있으면 왼쪽 영상 · 목차 · 접힌 스크립트, 오른쪽 정리 (2026-10-14) ----------
+    {
+      const V = "Am7IWP8IpEc", u = (t) => `https://youtu.be/${V}?t=${t}`, title = "영상 검사 " + tv;
+      const body = `> 🎬 원본 영상: [YouTube](https://youtu.be/${V}) · 채널 **검사 채널** · 길이 1:00:00\n> 🖼 이미지: 영상 캡처 1장\n\n#영상정리\n\n## 한 줄 결론\n핵심 **한 줄**.\n\n## 짧은 요약\n_(없음)_\n\n## 목차\n- 1. 첫째\n\n## 정리 본문\n_각 항목 끝의 ⏱ 표시는 그 말이 나온 영상 위치예요._\n\n### 1. 첫째 [⏱0:00](${u(0)})\n![영상 캡처 0:05](/icons/icon-192.png)\n[▶ 0:05 에서 보기](${u(5)})\n- **요점** [⏱0:30](${u(30)})\n#### 1.1. 둘째 [⏱1:00](${u(60)})\n- 설명 [⏱1:30](${u(90)})\n\n## 원문\n- [[${title} · 원문 스크립트]] — 자막 전체\n`;
+      const mkN = async (data) => (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data })).json()).note;
+      const sum = await mkN({ title, body });
+      const scr = await mkN({ title: title + " · 원문 스크립트", parent_id: sum.id, body: `> 🎬 [검사 영상](https://www.youtube.com/watch?v=${V}) 의 자막 전체예요. 정리본: [[${title}]]\n\n` + [0, 30, 60, 90].map((t) => `[${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}](${u(t)}) line ${t} >> next speaker`).join("\n\n") });
+      const mineErr = () => errs.filter((e) => !/youtube|ytimg|googlevideo|doubleclick|ERR_BLOCKED|Permissions-Policy|third-party/i.test(e)); // YouTube 안쪽 경고는 빼요
+      errs = [];
+      await go("#/notes/" + sum.id, 2200);
+      const a = await p.evaluate(() => ({ h: document.querySelectorAll(".vn-main h3, .vn-main h4").length, ts: document.querySelectorAll(".vn-main .vn-ts").length, shot: document.querySelectorAll(".vn-main .vn-shot").length, lead: !!document.querySelector(".vn-lead"), gone: !/없음|목차|원문 스크립트/.test(document.querySelector(".vn-main")?.textContent || "-"), toc: document.querySelectorAll(".vn-toc-l button").length, lines: document.querySelectorAll(".vn-side .vn-lines li").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await p.click(".vn-script summary"); await sleep(200);
+      await p.click(".vn-side .vn-lines li:nth-child(2)"); await sleep(400);
+      const pl = await p.evaluate(() => ({ playing: !!document.querySelector(".vn.playing"), player: !!document.querySelector(".vn-player .vn-yt, .vn-player iframe") }));
+      const e1 = mineErr();
+      ok(a.h === 2 && a.ts === 4 && a.shot === 1 && a.lead && a.gone && a.toc === 2 && a.lines === 4 && !a.over && pl.playing && pl.player && !e1.length, `${tv} · 영상 노트 — 제목 ${a.h} · 시간 ${a.ts} · 캡처 ${a.shot} · 목차 ${a.toc} · 스크립트 ${a.lines}줄 · 줄 누르면 앱 안 영상 ${pl.player} · 빈 칸 숨김 ${a.gone} · 가로 넘침 ${a.over}${e1.length ? " — " + e1[0] : ""}`);
+      errs = [];
+      await go("#/notes/" + scr.id, 2200);
+      const b = await p.evaluate(() => ({ from: document.querySelector(".vn-from")?.textContent || "", open: !!document.querySelector(".vn-script[open]"), h: document.querySelectorAll(".vn-main h3").length }));
+      const e2 = mineErr();
+      ok(/정리/.test(b.from) && b.open && b.h === 1 && !e2.length, `${tv} · 스크립트 노트도 같은 화면 — 오른쪽 '${b.from}' · 스크립트 펼침 ${b.open}${e2.length ? " — " + e2[0] : ""}`);
+      // 첫 줄이 YouTube 주소뿐인 노트(공유 링크 ?si=)도 영상 노트 — 본문은 그대로, 시간 링크만 버튼으로
+      const bare = await mkN({ title: "영상 주소 검사 " + tv, body: `[https://youtu.be/${V}?si=abc](https://youtu.be/${V}?si=abc)\n\n## 요약\n첫 이야기 [⏱0:10](${u(10)})\n\n## 내 생각\n좋았어요.` });
+      errs = [];
+      await go("#/notes/" + bare.id, 2000);
+      const c = await p.evaluate(() => ({ vn: !!document.querySelector(".vn"), lilys: !!document.querySelector(".vn-lilys"), h2: document.querySelectorAll(".vn-main h2").length, ts: document.querySelectorAll(".vn-main .vn-ts").length, toc: document.querySelectorAll(".vn-toc-l button").length, link: !!document.querySelector('.vn-info a[target="_blank"]') }));
+      const e3 = mineErr();
+      ok(c.vn && !c.lilys && c.h2 === 2 && c.ts === 1 && c.toc === 2 && c.link && !e3.length, `${tv} · 주소만 있는 영상 노트 — 한 화면 ${c.vn} · 제목 ${c.h2} · 시간 ${c.ts} · 목차 ${c.toc}${e3.length ? " — " + e3[0] : ""}`);
+      errs = [];
     }
 
     await ctx.close();
