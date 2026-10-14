@@ -40,7 +40,7 @@ Block = `{ "id": "b_xxxxxxxx", "type": "...", "text": "inline md", "props": {}, 
 ## Databases
 A database is a note with `notes.kind = 'database'` and `notes.db` JSON:
 ```json
-{ "props": [ { "key": "status", "name": "여부", "type": "status|select|multi_select|date|text|number|checkbox|url",
+{ "props": [ { "key": "status", "name": "여부", "type": "status|select|multi_select|date|text|number|checkbox|url|relation|rollup|formula",
                "options": [ { "name": "시작 전", "color": "gray|blue|green|yellow|red|purple|pink|orange|brown" } ] } ],
   "views": [ { "id": "v1", "name": "Table", "type": "table|board", "group_by": "status" } ] }
 ```
@@ -55,9 +55,11 @@ Notion colors: gray, brown, orange, yellow, green, blue, purple, pink, red.
 
 ## Views (v1.1, backward compatible — every field optional)
 ```json
-{ "id": "v1", "name": "Table", "type": "table|board|calendar",
+{ "id": "v1", "name": "Table", "type": "table|board|calendar|gallery|list",
   "group_by": "<status|select|multi_select key>",   // board (required, auto-picked) · table (optional)
   "date_prop": "<date key>",                        // calendar (auto-picked: first date prop)
+  "show": ["<key>"],                                // gallery · list: visible props (max 8; default first 3 / first 2)
+  "cover": "page|none|<url or text key>",           // gallery: card cover (page = first image block in the row page)
   "filters": [ { "prop": "<key>|title", "op": "is", "value": "완료" } ],   // AND, max 10
   "sorts":   [ { "prop": "<key>|title", "dir": "asc|desc" } ] }           // multi-level, max 5
 ```
@@ -65,6 +67,24 @@ Ops per type (`public/js/blocks/dbview.js` `OPS`): `is` (text/url/title/number/s
 Single implementation: `dbview.js` (`cleanView` validates, `applyView(rows, db, view)` filters + sorts); `md.js` only re-exports `VIEW_TYPES` / `applyView`.
 Legacy input (early block-editor views) is accepted and normalized on save, never stored: ops `is_empty`→`empty`, `is_not_empty`→`not_empty`, `checked`→`is true`, `unchecked`→`is false`; calendar `date_by`→`date_prop`.
 The server (`validateDb` → `cleanView`) silently drops filters/sorts on unknown props, wrong ops or bad values, so deleting a property never breaks a saved view. Sorting puts empty values last; select/status sort by option order. Grouping by multi_select puts a row in every group it has; values that aren't options get their own group.
+
+## Relation · Rollup · Formula (v1.2, no migration — all inside `notes.db` / `notes.props`)
+```json
+{ "key": "proj", "type": "relation", "target": "<database note id>" }              // row value: ["<row note id>", …] (max 100)
+{ "key": "hours", "type": "rollup", "relation": "proj", "target": "<prop key>|title",
+  "fn": "count|count_values|sum|avg|min|max|show_original|percent_checked" }
+{ "key": "left", "type": "formula", "expr": "dateBetween(prop(\"Due\"), now(), \"days\")" }
+```
+- **relation** is one-way: only this database stores the link (no back-link column on the target — two-way would need writes to the other database's rows on every change). Target may be the same database. Picked with a search popover, shown as chips.
+- **rollup / formula** are computed in the browser on every draw (`dbview.js` `computeRows`), never stored (`cleanRowProps` drops them; the markdown mirror skips relation/rollup/formula columns). A rollup follows a relation one hop (a rollup over another rollup stops at the second hop to avoid cycles).
+- **formula** (`public/js/blocks/formula.js`, own parser, no eval): `prop("Name")` (by name, or key; `"Name"` = title), numbers, `"strings"`, `true/false`, `+ - * / %` (`+` joins text), `== != < > <= >=`, `and or not`, `if(c,a,b)`, `concat(…)`, `length(x)`, `round(x[,digits])`, `abs`, `min`, `max`, `empty(x)`, `dateBetween(a,b,"minutes|hours|days|weeks|months|years")`, `now()`. Date props become dates; a date result is shown as `YYYY-MM-DD`. Errors (bad syntax, unknown prop, cycles, ÷0) show inline as `⚠ message`.
+- Filters on rollup/formula: `is · is_not · contains · not_contains · gt · lt · empty · not_empty` (gt/lt compare as numbers); relation: `empty · not_empty`. Sorts work on all three (relation sorts by link count).
+
+## Templates
+A template is a hidden row: a child note of the database with `props._tpl = true` (title = template name, other props = preset values, blocks = starter blocks). Hidden from views and the markdown mirror. "+ New ▾" lists Blank / each template / "+ New template" / "✎ Edit templates" (a table of templates; click a title to edit its blocks in the normal row page editor). New-from-template copies props (minus `_tpl` / `_remind`) and blocks.
+
+## Gallery cover
+`GET /api/notes/:id` children carry `cover` = `props.src` of the first `image` block (any depth) in that row's blocks (SQLite `json_tree`), or null.
 
 ## Reminders
 A row may carry `props._remind = { "prop": "<date key>", "time": "HH:MM" }` (KST). Old rows simply have no `_remind`; the date value itself stays a plain `"YYYY-MM-DD"` string.

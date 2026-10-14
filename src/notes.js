@@ -161,7 +161,8 @@ export function registerNotes(on) {
        WHERE l.dst_title = (SELECT title FROM notes WHERE id = ?2 AND user_id = ?1) AND n.id != ?2 AND ${VISIBLE} ORDER BY n.updated_at DESC`
       ).bind(user.id, params.id),
       env.DB.prepare("SELECT tag FROM note_tags WHERE note_id = ?").bind(params.id),
-      env.DB.prepare("SELECT id, title, kind, props, updated_at FROM notes WHERE parent_id = ? AND user_id = ? ORDER BY created_at").bind(params.id, user.id),
+      // cover = 행 페이지의 첫 이미지 (갤러리 보기 표지)
+      env.DB.prepare("SELECT id, title, kind, props, updated_at, CASE WHEN json_valid(blocks) THEN (SELECT json_extract(j.value, '$.props.src') FROM json_tree(blocks) j WHERE j.type = 'object' AND json_extract(j.value, '$.type') = 'image' LIMIT 1) END AS cover FROM notes WHERE parent_id = ? AND user_id = ? ORDER BY created_at").bind(params.id, user.id),
       // 위로 올라가는 경로 (부모 › 조부모 …, 최대 6단계) — 재귀 쿼리 하나로
       env.DB.prepare(
         `WITH RECURSIVE up(id, title, parent_id, depth) AS (

@@ -75,3 +75,27 @@ button.db-chip { padding: 0 10px; }
   .db-shown { margin-left: 0; }
   .db-chip-b { max-width: 200px; }
 }
+
+/* gallery · list */
+.db-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 4px 0; }
+.db-gcard { display: flex; flex-direction: column; background: var(--paper-solid); border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0, 0, 0, .08); min-width: 0; }
+.db-gcover { display: block; aspect-ratio: 16 / 9; background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.db-gcover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.db-gbody { padding: 8px 10px; display: grid; gap: 4px; font-size: 13px; }
+.db-gbody .db-open { color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-gnew { border: 1px dashed var(--line-2); box-shadow: none; background: none; color: var(--ink-3); cursor: pointer; min-height: 80px; align-items: center; justify-content: center; font-size: 14px; }
+.db-list { display: grid; }
+.db-li { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-bottom: 1px solid var(--line); font-size: 14px; min-width: 0; }
+.db-li .db-open { color: inherit; text-decoration: none; font-weight: 550; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-li-p { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; font-size: 12.5px; color: var(--ink-2); max-width: 60%; }
+/* relation · rollup · formula · templates */
+.db-rel { display: inline-block; padding: 0 6px; margin: 1px 3px 1px 0; border-radius: 4px; background: color-mix(in srgb, var(--ink) 7%, transparent); font-size: 12.5px; white-space: nowrap; }
+.db-err { color: #EB5757; font-size: 12px; }
+.db-fx { width: 100%; font-family: ui-monospace, monospace; font-size: 12.5px; resize: vertical; }
+.db-newgrp { display: inline-flex; gap: 1px; }
+.db-newgrp .db-new { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.db-newgrp .db-newmenu { border-top-left-radius: 0; border-bottom-left-radius: 0; padding-inline: 7px; }
+.db-opts-sep { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 4px; }
+.db-tplbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 8px; margin: 4px 0; border-radius: 6px; background: color-mix(in srgb, #2383E2 10%, transparent); font-size: 13px; }
+.db-tplbar .btn { margin-left: auto; }
+@media (max-width: 640px) { .db-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } }

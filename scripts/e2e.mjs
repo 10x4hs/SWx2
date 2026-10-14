@@ -353,6 +353,63 @@ try {
       ok(moved === today && !errs.length, `${tv} · DB 달력 — 카드 ${other} → ${moved}${errs.length ? " — " + errs[0] : ""}`);
     } catch (e) { ok(false, `${tv} · DB 필터 · 달력 — ${String(e.message).split("\n")[0]}`); }
 
+    // ---------- ⑬-2 데이터베이스 — 갤러리 · 목록 · 템플릿 · 관계 + 롤업 · 수식 ----------
+    try {
+      errs = [];
+      const post = async (data) => (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data })).json()).note;
+      const getN = async (nid) => (await (await ctx.request.get(BASE + "/api/notes/" + nid)).json());
+      const B = (await post({ title: "검사 대상 DB " + tv, kind: "database", db: { props: [{ key: "hours", name: "Hours", type: "number" }], views: [{ id: "v1", name: "Table", type: "table" }] } })).id;
+      const b1 = (await post({ title: "대상 하나 " + tv, parent_id: B, props: { hours: 2 } })).id;
+      const b2 = (await post({ title: "대상 둘 " + tv, parent_id: B, props: { hours: 5 } })).id;
+      const A = (await post({ title: "검사 관계 DB " + tv, kind: "database", db: {
+        props: [{ key: "status", name: "Status", type: "status", options: [{ name: "시작 전", color: "gray" }, { name: "진행 중", color: "blue" }] },
+          { key: "proj", name: "Proj", type: "relation", target: B },
+          { key: "tot", name: "Total", type: "rollup", relation: "proj", target: "hours", fn: "sum" },
+          { key: "fx", name: "Fx", type: "formula", expr: 'if(prop("Total") > 5, "big " + prop("Total"), "small")' },
+          { key: "bad", name: "Bad", type: "formula", expr: "1 +" },
+          { key: "pic", name: "Pic", type: "url" }],
+        views: [{ id: "v1", name: "Table", type: "table" }, { id: "v2", name: "Big", type: "table", filters: [{ prop: "fx", op: "contains", value: "big" }] },
+          { id: "v3", name: "Gallery", type: "gallery", show: ["tot", "fx"], cover: "pic" }, { id: "v4", name: "List", type: "list", show: ["fx"] }] } })).id;
+      const a1 = (await post({ title: "관계 하나 " + tv, parent_id: A, props: { proj: [b1, b2], pic: "/assets/graph/orb.png" } })).id;
+      const a2 = (await post({ title: "관계 둘 " + tv, parent_id: A, props: { proj: [b1] } })).id;
+      await go("#/notes/" + A, 2500);
+      await p.waitForSelector(".db-table", { timeout: 8000 }); await sleep(800);
+      const cell = (rid, k) => p.evaluate(([rid, k]) => document.querySelector(`tr[data-row="${rid}"] td[data-prop="${k}"]`)?.textContent.trim() || "", [rid, k]);
+      const t1 = await cell(a1, "tot"), f1 = await cell(a1, "fx"), f2 = await cell(a2, "fx"), bad = await cell(a1, "bad"), chips = await cell(a1, "proj");
+      ok(t1 === "7" && f1 === "big 7" && f2 === "small" && bad.startsWith("⚠") && chips.includes("대상 둘"), `${tv} · DB 관계 · 롤업 · 수식 — 합 ${t1} · 수식 ${f1}/${f2} · 오류 ${bad.slice(0, 20)} · 칩 ${chips.slice(0, 30)}`);
+      // 수식 필터 보기: big 만
+      const vi = async (name) => { const i = (await p.locator(".db-tabs [data-view]").allTextContents()).findIndex((t) => t.includes(name)); await p.locator(".db-tabs [data-view]").nth(i).click(); await sleep(500); };
+      await vi("Big"); const bigN = await p.locator(".db-table tr[data-row]").count();
+      // 관계 고르기 (검색 팝오버) → 롤업이 바로 바뀌어요
+      await vi("Table");
+      await p.click(`tr[data-row="${a2}"] td[data-prop="proj"]`); await p.waitForSelector(".db-pop [data-rel]", { timeout: 5000 });
+      await p.fill(".db-pop .db-pop-q", "둘"); await p.click(`.db-pop [data-rel="${b2}"]`); await p.press(".db-pop .db-pop-q", "Escape"); await sleep(1300);
+      const rel2 = JSON.parse((await getN(a2)).note.props || "{}").proj || [];
+      const t2 = await cell(a2, "tot");
+      ok(bigN === 1 && rel2.length === 2 && t2 === "7", `${tv} · DB 수식 필터 ${bigN}줄 · 관계 고르기 → ${rel2.length}개 · 롤업 ${t2}`);
+      // 갤러리 · 목록
+      await vi("Gallery");
+      const gal = await p.evaluate(() => ({ n: document.querySelectorAll(".db-gcard[data-row]").length, img: document.querySelector(".db-gcover img")?.getAttribute("src") || "", txt: document.querySelector(".db-gcard[data-row]")?.textContent || "" }));
+      await p.screenshot({ path: `${process.env.SHOTS || "/tmp"}/e2e-db-gallery-${w}.png` }).catch(() => {});
+      await vi("List");
+      const li = await p.evaluate(() => ({ n: document.querySelectorAll(".db-li").length, txt: document.querySelector(".db-li")?.textContent || "" }));
+      ok(gal.n === 2 && gal.img.includes("orb.png") && /big 7/.test(gal.txt) && li.n === 2 && /big 7/.test(li.txt), `${tv} · DB 갤러리 ${gal.n}장 (표지 ${gal.img.slice(-9)}) · 목록 ${li.n}줄`);
+      // 템플릿: + New ▾ → + New template → 이름 → 블록 · 값 넣기 → 그 템플릿으로 새 행
+      await vi("Table");
+      await p.click(".db-newmenu"); await p.click(".db-pop [data-tpl-new]");
+      await p.waitForSelector(".db-rename", { timeout: 5000 }); await p.fill(".db-rename", "검사 템플릿 " + tv); await p.press(".db-rename", "Enter"); await sleep(1200);
+      const tpl = (await getN(A)).children.find((c) => JSON.parse(c.props || "{}")._tpl);
+      await ctx.request.put(BASE + "/api/notes/" + tpl.id, { headers: H, data: { props: { status: "진행 중" }, blocks: { v: 1, blocks: [{ id: "b_tpl1", type: "paragraph", text: "시작 블록 " + tv }] } } });
+      await go("#/notes/" + A, 2500); await p.waitForSelector(".db-table", { timeout: 8000 });
+      await p.click(".db-newmenu"); await p.click(`.db-pop [data-tpl="${tpl.id}"]`);
+      await p.waitForSelector(".db-rename", { timeout: 5000 }); await p.press(".db-rename", "Escape"); await sleep(1000);
+      const kids = (await getN(A)).children.filter((c) => !JSON.parse(c.props || "{}")._tpl);
+      const made = kids.find((c) => c.id !== a1 && c.id !== a2);
+      const madeN = made ? (await getN(made.id)).note : null;
+      const rowsShown = await p.locator(".db-table tr[data-row]").count();
+      ok(tpl && madeN && JSON.parse(madeN.props).status === "진행 중" && madeN.body.includes("시작 블록") && rowsShown === 3 && !errs.length, `${tv} · DB 템플릿 — 새 행 ${madeN?.title} · 상태 ${madeN && JSON.parse(madeN.props).status} · 블록 복사 ${!!madeN?.body.includes("시작 블록")} · 표 ${rowsShown}줄${errs.length ? " — " + errs[0] : ""}`);
+    } catch (e) { ok(false, `${tv} · DB 갤러리 · 템플릿 · 관계 — ${String(e.message).split("\n")[0]}`); }
+
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
     const kst = (n) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
     execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `INSERT OR REPLACE INTO day_records (user_id, day, data, score, done, total, auto, saved_at, ai_score, ai_note, ai_model) SELECT id, '${kst(-1)}', '{"plans":[]}', 70, 1, 1, 1, 0, 82, '우선순위 높은 일을 끝냈어요.', 'openai/gpt-oss-120b' FROM users WHERE username = '${user}'`], { stdio: "ignore" });
