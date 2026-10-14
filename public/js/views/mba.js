@@ -1,6 +1,9 @@
-// 경영 마이크로디그리 — #/mba (홈 · 모듈 지도) · #/mba/today · #/mba/company · #/mba/words · #/mba/<모듈> · #/mba/<모듈>/<카드>
+// 경영 마이크로디그리 — #/mba (홈 · 모듈 지도 · 현황판) · #/mba/today · #/mba/company · #/mba/words · #/mba/<모듈> (2주 계획)
+//   #/mba/<모듈>/<카드> · #/mba/<모듈>/case/<케이스> · #/mba/<모듈>/practice[/<날>]
 import { mountHome } from "../mba/home.js";
 import { mountModule, mountCard } from "../mba/card.js";
+import { mountCase } from "../mba/case.js";
+import { mountPractice } from "../mba/practice.js";
 import { mountToday } from "../mba/today.js";
 import { mountCompany } from "../mba/company.js";
 import { mountWords } from "../mba/words.js";
@@ -10,8 +13,8 @@ export function update(r) { inst?.update(r); }
 
 export function mount(root, ctx, r) {
   let cur = null, stop = null;
-  function show(id, sub) {
-    const key = `${id || ""}/${sub || ""}`;
+  function show(id, sub, item) {
+    const key = `${id || ""}/${sub || ""}/${item || ""}`;
     if (stop && cur === key) return;
     stop?.();
     cur = key;
@@ -21,12 +24,14 @@ export function mount(root, ctx, r) {
     stop = id === "today" ? mountToday(host, ctx)
       : id === "company" ? mountCompany(host, ctx)
       : id === "words" ? mountWords(host, ctx, sub)
+      : id && sub === "case" && item ? mountCase(host, ctx, id, item)
+      : id && sub === "practice" ? mountPractice(host, ctx, id, item)
       : id && sub ? mountCard(host, ctx, id, sub)
       : id ? mountModule(host, ctx, id)
       : mountHome(host, ctx);
     root.closest(".main")?.scrollTo?.({ top: 0 });
   }
-  inst = { update: (nr) => show(nr.id || null, nr.sub || null) };
-  show(r.id || null, r.sub || null);
+  inst = { update: (nr) => show(nr.id || null, nr.sub || null, nr.item || null) };
+  show(r.id || null, r.sub || null, r.item || null);
   return () => { stop?.(); inst = null; };
 }
