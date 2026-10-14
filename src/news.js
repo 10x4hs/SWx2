@@ -306,12 +306,26 @@ async function fitOne(env, one) {
   return one.slice(0, 54).replace(/\s+\S*$/, "") + "…";
 }
 
+/** 기사 페이지 HTML 에서 본문 글자만 (meta 설명 + <p> 문단), 4000자까지 */
+async function pageText(url) {
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 6000);
+  try {
+    const r = await fetch(url, { signal: ctl.signal, headers: { "user-agent": "Mozilla/5.0 (compatible; DsmMafiaNews/1.0)", accept: "text/html" } });
+    if (!r.ok) return "";
+    const html = (await r.text()).slice(0, 400000);
+    const dec = (x) => x.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;|&rsquo;|&lsquo;/g, "'").replace(/\s+/g, " ").trim();
+    const meta = html.match(/<meta[^>]+(?:property|name)=["'](?:og:)?description["'][^>]+content=["']([^"']+)/i)?.[1] || "";
+    const paras = [...html.matchAll(/<p[\s>][\s\S]*?<\/p>/gi)].map((m) => dec(m[0])).filter((x) => x.length > 60);
+    return [dec(meta), ...paras].join("\n").slice(0, 4000);
+  } finally { clearTimeout(tm); }
+}
+
 export async function summarize(env, limit = 10, opts = {}) {
   // opts.ids: 이 글들만 (기사를 연 사람이 기다릴 때 — 건너뛴 글도 다시 시도해요)
   const ids = Array.isArray(opts.ids) ? opts.ids.slice(0, SUM_CHUNK) : null;
   const where = ids ? `i.id IN (${ids.map(() => "?").join(",")})` : `i.sum_skip = 0 AND ${opts.day ? "i.day = ?" : "i.published_at > ?"}`;
   const { results } = await env.DB.prepare(
-    `SELECT i.id, i.title, i.raw, i.one_liner, f.name AS feed, f.topic
+    `SELECT i.id, i.title, i.raw, i.url, i.one_liner, f.name AS feed, f.topic
        FROM news_items i JOIN news_feeds f ON f.id = i.feed_id
       WHERE i.summary IS NULL AND ${where}
       ORDER BY i.published_at DESC LIMIT ?`
@@ -319,6 +333,14 @@ export async function summarize(env, limit = 10, opts = {}) {
 
   const todo = results || [];
   if (!todo.length) return { done: 0, left: 0, failed: [] };
+  // 사람이 기다리는 글인데 피드에 본문이 거의 없으면(제목만 오는 매체) 기사 페이지에서 글을 읽어 와요
+  if (ids) await Promise.all(todo.map(async (t) => {
+    if (String(t.raw || "").replace(/<[^>]+>/g, "").trim().length >= 200 || left() < 3) return;
+    const text = await pageText(t.url).catch(() => "");
+    if (text.length < 200) return;
+    t.raw = text;
+    await env.DB.prepare("UPDATE news_items SET raw = ? WHERE id = ?").bind(text, t.id).run();
+  }));
   // 이미 있는 줄기 태그를 보여 주고 맞으면 그대로 쓰게 해요 — 안 그러면 "ukraine war" · "russia ukraine war" 처럼 글마다 줄기가 갈라져요
   const { results: known } = await env.DB.prepare(
     `SELECT t.key, COUNT(i.id) AS n FROM news_threads t LEFT JOIN news_items i ON i.thread_id = t.id
@@ -1165,7 +1187,7 @@ const budgetChunks = (reserve = 2) => Math.max(0, Math.min(8, Math.floor((left()
 
 /** 매시 10분 (DB 알림과 같은 크론): 피드 10곳 + 요약 1묶음(5편) + 되채우기 한 걸음(5편) — 보통 30개 안팎/40 (공급사 장애 조치 여유) */
 export async function newsHourly(env) {
-  const pulled = await ingest(env, Date.now(), 10);
+  const pulled = await ingest(env, Date.now(), 16); // 요약은 목록을 연 사람 쪽에서도 바로 채우니 수집에 몫을 더 줘요
   const titles = await translateTitles(env, { calls: 2, reserve: 4 });
   // 오늘(한국) 글을 먼저 — 되채우기 몫(6)만 남기고 요약해요. 오늘 것이 다 끝났으면 최근 글, 그다음 되채우기.
   const today = left() >= 4 ? await summarize(env, Math.max(1, budgetChunks(8)) * SUM_CHUNK, { day: kstToday(0) }) : { done: 0, left: 0 };
