@@ -14,6 +14,7 @@ import { mountCommand } from "../ai-command.js";
 import { prioDonut, prioStats, PRIO_COLOR, PRIO_LABEL } from "../charts/prio.js";
 import { mountPad } from "../home-pad.js";
 import { openMenu } from "../ctxmenu.js";
+import { mountRingDrag } from "../ring-drag.js";
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
 const daysLeft = (key) => Math.max(0, Math.ceil((periodEnd(key) - Date.now()) / 864e5));
@@ -38,6 +39,9 @@ const CATS = [
 export const catOf = (text) => (CATS.find(([, re]) => re.test(text || "")) || ["other"])[0];
 const CAT_LABEL = { eng: "영어", paper: "공부 · 논문", rest: "휴식", work: "일 · 사업", health: "운동", other: "그 밖" };
 const HINT = { all: "링을 누르면 그 기간 목표 · 오늘은 하루 계획표", check: "도넛 · 요일을 누르면 체크리스트로", month: "누르면 이번 달 목표", week: "누르면 이번 주 목표", day: "누르면 시간 순 하루 계획표" };
+// 마우스가 있는 컴퓨터에선 오늘 링을 끌어서 계획을 넣을 수 있어요 (ring-drag.js)
+const DRAG_HINT = { all: "오늘 링을 끌면 계획 넣기 · 링을 누르면 그 기간 목표", day: "링을 끌면 계획 넣기 · 누르면 시간 순 하루 계획표" };
+const canDrag = () => !!window.matchMedia?.("(hover: hover) and (pointer: fine)").matches;
 const COLOR = { all: "var(--r-week)", check: "var(--p-max)", month: "var(--r-month)", week: "var(--r-week)", day: "var(--r-day)", team: "var(--m0)" };
 // 서버 시각은 ms · 초 · ISO 어느 쪽이 와도 ms 로
 const ms = (v) => (v == null ? null : typeof v === "string" ? Date.parse(v) : v < 1e12 ? v * 1000 : v);
@@ -108,13 +112,13 @@ export function mount(root, ctx) {
     line.dataset.page = pk;
     line.style.setProperty("--kc", COLOR[pk]);
     if (S.tip) { line.innerHTML = `<span>${esc(S.tip.text)}</span>${S.tip.go ? `<span class="fl-go">${esc(S.tip.go)}</span>` : ""}`; return; }
-    if (it) { line.innerHTML = `<span class="fl-key">${esc(it.en)}</span><span>${it.total ? `${pct(it.value)}% 달성` : "목표 없음"} · ${pct(it.time)}% 지남 · ${esc(gapText(it))}</span><span class="fl-go">${mine() ? "눌러서 계획 →" : "눌러서 하루 보기 →"}</span>`; return; }
+    if (it) { line.innerHTML = `<span class="fl-key">${esc(it.en)}</span><span>${it.total ? `${pct(it.value)}% 달성` : "목표 없음"} · ${pct(it.time)}% 지남 · ${esc(gapText(it))}</span><span class="fl-go">${mine() ? (it.key === "day" && canDrag() ? "끌면 계획 넣기 · 눌러서 하루 계획표 →" : "눌러서 계획 →") : "눌러서 하루 보기 →"}</span>`; return; }
     if (pk === "team") {
       line.innerHTML = `${ctx.users.map((u, i) => `<span class="key"><i class="k-done" style="background:var(--m${i % 3})"></i>${esc(u.username.toUpperCase())}</span>`).join("")}<span class="key"><i class="k-todo"></i>회색 = 남은 계획</span><span class="faint">공부 시간 = 집중 + 영어 · 숫자는 셋 다, 글은 나만</span>`;
       return;
     }
     const [a, b, c] = LEGEND[pk];
-    line.innerHTML = `<span class="key"><i class="k-done"></i>${a}</span><span class="key"><i class="k-past"></i>${b}</span><span class="key"><i class="k-todo"></i>${c}</span>${pk === "day" ? `<span class="key"><i class="k-now"></i>바늘 = 지금</span>` : ""}<span class="faint">${mine() ? HINT[pk] : S.closed ? "이 친구는 계획표를 공개하지 않았어요 (not open)" : "링을 누르면 친구의 하루 계획표 · 조각은 그 계획 하나"}</span>`;
+    line.innerHTML = `<span class="key"><i class="k-done"></i>${a}</span><span class="key"><i class="k-past"></i>${b}</span><span class="key"><i class="k-todo"></i>${c}</span>${pk === "day" ? `<span class="key"><i class="k-now"></i>바늘 = 지금</span>` : ""}<span class="faint">${mine() ? (canDrag() && DRAG_HINT[pk]) || HINT[pk] : S.closed ? "이 친구는 계획표를 공개하지 않았어요 (not open)" : "링을 누르면 친구의 하루 계획표 · 조각은 그 계획 하나"}</span>`;
   }
 
   // 체크리스트 쪽: 오늘 할 일을 얼마나 했는지 (우선순위 색 도넛) + 이번 주 날마다 + 남은 할 일
@@ -192,6 +196,7 @@ export function mount(root, ctx) {
 
   function draw(enter = S.first) {
     if (!S.items) return;
+    if (drag.busy()) { S.stale = true; return; } // 오늘 링을 끄는 중 · 이름 칸이 열린 동안엔 미뤘다가 끝나면 한 번 (안 그러면 끌던 조각이 사라져요)
     S.wide = chart.clientWidth >= 860;
     chart.classList.toggle("wide", S.wide);
     after(pager.redraw(), enter);
@@ -246,7 +251,7 @@ export function mount(root, ctx) {
         month: { scope: "month", title: `${t.getMonth() + 1}월 한 달`, color: "var(--r-month)", goals: month, time: elapsed(K.month), dLeft: daysLeft(K.month), days: monthDays.map(stat) },
         week: { scope: "week", title: `${+K.week.slice(7).replace("W", "")}주차 한 주`, color: "var(--r-week)", goals: week, time: elapsed(K.week), dLeft: daysLeft(K.week), days: weekDays.map(stat) },
         check: { items: day.filter((p) => !p.start), week: weekDays.map((d) => { const list = of(periodKey("day", d)).filter((p) => !p.start); return { date: d, ymd: ymd(d), total: list.length, done: done(list), future: d > t, today: periodKey("day", d) === K.day }; }) },
-        day: { color: "var(--r-day)", blocks, time: dayPassed, score: S.score, count: sc.count, doneCount: sc.doneCount, now: nowTime(), mine: mine() },
+        day: { color: "var(--r-day)", blocks, time: dayPassed, score: S.score, count: sc.count, doneCount: sc.doneCount, now: nowTime(), mine: mine(), drag: mine() && !res.closed && canDrag() },
       };
       if (assemble) S.first = true;
 
@@ -342,6 +347,17 @@ export function mount(root, ctx) {
     }
     if (d) { ctx.go(dayTarget(d.dataset.day)); return; }
     if (r) ctx.go(target(r.dataset.ring));
+  });
+  // 오늘 링을 끌어서 계획 넣기 (하루 쪽 큰 시계 · 전체 쪽 오늘 링, 마우스 · 내 차트에서만). 끌지 않고 누르면 위의 click 그대로
+  const drag = mountRingDrag(root, {
+    can: () => mine() && !S.closed && !!S.items,
+    blocks: () => S.data?.day?.blocks || [],
+    save: async ({ start, mins, text }) => {
+      await api.addPlan({ scope: "day", period: K.day, text, start, mins });
+      toast(`넣었어요 · ${start} ${hm(mins)} ${text}`);
+      ctx.changed("plans"); // 홈은 trio:changed 로 다시 그려요 — 그때쯤엔 이름 칸이 닫혀 있어요
+    },
+    onIdle: () => { if (S.stale && alive) { S.stale = false; load(false); } },
   });
   root.addEventListener("keydown", (e) => { const r = e.target.closest?.("svg [data-ring]"); if (r && (e.key === "Enter" || e.key === " ") && mine()) { e.preventDefault(); ctx.go(target(r.dataset.ring)); } });
   // 가리키면: 칸 설명(data-tip)이 있으면 그걸, 전체 쪽에선 링 요약을 아래 줄에
@@ -462,5 +478,5 @@ export function mount(root, ctx) {
   // 프로필(이름 · 사진)을 바꾸면 오른쪽 아래 사람 고르기도 바로 새 모습으로
   const onMe = () => { $$("[data-who]", root).forEach((btn) => { const u = ctx.user(btn.dataset.who); const old = btn.querySelector(".av"); if (u && old) old.outerHTML = avatar(u, "sm"); }); pad.refresh?.(); };
   window.addEventListener("trio:me", onMe);
-  return () => { alive = false; stopAi?.(); pad.destroy(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); window.removeEventListener("trio:me", onMe); };
+  return () => { alive = false; drag.destroy(); stopAi?.(); pad.destroy(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); window.removeEventListener("trio:me", onMe); };
 }

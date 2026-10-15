@@ -14,6 +14,7 @@
 //   ⑪-b 노트 우클릭 — 목록 · Brain 점 · Brain 목록에서 (폰은 길게 누르기, 키보드 Shift+F10): 이름 바꾸기(다른 노트 [[링크]] 도) · 새 하위 노트(Edit) · 옮기기 · 지우기 Undo / 5초 뒤 · 화면을 떠나면 바로 (2026-10-15)
 //   ⑫ 뉴스 — 하루 한 호 (가독성 · 한국어) · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13)
 //   ⑬ 경영 마이크로디그리 — 모듈 지도 · 현황판 · 하루 60/90/120분 · 2주 계획 · 카드(정적 이익 지도 · 더 자세히 · 퀴즈 · AI 튜터) · 케이스(내 답 먼저) · 연습문제 채점 · 오늘 · 회사 세우기 세금 계산 · 용어 찾기 (2026-10-14)
+//   ⑭ 홈 오늘 링 끌기 — 마우스를 대면 선 · 끌면 +분 · 놓으면 이름 칸(Enter 저장 · Esc 취소) · 거꾸로 · 겹침 · 그냥 누르면 원래대로 · 전체 쪽 오늘 링 · 친구 차트 · 터치는 그대로 (2026-10-15)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -802,6 +803,77 @@ try {
       const e3 = mineErr();
       ok(c.vn && !c.lilys && c.h2 === 2 && c.ts === 1 && c.toc === 2 && c.link && !e3.length, `${tv} · 주소만 있는 영상 노트 — 한 화면 ${c.vn} · 제목 ${c.h2} · 시간 ${c.ts} · 목차 ${c.toc}${e3.length ? " — " + e3[0] : ""}`);
       errs = [];
+    }
+
+    // ---------- ⑭ 홈 오늘 링 끌기 — 하루 쪽 큰 시계 · 전체 쪽 오늘 링, 마우스 · 내 차트에서만 (2026-10-15) ----------
+    {
+      errs = [];
+      const day = await p.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
+      const plansNow = async () => (await (await ctx.request.get(BASE + "/api/plans?periods=D:" + day, { headers: H })).json()).plans || [];
+      // 링 띠 가운데(r=0.5)에서 m분 자리의 화면 좌표 (data-dial = 중심 · 띠 안쪽/바깥 반지름)
+      const ringPt = (pg, m, r = 0.5) => pg.evaluate(([m, r]) => {
+        const svg = document.querySelector(".pg-slide:not(.out) svg[data-dial]");
+        const [cx, cy, ri, ro] = svg.dataset.dial.split(" ").map(Number), rr = ri + (ro - ri) * r, a = (m / 1440) * 2 * Math.PI - Math.PI / 2;
+        const q = new DOMPoint(cx + rr * Math.cos(a), cy + rr * Math.sin(a)).matrixTransform(svg.getScreenCTM());
+        return [q.x, q.y];
+      }, [m, r]);
+      const rd = () => p.evaluate(() => { const q = (c) => document.querySelector(".pg-slide:not(.out) .rd " + c)?.textContent || ""; return { cls: document.querySelector(".pg-slide:not(.out) .rd")?.getAttribute("class") || "", t1: q(".rd-t1"), big: q(".rd-big"), range: q(".rd-range"), sub: q(".rd-sub"), warn: q(".rd-warn"), pop: !!document.querySelector(".rd-pop"), hash: location.hash }; });
+      const dragRing = async (from, to) => { await p.mouse.move(...await ringPt(p, from)); await p.mouse.down(); const st = to > from ? 5 : -5; for (let m = from + st; st > 0 ? m <= to : m >= to; m += st) await p.mouse.move(...await ringPt(p, m)); await sleep(60); };
+      if (tv === "컴퓨터") {
+        await p.evaluate(() => { localStorage.setItem("trio-home-page", "3"); localStorage.setItem("trio-guide-off", "1"); });
+        await go("#/", 2500);
+        await p.mouse.move(...await ringPt(p, 840)); await sleep(120);
+        const hv = await rd();
+        await dragRing(840, 925);
+        const dg = await rd();
+        await p.mouse.up(); await sleep(200);
+        const up = await rd(), focused = await p.evaluate(() => !!document.activeElement?.closest?.(".rd-pop"));
+        await p.keyboard.type("끌기 검사"); await p.keyboard.press("Enter"); await sleep(1500);
+        const saved = (await plansNow()).find((x) => x.text === "끌기 검사"), after = await rd();
+        ok(hv.cls.includes("hover") && hv.t1 === "14:00" && dg.big === "+85분" && dg.range === "14:00 → 15:25" && dg.sub === "1시간 25분" && up.pop && focused && saved?.start === "14:00" && saved?.mins === 85 && after.hash === "#/" && !after.pop,
+          `${tv} · 하루 쪽 시계 끌기 — 선 ${hv.t1} · ${dg.big} · ${dg.range} · 이름 칸 ${up.pop}(입력 ${focused}) · 저장 ${saved ? saved.start + " " + saved.mins + "분" : "없음"} · 홈 그대로 ${after.hash}`);
+        // 겹침 안내 + 이름 칸 Esc → 저장 안 됨 · 거꾸로 끌기 · 끄는 중 Esc → 놓아도 홈 그대로
+        const n0 = (await plansNow()).length;
+        await dragRing(900, 930); const ov = await rd(); await p.mouse.up(); await sleep(200);
+        await p.keyboard.press("Escape"); await sleep(200);
+        const esc1 = await rd(), n1 = (await plansNow()).length;
+        await dragRing(720, 660); const back = await rd(); await p.keyboard.press("Escape"); await sleep(80);
+        const esc2 = await rd(); await p.mouse.up(); await sleep(400);
+        const esc3 = await rd();
+        ok(/끌기 검사/.test(ov.warn) && !esc1.pop && n1 === n0 && back.range === "11:00 → 12:00" && back.big === "+60분" && !esc2.cls.includes("drag") && !esc3.pop && esc3.hash === "#/",
+          `${tv} · 겹침 "${ov.warn}" · 이름 칸 Esc(저장 ${n1 - n0}) · 거꾸로 ${back.range} · 끄는 중 Esc → 홈 그대로 ${esc3.hash}`);
+        // 끌지 않고 누르면 원래대로 하루 계획표
+        await p.mouse.click(...await ringPt(p, 300)); await sleep(800);
+        const clickHash = await p.evaluate(() => location.hash);
+        ok(clickHash.startsWith("#/calendar/"), `${tv} · 링을 끌지 않고 누르면 원래대로 하루 계획표 (${clickHash})`);
+        // 전체 쪽: 링 다섯 개 중 오늘 링에서만
+        await p.evaluate(() => localStorage.setItem("trio-home-page", "0"));
+        await go("#/", 2500);
+        await p.mouse.move(...await ringPt(p, 180)); await sleep(120); const ah = await rd();
+        await p.mouse.move(...await ringPt(p, 180, 1.9)); await sleep(120); const wk = await rd();
+        await dragRing(300, 340); const ad = await rd(); await p.mouse.up(); await sleep(200);
+        await p.keyboard.type("전체 쪽 끌기"); await p.keyboard.press("Enter"); await sleep(1500);
+        const s2 = (await plansNow()).find((x) => x.text === "전체 쪽 끌기");
+        ok(ah.cls.includes("hover") && ah.t1 === "03:00" && !wk.cls.includes("hover") && ad.big === "+40분" && s2?.start === "05:00" && s2?.mins === 40 && !errs.length,
+          `${tv} · 전체 쪽 오늘 링 끌기 — 선 ${ah.t1} · 이번 주 링엔 선 없음 ${!wk.cls.includes("hover")} · ${ad.big} · 저장 ${s2 ? s2.start + " " + s2.mins + "분" : "없음"}${errs.length ? " — " + errs[0] : ""}`);
+        // 친구 차트에선 선이 안 떠요
+        await p.evaluate(() => document.querySelector('[data-who]:not([aria-selected="true"])')?.click()); await sleep(1500);
+        await p.mouse.move(...await ringPt(p, 600)); await sleep(150);
+        const fr = await rd();
+        ok(!fr.cls.includes("hover"), `${tv} · 친구 차트엔 끌기 선이 안 떠요`);
+        await p.evaluate(() => localStorage.removeItem("trio-home-page"));
+      } else {
+        // 폰(터치): 끌기 층이 생기지 않고, 누르면 원래대로 하루 계획표
+        const tctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
+        await tctx.request.post(BASE + "/api/auth/login", { headers: H, data: { username: user } });
+        await tctx.addInitScript(() => { try { localStorage.setItem("trio-home-page", "3"); localStorage.setItem("trio-guide-off", "1"); } catch {} });
+        const tp = await tctx.newPage();
+        await tp.goto(BASE + "/#/"); await sleep(2500);
+        await tp.touchscreen.tap(...await ringPt(tp, 600)); await sleep(900);
+        const t = await tp.evaluate(() => ({ layer: !!document.querySelector(".rd"), hash: location.hash }));
+        ok(!t.layer && t.hash.startsWith("#/calendar/"), `${tv} · 터치로 링을 누르면 원래대로 하루 계획표 · 끌기 층 없음 ${!t.layer} (${t.hash})`);
+        await tctx.close();
+      }
     }
 
     await ctx.close();

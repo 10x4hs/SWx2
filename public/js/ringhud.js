@@ -90,7 +90,10 @@ export function ringHud(items, { wide = true, center = "", caption = "" } = {}) 
   if (items.length > 4) { SW = 20; GAP = 11; } else { SW = 24; GAP = 15; }
   const x0 = 2 * C + 64, W = wide ? x0 + 380 : 2 * C;
   const disc = radius(items.length - 1) - SW / 2 - 14;
-  return `<svg class="rh glassy${wide ? " wide" : ""}" viewBox="0 0 ${W} ${2 * C}" role="group" aria-label="기간별 계획과 흘러간 시간">
+  // 오늘 링 자리 (홈에서 끌어 계획 넣기 · ring-drag.js): 중심 · 띠 안쪽/바깥 반지름 · 잡는 여유(옆 링과 반씩) · 가운데 빈 원
+  const di = items.findIndex((it) => it.key === "day");
+  const dial = di < 0 ? "" : ` data-dial="${C} ${C} ${radius(di) - SW / 2} ${radius(di) + SW / 2} ${GAP / 2} ${f2(disc)}"`;
+  return `<svg class="rh glassy${wide ? " wide" : ""}" viewBox="0 0 ${W} ${2 * C}"${dial} role="group" aria-label="기간별 계획과 흘러간 시간">
     <defs>
       <!-- 유리: 링 위쪽이 밝게 비치는 반사광 · 가운데 원판 -->
       <linearGradient id="rh-sheen" gradientUnits="userSpaceOnUse" x1="0" y1="${C - R0}" x2="0" y2="${C + R0}">
