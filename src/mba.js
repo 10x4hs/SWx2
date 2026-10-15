@@ -50,6 +50,11 @@ function registerCourse(on, { json, body, fail, now }, key) {
     if (!kinds.some((k) => (m[k] || []).some((c) => c.id === card))) fail(400, "없는 카드예요.");
     return { module, card };
   }
+  async function placeModule(env, url, b) {
+    const module = typeof b.module === "string" && ID_RE.test(b.module) ? b.module : fail(400, "없는 모듈이에요.");
+    if (!(await index(env, url, C.dir)).modules.some((x) => x.id === module)) fail(400, "없는 모듈이에요.");
+    return { module, card: "week" };
+  }
   async function state(req, env, uid) {
     const today = kstTodayReq(req, env), from = addDay(today, -167);
     const [r, d, k] = await env.DB.batch([
@@ -124,17 +129,26 @@ function registerCourse(on, { json, body, fail, now }, key) {
 
   // 튜터: 그 카드의 생각 · 예시 · 낱말 + 화면의 지금 값(context)을 시스템 프롬프트에 넣어요. level = easy(기본) | deep
   on("POST", P + "/ask", async ({ req, env, url, q, ec }) => {
-    const b = await body(req), { module, card } = await place(env, url, b, ["cards", "cases"]);
+    const b = await body(req);
+    // 개발 과정의 'AI 질문' 탭: card = "week" 이면 카드 하나가 아니라 그 주 전체(두런 장면 · 목표 · 카드 · 사례)를 보고 답해요
+    const week = key === "dev" && b.card === "week";
+    const { module, card } = week ? await placeModule(env, url, b) : await place(env, url, b, ["cards", "cases"]);
     const msgs = Array.isArray(b.messages) ? b.messages.slice(-MAX_TURNS) : [];
     const clean = msgs.filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
       .map((m) => ({ role: m.role, content: m.content.slice(0, 3000) }));
     if (!clean.length || clean[clean.length - 1].role !== "user") fail(400, "질문을 적어 주세요.");
-    const doc = await asset(env, url, `${C.dir}/${module}.json`), c = doc?.cards?.find((x) => x.id === card), cs = c ? null : doc?.cases?.find((x) => x.id === card);
-    if (!c && !cs) fail(404, "카드를 찾지 못했어요.");
+    const doc = await asset(env, url, `${C.dir}/${module}.json`), c = week ? null : doc?.cards?.find((x) => x.id === card), cs = week || c ? null : doc?.cases?.find((x) => x.id === card);
+    if (week ? !doc : !c && !cs) fail(404, "카드를 찾지 못했어요.");
     const context = typeof b.context === "string" ? b.context.trim().slice(0, cs ? 2000 : 600) : "";
     const deep = b.level === "deep";
     const rules = `규칙: 쉬운 한국어 해요체, 짧은 문단. ${deep ? "지금은 '깊게' 모드예요 — 원어 용어 · 공식 · 교과서 이름을 써도 돼요. 정확하게, 근거가 있으면 출처를 말해요." : "지금은 '쉽게' 모드예요 — 일상 비유 먼저, 처음 쓰는 용어는 그 자리에서 한 줄로 풀어요."} 숫자를 쓸 때는 계산을 한 줄로 보여 줘. 자료에 없는 통계 · 법 조문 · 세율은 지어내지 말고 "확인이 필요해요"라고 해. 법 · 세금 · 노무는 전문가(변호사 · 세무사 · 노무사) 확인이 필요하다고 덧붙여. 답 끝에 학생이 스스로 떠올려 볼 질문 하나를 '한번 생각해 볼까요?' 로 붙여.`;
-    const sys = (cs ? `너는 "${C.name}"의 케이스 토론 코치야. 학생은 ${C.who}이야.${C.tail} 지금 푸는 케이스: 《${doc.title}》 ${cs.title}.
+    const sys = (week ? `너는 "${C.name}"의 튜터야. 학생은 ${C.who}이야.${C.tail} 지금 공부하는 주: 《${doc.no} ${doc.title}》 · 이번 주 질문 "${doc.q}".
+${rules} 학생이 이 주 내용을 물으면 아래 자료를 근거로 답하고, 어느 카드에 더 자세히 있는지 카드 제목으로 알려 줘. 학생이 '내가 대표라면' 같은 판단을 물으면 바로 정답을 주기보다 선택지와 기준을 먼저 보여 주고 학생 생각을 물어 줘.
+[두런 장면 · 가상 회사] ${(doc.story?.body || []).join(" ")}
+[이번 주 목표] ${(doc.goals || []).join(" / ")}
+[카드] ${(doc.cards || []).map((x) => `${x.id} ${x.title} — ${x.lead || ""}`).join(" / ")}
+[사례] ${(doc.cases || []).map((x) => x.title).join(" / ")}
+${context ? `[학생 화면의 지금 값] ${context}` : ""}` : cs ? `너는 "${C.name}"의 케이스 토론 코치야. 학생은 ${C.who}이야.${C.tail} 지금 푸는 케이스: 《${doc.title}》 ${cs.title}.
 ${rules} 케이스 질문에는 답을 바로 주지 말고, 학생이 먼저 생각을 말하게 묻고 힌트를 한 단계씩 줘. 학생이 자기 답을 말하면 근거 · 계산 · 빠진 관점을 짚어 줘.
 [상황] ${(cs.story || []).join(" ")}
 ${cs.data ? `[데이터] ${[cs.data.cols.join(" | "), ...cs.data.rows.map((r) => r.join(" | "))].join(" / ")}` : ""}

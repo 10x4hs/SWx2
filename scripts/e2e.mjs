@@ -754,6 +754,12 @@ try {
       await p.click('.dv-doc[data-k="erd"]'); await sleep(150);
       const dc = await p.evaluate(() => ({ docs: document.querySelectorAll(".dv-doc").length, erd: document.querySelectorAll(".dv-ent").length, map: document.querySelectorAll(".dv-tbl tbody tr").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
       ok(dc.docs === 11 && dc.erd === 5 && dc.map >= 8 && !dc.over && !errs.length, `${tv} · 개발 문서 지도 — 문서 ${dc.docs} · ERD 표 ${dc.erd} · 대응표 ${dc.map} · 가로 넘침 ${dc.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/dev/ask/security", "#dv-ask .ppc", 600);
+      const ak = await p.evaluate(() => ({ tabs: document.querySelectorAll(".dv-nav a").length, cur: document.querySelector('.dv-nav a[aria-current="page"]')?.textContent, mods: document.querySelectorAll(".dv-askmods a").length, on: document.querySelector('.dv-askmods a[aria-current="page"]')?.getAttribute("href"), input: !!document.querySelector("#dv-ask textarea, #dv-ask input"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await hop("#/dev/security", ".dv-days", 400);
+      const wkAsk = await p.evaluate(() => !!document.querySelector('a[href="#/dev/ask/security"]'));
+      ok(ak.tabs === 4 && ak.cur === "AI 질문" && ak.mods === 12 && ak.on === "#/dev/ask/security" && ak.input && wkAsk && !ak.over && !errs.length, `${tv} · 개발 AI 질문 — 탭 ${ak.tabs} (${ak.cur}) · 주 고르기 ${ak.mods} · 지금 ${ak.on} · 입력칸 ${ak.input} · 주 화면에서 바로 가기 ${wkAsk} · 가로 넘침 ${ak.over}${errs.length ? " — " + errs[0] : ""}`);
       await ctx.request.fetch(BASE + "/api/dev/done", { method: "PUT", headers: H, data: { module: "security", item: sd.problems.find((x) => x.day === pd).id, kind: "problem", done: false } }).catch(() => {});
     }
 

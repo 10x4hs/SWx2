@@ -25,7 +25,7 @@ export function mountMeeting(host, ctx, modId, dayArg) {
           <div style="display:flex;flex-direction:column;gap:10px">${p.options.map((o, i) => `<button class="dv-mopt" data-o="${i}"><span class="m" style="font-size:14px;color:var(--dv-ink)">${esc(o.k || "ABCD"[i])}</span><span>${md(o.t)}</span></button>`).join("")}</div>
           <div class="dv-paper" hidden style="margin-top:24px;padding:32px 36px" data-ex></div>
         </section>`).join("")}
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:48px"><a class="dv-btn ghost" href="#/dev/${modId}">이 주로</a>${day < 5 ? `<a class="dv-btn ghost" href="#/dev/${modId}/practice/${day + 1}">${day + 1}일 회의실 →</a>` : ""}</div>
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:48px"><span style="display:inline-flex;gap:10px;flex-wrap:wrap"><a class="dv-btn ghost" href="#/dev/${modId}">이 주로</a><a class="dv-btn ghost" href="#/dev/ask/${modId}">AI에게 묻기</a></span>${day < 5 ? `<a class="dv-btn ghost" href="#/dev/${modId}/practice/${day + 1}">${day + 1}일 회의실 →</a>` : ""}</div>
       </div>`;
     $$("[data-p]", host).forEach((sec) => sec.addEventListener("click", async (e) => {
       const b = e.target.closest(".dv-mopt"); if (!b || sec.dataset.answered) return;

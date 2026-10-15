@@ -26,7 +26,8 @@ export function mountWeek(host, ctx, id) {
           <div><div class="dv-week-no">${m.no}</div><h1 style="margin:18px 0 10px">${esc(m.title)}</h1><p class="kr" style="font-size:20px;line-height:1.6;margin:0">이번 주 질문 — <b class="acc">“${esc(m.q)}”</b></p></div>
           <div class="dv-panel" style="display:flex;flex-direction:column;gap:12px"><div class="m">이번 주 진도</div>
             <div style="display:flex;gap:28px;flex-wrap:wrap">${[["카드", p.cards, p.nCards], ["사례", p.cases, p.nCases], ["회의실", p.probs, p.nProbs]].map(([l, a, b]) => `<span style="font:600 32px var(--dv-lat)">${a}<span class="m"> / ${b} ${l}</span></span>`).join("")}</div>
-            <div class="m">이번 주 문서 · ${esc(m.doc)}</div></div>
+            <div class="m">이번 주 문서 · ${esc(m.doc)}</div>
+            <a class="dv-btn" style="align-self:flex-start;margin-top:4px" href="#/dev/ask/${id}">AI에게 이번 주 묻기</a></div>
         </section>
         <section class="dv-wrap" style="padding-top:48px"><div class="dv-paper" style="max-width:860px">
           <div class="m">두런 · ${Number(m.no)}장면 · 직원 ${doc.story.size}명 · 가상 회사</div>
