@@ -28,6 +28,7 @@ import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js";
 import * as roomView from "./views/room.js";
 import * as newsView from "./views/news.js"; // 뉴스 Signal Map (#/news · #/news/item/<id> · #/news/thread/<id>)
 import * as mbaView from "./views/mba.js"; // 경영 마이크로디그리 (#/mba · #/mba/today · #/mba/company · #/mba/words · #/mba/<모듈>/<카드>)
+import * as devView from "./views/dev.js"; // 개발 흐름 마이크로디그리 (#/dev · #/dev/today · #/dev/docs · #/dev/<모듈>/<카드> · case · practice)
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
 import { startLive, stopLive } from "./live.js";
@@ -123,6 +124,7 @@ const NAV = [
   { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI" }, // Brain 안에 묻히면 AI 공부책을 못 찾아서 바로 가는 아이콘은 남겨요
   { key: "news", hash: "#/news", label: "News", tip: "News · daily edition" },
   { key: "biz", hash: "#/mba", label: "경영", tip: "경영 · 마이크로디그리 (24주 · 하루 1~2시간)" },
+  { key: "dev", hash: "#/dev", label: "개발", tip: "개발 흐름 · 마이크로디그리 (12주 · 하루 30~60분)" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -298,13 +300,14 @@ function parseRoute() {
   if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
   if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
   if (a === "books") return { view: "books", nav: "study", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
+  if (a === "dev") return { view: "dev", nav: "dev", id: b || null, sub: c || null, item: d || null }; // 개발 흐름 마이크로디그리
   if (a === "mba") return { view: "mba", nav: "biz", id: b || null, sub: c || null, item: d || null }; // 경영 마이크로디그리
   if (a === "news") return { view: "news", nav: "news", sub: ["item", "world", "co", "talk", "board", "library", "history"].includes(b) ? b : null, id: c || null, day: /^\d{4}-\d{2}-\d{2}$/.test(b || "") ? b : null }; // #/news · #/news/<day> · #/news/item/<id>
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, mba: mbaView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {
@@ -327,6 +330,7 @@ function route(redraw = false) {
   if (lastView === "page" && r.view === "page" && !inStudy) { pageView.update(r); return; } // 페이지 사이 이동은 껍데기를 그대로
   if (lastView === "news" && r.view === "news") { newsView.update(r); return; } // 지구본은 그대로, 패널만
   if (lastView === "mba" && r.view === "mba") { mbaView.update(r); return; } // 모듈 · 카드 사이 이동은 껍데기를 그대로
+  if (lastView === "dev" && r.view === "dev") { devView.update(r); return; } // 주 · 카드 사이 이동도 껍데기를 그대로
   if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>

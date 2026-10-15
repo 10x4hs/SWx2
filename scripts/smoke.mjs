@@ -140,6 +140,20 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("a", "PUT", "/mba/day", { minutes: 12 }); r = await call("a", "PUT", "/mba/day", { minutes: 5, plan: "내일 아침 지하철에서 퀴즈" });
   { const d = r.data.days?.find((x) => x.day === r.data.today); ok(r.status === 200 && d?.minutes === 17 && d.plan === "내일 아침 지하철에서 퀴즈", "mba: day minutes add up + plan"); }
   r = await call("a", "PUT", "/mba/day", {}); ok(r.status === 400, "mba: empty day → 400");
+  // 개발 흐름 마이크로디그리: 같은 모양의 /dev/* — dev_* 표에 따로 남고, 경영 기록과 섞이지 않아요
+  { const di = await (await fetch(BASE + "/dev/index.json")).json(), dm = di.modules.find((m) => m.id === "security") || di.modules[0], dc = dm.cards[0].id;
+    ok(di.modules.length === 12 && di.modules.every((m) => m.cards.length === 20 && m.cases.length === 2 && m.problems.length === 15), "dev: 12 modules × 20 cards · 2 cases · 15 problems");
+    r = await call("a", "GET", "/dev/state"); ok(r.status === 200 && Array.isArray(r.data.items) && Array.isArray(r.data.due), "dev: state");
+    r = await call("a", "PUT", "/dev/read", { module: dm.id, card: dc, correct: 1, total: 2 });
+    { const it = r.data.items?.find((x) => x.module === dm.id && x.card === dc); ok(r.status === 200 && it?.stage === 1 && it.due_day > r.data.today, "dev: read → stage 1, due tomorrow"); }
+    r = await call("a", "GET", "/mba/state"); ok(!r.data.items.some((x) => x.module === dm.id && x.card === dc), "dev: reads stay out of mba state");
+    r = await call("a", "PUT", "/dev/read", { module: "accounting", card: "profit-vs-revenue" }); ok(r.status === 400, "dev: mba module id → 400");
+    r = await call("a", "PUT", "/dev/review", { results: [{ module: dm.id, card: dc, correct: 1, total: 1 }] });
+    { const it = r.data.items?.find((x) => x.card === dc && x.module === dm.id); ok(it?.stage === 2 && it.reviews === 1, "dev: review pass → stage 2"); }
+    r = await call("a", "PUT", "/dev/done", { module: dm.id, item: dm.problems[0].id, kind: "problem", score: 1, total: 1 }); ok(r.status === 200 && r.data.done.some((x) => x.item === dm.problems[0].id && x.score === 1), "dev: meeting problem done");
+    r = await call("a", "PUT", "/dev/done", { module: dm.id, item: "nope", kind: "case" }); ok(r.status === 400, "dev: unknown case → 400");
+    r = await call("a", "PUT", "/dev/day", { minutes: 9, plan: "내일 회의실 2문제" }); { const d = r.data.days?.find((x) => x.day === r.data.today); ok(d?.minutes === 9 && d.plan === "내일 회의실 2문제", "dev: day minutes + plan"); }
+    r = await call("b", "GET", "/dev/state"); ok(r.status === 200 && !r.data.items.some((x) => x.card === dc && x.module === dm.id), "dev: private per user"); }
   // 케이스 · 연습문제 · 강의 끝냄 (v2) — id 는 index.json 에서 골라요
   { const mi = await (await fetch(BASE + "/mba/index.json")).json(), mm = mi.modules.find((m) => m.cases?.length && m.problems?.length && m.lectures?.length);
     ok(mi.modules.every((m) => m.cards.length >= 30), "mba: every module has 30+ cards");
