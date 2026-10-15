@@ -13,11 +13,33 @@ import { openMenu, closeMenu } from "../ctxmenu.js";
 import { icon } from "../icons.js";
 import { BLOCKS } from "../english/data.js";
 
-const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게)
+const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게). 짧은 계획 바로 뒤에 다음 계획이 붙어 있으면 그 자리만 늘어나요 (axis)
 const STEP = 5;     // 시간표를 누르거나 끌 때만 5분 칸 (적는 시각 · 길이는 1분 단위)
 const DEFAULT_MINS = 60; // 새 계획의 기본 길이 — 바로 전에 넣은 길이를 따라가지 않아요
-const MIN_H = 22;   // 짧은 계획도 글자가 보이는 높이(px) — 바로 뒤에 다른 계획이 있으면 그 앞까지만
-const FLOOR = 14;   // 그래도 이만큼은 (한 줄 글자가 보이는 최소 · 10분 = 16px 이라 10분 이상은 원래 자리에 딱 맞아요)
+const MIN_H = 30;   // 짧은 계획도 한 줄(체크 · 못함 · 미루기 · 삭제 버튼까지)이 보이는 높이(px) — 바로 뒤에 다른 계획이 붙어 있으면 그 사이 칸을 늘려요
+const FLOOR = 14;   // 그래도 이만큼은 (한 줄 글자가 보이는 최소)
+// 분 → 세로 위치(px) 표: Y[i] = 시간표 맨 위(m0 분)에서 i분 뒤의 위치. 기본은 1시간 = HOUR_PX.
+// 같은 줄에서 계획 바로 뒤에 다음 계획이 붙어 있어 한 줄(MIN_H)이 안 들어가면 그 사이 분만 늘려요 — 그 시간의 1시간 칸이 그만큼 길어져요.
+function axis(placed, m0) {
+  const base = HOUR_PX / 60, n = 1440 - m0, ppm = new Array(n).fill(base);
+  for (const it of placed) {
+    if (it.next === Infinity || (it.next - it.s) * base - 2 >= MIN_H) continue;
+    const r = (MIN_H + 2) / (it.next - it.s);
+    for (let m = Math.max(it.s, m0); m < Math.min(it.next, 1440); m++) ppm[m - m0] = Math.max(ppm[m - m0], r);
+  }
+  const Y = [0];
+  for (let i = 0; i < n; i++) Y.push(Y[i] + ppm[i]);
+  return Y;
+}
+// 세로 위치(px) → 분 (늘어난 칸에서도 실제 시각)
+function minuteAt(Y, y, m0) {
+  let lo = 0, hi = Y.length - 1;
+  if (y <= 0) return m0;
+  if (y >= Y[hi]) return m0 + hi;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (Y[mid] <= y) lo = mid; else hi = mid; }
+  return m0 + lo + (y - Y[lo]) / (Y[lo + 1] - Y[lo]);
+}
+const r2 = (v) => Math.round(v * 100) / 100;
 // 못함 버튼 — 체크(끝냄) 옆의 빨간 ✕. 누르면 계획이 빨갛게 바뀌어요 (체크리스트도 같이 써요)
 export const missBtn = (p) => `<button type="button" class="miss-btn" data-miss="${esc(p.id)}" aria-pressed="${p.missed ? "true" : "false"}" aria-label="${esc(p.text)} 못함" title="${p.missed ? "못함 되돌리기" : "못 했어요 (빨간색 표시)"}"><svg viewBox="0 0 12 12" width="8" height="8" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>`;
 // 우선순위 1~5순위 · 예상 시간 — public/js/prio.js (색은 styles.css 의 --p-*). 다른 화면이 여기서 PRIOS 를 가져가요
@@ -171,43 +193,48 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     if (ad) { ad.hidden = !loose.length; ad.innerHTML = loose.length ? `<span class="dp-ad-k">시간 없는 일</span>${loose.map((p) => `<a class="dp-ad ${p.done ? "done" : ""}" href="#/checklist/${day}" data-p="${esc(p.priority || "")}" title="체크리스트에서 보기">${esc(p.text)}</a>`).join("")}` : ""; }
     const startH = Math.min(6, timed.length ? Math.floor(toMin(timed[0].start) / 60) : 6);
     const nowM = toMin(nowTime());
-    let hours = "";
-    for (let h = startH; h < 24; h++) {
-      const past = isPast || (isToday && (h + 1) * 60 <= nowM);
-      const slot = `${pad(h)}:00`, cur = isToday && Math.floor(nowM / 60) === h;
-      hours += `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}" data-h="${h}"><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
-    }
     // 겹치면 옆으로 나눠요 — 서로 이어진 묶음마다 칸 수를 같이 쓰고, 오른쪽이 비면 넓게 펴요.
-    // 겹침은 실제 시각으로 따져요(10분 뒤에 바로 이어지는 계획은 나란히가 아니라 위아래로). 짧은 계획은 뒤 계획 앞까지 높이를 늘려 글자를 보여요.
-    const px = (m) => (m / 60) * HOUR_PX;
-    const items = timed.map((p) => { const s = toMin(p.start), e = s + (p.mins || 30), real = px(e - s) - 2; return { p, s, e, real, ce: Math.max(e, s + ((FLOOR + 2) / HOUR_PX) * 60) }; }); // ce = 겹침을 따질 끝 (10분 미만만 조금 늘려서)
+    // 겹침은 실제 시각으로만 따져요 (08:55–09:00 바로 뒤의 09:00 계획은 나란히가 아니라 위아래로).
+    const m0 = startH * 60;
+    const items = timed.map((p) => { const s = toMin(p.start), e = s + (p.mins || 30); return { p, s, e }; });
     const placed = [];
     let group = [], groupEnd = -1, gid = 0;
     const flush = () => {
       const cols = [];
-      for (const it of group) { let c = cols.findIndex((end) => end <= it.s); if (c < 0) { c = cols.length; cols.push(it.ce); } else cols[c] = it.ce; it.c = c; it.g = gid; }
+      for (const it of group) { let c = cols.findIndex((end) => end <= it.s); if (c < 0) { c = cols.length; cols.push(it.e); } else cols[c] = it.e; it.c = c; it.g = gid; }
       for (const it of group) {
         it.n = cols.length; it.span = 1;
-        while (it.c + it.span < it.n && !group.some((o) => o !== it && o.c === it.c + it.span && o.s < it.ce && it.s < o.ce)) it.span++;
+        while (it.c + it.span < it.n && !group.some((o) => o !== it && o.c === it.c + it.span && o.s < it.e && it.s < o.e)) it.span++;
       }
       placed.push(...group); group = []; gid++;
     };
-    for (const it of items) { if (group.length && it.s >= groupEnd) flush(); group.push(it); groupEnd = Math.max(groupEnd, it.ce); }
+    for (const it of items) { if (group.length && it.s >= groupEnd) flush(); group.push(it); groupEnd = Math.max(groupEnd, it.e); }
     if (group.length) flush();
-    // 보이는 높이: 원래 길이 → 짧으면 MIN_H 까지, 단 같은 줄(칸)에서 바로 뒤 계획이 시작하기 전까지만
+    // 같은 줄(칸)에서 바로 뒤에 시작하는 계획 → 위치 표(짧은 계획 뒤가 붙어 있으면 그 사이만 늘려요)
     const sameLane = (a, b) => a.g !== b.g || (a.c < b.c + b.span && b.c < a.c + a.span);
+    for (const it of placed) it.next = placed.filter((o) => o.s > it.s && sameLane(it, o)).reduce((m, o) => Math.min(m, o.s), Infinity);
+    const Y = axis(placed, m0), yAt = (m) => Y[Math.max(0, Math.min(1440, m) - m0)];
+    // 보이는 높이: 원래 길이 → 짧으면 MIN_H 까지, 단 같은 줄에서 바로 뒤 계획이 시작하기 전까지만 (붙어 있으면 위에서 칸이 늘어나 있어요)
     for (const it of placed) {
-      const next = placed.filter((o) => o.s > it.s && sameLane(it, o)).reduce((m, o) => Math.min(m, o.s), Infinity);
-      const room = next === Infinity ? Infinity : px(next - it.s) - 2;
-      it.h = Math.max(Math.max(it.real, FLOOR), Math.min(Math.max(it.real, MIN_H), room));
+      const real = yAt(it.e) - yAt(it.s) - 2, room = it.next === Infinity ? Infinity : yAt(it.next) - yAt(it.s) - 2;
+      it.h = Math.max(Math.max(real, FLOOR), Math.min(Math.max(real, MIN_H), room));
+    }
+    // 1시간 칸: 늘어난 칸은 높이와 15분 눈금을 실제 시각 자리에 다시 그려요
+    let hours = "";
+    for (let h = startH; h < 24; h++) {
+      const past = isPast || (isToday && (h + 1) * 60 <= nowM);
+      const slot = `${pad(h)}:00`, cur = isToday && Math.floor(nowM / 60) === h;
+      const top = yAt(h * 60), H = yAt(h * 60 + 60) - top, q = [15, 30, 45].map((k) => r2(yAt(h * 60 + k) - top));
+      const grow = Math.abs(H - HOUR_PX) > 0.01 ? ` style="height:${r2(H)}px;background-image:linear-gradient(to bottom, ${q.map((y, i) => `transparent ${i ? q[i - 1] : 0}px ${r2(y - 1)}px, var(--line) ${r2(y - 1)}px ${y}px`).join(", ")}, transparent ${q[2]}px)"` : "";
+      hours += `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}${grow ? " grow" : ""}" data-h="${h}"${grow}><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
     }
     const blocks = placed.map(({ p, s, e, h, c, n, span }) => {
-      const top = ((s - startH * 60) / 60) * HOUR_PX + 1, w = 100 / n, frac = span / n;
+      const top = r2(yAt(s) + 1), w = 100 / n, frac = span / n, hh = Math.round(h);
       // 크기에 맞춰: tiny(한 줄 · 작은 글씨) · thin(한 줄 + 시각) · narrow(좁으면 버튼은 숨기고 우클릭 메뉴로)
-      const size = h < 21 ? " thin tiny micro" : h < 30 ? " thin tiny" : h < 50 ? " thin" : "";
+      const size = hh < 21 ? " thin tiny micro" : hh < 30 ? " thin tiny" : hh < 50 ? " thin" : "";
       const narrow = (frac < 0.5 ? " narrow xnarrow" : frac < 1 ? " narrow" : "") + (frac < 1 && c + span === n ? " edge-r" : "");
       const tip = `${p.start}–${toTime(e)} · ${p.text}${p.priority ? ` · ${p.priority}` : ""}`;
-      return `<div class="block ${status(p)}${size}${narrow}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tip)}" style="top:${top}px;height:${h}px;left:calc(${c * w}% + ${c ? 2 : 0}px);right:auto;width:calc(${w * span}% - ${n > 1 ? 2 : 0}px)" data-id="${esc(p.id)}">
+      return `<div class="block ${status(p)}${size}${narrow}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tip)}" style="top:${top}px;height:${r2(h)}px;left:calc(${c * w}% + ${c ? 2 : 0}px);right:auto;width:calc(${w * span}% - ${n > 1 ? 2 : 0}px)" data-id="${esc(p.id)}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">${missBtn(p)}
         <div class="txt">${h < 50 ? `<span class="when-i">${esc(p.start)}</span>` : ""}<span data-edit="${esc(p.id)}">${esc(p.text)}</span>${h >= 50 ? `<span class="when">${esc(p.start)}–${toTime(e)} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
         ${playBtn(p)}
@@ -221,14 +248,14 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     const ed = S.editId ? plans.find((x) => x.id === S.editId) : null;
     const MINS = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180, 240];
     const mins0 = ed ? ed.mins || 30 : DEFAULT_MINS, minsList = MINS.includes(mins0) ? MINS : [...MINS, mins0].sort((a, b) => a - b);
-    const pop = S.editSlot ? `<form class="slot-add slot-pop${ed ? " editing" : ""}" data-slot-form="${S.editSlot}" ${ed ? `data-edit-id="${esc(ed.id)}"` : ""} autocomplete="off" style="top:${Math.max(0, ((toMin(S.editSlot) - startH * 60) / 60) * HOUR_PX + 2)}px">
+    const pop = S.editSlot ? `<form class="slot-add slot-pop${ed ? " editing" : ""}" data-slot-form="${S.editSlot}" ${ed ? `data-edit-id="${esc(ed.id)}"` : ""} autocomplete="off" style="top:${r2(Math.max(0, yAt(toMin(S.editSlot)) + 2))}px">
         ${ed ? `<span class="sp-t">계획 고치기</span>` : ""}
         <input class="input slot-at" type="time" name="at" step="60" value="${S.editSlot}" aria-label="시작 시각 (1분 단위)">
         <input class="input" name="text" maxlength="200" placeholder="${S.editSlot}에 할 일" aria-label="할 일" value="${ed ? esc(ed.text) : ""}" autofocus>
         <select class="select" name="mins" aria-label="걸리는 시간">${minsList.map((m) => `<option value="${m}" ${m === mins0 ? "selected" : ""}>${hm(m)}</option>`).join("")}<option value="custom">직접 입력…</option></select><input class="input slot-mins" name="mins_text" placeholder="${MINS_HINT}" aria-label="걸리는 시간 직접 입력" autocomplete="off" hidden>
         ${prioSelect("priority", ed ? ed.priority || "" : S.editPrio || "")}
         <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
-    const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${((nowM - startH * 60) / 60) * HOUR_PX}px" aria-hidden="true"></div>` : "";
+    const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${r2(yAt(nowM))}px" aria-hidden="true"></div>` : "";
     // 폰: 추가 · 고치기 창은 시간표 위가 아니라 화면 아래에서 올라오는 시트로 (손가락 · 키보드에 안 가려지게)
     el.classList.toggle("ro", ro());
     const u = ctx.users.find((x) => x.id === who);
@@ -251,9 +278,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     if (!S.scrolled) {
       S.scrolled = true;
       const at = isToday ? nowM - 60 : timed.length ? toMin(timed[0].start) - 30 : 8 * 60;
-      scroller().scrollTop = Math.max(0, ((at - startH * 60) / 60) * HOUR_PX);
+      scroller().scrollTop = Math.max(0, yAt(at));
     }
-    S.gridStartH = startH;
+    S.axis = { m0, Y }; // 끌기 · 빈 칸 누르기가 같은 위치 표로 시각을 읽어요
     const f = $("[data-slot-form]", el);
     if (f) { const i = f.text; i.focus({ preventScroll: true }); if (!S.editId) i.value = S.editText || ""; i.setSelectionRange(i.value.length, i.value.length); }
     $("#dp-tt-sum", el).textContent = timed.length ? `${timed.length}개 · ${hm(timed.reduce((a, p) => a + (p.mins || 0), 0))}` : "";
@@ -502,7 +529,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   });
 
   // ---------- 블록 끌기: 가운데를 잡으면 옮기기, 위·아래 모서리를 잡으면 늘리기/줄이기 (5분 단위) ----------
-  const PX5 = HOUR_PX / 12;
+  const axY = (m) => S.axis.Y[Math.max(0, Math.min(1440, m) - S.axis.m0)];
   const edgeOf = (b, y) => { const r = b.getBoundingClientRect(), k = Math.min(8, r.height / 4); return y - r.top <= k ? "top" : r.bottom - y <= k ? "bot" : "move"; };
   // 가장자리에 올리면 커서를 위아래 화살표로
   el.addEventListener("mousemove", (e) => { const b = e.target.closest?.("#dp-grid .block"); if (!b || drag) return; b.style.cursor = e.target.closest("button, input") ? "" : edgeOf(b, e.clientY) === "move" ? "" : "ns-resize"; });
@@ -539,7 +566,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     // 계획표 칸 위 · 아래 끝 가까이 끌면 칸이 저절로 스크롤돼요 (페이지는 그대로)
     const sc = scroller(), r = sc.getBoundingClientRect();
     if (e.clientY < r.top + 36) sc.scrollTop -= 14; else if (e.clientY > r.bottom - 36) sc.scrollTop += 14;
-    const d = Math.round((e.clientY - drag.y0 + sc.scrollTop - drag.sc0) / PX5) * STEP;
+    // 잡은 쪽(시작 · 끝) 자리 + 움직인 px → 분. 늘어난 칸에서도 실제 시각으로, 5분 단위
+    const dy = e.clientY - drag.y0 + sc.scrollTop - drag.sc0;
+    const d = Math.round((minuteAt(S.axis.Y, axY(drag.mode === "bot" ? drag.e : drag.s) + dy, S.axis.m0) - (drag.mode === "bot" ? drag.e : drag.s)) / STEP) * STEP;
     if (!drag.moved && Math.abs(e.clientY - drag.y0) < 4) return;
     drag.moved = true; drag.b.classList.add("dragging");
     let ns = drag.s, ne = drag.e;
@@ -547,9 +576,8 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     else if (drag.mode === "top") ns = Math.max(0, Math.min(drag.e - STEP, drag.s + d));
     else ne = Math.min(1440, Math.max(drag.s + STEP, drag.e + d));
     drag.ns = ns; drag.ne = ne;
-    const sh = S.gridStartH ?? 6;
-    drag.b.style.top = ((ns - sh * 60) / 60) * HOUR_PX + 1 + "px";
-    drag.b.style.height = Math.max(MIN_H, ((ne - ns) / 60) * HOUR_PX - 2) + "px";
+    drag.b.style.top = r2(axY(ns) + 1) + "px";
+    drag.b.style.height = r2(Math.max(MIN_H, axY(ne) - axY(ns) - 2)) + "px";
     let tag = drag.b.querySelector(".drag-tag"); if (!tag) { tag = document.createElement("span"); tag.className = "drag-tag"; drag.b.appendChild(tag); }
     tag.textContent = `${toTime(ns)}–${toTime(ne)} · ${hm(ne - ns)}`;
     e.preventDefault();
@@ -572,8 +600,10 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
 
   // 마우스 위치 → 5분 단위 시각 ("+ 14:35에 추가")
   function slotAt(btn, y) {
-    const row = btn.closest(".hour"), r = row.getBoundingClientRect(), h = +row.dataset.h;
-    const m = Math.max(0, Math.min(55, Math.floor(((y - r.top) / r.height) * 60 / STEP) * STEP));
+    const row = btn.closest(".hour"), r = row.getBoundingClientRect(), h = +row.dataset.h, A = S.axis;
+    // 그 칸 맨 위 자리 + 칸 안에서 내려온 px → 분 (칸이 늘어나 있어도 실제 시각)
+    const at = A ? minuteAt(A.Y, A.Y[h * 60 - A.m0] + (y - r.top), A.m0) - h * 60 : ((y - r.top) / r.height) * 60;
+    const m = Math.max(0, Math.min(55, Math.floor(at / STEP) * STEP));
     return `${pad(h)}:${pad(m)}`;
   }
   el.addEventListener("pointermove", (e) => { const b = e.target.closest?.(".hour [data-slot]"); if (b) b.textContent = `+ ${slotAt(b, e.clientY)}에 추가`; });
