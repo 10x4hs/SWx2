@@ -995,7 +995,11 @@ try {
     // ---------- ⑱ 둘이 같이 보는 일기 — 일기 모임(user · friend)만, 모임 밖(outsider)은 서버가 막아요 (2026-10-16) ----------
     {
       errs = [];
-      if (tv === "컴퓨터") execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `UPDATE users SET diary_circle = 1 WHERE username IN ('${user}', '${friend}')`], { stdio: "ignore" });
+      // 일기 모임은 이 검사 동안만 (켜 둔 채 다음 차례로 가면 독 아이콘이 하나 늘어 폰의 ⑧ Dock 순서 검사가 '대화'를 못 잡아요)
+      const circle = (v) => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `UPDATE users SET diary_circle = ${v} WHERE username IN ('${user}', '${friend}')`], { stdio: "ignore" });
+      circle(1);
+      // 이 차례 앞에서 서비스 워커가 받아 둔 /api/me(모임 전)를 비우고 열어요 — 운영에선 배포 때 VERSION 이 바뀌어 API 캐시가 저절로 비워져요
+      await p.evaluate(() => new Promise((res) => { const sw = navigator.serviceWorker?.controller; if (!sw) return res(); const ch = new MessageChannel(); ch.port1.onmessage = () => res(); sw.postMessage({ type: "clear-api" }, [ch.port2]); setTimeout(res, 1500); }));
       const day = await p.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
       await go("#/diary", 2500);
       const pg = await p.evaluate(() => ({ dock: !!document.querySelector('[data-nav="diary"]'), tabs: document.querySelectorAll(".dr-tabs [data-who]").length, share: document.querySelector("[data-share]")?.getAttribute("aria-pressed"), grass: document.querySelectorAll(".dr-grass .g").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
@@ -1032,6 +1036,7 @@ try {
           `${tv} · 친구 탭 읽기 ${r1 === "친구의 공개 일기"} · 비공개 후 자물쇠 ${r2.lock && !r2.body} · 모임 밖 403 ${[s1, s2, s3].join("/")} · 아이콘 없음 ${!ov.dock} (${ov.hash})${errs.length ? " — " + errs[0] : ""}`);
         await fc.close(); await oc.close();
       }
+      circle(0);
     }
 
     await ctx.close();
