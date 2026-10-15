@@ -29,7 +29,7 @@ export function mount(root, ctx, r) {
       <div class="dy-cols">
         <section class="dy-paper glass" aria-label="일기 쓰기"><div id="dy-editor"></div></section>
         <aside class="dy-side">
-          <section class="dy-card glass"><h2>이날 계획</h2><ul class="dy-done" id="dy-done"><li class="faint">불러오는 중…</li></ul></section>
+          <section class="dy-card glass"><h2 class="dy-h2">이날 계획 <a class="dy-plan-link" id="dy-plan">계획표 보기 ›</a></h2><ul class="dy-done" id="dy-done"><li class="faint">불러오는 중…</li></ul></section>
           <section class="dy-card glass"><h2>지난 일기</h2><ul class="dy-list" id="dy-list"><li class="faint">불러오는 중…</li></ul></section>
         </aside>
       </div>
@@ -58,6 +58,7 @@ export function mount(root, ctx, r) {
     const dt = parseYmd(day);
     $("#dy-date", root).textContent = longDate(dt);
     $("#dy-back", root).href = "#/calendar/" + day;
+    $("#dy-plan", root).href = "#/calendar/" + day;
     $("#dy-prev", root).href = "#/calendar/diary/" + ymd(addDays(dt, -1));
     $("#dy-next", root).href = "#/calendar/diary/" + ymd(addDays(dt, 1));
     $("#dy-today", root).href = "#/calendar/diary/" + ymd(today());

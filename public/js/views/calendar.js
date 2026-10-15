@@ -1,6 +1,6 @@
 // 캘린더 — 머리에서 월 | 연 을 골라요. 전부 나만 봐요.
 // 월: 왼쪽 한 달 칸(그날 할 일 · 일기 · 공부 시간이 한눈에), 오른쪽 누른 날 한 페이지(views/day.js — 예전 오늘 화면 전부).
-// 연: 한 해 잔디(일기 | 기록 탭). 칸을 누르면 월 보기의 그날로 가요.
+// 연: 한 해 잔디(일기 | 기록 탭). 일기 칸은 그날 일기로, 기록 칸은 월 보기의 그날로 가요.
 import { api } from "../api.js";
 import { $, esc, ymd, today, parseYmd, addDays, pad, hm, toast, debounce, studyMins } from "../util.js";
 import { icon } from "../icons.js";
@@ -168,7 +168,7 @@ export function mount(root, ctx, r) {
         <div class="grass-legend">${tab === "rec"
           ? `<span><i></i>기록 없음</span><span>점수 낮음 <i class="on l1"></i><i class="on l2"></i><i class="on l3"></i><i class="on l4"></i> 높음</span><span><i class="today"></i>오늘</span>`
           : `<span><i></i>안 쓴 날</span><span>적게 <i class="on l1"></i><i class="on l2"></i><i class="on l3"></i><i class="on l4"></i> 많이</span><span><i class="today"></i>오늘</span>`}</div>
-        <p class="cy-note">${icon.lock(13)} 칸을 누르면 그날 페이지로 가요. ${tab === "rec"
+        <p class="cy-note">${icon.lock(13)} 칸을 누르면 그날 ${tab === "rec" ? "페이지" : "일기"}로 가요. ${tab === "rec"
           ? "하루 기록은 그날 계획과 실행을 얼려 둔 사본이에요. 자정이 지나면 자동으로 저장돼요."
           : "일기는 나만 볼 수 있어요. 다른 두 사람에게도, AI에게도 보내지 않아요."}</p>
       </section>`;
@@ -190,7 +190,7 @@ export function mount(root, ctx, r) {
           const len = size.get(k) || 0, lv = tab === "rec" ? (len >= 80 ? 4 : len >= 55 ? 3 : len >= 30 ? 2 : 1) : len >= 700 ? 4 : len >= 300 ? 3 : len >= 100 ? 2 : 1;
           const cls = [written.has(k) ? `on l${lv}` : "", k === tk ? "today" : "", k === st.sel ? "sel" : "", day > t ? "future" : ""].filter(Boolean).join(" ");
           const tip = written.has(k) ? (tab === "rec" ? ` · ${size.get(k) ?? "–"}점` : " · 씀") : "";
-          cells += `<a class="g ${cls}" href="#/calendar/${k}" style="grid-column:${w + 2};grid-row:${d + 2}" title="${num(day)}${tip}" aria-label="${num(day)}${tip}"></a>`;
+          cells += `<a class="g ${cls}" href="#/calendar/${tab === "rec" ? "" : "diary/"}${k}" style="grid-column:${w + 2};grid-row:${d + 2}" title="${num(day)}${tip}" aria-label="${num(day)}${tip}"></a>`;
         }
       }
       const dows = ["월", "", "수", "", "금", "", "일"].map((l, i) => `<span class="dw" style="grid-row:${i + 2}">${l}</span>`).join("");
