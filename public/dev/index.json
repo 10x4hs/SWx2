@@ -1,0 +1,3158 @@
+{
+  "version": 1,
+  "note": "node scripts/dev-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.",
+  "modules": [
+    {
+      "id": "company",
+      "no": "01",
+      "title": "소프트웨어 회사의 지도",
+      "short": "회사 지도",
+      "q": "개발팀에는 누가 있고, 일은 어떤 순서로 흘러가나요?",
+      "sub": "12칸 흐름 · 역할 · 팀 토폴로지 · 콘웨이 법칙",
+      "doc": "역할 지도 (RACI)",
+      "goals": [
+        "아이디어부터 측정까지 12칸 흐름을 설명하고, 지금 일이 어느 칸인지 말할 수 있어요.",
+        "PM·PO·디자이너·개발자·QA·SRE·EM·CTO가 각각 무엇을 책임지는지 구분할 수 있어요.",
+        "콘웨이 법칙과 팀 토폴로지로 팀을 어떻게 나눌지 질문할 수 있어요."
+      ],
+      "story": {
+        "title": "세 명이 모였어요",
+        "size": 3
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "아이디어가 출시까지 가는 길은 12칸짜리 지도예요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "'무엇을 만들지'와 '제대로 만들기'는 다른 트랙이에요",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "엔지니어가 알아야 할 것의 지도, SWEBOK v4",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "국제 표준은 소프트웨어 일을 4묶음 30개 과정으로 나눠요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "PM은 직함, PO는 스크럼 안의 책임이에요",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "디자이너는 '예쁘게'가 아니라 '쓸 수 있게'를 책임져요",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "PM · 디자이너 · 테크 리드, 세 사람이 네 가지 위험을 나눠 들어요",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "한국의 '기획자'는 PM/PO로 이름이 바뀌는 중이에요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "프론트엔드 · 백엔드 · 모바일, 같은 개발자도 고치는 속도가 달라요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "품질은 누구 몫일까요? QA 팀 하나에 다 맡기지 않아요",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "데브옵스는 팀 이름이 아니라 일하는 방식이에요",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "데이터와 보안도 각자의 직무가 있어요",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "EM은 사람을, 테크 리드는 기술을 이끌어요",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "CTO와 VPE는 회사마다 뜻이 달라요",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "팀 토폴로지: 팀은 네 종류, 협업은 세 방식",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "콘웨이 법칙: 시스템은 조직의 대화 구조를 닮아요",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "늦은 프로젝트에 사람을 더 넣으면? 브룩스 법칙은 논쟁 중이에요",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "남의 조직도를 그대로 베끼면 위험해요",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "SI 회사와 자체 서비스 회사는 일하는 리듬이 달라요",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "이번 주 문서: 역할 지도(RACI) 한 장",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "amazon-two-pizza",
+          "title": "아마존은 왜 팀을 '피자 두 판' 크기로 쪼갰을까",
+          "day": 4
+        },
+        {
+          "id": "spotify-model",
+          "title": "스포티파이 모델은 왜 '따라 하면 안 되는 교과서'가 됐을까",
+          "day": 5
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일 아침, 첫 회의",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "\"그거 어느 단계예요?\"",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "외주 견적서 한 장",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "PM을 뽑을까, 기획자를 뽑을까",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "백로그 순서는 누가?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "\"사용자 조사는 누가 해요?\"",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "앱 버그, 오늘 고칠 수 있나요?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "QA를 뽑아야 할까요?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "\"우리도 SRE 팀 만들어요\"",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "지훈 님이 팀장도 맡으면?",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "팀을 어떻게 나눌까?",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "플랫폼 팀이 필요할까?",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "출시 2주 전, 사람을 더 넣을까",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "\"스포티파이처럼 하죠\"",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "공공기관에서 연락이 왔어요",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "CS50's Computer Science for Business (2026)",
+          "url": "https://cs50.harvard.edu/business/",
+          "min": 804,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "스크럼 가이드 2020 (한국어 PDF)",
+          "url": "https://scrumguides.org/docs/scrumguide/v2020/2020-Scrum-Guide-Korean.pdf",
+          "min": 20,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "Software Engineering at Google, ch. 5 How to Lead a Team",
+          "url": "https://abseil.io/resources/swe-book/html/ch05.html",
+          "min": 53,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Team Topologies — Key Concepts",
+          "url": "https://teamtopologies.com/key-concepts",
+          "min": 10,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "TMC25 | 3명에서 33명으로: 조직을 체계적으로 확장시키는 방법",
+          "url": "https://www.youtube.com/watch?v=IZ8qBA9uESA",
+          "min": 26,
+          "day": 5,
+          "lang": "ko"
+        }
+      ]
+    },
+    {
+      "id": "mvp",
+      "no": "02",
+      "title": "문제와 MVP",
+      "short": "MVP",
+      "q": "만들기 전에 무엇을 확인해야 하나요?",
+      "sub": "발견 · 네 가지 위험 · MVP 종류 · 인터뷰 · PR/FAQ",
+      "doc": "원페이저 · PR/FAQ",
+      "goals": [
+        "발견과 전달의 차이, 네 가지 위험(가치·사용성·실현 가능성·사업성)으로 아이디어를 점검할 수 있어요.",
+        "배우려는 가설에 맞게 MVP 종류(랜딩 페이지, 컨시어지, 오즈의 마법사, 프로토타입)를 고를 수 있어요.",
+        "원페이저와 PR/FAQ를 쓰고, 증거로 계속·방향 전환·멈춤을 결정할 수 있어요."
+      ],
+      "story": {
+        "title": "손으로 만든 MVP",
+        "size": 3
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "만들기 전에 '배우는 칸'이 따로 있어요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "제품이 실패하는 네 가지 이유",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "가장 어려운 건 보통 '가치' 위험이에요",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "발견에는 마감이 있어야 해요. 멈추는 것도 결과예요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "MVP는 '작은 제품'이 아니라 '배우는 실험'이에요",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "Blank: MVP는 더 싼 제품이 아니에요",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "바퀴 하나가 아니라 스케이트보드부터",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "MVP에 대한 다섯 가지 오해",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "랜딩 페이지 MVP: 만들기 전에 '가입 버튼'부터",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "컨시어지 MVP: 사람이 직접 서비스해 봐요",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "오즈의 마법사 MVP: 앞은 자동, 뒤는 사람",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "설명 영상과 프로토타입 테스트도 MVP가 될 수 있어요",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "고객 인터뷰는 매주 하는 습관이에요",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "기회 해결책 트리: 목표 → 기회 → 해결책 → 실험",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "기회 평가 10문항: 원페이저의 원조",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "프로토타입 · MVP · MLP는 무엇이 다를까요",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "아마존은 보도자료부터 써요: Working Backwards",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "PR/FAQ는 짧고, 여러 번 고쳐요",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "원페이저와 Shape Up 피치: 시간을 얼마나 쓸지까지 적어요",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "이번 주 문서: 두런 원페이저 · PR/FAQ",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "buffer-2010",
+          "title": "두 쪽짜리 페이지로 시작해 7주 만에 유료 고객을 만든 Buffer",
+          "day": 3
+        },
+        {
+          "id": "instagram-2012",
+          "title": "엔지니어 3명이 1,400만 명을 감당한 인스타그램의 '지루한 기술'",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "\"기술적으로는 다 돼요\"",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "발견은 언제 끝나요?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "투자자의 한마디",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "\"MVP니까 대충\"",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "업로드만 먼저?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "하드웨어 녹음기를 만들까?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "어떤 MVP를 고를까?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "뒤에서 사람이 쓴다는 걸 알릴까?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "이메일 300개 모였어요",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "회의실의 'PM' 질문",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p11",
+          "title": "원페이저 1번 칸",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "누가 이 위험을 맡죠?",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "PR/FAQ, 몇 번 고쳐요?",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "사람을 더 뽑을까, 실험을 더 할까",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p15",
+          "title": "원페이저 마지막 줄",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Making sense of MVP — Henrik Kniberg",
+          "url": "https://blog.crisp.se/2016/01/25/henrikkniberg/making-sense-of-mvp",
+          "min": 15,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "당근알바 초기 엔지니어링 전략: 빠르게, 빠르게, 더 빠르게 | 2024 당근 테크 밋업",
+          "url": "https://www.youtube.com/watch?v=qRXbPTHJW38",
+          "min": 22,
+          "day": 3,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "How the discovery phase works — GOV.UK Service Manual",
+          "url": "https://www.gov.uk/service-manual/agile-delivery/how-the-discovery-phase-works",
+          "min": 10,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Shape Up — Ryan Singer (무료 책)",
+          "url": "https://basecamp.com/shapeup",
+          "min": 270,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "requirements",
+      "no": "03",
+      "title": "요구사항",
+      "short": "요구사항",
+      "q": "PRD와 요구사항정의서는 뭐가 다른가요?",
+      "sub": "PRD · ISO 29148 · 요구사항정의서 · 사용자 스토리 · 범위",
+      "doc": "PRD",
+      "goals": [
+        "PRD, SRS(29148), 요구사항정의서의 차이를 '누가 서명하나'로 설명할 수 있어요.",
+        "사용자 스토리와 Given/When/Then 인수 조건, 비기능 요구사항을 검증 가능하게 쓸 수 있어요.",
+        "범위 밖을 정하고, 늦은 변경의 비용을 따져 범위를 지킬 수 있어요."
+      ],
+      "story": {
+        "title": "PRD v1",
+        "size": 4
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "PRD는 '왜, 무엇을, 어디까지'를 맞추는 문서예요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "Atlassian PRD: 한 쪽, 한 곳, 그리고 '하지 않을 것'",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "HashiCorp의 PRD는 '문제' 요구사항 문서예요",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "PRD는 혼자 쓰지 않고, 문서만이 명세도 아니에요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "국제 표준 ISO/IEC/IEEE 29148, 그리고 대체된 IEEE 830",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "29148의 네 문서: BRS · StRS · SyRS · SRS",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "좋은 요구사항의 여덟 가지 조건",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "'SRD'는 표준 용어가 아니에요. 뜻을 물어보세요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "한국 공공 사업은 요구사항을 '상세히' 쓰는 게 법이에요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "SFR-001: 요구사항마다 번호와 출처가 붙어요",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "요구사항정의서와 대비표: 감리가 추적성을 확인해요",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "PRD · SRS · 요구사항정의서, 가장 큰 차이는 '누가 서명하나'예요",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "사용자 스토리는 카드 · 대화 · 확인이에요",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "인수 조건은 Given · When · Then으로 써요",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "좋은 스토리의 여섯 조건, INVEST",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "기능 말고도 요구사항이 있어요: 비기능 요구사항",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "'범위 밖'을 적는 게 범위를 지키는 방법이에요",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "요구사항은 늦게 바뀔수록 비싸요",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "PRD는 살아 있는 문서예요",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "이번 주 문서: 두런 PRD v1",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "healthcare-gov-2013",
+          "title": "요구사항이 끝까지 바뀐 사이트는 첫날 6명만 가입시켰어요",
+          "day": 5
+        },
+        {
+          "id": "atlassian-2022",
+          "title": "'사이트 ID'와 '앱 ID'를 헷갈린 요청 하나가 883개 사이트를 지웠어요",
+          "day": 3
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "PRD는 누가 써요?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "요구사항 순위 매기기",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "50쪽짜리 기획서",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "고객사가 'SRD'를 달래요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "\"요약이 빨라야 해요\"",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "요구사항에 DB 테이블이 들어 있어요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "공공기관 RFP를 받았어요",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p08",
+          "title": "감리 일주일 전",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "작은 회사가 요구사항정의서까지?",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "스토리 하나가 너무 커요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "인수 조건이 비어 있어요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "\"이것도 MVP에 넣어 주세요\"",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "출시 3주 전 새 요구사항",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "다른 팀에 맡기는 정리 작업",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p15",
+          "title": "PRD 승인 회의",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "TMC25 | Product - 토스 PO가 기능이 아닌 흐름을 설계하는 이유",
+          "url": "https://www.youtube.com/watch?v=RjAIQ0ZVFs8",
+          "min": 19,
+          "day": 1,
+          "lang": "ko"
+        },
+        {
+          "id": "l2",
+          "title": "애자일의 개념 — Atlassian Agile Coach (한국어)",
+          "url": "https://www.atlassian.com/ko/agile",
+          "min": 20,
+          "day": 4,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "당근 개발자, 디자이너, PM 이렇게 협업합니다",
+          "url": "https://careers.daangn.com/blog/post/%EB%8B%B9%EA%B7%BC%EB%A7%88%EC%BC%93-it-%EA%B0%9C%EB%B0%9C-%ED%98%91%EC%97%85-pm-%EA%B0%9C%EB%B0%9C%EC%9E%90-%EB%94%94%EC%9E%90%EC%9D%B4%EB%84%88/",
+          "min": 15,
+          "day": 5,
+          "lang": "ko"
+        }
+      ]
+    },
+    {
+      "id": "ux",
+      "no": "04",
+      "title": "화면과 경험",
+      "short": "화면",
+      "q": "화면은 누가, 언제, 어떻게 정하나요?",
+      "sub": "IA · 와이어프레임 · 디자인 시스템 · 웹/앱 · 접근성 · 앱 심사",
+      "doc": "화면설계서",
+      "goals": [
+        "IA → 사용자 흐름 → 와이어프레임 → 화면설계서 순서를 설명하고, 지금 어느 단계인지 물을 수 있어요.",
+        "웹 · 네이티브 · 크로스플랫폼 중 무엇을 먼저 낼지, 심사 기간과 고칠 수 있는 속도로 판단할 수 있어요.",
+        "Core Web Vitals와 접근성(WCAG 2.2, 한국 법)을 출시 기준에 넣으라고 요구할 수 있어요."
+      ],
+      "story": {
+        "title": "“화면이 12장인데, 앱부터 만들까요?”",
+        "size": 5
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "화면보다 먼저, 메뉴 지도(IA)를 그려요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "사용자 흐름은 “누가, 어디서 시작해, 어디서 끝나나”예요",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "와이어프레임은 연필, 프로토타입은 가설이에요",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "화면설계서는 번호 붙은 화면 계약서예요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "화면은 디자이너가, 문제는 PM이 — 경계는 미리 정해요",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "디자인 시스템은 버튼을 두 번 만들지 않게 해 줘요",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "디자인 토큰은 색과 간격을 이름으로 부르는 약속이에요",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "핸드오프: 피그마 Dev Mode로 “개발 준비 완료”를 표시해요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "웹, 네이티브, 크로스플랫폼 — 고칠 수 있는 속도가 달라요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "PWA: 웹인데 설치도 되고 알림도 와요",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "앱도 바로 고칠 수 있다고요? OTA 업데이트의 선",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "SPA · SSR · SSG — 화면을 어디서 만드느냐의 차이예요",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "“빠르다”를 숫자 세 개로: Core Web Vitals",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "2024년, FID가 빠지고 INP가 들어왔어요",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "접근성의 기준선: WCAG 2.2 AA",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "한국에서는 앱도 접근성 의무가 있어요",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "비밀번호 붙여넣기 금지는 보안이 아니라 접근성 실패예요",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "애플 심사: 절반은 24시간, 90%는 48시간",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "구글 플레이: 새 개인 계정은 12명 · 14일 테스트부터",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "출시 일정표에 ‘고치는 데 걸리는 시간’을 적어요",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "shopify-native-2026",
+          "title": "React Native에 5년을 건 Shopify는 왜 2026년에 네이티브로 돌아갔을까",
+          "day": 3
+        },
+        {
+          "id": "vodafone-lcp-2021",
+          "title": "화면이 빨라지자 매출이 늘었다 — Vodafone의 LCP 실험",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일 10시, 화면부터 보자는 디자이너",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "고충실도 시안부터 만들자는 제안",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "PRD에 없는 화면이 화면설계서에 있어요",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "IA는 누구 거예요?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "디자인 시스템 전담팀을 만들까요?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "피그마 좌석 다섯 개, 전부 Full로?",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p07",
+          "title": "고객사 시범 운영 3주 전, 앱이냐 웹이냐",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "“OTA로 새 결제 화면 넣으면 심사 안 받아도 되죠?”",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "소개 페이지까지 SPA로 만들었더니",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "성능 체크리스트가 FID 기준이에요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "접근성은 출시 후에 하자는 의견",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "보안팀 요청: 비밀번호 붙여넣기 막기",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "앱 출시 일주일 전, 플레이 콘솔이 막혔어요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "금요일 저녁, iOS 앱 크래시",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "MVP 앱 출시 계획표 검토",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "TMC25 | Product - 토스 PO가 기능이 아닌 흐름을 설계하는 이유",
+          "url": "https://www.youtube.com/watch?v=RjAIQ0ZVFs8",
+          "min": 19,
+          "day": 1,
+          "lang": "ko"
+        },
+        {
+          "id": "l2",
+          "title": "당근 개발자, 디자이너, PM 이렇게 협업합니다",
+          "url": "https://careers.daangn.com/blog/post/%EB%8B%B9%EA%B7%BC%EB%A7%88%EC%BC%93-it-%EA%B0%9C%EB%B0%9C-%ED%98%91%EC%97%85-pm-%EA%B0%9C%EB%B0%9C%EC%9E%90-%EB%94%94%EC%9E%90%EC%9D%B4%EB%84%88/",
+          "min": 15,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "Learn Performance | web.dev",
+          "url": "https://web.dev/learn/performance",
+          "min": 60,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "웹의 동작 방식 - MDN",
+          "url": "https://developer.mozilla.org/ko/docs/Learn_web_development/Getting_started/Web_standards/How_the_web_works",
+          "min": 12,
+          "day": 3,
+          "lang": "ko"
+        }
+      ]
+    },
+    {
+      "id": "architecture",
+      "no": "05",
+      "title": "아키텍처",
+      "short": "아키텍처",
+      "q": "서버는 하나면 되나요? 마이크로서비스가 꼭 필요한가요?",
+      "sub": "요청 흐름 · 모놀리스/MSA · API · C4 · 설계 문서 · ADR",
+      "doc": "설계 문서 · ADR",
+      "goals": [
+        "사용자가 앱을 열 때 DNS → CDN → 서버 → DB로 이어지는 길을 설명하고, 어디가 비용 · 장애 지점인지 물을 수 있어요.",
+        "모놀리스 · 모듈러 모놀리스 · 마이크로서비스를 팀 크기와 변경 속도로 비교하고, 전문가끼리 의견이 갈린다는 것도 말할 수 있어요.",
+        "큰 결정마다 설계 문서와 ADR을 요구하고, 리뷰에서 ‘대안은?’ ‘언제 다시 보나?’를 물을 수 있어요."
+      ],
+      "story": {
+        "title": "“구조도 한 장이면 돼요. 서버는 하나로 시작해요.”",
+        "size": 6
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "앱을 열면 생기는 일: 이름 찾기 → 가까운 창고 → 서버 → DB",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "클라이언트와 서버, 그리고 “기억 못 하는” HTTP",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "모놀리스와 마이크로서비스, 정의부터 정확히",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "“모놀리스 먼저” vs “모놀리스로 시작하지 마라” — 전문가도 갈려요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "모듈러 모놀리스: 한 번에 배포하고, 안은 엄격히 나눠요",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "콘웨이의 법칙: 조직도가 곧 구조도예요",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "서버리스와 엣지: 서버를 안 보고도 돌려요",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "큐는 “접수했어요”, 캐시는 “아까 그거요”",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "API 스타일: REST, GraphQL, gRPC",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "웹훅: “일이 생기면 우리가 전화할게요”",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "OpenAPI = 한국 회사의 ‘API 명세서’",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "API 버전 관리는 고객에게 하는 약속이에요",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "C4 모델: 지도처럼 확대하는 구조도",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "설계 문서: 코드 전에 쓰는 “코드 리뷰”",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "RFC: “누구든 의견을 달 수 있게” 여는 제안서",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "ADR: 결정 하나에 한두 쪽, 지우지 않고 쌓아요",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "아키텍처 리뷰의 안건 여섯 개: Well-Architected",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "Twelve-Factor: 클라우드에 올리기 좋은 앱의 공통어",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "혁신 토큰은 세 개뿐: 지루한 기술을 고르세요",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "사서 쓸까, 만들까 — 두런의 AI 요약 모델",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "segment-2018",
+          "title": "엔지니어 셋이 서비스 140개를 돌리다 — Segment의 “안녕, 마이크로서비스”",
+          "day": 1
+        },
+        {
+          "id": "prime-video-2023",
+          "title": "아마존이 마이크로서비스를 버렸다? Prime Video 모니터링 서비스의 진짜 이야기",
+          "day": 2
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "상자 아홉 개짜리 첫 구조도",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p02",
+          "title": "고객사 접속이 느리대요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "PRD에 ‘실시간 요약’이 들어왔어요",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "녹음 올리면 3분 동안 화면이 멈춰요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "팀을 둘로 나누면?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "서버리스 청구서가 세 배가 됐어요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "프론트와 백엔드가 서로 기다려요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "결제 완료 알림이 두 번 왔어요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "파트너사가 우리 API를 쓰기 시작했어요",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "투자자가 구조도를 보여 달래요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "1년 전 결정, 아무도 이유를 몰라요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "모든 일에 RFC를 쓰라고요?",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "신상 데이터베이스를 써 보고 싶대요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "API 키가 코드에 들어 있어요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "MVP 3주 남았는데 자체 AI 모델?",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "웹의 동작 방식 - MDN",
+          "url": "https://developer.mozilla.org/ko/docs/Learn_web_development/Getting_started/Web_standards/How_the_web_works",
+          "min": 12,
+          "day": 1,
+          "lang": "ko"
+        },
+        {
+          "id": "l2",
+          "title": "[우아한테크세미나] 200123 우아한모노리스 by 박용권님",
+          "url": "https://www.youtube.com/watch?v=SrQeIz3gXZg",
+          "min": 85,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "[우아콘2020] 배달의민족 마이크로서비스 여행기",
+          "url": "https://www.youtube.com/watch?v=BnS6343GTkY",
+          "min": 40,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l4",
+          "title": "C4 model",
+          "url": "https://c4model.com/",
+          "min": 36,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "AWS Well-Architected 프레임워크",
+          "url": "https://docs.aws.amazon.com/ko_kr/wellarchitected/latest/framework/welcome.html",
+          "min": 20,
+          "day": 5,
+          "lang": "ko"
+        },
+        {
+          "id": "l6",
+          "title": "The Twelve-Factor App (한국어)",
+          "url": "https://12factor.net/ko/",
+          "min": 60,
+          "day": 5,
+          "lang": "ko"
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "no": "06",
+      "title": "데이터",
+      "short": "데이터",
+      "q": "ERD는 왜 처음에 그리나요?",
+      "sub": "ERD · 테이블 정의서 · SQL/NoSQL · 마이그레이션 · 백업 · 개인정보",
+      "doc": "ERD · 테이블 정의서",
+      "goals": [
+        "ERD를 보고 “이 선은 무슨 규칙이에요?”라고 물으며, 제품 규칙이 데이터 규칙으로 바뀌는 지점을 짚을 수 있어요.",
+        "마이그레이션과 백업을 ‘배포’와 ‘보험’으로 보고, RPO/RTO와 복원 테스트를 요구할 수 있어요.",
+        "개인정보를 덜 모으고, 보관 기간과 파기를 데이터 설계에 넣으라고 결정할 수 있어요."
+      ],
+      "story": {
+        "title": "“녹음은 30일 뒤에 지운다면서요. 그건 어디에 적혀 있어요?”",
+        "size": 8
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "ERD는 제품 규칙을 데이터 규칙으로 바꾸는 그림이에요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "까마귀 발 표기: 선 끝 모양이 “몇 개”를 말해요",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "개념 → 논리 → 물리: ERD에도 확대 단계가 있어요",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "ERD가 테이블이 되면, 규칙은 제약이 돼요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "테이블 정의서: 컬럼 한 줄 한 줄의 신분증",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "공공 프로젝트는 컬럼 이름도 표준을 따라요",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "SQL이냐 NoSQL이냐: 기본값은 관계형이에요",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "“가장 많이 쓰는 DB”는 누가 재느냐에 따라 달라요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "마이그레이션은 그 자체로 배포예요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "확장 → 이동 → 축소: 서비스를 멈추지 않고 바꾸는 법",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "개인정보는 “혹시 몰라서” 모으지 않아요",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "30일 규칙을 데이터 설계로 내리기",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "RPO와 RTO: 얼마나 잃어도, 얼마나 멈춰도 되나",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "재해 복구 전략 네 가지: 싼 것부터 빠른 것까지",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "3-2-1 규칙: 사본 셋, 매체 둘, 바깥에 하나",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "복원해 보기 전까지 백업은 희망일 뿐이에요",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "운영 DB, 데이터 웨어하우스, 데이터 레이크",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "이벤트 추적 계획: 대시보드는 이벤트 정의만큼만 정확해요",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "분석 SDK 하나가 곧 국외 이전 결정이에요",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "대표의 데이터 체크리스트: 다섯 질문",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "gitlab-2017",
+          "title": "백업 방법은 다섯 개였는데, 왜 GitLab은 6시간 치 데이터를 잃었을까",
+          "day": 4
+        },
+        {
+          "id": "nirs-2025",
+          "title": "정부 시스템 709개가 멈췄다 — 국정자원 화재와 백업 없던 G드라이브",
+          "day": 5
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "ERD 없이 바로 테이블부터?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "회의 하나에 녹음이 여러 개?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "PRD엔 ‘30일 보관’, ERD엔 없음",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "NoSQL로 가면 빠르대요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "“요즘 1위 DB로 가죠”",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "가입할 때 생년월일 · 직급 · 회사 규모까지?",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p07",
+          "title": "컬럼 이름 하나 바꾸는데 서비스가 멈췄어요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "운영 DB에서 직접 고치면 빠르잖아요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "마이그레이션과 코드, 무엇을 먼저 배포하나요?",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "“백업은 매일 되고 있어요”",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "고객사가 RPO를 물었어요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "백업이 같은 계정에 있어요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "출시 다음 날, 데이터가 없어요",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p14",
+          "title": "마케팅이 광고 픽셀을 붙이자고 해요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "녹음 파일만 백업에서 빼자는 제안",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "관계형 데이터 모델링 — 생활코딩",
+          "url": "https://opentutorials.org/course/3883",
+          "min": 164,
+          "day": 1,
+          "lang": "ko"
+        },
+        {
+          "id": "l2",
+          "title": "CS50 for Business - Lecture 7 - Deploying Databases",
+          "url": "https://www.youtube.com/watch?v=OZE2t3-M0ps",
+          "min": 93,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "[1015장애 회고] 1. 데이터센터 단위의 다중화를 위한 고민 / if(kakao)2022",
+          "url": "https://www.youtube.com/watch?v=K3Tf_ngC4pc",
+          "min": 10,
+          "day": 4,
+          "lang": "ko"
+        },
+        {
+          "id": "l4",
+          "title": "Learn Privacy | web.dev",
+          "url": "https://web.dev/learn/privacy",
+          "min": 60,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "no": "07",
+      "title": "로그인 · 권한 · 보안",
+      "short": "보안",
+      "q": "OAuth 같은 거 쓰나요?",
+      "sub": "OAuth · SSO · 개인정보 · OWASP",
+      "doc": "인증 결정 기록 (ADR-007)",
+      "goals": [
+        "\"OAuth 쓰나요?\"에 로그인(OIDC)과 권한 위임(OAuth)을 구분해 답할 수 있어요.",
+        "인증을 만들지 살지, SSO를 어느 요금제에 둘지 근거를 들어 정할 수 있어요.",
+        "유출 72시간·24시간 규칙과 대표 책임을 알고 사고 대응 체계를 요구할 수 있어요."
+      ],
+      "story": {
+        "title": "“구글 회사 계정으로 로그인되나요?”",
+        "size": 11
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "인증과 인가는 달라요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "세션과 토큰",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "비밀번호는 어떻게 저장하나",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "2단계 인증과 피싱",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "권한: 누가 무엇을 할 수 있나",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "최소 권한",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "비밀 값과 키 관리",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "키는 정기적으로 바꿔요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "OAuth는 비밀번호 대신 출입증을 건네는 약속이에요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "로그인은 OIDC, 권한은 OAuth",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "기업 고객이 묻는 SSO",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "인증은 만들까, 살까",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "패스키",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "OWASP Top 10:2025",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "공급망 공격",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "보안 질문지와 SOC 2 · ISMS",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "개인정보보호법 핵심",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "유출되면 72시간",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "대표의 최종 책임",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "이번 주 정리",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "skt-2025",
+          "title": "2021년에 들어온 침입자를, 왜 SKT는 2025년에야 알았을까",
+          "day": 4
+        },
+        {
+          "id": "coupang-2025",
+          "title": "퇴사한 개발자의 열쇠 하나가 3,370만 계정을 열었어요",
+          "day": 5
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일 10시, 로그인 회의",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "화요일 오후, 비밀번호 정책",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "수요일, MVP 범위 다시 보기",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "목요일, 개발자 권한 요청",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "금요일 저녁, 슬랙에 올라온 키",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "월요일, 퇴사자 체크리스트",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "화요일, 영업 회의",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "수요일, 요구사항 문서 검토",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p09",
+          "title": "목요일, \"OAuth 2.1 지원\" 견적서",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "월요일, 사용성 vs 보안",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p11",
+          "title": "화요일, 보안 질문지 80문항",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "수요일, 의존성 경보",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "토요일 새벽, 이상 트래픽",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "월요일, 회의록 데이터 보관",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p15",
+          "title": "수요일, 이사회 준비",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "WEB2 - OAuth 2.0 (생활코딩)",
+          "url": "https://opentutorials.org/course/3405",
+          "min": 47,
+          "day": 3,
+          "lang": "ko"
+        },
+        {
+          "id": "l2",
+          "title": "How OpenID Connect Works",
+          "url": "https://openid.net/developers/how-connect-works/",
+          "min": 5,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "OWASP Top 10:2025 (한국어)",
+          "url": "https://top10.owasp.org/2025/ko/",
+          "min": 90,
+          "day": 4,
+          "lang": "ko"
+        },
+        {
+          "id": "l4",
+          "title": "OAuth 2.0 · OAuth 2.1 (oauth.net)",
+          "url": "https://oauth.net/2.1/",
+          "min": 15,
+          "day": 3,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "planning",
+      "no": "08",
+      "title": "일하는 방식",
+      "short": "일하는 방식",
+      "q": "일정은 어떻게 약속하나요?",
+      "sub": "스크럼 · 칸반 · Shape Up · 추정 · 외주 계약",
+      "doc": "스프린트 보드 · 로드맵",
+      "goals": [
+        "폭포수·애자일·스크럼·칸반·Shape Up의 차이를 원문 근거로 설명할 수 있어요.",
+        "추정을 약속이 아닌 결정 도구로 쓰고, 날짜와 범위 중 무엇을 고정할지 정할 수 있어요.",
+        "한국 공공 외주의 법정 절차(착수계 10일, 감리, 하자담보 1년, 하도급 50%)를 알고 계약 리스크를 짚을 수 있어요."
+      ],
+      "story": {
+        "title": "“이번 스프린트에 그거 들어가요?”",
+        "size": 14
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "일하는 방식은 약속하는 방식이에요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "폭포수: Royce가 실제로 한 말",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "V 모델: 요구사항마다 짝이 되는 테스트",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "애자일 선언문은 \"대신\"이 아니라 \"보다\"예요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "스크럼: 2020 가이드가 공식이에요",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "스크럼 가이드에 없는 것들",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "칸반: 진행 중인 일을 줄이면 빨라져요",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "실제로는 섞어 써요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Shape Up: 기간을 고정하고 범위를 깎아요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "추정은 약속이 아니라 결정 도구예요",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "스토리 포인트와 그 발명자의 사과",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "두 주 스프린트를 계획하는 법",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "로드맵은 날짜보다 Now · Next · Later",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "OKR: 목표와 숫자로 확인하는 결과",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "\"다 됐어요\"의 기준, 완료 정의",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "WBS와 프로젝트 계획서",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "한국 공공 외주의 흐름",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "인월(M/M) 관리 금지와 하도급 50%",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "SI 회사와 자체 서비스 회사는 일하는 방식이 달라요",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "이번 주 정리",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "royce-1970",
+          "title": "폭포수의 \"원조\" 논문은 사실 폭포수를 비판했어요",
+          "day": 1
+        },
+        {
+          "id": "kr-public-si",
+          "title": "계약하고 10일, 하자담보 1년: 한국 공공 외주의 시계",
+          "day": 5
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 고객사 요청",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "화요일, \"애자일이니까\"",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "수요일, 요구사항과 테스트",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "목요일, 스토리 포인트 순위표",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "금요일, 끝나지 않는 일",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "월요일, 새 스크럼 가이드?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "화요일, 투자자 데모 날짜",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "수요일, MVP 일정 약속",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p09",
+          "title": "목요일, 추정 회의",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "월요일, 고객용 로드맵",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "화요일, OKR과 보상",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "수요일, 아키텍처 작업은 언제?",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "목요일, 공공 사업 제안",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "금요일, 외주 개발사 계약",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p15",
+          "title": "월요일, 팀이 14명이 됐어요",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "스크럼 가이드 2020 (한국어 PDF)",
+          "url": "https://scrumguides.org/docs/scrumguide/v2020/2020-Scrum-Guide-Korean.pdf",
+          "min": 20,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l2",
+          "title": "Shape Up (Basecamp, 무료 책)",
+          "url": "https://basecamp.com/shapeup",
+          "min": 270,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Atlassian 애자일 코치 (한국어)",
+          "url": "https://www.atlassian.com/ko/agile",
+          "min": 20,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l4",
+          "title": "당근 — Shape up과 소화능력",
+          "url": "https://careers.daangn.com/blog/post/%EB%8B%B9%EA%B7%BC-%EC%86%8C%ED%94%84%ED%8A%B8%EC%9B%A8%EC%96%B4-%EA%B0%9C%EB%B0%9C%EC%9E%90-%EC%84%9C%EB%B9%84%EC%8A%A4-%EC%9A%B4%EC%98%81%EA%B0%9C%EB%B0%9C-%EC%9A%B4%EC%98%81%EC%8B%A4-%ED%8C%80%EB%AC%B8%ED%99%94/",
+          "min": 15,
+          "day": 3,
+          "lang": "ko"
+        }
+      ]
+    },
+    {
+      "id": "repo",
+      "no": "09",
+      "title": "Repo와 코드 리뷰",
+      "short": "Repo · 리뷰",
+      "q": "Repo는 어떻게 관리하고, 리뷰는 꼭 해야 하나요?",
+      "sub": "브랜치 · PR · 리뷰 · 버전 · 라이선스 · AI",
+      "doc": "PR 설명 · 리뷰 코멘트",
+      "goals": [
+        "커밋·브랜치·PR·병합을 설명하고, 우리 제품에 맞는 브랜치 전략을 고를 수 있어요.",
+        "리뷰의 가치(지식 공유)와 비용(속도)을 알고, 보호 브랜치·응답 시간·PR 크기 규칙을 정할 수 있어요.",
+        "오픈소스 라이선스·CRA·AI 도구의 위험을 대표 관점에서 짚을 수 있어요."
+      ],
+      "story": {
+        "title": "“리뷰 안 받은 코드는 main에 못 들어가요”",
+        "size": 18
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "Repo는 코드와 그 역사의 단 하나의 기록이에요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "커밋 · 브랜치 · 병합",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "GitHub flow · GitFlow · 트렁크 기반",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "모노레포와 폴리레포",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "PR은 \"합쳐 주세요\"라는 제안이에요",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "리뷰는 버그 찾기보다 지식 나누기예요",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "구글의 리뷰 규칙: 하루 안에, 작게",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "리뷰가 느리면 팀이 큰 덩어리로 일해요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "main 보호: 리뷰 없이 못 들어가게",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "CODEOWNERS: 이 코드의 주인",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "커밋 메시지 규칙: Conventional Commits",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "버전 번호는 약속이에요: SemVer",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "오픈소스 라이선스: 대표가 알아야 할 위험 등급",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "라이선스는 바뀔 수 있어요: HashiCorp와 Redis",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "EU 사이버복원력법(CRA)과 SBOM",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "CI 도구도 공급망이에요",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "AI 코딩 도구: DORA는 \"증폭기\"라고 해요",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "AI가 빠르게 해 주나? 증거는 엇갈려요",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "리뷰를 꼭 해야 하나요?",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "이번 주 정리",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "segment-2018",
+          "title": "엔지니어 3명이 140개 서비스를 돌보다가, 하나로 합친 이유",
+          "day": 1
+        },
+        {
+          "id": "hashicorp-bsl-2023",
+          "title": "쓰던 오픈소스가 하루아침에 \"경쟁 금지\"가 됐어요",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 브랜치 전략 회의",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "화요일, repo 쪼개기",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p03",
+          "title": "수요일, 공동창업자 퇴사",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "목요일, 리뷰 대기 3일",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "금요일, 2,000줄 PR",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "월요일, 리뷰는 시니어만?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "화요일, 급한 수정",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "수요일, API 버전",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "목요일, 요구사항과 PR 연결",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "월요일, AGPL 라이브러리",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "화요일, 라이선스 없는 코드",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "수요일, 고객 데이터와 마이그레이션 PR",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "목요일, AI가 만든 PR",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "금요일, 토큰 순위표",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "월요일, 화면 변경 리뷰",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "GitHub 플로우 (GitHub 문서, 한국어)",
+          "url": "https://docs.github.com/ko/get-started/using-github/github-flow",
+          "min": 6,
+          "day": 1,
+          "lang": "ko"
+        },
+        {
+          "id": "l2",
+          "title": "GIT1 (생활코딩)",
+          "url": "https://opentutorials.org/course/3837",
+          "min": 45,
+          "day": 1,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "GIT - github.com Pull request (생활코딩)",
+          "url": "https://opentutorials.org/course/4587",
+          "min": 48,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l4",
+          "title": "Google Engineering Practices — How to do a code review",
+          "url": "https://google.github.io/eng-practices/review/reviewer/",
+          "min": 60,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "GitHub Skills — Review pull requests",
+          "url": "https://github.com/skills/review-pull-requests",
+          "min": 30,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l6",
+          "title": "시간은 금이다: LLM을 이용한 AI 코드 리뷰 도입기 (NAVER D2)",
+          "url": "https://www.youtube.com/watch?v=7cwFhX14nkg",
+          "min": 9,
+          "day": 5,
+          "lang": "ko"
+        }
+      ]
+    },
+    {
+      "id": "release",
+      "no": "10",
+      "title": "테스트와 배포",
+      "short": "테스트 · 배포",
+      "q": "금요일 저녁에 배포해도 되나요?",
+      "sub": "테스트 피라미드 · CI/CD · 카나리 · 기능 플래그 · 롤백",
+      "doc": "테스트 계획 · 릴리스 노트",
+      "goals": [
+        "테스트 피라미드와 QA의 역할을 설명하고, ‘테스트를 더 하자’ 대신 ‘무엇을 자동으로 확인하나요?’라고 물을 수 있어요.",
+        "CI, 지속적 전달, 지속적 배포의 차이를 알고, 카나리 · 블루그린 · 기능 플래그 중 무엇을 쓸지 고를 수 있어요.",
+        "출시 회의에서 되돌리는 방법과 지켜볼 숫자를 먼저 정하고, 테스트 계획과 릴리스 노트를 쓸 수 있어요."
+      ],
+      "story": {
+        "title": "“버그 하나 남았는데, 그래도 내요?”",
+        "size": 22
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "테스트는 피라미드 모양으로 쌓아요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "단위 · 통합 · E2E는 확인하는 범위가 달라요",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "정답 비율은 없어요: 70/20/10과 벌집 모양",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "QA는 마지막 관문이 아니라 처음부터 같이 가는 역할이에요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "CI는 ‘매일 합치고, 합칠 때마다 자동으로 확인’이에요",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "지속적 전달과 지속적 배포는 ‘버튼’ 하나 차이예요",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "파이프라인은 자동으로 도는 조립 라인이에요",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "로컬 · 개발 · 스테이징 · 운영, 환경은 왜 여러 개일까",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "DB 변경은 늘리고 → 옮기고 → 줄이는 세 걸음으로 해요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "배포와 출시는 달라요: 블루그린으로 한 번에 바꿔 끼우기",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "카나리: 일부에게 먼저 보내고 지켜봐요",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "기능 플래그는 코드 안의 전등 스위치예요",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "플래그도 빚이에요: 주인과 만료일을 붙여요",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "롤백 버튼은 누가 누르나요?",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "앱은 웹처럼 되돌릴 수 없어요",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "앱도 단계적으로: 애플 7일 단계 출시와 구글 단계 출시",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "테스트 계획은 ‘무엇을 안 하는지’까지 적어요",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "릴리스 노트는 사람을 위한 변경 기록이에요",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "빠르면서 안정적일 수 있어요",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "그래서 금요일 저녁 배포, 해도 되나요?",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "crowdstrike-2024",
+          "title": "‘설정 파일이니까 괜찮겠지’ — 크라우드스트라이크는 왜 전 세계 PC를 멈췄을까",
+          "day": 3
+        },
+        {
+          "id": "knight-2012",
+          "title": "서버 8대 중 1대를 빠뜨렸다 — 나이트캐피털의 45분",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "“테스트 커버리지 90% 찍읍시다”",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "E2E가 50분 걸려요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "요구사항에 ‘완료’가 없어요",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "main이 빨간불인데 데모가 있어요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "자동 배포까지 갈까요?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "PR 하나에 파일 80개",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p07",
+          "title": "컬럼 이름을 바꾸고 싶어요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "새 요약 엔진, 다 같이 바꿀까요?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "모놀리스라서 카나리가 안 된대요",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "플래그가 140개예요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "앱 크래시, 심사는 이틀",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "출시 일정이 2주 밀렸어요",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "수요일 오후 5시, 출시 회의",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "금요일 오후 6시, “잠깐 하나만 올릴게요”",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "로그인 토큰 저장 방식을 바꾸는 배포",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "DevOps 소개 (Introduction to DevOps)",
+          "url": "https://learn.microsoft.com/ko-kr/training/modules/introduction-to-devops/",
+          "min": 42,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l2",
+          "title": "토스ㅣSLASH 24 - 생산성과 안정성 모두 잡는 마스터키, Canary 배포 개선기",
+          "url": "https://www.youtube.com/watch?v=ApNj9MZU7Ak",
+          "min": 21,
+          "day": 3,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "토스ㅣSLASH 23 - 유연하고 안전하게 배포 Pipeline 운영하기",
+          "url": "https://www.youtube.com/watch?v=SRLeXvA-o-U",
+          "min": 15,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l4",
+          "title": "DORA’s software delivery performance metrics",
+          "url": "https://dora.dev/guides/dora-metrics/",
+          "min": 10,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "ops",
+      "no": "11",
+      "title": "운영과 장애",
+      "short": "운영 · 장애",
+      "q": "서비스가 멈추면 누가, 무엇을 하나요?",
+      "sub": "SLO · 에러 버짓 · 온콜 · 장애 지휘 · 포스트모템 · 백업",
+      "doc": "런북 · 포스트모템",
+      "goals": [
+        "SLI · SLO · SLA와 에러 버짓을 설명하고, 출시를 멈출지 정하는 정책에 서명할 수 있어요.",
+        "장애가 나면 지휘자 · 담당 · 소통 역할과 심각도 기준으로 회의실을 정리할 수 있어요.",
+        "탓하지 않는 포스트모템과 런북을 쓰고, 백업과 재해 복구 훈련에 필요한 질문을 할 수 있어요."
+      ],
+      "story": {
+        "title": "“요약이 안 돼요” — 두런의 첫 장애, 2시간",
+        "size": 30
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "‘희망은 전략이 아니다’ — 신뢰성에도 목표 숫자가 있어요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "모니터링은 아는 질문, 관측 가능성은 모르는 질문",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "네 가지 황금 신호와 로그 · 지표 · 추적",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "오픈텔레메트리: 관측 데이터의 공용 콘센트",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "SLI · SLO · SLA: 재는 것, 지키려는 것, 약속한 것",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "에러 버짓: 실패해도 되는 양이 곧 도전할 수 있는 양",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "예산이 바닥나면 출시를 멈춘다 — 미리 서명하는 정책",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "온콜: 밤에 울리는 전화를 누가, 얼마나 받나",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "장애 지휘자는 키보드를 잡지 않아요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "심각도는 미리 정하고, 헷갈리면 높은 쪽으로",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "보안 사고는 별도 지침이 있어요: NIST SP 800-61r3",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "장애 중 대표의 자리: 키보드가 아니라 고객 곁",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "탓하지 않는 포스트모템: 벌이 두려우면 진실이 숨어요",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "원인은 하나가 아니에요: 기여 원인과 후속 조치",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "런북은 하는 법, 플레이북은 찾는 법",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "백업이 아니라 복구가 목표예요: 3-2-1 규칙",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "RPO와 RTO: 얼마나 잃어도 되고, 얼마나 멈춰도 되나",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "재해 복구 훈련: 한 번도 넘어가 본 적 없는 대기 서버는 없는 것과 같아요",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "설정도 코드처럼: 클라우드플레어의 ‘코드 오렌지’",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "클라우드 한 리전이 멈추면: AWS us-east-1, 2025년 10월",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "kakao-2022",
+          "title": "불은 건물 하나에서 났는데, 왜 카카오는 127시간 멈췄을까",
+          "day": 4
+        },
+        {
+          "id": "nirs-2025",
+          "title": "백업 서버가 같은 방에 있었다 — 국정자원 대전 화재",
+          "day": 5
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "대시보드는 초록, 고객은 화가 났어요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "관측 업체 계약 갱신",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "로그에 회의 내용이 그대로 찍혀요",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "영업이 99.99% SLA를 약속하고 싶대요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "에러 버짓을 다 썼는데 큰 출시가 있어요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "온콜이 한 사람에게만 몰려요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "오전 10시, 요약이 멈췄어요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "SEV1인가 SEV2인가",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "장애 중 우회 코드를 바로 운영에?",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "“누가 그 업체를 골랐죠?”",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "런북이 위키 깊숙이 1년 전 상태로",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "음성 업체를 하나 더 둘까요?",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "“우리는 매일 백업해요”",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p14",
+          "title": "모든 걸 액티브-액티브로?",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "설정 변경은 리뷰 없이 바로?",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "1015 장애원인 분석 / if(kakao)2022",
+          "url": "https://www.youtube.com/watch?v=v4hRiooY7Dw",
+          "min": 8,
+          "day": 4,
+          "lang": "ko"
+        },
+        {
+          "id": "l2",
+          "title": "[1015장애 회고] 1. 데이터센터 단위의 다중화를 위한 고민 / if(kakao)2022",
+          "url": "https://www.youtube.com/watch?v=K3Tf_ngC4pc",
+          "min": 10,
+          "day": 5,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "TMC25 | Engineering - 알림부터 대응까지, 장애 대응을 시스템으로",
+          "url": "https://www.youtube.com/watch?v=SqF2D7OoiJA",
+          "min": 17,
+          "day": 3,
+          "lang": "ko"
+        },
+        {
+          "id": "l4",
+          "title": "우리는 모의장애훈련에 진심입니다 #우아콘2021",
+          "url": "https://www.youtube.com/watch?v=TkYm33_9ZoQ",
+          "min": 34,
+          "day": 5,
+          "lang": "ko"
+        },
+        {
+          "id": "l5",
+          "title": "Atlassian 인시던트 관리 핸드북",
+          "url": "https://www.atlassian.com/ko/incident-management/handbook",
+          "min": 18,
+          "day": 3,
+          "lang": "ko"
+        },
+        {
+          "id": "l6",
+          "title": "The Site Reliability Workbook — Example Error Budget Policy",
+          "url": "https://sre.google/workbook/error-budget-policy/",
+          "min": 3,
+          "day": 2,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "lead",
+      "no": "12",
+      "title": "성장과 대표의 결정",
+      "short": "성장",
+      "q": "회사가 커지면 개발 조직을 어떻게 바꾸나요?",
+      "sub": "DORA · 기술 부채 · 팀 토폴로지 · FinOps · 직접 만들기 vs 사기",
+      "doc": "기술 실사표 · 마지막 과제",
+      "goals": [
+        "DORA 다섯 지표로 팀의 전달 성과를 보고, 지표를 목표나 개인 평가로 쓰지 않는 이유를 설명할 수 있어요.",
+        "콘웨이 법칙과 팀 토폴로지로 팀 경계를 그리고, 기술 부채와 클라우드 비용을 사업 언어로 결정할 수 있어요.",
+        "직접 만들기 · 사기 · 외주를 비교하고, 기술 실사 질문에 답하며, 내 서비스의 PRD · ERD · 구조도 · 출시 계획을 한 묶음으로 쓸 수 있어요."
+      ],
+      "story": {
+        "title": "“팀을 다시 나누고, 우리 모델을 직접 만들까요?”",
+        "size": 50
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "DORA 다섯 지표: 얼마나 빨리, 얼마나 안전하게",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "2024년 기준선: 최상위 팀은 어떤 모습일까",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "지표도 바뀌어요: MTTR은 왜 사라졌을까",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "지표를 목표로 삼는 순간 망가져요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "토큰맥싱: AI 토큰 순위표의 함정",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "코드 줄 수와 속도(velocity)로 사람을 재면 안 되는 이유",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "SPACE: 생산성은 숫자 하나로 잴 수 없어요",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "AI가 개발을 빠르게 하나요? 증거가 엇갈려요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "기술 부채는 원래 ‘나쁜 코드 허락’이 아니었어요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "부채의 네 칸: 무모한가 신중한가, 일부러인가 모르고인가",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "다 새로 짜자는 말이 나오면: 교살자 무화과",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "콘웨이 법칙: 조직도가 곧 구조도가 돼요",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "팀 토폴로지: 팀 종류 넷, 협업 방식 셋",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "엔지니어링 매니저와 테크 리드는 다른 일을 해요",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "사람을 더 뽑으면 빨라질까요?",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "외주를 맡길 때 대표가 챙길 다섯 가지",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "FinOps: 클라우드 청구서는 엔지니어와 재무가 같이 봐요",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "벤더 종속: 떠날 때 드는 비용을 들어올 때 계산해요",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "직접 만들까, 살까, 빌릴까",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "기술 실사: 투자자가 물을 질문을 먼저 물어요",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "37signals-cloud-exit",
+          "title": "클라우드를 떠나 1천만 달러를 아꼈다? — 37signals의 클라우드 탈출",
+          "day": 5
+        },
+        {
+          "id": "amazon-two-pizza",
+          "title": "피자 두 판으로 먹일 수 있는 팀 — 아마존은 왜 조직부터 쪼갰을까",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "“배포 빈도를 KPI로 박읍시다”",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "두 팀의 실패율 비교",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "리드타임이 왜 늘었을까",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "AI 토큰 1등 시상식",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "“AI 쓰면 개발자 절반으로 충분하대요”",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "스토리 포인트로 성과 평가?",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p07",
+          "title": "“6개월만 주시면 다 새로 짤게요”",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "기술 부채를 로드맵에 넣는 법",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "두 팀이 매번 같은 테이블을 고쳐요",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "개발자 22명, 팀을 어떻게 나눌까",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "가장 잘하는 개발자를 팀장으로?",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "관리자 화면을 외주로",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "요약 모델, 직접 학습할까 계속 빌릴까",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "유럽 고객이 묻는 ‘탈출 계획’",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "투자자의 기술 실사 질문",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "How to Lead a Team — Software Engineering at Google ch. 5",
+          "url": "https://abseil.io/resources/swe-book/html/ch05.html",
+          "min": 53,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Measuring Engineering Productivity — Software Engineering at Google ch. 7",
+          "url": "https://abseil.io/resources/swe-book/html/ch07.html",
+          "min": 27,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Key concepts and practices for applying a Team Topologies approach",
+          "url": "https://teamtopologies.com/key-concepts",
+          "min": 10,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "TMC25 | Product - 3명에서 33명으로: 조직을 체계적으로 확장시키는 방법",
+          "url": "https://www.youtube.com/watch?v=IZ8qBA9uESA",
+          "min": 26,
+          "day": 4,
+          "lang": "ko"
+        },
+        {
+          "id": "l5",
+          "title": "DORA’s software delivery performance metrics",
+          "url": "https://dora.dev/guides/dora-metrics/",
+          "min": 10,
+          "day": 1,
+          "lang": "en"
+        }
+      ]
+    }
+  ]
+}

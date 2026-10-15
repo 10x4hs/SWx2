@@ -709,6 +709,54 @@ try {
       ok(w0 >= 100 && w1 >= 1 && w1 < w0 && !errs.length, `${tv} · 경영 용어 — 전체 ${w0} · 'EBITDA' 찾기 ${w1}${errs.length ? " — " + errs[0] : ""}`);
     }
 
+    // ---------- ⑬-2 개발 흐름 마이크로디그리 — 3D 흐름 지도 · 현황판 · 한 주 · 카드 · 사례 · 회의실 · 오늘 · 문서 지도 (2026-10-15) ----------
+    {
+      errs = [];
+      await go("#/dev", 3000);
+      const dh = await p.evaluate(() => ({ dock: !!document.querySelector('[data-nav="dev"]'), disp: /dev flow/i.test(document.querySelector(".dv-disp")?.textContent || ""), st: document.querySelectorAll(".dv-st").length,
+        canvas: !!document.querySelector("#dv-canvas"), placed: [...document.querySelectorAll(".dv-st")].filter((b) => !/-9999/.test(b.style.transform) && b.style.display !== "none").length, hidden3d: [...document.querySelectorAll(".dv-st")].every((b) => b.style.display === "none"),
+        plan: document.querySelectorAll(".dv-plan li").length, why: document.querySelectorAll(".dv-why .dv-panel").length, mods: document.querySelectorAll(".dv-mod").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await p.click('.dv [data-min="60"]').catch(() => {}); await sleep(250);
+      const d60 = await p.evaluate(() => /60분/.test(document.querySelector("#dv-today-h")?.textContent || "") && document.querySelector('[data-min="60"]')?.getAttribute("aria-pressed") === "true");
+      await p.click('.dv [data-min="45"]').catch(() => {});
+      ok(dh.dock && dh.disp && dh.st === 12 && dh.canvas && (dh.placed === 12 || dh.hidden3d) && dh.plan === 5 && dh.why === 6 && dh.mods === 12 && d60 && !dh.over && !errs.length, `${tv} · 개발 홈 — 독 ${dh.dock} · 제목 ${dh.disp} · 정거장 ${dh.st}(놓임 ${dh.placed}) · 순서 ${dh.plan} · 학습 설계 ${dh.why} · 모듈 ${dh.mods} · 60분 ${d60} · 가로 넘침 ${dh.over}${errs.length ? " — " + errs[0] : ""}`);
+      const di = await (await ctx.request.get(BASE + "/dev/index.json")).json(), sm = di.modules.find((m) => m.id === "security");
+      const sd = await (await ctx.request.get(BASE + "/dev/security.json")).json();
+      errs = [];
+      await hop("#/dev/security", ".dv-days", 600);
+      const wk = await p.evaluate(() => ({ no: document.querySelector(".dv-week-no")?.textContent, days: document.querySelectorAll(".dv-day").length, rows: document.querySelectorAll('.dv-panel a.dv-row[href*="/c"]:not([href*="/case/"])').length, story: !!document.querySelector(".dv-paper h2"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await p.click('.dv-day[data-day="4"]'); await sleep(150);
+      const wk5 = await p.evaluate(() => document.querySelector('.dv-day[data-day="4"]')?.getAttribute("aria-pressed") === "true");
+      ok(wk.no === "07" && wk.days === 5 && wk.rows === 4 && wk.story && wk5 && !wk.over && !errs.length, `${tv} · 개발 한 주 — ${wk.no} · ${wk.days}일 · 그날 카드 ${wk.rows} · 두런 장면 ${wk.story} · 5일째로 ${wk5} · 가로 넘침 ${wk.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/dev/security/c09", "#dv-read h1", 700);
+      const cd = await p.evaluate(() => ({ code: /kauth\.kakao\.com/.test(document.querySelector(".dv-code")?.textContent || ""), src: document.querySelectorAll(".dv-src a").length, ai: !!document.querySelector("#dv-ai .ppc-form, #dv-ai form"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await p.click("#dv-recall-b"); await p.click(".dv-qz .dv-opt").catch(() => {}); await sleep(150);
+      const cd2 = await p.evaluate(() => ({ ans: !document.querySelector("#dv-recall-a").hidden, why: !document.querySelector(".dv-qz .dv-why")?.hidden }));
+      ok(cd.code && cd.src >= 1 && cd.ai && cd2.ans && cd2.why && !cd.over && !errs.length, `${tv} · 개발 카드 — 카카오 주소 코드 ${cd.code} · 출처 ${cd.src} · AI ${cd.ai} · 떠올리기 답 ${cd2.ans} · 퀴즈 해설 ${cd2.why} · 가로 넘침 ${cd.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop(`#/dev/security/case/${sm.cases[0].id}`, ".dv-tl", 600);
+      await p.click("[data-show='0']"); await sleep(100);
+      const cs = await p.evaluate(() => ({ tl: document.querySelectorAll(".dv-tl li").length, q: document.querySelectorAll(".dv-q").length, a: !document.querySelector('[data-a="0"]').hidden, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(cs.tl >= 4 && cs.q >= 3 && cs.a && !cs.over && !errs.length, `${tv} · 개발 사례 — 타임라인 ${cs.tl} · 질문 ${cs.q} · 해설 ${cs.a} · 가로 넘침 ${cs.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      const pd = sd.problems[0].day;
+      await hop(`#/dev/security/practice/${pd}`, ".dv-mopt", 600);
+      await p.click("[data-p] .dv-mopt"); await sleep(200);
+      const mt = await p.evaluate(() => ({ n: document.querySelectorAll("[data-p]").length, ex: !document.querySelector("[data-p] [data-ex]").hidden, pick: !!document.querySelector("[data-p] .dv-mopt.pick"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(mt.n === sd.problems.filter((x) => x.day === pd).length && mt.ex && mt.pick && !mt.over && !errs.length, `${tv} · 개발 회의실 — ${mt.n}장면 · 해설 ${mt.ex} · 정답 표시 ${mt.pick} · 가로 넘침 ${mt.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/dev/today", ".dv-plan-in", 600);
+      const td = await p.evaluate(() => ({ sec: document.querySelectorAll(".dv-wrap > section.dv-panel").length, fresh: document.querySelectorAll('section a.dv-row[href*="/c"]').length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(td.sec === 5 && td.fresh >= 3 && !td.over && !errs.length, `${tv} · 개발 오늘 — 단계 ${td.sec} · 새 카드 ${td.fresh} · 가로 넘침 ${td.over}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/dev/docs", ".dv-lane", 600);
+      await p.click('.dv-doc[data-k="erd"]'); await sleep(150);
+      const dc = await p.evaluate(() => ({ docs: document.querySelectorAll(".dv-doc").length, erd: document.querySelectorAll(".dv-ent").length, map: document.querySelectorAll(".dv-tbl tbody tr").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(dc.docs === 11 && dc.erd === 5 && dc.map >= 8 && !dc.over && !errs.length, `${tv} · 개발 문서 지도 — 문서 ${dc.docs} · ERD 표 ${dc.erd} · 대응표 ${dc.map} · 가로 넘침 ${dc.over}${errs.length ? " — " + errs[0] : ""}`);
+      await ctx.request.fetch(BASE + "/api/dev/done", { method: "PUT", headers: H, data: { module: "security", item: sd.problems.find((x) => x.day === pd).id, kind: "problem", done: false } }).catch(() => {});
+    }
+
     // ---------- ⑭ 영상 노트 한 화면 — 맨 위 인용에 YouTube 영상이 있으면 왼쪽 영상 · 목차 · 접힌 스크립트, 오른쪽 정리 (2026-10-14) ----------
     {
       const V = "Am7IWP8IpEc", u = (t) => `https://youtu.be/${V}?t=${t}`, title = "영상 검사 " + tv;

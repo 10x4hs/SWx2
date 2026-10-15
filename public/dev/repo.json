@@ -1,0 +1,2461 @@
+{
+  "id": "repo",
+  "no": "09",
+  "title": "Repo와 코드 리뷰",
+  "short": "Repo · 리뷰",
+  "q": "Repo는 어떻게 관리하고, 리뷰는 꼭 해야 하나요?",
+  "sub": "브랜치 · PR · 리뷰 · 버전 · 라이선스 · AI",
+  "doc": "PR 설명 · 리뷰 코멘트",
+  "story": {
+    "title": "“리뷰 안 받은 코드는 main에 못 들어가요”",
+    "size": 18,
+    "body": [
+      "(가상 이야기) 두런은 18명이 됐어요. 지난주 금요일, 급하게 main에 바로 올린 수정 하나가 회의 요약 공유 기능을 멈추게 했어요. 그 코드는 아무도 보지 않았어요.",
+      "CTO 지훈이 제안해요. \"이제 main을 보호하죠. 리뷰를 거치지 않은 코드는 main에 못 들어가게요.\" 그러자 도윤이 걱정해요. \"리뷰 기다리느라 하루씩 밀리면요? 지금도 PR이 3일씩 대기해요.\"",
+      "대표인 나는 정해야 해요. 리뷰를 꼭 해야 하는지, 한다면 얼마나 빠르고 작게 할지. 그리고 금요일까지 팀이 따라 쓸 PR 설명 양식과 리뷰 코멘트 예시를 만들어야 해요."
+    ]
+  },
+  "goals": [
+    "커밋·브랜치·PR·병합을 설명하고, 우리 제품에 맞는 브랜치 전략을 고를 수 있어요.",
+    "리뷰의 가치(지식 공유)와 비용(속도)을 알고, 보호 브랜치·응답 시간·PR 크기 규칙을 정할 수 있어요.",
+    "오픈소스 라이선스·CRA·AI 도구의 위험을 대표 관점에서 짚을 수 있어요."
+  ],
+  "cards": [
+    {
+      "id": "c01",
+      "day": 1,
+      "title": "Repo는 코드와 그 역사의 단 하나의 기록이에요",
+      "lead": "저장소(repository, repo)는 제품 코드와 모든 변경 이력을 담은 하나의 공식 기록이에요. \"운영에서 돌아가는 건 모두 여기 있다\"가 출발점이에요.",
+      "idea": [
+        "Pro Git은 버전 관리를 \"파일의 변화를 시간에 따라 기록해 나중에 특정 버전을 다시 꺼낼 수 있게 하는 시스템\"이라고 정의해요. GitHub에서 repo는 \"모든 코드, 파일, 각 파일의 수정 이력\"을 담아요.",
+        "DORA/Accelerate의 역량 1번이 \"운영에 쓰이는 모든 산출물을 버전 관리하기\"예요.",
+        "대표가 정할 것: 조직 계정과 관리자 권한은 누가 갖나(창업자가 소유자 권한 유지, IP 통제와도 연결), 공개/비공개, 기본 브랜치 보호."
+      ],
+      "hear": [
+        "\"그 스크립트는 제 노트북에만 있어요.\" (위험)",
+        "\"공동창업자가 나갔는데 GitHub 소유자 권한이 그 사람한테만 있어요.\""
+      ],
+      "ask": [
+        "GitHub 조직의 소유자 권한은 누구에게 있나요?",
+        "운영 서버 설정까지 repo에 있나요?"
+      ],
+      "mine": "내 앱도 하나의 repo에 앱 코드, 마이그레이션 SQL, 테스트 스크립트(scripts/smoke.mjs, scripts/e2e.mjs)가 함께 있어요.",
+      "deep": [
+        "실패 패턴: 한 사람 노트북에만 있는 코드, repo에 커밋된 비밀 값, 공유 브랜치를 강제로 덮어쓰기(force push), 창업자가 떠날 때 관리자 권한 주인이 없음."
+      ],
+      "recall": {
+        "q": "DORA 역량 1번은?",
+        "a": "운영에 쓰이는 모든 산출물을 버전 관리하기"
+      },
+      "quiz": [
+        {
+          "q": "repo 관리에서 대표가 직접 챙길 것은?",
+          "options": [
+            "변수 이름",
+            "조직 소유자 권한",
+            "들여쓰기"
+          ],
+          "answer": 1,
+          "why": "소유자 권한은 IP 통제와 연결돼요."
+        },
+        {
+          "q": "버전 관리의 핵심 가치는?",
+          "options": [
+            "코드를 빠르게 실행",
+            "특정 시점으로 되돌리고 이력을 보는 것",
+            "디자인"
+          ],
+          "answer": 1,
+          "why": "Pro Git의 정의예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Pro Git — About Version Control",
+          "url": "https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control",
+          "date": "2014 (2판)"
+        },
+        {
+          "title": "IT Revolution — 24 Key Capabilities to Drive Improvement in Software Delivery",
+          "url": "https://itrevolution.com/articles/24-key-capabilities-to-drive-improvement-in-software-delivery/",
+          "date": "2024-02-23"
+        }
+      ]
+    },
+    {
+      "id": "c02",
+      "day": 1,
+      "title": "커밋 · 브랜치 · 병합",
+      "lead": "커밋은 저장된 한 장면, 브랜치는 평행한 작업 줄기, 병합(merge)은 줄기를 다시 합치는 일이에요. 이 셋만 알면 개발 회의의 절반은 따라가요.",
+      "idea": [
+        "Git은 데이터를 \"스냅샷의 흐름\"으로 저장하고 거의 모든 작업을 로컬에서 해요.",
+        "브랜치는 \"주 개발 줄기에서 갈라져 나와, 그 줄기를 흐트러뜨리지 않고 일하는 것\"이에요(Pro Git).",
+        "리베이스(rebase)는 커밋을 다시 놓아 이력을 한 줄로 만들어요. 깔끔하지만 이력을 고쳐 쓰니, 남들이 이미 가져간 커밋에는 하지 말아야 해요."
+      ],
+      "code": {
+        "text": "git switch -c feat/share-link\ngit commit -m \"feat: 회의 요약 공유 링크\"\ngit push origin feat/share-link",
+        "read": "읽는 법: 새 브랜치 feat/share-link를 만들어 옮겨 가고(1줄), 변경을 한 장면으로 저장하며 설명을 붙이고(2줄), 서버(origin)에 올려요(3줄). 그다음 GitHub에서 PR을 열어 리뷰를 받아요."
+      },
+      "hear": [
+        "\"충돌(conflict) 났어요. 같은 줄을 둘이 고쳤어요.\"",
+        "\"공유 브랜치에 리베이스하지 마세요.\""
+      ],
+      "ask": [
+        "브랜치는 보통 며칠 만에 합쳐지나요?",
+        "충돌이 자주 나는 곳은 어디인가요?"
+      ],
+      "mine": "내 앱은 기능마다 브랜치를 만들고 PR로 합쳐요. 커밋 메시지는 feat:, fix: 같은 Conventional Commits 형식이에요.",
+      "deep": [
+        "Git 3.0 계획: 새 repo의 기본 해시를 SHA-1에서 SHA-256으로, 기본 브랜치 이름을 main으로, 빌드에 Rust 필요. 출시일은 확인되지 않았어요."
+      ],
+      "recall": {
+        "q": "남들이 가져간 커밋에 하면 안 되는 것은?",
+        "a": "리베이스(이력 고쳐 쓰기)"
+      },
+      "quiz": [
+        {
+          "q": "브랜치의 뜻은?",
+          "options": [
+            "코드 삭제",
+            "주 줄기를 흐트러뜨리지 않는 평행 작업",
+            "서버 이름"
+          ],
+          "answer": 1,
+          "why": "Pro Git의 정의예요."
+        },
+        {
+          "q": "Git 3.0의 새 repo 기본 브랜치 이름은?",
+          "options": [
+            "master",
+            "main",
+            "trunk"
+          ],
+          "answer": 1,
+          "why": "BreakingChanges 문서의 계획이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Pro Git — What is Git?",
+          "url": "https://git-scm.com/book/en/v2/Getting-Started-What-is-Git%3F",
+          "date": "2014 (2판)"
+        },
+        {
+          "title": "Pro Git — Branches in a Nutshell",
+          "url": "https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell",
+          "date": "2014 (2판)"
+        },
+        {
+          "title": "Git — BreakingChanges Documentation",
+          "url": "https://git-scm.com/docs/BreakingChanges",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "c03",
+      "day": 1,
+      "title": "GitHub flow · GitFlow · 트렁크 기반",
+      "lead": "브랜치 전략은 \"얼마나 자주 합치나\"를 정해요. 웹·SaaS 스타트업은 GitHub flow나 트렁크 기반이 기본이고, GitFlow는 버전을 여러 개 지원하는 제품용이에요.",
+      "idea": [
+        "GitHub flow: 브랜치 → 커밋 → PR → 리뷰 → 병합 → 브랜치 삭제. \"가볍고 브랜치 기반인 흐름\"이에요.",
+        "GitFlow(2010)는 오래가는 develop·release 브랜치를 둬요. 만든 Driessen 본인이 2020년 \"지속적 전달을 한다면 GitHub flow 같은 더 단순한 흐름을 쓰라\"고 덧붙였어요. 명시적 버전 소프트웨어나 여러 버전 지원에는 여전히 맞을 수 있대요.",
+        "트렁크 기반: 모두 하나의 줄기(trunk)에 최소 하루 한 번 합치고, 미완성 기능은 기능 플래그로 숨겨요."
+      ],
+      "steps": [
+        {
+          "k": "GitHub flow",
+          "t": "짧은 브랜치 → PR → main"
+        },
+        {
+          "k": "GitFlow",
+          "t": "develop · release · hotfix"
+        },
+        {
+          "k": "트렁크 기반",
+          "t": "하루 한 번 이상 trunk에 합침"
+        }
+      ],
+      "hear": [
+        "\"GitFlow가 전문적인 방식이죠?\" (원작자가 웹앱에는 아니라고 했어요)",
+        "\"브랜치가 3주째 안 합쳐졌어요.\""
+      ],
+      "ask": [
+        "우리 제품은 버전을 여러 개 지원해야 하나요?",
+        "브랜치는 평균 며칠 살아 있나요?"
+      ],
+      "mine": "내 앱은 GitHub flow에 가까워요. 기능 브랜치 → PR → 사람 승인 → main 병합이에요.",
+      "deep": [
+        "DORA: 활성 브랜치 3개 이하, 하루 한 번 이상 trunk 병합, 코드 동결과 통합 단계가 없는 팀이 전달·운영 성과가 좋아요. 걸림돌로 \"지나치게 무거운 코드 리뷰\"를 꼽아요.",
+        "Fowler의 \"Patterns for Managing Source Code Branches\"(2020)가 더 깊은 참고 자료예요."
+      ],
+      "recall": {
+        "q": "Driessen이 2020년에 웹앱 팀에 권한 것은?",
+        "a": "GitFlow 대신 GitHub flow 같은 더 단순한 흐름"
+      },
+      "quiz": [
+        {
+          "q": "GitFlow가 아직 맞을 수 있는 경우는?",
+          "options": [
+            "매일 배포하는 웹앱",
+            "명시적 버전을 여러 개 지원하는 소프트웨어",
+            "1인 블로그"
+          ],
+          "answer": 1,
+          "why": "Driessen의 2020 메모예요."
+        },
+        {
+          "q": "DORA가 좋은 성과와 연결한 것은?",
+          "options": [
+            "브랜치 10개 이상",
+            "하루 한 번 이상 trunk 병합",
+            "분기마다 통합"
+          ],
+          "answer": 1,
+          "why": "trunk-based 역량이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "GitHub Docs — GitHub flow",
+          "url": "https://docs.github.com/en/get-started/using-github/github-flow",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "Vincent Driessen — A successful Git branching model (2020 Note of reflection)",
+          "url": "https://nvie.com/posts/a-successful-git-branching-model/",
+          "date": "2020-03-05"
+        },
+        {
+          "title": "DORA — Capabilities: Trunk-based development",
+          "url": "https://dora.dev/capabilities/trunk-based-development/",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "c04",
+      "day": 1,
+      "title": "모노레포와 폴리레포",
+      "lead": "모노레포는 여러 프로젝트를 한 repo에, 폴리레포는 서비스마다 repo를 따로 둬요. 초기 스타트업은 앱이 한두 개라 대개 고민할 필요가 없어요.",
+      "idea": [
+        "Google(2016 CACM): 약 10억 개 파일, 18년간 약 3,500만 커밋, 86TB, 약 20억 줄 코드가 한 repo(Piper)에 있어요. 브랜치 개발은 \"드물고 잘 지원되지 않아요\".",
+        "장점은 한 번에 여러 프로젝트를 바꾸는 원자적 변경, 코드 공유, 단일 의존성 버전이에요. 비용은 도구 투자(빌드·CI·검색)와 코드 건강 관리예요.",
+        "반대 방향 사례: Segment(2018)는 140개 넘는 서비스와 repo를 하나의 서비스·하나의 repo로 합쳤어요(사례 참고)."
+      ],
+      "hear": [
+        "\"서비스마다 repo 만들죠, 그게 MSA잖아요.\"",
+        "\"CI가 40분 걸려요.\""
+      ],
+      "ask": [
+        "repo를 나누면 그걸 맡을 팀이 각각 있나요?",
+        "공유 코드를 여러 repo에서 버전 맞추는 비용은 누가 내나요?"
+      ],
+      "deep": [
+        "Software Engineering at Google: 대부분 코드가 약 5만 명 엔지니어가 함께 쓰는 단일 repo에 있고, Chromium·Android는 예외예요. \"One-Version Rule\"로 의존성 버전을 하나로 제한해요.",
+        "평범한 Git은 서로 무관한 프로젝트가 많은 큰 모노레포에서 성능 문제가 생길 수 있어요(Atlassian, 중간 신뢰도).",
+        "다시 볼 때: 코드를 공유하는 배포물이 여러 개가 되거나, CI 시간이 늘거나, 접근 분리(외주, 오픈소스 일부)가 필요할 때."
+      ],
+      "recall": {
+        "q": "모노레포의 대표적 비용은?",
+        "a": "빌드·CI·검색 도구 투자와 코드 건강 관리 노력"
+      },
+      "quiz": [
+        {
+          "q": "Google 모노레포에서 브랜치 개발은?",
+          "options": [
+            "기본 방식",
+            "드물고 잘 지원되지 않음",
+            "금지"
+          ],
+          "answer": 1,
+          "why": "주로 릴리스용 브랜치만 써요."
+        },
+        {
+          "q": "초기 스타트업에 흔한 실수는?",
+          "options": [
+            "앱 1개에 repo 1개",
+            "팀도 없이 repo를 수십 개로 쪼갬",
+            "README 작성"
+          ],
+          "answer": 1,
+          "why": "맡을 팀보다 repo가 많아지면 운영 부담이 커요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Potvin & Levenberg — Why Google Stores Billions of Lines of Code in a Single Repository (CACM)",
+          "url": "https://research.google/pubs/why-google-stores-billions-of-lines-of-code-in-a-single-repository/",
+          "date": "2016"
+        },
+        {
+          "title": "Software Engineering at Google — ch.16 Version Control and Branch Management",
+          "url": "https://abseil.io/resources/swe-book/html/ch16.html",
+          "date": "2020"
+        },
+        {
+          "title": "Goodbye Microservices (Alexandra Noonan, Segment)",
+          "url": "https://www.twilio.com/en-us/blog/developers/best-practices/goodbye-microservices",
+          "date": "2018-07-10"
+        }
+      ]
+    },
+    {
+      "id": "c05",
+      "day": 2,
+      "title": "PR은 \"합쳐 주세요\"라는 제안이에요",
+      "lead": "풀 리퀘스트(PR)는 내 브랜치를 main에 합쳐 달라는 제안서예요. 무엇을, 왜 바꿨고, 어떻게 확인했는지를 적어 리뷰어에게 보내요. GitLab에서는 머지 리퀘스트(MR)라고 불러요.",
+      "idea": [
+        "좋은 PR 설명은 세 부분이에요. 무엇을 바꿨나, 왜 바꿨나(요구사항·이슈 링크), 어떻게 확인했나(테스트, 화면 캡처).",
+        "GitHub에는 초안(draft) PR, 리뷰 요청, 병합 방식(병합 커밋 · 스쿼시 · 리베이스)이 있어요.",
+        "2026년 새 기능: GitHub 기본 \"스택 PR\"이 생겼어요. 작은 PR 여러 개를 사슬처럼 쌓고, 아래 것이 병합되면 위 것이 자동으로 다시 정렬돼요. 정확한 상태(프리뷰 여부)는 출처마다 달라요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 무엇",
+          "t": "바꾼 내용 요약"
+        },
+        {
+          "k": "2 · 왜",
+          "t": "이슈·요구사항 링크"
+        },
+        {
+          "k": "3 · 확인",
+          "t": "테스트·캡처"
+        },
+        {
+          "k": "4 · 주의",
+          "t": "리뷰어가 볼 곳, 위험"
+        }
+      ],
+      "hear": [
+        "\"PR 설명이 '수정' 한 단어예요.\"",
+        "\"초안 PR로 먼저 방향만 봐 주세요.\""
+      ],
+      "ask": [
+        "PR 템플릿(무엇·왜·확인)이 있나요?",
+        "PR이 요구사항이나 이슈와 연결돼 있나요?"
+      ],
+      "mine": "내 앱은 61개 넘는 PR이 병합됐어요. 모든 변경이 PR → 사람 승인 → main 병합을 거쳐요.",
+      "deep": [
+        "스택 PR: InfoQ는 2026-04-13 비공개 프리뷰, IT Brief는 2026-07-31 공개 프리뷰로 보도했고, GitHub 문서는 2026-10-14 기준 공개돼 있어요."
+      ],
+      "recall": {
+        "q": "좋은 PR 설명의 세 부분은?",
+        "a": "무엇을, 왜, 어떻게 확인했나"
+      },
+      "quiz": [
+        {
+          "q": "GitLab에서 PR을 부르는 이름은?",
+          "options": [
+            "머지 리퀘스트",
+            "푸시 리퀘스트",
+            "커밋 리퀘스트"
+          ],
+          "answer": 0,
+          "why": "merge request예요."
+        },
+        {
+          "q": "스택 PR의 장점은?",
+          "options": [
+            "큰 PR 하나로 합침",
+            "작은 PR을 사슬로 이어 리뷰하기 쉬움",
+            "리뷰 생략"
+          ],
+          "answer": 1,
+          "why": "작은 변경을 이어서 보내요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "GitHub Docs — Pull requests",
+          "url": "https://docs.github.com/en/pull-requests/reference/pull-requests",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "GitHub Docs — About stacked pull requests",
+          "url": "https://docs.github.com/en/pull-requests/get-started/about-stacked-prs",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "GitHub Docs — About merge methods on GitHub",
+          "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/about-merge-methods-on-github",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "c06",
+      "day": 2,
+      "title": "리뷰는 버그 찾기보다 지식 나누기예요",
+      "lead": "연구에 따르면 코드 리뷰의 주된 결과는 버그 발견보다 지식 공유, 팀 인식, 규범 유지예요. 그래서 리뷰는 \"검사\"이자 \"교육\"이에요.",
+      "idea": [
+        "Microsoft(ICSE 2013): 결함 찾기가 주된 동기지만, 실제 리뷰는 \"예상보다 결함과 덜 관련 있고\" 지식 전달, 팀 인식, 대안 제시 같은 이점이 있어요.",
+        "Google(ICSE-SEIP 2018, 900만 건 리뷰): 동기는 교육, 규범 유지, 관문 역할, 사고 예방이에요.",
+        "Google은 LGTM 승인에 더해 코드 주인 승인과 언어 \"가독성\" 승인을 요구해요. 팀 소유감, 지식 공유, 역사 기록을 이점으로 들어요."
+      ],
+      "hear": [
+        "\"리뷰는 시니어가 주니어 코드 검사하는 거죠?\"",
+        "\"리뷰 덕분에 그 모듈을 저도 알게 됐어요.\""
+      ],
+      "ask": [
+        "리뷰를 통해 한 사람만 아는 코드가 줄고 있나요?",
+        "주니어도 시니어 코드를 리뷰하나요?"
+      ],
+      "deep": [
+        "두 독립 연구가 같은 결론이라 신뢰도가 높아요. \"리뷰는 주로 버그를 잡으려고 한다\"는 흔한 믿음과 달라요."
+      ],
+      "recall": {
+        "q": "Google 연구가 꼽은 리뷰 동기 네 가지는?",
+        "a": "교육, 규범 유지, 관문 역할, 사고 예방"
+      },
+      "quiz": [
+        {
+          "q": "Microsoft 연구의 결론은?",
+          "options": [
+            "리뷰는 결함만 찾는다",
+            "결함보다 지식 전달 등 다른 이점이 크다",
+            "리뷰는 쓸모없다"
+          ],
+          "answer": 1,
+          "why": "ICSE 2013 결론이에요."
+        },
+        {
+          "q": "리뷰가 줄여 주는 위험은?",
+          "options": [
+            "한 사람만 아는 코드",
+            "서버 비용",
+            "디자인 비용"
+          ],
+          "answer": 0,
+          "why": "지식 공유 효과예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Bacchelli & Bird — Expectations, Outcomes, and Challenges of Modern Code Review (ICSE)",
+          "url": "https://www.microsoft.com/en-us/research/publication/expectations-outcomes-and-challenges-of-modern-code-review/",
+          "date": "2013-05"
+        },
+        {
+          "title": "Sadowski et al. — Modern Code Review: A Case Study at Google (ICSE-SEIP)",
+          "url": "https://research.google/pubs/modern-code-review-a-case-study-at-google/",
+          "date": "2018"
+        },
+        {
+          "title": "Software Engineering at Google — ch.9 Code Review",
+          "url": "https://abseil.io/resources/swe-book/html/ch09.html",
+          "date": "2020"
+        }
+      ]
+    },
+    {
+      "id": "c07",
+      "day": 2,
+      "title": "구글의 리뷰 규칙: 하루 안에, 작게",
+      "lead": "Google 리뷰 가이드의 두 숫자: 리뷰 요청에는 길어도 영업일 하루 안에 응답, 변경은 100줄 정도가 적당하고 1,000줄은 보통 너무 커요.",
+      "idea": [
+        "속도: \"One business day is the maximum time it should take to respond to a code review request.\" 개인 속도가 아니라 팀이 함께 만드는 속도를 최적화해요. 느린 리뷰는 팀 전체 속도를 떨어뜨려요.",
+        "크기: 작은 변경은 \"더 빨리\", \"더 꼼꼼히\" 리뷰돼요.",
+        "기준(senior principle): 완벽하지 않아도 시스템의 코드 건강을 \"분명히 개선\"하면 승인해요. \"완벽한 코드는 없고, 더 나은 코드만 있다.\""
+      ],
+      "hear": [
+        "\"PR이 3일째 리뷰 대기예요.\"",
+        "\"2,000줄짜리 PR인데 LGTM 찍었어요.\" (위험)"
+      ],
+      "ask": [
+        "리뷰 응답 시간 목표(예: 영업일 1일)가 있나요?",
+        "PR 크기가 커지면 쪼개 달라고 하나요?"
+      ],
+      "deep": [
+        "측정값(Google, 2018): 작은 변경의 첫 피드백 중앙값은 1시간 미만, 아주 큰 변경은 약 5시간, 전체 리뷰 지연 중앙값은 4시간 미만, 70%가 리뷰 요청 후 24시간 안에 커밋, 리뷰어가 2명 이상인 변경은 25% 미만(중앙값 1명).",
+        "리뷰어가 보는 것: 설계(가장 중요), 기능, 복잡도, 테스트, 이름, 주석, 스타일, 문서, 그리고 잘한 점 칭찬."
+      ],
+      "recall": {
+        "q": "Google의 리뷰 응답 최대 시간과 적당한 변경 크기는?",
+        "a": "영업일 1일, 약 100줄"
+      },
+      "quiz": [
+        {
+          "q": "Google 리뷰 지연 중앙값은?",
+          "options": [
+            "4시간 미만",
+            "3일",
+            "1주"
+          ],
+          "answer": 0,
+          "why": "ICSE-SEIP 2018 측정값이에요."
+        },
+        {
+          "q": "승인 기준으로 맞는 것은?",
+          "options": [
+            "완벽할 때만",
+            "코드 건강을 분명히 개선하면",
+            "아무 때나"
+          ],
+          "answer": 1,
+          "why": "senior principle이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Google eng-practices — Speed of Code Reviews",
+          "url": "https://google.github.io/eng-practices/review/reviewer/speed.html",
+          "date": "2024-09-19"
+        },
+        {
+          "title": "Google eng-practices — Small CLs",
+          "url": "https://google.github.io/eng-practices/review/developer/small-cls.html",
+          "date": "2024-09-19"
+        },
+        {
+          "title": "Sadowski et al. — Modern Code Review: A Case Study at Google (ICSE-SEIP)",
+          "url": "https://research.google/pubs/modern-code-review-a-case-study-at-google/",
+          "date": "2018"
+        }
+      ]
+    },
+    {
+      "id": "c08",
+      "day": 2,
+      "title": "리뷰가 느리면 팀이 큰 덩어리로 일해요",
+      "lead": "리뷰가 느리거나 너무 까다로우면 개발자는 기다리기 싫어 변경을 크게 모아요. 큰 변경은 리뷰가 더 느려지는 악순환이 생겨요.",
+      "idea": [
+        "DORA는 \"지나치게 무거운 코드 리뷰 과정\"을 트렁크 기반 개발의 걸림돌로 꼽아요.",
+        "흔한 실패: 도장만 찍는 승인, 일주일짜리 리뷰 대기열, 거대한 PR, 린터가 잡을 스타일을 사람이 지적하기.",
+        "대표가 정할 것: 리뷰 응답 목표, PR 크기 기준, 필수 승인 수, 머지 큐 사용 여부."
+      ],
+      "hear": [
+        "\"리뷰 받기 귀찮아서 다음 기능까지 한 PR에 넣었어요.\"",
+        "\"들여쓰기 지적은 린터에 맡기죠.\""
+      ],
+      "ask": [
+        "리뷰 대기 시간을 재고 있나요?",
+        "스타일 지적은 자동화했나요?"
+      ],
+      "deep": [
+        "GitHub 머지 큐는 \"호환되지 않는 변경 때문에 브랜치가 깨지지 않게\" 보장해요. 병합이 많을 때 유용해요."
+      ],
+      "recall": {
+        "q": "느린 리뷰가 만드는 악순환은?",
+        "a": "변경을 크게 모음 → 리뷰가 더 느려짐"
+      },
+      "quiz": [
+        {
+          "q": "사람이 아니라 도구에 맡길 리뷰 항목은?",
+          "options": [
+            "설계",
+            "들여쓰기 스타일",
+            "요구사항 해석"
+          ],
+          "answer": 1,
+          "why": "린터가 잡을 일이에요."
+        },
+        {
+          "q": "DORA가 걸림돌로 꼽은 것은?",
+          "options": [
+            "지나치게 무거운 리뷰",
+            "테스트",
+            "README"
+          ],
+          "answer": 0,
+          "why": "trunk-based 역량 페이지예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "DORA — Capabilities: Trunk-based development",
+          "url": "https://dora.dev/capabilities/trunk-based-development/",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "GitHub Docs — Managing a merge queue",
+          "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "Google eng-practices — What to look for in a code review",
+          "url": "https://google.github.io/eng-practices/review/reviewer/looking-for.html",
+          "date": "2024-09-19"
+        }
+      ]
+    },
+    {
+      "id": "c09",
+      "day": 3,
+      "title": "main 보호: 리뷰 없이 못 들어가게",
+      "lead": "보호 브랜치(protected branch)는 main에 들어가는 규칙을 GitHub가 강제하게 해요. \"리뷰 승인 없이는 병합 불가\"를 사람의 기억이 아니라 설정으로 지켜요.",
+      "idea": [
+        "보호 브랜치로 요구할 수 있는 것: PR 리뷰, 상태 검사(테스트) 통과, 대화 해결, 서명된 커밋, 선형 이력, 머지 큐, 배포 성공, 그리고 강제 push 차단.",
+        "룰셋(rulesets)은 여러 규칙을 겹쳐 같은 브랜치에 동시에 적용할 수 있고, repo당 최대 75개예요.",
+        "대표 입장에서는 \"급하다고 대표 계정으로 바로 main에 push\"하는 예외가 가장 위험해요."
+      ],
+      "steps": [
+        {
+          "k": "1 · PR",
+          "t": "브랜치에서 PR 열기"
+        },
+        {
+          "k": "2 · 검사",
+          "t": "테스트·상태 검사 통과"
+        },
+        {
+          "k": "3 · 승인",
+          "t": "리뷰어(코드 주인) 승인"
+        },
+        {
+          "k": "4 · 병합",
+          "t": "main에 합침, 강제 push 차단"
+        }
+      ],
+      "hear": [
+        "\"급해서 main에 바로 push했어요.\"",
+        "\"보호 규칙 때문에 병합 버튼이 회색이에요.\""
+      ],
+      "ask": [
+        "main에 리뷰 필수와 강제 push 차단이 켜져 있나요?",
+        "관리자도 규칙을 우회할 수 있나요?"
+      ],
+      "mine": "내 앱은 사람 승인 없이 main에 병합하지 않아요. 다만 CI 워크플로가 없어서 테스트는 배포 전에 로컬에서 돌려요.",
+      "deep": [
+        "GitHub 문서 기준 보호 브랜치 규칙은 리뷰, 상태 검사, 대화 해결, 서명 커밋, 선형 이력, 머지 큐, 배포 성공을 요구할 수 있어요."
+      ],
+      "recall": {
+        "q": "보호 브랜치가 막을 수 있는 위험한 행동 하나는?",
+        "a": "강제 push(force push)"
+      },
+      "quiz": [
+        {
+          "q": "룰셋의 특징은?",
+          "options": [
+            "한 브랜치에 하나만",
+            "여러 개를 겹쳐 적용 가능",
+            "공개 repo 전용"
+          ],
+          "answer": 1,
+          "why": "\"multiple rulesets can apply to the same branch\"."
+        },
+        {
+          "q": "보호 브랜치로 요구할 수 없는 것은?",
+          "options": [
+            "리뷰 승인",
+            "테스트 통과",
+            "개발자 연봉 인상"
+          ],
+          "answer": 2,
+          "why": "나머지는 실제 설정 항목이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "GitHub Docs — About protected branches",
+          "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "GitHub Docs — About rulesets",
+          "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "c10",
+      "day": 3,
+      "title": "CODEOWNERS: 이 코드의 주인",
+      "lead": "CODEOWNERS 파일은 \"이 폴더를 바꾸면 이 사람이 리뷰한다\"를 적어 둬요. PR이 그 코드를 건드리면 주인이 자동으로 리뷰어로 지정돼요.",
+      "idea": [
+        "GitHub: \"코드 주인이 소유한 코드를 바꾸는 PR이 열리면 자동으로 리뷰가 요청된다.\"",
+        "보호 브랜치와 함께 쓰면 \"결제·로그인 코드는 담당자 승인 필수\" 같은 규칙을 만들 수 있어요.",
+        "주인이 한 명이면 그 사람이 휴가일 때 막혀요. 주인을 팀 단위로 두거나 두 명 이상 두세요."
+      ],
+      "hear": [
+        "\"인증 코드 바꿨는데 지훈 님이 자동으로 리뷰어가 됐어요.\"",
+        "\"결제 폴더 주인이 퇴사했어요.\""
+      ],
+      "ask": [
+        "위험한 영역(결제, 인증, 데이터 삭제)에 코드 주인이 있나요?",
+        "주인이 휴가일 때 대신할 사람은?"
+      ],
+      "deep": [
+        "Google은 코드 주인(OWNERS) 승인을 리뷰 요건의 하나로 둬요(Software Engineering at Google 9장)."
+      ],
+      "recall": {
+        "q": "CODEOWNERS가 자동으로 하는 일은?",
+        "a": "해당 코드를 바꾸는 PR에 주인을 리뷰어로 요청"
+      },
+      "quiz": [
+        {
+          "q": "CODEOWNERS 운영의 흔한 위험은?",
+          "options": [
+            "주인이 한 명뿐이라 병목",
+            "파일이 너무 짧음",
+            "자동화가 너무 많음"
+          ],
+          "answer": 0,
+          "why": "휴가·퇴사 때 막혀요."
+        },
+        {
+          "q": "CODEOWNERS와 함께 쓰면 좋은 설정은?",
+          "options": [
+            "보호 브랜치",
+            "공개 repo",
+            "강제 push"
+          ],
+          "answer": 0,
+          "why": "주인 승인을 필수로 만들어요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "GitHub Docs — About code owners",
+          "url": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "Software Engineering at Google — ch.9 Code Review",
+          "url": "https://abseil.io/resources/swe-book/html/ch09.html",
+          "date": "2020"
+        }
+      ]
+    },
+    {
+      "id": "c11",
+      "day": 3,
+      "title": "커밋 메시지 규칙: Conventional Commits",
+      "lead": "Conventional Commits는 커밋 메시지 앞에 feat:, fix: 같은 머리말을 붙이는 규칙이에요. 사람이 읽기 쉽고, 도구가 변경 기록과 버전을 자동으로 만들 수 있어요.",
+      "idea": [
+        "fix:는 PATCH, feat:는 MINOR, BREAKING CHANGE는 MAJOR 버전과 연결돼요.",
+        "이 규칙 덕분에 \"변경 기록(CHANGELOG) 자동 생성\"과 \"버전 올림 자동 판단\"이 가능해요.",
+        "README는 방문자가 \"가장 먼저 보는 것\"이니 무엇을 하는지, 어떻게 시작하는지, 누가 관리하는지 적고, CONTRIBUTING.md에 기여 규칙을 적어요."
+      ],
+      "hear": [
+        "\"커밋 메시지가 'asdf'예요.\"",
+        "\"feat: 커밋 모아서 릴리스 노트 만들었어요.\""
+      ],
+      "ask": [
+        "커밋·PR 제목 규칙이 정해져 있나요?",
+        "새로 온 사람이 README만 보고 실행할 수 있나요?"
+      ],
+      "mine": "내 앱의 커밋 메시지는 Conventional Commits를 따라요. 예: feat(brain): 오른쪽 클릭 메뉴, fix(notes): …",
+      "deep": [
+        "Keep a Changelog 1.1.0: \"변경 기록은 기계가 아니라 사람을 위한 것\", \"친구가 git 로그를 그대로 변경 기록에 붓지 않게 하라.\" [Unreleased] 칸을 두고 최신 버전을 위에, 날짜와 함께 적어요."
+      ],
+      "recall": {
+        "q": "feat:와 fix:는 각각 어떤 버전 단위와 연결되나요?",
+        "a": "feat → MINOR, fix → PATCH"
+      },
+      "quiz": [
+        {
+          "q": "BREAKING CHANGE는 어떤 버전과 연결되나요?",
+          "options": [
+            "PATCH",
+            "MINOR",
+            "MAJOR"
+          ],
+          "answer": 2,
+          "why": "호환이 깨지는 변경이에요."
+        },
+        {
+          "q": "Keep a Changelog의 원칙은?",
+          "options": [
+            "git 로그를 그대로 붙인다",
+            "사람이 읽기 위한 기록",
+            "변경 기록은 필요 없다"
+          ],
+          "answer": 1,
+          "why": "\"for humans, not machines\"."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Conventional Commits 1.0.0",
+          "url": "https://www.conventionalcommits.org/en/v1.0.0/",
+          "date": "v1.0.0"
+        },
+        {
+          "title": "Keep a Changelog 1.1.0",
+          "url": "https://keepachangelog.com/en/1.1.0/",
+          "date": "1.1.0"
+        }
+      ]
+    },
+    {
+      "id": "c12",
+      "day": 3,
+      "title": "버전 번호는 약속이에요: SemVer",
+      "lead": "유의적 버전(SemVer) 2.0.0은 MAJOR.MINOR.PATCH 세 숫자로 \"호환이 깨지는지\"를 약속해요. 다른 회사가 우리 API나 SDK에 기대면 꼭 지켜야 해요.",
+      "idea": [
+        "MAJOR는 호환되지 않는 API 변경, MINOR는 호환되는 기능 추가, PATCH는 호환되는 버그 수정이에요.",
+        "소프트웨어는 \"공개 API를 선언해야(MUST)\" 해요. 0.y.z는 \"초기 개발 단계로, 언제든 무엇이든 바뀔 수 있어요\". 1.0.0이 공개 API를 정의해요.",
+        "흔한 실패: 호환을 깨는 변경을 MINOR로 내보내기."
+      ],
+      "hear": [
+        "\"2.3.1에서 2.4.0으로 올렸는데 고객 연동이 깨졌대요.\" (MAJOR여야 했어요)",
+        "\"아직 0.x라서 바뀔 수 있어요.\""
+      ],
+      "ask": [
+        "우리 공개 API는 문서로 선언돼 있나요?",
+        "호환을 깨는 변경은 누가 승인하나요?"
+      ],
+      "deep": [
+        "한국어 공식 번역 제목은 \"유의적 버전 2.0.0\"이에요.",
+        "SemVer와 Conventional Commits를 함께 쓰면 커밋 머리말로 다음 버전을 자동으로 정할 수 있어요."
+      ],
+      "recall": {
+        "q": "SemVer 세 숫자의 뜻은?",
+        "a": "MAJOR = 호환 깨짐, MINOR = 호환 기능 추가, PATCH = 호환 버그 수정"
+      },
+      "quiz": [
+        {
+          "q": "0.y.z 버전의 뜻은?",
+          "options": [
+            "안정판",
+            "초기 개발, 언제든 바뀔 수 있음",
+            "폐기"
+          ],
+          "answer": 1,
+          "why": "SemVer 명세예요."
+        },
+        {
+          "q": "필드 이름을 바꿔 기존 연동이 깨지면 무엇을 올려야 하나요?",
+          "options": [
+            "PATCH",
+            "MINOR",
+            "MAJOR"
+          ],
+          "answer": 2,
+          "why": "호환되지 않는 API 변경이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Semantic Versioning 2.0.0",
+          "url": "https://semver.org/",
+          "date": "2.0.0"
+        },
+        {
+          "title": "유의적 버전 2.0.0",
+          "url": "https://semver.org/lang/ko/",
+          "date": "2.0.0"
+        }
+      ]
+    },
+    {
+      "id": "c13",
+      "day": 4,
+      "title": "오픈소스 라이선스: 대표가 알아야 할 위험 등급",
+      "lead": "우리 제품의 대부분은 오픈소스예요. 라이선스는 무엇을 공개하거나 돌려줘야 하는지 정해요. 대표는 허용·금지 목록과 승인 절차를 정해요.",
+      "idea": [
+        "허용형(MIT, Apache-2.0): 저작권·라이선스 고지만 지키면 돼요. Apache-2.0은 기여자의 특허 사용 허락도 명시해요.",
+        "GPL(카피레프트): 의무는 주로 배포할 때 생겨요. FSF는 \"수정해서 내부에서만 쓰는 건 공개할 필요 없고, 회사도 마찬가지\"라고 해요.",
+        "AGPL(네트워크 카피레프트): 수정한 프로그램을 서버에서 돌리고 다른 사용자가 접속하게 하면 소스를 내려받게 해야 해요. SaaS에 중요한 조항이에요."
+      ],
+      "steps": [
+        {
+          "k": "허용형",
+          "t": "MIT · Apache-2.0"
+        },
+        {
+          "k": "카피레프트",
+          "t": "GPL (배포 시)"
+        },
+        {
+          "k": "네트워크",
+          "t": "AGPL (서버 제공 시)"
+        },
+        {
+          "k": "소스 공개형",
+          "t": "BSL · SSPL · RSAL (OSI 아님)"
+        }
+      ],
+      "hear": [
+        "\"GPL 라이브러리 쓰면 우리 코드 다 공개해야 하죠?\" (내부 사용만이면 아니에요)",
+        "\"이 GitHub 코드엔 라이선스가 없는데 그냥 써도 되죠?\" (안 돼요)"
+      ],
+      "ask": [
+        "우리 의존성 라이선스를 자동으로 검사하나요?",
+        "AGPL이나 소스 공개형 라이선스는 누가 승인하나요?"
+      ],
+      "deep": [
+        "라이선스가 없으면 \"기본적으로 저작권자 독점\"이라 복사·배포·수정하면 내려받기 요구나 소송 위험이 있어요(choosealicense.com).",
+        "BSL, SSPL, RSAL 같은 \"소스 공개형\"은 OSI 승인 오픈소스 목록에 없어요. 경쟁 사용 제한을 확인해야 해요.",
+        "표준: OpenChain ISO/IEC 5230(라이선스 준수 프로그램), SPDX = ISO/IEC 5962:2021. 한국저작권위원회 OLIS도 가이드와 도구를 줘요."
+      ],
+      "recall": {
+        "q": "SaaS 회사에 특히 중요한 라이선스와 이유는?",
+        "a": "AGPL — 수정본을 서버로 제공하면 소스 제공 의무"
+      },
+      "quiz": [
+        {
+          "q": "GPL 코드를 수정해 회사 내부에서만 쓰면?",
+          "options": [
+            "공개 의무 있음",
+            "공개 의무 없음",
+            "불법"
+          ],
+          "answer": 1,
+          "why": "FSF FAQ예요."
+        },
+        {
+          "q": "라이선스 표시가 없는 GitHub 코드는?",
+          "options": [
+            "자유롭게 사용",
+            "기본적으로 저작권자 독점",
+            "MIT로 간주"
+          ],
+          "answer": 1,
+          "why": "choosealicense.com 설명이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Choose a License — Licenses",
+          "url": "https://choosealicense.com/licenses/",
+          "date": "2026-10-02"
+        },
+        {
+          "title": "FSF — Frequently Asked Questions about the GNU Licenses",
+          "url": "https://www.gnu.org/licenses/gpl-faq.html",
+          "date": "n.d."
+        },
+        {
+          "title": "FSF — Why the GNU Affero GPL",
+          "url": "https://www.gnu.org/licenses/why-affero-gpl.html",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c14",
+      "day": 4,
+      "title": "라이선스는 바뀔 수 있어요: HashiCorp와 Redis",
+      "lead": "의존하던 오픈소스 회사가 라이선스를 바꾸면, 쓰던 도구가 하루아침에 조건부가 될 수 있어요. 라이선스에 의한 종속이에요.",
+      "idea": [
+        "HashiCorp: 2023-08-10 MPL 2.0에서 BSL 1.1로 바꿨어요. \"경쟁 서비스 제공\"이 아니면 쓸 수 있어요. 2023-09-20 Linux Foundation이 포크 OpenTofu를 발표했고, 2025-04-23 CNCF Sandbox에 들어갔어요.",
+        "Redis: 2024-03-20 RSALv2/SSPLv1로 바꿨다가, 2025-05-01 AGPLv3를 선택지로 더했어요.",
+        "Elastic: 2024-08-29 AGPL을 더했어요. IBM은 2025-02-27 HashiCorp 인수를 마쳤어요."
+      ],
+      "hear": [
+        "\"Terraform 라이선스 바뀌었는데 우리 영향 있어요?\"",
+        "\"OpenTofu로 갈아탈까요?\""
+      ],
+      "ask": [
+        "핵심 의존성이 라이선스를 바꾸면 대안(포크, 다른 도구)이 있나요?",
+        "우리 사업이 \"경쟁 서비스\"로 해석될 여지가 있나요?"
+      ],
+      "deep": [
+        "OpenTofu는 현재 1.13.0이고 \"Terraform 대체\"를 내세워요.",
+        "반대 방향도 있어요. Redis와 Elastic은 다시 OSI 승인 라이선스(AGPL)를 더했어요. 라이선스는 양방향으로 바뀔 수 있어요."
+      ],
+      "recall": {
+        "q": "HashiCorp가 BSL로 바꾼 날과 그 포크 이름은?",
+        "a": "2023-08-10, OpenTofu"
+      },
+      "quiz": [
+        {
+          "q": "Redis가 2025-05-01에 더한 라이선스는?",
+          "options": [
+            "MIT",
+            "AGPLv3",
+            "BSL"
+          ],
+          "answer": 1,
+          "why": "redis.io 발표예요."
+        },
+        {
+          "q": "라이선스 종속에 대비하는 방법은?",
+          "options": [
+            "대안·포크를 미리 확인",
+            "라이선스를 무시",
+            "모든 오픈소스 금지"
+          ],
+          "answer": 0,
+          "why": "핵심 의존성마다 대안을 알아 둬요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "HashiCorp adopts Business Source License",
+          "url": "https://www.hashicorp.com/blog/hashicorp-adopts-business-source-license",
+          "date": "2023-08-10"
+        },
+        {
+          "title": "CNCF — OpenTofu",
+          "url": "https://www.cncf.io/projects/opentofu/",
+          "date": "2025-04-23"
+        },
+        {
+          "title": "Redis is now available under the AGPLv3 open source license",
+          "url": "https://redis.io/blog/agplv3/",
+          "date": "2025-05-01"
+        }
+      ]
+    },
+    {
+      "id": "c15",
+      "day": 4,
+      "title": "EU 사이버복원력법(CRA)과 SBOM",
+      "lead": "EU 사이버복원력법(CRA)은 디지털 제품을 파는 회사에 취약점 대응 의무를 줘요. 실제로 악용되는 취약점의 보고 의무는 2026-09-11부터 이미 적용 중이에요.",
+      "idea": [
+        "CRA는 2024-12-10 발효됐고, 보고 의무는 2026-09-11부터, 주요 의무는 2027-12-11부터예요. 집행위원회는 2026-07-27 실무 안내를 냈고, 오픈소스에는 별도 접근이 있어요.",
+        "SBOM(소프트웨어 자재 명세서)은 CISA 정의로 \"소프트웨어 구성 요소의 재료 목록\"이에요. 라이선스 검사와 취약점 대응 모두의 출발점이에요.",
+        "M&A 실사에서도 라이선스 준수와 SBOM을 확인해요."
+      ],
+      "hear": [
+        "\"EU 고객사가 SBOM 달래요.\"",
+        "\"Log4j 쓰는지 5분 안에 답할 수 있어요?\""
+      ],
+      "ask": [
+        "우리 SBOM을 자동으로 만들 수 있나요?",
+        "EU에 파는 제품이 CRA 대상인지 법무 검토를 했나요?"
+      ],
+      "deep": [
+        "CRA 적용 범위(어떤 제품이 대상인가)는 이번 조사에서 분석하지 못했어요. 법무 확인이 필요해요.",
+        "2025-03 tj-actions/changed-files 사고(CISA)처럼 CI에서 쓰는 외부 액션도 공급망의 일부예요."
+      ],
+      "recall": {
+        "q": "CRA 보고 의무와 주요 의무의 적용일은?",
+        "a": "2026-09-11, 2027-12-11"
+      },
+      "quiz": [
+        {
+          "q": "SBOM은 무엇인가요?",
+          "options": [
+            "서버 목록",
+            "소프트웨어 구성 요소 재료 목록",
+            "팀 조직도"
+          ],
+          "answer": 1,
+          "why": "CISA 정의예요."
+        },
+        {
+          "q": "2026-10 현재 CRA에서 이미 적용 중인 것은?",
+          "options": [
+            "모든 의무",
+            "악용 취약점 보고 의무",
+            "아무것도 없음"
+          ],
+          "answer": 1,
+          "why": "보고 의무는 2026-09-11부터예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "European Commission — Cyber Resilience Act",
+          "url": "https://digital-strategy.ec.europa.eu/en/policies/cyber-resilience-act",
+          "date": "2026-09-07"
+        },
+        {
+          "title": "CISA — Supply Chain Compromise of Third-Party tj-actions/changed-files (CVE-2025-30066)",
+          "url": "https://www.cisa.gov/news-events/alerts/2025/03/18/supply-chain-compromise-third-party-tj-actionschanged-files-cve-2025-30066-and-reviewdogaction",
+          "date": "2025-03-18"
+        }
+      ]
+    },
+    {
+      "id": "c16",
+      "day": 4,
+      "title": "CI 도구도 공급망이에요",
+      "lead": "PR마다 자동으로 돌아가는 CI(지속적 통합) 도구도 남이 만든 코드예요. 거기 구멍이 나면 repo의 비밀 값이 통째로 새요.",
+      "idea": [
+        "CISA(2025-03-18): tj-actions/changed-files(CVE-2025-30066) 침해로 유효한 접근 키, GitHub 개인 토큰, npm 토큰, RSA 개인 키 같은 비밀 값이 노출될 수 있었어요. 다른 액션(reviewdog/action-setup) 침해에서 시작됐을 가능성이 있어요.",
+        "교훈: 외부 CI 액션은 버전을 고정하고 허용 목록으로 관리하고, CI 토큰은 최소 권한으로 줘요.",
+        "새 GitHub Actions를 들일 때 누가 검토하는지 정해야 해요."
+      ],
+      "hear": [
+        "\"인기 많은 액션이라 그냥 최신 버전 쓰고 있어요.\"",
+        "\"CI 토큰에 관리자 권한이 있어요.\""
+      ],
+      "ask": [
+        "새 CI 액션은 누가 검토하나요?",
+        "CI 토큰 권한은 최소인가요?"
+      ],
+      "mine": "내 앱은 CI 워크플로가 없어서 이 위험은 작지만, 대신 테스트를 로컬에서 직접 돌려야 해요(smoke + e2e).",
+      "deep": [
+        "보안 모듈에서 본 Shai-Hulud 웜도 개발자 PC의 오래 사는 토큰을 노렸어요. CI와 개발자 토큰 모두 짧게, 좁게 주는 게 원칙이에요."
+      ],
+      "recall": {
+        "q": "tj-actions 사고에서 노출될 수 있었던 것은?",
+        "a": "접근 키, GitHub 개인 토큰, npm 토큰, RSA 개인 키 같은 비밀 값"
+      },
+      "quiz": [
+        {
+          "q": "외부 CI 액션을 안전하게 쓰는 방법은?",
+          "options": [
+            "항상 최신 태그",
+            "버전 고정과 허용 목록",
+            "관리자 토큰 부여"
+          ],
+          "answer": 1,
+          "why": "R4 사례의 교훈이에요."
+        },
+        {
+          "q": "CI 토큰 권한의 원칙은?",
+          "options": [
+            "최대 권한",
+            "최소 권한",
+            "공유 계정"
+          ],
+          "answer": 1,
+          "why": "노출돼도 피해가 작아요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "CISA — Supply Chain Compromise of Third-Party tj-actions/changed-files (CVE-2025-30066)",
+          "url": "https://www.cisa.gov/news-events/alerts/2025/03/18/supply-chain-compromise-third-party-tj-actionschanged-files-cve-2025-30066-and-reviewdogaction",
+          "date": "2025-03-18"
+        }
+      ]
+    },
+    {
+      "id": "c17",
+      "day": 5,
+      "title": "AI 코딩 도구: DORA는 \"증폭기\"라고 해요",
+      "lead": "DORA 2025 보고서는 AI를 \"증폭기(amplifier)\"라고 불러요. 좋은 팀은 더 좋게, 약한 시스템은 더 불안정하게 만들 수 있다는 뜻이에요.",
+      "idea": [
+        "DORA 2025(State of AI-assisted Software Development): 응답자 90%가 일에 AI를 써요. AI 도입이 높을수록 처리량은 높아지지만 불안정성도 높아져요.",
+        "DORA 2024: AI 도입 25% 증가가 전달 처리량 −1.5%, 전달 안정성 −7.2%와 연관됐어요.",
+        "DORA는 2026-06 AI 토큰 사용량 순위표(\"tokenmaxxing\")를 코드 줄 수 같은 새 허영 지표라고 경고했어요."
+      ],
+      "hear": [
+        "\"AI로 PR이 두 배가 됐어요. 그런데 리뷰가 밀려요.\"",
+        "\"토큰 많이 쓴 사람 순위 보여 줄까요?\" (허영 지표)"
+      ],
+      "ask": [
+        "AI로 늘어난 변경을 리뷰·테스트가 따라가고 있나요?",
+        "AI 효과를 무엇으로 재나요? (처리량과 불안정성 둘 다)"
+      ],
+      "deep": [
+        "DORA 2025는 일곱 가지 팀 유형으로 결과를 나눠 보여 줘요. dora.dev에는 2026-10 기준 2026년 연례 보고서가 아직 없어요."
+      ],
+      "recall": {
+        "q": "DORA 2025가 말한 AI의 성격은?",
+        "a": "증폭기 — 처리량과 불안정성이 함께 오름"
+      },
+      "quiz": [
+        {
+          "q": "DORA 2025에서 AI를 쓰는 응답자 비율은?",
+          "options": [
+            "50%",
+            "90%",
+            "10%"
+          ],
+          "answer": 1,
+          "why": "90%예요."
+        },
+        {
+          "q": "\"tokenmaxxing\" 순위표에 대한 DORA의 평가는?",
+          "options": [
+            "좋은 생산성 지표",
+            "새 허영 지표",
+            "필수 KPI"
+          ],
+          "answer": 1,
+          "why": "코드 줄 수와 같은 계열이라고 했어요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "DORA — State of AI-assisted Software Development 2025",
+          "url": "https://dora.dev/research/2025/dora-report/",
+          "date": "2025-09"
+        },
+        {
+          "title": "Accelerate State of DevOps Report 2024",
+          "url": "https://dora.dev/research/2024/dora-report/2024-dora-accelerate-state-of-devops-report.pdf",
+          "date": "2024-10"
+        },
+        {
+          "title": "DORA — Finding balance in the era of tokenmaxxing",
+          "url": "https://dora.dev/insights/finding-balance-in-the-era-of-tokenmaxxing/",
+          "date": "2026-06-02"
+        }
+      ]
+    },
+    {
+      "id": "c18",
+      "day": 5,
+      "title": "AI가 빠르게 해 주나? 증거는 엇갈려요",
+      "lead": "AI 코딩 도구의 효과를 실험으로 잰 METR 연구는 결과가 바뀌는 중이에요. 2025년 초 도구로는 숙련 개발자가 19% 느려졌고, 2026년 업데이트는 빨라졌을 가능성을 말하지만 확실하지 않아요.",
+      "idea": [
+        "METR RCT(2025-07-10): 숙련 오픈소스 개발자 16명, 과제 246개. AI를 쓰면 과제 시간이 19% 늘었는데, 개발자들은 약 20% 빨라졌다고 믿었어요.",
+        "METR 업데이트(2026-02-24): 2025년 말 도구로는 점 추정치가 −18%(기존 참가자, 신뢰구간 −38%~+9%), −4%(새 참가자, −15%~+9%)예요. 음수가 더 빠름이에요. 모든 구간이 0을 포함하고, METR는 \"아주 약한 증거\"라고 해요.",
+        "DORA의 인식 조사(80% 넘게 더 생산적이라고 느낌)와 METR의 측정 결과가 충돌해요. 결론: AI는 코드 쓰기를 빠르게 하지만, 팀이 더 빨리 내보내는지는 주변 시스템에 달려 있어요."
+      ],
+      "hear": [
+        "\"AI 쓰니까 체감상 두 배 빨라요.\"",
+        "\"그럼 개발자 절반만 있어도 되겠네요?\" (근거 없음)"
+      ],
+      "ask": [
+        "느낌이 아니라 측정으로 확인했나요?",
+        "AI가 만든 코드도 같은 리뷰·테스트 기준을 거치나요?"
+      ],
+      "deep": [
+        "METR는 선택 효과도 지적해요. 일부 개발자가 AI 없이 일하기를 거부해서 실험 설계를 바꾸고 있어요.",
+        "네이버 D2의 \"LLM을 이용한 AI 코드 리뷰 도입기\"(2024)처럼 AI를 사람 리뷰에 더하는 시도도 있어요. 도입은 비용과 신뢰의 문제예요."
+      ],
+      "recall": {
+        "q": "METR 2025 연구에서 실제 시간과 개발자 믿음은?",
+        "a": "실제 19% 느려짐, 믿음은 약 20% 빨라짐"
+      },
+      "quiz": [
+        {
+          "q": "METR 2026 업데이트의 신뢰구간 특징은?",
+          "options": [
+            "모두 0을 포함",
+            "모두 크게 음수",
+            "측정 안 함"
+          ],
+          "answer": 0,
+          "why": "그래서 \"very weak evidence\"라고 해요."
+        },
+        {
+          "q": "이 증거에서 리더가 내릴 결론은?",
+          "options": [
+            "개발자를 절반으로 줄인다",
+            "측정하고, 리뷰·테스트 시스템을 함께 강화한다",
+            "AI를 금지한다"
+          ],
+          "answer": 1,
+          "why": "시스템 전체가 결과를 정해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "METR — Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity",
+          "url": "https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/",
+          "date": "2025-07-10"
+        },
+        {
+          "title": "METR — We are Changing our Developer Productivity Experiment Design",
+          "url": "https://metr.org/blog/2026-02-24-uplift-update/",
+          "date": "2026-02-24"
+        },
+        {
+          "title": "DORA — State of AI-assisted Software Development 2025",
+          "url": "https://dora.dev/research/2025/dora-report/",
+          "date": "2025-09"
+        }
+      ]
+    },
+    {
+      "id": "c19",
+      "day": 5,
+      "title": "리뷰를 꼭 해야 하나요?",
+      "lead": "답은 \"예, 하지만 빠르고 작게\"예요. 리뷰는 지식을 나누고 사고를 막는 관문이고, 보호 브랜치로 강제하되 하루 안에 응답하는 규칙과 짝지어야 해요.",
+      "idea": [
+        "리뷰의 가치: 교육, 규범 유지, 관문, 사고 예방(Google 2018), 지식 전달과 팀 인식(Microsoft 2013).",
+        "리뷰의 비용: 느리면 팀 전체가 느려지고 큰 변경이 쌓여요(Google 가이드, DORA).",
+        "작은 팀이라도 \"한 사람만 아는 코드\"를 줄이는 효과 때문에 리뷰가 남는 장사예요. 리뷰어는 보통 1명이면 돼요(Google 중앙값 1명)."
+      ],
+      "hear": [
+        "\"우린 3명이라 리뷰 필요 없어요.\"",
+        "\"리뷰 하루 넘기면 슬랙에 알림 오게 했어요.\""
+      ],
+      "ask": [
+        "우리 리뷰 규칙(필수 승인 수, 응답 시간, PR 크기)을 한 장으로 적을 수 있나요?",
+        "AI가 만든 PR에도 같은 규칙이 적용되나요?"
+      ],
+      "mine": "내 앱은 3명이 쓰는 작은 앱이지만 모든 변경을 PR과 사람 승인으로 병합해요. 배포는 마이그레이션 적용 → 병합 → 서비스 워커 버전 표시 → wrangler deploy → 운영 파일 바이트 비교 순서예요.",
+      "deep": [
+        "DORA 2025가 말한 \"AI로 늘어난 불안정성\"을 막는 장치 중 하나가 바로 리뷰와 보호 브랜치예요."
+      ],
+      "recall": {
+        "q": "\"리뷰 꼭 해야 하나요?\"의 한 줄 답은?",
+        "a": "예, 하지만 빠르게(영업일 1일) 작게(약 100줄)"
+      },
+      "quiz": [
+        {
+          "q": "Google의 리뷰어 수 중앙값은?",
+          "options": [
+            "1명",
+            "3명",
+            "5명"
+          ],
+          "answer": 0,
+          "why": "2명 이상은 25% 미만이에요."
+        },
+        {
+          "q": "작은 팀에서도 리뷰가 가치 있는 이유는?",
+          "options": [
+            "법이 강제해서",
+            "한 사람만 아는 코드를 줄여서",
+            "서버가 빨라져서"
+          ],
+          "answer": 1,
+          "why": "지식 공유 효과예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Sadowski et al. — Modern Code Review: A Case Study at Google (ICSE-SEIP)",
+          "url": "https://research.google/pubs/modern-code-review-a-case-study-at-google/",
+          "date": "2018"
+        },
+        {
+          "title": "Google eng-practices — Speed of Code Reviews",
+          "url": "https://google.github.io/eng-practices/review/reviewer/speed.html",
+          "date": "2024-09-19"
+        },
+        {
+          "title": "GitHub Docs — About protected branches",
+          "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "c20",
+      "day": 5,
+      "title": "이번 주 정리",
+      "lead": "\"Repo는 어떻게 관리하고, 리뷰는 꼭 해야 하나요?\"의 대표용 답: \"하나의 repo, 짧은 브랜치와 PR, 보호된 main, 하루 안 리뷰, 커밋·버전 규칙, 라이선스 정책.\"",
+      "idea": [
+        "브랜치 전략: 웹·SaaS는 GitHub flow나 트렁크 기반. GitFlow는 여러 버전을 지원할 때만.",
+        "PR과 리뷰: 무엇·왜·확인을 적고, 작게, 영업일 하루 안에. 보호 브랜치와 CODEOWNERS로 강제.",
+        "대표의 위험 관리: 조직 소유자 권한, 라이선스 허용 목록, SBOM, CI 공급망, AI로 늘어난 변경의 품질."
+      ],
+      "hear": [
+        "\"main 보호 켰고, 리뷰는 하루 안에 하기로 했어요.\"",
+        "\"AGPL 의존성은 제 승인 받고 넣으세요.\""
+      ],
+      "ask": [
+        "이번 주에 정한 리뷰 규칙을 PR 템플릿에 반영했나요?",
+        "다음 분기에 라이선스 점검을 누가 하나요?"
+      ],
+      "mine": "내 앱의 repo 요약: 기능 브랜치 → PR → 사람 승인 → main, Conventional Commits, 마이그레이션은 코드 병합 전에 운영에 먼저 적용, CI 없이 로컬 테스트.",
+      "deep": [
+        "다음 모듈(출시)에서는 main에 들어간 코드가 어떻게 운영으로 나가는지(CI/CD, 배포 전략) 봐요."
+      ],
+      "recall": {
+        "q": "이번 주 대표용 답의 여섯 요소는?",
+        "a": "하나의 repo, 짧은 브랜치·PR, 보호된 main, 하루 안 리뷰, 커밋·버전 규칙, 라이선스 정책"
+      },
+      "quiz": [
+        {
+          "q": "main 보호의 목적은?",
+          "options": [
+            "리뷰를 거치지 않은 코드가 못 들어가게",
+            "배포를 막으려고",
+            "repo를 숨기려고"
+          ],
+          "answer": 0,
+          "why": "이번 주 이야기의 핵심이에요."
+        },
+        {
+          "q": "AGPL 의존성 추가 시 필요한 것은?",
+          "options": [
+            "아무것도",
+            "승인 절차",
+            "자동 허용"
+          ],
+          "answer": 1,
+          "why": "라이선스 정책의 일부예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "GitHub Docs — GitHub flow",
+          "url": "https://docs.github.com/en/get-started/using-github/github-flow",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "Google eng-practices — Speed of Code Reviews",
+          "url": "https://google.github.io/eng-practices/review/reviewer/speed.html",
+          "date": "2024-09-19"
+        },
+        {
+          "title": "Choose a License — Licenses",
+          "url": "https://choosealicense.com/licenses/",
+          "date": "2026-10-02"
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "segment-2018",
+      "day": 1,
+      "title": "엔지니어 3명이 140개 서비스를 돌보다가, 하나로 합친 이유",
+      "when": "2018-07-10",
+      "lead": "Segment는 데이터 목적지마다 서비스와 repo를 따로 만들었어요. 처음엔 장애 격리에 좋았지만, 목적지가 140개를 넘자 엔지니어 3명이 시스템을 살려 두는 데 대부분의 시간을 썼어요. 결국 하나의 서비스, 하나의 repo로 합쳤어요.",
+      "facts": [
+        {
+          "label": "합친 서비스 수",
+          "value": "140개 넘음 → 1개",
+          "src": "Segment 블로그"
+        },
+        {
+          "label": "유지 인력",
+          "value": "\"정규 엔지니어 3명이 대부분의 시간을 시스템 유지에\"",
+          "src": "Segment 블로그"
+        },
+        {
+          "label": "배포",
+          "value": "엔지니어 1명이 \"몇 분 만에\" 배포",
+          "src": "Segment 블로그"
+        },
+        {
+          "label": "공유 라이브러리 개선",
+          "value": "연 32건 → 46건",
+          "src": "Segment 블로그"
+        }
+      ],
+      "timeline": [
+        {
+          "t": "초기",
+          "text": "목적지마다 별도 서비스·큐로 분리: 느린 목적지가 다른 곳을 막지 않게"
+        },
+        {
+          "t": "성장",
+          "text": "새 목적지마다 새 repo와 서비스 추가",
+          "hot": true
+        },
+        {
+          "t": "문제",
+          "text": "공유 라이브러리 버전이 repo마다 어긋남, 테스트 최대 1시간, 작은 변경에 며칠",
+          "hot": true
+        },
+        {
+          "t": "결정",
+          "text": "모든 목적지를 하나의 서비스·하나의 repo로 합치고, 녹화한 트래픽으로 테스트하는 장치 구축"
+        },
+        {
+          "t": "2018-07-10",
+          "text": "\"Goodbye Microservices\" 공개"
+        }
+      ],
+      "causes": [
+        {
+          "stage": "Repo · 구조",
+          "title": "repo가 팀보다 많음",
+          "text": "서비스와 repo마다 고정 운영 비용이 붙는데, 맡을 사람은 3명이었어요."
+        },
+        {
+          "stage": "의존성 관리",
+          "title": "공유 라이브러리 버전 어긋남",
+          "text": "repo마다 다른 버전을 쓰니 개선을 퍼뜨리기 어려웠어요. 모노레포의 단일 버전 장점과 반대 상황이에요."
+        },
+        {
+          "stage": "아키텍처",
+          "title": "유행으로 고른 구조",
+          "text": "Fowler는 처음부터 마이크로서비스로 만든 시스템이 \"심각한 문제\"에 빠지는 경우가 많다고 경고해요."
+        }
+      ],
+      "questions": [
+        {
+          "q": "그때 대표라면? 새 목적지마다 repo를 만들자는 제안에 무엇을 물었을까요?",
+          "a": "\"이 repo와 서비스를 운영할 사람이 몇 명인가?\" 유행이 아니라 팀이 감당할 수 있는 수를 기준으로 해요."
+        },
+        {
+          "q": "합치면서 잃은 것은 무엇이고 받아들일 만했을까요?",
+          "a": "버그 하나가 모든 목적지를 멈출 수 있고, 캐시 효율이 떨어졌어요. Segment는 유지 비용 절감이 더 크다고 판단했어요."
+        },
+        {
+          "q": "우리 팀의 \"불 켜 두기\" 시간을 어떻게 볼까요?",
+          "a": "유지 작업에 쓰는 시간을 따로 재서, 구조 결정을 다시 볼 신호로 써요."
+        }
+      ],
+      "after": [
+        "하나의 서비스·하나의 repo로 운영하며 배포가 몇 분으로 줄었어요.",
+        "대가: 장애 격리가 약해지고 \"3000개 넘는 프로세스\"에 흩어진 캐시 효율이 떨어지고, 의존성 하나 업그레이드가 여러 목적지를 깰 수 있어요."
+      ],
+      "sources": [
+        {
+          "title": "Goodbye Microservices (Alexandra Noonan, Segment)",
+          "url": "https://www.twilio.com/en-us/blog/developers/best-practices/goodbye-microservices",
+          "date": "2018-07-10"
+        },
+        {
+          "title": "Martin Fowler — Monolith First",
+          "url": "https://martinfowler.com/bliki/MonolithFirst.html",
+          "date": "2015-06-03"
+        }
+      ],
+      "caveat": "한 회사의 공식 블로그 숫자이고 독립 검증은 없어요(중간 신뢰도)."
+    },
+    {
+      "id": "hashicorp-bsl-2023",
+      "day": 4,
+      "title": "쓰던 오픈소스가 하루아침에 \"경쟁 금지\"가 됐어요",
+      "when": "2023-08-10",
+      "lead": "인프라 도구 Terraform을 만든 HashiCorp가 라이선스를 MPL 2.0에서 BSL 1.1로 바꿨어요. 대부분의 사용자는 그대로 쓸 수 있지만, \"경쟁 서비스\"를 만드는 회사는 조건이 달라졌어요. 한 달 뒤 Linux Foundation이 포크 OpenTofu를 발표했어요.",
+      "facts": [
+        {
+          "label": "라이선스 변경",
+          "value": "MPL 2.0 → BSL 1.1 (2023-08-10)",
+          "src": "HashiCorp 블로그"
+        },
+        {
+          "label": "포크 발표",
+          "value": "OpenTofu (2023-09-20)",
+          "src": "Linux Foundation"
+        },
+        {
+          "label": "CNCF 합류",
+          "value": "Sandbox, 2025-04-23",
+          "src": "CNCF"
+        },
+        {
+          "label": "인수",
+          "value": "IBM, 2025-02-27 완료",
+          "src": "IBM 뉴스룸"
+        }
+      ],
+      "timeline": [
+        {
+          "t": "2023-08-10",
+          "text": "HashiCorp, BSL 1.1 채택: \"경쟁 서비스 제공\"이 아니면 사용 허용",
+          "hot": true
+        },
+        {
+          "t": "2023-09-20",
+          "text": "Linux Foundation, OpenTofu 출범",
+          "hot": true
+        },
+        {
+          "t": "2024-03-20",
+          "text": "(비슷한 흐름) Redis, RSALv2/SSPLv1로 변경"
+        },
+        {
+          "t": "2024-08-29",
+          "text": "Elastic, AGPL 추가"
+        },
+        {
+          "t": "2025-02-27",
+          "text": "IBM, HashiCorp 인수 완료"
+        },
+        {
+          "t": "2025-04-23",
+          "text": "OpenTofu, CNCF Sandbox 합류"
+        },
+        {
+          "t": "2025-05-01",
+          "text": "Redis, AGPLv3 추가"
+        }
+      ],
+      "causes": [
+        {
+          "stage": "라이선스 · 공급망",
+          "title": "라이선스에 의한 종속",
+          "text": "핵심 도구의 조건이 공급자 결정 하나로 바뀌었어요."
+        },
+        {
+          "stage": "정책",
+          "title": "\"소스 공개형\"은 오픈소스가 아님",
+          "text": "BSL·SSPL·RSAL은 OSI 승인 목록에 없어서, 사용 조건을 따로 확인해야 해요."
+        },
+        {
+          "stage": "사업 해석",
+          "title": "\"경쟁\"의 범위",
+          "text": "우리 제품이 경쟁 서비스로 해석되는지가 핵심 질문이 됐어요."
+        }
+      ],
+      "questions": [
+        {
+          "q": "그때 대표라면? 우리 인프라가 Terraform에 기대고 있다면 무엇을 먼저 확인할까요?",
+          "a": "우리 사용이 \"경쟁 서비스 제공\"에 해당하는지 법무 확인, 그리고 대안(OpenTofu)으로 옮기는 비용이에요."
+        },
+        {
+          "q": "라이선스 변경에 미리 대비하려면?",
+          "a": "의존성 목록(SBOM)과 라이선스 자동 검사, 핵심 의존성마다 대안 메모를 둬요."
+        },
+        {
+          "q": "라이선스는 한 방향으로만 바뀔까요?",
+          "a": "아니에요. Redis와 Elastic은 나중에 OSI 승인 라이선스(AGPL)를 다시 더했어요."
+        }
+      ],
+      "after": [
+        "OpenTofu는 1.13.0까지 나왔고 \"Terraform 대체\"를 내세워요.",
+        "라이선스 준수와 SBOM은 M&A 실사와 EU CRA 같은 규제에서 더 자주 확인돼요."
+      ],
+      "sources": [
+        {
+          "title": "HashiCorp adopts Business Source License",
+          "url": "https://www.hashicorp.com/blog/hashicorp-adopts-business-source-license",
+          "date": "2023-08-10"
+        },
+        {
+          "title": "Linux Foundation Launches OpenTofu",
+          "url": "https://www.linuxfoundation.org/press/announcing-opentofu",
+          "date": "2023-09-20"
+        },
+        {
+          "title": "CNCF — OpenTofu",
+          "url": "https://www.cncf.io/projects/opentofu/",
+          "date": "2025-04-23"
+        },
+        {
+          "title": "IBM Completes Acquisition of HashiCorp",
+          "url": "https://newsroom.ibm.com/2025-02-27-ibm-completes-acquisition-of-hashicorp,-creates-comprehensive,-end-to-end-hybrid-cloud-platform",
+          "date": "2025-02-27"
+        },
+        {
+          "title": "Redis Adopts Dual Source-Available Licensing",
+          "url": "https://redis.io/blog/redis-adopts-dual-source-available-licensing/",
+          "date": "2024-03-20"
+        }
+      ],
+      "caveat": "라이선스 변경이 특정 회사에 준 금전적 영향은 이번 조사에 없어요. \"경쟁 서비스\"의 해석은 회사마다 법무 검토가 필요해요."
+    }
+  ],
+  "problems": [
+    {
+      "id": "p01",
+      "day": 1,
+      "title": "월요일, 브랜치 전략 회의",
+      "scene": [
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "GitFlow로 develop, release 브랜치 다 만들죠. 그게 정석이잖아요."
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "우리는 웹앱이고 매일 배포하고 싶은데요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "GitFlow를 그대로 도입한다",
+          "ok": false,
+          "why": "원작자가 지속적 전달 팀에는 더 단순한 흐름을 권했어요."
+        },
+        {
+          "k": "B",
+          "t": "GitHub flow(짧은 브랜치 → PR → main)로 가고, 여러 버전을 지원해야 할 때 다시 본다",
+          "ok": true,
+          "why": "Driessen 2020 메모와 DORA 근거에 맞아요."
+        },
+        {
+          "k": "C",
+          "t": "브랜치 없이 모두 main에 바로 push한다",
+          "ok": false,
+          "why": "리뷰 관문이 사라져요."
+        }
+      ],
+      "explain": "Driessen(2020): 지속적 전달을 한다면 GitHub flow 같은 단순한 흐름을 쓰라고 했어요. DORA도 짧은 브랜치와 하루 한 번 병합을 성과와 연결해요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Vincent Driessen — A successful Git branching model (2020 Note of reflection)",
+          "url": "https://nvie.com/posts/a-successful-git-branching-model/",
+          "date": "2020-03-05"
+        },
+        {
+          "title": "DORA — Capabilities: Trunk-based development",
+          "url": "https://dora.dev/capabilities/trunk-based-development/",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "p02",
+      "day": 1,
+      "title": "화요일, repo 쪼개기",
+      "scene": [
+        {
+          "name": "수아",
+          "role": "프론트엔드",
+          "text": "서비스를 6개로 쪼개면서 repo도 6개로 나눌까요?"
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "백엔드 개발자는 2명뿐인데요."
+        }
+      ],
+      "q": "아키텍처 관점에서 무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "6개로 나눈다, 그게 현대적이다",
+          "ok": false,
+          "why": "Segment는 3명이 140개를 돌보다 하나로 합쳤어요."
+        },
+        {
+          "k": "B",
+          "t": "팀이 운영할 수 있는 수를 기준으로, 지금은 하나의 repo에 모듈로 나누고 결정을 ADR로 남긴다",
+          "ok": true,
+          "why": "아키텍처 모듈의 모놀리스 우선 판단과 repo 결정을 연결해요."
+        },
+        {
+          "k": "C",
+          "t": "repo는 하나로 두고 서비스는 20개로 쪼갠다",
+          "ok": false,
+          "why": "운영 부담 문제는 그대로예요."
+        }
+      ],
+      "explain": "아키텍처 모듈의 \"Monolith First\"(Fowler)처럼, repo와 서비스 수는 맡을 팀 수에 맞춰요. Segment(2018)는 140개 넘는 서비스와 repo를 하나로 합쳤어요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "Goodbye Microservices (Alexandra Noonan, Segment)",
+          "url": "https://www.twilio.com/en-us/blog/developers/best-practices/goodbye-microservices",
+          "date": "2018-07-10"
+        },
+        {
+          "title": "Martin Fowler — Monolith First",
+          "url": "https://martinfowler.com/bliki/MonolithFirst.html",
+          "date": "2015-06-03"
+        }
+      ]
+    },
+    {
+      "id": "p03",
+      "day": 1,
+      "title": "수요일, 공동창업자 퇴사",
+      "scene": [
+        {
+          "name": "서연",
+          "role": "PM",
+          "text": "초기 공동창업자가 나가는데, GitHub 조직 소유자가 그분 한 명이에요."
+        },
+        {
+          "name": "나",
+          "role": "대표",
+          "text": "회사 코드인데 개인 계정에 묶여 있었네요."
+        }
+      ],
+      "q": "회사 운영 관점에서 무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "그분께 계정 비밀번호를 받아 둔다",
+          "ok": false,
+          "why": "계정 공유는 보안상 위험하고 추적이 안 돼요."
+        },
+        {
+          "k": "B",
+          "t": "퇴사 전에 대표를 소유자로 추가하고 권한을 이전·회수한 뒤, 소유자를 2명 이상으로 유지하는 규칙을 만든다",
+          "ok": true,
+          "why": "조직 소유권은 IP 통제와 연결돼요."
+        },
+        {
+          "k": "C",
+          "t": "나중에 GitHub에 문의한다",
+          "ok": false,
+          "why": "퇴사 후에는 훨씬 어려워져요."
+        }
+      ],
+      "explain": "회사 모듈에서 본 지분·IP 관리처럼, 코드 저장소 소유권도 회사 자산이에요. R4 노트는 창업자가 소유자 권한을 유지하고, 창업자가 떠날 때 관리자 권한 주인이 없어지는 것을 실패 패턴으로 꼽아요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "Pro Git — About Version Control",
+          "url": "https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control",
+          "date": "2014 (2판)"
+        },
+        {
+          "title": "GitHub Docs — About protected branches",
+          "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "p04",
+      "day": 2,
+      "title": "목요일, 리뷰 대기 3일",
+      "scene": [
+        {
+          "name": "민재",
+          "role": "QA",
+          "text": "테스트할 기능이 3일째 리뷰 대기라 아무것도 못 하고 있어요."
+        },
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "리뷰는 제 일 다 끝나고 몰아서 해요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "리뷰를 없앤다",
+          "ok": false,
+          "why": "관문과 지식 공유 효과를 잃어요."
+        },
+        {
+          "k": "B",
+          "t": "리뷰 요청에는 영업일 하루 안에 응답하는 규칙을 정하고, 리뷰를 개인 작업보다 우선한다",
+          "ok": true,
+          "why": "Google 리뷰 가이드의 속도 규칙이에요."
+        },
+        {
+          "k": "C",
+          "t": "리뷰어를 5명으로 늘린다",
+          "ok": false,
+          "why": "Google 중앙값은 1명이고, 사람이 늘면 더 느려질 수 있어요."
+        }
+      ],
+      "explain": "Google: \"One business day is the maximum time it should take to respond to a code review request.\" 느린 리뷰는 팀 전체 속도를 떨어뜨려요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Google eng-practices — Speed of Code Reviews",
+          "url": "https://google.github.io/eng-practices/review/reviewer/speed.html",
+          "date": "2024-09-19"
+        },
+        {
+          "title": "Sadowski et al. — Modern Code Review: A Case Study at Google (ICSE-SEIP)",
+          "url": "https://research.google/pubs/modern-code-review-a-case-study-at-google/",
+          "date": "2018"
+        }
+      ]
+    },
+    {
+      "id": "p05",
+      "day": 2,
+      "title": "금요일, 2,000줄 PR",
+      "scene": [
+        {
+          "name": "수아",
+          "role": "프론트엔드",
+          "text": "이번 주 작업 전부를 PR 하나로 올렸어요. 2,000줄이에요."
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "이건 제대로 볼 수가 없어요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "그냥 승인한다",
+          "ok": false,
+          "why": "큰 PR은 도장 찍기 승인으로 끝나기 쉬워요."
+        },
+        {
+          "k": "B",
+          "t": "작은 PR(약 100줄 단위)로 쪼개 달라고 하고, 앞으로 PR 크기 기준을 정한다",
+          "ok": true,
+          "why": "Google의 크기 기준이에요."
+        },
+        {
+          "k": "C",
+          "t": "2주 동안 꼼꼼히 본다",
+          "ok": false,
+          "why": "팀 흐름이 멈춰요."
+        }
+      ],
+      "explain": "Google: \"100 lines is usually a reasonable size for a CL, and 1000 lines is usually too large.\" 작은 변경은 더 빨리, 더 꼼꼼히 리뷰돼요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Google eng-practices — Small CLs",
+          "url": "https://google.github.io/eng-practices/review/developer/small-cls.html",
+          "date": "2024-09-19"
+        },
+        {
+          "title": "GitHub Docs — About stacked pull requests",
+          "url": "https://docs.github.com/en/pull-requests/get-started/about-stacked-prs",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "p06",
+      "day": 2,
+      "title": "월요일, 리뷰는 시니어만?",
+      "scene": [
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "주니어는 리뷰하지 말고 받기만 하면 되죠?"
+        },
+        {
+          "name": "수아",
+          "role": "프론트엔드",
+          "text": "저도 결제 코드는 한 번도 본 적이 없어요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "시니어만 리뷰한다",
+          "ok": false,
+          "why": "지식 공유 효과를 놓쳐요."
+        },
+        {
+          "k": "B",
+          "t": "주니어도 리뷰에 참여시켜 코드를 익히게 하고, 위험 영역은 코드 주인 승인을 필수로 한다",
+          "ok": true,
+          "why": "리뷰의 교육 효과와 CODEOWNERS를 함께 써요."
+        },
+        {
+          "k": "C",
+          "t": "리뷰를 외주 준다",
+          "ok": false,
+          "why": "팀 안의 지식이 늘지 않아요."
+        }
+      ],
+      "explain": "Microsoft(2013)와 Google(2018) 연구 모두 리뷰의 주된 가치로 지식 전달과 교육을 꼽아요. CODEOWNERS로 위험 영역의 승인은 지켜요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Bacchelli & Bird — Expectations, Outcomes, and Challenges of Modern Code Review (ICSE)",
+          "url": "https://www.microsoft.com/en-us/research/publication/expectations-outcomes-and-challenges-of-modern-code-review/",
+          "date": "2013-05"
+        },
+        {
+          "title": "GitHub Docs — About code owners",
+          "url": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "p07",
+      "day": 3,
+      "title": "화요일, 급한 수정",
+      "scene": [
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "고객사 데모 30분 전인데 오타 하나 고쳐야 해요. 대표 계정으로 main에 바로 push할까요?"
+        },
+        {
+          "name": "민재",
+          "role": "QA",
+          "text": "지난번에도 그러다 다른 게 깨졌어요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "급하니 바로 push한다",
+          "ok": false,
+          "why": "보호 규칙 우회가 가장 위험한 예외예요."
+        },
+        {
+          "k": "B",
+          "t": "작은 PR을 열어 빠른 리뷰를 받고 병합한다. 관리자도 규칙을 우회하지 않게 설정한다",
+          "ok": true,
+          "why": "보호 브랜치의 목적이 바로 이 상황이에요."
+        },
+        {
+          "k": "C",
+          "t": "데모를 취소한다",
+          "ok": false,
+          "why": "작은 PR이면 몇 분이면 돼요."
+        }
+      ],
+      "explain": "GitHub 보호 브랜치는 리뷰·상태 검사를 요구하고 강제 push를 막아요. \"리뷰를 거치지 않은 코드는 main에 못 들어간다\"가 이번 주의 규칙이에요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "GitHub Docs — About protected branches",
+          "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "GitHub Docs — About rulesets",
+          "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "p08",
+      "day": 3,
+      "title": "수요일, API 버전",
+      "scene": [
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "파트너 연동 API의 필드 이름을 바꿨어요. 버전은 2.3.1에서 2.4.0으로 올렸어요."
+        },
+        {
+          "name": "서연",
+          "role": "PM",
+          "text": "파트너사 연동이 깨졌다고 연락 왔어요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "파트너사가 맞추라고 한다",
+          "ok": false,
+          "why": "버전 약속을 우리가 어겼어요."
+        },
+        {
+          "k": "B",
+          "t": "호환이 깨지는 변경은 MAJOR(3.0.0)로 올리고, 공개 API를 문서로 선언하고, 호환을 깨는 변경은 승인 절차를 둔다",
+          "ok": true,
+          "why": "SemVer 2.0.0의 약속이에요."
+        },
+        {
+          "k": "C",
+          "t": "버전 번호를 쓰지 않는다",
+          "ok": false,
+          "why": "외부 연동에는 약속이 더 필요해요."
+        }
+      ],
+      "explain": "SemVer: MAJOR는 호환되지 않는 API 변경이에요. 소프트웨어는 공개 API를 선언해야 해요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Semantic Versioning 2.0.0",
+          "url": "https://semver.org/",
+          "date": "2.0.0"
+        },
+        {
+          "title": "Conventional Commits 1.0.0",
+          "url": "https://www.conventionalcommits.org/en/v1.0.0/",
+          "date": "v1.0.0"
+        }
+      ]
+    },
+    {
+      "id": "p09",
+      "day": 3,
+      "title": "목요일, 요구사항과 PR 연결",
+      "scene": [
+        {
+          "name": "민재",
+          "role": "QA",
+          "text": "PR 설명이 \"수정\"뿐이라 무엇을 테스트할지 모르겠어요."
+        },
+        {
+          "name": "서연",
+          "role": "PM",
+          "text": "요구사항 문서의 수용 기준은 따로 있는데요."
+        }
+      ],
+      "q": "요구사항 관점에서 무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "QA가 코드를 읽고 알아낸다",
+          "ok": false,
+          "why": "시간 낭비이고 놓치기 쉬워요."
+        },
+        {
+          "k": "B",
+          "t": "PR 템플릿에 \"무엇·왜(요구사항·이슈 링크)·어떻게 확인(수용 기준 대비)\"을 넣는다",
+          "ok": true,
+          "why": "요구사항 모듈의 수용 기준이 PR까지 이어져요."
+        },
+        {
+          "k": "C",
+          "t": "PR 설명을 금지한다",
+          "ok": false,
+          "why": "역사 기록이 사라져요."
+        }
+      ],
+      "explain": "요구사항 모듈에서 정한 수용 기준이 PR 설명의 \"어떻게 확인했나\"로 이어져야 해요. Google도 리뷰의 이점으로 역사 기록을 꼽아요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "GitHub Docs — Pull requests",
+          "url": "https://docs.github.com/en/pull-requests/reference/pull-requests",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "Software Engineering at Google — ch.9 Code Review",
+          "url": "https://abseil.io/resources/swe-book/html/ch09.html",
+          "date": "2020"
+        }
+      ]
+    },
+    {
+      "id": "p10",
+      "day": 4,
+      "title": "월요일, AGPL 라이브러리",
+      "scene": [
+        {
+          "name": "수아",
+          "role": "프론트엔드",
+          "text": "PDF 변환에 딱 맞는 라이브러리가 있는데 AGPL이에요. 조금 고쳐서 우리 서버에 넣으려고요."
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "우리는 SaaS인데 괜찮을까요?"
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "오픈소스니까 그냥 쓴다",
+          "ok": false,
+          "why": "AGPL은 수정본을 서버로 제공하면 소스 제공 의무가 생겨요."
+        },
+        {
+          "k": "B",
+          "t": "대표 승인 대상으로 올려 법무 검토를 받고, 의무를 감당할지 대안(허용형 라이선스)을 쓸지 정한다. 라이선스 허용 목록을 만든다",
+          "ok": true,
+          "why": "SaaS에 중요한 AGPL 조항을 정책으로 다뤄요."
+        },
+        {
+          "k": "C",
+          "t": "GPL과 같으니 내부 사용이라 괜찮다",
+          "ok": false,
+          "why": "AGPL은 서버 제공도 의무를 만들어요."
+        }
+      ],
+      "explain": "FSF: AGPL은 수정한 프로그램을 서버에서 돌리고 사용자가 접속하게 하면 소스를 내려받을 수 있게 해야 해요. GPL의 \"내부 사용은 공개 의무 없음\"과 달라요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "FSF — Why the GNU Affero GPL",
+          "url": "https://www.gnu.org/licenses/why-affero-gpl.html",
+          "date": "n.d."
+        },
+        {
+          "title": "FSF — Frequently Asked Questions about the GNU Licenses",
+          "url": "https://www.gnu.org/licenses/gpl-faq.html",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "p11",
+      "day": 4,
+      "title": "화요일, 라이선스 없는 코드",
+      "scene": [
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "GitHub에서 딱 맞는 코드를 찾았어요. 라이선스 파일은 없는데 공개돼 있으니 써도 되죠?"
+        },
+        {
+          "name": "나",
+          "role": "대표",
+          "text": "투자 실사 때 문제 되지 않을까요?"
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "공개돼 있으니 쓴다",
+          "ok": false,
+          "why": "라이선스가 없으면 기본적으로 저작권자 독점이에요."
+        },
+        {
+          "k": "B",
+          "t": "쓰지 않거나 저작자에게 라이선스를 요청한다. 라이선스 자동 검사와 SBOM을 도입한다",
+          "ok": true,
+          "why": "choosealicense.com 설명과 실사 대비예요."
+        },
+        {
+          "k": "C",
+          "t": "출처를 지우고 쓴다",
+          "ok": false,
+          "why": "저작권 침해 위험이 더 커요."
+        }
+      ],
+      "explain": "라이선스가 없으면 \"기본적으로 독점 저작권\"이라 복사·수정하면 내려받기 요구나 소송 위험이 있어요. M&A 실사에서 라이선스 준수와 SBOM을 확인해요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Choose a License — No License",
+          "url": "https://choosealicense.com/no-permission/",
+          "date": "2026-10-02"
+        },
+        {
+          "title": "Choose a License — Licenses",
+          "url": "https://choosealicense.com/licenses/",
+          "date": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "id": "p12",
+      "day": 4,
+      "title": "수요일, 고객 데이터와 마이그레이션 PR",
+      "scene": [
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "회의록 테이블에 컬럼을 추가하는 마이그레이션 PR이에요. 코드랑 같이 병합하면 되죠?"
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "배포 순서가 꼬이면 운영이 깨질 수 있어요."
+        }
+      ],
+      "q": "데이터 관점에서 무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "코드와 마이그레이션을 한 번에 병합하고 배포한다",
+          "ok": false,
+          "why": "새 코드가 아직 없는 컬럼을 찾으면 깨질 수 있어요."
+        },
+        {
+          "k": "B",
+          "t": "마이그레이션 PR을 리뷰받아 운영에 먼저 적용하고, 그 컬럼을 쓰는 코드는 그 뒤에 병합한다. 데이터 변경은 코드 주인 리뷰를 필수로 한다",
+          "ok": true,
+          "why": "데이터 모듈의 스키마 변경 비용과 repo 절차를 연결해요."
+        },
+        {
+          "k": "C",
+          "t": "마이그레이션은 리뷰 없이 바로 운영 DB에 적용한다",
+          "ok": false,
+          "why": "되돌리기 어려운 변경일수록 리뷰가 필요해요."
+        }
+      ],
+      "explain": "데이터 모듈에서 본 대로 스키마 변경은 되돌리기 어렵고 비싸요. 이 순서는 내 앱이 실제로 지키는 규칙(마이그레이션을 필요로 하는 코드 병합 전에 운영에 적용)이기도 해요. CODEOWNERS로 데이터 폴더의 리뷰어를 지정할 수 있어요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "GitHub Docs — About code owners",
+          "url": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "GitHub Docs — About protected branches",
+          "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches",
+          "date": "2026-10-14"
+        }
+      ]
+    },
+    {
+      "id": "p13",
+      "day": 5,
+      "title": "목요일, AI가 만든 PR",
+      "scene": [
+        {
+          "name": "수아",
+          "role": "프론트엔드",
+          "text": "AI 도구로 이번 주 PR이 두 배가 됐어요!"
+        },
+        {
+          "name": "민재",
+          "role": "QA",
+          "text": "대신 운영 버그도 늘었어요. 리뷰가 다 못 따라가요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "PR 수가 늘었으니 성공이다, 더 늘린다",
+          "ok": false,
+          "why": "DORA는 AI가 처리량과 함께 불안정성도 올린다고 해요."
+        },
+        {
+          "k": "B",
+          "t": "AI가 만든 PR도 같은 크기·리뷰·테스트 기준을 지키게 하고, 처리량과 불안정성(변경 실패율 등)을 함께 잰다",
+          "ok": true,
+          "why": "DORA의 \"증폭기\" 관점이에요."
+        },
+        {
+          "k": "C",
+          "t": "AI 도구를 금지한다",
+          "ok": false,
+          "why": "증거가 엇갈리니 측정하고 시스템을 강화하는 게 먼저예요."
+        }
+      ],
+      "explain": "DORA 2025: AI는 증폭기이고, 도입이 높을수록 처리량과 불안정성이 함께 올라요. METR 연구도 체감과 측정이 다를 수 있음을 보여 줘요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "DORA — State of AI-assisted Software Development 2025",
+          "url": "https://dora.dev/research/2025/dora-report/",
+          "date": "2025-09"
+        },
+        {
+          "title": "METR — Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity",
+          "url": "https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/",
+          "date": "2025-07-10"
+        }
+      ]
+    },
+    {
+      "id": "p14",
+      "day": 5,
+      "title": "금요일, 토큰 순위표",
+      "scene": [
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "AI 토큰 사용량 순위표를 만들어서 많이 쓰는 사람을 칭찬하면 도입이 빨라질 것 같아요."
+        },
+        {
+          "name": "하린",
+          "role": "디자이너",
+          "text": "그럼 다들 의미 없이 토큰만 쓰지 않을까요?"
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "순위표를 만든다",
+          "ok": false,
+          "why": "DORA는 이걸 새 허영 지표라고 경고했어요."
+        },
+        {
+          "k": "B",
+          "t": "사용량이 아니라 고객 결과와 전달 지표(처리량·안정성)로 효과를 본다",
+          "ok": true,
+          "why": "DORA의 tokenmaxxing 경고와 맞아요."
+        },
+        {
+          "k": "C",
+          "t": "개인별 커밋 수 순위로 바꾼다",
+          "ok": false,
+          "why": "코드 줄 수·커밋 수도 같은 계열의 허영 지표예요."
+        }
+      ],
+      "explain": "DORA(2026-06-02)는 \"tokenmaxxing\"을 코드 줄 수와 같은 계열의 새 허영 지표라고 했어요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "DORA — Finding balance in the era of tokenmaxxing",
+          "url": "https://dora.dev/insights/finding-balance-in-the-era-of-tokenmaxxing/",
+          "date": "2026-06-02"
+        },
+        {
+          "title": "DORA — State of AI-assisted Software Development 2025",
+          "url": "https://dora.dev/research/2025/dora-report/",
+          "date": "2025-09"
+        }
+      ]
+    },
+    {
+      "id": "p15",
+      "day": 5,
+      "title": "월요일, 화면 변경 리뷰",
+      "scene": [
+        {
+          "name": "하린",
+          "role": "디자이너",
+          "text": "개발자 리뷰는 통과했는데, 화면이 디자인과 달라요. 휴대폰에서는 버튼이 잘려요."
+        },
+        {
+          "name": "수아",
+          "role": "프론트엔드",
+          "text": "코드 리뷰에서는 화면을 안 봐서요."
+        }
+      ],
+      "q": "UX 관점에서 무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "디자이너는 출시 후에 확인한다",
+          "ok": false,
+          "why": "사용자가 먼저 깨진 화면을 봐요."
+        },
+        {
+          "k": "B",
+          "t": "화면을 바꾸는 PR에는 데스크톱·휴대폰 캡처를 PR 설명에 넣고, 디자이너를 해당 폴더 코드 주인(또는 리뷰어)으로 지정한다",
+          "ok": true,
+          "why": "UX 모듈의 화면 기준을 PR 리뷰 절차로 연결해요."
+        },
+        {
+          "k": "C",
+          "t": "휴대폰은 지원하지 않는다",
+          "ok": false,
+          "why": "사용자의 실제 환경을 무시해요."
+        }
+      ],
+      "explain": "UX 모듈에서 본 화면 기준은 PR에서 확인돼야 해요. CODEOWNERS로 리뷰어를 자동 지정할 수 있어요. 내 앱도 e2e 테스트를 데스크톱과 휴대폰 크기 둘 다로 돌려요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "GitHub Docs — About code owners",
+          "url": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners",
+          "date": "2026-10-14"
+        },
+        {
+          "title": "GitHub Docs — Pull requests",
+          "url": "https://docs.github.com/en/pull-requests/reference/pull-requests",
+          "date": "2026-10-14"
+        }
+      ]
+    }
+  ],
+  "lectures": [
+    {
+      "id": "l1",
+      "title": "GitHub 플로우 (GitHub 문서, 한국어)",
+      "url": "https://docs.github.com/ko/get-started/using-github/github-flow",
+      "min": 6,
+      "lang": "ko",
+      "what": "브랜치 → PR → 리뷰 → 병합 흐름을 6분에 봐요.",
+      "day": 1
+    },
+    {
+      "id": "l2",
+      "title": "GIT1 (생활코딩)",
+      "url": "https://opentutorials.org/course/3837",
+      "min": 45,
+      "lang": "ko",
+      "what": "버전 관리의 개념을 리더 눈높이로 익혀요.",
+      "day": 1
+    },
+    {
+      "id": "l3",
+      "title": "GIT - github.com Pull request (생활코딩)",
+      "url": "https://opentutorials.org/course/4587",
+      "min": 48,
+      "lang": "ko",
+      "what": "PR이 리뷰 관문으로 어떻게 쓰이는지 봐요.",
+      "day": 2
+    },
+    {
+      "id": "l4",
+      "title": "Google Engineering Practices — How to do a code review",
+      "url": "https://google.github.io/eng-practices/review/reviewer/",
+      "min": 60,
+      "lang": "en",
+      "what": "리뷰 기준, 속도, 크기 규칙을 원문으로 읽어요.",
+      "day": 2
+    },
+    {
+      "id": "l5",
+      "title": "GitHub Skills — Review pull requests",
+      "url": "https://github.com/skills/review-pull-requests",
+      "min": 30,
+      "lang": "en",
+      "what": "매니저도 대상인 30분 실습으로 리뷰를 직접 해 봐요.",
+      "day": 3
+    },
+    {
+      "id": "l6",
+      "title": "시간은 금이다: LLM을 이용한 AI 코드 리뷰 도입기 (NAVER D2)",
+      "url": "https://www.youtube.com/watch?v=7cwFhX14nkg",
+      "min": 9,
+      "lang": "ko",
+      "what": "사람 리뷰에 AI 리뷰를 더한 국내 사례를 봐요.",
+      "day": 5
+    }
+  ],
+  "write": {
+    "title": "금요일에 쓸 것",
+    "task": "두런 팀이 따라 쓸 PR 설명 양식과 좋은 리뷰 코멘트 예시 3개를 써 보세요. main 보호 규칙도 한 단락으로 적어요.",
+    "template": [
+      "PR 제목 규칙 (Conventional Commits: feat:, fix:)",
+      "무엇을 바꿨나 (요약 3줄 이내)",
+      "왜 바꿨나 (요구사항·이슈 링크)",
+      "어떻게 확인했나 (테스트, 데스크톱·휴대폰 캡처)",
+      "리뷰어가 특히 볼 곳과 위험",
+      "좋은 리뷰 코멘트 예시 3개 (질문형, 이유 포함, 잘한 점 칭찬 1개)",
+      "main 보호 규칙: 필수 승인 수, 상태 검사, 강제 push 차단, 응답 시간(영업일 1일), PR 크기(약 100줄)",
+      "라이선스: AGPL·소스 공개형 의존성 승인 절차"
+    ]
+  },
+  "check": [
+    "두런 numbers (18명) fictional.",
+    "Google review numbers per R4 F1.4.3–F1.4.5; Google monorepo 2016 figures per F1.3.1.",
+    "METR numbers per R1-part-q3 line 284; DORA 2024/2025 per R4 0.2.",
+    "One git code example only (c02)."
+  ]
+}

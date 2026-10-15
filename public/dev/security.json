@@ -1,0 +1,2574 @@
+{
+  "id": "security",
+  "no": "07",
+  "title": "로그인 · 권한 · 보안",
+  "short": "보안",
+  "q": "OAuth 같은 거 쓰나요?",
+  "sub": "OAuth · SSO · 개인정보 · OWASP",
+  "doc": "인증 결정 기록 (ADR-007)",
+  "story": {
+    "title": "“구글 회사 계정으로 로그인되나요?”",
+    "size": 11,
+    "body": [
+      "(가상 이야기) 두런은 이제 11명이에요. 직원 300명인 회사와 첫 대형 계약을 앞두고 있는데, 계약서 직전에 두 가지가 왔어요. 보안 질문지 80문항, 그리고 \"회사 구글 계정으로 로그인(SSO)되나요?\"라는 질문이에요.",
+      "CTO 지훈이 말해요. \"SAML을 직접 붙이면 3주예요. 인증 서비스를 쓰면 며칠이면 되지만, 매달 비용이 나와요.\" PM 서연은 질문지 절반이 무슨 뜻인지 모르겠다고 해요. 권한, 키 교체, 유출 시 72시간….",
+      "대표인 나는 이번 주에 결정해야 해요. 만들까, 살까. SSO는 어느 요금제에 넣을까. 그리고 이 결정을 금요일까지 인증 결정 기록(ADR-007)으로 남겨야 해요."
+    ]
+  },
+  "goals": [
+    "\"OAuth 쓰나요?\"에 로그인(OIDC)과 권한 위임(OAuth)을 구분해 답할 수 있어요.",
+    "인증을 만들지 살지, SSO를 어느 요금제에 둘지 근거를 들어 정할 수 있어요.",
+    "유출 72시간·24시간 규칙과 대표 책임을 알고 사고 대응 체계를 요구할 수 있어요."
+  ],
+  "cards": [
+    {
+      "id": "c01",
+      "day": 1,
+      "title": "인증과 인가는 달라요",
+      "lead": "인증(Authentication)은 \"누구세요?\"를 확인하는 일이고, 인가(Authorization)는 \"이 사람이 이걸 해도 되나요?\"를 정하는 일이에요.",
+      "idea": [
+        "NIST는 인증을 \"사용자·프로세스·기기의 신원을 확인하는 것\"으로, 인가를 \"접근 권한을 주는 것, 또는 그 권한\"으로 정의해요.",
+        "한국어로는 둘 다 \"인증\"이라고 부르는 일이 많아서 회의가 엉켜요. 로그인 화면은 인증이고, \"다른 회사의 회의록이 보이면 안 된다\"는 인가예요.",
+        "사람들은 로그인 이야기를 많이 하지만, 큰 사고는 인가 쪽에서 더 자주 나요. OWASP Top 10:2025의 1위가 접근 통제 실패(Broken Access Control)예요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 인증",
+          "t": "아이디·비밀번호, 구글 로그인으로 \"누구인지\" 확인"
+        },
+        {
+          "k": "2 · 세션",
+          "t": "확인된 사람에게 출입 표시를 줌"
+        },
+        {
+          "k": "3 · 인가",
+          "t": "요청마다 \"이 회의록을 볼 권한이 있나\" 확인"
+        },
+        {
+          "k": "4 · 기록",
+          "t": "관리자 행동은 감사 로그로 남김"
+        }
+      ],
+      "hear": [
+        "\"로그인은 되는데, 옆 팀 워크스페이스가 보여요.\"",
+        "\"인증 붙였으니 보안은 끝난 거죠?\""
+      ],
+      "ask": [
+        "우리 앱에서 \"A 회사 사용자가 B 회사 데이터를 볼 수 있나?\"를 출시 전에 시험했나요?",
+        "권한은 요청마다 서버에서 다시 확인하나요?"
+      ],
+      "mine": "내 앱은 아이디 + 비밀번호로 인증하고, 로그인하면 세션 쿠키를 줘요. 사용자가 3명(친구)이라 역할 구분은 단순해요.",
+      "deep": [
+        "OWASP 인가 치트시트는 최소 권한, 기본 거부(deny by default), 그리고 모든 요청마다 권한 확인을 권해요.",
+        "개인정보위는 2026-07-08 API 유출 주의 안내에서 \"로그인은 확인하지만 권한은 확인하지 않는 API\" 패턴으로 약 3,700만 건이 유출된 사례를 들었어요."
+      ],
+      "recall": {
+        "q": "인증과 인가를 한 문장씩으로 구분하면?",
+        "a": "인증 = 누구인지 확인, 인가 = 무엇을 해도 되는지 결정"
+      },
+      "quiz": [
+        {
+          "q": "\"다른 고객의 주문 내역이 URL 숫자만 바꾸면 보인다\"는 어느 쪽 실패인가요?",
+          "options": [
+            "인증 실패",
+            "인가(권한) 실패",
+            "암호화 실패"
+          ],
+          "answer": 1,
+          "why": "로그인은 됐지만 그 데이터에 대한 권한 확인이 빠졌어요. OWASP A01 접근 통제 실패예요."
+        },
+        {
+          "q": "OWASP Top 10:2025에서 1위는?",
+          "options": [
+            "인젝션",
+            "접근 통제 실패",
+            "암호화 실패"
+          ],
+          "answer": 1,
+          "why": "2025판에서도 Broken Access Control이 1위예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "NIST CSRC Glossary — authentication",
+          "url": "https://csrc.nist.gov/glossary/term/authentication",
+          "date": "n.d."
+        },
+        {
+          "title": "OWASP Authorization Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html",
+          "date": "n.d."
+        },
+        {
+          "title": "개인정보위 — API 활용 확대에 따른 개인정보 유출 예방 당부",
+          "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=12241",
+          "date": "2026-07-08"
+        }
+      ]
+    },
+    {
+      "id": "c02",
+      "day": 1,
+      "title": "세션과 토큰",
+      "lead": "로그인 상태를 서버가 기억하면 세션, 손에 쥔 서명된 표(JWT)로 증명하면 토큰 방식이에요. 웹앱의 로그인 세션에는 서버 세션이 더 다루기 쉬워요.",
+      "idea": [
+        "서버 세션은 서버가 로그인 상태를 저장하고, 브라우저는 의미 없는 세션 번호만 쿠키로 들고 다녀요. 로그아웃이나 계정 정지가 쉬워요.",
+        "JWT(RFC 7519)는 정보를 담고 서명한 토큰이에요. 서버가 기억하지 않아도 되지만, 만료 전까지는 취소하기 어려워요.",
+        "OWASP JWT 치트시트는 JWT를 \"상태 없는 세션\"으로 쓰는 것을 \"frowned upon(권하지 않음)\"이라고 써요. 쓰려면 취소 방법(차단 목록 등)이 필요하다고 해요."
+      ],
+      "hear": [
+        "\"요즘은 다 JWT 쓰지 않나요?\"",
+        "\"폰을 잃어버렸는데 모든 기기에서 로그아웃할 수 있어요?\""
+      ],
+      "ask": [
+        "계정이 털렸을 때 \"모든 기기 로그아웃\"을 바로 할 수 있나요?",
+        "세션은 얼마 동안 유지되고, 아무것도 안 하면 언제 끊기나요?"
+      ],
+      "mine": "내 앱은 서버 세션 방식이에요. 세션 쿠키에 HttpOnly + SameSite=Lax + Secure를 붙였어요.",
+      "deep": [
+        "RFC 10017(2026-08-21, BCP 212)은 브라우저 앱에서 백엔드가 OAuth 토큰을 들고 브라우저는 세션 쿠키만 받는 BFF(Backend-for-Frontend) 구조를, 업무용 앱과 개인정보를 다루는 앱에 \"강하게 권장\"해요.",
+        "토큰은 서버 간 API 호출이나 모바일 앱(짧은 액세스 토큰 + 리프레시 토큰)에 잘 맞아요."
+      ],
+      "recall": {
+        "q": "JWT를 로그인 세션으로 쓸 때 가장 큰 약점은?",
+        "a": "만료 전까지 취소(로그아웃·정지)가 어려움"
+      },
+      "quiz": [
+        {
+          "q": "OWASP가 쿠키에 붙이라고 하는 플래그가 아닌 것은?",
+          "options": [
+            "Secure",
+            "HttpOnly",
+            "Public"
+          ],
+          "answer": 2,
+          "why": "Secure, HttpOnly, SameSite가 세션 쿠키의 기본 플래그예요."
+        },
+        {
+          "q": "RFC 10017이 업무용 브라우저 앱에 강하게 권하는 구조는?",
+          "options": [
+            "브라우저에 토큰 저장",
+            "BFF",
+            "비밀번호 그랜트"
+          ],
+          "answer": 1,
+          "why": "백엔드가 토큰을 쥐고 브라우저에는 세션 쿠키만 줘요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "OWASP Session Management Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html",
+          "date": "n.d."
+        },
+        {
+          "title": "OWASP JSON Web Token Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html",
+          "date": "n.d."
+        },
+        {
+          "title": "RFC 10017 — OAuth 2.0 for Browser-Based Applications (BCP 212)",
+          "url": "https://www.rfc-editor.org/info/rfc10017/",
+          "date": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": "c03",
+      "day": 1,
+      "title": "비밀번호는 어떻게 저장하나",
+      "lead": "비밀번호는 절대 그대로 저장하지 않고, 되돌릴 수 없는 \"해시\"로 바꿔서 저장해요. 그것도 일부러 느린 해시로요.",
+      "idea": [
+        "해시는 한 방향 변환이에요. 같은 비밀번호는 같은 결과가 나오지만, 결과로 원래 비밀번호를 되찾을 수는 없어요.",
+        "OWASP 비밀번호 저장 치트시트는 Argon2id, scrypt, bcrypt, PBKDF2를 작업량(반복 횟수)을 조정해 쓰라고 권해요. 느릴수록 털린 DB로 비밀번호를 맞히기 어려워요.",
+        "한국 안전성 확보조치 기준(고시 제2026-9호) 제7조도 비밀번호를 일방향 암호화(해시)해서 저장하라고 정해요."
+      ],
+      "hear": [
+        "\"DB가 털려도 비밀번호는 못 읽어요. 해시라서요.\"",
+        "\"비밀번호 찾기 누르면 원래 비밀번호를 메일로 보내 줘요.\" (위험 신호)"
+      ],
+      "ask": [
+        "비밀번호는 어떤 알고리즘으로, 몇 번 반복해서 해시하나요?",
+        "\"비밀번호 찾기\"가 원래 비밀번호를 보여 주나요, 재설정 링크를 보내나요?"
+      ],
+      "mine": "내 앱은 PBKDF2-SHA256을 100,000회 반복해요. Workers WebCrypto에서 쓸 수 있는 최대값이고, OWASP는 PBKDF2에 이보다 많은 반복을 권해요.",
+      "deep": [
+        "원래 비밀번호를 메일로 보낼 수 있다는 건 해시로 저장하지 않았다는 뜻이에요. 출시 전 점검 질문으로 쓰기 좋아요.",
+        "직접 로그인을 만들면 저장 방식, 재설정, 잠금, 로그까지 모두 팀 책임이 돼요(c12에서 다시 봐요)."
+      ],
+      "recall": {
+        "q": "비밀번호 저장에 \"일부러 느린\" 해시를 쓰는 이유는?",
+        "a": "유출된 DB로 비밀번호를 대입해 맞히는 데 드는 시간을 크게 늘리려고"
+      },
+      "quiz": [
+        {
+          "q": "OWASP 비밀번호 저장 권장 목록에 없는 것은?",
+          "options": [
+            "Argon2id",
+            "bcrypt",
+            "평문 저장 후 DB 암호화만"
+          ],
+          "answer": 2,
+          "why": "Argon2id, scrypt, bcrypt, PBKDF2가 목록이에요."
+        },
+        {
+          "q": "한국 안전성 확보조치 기준이 비밀번호에 요구하는 것은?",
+          "options": [
+            "양방향 암호화",
+            "일방향 암호화(해시)",
+            "6개월마다 변경"
+          ],
+          "answer": 1,
+          "why": "제7조는 비밀번호를 일방향 해시로 저장하라고 해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "OWASP Password Storage Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html",
+          "date": "n.d."
+        },
+        {
+          "title": "개인정보의 안전성 확보조치 기준 (개인정보보호위원회고시 제2026-9호)",
+          "url": "https://www.law.go.kr/행정규칙/개인정보의안전성확보조치기준",
+          "date": "2026-07-01"
+        }
+      ]
+    },
+    {
+      "id": "c04",
+      "day": 1,
+      "title": "2단계 인증과 피싱",
+      "lead": "2단계 인증(MFA)은 비밀번호 말고 하나를 더 확인하는 거예요. 그런데 문자 코드는 피싱에 약해서, 가짜 사이트에서는 작동하지 않는 방식(패스키·보안키)이 최고 등급이에요.",
+      "idea": [
+        "NIST SP 800-63B-4(2025-07)는 AAL2 수준 앱이 \"피싱에 강한 인증 옵션을 제공해야 한다\"고 하고, 문자·음성 코드는 \"제한(restricted)\" 인증 수단으로 분류해요.",
+        "CISA는 피싱에 강한 MFA를 \"gold standard\"라고 부르고, 널리 쓸 수 있는 것은 FIDO/WebAuthn뿐이라고 해요.",
+        "같은 NIST 문서가 비밀번호 규칙도 바꿨어요. 비밀번호만 쓰는 로그인은 최소 15자, 문자 종류 섞기 강제 금지, 정기 변경 강제 금지예요."
+      ],
+      "hear": [
+        "\"관리자 계정은 문자 인증 말고 보안키로 바꾸죠.\"",
+        "\"비밀번호 3종류 8자리, 6개월마다 바꾸게 할까요?\""
+      ],
+      "ask": [
+        "관리자·클라우드 콘솔 계정은 피싱에 강한 MFA를 쓰나요?",
+        "우리 비밀번호 정책은 최신 NIST·한국 기준과 맞나요?"
+      ],
+      "deep": [
+        "한국도 바뀌었어요. 현재 안전성 확보조치 기준(2026-9호)은 조합·주기 규칙을 정하지 않고, 2024.10 공식 안내서는 지나치게 복잡한 규칙이나 잦은 변경이 오히려 보안을 낮출 수 있다고 써요. 다만 예전 \"2종류 10자리 / 3종류 8자리\" 규칙을 기대하는 점검표가 남아 있을 수 있어서, 고른 정책과 이유를 내부 관리계획에 적어 두는 게 좋아요.",
+        "CircleCI(2023-01-12 보고서) 사고에서는 2FA를 거친 SSO 세션 자체가 노트북 악성코드로 도난당했어요. MFA도 훔친 세션은 막지 못해요."
+      ],
+      "recall": {
+        "q": "NIST 800-63B-4가 비밀번호만 쓰는 로그인에 요구하는 최소 길이는?",
+        "a": "15자"
+      },
+      "quiz": [
+        {
+          "q": "NIST 800-63B-4가 문자(SMS) 코드를 분류하는 방식은?",
+          "options": [
+            "권장",
+            "제한(restricted)",
+            "금지"
+          ],
+          "answer": 1,
+          "why": "SMS·음성 코드는 \"restricted\" 인증 수단이에요."
+        },
+        {
+          "q": "NIST가 금지한 비밀번호 정책은?",
+          "options": [
+            "유출 목록 확인",
+            "정기 변경 강제",
+            "붙여넣기 허용"
+          ],
+          "answer": 1,
+          "why": "정기 변경 강제는 하지 말고, 유출 증거가 있을 때만 바꾸게 해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "NIST SP 800-63B-4 — Authentication and Authenticator Management",
+          "url": "https://pages.nist.gov/800-63-4/sp800-63b.html",
+          "date": "2025-07"
+        },
+        {
+          "title": "CISA — Implementing Phishing-Resistant MFA (fact sheet)",
+          "url": "https://www.cisa.gov/sites/default/files/publications/fact-sheet-implementing-phishing-resistant-mfa-508c.pdf",
+          "date": "2022-10"
+        },
+        {
+          "title": "개인정보의 안전성 확보조치 기준 안내서 (KISA·개인정보위)",
+          "url": "https://www.kisa.or.kr/post/fileDownload?menuSeq=2060301&postSeq=37&attachSeq=1&lang_type=KO",
+          "date": "2024-10"
+        }
+      ]
+    },
+    {
+      "id": "c05",
+      "day": 2,
+      "title": "권한: 누가 무엇을 할 수 있나",
+      "lead": "B2B 제품은 \"누가 어떤 화면과 데이터에 무엇을 할 수 있는지\"를 역할로 정해요. 이 표는 대표가 일찍 정해야 해요.",
+      "idea": [
+        "흔한 역할 모델은 소유자(owner) · 관리자(admin) · 멤버(member) · 보기 전용(viewer)이에요. 역할마다 할 수 있는 행동을 표로 적어요.",
+        "역할은 나중에 바꾸기 비싸요. 데이터 구조(ERD)와 화면, 요금제가 모두 역할에 기대기 때문이에요.",
+        "관리자가 한 일(사용자 삭제, 권한 변경)은 감사 로그(audit log)로 남겨야 기업 고객이 믿어요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 역할",
+          "t": "소유자·관리자·멤버·보기 전용"
+        },
+        {
+          "k": "2 · 행동",
+          "t": "보기·만들기·수정·삭제·초대"
+        },
+        {
+          "k": "3 · 범위",
+          "t": "내 것 / 우리 팀 / 회사 전체"
+        },
+        {
+          "k": "4 · 기록",
+          "t": "관리자 행동은 감사 로그"
+        }
+      ],
+      "hear": [
+        "\"외부 게스트에게 회의록 하나만 보여 줄 수 있어요?\"",
+        "\"관리자가 누구를 지웠는지 기록이 있나요?\""
+      ],
+      "ask": [
+        "우리 역할 표(역할 × 행동)는 문서로 있나요?",
+        "게스트·외주 인력은 어떤 역할로 들어오나요?",
+        "관리자 행동은 어디에 몇 년 기록되나요?"
+      ],
+      "deep": [
+        "OWASP 인가 치트시트: 기본은 거부, 필요한 권한만, 매 요청마다 확인.",
+        "한국 안전성 확보조치 기준 제5조는 권한 변경 이력을 3년 이상 보관하고, 직원마다 계정을 따로 주며(공유 금지), 로그인 실패가 반복되면 잠그라고 정해요."
+      ],
+      "recall": {
+        "q": "한국 기준이 접근 권한 변경 이력을 보관하라는 기간은?",
+        "a": "3년 이상"
+      },
+      "quiz": [
+        {
+          "q": "권한 설계를 늦게 하면 비싼 이유로 가장 알맞은 것은?",
+          "options": [
+            "디자인이 예뻐지지 않아서",
+            "데이터 구조·화면·요금제가 모두 역할에 기대서",
+            "법이 금지해서"
+          ],
+          "answer": 1,
+          "why": "역할은 ERD와 화면, 요금제까지 얽혀 있어요."
+        },
+        {
+          "q": "안전성 확보조치 기준이 금지하는 것은?",
+          "options": [
+            "직원별 계정",
+            "계정 공유",
+            "MFA"
+          ],
+          "answer": 1,
+          "why": "한 사람에 한 계정, 공유 금지예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "OWASP Authorization Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html",
+          "date": "n.d."
+        },
+        {
+          "title": "개인정보의 안전성 확보조치 기준 (개인정보보호위원회고시 제2026-9호)",
+          "url": "https://www.law.go.kr/행정규칙/개인정보의안전성확보조치기준",
+          "date": "2026-07-01"
+        }
+      ]
+    },
+    {
+      "id": "c06",
+      "day": 2,
+      "title": "최소 권한",
+      "lead": "최소 권한(least privilege)은 \"일에 꼭 필요한 만큼만 권한을 준다\"는 원칙이에요. 사람에게도, 서버와 프로그램에게도 똑같이 적용해요.",
+      "idea": [
+        "NIST는 최소 권한을 \"맡은 일을 하는 데 필요한 최소한으로 접근 권한을 제한하는 것\"으로 정의해요.",
+        "AWS IAM 모범 사례도 루트 계정 보호, 최소 권한, 임시 자격 증명, MFA를 앞에 둬요.",
+        "대표가 정할 것은 \"운영 DB에 누가 들어갈 수 있나\"예요. 짧은 명단, MFA, 기록, 분기마다 점검, 퇴사 당일 회수가 기본이에요."
+      ],
+      "hear": [
+        "\"편하니까 개발자 모두 운영 DB 관리자 권한 줄게요.\"",
+        "\"퇴사한 분 계정이 아직 살아 있어요.\""
+      ],
+      "ask": [
+        "운영 데이터에 접근할 수 있는 사람은 지금 몇 명인가요?",
+        "퇴사자 권한은 퇴사 당일 회수되나요?",
+        "분기별 권한 점검을 누가 하나요?"
+      ],
+      "mine": "내 앱의 MCP 커넥터 토큰은 액세스 토큰 1시간, 리프레시 토큰 30일이고 쓸 때마다 새로 바뀌어요. 오래 살아 있는 열쇠를 줄이는 방법이에요.",
+      "deep": [
+        "쿠팡 사고(2025)에서는 전 직원이 퇴사 후에도 서명 키를 갖고 있었어요. 권한 회수와 키 교체가 함께 가야 한다는 교훈이에요(사례 참고).",
+        "안전성 확보조치 기준 제6조는 외부에서 접속하는 직원에게 인증서·보안토큰·OTP 같은 안전한 인증을 요구해요. 사실상 원격 관리자 접속에 MFA예요."
+      ],
+      "recall": {
+        "q": "최소 권한의 한 줄 정의는?",
+        "a": "맡은 일에 꼭 필요한 최소한의 권한만 준다"
+      },
+      "quiz": [
+        {
+          "q": "최소 권한과 가장 거리가 먼 것은?",
+          "options": [
+            "분기별 권한 점검",
+            "모든 개발자에게 운영 관리자 권한",
+            "퇴사 당일 회수"
+          ],
+          "answer": 1,
+          "why": "편의를 위해 넓게 주는 것은 원칙과 반대예요."
+        },
+        {
+          "q": "AWS IAM 모범 사례에 없는 것은?",
+          "options": [
+            "임시 자격 증명",
+            "루트 계정 일상 사용",
+            "MFA 요구"
+          ],
+          "answer": 1,
+          "why": "루트 계정은 보호하고 평소에는 쓰지 않아요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "NIST CSRC Glossary — least privilege",
+          "url": "https://csrc.nist.gov/glossary/term/least_privilege",
+          "date": "n.d."
+        },
+        {
+          "title": "AWS — Security best practices in IAM",
+          "url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html",
+          "date": "n.d."
+        },
+        {
+          "title": "개인정보의 안전성 확보조치 기준 (개인정보보호위원회고시 제2026-9호)",
+          "url": "https://www.law.go.kr/행정규칙/개인정보의안전성확보조치기준",
+          "date": "2026-07-01"
+        }
+      ]
+    },
+    {
+      "id": "c07",
+      "day": 2,
+      "title": "비밀 값과 키 관리",
+      "lead": "API 키, DB 비밀번호, 토큰 서명 키 같은 \"비밀 값(secret)\"은 코드나 채팅방이 아니라 비밀 관리 도구에 따로 보관해요.",
+      "idea": [
+        "OWASP는 많은 조직이 비밀 값을 \"소스 코드 안에 평문으로\" 넣어 둔다고 경고하고, 중앙 비밀 관리 도구, 최소 권한, 자동 교체, 감사를 권해요.",
+        "GitHub의 push protection은 비밀 값이 들어간 push를 저장소에 닿기 전에 막아요. 개인 계정이 공개 저장소에 push할 때는 기본으로 켜져 있어요.",
+        "비밀 값 하나가 회사 전체를 여는 열쇠일 수 있어요. 쿠팡 사고의 출발점도 평문으로 볼 수 있던 토큰 서명 키였어요."
+      ],
+      "hear": [
+        "\"키는 슬랙에 올려 둘게요, 복사해서 쓰세요.\"",
+        "\"서명 키를 누가 언제 발급받았는지 기록이 없어요.\""
+      ],
+      "ask": [
+        "우리 비밀 값은 어디에 있고, 누가 볼 수 있나요?",
+        "코드에 비밀 값이 들어가면 자동으로 막히나요?"
+      ],
+      "mine": "내 앱은 OAuth 토큰과 인증 코드를 원본이 아니라 SHA-256 해시로만 저장해요. DB가 새도 바로 쓸 수 있는 토큰은 남지 않아요.",
+      "deep": [
+        "CircleCI(2023): 직원 노트북 악성코드로 세션이 털린 뒤, 운영 호스트를 교체하고 모든 프로젝트 API 토큰을 폐기했으며 고객을 대신해 GitHub OAuth 토큰까지 교체했어요. CI 시스템은 모든 열쇠를 쥐고 있어요.",
+        "안전성 확보조치 기준 제7조는 정보주체 10만 명 이상(대·중견) 또는 100만 명 이상(중소)이면 키 관리 절차를 요구해요."
+      ],
+      "recall": {
+        "q": "비밀 값을 두면 안 되는 곳 두 군데는?",
+        "a": "소스 코드와 채팅방"
+      },
+      "quiz": [
+        {
+          "q": "GitHub push protection이 하는 일은?",
+          "options": [
+            "비밀 값이 든 push를 저장소 도착 전에 막음",
+            "코드 리뷰를 대신함",
+            "비밀번호를 해시함"
+          ],
+          "answer": 0,
+          "why": "\"blocks pushes that contain secrets before they reach your repository\"."
+        },
+        {
+          "q": "CircleCI 사고의 교훈으로 알맞은 것은?",
+          "options": [
+            "MFA가 있으면 세션 도난도 막힌다",
+            "CI 시스템은 모든 열쇠를 쥐고 있어 특히 지켜야 한다",
+            "토큰은 교체할 필요 없다"
+          ],
+          "answer": 1,
+          "why": "2FA를 거친 세션도 도난당했고, CI가 가진 토큰을 모두 교체해야 했어요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "OWASP Secrets Management Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html",
+          "date": "n.d."
+        },
+        {
+          "title": "GitHub Docs — Push protection",
+          "url": "https://docs.github.com/en/code-security/concepts/secret-security/push-protection",
+          "date": "n.d."
+        },
+        {
+          "title": "CircleCI Jan 4, 2023 security incident report",
+          "url": "https://circleci.com/blog/jan-4-2023-incident-report/",
+          "date": "2023-01-12"
+        }
+      ]
+    },
+    {
+      "id": "c08",
+      "day": 2,
+      "title": "키는 정기적으로 바꿔요",
+      "lead": "키 교체(rotation)는 비밀 값을 주기적으로, 그리고 사고·퇴사 때 바로 새것으로 바꾸는 일이에요. 오래된 키는 언젠가 새어 나간 키예요.",
+      "idea": [
+        "OWASP 비밀 관리 치트시트는 자동 교체를 권해요. 손으로 하면 결국 잊어요.",
+        "꼭 바꿔야 하는 순간: 사고가 났을 때, 그 키를 만진 사람이 떠날 때, 키가 로그·채팅에 찍혔을 때.",
+        "사람 비밀번호는 정기 변경을 강제하지 말라는 NIST 기준과 헷갈리지 마세요. 그건 사람이 외우는 비밀번호 이야기이고, 시스템 키는 교체가 기본이에요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 목록",
+          "t": "어떤 키가 어디에 있는지 적기"
+        },
+        {
+          "k": "2 · 주인",
+          "t": "키마다 담당자"
+        },
+        {
+          "k": "3 · 교체",
+          "t": "주기 + 사고·퇴사 때 즉시"
+        },
+        {
+          "k": "4 · 확인",
+          "t": "옛 키가 정말 꺼졌는지 확인"
+        }
+      ],
+      "hear": [
+        "\"그 키, 3년 전에 만든 거 그대로예요.\"",
+        "\"도윤 님 퇴사하는데, 만진 키 목록 있어요?\""
+      ],
+      "ask": [
+        "퇴사 체크리스트에 \"그 사람이 만진 키 모두 교체\"가 있나요?",
+        "키를 바꾸면 서비스가 멈추나요, 무중단으로 바뀌나요?"
+      ],
+      "mine": "내 앱의 리프레시 토큰은 쓸 때마다 새것으로 바뀌어요(rotation). 사람이 손대지 않아도 오래된 토큰이 쌓이지 않아요.",
+      "deep": [
+        "쿠팡(2025): 2024-12-31 퇴사한 엔지니어의 서명 키가 교체되지 않았고, 그 키로 위조한 토큰이 2025년 내내 쓰였어요(과기정통부 2026-02-10, 개인정보위 2026-06-11).",
+        "SKT(2025): 약 2,365대 서버의 계정 정보가 평문으로 있었고 비밀번호도 바뀌지 않았어요(과기정통부 최종 조사)."
+      ],
+      "recall": {
+        "q": "키를 즉시 바꿔야 하는 세 순간은?",
+        "a": "사고 발생, 그 키를 만진 사람의 퇴사, 키가 로그·채팅에 노출됐을 때"
+      },
+      "quiz": [
+        {
+          "q": "쿠팡 사고에서 빠졌던 절차는?",
+          "options": [
+            "퇴사 시 서명 키 교체",
+            "코드 리뷰",
+            "디자인 검토"
+          ],
+          "answer": 0,
+          "why": "퇴사 후에도 키가 그대로였어요."
+        },
+        {
+          "q": "NIST의 \"정기 변경 강제 금지\"가 적용되는 대상은?",
+          "options": [
+            "사람이 외우는 비밀번호",
+            "서버의 API 키",
+            "토큰 서명 키"
+          ],
+          "answer": 0,
+          "why": "시스템 키는 교체가 기본이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "OWASP Secrets Management Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html",
+          "date": "n.d."
+        },
+        {
+          "title": "과기정통부 — 쿠팡 전 직원에 의한 정보통신망 침해사고 조사결과 발표",
+          "url": "https://www.msit.go.kr/bbs/view.do?sCode=user&mId=307&mPid=208&bbsSeqNo=94&nttSeqNo=3186874",
+          "date": "2026-02-10"
+        },
+        {
+          "title": "과기정통부 — SK텔레콤 침해사고 최종 조사결과 발표",
+          "url": "https://www.msit.go.kr/bbs/view.do?sCode=user&mId=307&mPid=208&bbsSeqNo=94&nttSeqNo=3185964",
+          "date": "2025-07-04"
+        }
+      ]
+    },
+    {
+      "id": "c09",
+      "day": 3,
+      "title": "OAuth는 비밀번호 대신 출입증을 건네는 약속이에요",
+      "lead": "OAuth 2.0은 내 비밀번호를 앱에 주지 않고, 정해진 범위만 쓸 수 있는 \"출입증(토큰)\"을 받게 하는 약속이에요. 인증이 아니라 권한 위임이에요.",
+      "idea": [
+        "RFC 6749(2012-10)는 OAuth를 \"제3자 앱이 HTTP 서비스에 제한된 접근을 얻게 하는 틀\"이라고 정의해요. oauth.net도 \"OAuth 2.0은 인증 프로토콜이 아니다\"라고 분명히 써요.",
+        "\"구글 캘린더 연결하기\"가 전형적인 예예요. 사용자는 구글에서 동의만 하고, 앱은 캘린더용 출입증만 받아요.",
+        "아래 주소는 카카오 로그인의 첫 단계예요. 사용자를 카카오로 보내 동의를 받고, 일회용 코드를 들고 돌아오게 해요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 앱",
+          "t": "사용자를 카카오 동의 화면으로 보냄"
+        },
+        {
+          "k": "2 · 사용자",
+          "t": "카카오에서 로그인·동의"
+        },
+        {
+          "k": "3 · 카카오",
+          "t": "redirect_uri로 일회용 code를 돌려줌"
+        },
+        {
+          "k": "4 · 앱 서버",
+          "t": "code + PKCE 검증값으로 토큰 교환"
+        },
+        {
+          "k": "5 · 앱",
+          "t": "토큰으로 허락된 정보만 조회"
+        }
+      ],
+      "code": {
+        "text": "https://kauth.kakao.com/oauth/authorize\n  ?client_id=두런_앱_키\n  &redirect_uri=https://doran.app/callback\n  &response_type=code\n  &code_challenge=…   ← PKCE",
+        "read": "읽는 법: \"카카오야, 두런(client_id)이 부탁하는데, 이 사람이 동의하면 일회용 코드(response_type=code)를 이 주소(redirect_uri)로 보내 줘.\" code_challenge는 PKCE 값이라서, 코드를 중간에 가로챈 사람은 토큰으로 바꿀 수 없어요."
+      },
+      "hear": [
+        "\"우리 OAuth 써요\" (로그인 이야기인지, 외부 서비스 연결 이야기인지 확인)",
+        "\"redirect_uri 등록 안 해서 로그인이 안 돼요.\""
+      ],
+      "ask": [
+        "우리는 OAuth를 로그인에 쓰나요, 다른 서비스 데이터 연결에 쓰나요, 둘 다인가요?",
+        "요청하는 범위(scope)는 꼭 필요한 만큼인가요?"
+      ],
+      "mine": "내 앱은 Claude·ChatGPT 커넥터(MCP)용으로 직접 OAuth 2.1 인가 서버 역할을 해요. PKCE S256을 필수로 하고, RFC 7591/8414/9728을 따라요.",
+      "deep": [
+        "RFC 9700(2025-01-30, BCP 240): 공개 클라이언트는 PKCE를 반드시 쓰고(MUST), implicit 그랜트는 쓰지 말라고(SHOULD NOT) 해요. 비밀번호 그랜트도 빠졌어요.",
+        "OAuth 2.1은 아직 RFC가 아니에요. 2026-09-03자 draft-16이 최신이에요. \"OAuth 2.1 지원\"이라는 광고는 사실상 RFC 9700을 따른다는 뜻으로 읽으면 돼요.",
+        "카카오 로그인 문서는 REST API 키에 클라이언트 시크릿이 기본으로 켜져 있다고 해요."
+      ],
+      "recall": {
+        "q": "OAuth가 주는 것은 비밀번호인가요, 무엇인가요?",
+        "a": "범위가 제한된 출입증(액세스 토큰)"
+      },
+      "quiz": [
+        {
+          "q": "위 주소에서 code_challenge의 역할은?",
+          "options": [
+            "로그인 화면 색 지정",
+            "PKCE: 가로챈 코드를 토큰으로 못 바꾸게 함",
+            "사용자 비밀번호 전달"
+          ],
+          "answer": 1,
+          "why": "PKCE(RFC 7636)는 코드 가로채기를 막아요."
+        },
+        {
+          "q": "2026-10 기준 OAuth 2.1의 상태는?",
+          "options": [
+            "RFC로 확정",
+            "아직 인터넷 초안(draft)",
+            "폐기"
+          ],
+          "answer": 1,
+          "why": "draft-ietf-oauth-v2-1-16(2026-09-03)이 최신 초안이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "RFC 6749 — The OAuth 2.0 Authorization Framework",
+          "url": "https://www.rfc-editor.org/info/rfc6749/",
+          "date": "2012-10"
+        },
+        {
+          "title": "RFC 9700 — Best Current Practice for OAuth 2.0 Security (BCP 240)",
+          "url": "https://www.rfc-editor.org/info/rfc9700/",
+          "date": "2025-01-30"
+        },
+        {
+          "title": "카카오 로그인 > 이해하기 — 카카오디벨로퍼스",
+          "url": "https://developers.kakao.com/docs/latest/ko/kakaologin/common",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c10",
+      "day": 3,
+      "title": "로그인은 OIDC, 권한은 OAuth",
+      "lead": "\"구글로 로그인\"은 OAuth 위에 신원 층을 얹은 OpenID Connect(OIDC)예요. OIDC는 \"이 사람이 누구인지\" 담은 ID 토큰을 줘요.",
+      "idea": [
+        "OIDC Core 1.0은 스스로를 \"OAuth 2.0 위의 단순한 신원 층\"이라고 설명해요. 앱은 ID 토큰으로 사용자를 확인해요.",
+        "OIDC는 2024년 10월 ISO/IEC 26131:2024 등 ISO 국제표준이 됐어요(OpenID Foundation 2024-10-07 발표).",
+        "한국에서 많이 쓰는 카카오·네이버 로그인도 OAuth 2.0 기반이에요. 카카오는 OIDC를 켜면 ID 토큰을 주고, 네이버도 OIDC를 지원해요(openid scope 필요)."
+      ],
+      "hear": [
+        "\"카카오 로그인은 OAuth예요, OIDC예요?\"",
+        "\"이메일로 계정 합치면 되죠?\" (위험)"
+      ],
+      "ask": [
+        "소셜 로그인 계정은 이메일이 아니라 제공자 사용자 ID로 연결하나요?",
+        "카카오 비즈 앱 전환·검수 기간을 일정에 넣었나요?"
+      ],
+      "deep": [
+        "카카오: 닉네임·프로필 사진은 기본, 이메일은 비즈 앱이 필요하고, 이름·전화번호 등은 추가 심사가 필요해요. 카카오는 바뀔 수 있는 이메일·전화번호를 회원 ID로 쓰지 말라고 권해요.",
+        "네이버: 운영 전에 검수를 통과해야 하고, 승인 전에는 등록된 테스트 ID만 로그인돼요.",
+        "카카오·네이버 로그인은 편의 로그인이지 법적 본인확인이 아니에요(c17 참고)."
+      ],
+      "recall": {
+        "q": "OAuth와 OIDC를 한 줄로 구분하면?",
+        "a": "OAuth = 권한 위임(출입증), OIDC = 그 위에 로그인(ID 토큰)"
+      },
+      "quiz": [
+        {
+          "q": "OIDC가 OAuth에 더해 주는 것은?",
+          "options": [
+            "ID 토큰",
+            "결제 기능",
+            "비밀번호 저장"
+          ],
+          "answer": 0,
+          "why": "ID 토큰으로 사용자가 누구인지 확인해요."
+        },
+        {
+          "q": "네이버 로그인을 운영에 내기 전 필요한 것은?",
+          "options": [
+            "검수 통과",
+            "ISMS 인증",
+            "사업자 대출"
+          ],
+          "answer": 0,
+          "why": "검수 전에는 테스트 ID만 로그인돼요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "OpenID Connect Core 1.0 (errata set 2)",
+          "url": "https://openid.net/specs/openid-connect-core-1_0.html",
+          "date": "2023-12-15"
+        },
+        {
+          "title": "OpenID Foundation — OpenID Connect Published as an ISO/IEC Spec",
+          "url": "https://www.openid.net/10-years-on-openidconnect-published-as-iso-spec/",
+          "date": "2024-10-07"
+        },
+        {
+          "title": "네이버 로그인 개발가이드",
+          "url": "https://developers.naver.com/docs/login/devguide/devguide.md",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c11",
+      "day": 3,
+      "title": "기업 고객이 묻는 SSO",
+      "lead": "SSO(Single Sign-On)는 직원들이 회사 계정(구글 워크스페이스, Okta 등) 하나로 여러 앱에 로그인하는 거예요. 기업 고객은 계약 조건으로 자주 요구해요.",
+      "idea": [
+        "기업은 퇴사자를 회사 계정에서 한 번만 끄면 모든 앱 접근이 막히길 원해요. 그래서 SAML/OIDC SSO와, 계정을 자동으로 만들고 지우는 SCIM을 함께 물어요.",
+        "GitHub, Slack, Notion, Figma, Linear, Atlassian은 모두 SSO/SCIM을 상위 요금제나 유료 부가기능에 둬요.",
+        "반대 입장도 있어요. 미국 CISA는 2024-06-20 글에서 SSO는 기본 제품에 들어가야 하고, 고객이 \"SSO tax(SSO 세금)\"를 내면 안 된다고 했어요. 두 입장이 충돌해요."
+      ],
+      "hear": [
+        "\"SSO는 엔터프라이즈 요금제에서만 돼요.\"",
+        "\"SCIM도 되나요? 퇴사자 자동 정리요.\""
+      ],
+      "ask": [
+        "SSO를 어느 요금제에 넣을까요? 중간 요금제에 SSO, 엔터프라이즈에 SCIM으로 나눌까요?",
+        "인증 서비스가 SSO 연결 하나당 받는 비용은 얼마인가요?"
+      ],
+      "deep": [
+        "절충 사례: Notion Business, Slack Business+처럼 SSO는 중간 요금제, SCIM과 고급 통제는 엔터프라이즈에 두는 방식이 보여요.",
+        "비용 쪽 사정: 인증 업체가 기업 연결마다 요금을 받기도 해요(Clerk은 추가 연결 하나당 월 $75). 그래서 SaaS가 비용을 고객에게 넘기기도 해요.",
+        "sso.tax 같은 커뮤니티 사이트는 참고만 하고 근거로 쓰지는 않아요."
+      ],
+      "recall": {
+        "q": "SCIM은 SSO와 무엇이 달라요?",
+        "a": "SSO는 로그인, SCIM은 계정을 자동으로 만들고 지우는 것"
+      },
+      "quiz": [
+        {
+          "q": "CISA의 SSO 입장은?",
+          "options": [
+            "상위 요금제에만 두어야 한다",
+            "기본 제품에 포함, SSO tax 반대",
+            "SSO는 위험하다"
+          ],
+          "answer": 1,
+          "why": "2024-06-20 글의 입장이에요."
+        },
+        {
+          "q": "기업 고객이 SSO를 원하는 주된 이유는?",
+          "options": [
+            "화면이 예뻐서",
+            "퇴사자 접근을 한 곳에서 끊으려고",
+            "요금을 더 내려고"
+          ],
+          "answer": 1,
+          "why": "회사 계정 하나를 끄면 모든 앱 접근이 막혀요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "CISA — Why SMBs Don't Deploy Single Sign On (SSO)",
+          "url": "https://www.cisa.gov/news-events/news/why-smbs-dont-deploy-single-sign-sso",
+          "date": "2024-06-20"
+        },
+        {
+          "title": "GitHub Docs — About authentication with single sign-on",
+          "url": "https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-single-sign-on/about-authentication-with-single-sign-on",
+          "date": "n.d."
+        },
+        {
+          "title": "Clerk — Pricing",
+          "url": "https://clerk.com/pricing",
+          "date": "2026-10-15 확인"
+        }
+      ]
+    },
+    {
+      "id": "c12",
+      "day": 3,
+      "title": "인증은 만들까, 살까",
+      "lead": "MVP 단계라면 인증은 \"사는 것(인증 서비스)\"이 기본이에요. 직접 만들면 비밀번호 저장부터 잠금, 로그까지 모두 팀이 책임져요.",
+      "idea": [
+        "직접 만들면 OWASP 인증 치트시트의 목록 전체가 우리 몫이에요: 비밀번호 규칙, 복구, 저장, MFA, 로그인 제한, 잠금, CAPTCHA, 로그, 계정 연결.",
+        "인증 서비스는 무료 구간이 1만~5만 MAU 정도라서 MVP는 거의 다 덮어요. 예: Amazon Cognito Essentials는 월 1만 MAU 무료, Clerk Hobby는 앱당 5만 \"retained user\" 무료예요.",
+        "사면 생기는 위험도 있어요. 가격이 바뀌고(Cognito 2024-11 개편), 옮길 때 비밀번호 해시를 못 가져올 수 있어요(종속)."
+      ],
+      "hear": [
+        "\"직접 붙이면 3주, 인증 서비스면 며칠이에요.\"",
+        "\"MAU 10만 넘으면 청구서 다시 봐야 해요.\""
+      ],
+      "ask": [
+        "나중에 옮길 때 비밀번호 해시를 내보낼 수 있나요?",
+        "MAU가 10배가 되면 월 비용은 얼마가 되나요?",
+        "첫 기업 고객이 SAML을 요구하면 추가 비용은?"
+      ],
+      "mine": "내 앱은 사용자가 3명이라 아이디·비밀번호 로그인을 직접 만들었어요. 대신 저장(PBKDF2)과 쿠키 설정을 스스로 챙겨야 했어요.",
+      "deep": [
+        "예시 계산(정가, 월 10만 활성 사용자, SMS 제외): Cognito Essentials (10만−1만)×$0.015 = 월 $1,350, Clerk Pro $25 + 5만×$0.02 = 월 $1,025. 가격은 자주 바뀌어요.",
+        "이 결정은 ADR(결정 기록) 감이에요. Microsoft ADR 가이드는 되돌리기 어려운 선택을 기록하라고 해요."
+      ],
+      "recall": {
+        "q": "MVP 단계 인증의 기본 선택은?",
+        "a": "인증 서비스를 산다(무료 구간이 MVP를 덮음)"
+      },
+      "quiz": [
+        {
+          "q": "인증 서비스를 살 때 꼭 확인할 종속 위험은?",
+          "options": [
+            "로고 색",
+            "비밀번호 해시 내보내기 가능 여부",
+            "사무실 위치"
+          ],
+          "answer": 1,
+          "why": "해시를 못 가져오면 옮길 때 모든 사용자가 비밀번호를 다시 정해야 해요."
+        },
+        {
+          "q": "직접 만들 때 팀이 책임지는 것이 아닌 것은?",
+          "options": [
+            "비밀번호 저장",
+            "로그인 잠금",
+            "카카오 서버 운영"
+          ],
+          "answer": 2,
+          "why": "카카오 서버는 카카오가 운영해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "OWASP Authentication Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html",
+          "date": "n.d."
+        },
+        {
+          "title": "Amazon Cognito — Pricing",
+          "url": "https://aws.amazon.com/cognito/pricing/",
+          "date": "2026-10-08"
+        },
+        {
+          "title": "Clerk — Pricing",
+          "url": "https://clerk.com/pricing",
+          "date": "2026-10-15 확인"
+        }
+      ]
+    },
+    {
+      "id": "c13",
+      "day": 4,
+      "title": "패스키",
+      "lead": "패스키(passkey)는 비밀번호 대신 기기 속 열쇠로 로그인하는 방식이에요. 진짜 사이트에서만 작동해서 피싱에 강해요.",
+      "idea": [
+        "패스키의 바탕은 W3C 브라우저 표준 WebAuthn이에요. Level 3가 2026-08-25 W3C 권고안(Recommendation)이 됐어요.",
+        "FIDO는 패스키를 \"기기 간 동기화되거나, 한 기기에 묶인\" FIDO 자격 증명으로 정의해요. 애플은 iCloud 키체인으로 종단 간 암호화해 동기화해요.",
+        "NIST 800-63B-4는 동기화 패스키를 최고 등급(AAL3) 아래에서는 허용해요."
+      ],
+      "hear": [
+        "\"패스키 넣으면 비밀번호 재설정 문의가 줄어요.\"",
+        "\"폰 바꾸면 패스키는 어떻게 돼요?\""
+      ],
+      "ask": [
+        "패스키를 잃었을 때 복구 경로는 무엇이고, 그 경로가 가장 약한 고리가 되지는 않나요?",
+        "관리자는 기기에 묶인 보안키를 쓰게 할까요?"
+      ],
+      "deep": [
+        "FIDO는 Level 3가 \"브라우저·플랫폼이 이미 배포한 기능을 공식화한 것\"이고 Level 4 작업이 시작됐다고 해요.",
+        "실패 패턴: 복구 수단(SMS, 이메일 링크)이 가장 약한 곳이 되어 공격자가 그쪽을 노려요."
+      ],
+      "recall": {
+        "q": "WebAuthn Level 3가 W3C 권고안이 된 날은?",
+        "a": "2026-08-25"
+      },
+      "quiz": [
+        {
+          "q": "패스키가 피싱에 강한 이유는?",
+          "options": [
+            "비밀번호가 길어서",
+            "열쇠가 진짜 사이트에서만 작동해서",
+            "문자로 보내서"
+          ],
+          "answer": 1,
+          "why": "가짜 도메인에서는 열쇠가 쓰이지 않아요."
+        },
+        {
+          "q": "패스키 도입 때 흔한 실패 패턴은?",
+          "options": [
+            "복구 경로가 약한 고리가 됨",
+            "로그인이 너무 빨라짐",
+            "서버가 필요 없어짐"
+          ],
+          "answer": 0,
+          "why": "공격자는 복구 경로를 노려요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "W3C — Web Authentication Level 3 (Recommendation)",
+          "url": "https://www.w3.org/TR/webauthn-3/",
+          "date": "2026-08-25"
+        },
+        {
+          "title": "FIDO Alliance — WebAuthn Level 3 Is Now a W3C Recommendation",
+          "url": "https://fidoalliance.org/webauthn-level-3-is-now-a-w3c-recommendation/",
+          "date": "2026-08-31"
+        },
+        {
+          "title": "FIDO Passkeys — FIDO Alliance",
+          "url": "https://fidoalliance.org/passkeys/",
+          "date": "2026-09-16"
+        }
+      ]
+    },
+    {
+      "id": "c14",
+      "day": 4,
+      "title": "OWASP Top 10:2025",
+      "lead": "OWASP Top 10은 웹앱 보안 위험 상위 10가지 목록이에요. 2025판이 최신이고, 팀과 외주사에 보안 질문을 할 때 공용 단어로 써요.",
+      "idea": [
+        "2025 목록: A01 접근 통제 실패 · A02 보안 설정 오류 · A03 소프트웨어 공급망 실패 · A04 암호화 실패 · A05 인젝션 · A06 안전하지 않은 설계 · A07 인증 실패 · A08 소프트웨어·데이터 무결성 실패 · A09 보안 로깅·알림 실패 · A10 예외 상황 처리 실패.",
+        "2021판과 달라진 점: 공급망이 3위로 새로 넓어졌고, 보안 설정 오류가 5위에서 2위로 올랐고, A10이 새로 생겼고, SSRF는 A01에 합쳐졌어요.",
+        "대표가 직접 정할 항목은 둘이에요. A01(권한 설계)과 A03(의존성·빌드 정책)."
+      ],
+      "hear": [
+        "\"외주사에 OWASP Top 10 점검 결과 받으세요.\"",
+        "\"아직 2021판 기준으로 교육하고 있어요.\""
+      ],
+      "ask": [
+        "우리 요구사항과 테스트에는 무엇을 체크리스트로 쓰나요? (Top 10은 단어장, ASVS는 점검표)",
+        "2025판 기준으로 교육 자료를 바꿨나요?"
+      ],
+      "deep": [
+        "데이터는 280만 개 이상 앱, 589개 CWE를 분석했고, 10개 중 8개는 데이터, 2개는 커뮤니티 설문에서 왔어요(A03은 압도적으로 뽑혔어요).",
+        "짝 문서인 ASVS(검증 요구사항)는 2025-05-30 v5.0.0이 나왔어요."
+      ],
+      "recall": {
+        "q": "OWASP Top 10:2025의 1·2·3위는?",
+        "a": "접근 통제 실패 · 보안 설정 오류 · 소프트웨어 공급망 실패"
+      },
+      "quiz": [
+        {
+          "q": "2025판에 새로 생긴 항목은?",
+          "options": [
+            "A10 예외 상황 처리 실패",
+            "A05 인젝션",
+            "A01 접근 통제 실패"
+          ],
+          "answer": 0,
+          "why": "A10은 새 범주예요."
+        },
+        {
+          "q": "Top 10과 ASVS의 관계는?",
+          "options": [
+            "같은 문서",
+            "Top 10은 공용 단어, ASVS는 실제 점검표",
+            "ASVS는 폐기됨"
+          ],
+          "answer": 1,
+          "why": "OWASP 자료의 리더용 해석이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "OWASP Top 10:2025",
+          "url": "https://top10.owasp.org/2025/",
+          "date": "n.d."
+        },
+        {
+          "title": "Introduction — OWASP Top 10:2025",
+          "url": "https://top10.owasp.org/2025/0x00_2025-Introduction/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c15",
+      "day": 4,
+      "title": "공급망 공격",
+      "lead": "우리 제품 코드의 대부분은 남이 만든 오픈소스예요. 그 라이브러리 하나에 구멍이 나면 수많은 회사가 한꺼번에 위험해져요. 이것이 공급망 공격이에요.",
+      "idea": [
+        "Log4Shell(CVE-2021-44228, CVSS 10.0): 미국 사이버안전검토위원회(CSRB)는 이 취약점이 \"풍토병(endemic)\"처럼 \"10년 이상\" 남을 수 있다고 했어요.",
+        "xz 백도어(CVE-2024-3094, 2024-03-29): xz 5.6.0과 5.6.1 배포본에 악성 코드가 들어갔어요.",
+        "npm \"Shai-Hulud\" 웜(CISA 2025-09-23): 스스로 퍼지며 500개 넘는 패키지를 감염시키고 GitHub 개인 토큰 같은 자격 증명을 훔쳤어요."
+      ],
+      "hear": [
+        "\"우리도 Log4j 쓰나요?\" \"…확인해 볼게요.\"",
+        "\"의존성 업데이트 PR이 30개 쌓였어요.\""
+      ],
+      "ask": [
+        "우리가 쓰는 라이브러리 목록(SBOM)이 있나요?",
+        "치명적 취약점은 며칠 안에 고치기로 했나요?",
+        "주말에 보안 공지를 보는 사람은 누구인가요?"
+      ],
+      "deep": [
+        "EU 사이버복원력법(CRA)은 실제로 악용되는 취약점의 보고 의무가 2026-09-11부터 적용되고, 주요 의무는 2027-12-11부터예요. EU에 소프트웨어 제품을 파는 회사라면 이미 해당될 수 있어요.",
+        "정할 것: 잠금 파일(lockfile)과 자동 업데이트 PR, 패키지 배포 권한 제한, 개발자 PC에 오래 사는 토큰 줄이기(웜이 노린 것)."
+      ],
+      "recall": {
+        "q": "Shai-Hulud 웜이 감염시킨 패키지 수는?",
+        "a": "500개 넘게 (CISA 2025-09-23)"
+      },
+      "quiz": [
+        {
+          "q": "공급망 공격의 예가 아닌 것은?",
+          "options": [
+            "Log4Shell",
+            "xz 백도어",
+            "사용자가 비밀번호를 잊음"
+          ],
+          "answer": 2,
+          "why": "나머지 둘은 남이 만든 부품에서 생긴 위험이에요."
+        },
+        {
+          "q": "EU CRA 보고 의무 적용일은?",
+          "options": [
+            "2024-12-10",
+            "2026-09-11",
+            "2030-01-01"
+          ],
+          "answer": 1,
+          "why": "보고 의무는 2026-09-11부터예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Cyber Safety Review Board — Review of the December 2021 Log4j Event",
+          "url": "https://www.cisa.gov/sites/default/files/publications/CSRB-Report-on-Log4-July-11-2022_508.pdf",
+          "date": "2022-07-11"
+        },
+        {
+          "title": "CISA — Reported Supply Chain Compromise Affecting XZ Utils (CVE-2024-3094)",
+          "url": "https://www.cisa.gov/news-events/alerts/2024/03/29/reported-supply-chain-compromise-affecting-xz-utils-data-compression-library-cve-2024-3094",
+          "date": "2024-03-29"
+        },
+        {
+          "title": "CISA — Widespread Supply Chain Compromise Impacting npm Ecosystem",
+          "url": "https://www.cisa.gov/news-events/alerts/2025/09/23/widespread-supply-chain-compromise-impacting-npm-ecosystem",
+          "date": "2025-09-23"
+        }
+      ]
+    },
+    {
+      "id": "c16",
+      "day": 4,
+      "title": "보안 질문지와 SOC 2 · ISMS",
+      "lead": "기업 고객은 계약 전에 보안 질문지를 보내요. SOC 2 보고서나 ISMS(-P) 인증이 있으면 질문지가 짧아지거나 통과가 빨라져요.",
+      "idea": [
+        "SOC 2는 미국 공인회계사협회(AICPA) 기준으로 회계법인이 통제를 검토한 보고서예요. Type 1은 특정 시점의 설계, Type 2는 일정 기간(AWS는 12개월) 실제로 잘 작동했는지를 봐요.",
+        "한국의 ISMS는 과기정통부 인증으로, 정보통신서비스 매출 100억원 이상이나 전년도 일평균 이용자 100만 명 이상 등이면 의무예요. 인증 기준은 ISMS 80개, ISMS-P 101개예요.",
+        "ISMS-P는 지금은 선택이지만, 개정 개인정보 보호법에 따라 일부 처리자는 2027-07-01부터 의무가 돼요(세부 기준 시행령은 아직 진행 중)."
+      ],
+      "steps": [
+        {
+          "k": "1 · 준비",
+          "t": "정책·로그·접근 통제 정비"
+        },
+        {
+          "k": "2 · Type 1",
+          "t": "한 시점의 설계 확인"
+        },
+        {
+          "k": "3 · 관찰 기간",
+          "t": "통제가 실제로 돌아가는 기록"
+        },
+        {
+          "k": "4 · Type 2",
+          "t": "기간 동안의 작동 의견"
+        },
+        {
+          "k": "5 · 매년",
+          "t": "갱신"
+        }
+      ],
+      "hear": [
+        "\"보안 질문지 80문항 왔어요. 다음 주까지래요.\"",
+        "\"SOC 2 몇 주 만에 해 준다는 업체가 있던데요?\""
+      ],
+      "ask": [
+        "질문지 답변의 근거 문서는 누가 모아 두나요?",
+        "SOC 2와 ISMS 중 우리 고객이 실제로 원하는 것은 무엇인가요?"
+      ],
+      "deep": [
+        "AICPA의 Journal of Accountancy(2026-02-01)는 SOC 보고서를 \"몇 주, 심지어 몇 시간\"에 준다는 업체들이 보고서 신뢰를 위협한다고 경고했어요.",
+        "ISMS 간편인증(2024-07)은 기준을 80→40/44개로 줄이고 심사 수수료도 낮췄어요. 다만 인증서가 곧 안전을 뜻하지는 않아요. SKT·쿠팡 등 여러 사고 기업이 인증을 갖고 있었어요."
+      ],
+      "recall": {
+        "q": "SOC 2 Type 1과 Type 2의 차이는?",
+        "a": "Type 1 = 한 시점의 설계, Type 2 = 일정 기간 실제 작동"
+      },
+      "quiz": [
+        {
+          "q": "ISMS 의무 대상 기준 중 하나는?",
+          "options": [
+            "직원 10명 이상",
+            "정보통신서비스 매출 100억원 이상",
+            "앱 출시 1년"
+          ],
+          "answer": 1,
+          "why": "정보통신망법 시행령 제49조 기준이에요."
+        },
+        {
+          "q": "ISMS-P 인증 기준 수는?",
+          "options": [
+            "80개",
+            "101개",
+            "10개"
+          ],
+          "answer": 1,
+          "why": "ISMS 80개 + 개인정보 21개 = 101개예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Microsoft Learn — SOC 2 Type 2",
+          "url": "https://learn.microsoft.com/en-us/compliance/regulatory/offering-soc-2",
+          "date": "2026-04-08"
+        },
+        {
+          "title": "Journal of Accountancy — Promises of 'fast and easy' threaten SOC credibility",
+          "url": "https://www.journalofaccountancy.com/issues/2026/feb/promises-of-fast-and-easy-threaten-soc-credibility/",
+          "date": "2026-02-01"
+        },
+        {
+          "title": "ISMS-P 누리집 — 제도소개 (인증기준 16/64/21)",
+          "url": "https://isms-p.or.kr/sysm/intro/selectSysmCertDetail.do",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c17",
+      "day": 5,
+      "title": "개인정보보호법 핵심",
+      "lead": "개인정보를 다루는 모든 회사는 첫날부터 개인정보 보호법을 따라요. 핵심은 \"덜 모으고, 근거를 갖고, 지켜 주고, 다 쓰면 지운다\"예요.",
+      "idea": [
+        "수집 근거(제15조): 동의, 법률, 계약 이행 등. 동의를 받을 때는 목적·항목·보유 기간·거부할 권리를 알려야 해요.",
+        "처리방침(제30조), 개인정보 보호책임자(CPO, 제31조), 위탁 계약과 공개(제26조), 국외 이전 근거(제28조의8), 다 쓰면 파기(제21조)가 첫날 의무예요.",
+        "주민등록번호는 법률이 요구하는 경우가 아니면 모으면 안 돼요. 본인확인(PASS·아이핀 등)도 성인 콘텐츠, 게임, 만 14세 미만 보호자 동의, 금융 같은 정해진 경우에만 법적 의무예요."
+      ],
+      "hear": [
+        "\"혹시 모르니까 생년월일이랑 주소도 받아 두죠.\" (위험)",
+        "\"카카오 로그인했으니 본인확인 된 거죠?\" (아니에요)"
+      ],
+      "ask": [
+        "회원가입에서 받는 항목마다 근거와 보유 기간이 정해져 있나요?",
+        "우리 위탁사(클라우드·메일 등)와 나라 목록이 처리방침에 있나요?",
+        "만 14세 미만도 받나요?"
+      ],
+      "deep": [
+        "만 14세 미만은 보호자 동의와 확인이 필요하지만, 문자·카드·이메일 같은 가벼운 방법도 시행령 제17조의2에서 허용돼요. PASS만 되는 건 아니에요.",
+        "전년도 매출 10억원 이상이면서 정보주체 1만 명 이상이면 손해배상 보험·준비금이 필요해요(제39조의7, 시행령 제48조의7)."
+      ],
+      "recall": {
+        "q": "주민등록번호를 모아도 되는 경우는?",
+        "a": "법률이 요구하거나 허용하는 경우만"
+      },
+      "quiz": [
+        {
+          "q": "카카오 로그인에 대한 설명으로 맞는 것은?",
+          "options": [
+            "법적 본인확인이다",
+            "편의 로그인이지 법적 본인확인이 아니다",
+            "주민번호를 준다"
+          ],
+          "answer": 1,
+          "why": "본인확인은 본인확인기관 서비스가 따로 있어요."
+        },
+        {
+          "q": "동의를 받을 때 알릴 항목이 아닌 것은?",
+          "options": [
+            "목적",
+            "보유 기간",
+            "회사 주가"
+          ],
+          "answer": 2,
+          "why": "목적·항목·보유 기간·거부할 권리예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "개인정보 보호법 [시행 2026. 9. 11.] [법률 제21445호]",
+          "url": "https://www.law.go.kr/법령/개인정보보호법",
+          "date": "2026-09-11"
+        },
+        {
+          "title": "개인정보 보호법 시행령 [대통령령 제36671호]",
+          "url": "https://www.law.go.kr/법령/개인정보보호법시행령",
+          "date": "2026-09-11"
+        },
+        {
+          "title": "청소년보호법 [법률 제21537호]",
+          "url": "https://www.law.go.kr/법령/청소년보호법",
+          "date": "2026-10-08"
+        }
+      ]
+    },
+    {
+      "id": "c18",
+      "day": 5,
+      "title": "유출되면 72시간",
+      "lead": "개인정보가 새면 알게 된 때부터 72시간 안에 이용자에게 알리고, 조건에 맞으면 개인정보위나 KISA에 신고해야 해요. 72시간에는 주말도 들어가요.",
+      "idea": [
+        "이용자 통지: 유출을 안 때부터 72시간 안(시행령 제39조). 2026-09-11부터는 손해배상·분쟁조정 같은 구제 방법도 알려야 해요.",
+        "기관 신고: 1,000명 이상, 민감·고유식별정보 포함, 또는 해킹 같은 외부 불법 접근이면 72시간 안에 개인정보위나 KISA로(시행령 제40조).",
+        "정보통신망법은 따로 침해사고를 알고 24시간 안에 과기정통부나 KISA에 신고하라고 해요(제48조의3). 늦거나 안 하면 과태료 최대 5천만원이에요."
+      ],
+      "steps": [
+        {
+          "k": "0시간",
+          "t": "이상 감지, 사고 지휘자 지정"
+        },
+        {
+          "k": "~24시간",
+          "t": "침해사고 신고 (정보통신망법)"
+        },
+        {
+          "k": "~72시간",
+          "t": "이용자 통지 + 개인정보 유출 신고"
+        },
+        {
+          "k": "이후",
+          "t": "증거 보존, 원인 분석, 재발 방지"
+        }
+      ],
+      "hear": [
+        "\"금요일 밤에 이상 트래픽이 떴어요.\"",
+        "\"일단 로그부터 정리하고 보고하죠.\" (절대 안 돼요)"
+      ],
+      "ask": [
+        "사고 대응 절차서(런북)가 출시 전에 있나요?",
+        "주말에 72시간 시계를 누가 지키나요?",
+        "증거(로그)는 어디에 얼마나 보관되나요?"
+      ],
+      "deep": [
+        "새로 생긴 \"유출 가능성\" 통지: 불법 접근으로 유출이 의심되지만 피해자를 특정할 수 없을 때도 72시간 안에 알려야 해요(법 제34조②).",
+        "GDPR도 감독기관 신고 시한이 72시간이에요(EDPB).",
+        "SKT는 2025-04-18 23:20 이상 트래픽 뒤 04-20 16:46에 KISA에 신고해 24시간을 넘겼어요. 쿠팡도 24시간을 넘겨 신고했어요."
+      ],
+      "recall": {
+        "q": "정보통신망법 침해사고 신고 시한과 개인정보 유출 통지 시한은?",
+        "a": "24시간, 72시간"
+      },
+      "quiz": [
+        {
+          "q": "개인정보위·KISA 신고가 필요한 조건이 아닌 것은?",
+          "options": [
+            "1,000명 이상",
+            "해킹 같은 외부 불법 접근",
+            "피해자가 1명이고 내부 실수, 민감정보 없음"
+          ],
+          "answer": 2,
+          "why": "세 조건(1,000명 이상, 민감·고유식별, 외부 불법 접근) 중 하나면 신고해요."
+        },
+        {
+          "q": "사고 직후 하면 안 되는 일은?",
+          "options": [
+            "증거 보존",
+            "로그 삭제",
+            "사고 지휘자 지정"
+          ],
+          "answer": 1,
+          "why": "SKT와 쿠팡 모두 보존 명령 뒤 자료를 바꾸거나 지워서 수사 의뢰됐어요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "개인정보 보호법 시행령 [대통령령 제36671호]",
+          "url": "https://www.law.go.kr/법령/개인정보보호법시행령",
+          "date": "2026-09-11"
+        },
+        {
+          "title": "국가법령정보센터 — 정보통신망법 제47조 (ISMS)",
+          "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?lsiSeq=290001&joNo=0047&joBrNo=00&docCls=jo&urlMode=lsScJoRltInfoR",
+          "date": "2026-10-02"
+        },
+        {
+          "title": "EDPB — Data breaches (small business guide)",
+          "url": "https://www.edpb.europa.eu/sme/assess-the-risks/data-breaches_en",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c19",
+      "day": 5,
+      "title": "대표의 최종 책임",
+      "lead": "2026-09-11 시행된 개정 개인정보 보호법은 대표를 개인정보 보호의 최종 책임자로 명시하고, 과징금 상한을 매출의 10%까지 올렸어요.",
+      "idea": [
+        "기본 과징금은 전체 매출의 3%까지예요. 고의·중과실로 3년 안에 다시 위반하거나, 고의·중과실로 1,000만 명 이상 피해가 나거나, 시정명령을 무시하다 유출되면 10%까지예요.",
+        "보안 투자를 증명하면 과징금을 줄여야 해요(고의·중과실 제외). 로그와 모니터링 투자가 곧 방어 근거예요.",
+        "CPO는 인력·예산을 관리하고 대표와 이사회에 보고할 의무가 생겼어요. 큰 처리자는 CPO 임명·해임에 이사회 의결이 필요해요."
+      ],
+      "hear": [
+        "\"보안은 CTO 일이잖아요.\"",
+        "\"투자자가 CPO 보고 체계를 물어봤어요.\""
+      ],
+      "ask": [
+        "우리 CPO는 누구이고, 나에게 언제 보고하나요?",
+        "보안 투자 기록(로그, 점검, 교육)이 남아 있나요?"
+      ],
+      "deep": [
+        "실제 처분: 쿠팡 6,246.81억원(2026-06-11), SKT 1,347.91억원(2025-08-27), KT 539.79억원(2026-07-30).",
+        "10% 상한은 새 규정 이후 위반에만 적용돼요. 반복 위반 판정도 2026-09-11 이후 부과된 과징금부터 세요(부칙).",
+        "정보통신망법·개인정보 보호법 외에 EU 이용자를 대상으로 하면 GDPR도 적용돼요. GDPR 과징금은 최대 2,000만 유로 또는 전 세계 매출 4%예요."
+      ],
+      "recall": {
+        "q": "개정법의 과징금 상한 두 단계는?",
+        "a": "기본 매출 3%, 가중 시 10%"
+      },
+      "quiz": [
+        {
+          "q": "10% 가중 과징금 사유가 아닌 것은?",
+          "options": [
+            "3년 내 고의·중과실 반복",
+            "고의·중과실로 1,000만 명 이상 피해",
+            "첫 위반, 피해 10명"
+          ],
+          "answer": 2,
+          "why": "나머지 둘과 시정명령 무시 후 유출이 사유예요."
+        },
+        {
+          "q": "과징금 감경을 받을 수 있는 근거는?",
+          "options": [
+            "증명된 보안 투자",
+            "홍보 예산",
+            "직원 수"
+          ],
+          "answer": 0,
+          "why": "고의·중과실이 아니면 보안 투자를 반영해 줄여야 해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "개인정보 보호법 [시행 2026. 9. 11.] [법률 제21445호]",
+          "url": "https://www.law.go.kr/법령/개인정보보호법",
+          "date": "2026-09-11"
+        },
+        {
+          "title": "개인정보위 — 개인정보 보호법·시행령·고시, 9월 11일부터 시행",
+          "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=12459",
+          "date": "2026-09-10"
+        },
+        {
+          "title": "율촌 — 매출액 10% 과징금·대표자 책임 강화 등 개정 개인정보 보호법 시행",
+          "url": "https://www.yulchon.com/ko/resources/publications/newsletter-view/45098/page.do",
+          "date": "2026-09-10"
+        }
+      ]
+    },
+    {
+      "id": "c20",
+      "day": 5,
+      "title": "이번 주 정리",
+      "lead": "\"OAuth 같은 거 쓰나요?\"의 대표용 답: \"로그인은 OIDC(구글·카카오), 외부 연결은 OAuth, 둘 다 RFC 9700을 따르고, 권한·키·사고 대응은 우리가 책임진다.\"",
+      "idea": [
+        "인증(누구) · 인가(무엇) · 세션(유지) · 비밀번호(해시) · MFA(피싱 강한 것)를 구분해서 말할 수 있으면 회의가 빨라져요.",
+        "사고는 대개 기초에서 나요. 권한 확인 누락, 교체 안 한 키, 평문 비밀번호, 늦은 신고.",
+        "금요일에는 인증 결정 기록(ADR-007)을 써요. 무엇을 골랐고, 무엇을 버렸고, 왜인지 남겨요."
+      ],
+      "hear": [
+        "\"SSO는 인증 서비스로 붙이고, 결정은 ADR로 남기죠.\"",
+        "\"퇴사 체크리스트에 키 교체 넣었어요.\""
+      ],
+      "ask": [
+        "이번 주 결정 중 되돌리기 어려운 것은 무엇이었나요?",
+        "다음 분기 보안 점검 일정은 정했나요?"
+      ],
+      "mine": "내 앱의 보안 요약: 서버 세션 + PBKDF2 해시 + 안전한 쿠키, 커넥터용 OAuth 2.1(PKCE S256, 토큰 해시 저장, 리프레시 교체). 사용자가 3명이라 SSO·ISMS는 일부러 없어요.",
+      "deep": [
+        "다음 모듈(일하는 방식)에서는 이런 보안 작업을 스프린트에 어떻게 넣고 약속하는지 봐요."
+      ],
+      "recall": {
+        "q": "\"OAuth 쓰나요?\"에 대한 한 줄 답은?",
+        "a": "로그인은 OIDC, 외부 연결은 OAuth, RFC 9700 준수"
+      },
+      "quiz": [
+        {
+          "q": "이번 주 사례들의 공통 원인은?",
+          "options": [
+            "아무도 몰랐던 새로운 해킹 기법",
+            "기본 관리 실패(키·권한·신고)",
+            "디자인 문제"
+          ],
+          "answer": 1,
+          "why": "개인정보위는 쿠팡 사고를 \"정교한 해킹이 아니라 기본 안전관리 부재\"로 봤어요."
+        },
+        {
+          "q": "인증 결정을 ADR로 남기는 이유는?",
+          "options": [
+            "되돌리기 어려운 선택의 이유를 남기려고",
+            "법이 강제해서",
+            "코드를 줄이려고"
+          ],
+          "answer": 0,
+          "why": "Microsoft ADR 가이드의 기준이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "RFC 9700 — Best Current Practice for OAuth 2.0 Security (BCP 240)",
+          "url": "https://www.rfc-editor.org/info/rfc9700/",
+          "date": "2025-01-30"
+        },
+        {
+          "title": "개인정보위 — 쿠팡 및 계열사의 개인정보 유출 및 침해 제재처분 의결",
+          "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=12171",
+          "date": "2026-06-11"
+        },
+        {
+          "title": "Microsoft — Maintain an architecture decision record (ADR)",
+          "url": "https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record",
+          "date": "2026-04-10"
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "skt-2025",
+      "day": 4,
+      "title": "2021년에 들어온 침입자를, 왜 SKT는 2025년에야 알았을까",
+      "when": "2025-04-18",
+      "lead": "2025년 4월, SK텔레콤에서 유심(USIM) 인증 정보가 대량으로 빠져나갔어요. 조사해 보니 침입은 2021년부터였고, 원인은 새로운 해킹 기법이 아니라 평문 비밀번호, 암호화 안 한 키, 신고하지 않은 과거 사고였어요.",
+      "facts": [
+        {
+          "label": "피해자(중복 제거)",
+          "value": "23,244,649명",
+          "src": "개인정보위"
+        },
+        {
+          "label": "과징금",
+          "value": "1,347억 9,100만원 + 과태료 960만원",
+          "src": "개인정보위 2025-08-27"
+        },
+        {
+          "label": "고객 보상 패키지",
+          "value": "5,000억원",
+          "src": "SKT 뉴스룸"
+        },
+        {
+          "label": "2025년 3분기 영업이익",
+          "value": "484억원 (전년 대비 −90.9%)",
+          "src": "SKT 뉴스룸"
+        }
+      ],
+      "timeline": [
+        {
+          "t": "2021-08-06",
+          "text": "인터넷에 노출된 관리 서버에 악성코드, 평문 계정 정보 발견",
+          "hot": true
+        },
+        {
+          "t": "2022-02-23",
+          "text": "감염 서버를 찾아 정리했지만 신고하지 않음, 로그 6개 중 1개만 확인"
+        },
+        {
+          "t": "2025-04-18 23:20",
+          "text": "HSS 서버 3대에서 유심 데이터 9.82GB 외부 유출",
+          "hot": true
+        },
+        {
+          "t": "2025-04-20 16:46",
+          "text": "KISA 신고 (24시간 넘김)"
+        },
+        {
+          "t": "2025-04-21",
+          "text": "자료 보존 명령 2시간 뒤 서버 2대 변경, 수사 의뢰"
+        },
+        {
+          "t": "2025-07-04",
+          "text": "과기정통부 최종 조사: SKT 과실, 위약금 면제"
+        },
+        {
+          "t": "2025-08-27",
+          "text": "개인정보위 과징금 의결"
+        },
+        {
+          "t": "2025-11-03",
+          "text": "분쟁조정위, 신청자 3,998명에게 1인 30만원 조정안"
+        }
+      ],
+      "causes": [
+        {
+          "stage": "보안 · 비밀 값 관리",
+          "title": "평문 계정 정보",
+          "text": "약 2,365대 서버의 계정 정보(약 4,899개 ID/PW)가 암호화 없이 있었고 비밀번호도 바뀌지 않았어요."
+        },
+        {
+          "stage": "보안 · 암호화",
+          "title": "유심 키(Ki) 평문 저장",
+          "text": "GSMA가 암호화를 권하고 LGU+(2011년부터)와 KT(2014년부터)는 암호화했지만, SKT는 2,614만여 개 Ki를 평문으로 저장했어요."
+        },
+        {
+          "stage": "운영 · 사고 대응",
+          "title": "2022년 사고 미신고",
+          "text": "감염을 스스로 정리하고 신고하지 않아 침입자를 놓쳤어요."
+        },
+        {
+          "stage": "조직 · 책임",
+          "title": "CISO 범위가 절반",
+          "text": "CISO가 IT 쪽(자산 57%)만 맡고 네트워크 쪽(43%)은 빠져 있었어요. 망도 분리되지 않았어요."
+        }
+      ],
+      "questions": [
+        {
+          "q": "그때 대표라면? 2022년에 감염 서버를 찾았을 때 무엇을 정했어야 할까요?",
+          "a": "스스로 정리하고 끝내지 않고, 법정 신고와 전체 조사를 지시해야 했어요. \"우리끼리 치웠다\"가 이 사례의 실패 모드예요."
+        },
+        {
+          "q": "CISO를 어디에 두어야 할까요?",
+          "a": "SKT는 사고 뒤 CISO를 CEO 직속으로 옮기고 회사 전체를 맡겼어요. 보안 책임 범위가 회사 전체와 같아야 해요."
+        },
+        {
+          "q": "MFA·암호화·망 분리는 돈과 속도를 잡아먹는데, 어떻게 설득할까요?",
+          "a": "건너뛴 대가가 과징금 1,347.9억원, 보상 5,000억원, 영업이익 −90.9%였다는 숫자로 비교해요."
+        }
+      ],
+      "after": [
+        "SKT: 5년간 정보보호에 7,000억원, 보안 인력 2배, CISO를 CEO 직속으로, 이사회에 보안 전문가, 사이버 보험 10억→1,000억원.",
+        "법: 개정 개인정보 보호법(2026-09-11 시행)으로 매출 10% 과징금, 대표 최종 책임, 2027-07-01부터 일부 ISMS-P 의무."
+      ],
+      "sources": [
+        {
+          "title": "과기정통부 — SK텔레콤 침해사고 최종 조사결과 발표",
+          "url": "https://www.msit.go.kr/bbs/view.do?sCode=user&mId=307&mPid=208&bbsSeqNo=94&nttSeqNo=3185964",
+          "date": "2025-07-04"
+        },
+        {
+          "title": "개인정보위 — 'SK텔레콤 개인정보 유출사고' 제재처분 의결",
+          "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=11453",
+          "date": "2025-08-28"
+        },
+        {
+          "title": "SK텔레콤 뉴스룸 — 고객 신뢰 회복 위한 '책임과 약속' 프로그램 발표",
+          "url": "https://news.sktelecom.com/213571",
+          "date": "2025-07-04"
+        },
+        {
+          "title": "SK텔레콤 뉴스룸 — 2025년 3분기 실적 발표",
+          "url": "https://news.sktelecom.com/216239",
+          "date": "2025-10-30"
+        },
+        {
+          "title": "개인정보분쟁조정위 — SKT에 손해배상금 30만 원 지급 결정",
+          "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=11534",
+          "date": "2025-11-04"
+        }
+      ],
+      "caveat": "유출 규모는 단위가 달라요. 과기정통부는 IMSI 기록 약 2,696만 건, 개인정보위는 중복을 뺀 사람 수 23,244,649명이에요. 분쟁조정안 수용 여부와 소송 결과는 확인하지 못했어요."
+    },
+    {
+      "id": "coupang-2025",
+      "day": 5,
+      "title": "퇴사한 개발자의 열쇠 하나가 3,370만 계정을 열었어요",
+      "when": "2025-11-29",
+      "lead": "쿠팡에서 전 직원이 퇴사 전 볼 수 있던 토큰 서명 키로 \"전자 출입증\"을 위조해 로그인을 건너뛰었어요. 키는 퇴사 때 교체되지 않았고, 이상한 대량 조회를 알리는 경보도 없었어요.",
+      "facts": [
+        {
+          "label": "영향 인원",
+          "value": "회원 33,222,472명 + 비회원 4,338,368명 이상 (약 3,755만 명)",
+          "src": "개인정보위"
+        },
+        {
+          "label": "과징금 합계",
+          "value": "6,246.81억원 + 과태료 1,680만원",
+          "src": "개인정보위 2026-06-10"
+        },
+        {
+          "label": "배송지 페이지 조회",
+          "value": "148,056,502회",
+          "src": "과기정통부"
+        },
+        {
+          "label": "보상 쿠폰 액면",
+          "value": "1.685조원 (5만원 × 3,370만 계정)",
+          "src": "SEC 8-K/A"
+        }
+      ],
+      "timeline": [
+        {
+          "t": "2024-04",
+          "text": "대체 인증 경로 추가, 담당 엔지니어가 서명 키를 평문으로 볼 수 있음"
+        },
+        {
+          "t": "2024-12-31",
+          "text": "그 엔지니어 퇴사, 키는 교체되지 않음",
+          "hot": true
+        },
+        {
+          "t": "2025-01",
+          "text": "위조 토큰으로 시험 공격"
+        },
+        {
+          "t": "2025-04-14 ~ 11-08",
+          "text": "IP 16개로 배송지 페이지 약 1.48억 회 자동 조회",
+          "hot": true
+        },
+        {
+          "t": "2025-11-17",
+          "text": "CISO 보고 (8-K는 11-18 인지로 기재)"
+        },
+        {
+          "t": "2025-11-19 21:35",
+          "text": "KISA에 4,536계정으로 신고 (24시간 넘김)"
+        },
+        {
+          "t": "2025-11-27",
+          "text": "보존 명령에도 약 5개월치 웹 로그 수동 삭제, 수사 의뢰",
+          "hot": true
+        },
+        {
+          "t": "2026-06-10",
+          "text": "개인정보위 제재, 쿠팡은 행정소송 예고"
+        }
+      ],
+      "causes": [
+        {
+          "stage": "보안 · 키 관리",
+          "title": "서명만 맞으면 통과",
+          "text": "토큰은 서명만 확인했고, 서명 키는 평문으로 볼 수 있었으며 현직 개발자 노트북에도 하드코딩돼 있었어요."
+        },
+        {
+          "stage": "조직 · 퇴사 절차",
+          "title": "퇴사 때 키 교체 없음",
+          "text": "키 발급 기록이 없었고, 개발자가 운영 키 관리에 접근할 수 있었고, 퇴사자가 만진 키를 바꾸지 않았어요."
+        },
+        {
+          "stage": "운영 · 모니터링",
+          "title": "경보 없음",
+          "text": "존재하지 않는 회원용 토큰 4,400만 개 이상과 트래픽 급증에도 알림이 없었어요."
+        },
+        {
+          "stage": "위기 소통",
+          "title": "CPO를 건너뛴 자체 발표",
+          "text": "공격자 진술에 기댄 자체 조사 결과를 공지했고, 개인정보위가 중단을 요구했어요."
+        }
+      ],
+      "questions": [
+        {
+          "q": "그때 대표라면? 퇴사 체크리스트에 무엇을 넣었어야 할까요?",
+          "a": "그 사람이 만진 모든 비밀 값과 키의 교체, 계정·권한 회수, 개발 접근과 운영 접근의 분리예요."
+        },
+        {
+          "q": "\"백업 인증 경로\"는 왜 위험했을까요?",
+          "a": "정식 경로보다 보안 검토를 덜 받은 채 모든 계정을 여는 열쇠를 가졌어요. 새 경로도 같은 검토를 받아야 해요."
+        },
+        {
+          "q": "사고 직후 공개 발표는 누가 검토해야 할까요?",
+          "a": "CPO와 CISO가 사실을 확인한 뒤 내야 해요. 확인 안 된 자체 조사 공지는 오히려 위반이 됐어요."
+        }
+      ],
+      "after": [
+        "개인정보위 시정명령: 키 관리·접근 통제 개편, 비회원 피해자 통지, CPO 역할 보장, 3개월 뒤 점검.",
+        "과기정통부: 이행 계획과 점검(2026년 2~7월).",
+        "개정법: 매출 10% 과징금, 대표 최종 책임, CPO 임명·해임 이사회 의결."
+      ],
+      "sources": [
+        {
+          "title": "과기정통부 — 쿠팡 전 직원에 의한 정보통신망 침해사고 조사결과 발표",
+          "url": "https://www.msit.go.kr/bbs/view.do?sCode=user&mId=307&mPid=208&bbsSeqNo=94&nttSeqNo=3186874",
+          "date": "2026-02-10"
+        },
+        {
+          "title": "개인정보위 — 쿠팡 및 계열사의 개인정보 유출 및 침해 제재처분 의결",
+          "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=12171",
+          "date": "2026-06-11"
+        },
+        {
+          "title": "개인정보위 — 쿠팡의 자체조사 결과 홈페이지 공지 중단 등 촉구",
+          "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=11742",
+          "date": "2026-01-14"
+        },
+        {
+          "title": "Coupang, Inc. Form 8-K Item 1.05 (SEC EDGAR)",
+          "url": "https://www.sec.gov/Archives/edgar/data/1834584/000183458425000196/cpng-20251215.htm",
+          "date": "2025-12-16"
+        }
+      ],
+      "caveat": "인지 시점이 11-17(과기정통부)과 11-18(SEC 8-K)로 달라요. 24시간 신고 판단에 중요한 차이예요. 3,367만 건(기록)과 사람 수는 단위가 달라요. 쿠팡은 데이터가 넘겨지지 않았다고 했고, 과기정통부는 해외 전송 가능성은 확인했지만 전송 자체는 확인하지 못했어요. 과징금은 소송 중이에요."
+    }
+  ],
+  "problems": [
+    {
+      "id": "p01",
+      "day": 1,
+      "title": "월요일 10시, 로그인 회의",
+      "scene": [
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "로그인 붙였으니 보안은 끝났어요. 다음 기능 가죠."
+        },
+        {
+          "name": "민재",
+          "role": "QA",
+          "text": "근데 URL 숫자를 바꾸니 다른 회사 회의록이 열려요."
+        }
+      ],
+      "q": "대표로서 무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "로그인이 되니 문제없다고 보고 다음 기능으로 간다",
+          "ok": false,
+          "why": "인증만 확인하고 인가를 빠뜨린 상태예요."
+        },
+        {
+          "k": "B",
+          "t": "출시 전에 모든 API가 요청마다 권한(회사·역할)을 확인하는지 점검하고, 막힐 때까지 출시를 미룬다",
+          "ok": true,
+          "why": "OWASP A01과 개인정보위 API 유출 사례가 정확히 이 패턴이에요."
+        },
+        {
+          "k": "C",
+          "t": "URL을 길고 복잡하게 바꿔서 숫자를 못 맞히게 한다",
+          "ok": false,
+          "why": "숨기기는 권한 확인을 대신하지 못해요."
+        }
+      ],
+      "explain": "OWASP Top 10:2025의 1위는 접근 통제 실패예요. 개인정보위는 로그인만 확인하고 권한은 확인하지 않는 API로 약 3,700만 건이 샌 사례를 경고했어요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "OWASP Top 10:2025",
+          "url": "https://top10.owasp.org/2025/",
+          "date": "n.d."
+        },
+        {
+          "title": "개인정보위 — API 활용 확대에 따른 개인정보 유출 예방 당부",
+          "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=12241",
+          "date": "2026-07-08"
+        }
+      ]
+    },
+    {
+      "id": "p02",
+      "day": 1,
+      "title": "화요일 오후, 비밀번호 정책",
+      "scene": [
+        {
+          "name": "서연",
+          "role": "PM",
+          "text": "보안 점검표에 \"3종류 8자리, 6개월마다 변경\"이 있어요. 그대로 넣을까요?"
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "NIST 최신판은 그 반대인데요."
+        }
+      ],
+      "q": "어떻게 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "점검표대로 조합 규칙과 6개월 변경을 강제한다",
+          "ok": false,
+          "why": "NIST 800-63B-4는 조합 규칙과 정기 변경 강제를 금지해요."
+        },
+        {
+          "k": "B",
+          "t": "긴 비밀번호(비밀번호만이면 15자 이상), 유출 목록 확인, MFA 제공으로 가고, 이유를 내부 관리계획에 적는다",
+          "ok": true,
+          "why": "NIST와 현재 한국 기준·안내서가 같은 방향이고, 옛 점검표 대비로 근거를 남겨요."
+        },
+        {
+          "k": "C",
+          "t": "정책을 아예 두지 않는다",
+          "ok": false,
+          "why": "근거 없는 공백은 점검과 사고 때 방어가 안 돼요."
+        }
+      ],
+      "explain": "NIST SP 800-63B-4(2025-07)와 한국 안전성 확보조치 기준(2026-9호)은 조합·주기 규칙을 요구하지 않아요. 다만 옛 규칙을 기대하는 점검이 있을 수 있어 선택과 이유를 문서로 남겨요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "NIST SP 800-63B-4 — Authentication and Authenticator Management",
+          "url": "https://pages.nist.gov/800-63-4/sp800-63b.html",
+          "date": "2025-07"
+        },
+        {
+          "title": "개인정보의 안전성 확보조치 기준 안내서 (KISA·개인정보위)",
+          "url": "https://www.kisa.or.kr/post/fileDownload?menuSeq=2060301&postSeq=37&attachSeq=1&lang_type=KO",
+          "date": "2024-10"
+        }
+      ]
+    },
+    {
+      "id": "p03",
+      "day": 1,
+      "title": "수요일, MVP 범위 다시 보기",
+      "scene": [
+        {
+          "name": "서연",
+          "role": "PM",
+          "text": "MVP에 소셜 로그인, 이메일 로그인, 패스키, SSO까지 다 넣자는 의견이 있어요."
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "다 하면 출시가 한 달 밀려요."
+        }
+      ],
+      "q": "MVP 관점에서 무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "전부 넣는다, 보안은 타협하면 안 된다",
+          "ok": false,
+          "why": "MVP는 배우기 위한 실험이고, 범위를 다 넣으면 학습이 늦어져요."
+        },
+        {
+          "k": "B",
+          "t": "인증 서비스를 사서 구글·카카오 로그인만 먼저 열고, SSO는 첫 기업 고객 요구가 확인되면 넣는다. 결정은 기록해 둔다",
+          "ok": true,
+          "why": "무료 구간이 MVP를 덮고, 되돌리기 어려운 결정은 ADR로 남겨요."
+        },
+        {
+          "k": "C",
+          "t": "로그인 없이 출시한다",
+          "ok": false,
+          "why": "회의록은 회사 데이터라 로그인 없이는 개인정보·보안 의무를 지킬 수 없어요."
+        }
+      ],
+      "explain": "MVP 모듈에서 본 대로 MVP는 학습 실험이에요. 인증은 서비스를 사면 무료 구간(1만~5만 MAU)이 MVP를 덮고, Microsoft ADR 가이드처럼 되돌리기 어려운 선택은 기록해 둬요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "Amazon Cognito — Pricing",
+          "url": "https://aws.amazon.com/cognito/pricing/",
+          "date": "2026-10-08"
+        },
+        {
+          "title": "Microsoft — Maintain an architecture decision record (ADR)",
+          "url": "https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record",
+          "date": "2026-04-10"
+        }
+      ]
+    },
+    {
+      "id": "p04",
+      "day": 2,
+      "title": "목요일, 개발자 권한 요청",
+      "scene": [
+        {
+          "name": "수아",
+          "role": "프론트엔드",
+          "text": "디버깅하려면 운영 DB 관리자 권한이 필요해요. 다들 하나씩 받으면 편하잖아요."
+        },
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "저도요. 퇴사한 인턴 계정도 아직 있던데요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "편의를 위해 전원에게 관리자 권한을 준다",
+          "ok": false,
+          "why": "최소 권한과 반대이고, 사고 시 피해 범위가 커져요."
+        },
+        {
+          "k": "B",
+          "t": "운영 접근은 짧은 명단 + MFA + 기록으로 하고, 퇴사자 계정은 오늘 회수하고, 분기마다 점검한다",
+          "ok": true,
+          "why": "NIST·AWS의 최소 권한과 한국 기준 제5조(권한 변경 이력 3년, 지체 없이 회수)에 맞아요."
+        },
+        {
+          "k": "C",
+          "t": "관리자 계정 하나를 만들어 다 같이 쓴다",
+          "ok": false,
+          "why": "계정 공유는 한국 기준이 금지해요."
+        }
+      ],
+      "explain": "최소 권한은 일에 필요한 만큼만 주는 원칙이에요(NIST). 안전성 확보조치 기준은 한 사람 한 계정, 권한 변경 이력 3년 보관, 역할이 바뀌면 지체 없이 회수를 요구해요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "NIST CSRC Glossary — least privilege",
+          "url": "https://csrc.nist.gov/glossary/term/least_privilege",
+          "date": "n.d."
+        },
+        {
+          "title": "개인정보의 안전성 확보조치 기준 (개인정보보호위원회고시 제2026-9호)",
+          "url": "https://www.law.go.kr/행정규칙/개인정보의안전성확보조치기준",
+          "date": "2026-07-01"
+        }
+      ]
+    },
+    {
+      "id": "p05",
+      "day": 2,
+      "title": "금요일 저녁, 슬랙에 올라온 키",
+      "scene": [
+        {
+          "name": "민재",
+          "role": "QA",
+          "text": "테스트하려고 결제 API 키를 슬랙 채널에 붙여 넣었어요. 괜찮죠?"
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "그 채널에 외주 인력도 있어요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "메시지만 지우고 넘어간다",
+          "ok": false,
+          "why": "이미 노출된 키는 지워도 누가 복사했는지 알 수 없어요."
+        },
+        {
+          "k": "B",
+          "t": "키를 즉시 교체하고, 비밀 값은 비밀 관리 도구로만 나누는 규칙과 push protection을 켠다",
+          "ok": true,
+          "why": "OWASP 비밀 관리 권고와 GitHub push protection이 이 상황용이에요."
+        },
+        {
+          "k": "C",
+          "t": "외주 인력을 채널에서 내보낸다",
+          "ok": false,
+          "why": "노출된 키는 그대로 살아 있어요."
+        }
+      ],
+      "explain": "OWASP는 비밀 값을 코드·채팅이 아닌 중앙 도구에 두고 자동 교체하라고 해요. 노출된 키는 교체가 유일한 해결이에요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "OWASP Secrets Management Cheat Sheet",
+          "url": "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html",
+          "date": "n.d."
+        },
+        {
+          "title": "GitHub Docs — Push protection",
+          "url": "https://docs.github.com/en/code-security/concepts/secret-security/push-protection",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "p06",
+      "day": 2,
+      "title": "월요일, 퇴사자 체크리스트",
+      "scene": [
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "이번 주 금요일이 마지막 출근이에요. 노트북 반납하면 되죠?"
+        },
+        {
+          "name": "나",
+          "role": "대표",
+          "text": "도윤 님이 인증 서버 키를 관리했는데…."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "노트북과 출입증만 받는다",
+          "ok": false,
+          "why": "쿠팡 사고는 퇴사자의 키가 그대로였던 데서 시작했어요."
+        },
+        {
+          "k": "B",
+          "t": "도윤 님이 만진 모든 비밀 값·서명 키 목록을 만들어 퇴사일에 교체하고, 계정과 권한을 회수한다",
+          "ok": true,
+          "why": "쿠팡 사례 이후 개인정보위 시정명령과 리더 교훈의 핵심이에요."
+        },
+        {
+          "k": "C",
+          "t": "믿을 만한 사람이니 그대로 둔다",
+          "ok": false,
+          "why": "신뢰가 아니라 절차의 문제예요."
+        }
+      ],
+      "explain": "쿠팡(2025)은 2024-12-31 퇴사자의 서명 키를 교체하지 않아 3,370만 계정이 노출됐어요. 퇴사 체크리스트에는 키 교체가 반드시 들어가야 해요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "과기정통부 — 쿠팡 전 직원에 의한 정보통신망 침해사고 조사결과 발표",
+          "url": "https://www.msit.go.kr/bbs/view.do?sCode=user&mId=307&mPid=208&bbsSeqNo=94&nttSeqNo=3186874",
+          "date": "2026-02-10"
+        },
+        {
+          "title": "개인정보위 — 쿠팡 및 계열사의 개인정보 유출 및 침해 제재처분 의결",
+          "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=12171",
+          "date": "2026-06-11"
+        }
+      ]
+    },
+    {
+      "id": "p07",
+      "day": 3,
+      "title": "화요일, 영업 회의",
+      "scene": [
+        {
+          "name": "서연",
+          "role": "PM",
+          "text": "300명 회사가 구글 회사 계정 SSO 없으면 계약 못 한대요."
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "직접 SAML 붙이면 3주, 인증 서비스 쓰면 며칠인데 연결당 매달 비용이 나와요."
+        }
+      ],
+      "q": "대표로서 무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "직접 3주 동안 만든다, 비용이 안 드니까",
+          "ok": false,
+          "why": "3주의 인건비와 보안 책임도 비용이에요."
+        },
+        {
+          "k": "B",
+          "t": "인증 서비스로 SSO를 붙이고, 연결 비용을 요금제(SSO 포함 등급)에 반영하는 안과 CISA의 \"SSO tax\" 비판을 함께 놓고 가격을 정한다",
+          "ok": true,
+          "why": "업계 관행과 CISA 입장이 충돌하니 둘 다 보고 정해요."
+        },
+        {
+          "k": "C",
+          "t": "거절한다, 우리는 B2C만 한다",
+          "ok": false,
+          "why": "기업 고객 요구를 확인하고도 근거 없이 버리는 선택이에요."
+        }
+      ],
+      "explain": "SaaS 대부분이 SSO를 상위 요금제에 두지만, CISA(2024-06-20)는 SSO를 기본 제공해야 한다고 해요. 인증 업체는 연결당 비용을 받기도 해요(Clerk 추가 연결 월 $75).",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "CISA — Why SMBs Don't Deploy Single Sign On (SSO)",
+          "url": "https://www.cisa.gov/news-events/news/why-smbs-dont-deploy-single-sign-sso",
+          "date": "2024-06-20"
+        },
+        {
+          "title": "Clerk — Pricing",
+          "url": "https://clerk.com/pricing",
+          "date": "2026-10-15 확인"
+        }
+      ]
+    },
+    {
+      "id": "p08",
+      "day": 3,
+      "title": "수요일, 요구사항 문서 검토",
+      "scene": [
+        {
+          "name": "서연",
+          "role": "PM",
+          "text": "PRD에 \"카카오 로그인 지원\" 한 줄만 있어요."
+        },
+        {
+          "name": "하린",
+          "role": "디자이너",
+          "text": "가입 화면에서 이메일, 전화번호도 받으려고 했는데요."
+        }
+      ],
+      "q": "요구사항에 무엇을 더 적어야 할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "한 줄이면 충분하다",
+          "ok": false,
+          "why": "카카오 심사·동의 항목·계정 연결 규칙이 빠져서 출시 직전에 막혀요."
+        },
+        {
+          "k": "B",
+          "t": "받을 항목과 근거, 카카오 비즈 앱 전환·심사 일정, 계정은 이메일이 아닌 제공자 ID로 연결, iOS면 Apple 4.8 대응을 적는다",
+          "ok": true,
+          "why": "카카오 문서와 Apple 4.8이 요구하는 내용을 요구사항 단계에서 잡아요."
+        },
+        {
+          "k": "C",
+          "t": "전화번호·이메일은 일단 다 받고 나중에 정한다",
+          "ok": false,
+          "why": "개인정보 보호법은 근거 없는 \"혹시 몰라서\" 수집을 막아요."
+        }
+      ],
+      "explain": "요구사항 모듈에서 본 대로 범위와 제외를 문서에 적어야 해요. 카카오는 이메일에 비즈 앱이 필요하고, 계정을 이메일로 묶지 말라고 권해요. Apple 4.8은 2024-01부터 Sign in with Apple 강제 대신 동등한 개인정보 보호형 로그인 옵션을 요구해요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "카카오 로그인 > 활용하기 — 카카오디벨로퍼스",
+          "url": "https://developers.kakao.com/docs/latest/ko/kakaologin/utilize",
+          "date": "n.d."
+        },
+        {
+          "title": "Apple — App Review Guidelines (4.8 Login Services)",
+          "url": "https://developer.apple.com/app-store/review/guidelines/",
+          "date": "2026-06-08"
+        },
+        {
+          "title": "개인정보 보호법 [시행 2026. 9. 11.] [법률 제21445호]",
+          "url": "https://www.law.go.kr/법령/개인정보보호법",
+          "date": "2026-09-11"
+        }
+      ]
+    },
+    {
+      "id": "p09",
+      "day": 3,
+      "title": "목요일, \"OAuth 2.1 지원\" 견적서",
+      "scene": [
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "외주사 견적서에 \"OAuth 2.1 완벽 지원\"이라고 써 있어요."
+        },
+        {
+          "name": "나",
+          "role": "대표",
+          "text": "OAuth 2.1이 정식 표준이에요?"
+        }
+      ],
+      "q": "어떻게 확인할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "최신 표준이니 그대로 믿는다",
+          "ok": false,
+          "why": "OAuth 2.1은 2026-10 기준 아직 초안이에요."
+        },
+        {
+          "k": "B",
+          "t": "\"RFC 9700을 따르나요? 모든 클라이언트에 PKCE, implicit·비밀번호 그랜트 끔, 리프레시 토큰 교체?\"를 묻는다",
+          "ok": true,
+          "why": "광고 문구를 실제 점검 항목으로 바꿔 물어요."
+        },
+        {
+          "k": "C",
+          "t": "OAuth를 쓰지 말라고 한다",
+          "ok": false,
+          "why": "로그인·연결 모두 OAuth/OIDC가 표준이에요."
+        }
+      ],
+      "explain": "OAuth 2.1은 draft-16(2026-09-03)으로 아직 RFC가 아니에요. 지금 적용되는 기준은 RFC 9700(2025-01, BCP 240)이에요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "draft-ietf-oauth-v2-1-16 — The OAuth 2.1 Authorization Framework",
+          "url": "https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1/",
+          "date": "2026-09-03"
+        },
+        {
+          "title": "RFC 9700 — Best Current Practice for OAuth 2.0 Security (BCP 240)",
+          "url": "https://www.rfc-editor.org/info/rfc9700/",
+          "date": "2025-01-30"
+        }
+      ]
+    },
+    {
+      "id": "p10",
+      "day": 4,
+      "title": "월요일, 사용성 vs 보안",
+      "scene": [
+        {
+          "name": "하린",
+          "role": "디자이너",
+          "text": "로그인 단계가 늘면 이탈이 늘어요. 패스키 넣고 비밀번호는 빼면 안 될까요?"
+        },
+        {
+          "name": "민재",
+          "role": "QA",
+          "text": "폰 잃어버리면 복구는 문자로 하자는데요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "복구는 문자 하나로 단순하게 한다",
+          "ok": false,
+          "why": "복구 경로가 가장 약한 고리가 되고, SMS는 NIST가 제한 수단으로 분류해요."
+        },
+        {
+          "k": "B",
+          "t": "패스키를 선택지로 넣고, 복구 경로를 따로 설계·점검한다(문자만 의존하지 않기). 사용자 테스트로 이탈을 확인한다",
+          "ok": true,
+          "why": "편의와 보안을 함께 보는 UX 결정이고, FIDO가 경고한 실패 패턴을 피해요."
+        },
+        {
+          "k": "C",
+          "t": "보안을 위해 로그인 단계를 5개로 늘린다",
+          "ok": false,
+          "why": "사용자가 떠나면 보안도 의미가 없어요."
+        }
+      ],
+      "explain": "UX 모듈처럼 사용자 흐름 전체를 봐야 해요. 패스키(WebAuthn L3, 2026-08)는 피싱에 강하지만, 복구 경로가 약하면 공격자는 그쪽을 노려요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "W3C — Web Authentication Level 3 (Recommendation)",
+          "url": "https://www.w3.org/TR/webauthn-3/",
+          "date": "2026-08-25"
+        },
+        {
+          "title": "NIST SP 800-63B-4 — Authentication and Authenticator Management",
+          "url": "https://pages.nist.gov/800-63-4/sp800-63b.html",
+          "date": "2025-07"
+        }
+      ]
+    },
+    {
+      "id": "p11",
+      "day": 4,
+      "title": "화요일, 보안 질문지 80문항",
+      "scene": [
+        {
+          "name": "서연",
+          "role": "PM",
+          "text": "고객사가 보안 질문지 80문항에 SOC 2 보고서 있냐고 물어요."
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "2주 만에 SOC 2 해 준다는 업체 광고를 봤어요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "가장 빠른 업체로 SOC 2를 받는다",
+          "ok": false,
+          "why": "AICPA 저널은 \"몇 주, 몇 시간\" 약속이 보고서 신뢰를 해친다고 경고해요."
+        },
+        {
+          "k": "B",
+          "t": "질문지는 실제 통제 근거로 정직하게 답하고, 고객이 원하는 증빙(SOC 2 Type 2인지, ISMS인지)을 확인한 뒤 준비 → Type 1 → 관찰 기간 → Type 2 계획을 세운다",
+          "ok": true,
+          "why": "SOC 2의 정상 경로이고, 구매자가 거절하는 \"체크박스 보고서\"를 피해요."
+        },
+        {
+          "k": "C",
+          "t": "질문지에 모두 \"예\"라고 답한다",
+          "ok": false,
+          "why": "거짓 답변은 계약 위반과 신뢰 붕괴로 이어져요."
+        }
+      ],
+      "explain": "SOC 2 Type 2는 일정 기간 통제가 실제로 작동했는지 보는 보고서예요. 빠른 발급을 약속하는 업체에 대한 경고(Journal of Accountancy 2026-02-01)도 있어요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Microsoft Learn — SOC 2 Type 2",
+          "url": "https://learn.microsoft.com/en-us/compliance/regulatory/offering-soc-2",
+          "date": "2026-04-08"
+        },
+        {
+          "title": "Journal of Accountancy — Promises of 'fast and easy' threaten SOC credibility",
+          "url": "https://www.journalofaccountancy.com/issues/2026/feb/promises-of-fast-and-easy-threaten-soc-credibility/",
+          "date": "2026-02-01"
+        }
+      ]
+    },
+    {
+      "id": "p12",
+      "day": 4,
+      "title": "수요일, 의존성 경보",
+      "scene": [
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "쓰던 npm 패키지가 감염됐다는 공지가 떴어요. 우리도 쓰는지는 잘 모르겠어요."
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "아키텍처 그릴 때 라이브러리 목록은 안 만들었어요."
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "문제 생기면 그때 본다",
+          "ok": false,
+          "why": "\"우리가 쓰는지조차 모른다\"가 Log4Shell 때의 대표적 실패예요."
+        },
+        {
+          "k": "B",
+          "t": "지금 영향 범위를 확인하고 개발자 토큰을 교체한 뒤, 의존성 목록(SBOM)·잠금 파일·자동 업데이트·치명 취약점 수정 기한을 아키텍처 원칙에 넣는다",
+          "ok": true,
+          "why": "아키텍처 결정에 공급망 정책을 포함해요."
+        },
+        {
+          "k": "C",
+          "t": "오픈소스를 모두 없앤다",
+          "ok": false,
+          "why": "현실적이지 않고, 제품 대부분이 오픈소스예요."
+        }
+      ],
+      "explain": "아키텍처 모듈에서 정한 구성 요소에는 남이 만든 부품도 포함돼요. Shai-Hulud 웜(CISA 2025-09-23)은 500개 넘는 패키지를 감염시키고 GitHub 토큰을 훔쳤어요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "CISA — Widespread Supply Chain Compromise Impacting npm Ecosystem",
+          "url": "https://www.cisa.gov/news-events/alerts/2025/09/23/widespread-supply-chain-compromise-impacting-npm-ecosystem",
+          "date": "2025-09-23"
+        },
+        {
+          "title": "Cyber Safety Review Board — Review of the December 2021 Log4j Event",
+          "url": "https://www.cisa.gov/sites/default/files/publications/CSRB-Report-on-Log4-July-11-2022_508.pdf",
+          "date": "2022-07-11"
+        }
+      ]
+    },
+    {
+      "id": "p13",
+      "day": 5,
+      "title": "토요일 새벽, 이상 트래픽",
+      "scene": [
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "새벽 2시부터 회의록 API로 대량 조회가 들어와요."
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "월요일에 정리해서 보고할까요? 로그가 너무 많아서 좀 지워야 할 것 같고요."
+        }
+      ],
+      "q": "대표로서 무엇을 지시할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "월요일에 정리해서 본다",
+          "ok": false,
+          "why": "정보통신망법은 24시간, 개인정보 보호법은 72시간 시계가 주말에도 흘러요."
+        },
+        {
+          "k": "B",
+          "t": "사고 지휘자를 정하고, 로그를 보존하고, 24시간 안 침해사고 신고와 72시간 안 통지·신고를 준비한다",
+          "ok": true,
+          "why": "법정 시한과 증거 보존이 최우선이에요."
+        },
+        {
+          "k": "C",
+          "t": "로그를 정리해 용량을 확보한다",
+          "ok": false,
+          "why": "SKT·쿠팡은 보존 명령 뒤 자료를 바꾸거나 지워 수사 의뢰됐어요."
+        }
+      ],
+      "explain": "정보통신망법 제48조의3은 24시간 안 신고, 개인정보 보호법 시행령 제39·40조는 72시간 안 통지·신고를 요구해요. 증거를 지우는 것은 가장 나쁜 선택이에요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "국가법령정보센터 — 정보통신망법 제47조 (ISMS)",
+          "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?lsiSeq=290001&joNo=0047&joBrNo=00&docCls=jo&urlMode=lsScJoRltInfoR",
+          "date": "2026-10-02"
+        },
+        {
+          "title": "개인정보 보호법 시행령 [대통령령 제36671호]",
+          "url": "https://www.law.go.kr/법령/개인정보보호법시행령",
+          "date": "2026-09-11"
+        }
+      ]
+    },
+    {
+      "id": "p14",
+      "day": 5,
+      "title": "월요일, 회의록 데이터 보관",
+      "scene": [
+        {
+          "name": "도윤",
+          "role": "백엔드",
+          "text": "탈퇴한 회원의 회의 녹음과 요약도 전부 남겨 둘까요? 나중에 AI 학습에 쓸 수도 있잖아요."
+        },
+        {
+          "name": "서연",
+          "role": "PM",
+          "text": "ERD에는 삭제 컬럼이 없어요."
+        }
+      ],
+      "q": "데이터 관점에서 무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "혹시 모르니 모두 보관한다",
+          "ok": false,
+          "why": "목적이 끝난 개인정보는 지체 없이 파기해야 해요(제21조)."
+        },
+        {
+          "k": "B",
+          "t": "테이블마다 수집 근거와 보유 기간을 정하고, 탈퇴 시 파기 작업을 만든다. 학습 활용은 별도 근거(동의 또는 가명처리 요건)를 검토한다",
+          "ok": true,
+          "why": "데이터 모듈의 ERD 결정과 개인정보 보호법을 연결해요."
+        },
+        {
+          "k": "C",
+          "t": "파기는 출시 후 나중에 생각한다",
+          "ok": false,
+          "why": "나중에 고치기가 훨씬 비싸요."
+        }
+      ],
+      "explain": "데이터 모듈에서 ERD를 그릴 때 컬럼마다 근거와 보유 기간을 정해야 해요. 개인정보 보호법 제21조는 필요 없어진 개인정보를 지체 없이 파기하라고 하고, 가명정보(제28조의2)는 통계·연구 등 정해진 목적에만 동의 없이 쓸 수 있어요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "개인정보 보호법 [시행 2026. 9. 11.] [법률 제21445호]",
+          "url": "https://www.law.go.kr/법령/개인정보보호법",
+          "date": "2026-09-11"
+        }
+      ]
+    },
+    {
+      "id": "p15",
+      "day": 5,
+      "title": "수요일, 이사회 준비",
+      "scene": [
+        {
+          "name": "나",
+          "role": "대표",
+          "text": "투자자가 \"개인정보 사고 나면 대표 책임이냐\"고 물었어요."
+        },
+        {
+          "name": "지훈",
+          "role": "CTO",
+          "text": "회사 구조상 보안은 제가 다 맡고 있긴 한데…."
+        }
+      ],
+      "q": "어떤 체계를 세울까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "보안은 CTO 책임이라고 답한다",
+          "ok": false,
+          "why": "2026-09-11 개정법은 대표를 최종 책임자로 명시해요."
+        },
+        {
+          "k": "B",
+          "t": "CPO를 정하고 대표·이사회 정기 보고 체계를 만들고, 보안 투자(로그·점검·교육)를 기록해 감경 근거로 남긴다",
+          "ok": true,
+          "why": "개정법의 대표 책임·CPO 보고 의무와 과징금 감경 조항에 맞춰요."
+        },
+        {
+          "k": "C",
+          "t": "회사 규모가 작으니 아무것도 하지 않는다",
+          "ok": false,
+          "why": "모든 처리자는 CPO를 둬야 해요(소상공인은 대표가 CPO)."
+        }
+      ],
+      "explain": "개정 개인정보 보호법(법률 제21445호)은 대표 최종 책임, CPO의 대표·이사회 보고, 매출 10% 가중 과징금을 담았어요. 증명된 보안 투자는 과징금 감경 사유예요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "개인정보 보호법 [시행 2026. 9. 11.] [법률 제21445호]",
+          "url": "https://www.law.go.kr/법령/개인정보보호법",
+          "date": "2026-09-11"
+        },
+        {
+          "title": "개인정보위 — 개인정보 보호법·시행령·고시, 9월 11일부터 시행",
+          "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=12459",
+          "date": "2026-09-10"
+        }
+      ]
+    }
+  ],
+  "lectures": [
+    {
+      "id": "l1",
+      "title": "WEB2 - OAuth 2.0 (생활코딩)",
+      "url": "https://opentutorials.org/course/3405",
+      "min": 47,
+      "lang": "ko",
+      "what": "비밀번호 없이 권한을 위임하는 OAuth 흐름을 영상으로 이해해요.",
+      "day": 3
+    },
+    {
+      "id": "l2",
+      "title": "How OpenID Connect Works",
+      "url": "https://openid.net/developers/how-connect-works/",
+      "min": 5,
+      "lang": "en",
+      "what": "OIDC가 OAuth 위에 로그인(ID 토큰)을 얹는 그림을 5분에 봐요.",
+      "day": 3
+    },
+    {
+      "id": "l3",
+      "title": "OWASP Top 10:2025 (한국어)",
+      "url": "https://top10.owasp.org/2025/ko/",
+      "min": 90,
+      "lang": "ko",
+      "what": "웹 보안 위험 10가지의 공용 단어를 익혀요.",
+      "day": 4
+    },
+    {
+      "id": "l4",
+      "title": "OAuth 2.0 · OAuth 2.1 (oauth.net)",
+      "url": "https://oauth.net/2.1/",
+      "min": 15,
+      "lang": "en",
+      "what": "2.1 초안이 무엇을 바꾸는지 짧게 정리해요.",
+      "day": 3
+    }
+  ],
+  "write": {
+    "title": "금요일에 쓸 것",
+    "task": "두런의 인증 결정 기록(ADR-007)을 1~2쪽으로 써 보세요. 300명 고객의 SSO 요구를 계기로, 인증을 만들지 살지와 SSO 요금제 위치를 정해요.",
+    "template": [
+      "제목과 상태 (제안 / 승인 / 대체됨)",
+      "배경: 고객 요구(SSO, 보안 질문지)와 제약(일정 3주 vs 며칠, 비용)",
+      "선택지 2~3개와 장단점 (직접 구현 / 인증 서비스 A / B)",
+      "결정과 이유 (RFC 9700 준수, 비밀번호 해시 내보내기 가능 여부 포함)",
+      "SSO·SCIM 요금제 위치와 CISA \"SSO tax\" 입장 검토",
+      "보안 기본값: 세션 방식, MFA, 권한 역할 표, 키 교체·퇴사 절차",
+      "사고 대응: 24시간·72시간 신고 담당자",
+      "되돌릴 조건과 다시 볼 시점 (MAU 10만, 첫 SAML 고객 등)"
+    ]
+  },
+  "check": [
+    "Story numbers (11명, 300명, 80문항, 3주) are fictional 두런 values.",
+    "Coupang fine 6,246.81억 = 624.681B KRW per PIPC; SKT 1,347.91억.",
+    "PBKDF2 100,000 and OAuth details only from SPEC mine list.",
+    "Apple 4.8: since Jan 2024 equivalent privacy option, not forced Sign in with Apple."
+  ]
+}

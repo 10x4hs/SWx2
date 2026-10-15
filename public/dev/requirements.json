@@ -1,0 +1,2294 @@
+{
+ "id": "requirements",
+ "no": "03",
+ "title": "요구사항",
+ "short": "요구사항",
+ "q": "PRD와 요구사항정의서는 뭐가 다른가요?",
+ "sub": "PRD · ISO 29148 · 요구사항정의서 · 사용자 스토리 · 범위",
+ "doc": "PRD",
+ "story": {
+  "title": "PRD v1",
+  "size": 4,
+  "body": [
+   "(가상 이야기) 손으로 만든 MVP 실험에서 고객들이 '요약보다 할 일 목록이 좋다'고 했어요. 두런은 첫 PM 서연을 맞이했어요. 이제 네 명이에요.",
+   "서연이 PRD v1 초안을 들고 왔어요. 녹음을 올리면 요약이 나오고, 할 일이 뽑혀요. 그런데 회의마다 '실시간 자막도 되나요?', '줌이랑 연결되나요?'라는 요청이 끼어들어요.",
+   "이번 주에는 PRD와 국제 표준, 한국 공공 사업의 요구사항정의서가 어떻게 다른지 배우고, 무엇을 범위 밖에 둘지 정해요. 금요일에는 두런 PRD v1을 완성해요."
+  ]
+ },
+ "goals": [
+  "PRD, SRS(29148), 요구사항정의서의 차이를 '누가 서명하나'로 설명할 수 있어요.",
+  "사용자 스토리와 Given/When/Then 인수 조건, 비기능 요구사항을 검증 가능하게 쓸 수 있어요.",
+  "범위 밖을 정하고, 늦은 변경의 비용을 따져 범위를 지킬 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "PRD는 '왜, 무엇을, 어디까지'를 맞추는 문서예요",
+   "lead": "PRD(제품 요구사항 문서)는 제품의 목적, 기능, 동작을 정해서 디자인·개발·사업이 같은 그림을 보게 해요(Atlassian).",
+   "idea": [
+    "PRD는 기획(아이디어가 승인된 뒤)과 기술 설계(RFC, 설계 문서) 사이에 와요. HashiCorp는 'PRD는 보통 RFC로 가는 첫걸음'이라고 해요.",
+    "PRD의 쓸모는 '무엇을 만들까'보다 '무엇을 안 만들까'에서 더 커요. 범위와 성공 지표를 정하는 게 대표의 결정이에요.",
+    "한국 스타트업에서는 기획서라고 부르거나 그냥 PRD라고 불러요. 이름보다 들어가는 내용이 중요해요."
+   ],
+   "hear": [
+    "“PRD 리뷰 끝나면 RFC 쓸게요.”",
+    "“이건 PRD에 범위 밖으로 적혀 있어요.”"
+   ],
+   "ask": [
+    "이 PRD의 성공 지표는 무엇인가요?",
+    "하지 않기로 한 것은 무엇인가요?"
+   ],
+   "deep": [
+    "PM이나 PO가 쓰지만 디자이너, 엔지니어와 함께 써요. HashiCorp에서는 PM이 PRD를, 엔지니어가 이어서 RFC를 써요."
+   ],
+   "recall": {
+    "q": "PRD는 흐름에서 어디에 오나요?",
+    "a": "기획 승인 뒤, 기술 설계(RFC) 전"
+   },
+   "quiz": [
+    {
+     "q": "PRD에서 대표가 정하는 핵심은?",
+     "options": [
+      "범위와 성공 지표",
+      "서버 종류",
+      "변수 이름"
+     ],
+     "answer": 0,
+     "why": "범위(안 할 것 포함)와 지표예요."
+    },
+    {
+     "q": "HashiCorp에서 PRD 다음 문서는?",
+     "options": [
+      "포스트모템",
+      "계약서",
+      "RFC"
+     ],
+     "answer": 2,
+     "why": "PRD → RFC 순서예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    },
+    {
+     "title": "Writing Practices and Culture — HashiCorp",
+     "url": "https://www.hashicorp.com/how-hashicorp-works/articles/writing-practices-and-culture",
+     "date": "undated"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "Atlassian PRD: 한 쪽, 한 곳, 그리고 '하지 않을 것'",
+   "lead": "Atlassian의 PRD 템플릿은 프로젝트 정보, 목표, 배경, 가정, 사용자 스토리, 디자인, 질문, '하지 않을 것'으로 되어 있어요. 짧은 한 쪽에서 자세한 문서로 링크해요.",
+   "idea": [
+    "섹션: ① 참여자·상태·목표 출시 ② 팀 목표와 사업 목표 ③ 배경과 전략적 맞춤 ④ 가정 ⑤ 성공 지표가 붙은 사용자 스토리 ⑥ 사용자 상호작용과 디자인(와이어프레임) ⑦ 질문 ⑧ 하지 않을 것(What we're not doing).",
+    "'한 쪽, 한 곳(one page, one source)'을 권해요. PRD에 다 쓰지 말고 디자인, 조사, 기술 문서로 링크해요.",
+    "'질문' 칸은 아직 정하지 못한 것, 조사가 필요한 것을 숨기지 않고 적는 곳이에요."
+   ],
+   "hear": [
+    "“질문 칸에 '화자 구분 필요?'를 올려 뒀어요.”"
+   ],
+   "ask": [
+    "가정 칸에 적힌 것 중 가장 틀릴 것 같은 건?",
+    "아직 답 없는 질문은 누가 언제까지 풀어요?"
+   ],
+   "deep": [
+    "Atlassian 글(Dan Radigan)은 2026-03-03 발행, 2026-04-28 수정 날짜가 붙어 있어요."
+   ],
+   "recall": {
+    "q": "Atlassian이 권하는 PRD 형태는?",
+    "a": "한 쪽, 한 곳 (짧게 쓰고 링크)"
+   },
+   "quiz": [
+    {
+     "q": "Atlassian PRD에 있는 칸은?",
+     "options": [
+      "소스 코드",
+      "하지 않을 것",
+      "급여표"
+     ],
+     "answer": 1,
+     "why": "What we're not doing이 있어요."
+    },
+    {
+     "q": "'질문' 칸의 용도는?",
+     "options": [
+      "정하지 못한 것을 드러내기",
+      "칭찬 모으기",
+      "일정 숨기기"
+     ],
+     "answer": 0,
+     "why": "열린 질문을 적어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "HashiCorp의 PRD는 '문제' 요구사항 문서예요",
+   "lead": "HashiCorp에서 PRD는 Problem Requirements Document예요. 해결책은 일부러 빼고 문제를 먼저 써요. 해결책은 RFC로 가요.",
+   "idea": [
+    "템플릿: 소개(마지막에 씀) → 배경 → 문제(페르소나 포함) → 요구사항과 단계(각 요구사항에 인수 조건) → 사용자 조사(가장 중요) → 승인.",
+    "HashiCorp 규칙: 요구사항에 순위를 매기지 말고 단계(phase)로 나눠요. 가치 순서로 단계를 둬요.",
+    "승인 조건: 범위 안의 인수 조건이 정해졌고, 엔지니어링과 PM이 목표 출시에 합의했고, RFC를 쓸 수 있을 만큼 명확해야 해요. 상태는 작성 중 → 리뷰 중 → 승인 → 폐기로 바뀌어요."
+   ],
+   "hear": [
+    "“이건 1단계, 그건 2단계로 넣죠.”",
+    "“아직 인수 조건이 없어서 승인 못 해요.”"
+   ],
+   "ask": [
+    "각 요구사항에 인수 조건이 있나요?",
+    "1단계만 나가도 고객이 쓸 수 있나요?"
+   ],
+   "deep": [
+    "HashiCorp는 인수 조건을 테스트 케이스처럼 객관적으로 쓰고, 고려 사항은 질문 형태로 쓰라고 해요."
+   ],
+   "recall": {
+    "q": "HashiCorp PRD의 P는 무엇의 약자?",
+    "a": "Problem"
+   },
+   "quiz": [
+    {
+     "q": "HashiCorp가 요구사항 순위 대신 권하는 것은?",
+     "options": [
+      "투표",
+      "무작위",
+      "단계로 나누기"
+     ],
+     "answer": 2,
+     "why": "phase로 나눠요."
+    },
+    {
+     "q": "HashiCorp PRD에서 '가장 중요한' 칸은?",
+     "options": [
+      "스타일",
+      "사용자 조사",
+      "소개"
+     ],
+     "answer": 1,
+     "why": "User Research예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "PRD Template — HashiCorp",
+     "url": "https://www.hashicorp.com/how-hashicorp-works/articles/prd-template",
+     "date": "undated"
+    },
+    {
+     "title": "Writing Practices and Culture — HashiCorp",
+     "url": "https://www.hashicorp.com/how-hashicorp-works/articles/writing-practices-and-culture",
+     "date": "undated"
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "PRD는 혼자 쓰지 않고, 문서만이 명세도 아니에요",
+   "lead": "Atlassian: '제품 요구사항 문서를 혼자 쓰지 마세요. 늘 개발자와 함께하세요.' Cagan은 한발 더 나가 '명세의 대부분은 고해상도 프로토타입이어야 한다'고 해요.",
+   "idea": [
+    "Atlassian의 안티 패턴: 개발 전에 모든 게 아주 자세히 정해져 있음, 시작 전 '철통 같은 승인', 요구사항을 다시 고치지 않음, PO 혼자 씀.",
+    "Cagan(2006)은 '아무도 안 읽는 50쪽 워드 문서' 대신 사용자와 시험한 프로토타입을 명세로 쓰자고 했어요. '명세가 있다는 것 자체가 진행의 가짜 신호'가 될 수 있다고요.",
+    "정리하면: 글은 '왜'와 범위, 인수 조건을 담고, 프로토타입은 경험(보기와 느낌)을 담아요. 계약 일은 형식 명세가 필요해요."
+   ],
+   "hear": [
+    "“PRD는 서연 님이 다 써서 주실 거죠?”",
+    "“시안 보면서 같이 정해요.”"
+   ],
+   "ask": [
+    "이 PRD에 엔지니어와 디자이너가 같이 썼나요?",
+    "화면으로 보여 주는 게 더 빠른 부분은 어디인가요?"
+   ],
+   "deep": [
+    "이건 진짜 논쟁이에요. 문서파(Atlassian, HashiCorp, 29148)와 프로토타입파(Cagan 2006)가 있어요. 두 입장을 다 알고, 일의 종류에 따라 섞어요."
+   ],
+   "recall": {
+    "q": "Cagan이 말한 명세의 대부분은?",
+    "a": "고해상도 프로토타입"
+   },
+   "quiz": [
+    {
+     "q": "Atlassian 안티 패턴이 아닌 것은?",
+     "options": [
+      "개발자와 함께 쓰기",
+      "철통 같은 사전 승인",
+      "PO 혼자 쓰기"
+     ],
+     "answer": 0,
+     "why": "함께 쓰는 게 권하는 방식이에요."
+    },
+    {
+     "q": "글과 프로토타입의 역할 분담은?",
+     "options": [
+      "글=디자인, 프로토타입=계약",
+      "둘 다 필요 없음",
+      "글=왜·범위, 프로토타입=경험"
+     ],
+     "answer": 2,
+     "why": "서로 보완해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    },
+    {
+     "title": "Revisiting the Product Spec — Marty Cagan (SVPG)",
+     "url": "https://www.svpg.com/revisiting-the-product-spec/",
+     "date": "2006-10-12"
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "국제 표준 ISO/IEC/IEEE 29148, 그리고 대체된 IEEE 830",
+   "lead": "요구사항 공학의 국제 표준은 ISO/IEC/IEEE 29148:2018이에요. 교과서에 자주 나오는 IEEE 830-1998은 대체(Superseded)됐어요.",
+   "idea": [
+    "IEEE 830-1998은 '소프트웨어 요구사항 명세(SRS) 권장 관행'이었어요. 29148:2011이 이를 대체했고, 지금 유효한 건 2018년 2판이에요.",
+    "29148은 '어떤 정보 항목이 필요하고 무엇을 담는지'를 정해요. 12207 같은 생명주기 표준의 요구사항 과정에 덧붙이는 안내예요.",
+    "새 소식: 3판이 2026년 9월 14일 DIS 투표에 들어갔어요. 1년쯤 안에 새 판이 나올 가능성이 커요. 지금은 2018판이 현행이에요."
+   ],
+   "hear": [
+    "“고객사가 IEEE 830 양식으로 SRS 달래요.”"
+   ],
+   "ask": [
+    "그 고객이 말하는 양식은 어느 판 기준인가요?",
+    "우리가 표준 문서까지 필요한 일인가요, PRD면 되나요?"
+   ],
+   "deep": [
+    "IEEE SA 기준 29148-2018은 2018-10-23 승인, 2018-11-30 발행, 상태 Active예요. IEEE 830-1998은 1998-10-20 발행, 2009-12-09 재확인됐고 지금은 Superseded예요."
+   ],
+   "recall": {
+    "q": "지금 유효한 요구사항 표준은?",
+    "a": "ISO/IEC/IEEE 29148:2018 (3판 준비 중)"
+   },
+   "quiz": [
+    {
+     "q": "IEEE 830-1998의 현재 상태는?",
+     "options": [
+      "초안",
+      "Active",
+      "Superseded(대체됨)"
+     ],
+     "answer": 2,
+     "why": "29148:2011에 대체됐어요."
+    },
+    {
+     "q": "29148 3판의 2026년 상황은?",
+     "options": [
+      "DIS 투표 시작(2026-09-14)",
+      "폐기",
+      "발행 완료"
+     ],
+     "answer": 0,
+     "why": "DIS 투표 단계예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "IEEE/ISO/IEC 29148-2018 — IEEE SA",
+     "url": "https://standards.ieee.org/ieee/29148/6937/",
+     "date": "2018-11-30"
+    },
+    {
+     "title": "IEEE 830-1998 — IEEE SA (Superseded)",
+     "url": "https://standards.ieee.org/ieee/830/1222/",
+     "date": "1998-10-20"
+    },
+    {
+     "title": "ISO/IEC/IEEE DIS 29148 (Edition 3)",
+     "url": "https://committee.iso.org/standard/94091.html",
+     "date": "2026-09-14"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "29148의 네 문서: BRS · StRS · SyRS · SRS",
+   "lead": "29148:2018은 요구사항 문서를 네 가지로 나눠요. 사업(BRS), 이해관계자(StRS), 시스템(SyRS), 소프트웨어(SRS)예요.",
+   "idea": [
+    "BRS(사업 요구사항 명세): 사업 목적, 범위, 이해관계자, 사업 모델, 사업 과정과 규칙. 흔히 BRD라고 부르는 것이에요.",
+    "StRS(이해관계자 요구사항 명세): 사용자 요구, 운영 개념과 시나리오. SyRS(시스템 요구사항 명세): 기능, 사용성, 성능, 인터페이스, 보안, 정보 관리 등.",
+    "SRS(소프트웨어 요구사항 명세): 제품 관점, 기능, 사용자 특성, 제약, 그리고 외부 인터페이스·기능·사용성·성능·논리 DB·설계 제약 같은 '명시된 요구사항', 검증 방법."
+   ],
+   "hear": [
+    "“이건 BRS 수준 얘기고, SRS는 아직이에요.”"
+   ],
+   "ask": [
+    "지금 우리가 쓰는 문서는 넷 중 어느 수준인가요?",
+    "소프트웨어 말고 기기·운영까지 포함하면 SyRS가 필요한가요?"
+   ],
+   "deep": [
+    "표준은 개별 요구사항의 특성(5.2.5), 요구사항 집합의 특성(5.2.6), 요구사항 문장 기준(5.2.7), 요구사항 속성(5.2.8)도 정해요. 위 목차는 공식 미리보기 문서에서 확인한 거예요."
+   ],
+   "recall": {
+    "q": "29148의 네 문서는?",
+    "a": "BRS · StRS · SyRS · SRS"
+   },
+   "quiz": [
+    {
+     "q": "흔히 BRD라고 부르는 것의 표준 이름은?",
+     "options": [
+      "SRS",
+      "SyRS",
+      "BRS"
+     ],
+     "answer": 2,
+     "why": "Business Requirements Specification이에요."
+    },
+    {
+     "q": "SRS의 S가 가리키는 대상은?",
+     "options": [
+      "이해관계자",
+      "소프트웨어",
+      "시스템"
+     ],
+     "answer": 1,
+     "why": "Software Requirements Specification이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "ISO/IEC/IEEE 29148:2018 official preview (TOC)",
+     "url": "https://assets.vde-verlag.de/iec-normen/preview-pdf/info_isoiecieee29148%7Bed2.0%7Den.pdf",
+     "date": "2018-11"
+    },
+    {
+     "title": "IEEE/ISO/IEC 29148-2018 — IEEE SA",
+     "url": "https://standards.ieee.org/ieee/29148/6937/",
+     "date": "2018-11-30"
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "좋은 요구사항의 여덟 가지 조건",
+   "lead": "IEEE 830은 좋은 SRS의 품질을 여덟 가지로 들어요. 정확, 모호하지 않음, 완전, 일관, 중요도·안정성 순위, 검증 가능, 수정 가능, 추적 가능.",
+   "idea": [
+    "표준은 낡았어도 이 여덟 가지는 지금도 교과서가 가르치는 기준이에요.",
+    "특히 '검증 가능'이 중요해요. '빠르게', '사용하기 쉽게'는 검증할 수 없어요. '3초 안에'처럼 확인할 수 있어야 해요.",
+    "IEEE 830은 SRS가 '설계나 구현 세부를 담지 말라'고 해요. 무엇(what)을 쓰고 어떻게(how)는 설계 문서로 보내요."
+   ],
+   "hear": [
+    "“요약이 빨라야 해요.”",
+    "“얼마나요? 몇 초 안에요?”"
+   ],
+   "ask": [
+    "이 요구사항은 어떻게 확인(테스트)하나요?",
+    "이 문장에 설계가 섞여 있지 않나요?"
+   ],
+   "deep": [
+    "IEEE 830은 SRS의 목적을 '고객과 공급자 사이 합의의 기반'이라고 해요. 그래서 계약 일에서 특히 중요해요."
+   ],
+   "recall": {
+    "q": "'빠르게'라는 요구사항은 여덟 조건 중 무엇을 어기나요?",
+    "a": "검증 가능"
+   },
+   "quiz": [
+    {
+     "q": "IEEE 830 품질에 없는 것은?",
+     "options": [
+      "추적 가능",
+      "검증 가능",
+      "저렴함"
+     ],
+     "answer": 2,
+     "why": "저렴함은 품질 조건이 아니에요."
+    },
+    {
+     "q": "SRS에 넣지 말아야 할 것은?",
+     "options": [
+      "기능",
+      "제약",
+      "설계·구현 세부"
+     ],
+     "answer": 2,
+     "why": "what만, how는 설계로요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "IEEE Std 830-1998 full text (MSU course copy)",
+     "url": "https://www.cse.msu.edu/~cse870/IEEEXplore-SRS-template.pdf",
+     "date": "1998"
+    },
+    {
+     "title": "IEEE 830-1998 — IEEE SA (Superseded)",
+     "url": "https://standards.ieee.org/ieee/830/1222/",
+     "date": "1998-10-20"
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "'SRD'는 표준 용어가 아니에요. 뜻을 물어보세요",
+   "lead": "SRD는 29148에 없는 말이에요. 어떤 곳은 '시스템 요구사항 문서'(≈SyRS), 어떤 곳은 '소프트웨어 요구사항 문서'(≈SRS)로 써요.",
+   "idea": [
+    "미국 정부·국방 조달에서는 SRD를 System Requirements Document로 쓴다고 알려져 있어요. 하지만 그 용어집은 조사 때 열지 못해 확신도가 낮아요.",
+    "그래서 회의에서 'SRD 주세요'라는 말을 들으면 '시스템 전체 요구사항인가요, 소프트웨어 요구사항인가요? 어떤 양식인가요?'라고 물어요.",
+    "한국어 '요구사항 명세서'는 SRS를 그대로 옮긴 말이고, 공공 SI의 공식 산출물 이름은 '요구사항정의서'예요."
+   ],
+   "hear": [
+    "“SRD 먼저 받아야 개발 들어가요.”"
+   ],
+   "ask": [
+    "말씀하신 SRD는 시스템 요구사항인가요, 소프트웨어 요구사항인가요?",
+    "예시 양식이 있나요?"
+   ],
+   "deep": [
+    "정리표: SRS = 표준 용어(IEEE 830 → 29148). SyRS = 29148 표준 용어. SRD = 비표준(뜻 미확인). 요구사항정의서 = 한국 공공 SI 공식 산출물(정보시스템 감리기준)."
+   ],
+   "recall": {
+    "q": "SRD를 들으면 무엇을 해야 하나요?",
+    "a": "SyRS인지 SRS인지, 어떤 양식인지 물어봐요."
+   },
+   "quiz": [
+    {
+     "q": "SRD는 29148 표준 용어인가요?",
+     "options": [
+      "예",
+      "아니요"
+     ],
+     "answer": 1,
+     "why": "표준에 없는 말이에요."
+    },
+    {
+     "q": "한국 공공 SI의 공식 요구사항 산출물 이름은?",
+     "options": [
+      "요구사항정의서",
+      "SRD",
+      "PRD"
+     ],
+     "answer": 0,
+     "why": "감리기준에 나오는 이름이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "ISO/IEC/IEEE 29148:2018 official preview (TOC)",
+     "url": "https://assets.vde-verlag.de/iec-normen/preview-pdf/info_isoiecieee29148%7Bed2.0%7Den.pdf",
+     "date": "2018-11"
+    },
+    {
+     "title": "정보시스템 감리기준",
+     "url": "https://www.law.go.kr/행정규칙/정보시스템감리기준",
+     "date": "시행 2024-06-27"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "한국 공공 사업은 요구사항을 '상세히' 쓰는 게 법이에요",
+   "lead": "소프트웨어 진흥법 제44조②는 발주 기관이 요구사항을 상세히 써서 공개하라고 해요. 그 결과물이 제안요청서(RFP)의 상세 요구사항이에요.",
+   "idea": [
+    "과기정통부 고시(별표2)는 요구사항을 11가지로 나눠요. 시스템 장비 구성, 기능, 성능, 인터페이스, 데이터, 테스트, 보안, 품질, 제약사항, 프로젝트 관리, 프로젝트 지원.",
+    "품질에는 신뢰성, 사용성, 유지관리성, 이식성, 보안성이 들어가요. 기능 말고도 챙길 게 많다는 뜻이에요.",
+    "발주 기관은 외부 전문가를 쓰거나, 요구사항을 상세히 하려고 분석·설계 사업만 따로 발주할 수도 있어요."
+   ],
+   "hear": [
+    "“RFP 상세 요구사항에 성능 요구가 빠져 있어요.”"
+   ],
+   "ask": [
+    "11가지 분류 중 우리 RFP에서 빠진 것은?",
+    "요구사항을 상세히 할 분석 사업이 따로 필요한가요?"
+   ],
+   "deep": [
+    "근거: 「소프트웨어사업 계약 및 관리감독에 관한 지침」(과기정통부고시 제2023-15호, 2023-05-15 시행) 별표2와 별지6. 법은 소프트웨어 진흥법(2025-04-23 시행본) 제44조예요."
+   ],
+   "recall": {
+    "q": "고시 별표2의 요구사항 분류 수는?",
+    "a": "11가지"
+   },
+   "quiz": [
+    {
+     "q": "요구사항 상세화를 의무로 정한 법 조항은?",
+     "options": [
+      "개인정보보호법 제1조",
+      "상법",
+      "소프트웨어 진흥법 제44조②"
+     ],
+     "answer": 2,
+     "why": "제44조②예요."
+    },
+    {
+     "q": "11가지 분류에 없는 것은?",
+     "options": [
+      "인터페이스",
+      "보안",
+      "마케팅"
+     ],
+     "answer": 2,
+     "why": "마케팅은 분류에 없어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "소프트웨어 진흥법 — 국가법령정보센터",
+     "url": "https://www.law.go.kr/법령/소프트웨어진흥법",
+     "date": "시행 2025-04-23"
+    },
+    {
+     "title": "소프트웨어사업 계약 및 관리감독에 관한 지침 (별표2, 별지6)",
+     "url": "https://www.law.go.kr/행정규칙/소프트웨어사업계약및관리감독에관한지침",
+     "date": "시행 2023-05-15"
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "SFR-001: 요구사항마다 번호와 출처가 붙어요",
+   "lead": "고시 별지6에 따라 요구사항마다 분류, 고유번호, 명칭, 상세설명, 산출정보, 관련 요구사항, 출처를 적어요. 그래서 'SFR-001' 같은 번호가 생겨요.",
+   "idea": [
+    "고유번호는 '분류 약어 + 일련번호'로 만들 수 있어요. NIPA 2021 실무 가이드는 SFR(기능), PER(성능), INR(인터페이스), DAR(데이터), TER(테스트), SER(보안), QUR(품질) 같은 코드를 써요.",
+    "가이드의 예 'SFR-001 고객 정보 관리'는 기능점수(FP)로 바뀌어 사업비 산정에 쓰여요. 요구사항이 곧 돈이에요.",
+    "주의: 고시는 11가지, NIPA 가이드는 유지관리·컨설팅·공사를 더해 15가지예요. 둘 다 공식이고, 가이드가 사업 종류를 넓힌 거예요."
+   ],
+   "hear": [
+    "“SER-003 보안 요구사항 충족 증빙이 없어요.”"
+   ],
+   "ask": [
+    "이 요구사항의 출처(누가 요청했나)는 적혀 있나요?",
+    "관련 요구사항끼리 연결돼 있나요?"
+   ],
+   "deep": [
+    "SFR, PER 같은 약어는 고시 본문이 아니라 NIPA 가이드와 실무 관행에서 온 거예요. 고시는 '분류(또는 약어)와 일련번호 조합'까지만 정해요."
+   ],
+   "recall": {
+    "q": "요구사항 한 줄에 꼭 붙는 7개 항목 중 셋은?",
+    "a": "분류, 고유번호, 출처 (그 밖에 명칭, 상세설명, 산출정보, 관련 요구사항)"
+   },
+   "quiz": [
+    {
+     "q": "SFR은 무슨 요구사항?",
+     "options": [
+      "기능",
+      "성능",
+      "보안"
+     ],
+     "answer": 0,
+     "why": "Software Functional Requirement 계열 코드예요."
+    },
+    {
+     "q": "고시(11)와 NIPA 가이드(15) 숫자가 다른 이유는?",
+     "options": [
+      "하나가 틀려서",
+      "연도가 달라서",
+      "가이드가 유지관리·컨설팅·공사 유형을 더해서"
+     ],
+     "answer": 2,
+     "why": "둘 다 공식이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "소프트웨어사업 계약 및 관리감독에 관한 지침 (별표2, 별지6)",
+     "url": "https://www.law.go.kr/행정규칙/소프트웨어사업계약및관리감독에관한지침",
+     "date": "시행 2023-05-15"
+    },
+    {
+     "title": "공공SW사업 제안요청서 작성을 위한 요구사항 실무 가이드 2021 — SWIT/NIPA",
+     "url": "https://www.swit.or.kr/IS/web/isCbmRefView.jsp?ref_sq=1104",
+     "date": "2021-02-24"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "요구사항정의서와 대비표: 감리가 추적성을 확인해요",
+   "lead": "공공 SI에서 요구사항정의서는 사업자가 써요. 감리 때는 계약 범위의 항목이 요구사항에 빠짐없이 들어갔는지 '대비표'로 확인해요.",
+   "idea": [
+    "정보시스템 감리기준 제8조: 사업자는 요구정의 단계에서 요구사항정의서와 대비표를 내고, 감리인은 계약 범위가 다 반영됐는지 봐요.",
+    "같은 방식이 설계 단계(제9조)와 종료 단계(제10조)에도 반복돼요. 이게 법으로 강제된 추적성(traceability)이에요.",
+    "NIA 2023 가이드는 과업대비표(RFP ↔ 제안서 ↔ 기술협상 ↔ 수행계획 ↔ 요구사항)와 요구사항추적표(요구사항 → 유스케이스 → 화면 → 프로그램 → 단위·통합 테스트)를 설명해요."
+   ],
+   "hear": [
+    "“대비표에서 RFP 항목 세 개가 요구사항에 안 잡혀 있어요.”"
+   ],
+   "ask": [
+    "모든 계약 항목이 요구사항 번호로 연결되나요?",
+    "요구사항마다 테스트가 연결되나요?"
+   ],
+   "deep": [
+    "감리는 기본이 3단계(요구정의, 설계, 종료)이고, 사업비 20억 원 미만이나 기간 6개월 미만이면 2단계도 돼요."
+   ],
+   "recall": {
+    "q": "감리기준이 요구정의 단계에서 확인하는 두 문서는?",
+    "a": "요구사항정의서와 대비표"
+   },
+   "quiz": [
+    {
+     "q": "요구사항추적표의 연결 순서로 맞는 것은?",
+     "options": [
+      "화면 → 급여",
+      "요구사항 → 화면 → 프로그램 → 테스트",
+      "테스트 → 계약 → 광고"
+     ],
+     "answer": 1,
+     "why": "요구사항에서 테스트까지 이어져요."
+    },
+    {
+     "q": "2단계 감리가 허용되는 조건은?",
+     "options": [
+      "20억 원 미만 또는 6개월 미만",
+      "100억 원 이상",
+      "항상"
+     ],
+     "answer": 0,
+     "why": "규모가 작으면 2단계도 돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "정보시스템 감리기준",
+     "url": "https://www.law.go.kr/행정규칙/정보시스템감리기준",
+     "date": "시행 2024-06-27"
+    },
+    {
+     "title": "SW사업자를 위한 정보시스템 감리준비 및 대응 가이드 — NIA",
+     "url": "https://nia.or.kr/site/nia_kor/ex/bbs/View.do?cbIdx=99860&bcIdx=25210&parentSeq=25210",
+     "date": "2023-02-06"
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "PRD · SRS · 요구사항정의서, 가장 큰 차이는 '누가 서명하나'예요",
+   "lead": "SRS는 고객과 공급자의 합의, 요구사항정의서는 사업자가 쓰고 기관이 확인하고 감리가 점검, PRD는 내부 팀의 합의예요.",
+   "idea": [
+    "셋 다 '무엇을 만들지'를 적는다는 점은 같아요. 다른 건 문서의 무게와 책임이에요. 계약이 걸리면 문서는 법적 증거가 돼요.",
+    "서울대학교 행정정보화 서비스지침은 실제 요구사항정의서 서식을 공개해요. 목적, 세부요청내용, 사용자 역할/권한, 데이터 항목 정의, 업무프로세스, 화면설계서, 요청사유와 기대효과, 반영되지 않을 경우 문제점을 적어요.",
+    "두런처럼 작은 제품 회사는 PRD + 인수 조건이면 충분해요. 공공 사업을 따면 요구사항정의서 방식으로 바꿔야 해요."
+   ],
+   "hear": [
+    "“이건 우리 PRD가 아니라 고객 요구사항정의서 기준이에요.”"
+   ],
+   "ask": [
+    "이 문서에 서명하는 사람은 누구이고, 그 서명이 무엇을 약속하나요?",
+    "계약 일인가요, 내부 일인가요?"
+   ],
+   "deep": [
+    "이 매핑(SRS ≈ 요구사항정의서 ≈ PRD + 인수 조건)은 R2 조사의 해석이에요. 각 문서의 내용은 출처가 있지만, '거의 같다'는 연결은 해석이에요."
+   ],
+   "recall": {
+    "q": "PRD는 누구 사이의 합의인가요?",
+    "a": "내부 팀"
+   },
+   "quiz": [
+    {
+     "q": "요구사항정의서를 쓰는 쪽은?",
+     "options": [
+      "감리인",
+      "국회",
+      "사업자(공급자)"
+     ],
+     "answer": 2,
+     "why": "사업자가 쓰고 기관이 확인해요."
+    },
+    {
+     "q": "서울대 서식에 있는 칸은?",
+     "options": [
+      "광고비",
+      "반영되지 않을 경우 문제점",
+      "주가"
+     ],
+     "answer": 1,
+     "why": "요청이 빠지면 생기는 문제를 적어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "IEEE Std 830-1998 full text (MSU course copy)",
+     "url": "https://www.cse.msu.edu/~cse870/IEEEXplore-SRS-template.pdf",
+     "date": "1998"
+    },
+    {
+     "title": "정보시스템 감리기준",
+     "url": "https://www.law.go.kr/행정규칙/정보시스템감리기준",
+     "date": "시행 2024-06-27"
+    },
+    {
+     "title": "서울대학교 행정정보화 서비스지침 (별지1 요구사항정의서 서식)",
+     "url": "https://ist.snu.ac.kr/wp-content/uploads/sites/186/2023/10/서울대학교_행정정보화_서비스지침_본문.pdf",
+     "date": "2015-05-22"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "사용자 스토리는 카드 · 대화 · 확인이에요",
+   "lead": "사용자 스토리는 XP에서 왔어요. Ron Jeffries는 '카드, 대화, 확인'이라고 했어요. 카드는 요구사항의 표시이고, 세부는 대화로 채우고, 인수 테스트로 확인해요.",
+   "idea": [
+    "흔한 틀은 '나는 [사용자]로서, [무엇]을 하고 싶다, 왜냐하면 [이유]'예요. 2001년 영국 Connextra에서 나와 'Connextra 형식'이라고 불러요.",
+    "큰 스토리는 에픽이라고 하고, 개발 전에 쪼개요.",
+    "스크럼 가이드에는 '사용자 스토리', '스토리 포인트', '속도'라는 말이 없어요. 스토리는 스크럼의 필수가 아니라 XP에서 온 보완 관행이에요."
+   ],
+   "hear": [
+    "“이 스토리는 너무 커서 에픽으로 올리고 쪼갤게요.”"
+   ],
+   "ask": [
+    "이 스토리의 '왜냐하면'은 무엇인가요?",
+    "이 스토리가 끝났다는 건 어떻게 확인하나요?"
+   ],
+   "deep": [
+    "Agile Alliance는 틀을 체크리스트처럼 '경직되게' 쓰는 걸 흔한 실수로 꼽아요. 형식보다 대화가 핵심이에요."
+   ],
+   "recall": {
+    "q": "Jeffries의 3C는?",
+    "a": "Card · Conversation · Confirmation"
+   },
+   "quiz": [
+    {
+     "q": "스크럼 가이드에 '사용자 스토리'가 나오나요?",
+     "options": [
+      "예",
+      "아니요"
+     ],
+     "answer": 1,
+     "why": "스토리는 XP에서 온 보완 관행이에요."
+    },
+    {
+     "q": "Connextra 형식의 마지막 부분은?",
+     "options": [
+      "가격",
+      "담당자",
+      "왜냐하면(이유)"
+     ],
+     "answer": 2,
+     "why": "so that, 이유예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Essential XP: Card, Conversation, Confirmation — Ron Jeffries",
+     "url": "https://ronjeffries.com/xprog/articles/expcardconversationconfirmation/",
+     "date": "2001-08-30"
+    },
+    {
+     "title": "User Story Template — Agile Alliance",
+     "url": "https://www.agilealliance.org/glossary/user-story-template/",
+     "date": "current"
+    },
+    {
+     "title": "The 2020 Scrum Guide",
+     "url": "https://scrumguides.org/scrum-guide.html",
+     "date": "2020-11"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "인수 조건은 Given · When · Then으로 써요",
+   "lead": "인수 조건은 스토리가 제대로 끝났는지 판단하는 세부예요. BDD의 Given(상황) / When(행동) / Then(결과) 틀로 쓰면 테스트로 바로 바뀌어요.",
+   "idea": [
+    "Given/When/Then은 Dan North와 Chris Matts의 BDD에서 나왔고, 2006년 3월 『Better Software』에 처음 실렸어요.",
+    "Fowler: Given은 전제 조건, When은 행동, Then은 기대되는 변화예요.",
+    "대표는 코드를 몰라도 이 세 줄은 읽고 고칠 수 있어요. '이게 맞는 결과인가?'를 사업 관점에서 확인하는 자리예요."
+   ],
+   "code": {
+    "text": "Given 60분짜리 회의 녹음을 올린 사용자가\nWhen 업로드가 끝나면\nThen 요약 한 장과 할 일 목록이 화면에 보인다\n  And 할 일마다 담당자 칸이 비어 있다",
+    "read": "Given은 시작 상황, When은 사용자의 행동, Then은 확인할 결과예요. 'And'로 결과를 더 붙여요. 숫자 기준(예: 몇 분 안에)은 팀이 정할 값이에요."
+   },
+   "hear": [
+    "“Then 줄에 '빠르게'라고 쓰면 테스트를 못 해요.”"
+   ],
+   "ask": [
+    "Then 줄은 숫자나 눈에 보이는 결과로 쓰였나요?",
+    "실패하는 경우(예: 파일이 너무 클 때)의 조건도 있나요?"
+   ],
+   "mine": "dsm-mafia의 e2e 테스트(scripts/e2e.mjs, Playwright)는 데스크톱과 폰 크기에서 화면을 직접 눌러 확인해요. 인수 조건을 자동으로 확인하는 작은 예예요.",
+   "deep": [
+    "인수 조건은 스프린트 계획 전에 합의하는 게 보통이에요(Definition of Ready). HashiCorp도 인수 조건을 테스트 케이스처럼 객관적으로 쓰라고 해요."
+   ],
+   "recall": {
+    "q": "Given / When / Then은 각각?",
+    "a": "전제 조건 / 행동 / 기대 결과"
+   },
+   "quiz": [
+    {
+     "q": "Given/When/Then이 나온 방법론은?",
+     "options": [
+      "PMBOK",
+      "BDD",
+      "폭포수"
+     ],
+     "answer": 1,
+     "why": "Behaviour-Driven Development예요."
+    },
+    {
+     "q": "좋은 Then 문장은?",
+     "options": [
+      "요약이 빠르게 나온다",
+      "5분 안에 요약 한 장이 메일로 온다",
+      "사용자가 만족한다"
+     ],
+     "answer": 1,
+     "why": "확인할 수 있어야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Introducing BDD — Dan North",
+     "url": "https://dannorth.net/blog/introducing-bdd/",
+     "date": "2006-03"
+    },
+    {
+     "title": "Given When Then — Martin Fowler",
+     "url": "https://martinfowler.com/bliki/GivenWhenThen.html",
+     "date": "2013-08-21"
+    },
+    {
+     "title": "User Stories — Mountain Goat Software",
+     "url": "https://www.mountaingoatsoftware.com/agile/user-stories",
+     "date": "2026-07-12"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "좋은 스토리의 여섯 조건, INVEST",
+   "lead": "Bill Wake(2003)의 INVEST: 독립적(Independent), 협상 가능(Negotiable), 가치 있음(Valuable), 추정 가능(Estimable), 작음(Small), 테스트 가능(Testable).",
+   "idea": [
+    "독립적: 다른 스토리와 엮이지 않게. 협상 가능: 계약이 아니라 대화의 시작. 가치 있음: 사용자나 고객에게 가치가 보여야.",
+    "추정 가능: 팀이 크기를 가늠할 수 있게. 작음: 한 번에 끝낼 수 있게. 테스트 가능: 끝났는지 확인할 수 있게.",
+    "흔한 실수는 너무 큰 스토리(Small 위반)와 확인 방법이 없는 스토리(Testable 위반)예요."
+   ],
+   "hear": [
+    "“이건 Small이 아니에요. 셋으로 쪼개죠.”"
+   ],
+   "ask": [
+    "이 스토리 하나만 끝나도 사용자에게 가치가 보이나요?",
+    "어떻게 테스트하나요?"
+   ],
+   "deep": [
+    "INVEST 글은 2003-08-17에 나왔고 2011년 후기가 붙어 있어요."
+   ],
+   "recall": {
+    "q": "INVEST의 T는?",
+    "a": "Testable (테스트 가능)"
+   },
+   "quiz": [
+    {
+     "q": "'너무 큰 스토리'는 INVEST의 무엇을 어기나요?",
+     "options": [
+      "Valuable",
+      "Negotiable",
+      "Small"
+     ],
+     "answer": 2,
+     "why": "작아야 해요."
+    },
+    {
+     "q": "INVEST의 N이 말하는 것은?",
+     "options": [
+      "숫자를 써라",
+      "스토리는 계약이 아니라 대화의 시작",
+      "이름을 붙여라"
+     ],
+     "answer": 1,
+     "why": "협상 가능해야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "INVEST in Good Stories, and SMART Tasks — Bill Wake",
+     "url": "https://xp123.com/articles/invest-in-good-stories-and-smart-tasks/",
+     "date": "2003-08-17"
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "기능 말고도 요구사항이 있어요: 비기능 요구사항",
+   "lead": "성능, 보안, 품질(신뢰성·사용성·유지관리성·이식성), 제약 같은 '어떻게 잘 돌아가야 하나'가 비기능 요구사항이에요. 기능만큼 사고를 많이 내요.",
+   "idea": [
+    "한국 고시의 11가지 분류 중 기능은 하나뿐이에요. 나머지는 대부분 비기능이에요. 29148의 SyRS도 사용성, 성능, 보안, 정보 관리를 따로 둬요.",
+    "비기능 요구사항은 '검증 가능'하게 쓰기가 특히 어려워요. '빠르게' 대신 '응답 3초 이하'처럼 숫자로 써요.",
+    "공공 사업에서는 비기능 기준을 증빙 문서로 확인해요. 예를 들어 응답 시간 3초 이하는 성능시험결과서로 증명해요(NIA 2023 가이드의 예)."
+   ],
+   "hear": [
+    "“기능은 다 됐는데, 동시 접속 100명에서 멈춰요.”"
+   ],
+   "ask": [
+    "성능·보안 요구사항이 숫자로 적혀 있나요?",
+    "출시 날 몇 명이 동시에 들어올 거라고 가정했나요?"
+   ],
+   "deep": [
+    "두런 숫자 예: '60분 녹음 요약 [팀이 정할 값]분 이내', '녹음 보관 [팀이 정할 값]일'. 이 값은 대표와 팀이 정해야 해요(가상)."
+   ],
+   "recall": {
+    "q": "비기능 요구사항의 예 두 가지는?",
+    "a": "성능, 보안 (그 밖에 신뢰성, 사용성 등)"
+   },
+   "quiz": [
+    {
+     "q": "비기능 요구사항을 쓰는 좋은 방법은?",
+     "options": [
+      "숫자로 검증 가능하게",
+      "형용사로",
+      "쓰지 않기"
+     ],
+     "answer": 0,
+     "why": "검증 가능해야 해요."
+    },
+    {
+     "q": "공공 사업에서 '응답 3초 이하'를 증명하는 문서 예는?",
+     "options": [
+      "회의록",
+      "보도자료",
+      "성능시험결과서"
+     ],
+     "answer": 2,
+     "why": "NIA 가이드의 예예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "소프트웨어사업 계약 및 관리감독에 관한 지침 (별표2, 별지6)",
+     "url": "https://www.law.go.kr/행정규칙/소프트웨어사업계약및관리감독에관한지침",
+     "date": "시행 2023-05-15"
+    },
+    {
+     "title": "SW사업자를 위한 정보시스템 감리준비 및 대응 가이드 — NIA",
+     "url": "https://nia.or.kr/site/nia_kor/ex/bbs/View.do?cbIdx=99860&bcIdx=25210&parentSeq=25210",
+     "date": "2023-02-06"
+    },
+    {
+     "title": "ISO/IEC/IEEE 29148:2018 official preview (TOC)",
+     "url": "https://assets.vde-verlag.de/iec-normen/preview-pdf/info_isoiecieee29148%7Bed2.0%7Den.pdf",
+     "date": "2018-11"
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "'범위 밖'을 적는 게 범위를 지키는 방법이에요",
+   "lead": "Atlassian PRD에는 '하지 않을 것' 칸이 있어요. 하지 않을 것을 적어 두면, 나중에 '이것도 해 주세요'가 들어올 때 기준이 돼요.",
+   "idea": [
+    "Shape Up 피치에도 No-Gos가 있어요. 범위 밖은 '절대 안 함'이 아니라 '이번에는 안 함'이에요.",
+    "공공 사업은 범위 변경을 공식 절차로 다뤄요. 제안요청서에는 사업자가 과업심의위원회를 요청할 수 있다는 내용이 들어가야 해요(행안부 지침 제16조).",
+    "대표의 일은 범위 밖 목록을 지키는 거예요. 새 요청이 오면 '무엇을 빼고 넣을까?'를 물어요."
+   ],
+   "hear": [
+    "“실시간 자막은 v1 범위 밖이에요.”",
+    "“그럼 화상회의 연동은 언제 해요?”"
+   ],
+   "ask": [
+    "이 요청을 넣으면 무엇을 빼야 하나요?",
+    "범위 밖 목록은 누가 바꿀 권한이 있나요?"
+   ],
+   "mine": "dsm-mafia의 .grill/*.md 파일에는 '범위 밖(out of scope)' 칸이 있어요. 기능을 만들 때 하지 않기로 한 것을 먼저 적어 둬요.",
+   "deep": [
+    "HealthCare.gov 사례에서 GAO는 비용 증가가 '주로 요구사항 변경 때문'이라고 했어요. 이번 주 사례에서 자세히 봐요."
+   ],
+   "recall": {
+    "q": "공공 사업에서 범위 변경을 다루는 공식 기구는?",
+    "a": "과업심의위원회"
+   },
+   "quiz": [
+    {
+     "q": "범위 밖의 뜻으로 맞는 것은?",
+     "options": [
+      "비밀",
+      "이번에는 안 함",
+      "영원히 안 함"
+     ],
+     "answer": 1,
+     "why": "이번 버전에서 안 하는 것이에요."
+    },
+    {
+     "q": "새 요청이 왔을 때 대표의 좋은 질문은?",
+     "options": [
+      "무엇을 빼고 넣을까?",
+      "누가 잘못했나?",
+      "왜 이제 말했나?"
+     ],
+     "answer": 0,
+     "why": "범위는 바꾸는 게 아니라 맞바꿔요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    },
+    {
+     "title": "Shape Up — Ryan Singer (Basecamp)",
+     "url": "https://basecamp.com/shapeup",
+     "date": "web edition"
+    },
+    {
+     "title": "행정기관 및 공공기관 정보시스템 구축·운영 지침",
+     "url": "https://www.law.go.kr/행정규칙/행정기관및공공기관정보시스템구축ㆍ운영지침",
+     "date": "시행 2025-01-02"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "요구사항은 늦게 바뀔수록 비싸요",
+   "lead": "초기 추정은 양쪽으로 4배까지 틀릴 수 있어요(불확실성의 원뿔). 그리고 코드를 갈아엎는 건 프로토타입을 갈아엎는 것보다 훨씬 비싸요.",
+   "idea": [
+    "Construx의 '불확실성의 원뿔': 초기 개념 단계의 추정은 4배 넘게 빗나갈 수 있고, 결정을 내릴수록 좁아져요. 범위가 16배까지 벌어지는 셈이에요.",
+    "NN/g: '코드를 찢는 건 매우 비싸요. 프로토타입을 찢는 건 그렇지 않아요.' 그래서 요구사항을 프로토타입과 인수 조건으로 일찍 확인해요.",
+    "HealthCare.gov에서 GAO는 비용 증가가 주로 요구사항 변경 때문이었고 감독 공백이 이를 키웠다고 했어요."
+   ],
+   "hear": [
+    "“이거 지금 바꾸면 2주 다시 해야 돼요.”"
+   ],
+   "ask": [
+    "이 요구사항이 틀렸다면 언제 알게 되나요?",
+    "더 싸게 확인할 방법(프로토타입)이 있나요?"
+   ],
+   "deep": [
+    "원뿔의 숫자는 논쟁이 있어요. Bossavit는 Boehm의 1981년 범위가 '주관적으로 정해졌다'고 하고, 프로젝트는 일찍보다 늦게 끝나는 경우가 훨씬 많다고 해요. 숫자보다 방향(결정할수록 불확실성이 줄어요)을 기억해요."
+   ],
+   "recall": {
+    "q": "불확실성의 원뿔이 말하는 초기 추정의 오차는?",
+    "a": "양쪽으로 4배 (범위 16배)"
+   },
+   "quiz": [
+    {
+     "q": "원뿔에서 불확실성을 줄이는 것은?",
+     "options": [
+      "시간만 지나는 것",
+      "사람을 늘리는 것",
+      "결정을 내리는 것"
+     ],
+     "answer": 2,
+     "why": "결정할수록 좁아져요."
+    },
+    {
+     "q": "NN/g가 싸다고 한 것은?",
+     "options": [
+      "서버를 버리기",
+      "프로토타입을 버리기",
+      "코드를 버리기"
+     ],
+     "answer": 1,
+     "why": "프로토타입이 싸요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "The Cone of Uncertainty — Construx",
+     "url": "https://www.construx.com/books/the-cone-of-uncertainty/",
+     "date": "2016-09-17"
+    },
+    {
+     "title": "UX Prototypes: Low Fidelity vs. High Fidelity — NN/g",
+     "url": "https://www.nngroup.com/articles/ux-prototype-hi-lo-fidelity/",
+     "date": "2016-12-18"
+    },
+    {
+     "title": "GAO-14-694 Healthcare.gov: Ineffective Planning and Oversight Practices",
+     "url": "https://www.gao.gov/products/gao-14-694",
+     "date": "2014-07-30"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "PRD는 살아 있는 문서예요",
+   "lead": "요구사항은 한 번 쓰고 얼리는 게 아니에요. Atlassian은 '요구사항을 다시 고치지 않는 것'을 안티 패턴으로 꼽아요. 동시에 테스트할 시간을 남기려면 어느 시점에는 고정해야 해요.",
+   "idea": [
+    "둘은 모순처럼 보이지만 아니에요. 발견하며 계속 고치고, 출시 전 테스트에 필요한 만큼은 고정해요. HealthCare.gov는 끝까지 바뀌어서 종단 간 테스트를 못 했어요.",
+    "Definition of Ready는 '이 스토리는 시작할 준비가 됐다'의 팀 기준이에요. 인수 조건이 있는지 같은 것을 확인해요. 단, 스크럼 가이드에는 이 말이 없어요.",
+    "PRD 상태(작성 중 → 리뷰 중 → 승인 → 폐기)와 변경 기록을 남기면, 누가 언제 무엇을 바꿨는지 보여요."
+   ],
+   "hear": [
+    "“PRD v1.2에서 할 일 자동 배정을 2단계로 옮겼어요.”"
+   ],
+   "ask": [
+    "지난 버전과 무엇이 바뀌었고, 누가 승인했나요?",
+    "테스트를 위해 언제 요구사항을 고정하나요?"
+   ],
+   "mine": "dsm-mafia의 .grill/*.md는 인터뷰 때마다 새 파일로 남아요. 결정이 바뀌면 새 파일에 이유와 함께 적어서, 결정의 역사가 보여요.",
+   "deep": [
+    "Agile Alliance는 Definition of Ready와 Definition of Done을 용어집으로 설명해요. DoD는 '완료'의 기준, DoR은 '시작'의 기준이에요."
+   ],
+   "recall": {
+    "q": "Definition of Ready가 말하는 것은?",
+    "a": "스토리가 시작할 준비가 됐다는 팀 기준"
+   },
+   "quiz": [
+    {
+     "q": "Atlassian 안티 패턴은?",
+     "options": [
+      "요구사항을 다시 고치지 않음",
+      "변경 기록 남기기",
+      "개발자와 함께 쓰기"
+     ],
+     "answer": 0,
+     "why": "얼려 두면 낡아요."
+    },
+    {
+     "q": "스크럼 가이드에 Definition of Ready가 나오나요?",
+     "options": [
+      "아니요",
+      "예"
+     ],
+     "answer": 0,
+     "why": "DoD만 있고 DoR은 없어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    },
+    {
+     "title": "Definition of Ready — Agile Alliance",
+     "url": "https://www.agilealliance.org/glossary/definition-of-ready/",
+     "date": "current"
+    },
+    {
+     "title": "HealthCare.gov: Case Study of CMS Management of the Federal Marketplace — HHS OIG",
+     "url": "https://oig.hhs.gov/reports/all/2016/healthcaregov-case-study-of-cms-management-of-the-federal-marketplace/",
+     "date": "2016-02-22"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "이번 주 문서: 두런 PRD v1",
+   "lead": "금요일에는 두런 PRD v1을 써요. 녹음 → 요약 → 할 일 흐름이 범위 안, 실시간 자막과 화상회의 연동은 범위 밖이에요.",
+   "idea": [
+    "Atlassian과 HashiCorp를 섞어요. 문제와 배경, 목표와 성공 지표, 가정, 사용자 스토리와 인수 조건(Given/When/Then), 비기능 요구사항, 질문, 범위 밖, 승인.",
+    "요구사항마다 번호를 붙여요(예: FR-01). 공공 사업처럼 출처(누가 요청했나)도 적어 두면 나중에 추적이 쉬워요.",
+    "한 쪽을 넘으면 디자인, 조사 기록으로 링크해요. 엔지니어(지훈)와 디자이너(하린)가 같이 쓰고, 마지막에 대표가 범위와 지표를 승인해요."
+   ],
+   "hear": [
+    "“v1에 실시간 자막 넣자는 요청이 또 왔어요.”",
+    "“범위 밖에 적혀 있어요. v2 후보로 질문 칸에 올릴게요.”"
+   ],
+   "ask": [
+    "모든 스토리에 인수 조건이 있나요?",
+    "성공 지표는 출시 전에 측정되게 되어 있나요?"
+   ],
+   "deep": [
+    "HashiCorp의 승인 조건을 빌리면: 범위 안의 인수 조건이 있고, 엔지니어링과 PM이 목표 출시에 합의했고, 기술 설계를 시작할 수 있을 만큼 명확해야 해요."
+   ],
+   "recall": {
+    "q": "두런 PRD v1의 범위 밖 두 가지는?",
+    "a": "실시간 자막, 화상회의 연동"
+   },
+   "quiz": [
+    {
+     "q": "PRD v1 승인을 누가 해야 할까요?",
+     "options": [
+      "고객 한 명",
+      "대표가 범위·지표를, 엔지니어·디자이너가 함께 확인",
+      "외부 투자자"
+     ],
+     "answer": 1,
+     "why": "함께 쓰고 대표가 승인해요."
+    },
+    {
+     "q": "요구사항에 출처를 적는 이유는?",
+     "options": [
+      "나중에 추적하려고",
+      "글자 수를 늘리려고",
+      "규칙이라서만"
+     ],
+     "answer": 0,
+     "why": "누가 왜 요청했는지 추적해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    },
+    {
+     "title": "PRD Template — HashiCorp",
+     "url": "https://www.hashicorp.com/how-hashicorp-works/articles/prd-template",
+     "date": "undated"
+    },
+    {
+     "title": "소프트웨어사업 계약 및 관리감독에 관한 지침 (별표2, 별지6)",
+     "url": "https://www.law.go.kr/행정규칙/소프트웨어사업계약및관리감독에관한지침",
+     "date": "시행 2023-05-15"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "healthcare-gov-2013",
+   "day": 5,
+   "title": "요구사항이 끝까지 바뀐 사이트는 첫날 6명만 가입시켰어요",
+   "when": "2013-10-01",
+   "lead": "미국 건강보험 거래소 사이트 HealthCare.gov는 고정된 날짜에 열었어요. 요구사항은 계속 바뀌었고, 종단 간 테스트는 끝나지 못했어요. 첫날부터 무너졌어요.",
+   "facts": [
+    {
+     "label": "10월 일부 주의 장애",
+     "value": "약 60%의 시간 동안 다운",
+     "src": "HHS 보고서"
+    },
+    {
+     "label": "첫날 가입",
+     "value": "6건 (언론 보도, 공식 통계 아님)",
+     "src": "NBC News"
+    },
+    {
+     "label": "연방 거래소 계약 의무액",
+     "value": "5,600만 달러 → 2억 900만 달러 이상",
+     "src": "GAO"
+    },
+    {
+     "label": "OIG가 꼽은 가장 큰 문제",
+     "value": "분명한 리더십의 부재",
+     "src": "HHS OIG"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2011-09",
+     "text": "연방 거래소(FFM) 개발이 CGI Federal에 맡겨져요.",
+     "hot": false
+    },
+    {
+     "t": "2013.1~9",
+     "text": "요구사항이 계속 바뀌어요. 8~9월에 범위를 줄이고, 8월 20일 데모는 실제 작동 대신 '스냅숏'으로 보여 줘요.",
+     "hot": true
+    },
+    {
+     "t": "09-26",
+     "text": "제한된 성능 테스트에서 계획보다 훨씬 적은 동시 사용자만 감당된다는 게 나와요. 약 72시간 만에 인프라를 두 배로 늘려요.",
+     "hot": true
+    },
+    {
+     "t": "10-01",
+     "text": "출시. 동시 사용자 25만 명이 몰리고 2시간 안에 장애가 시작돼요.",
+     "hot": true
+    },
+    {
+     "t": "10-24",
+     "text": "QSSI가 시스템 통합 사업자로 지정돼요.",
+     "hot": false
+    },
+    {
+     "t": "12-01",
+     "text": "가동률 90% 이상(11월 초 42%), 동시 사용자 3만 5천 명 이상.",
+     "hot": false
+    },
+    {
+     "t": "2014-03-31",
+     "text": "540만 명이 보험을 선택해요.",
+     "hot": false
+    }
+   ],
+   "causes": [
+    {
+     "stage": "요구사항 · 변경 관리",
+     "title": "요구사항이 늦게까지 바뀌었어요",
+     "text": "GAO는 비용 증가가 '주로 요구사항 변경 때문'이었고 감독 공백이 이를 키웠다고 했어요."
+    },
+    {
+     "stage": "조직",
+     "title": "한 명의 책임자가 없었어요",
+     "text": "OIG는 '분명한 리더십의 부재'를 가장 큰 문제로 꼽았어요. CMS는 통합 사업자 역할을 정하지 않고 스스로 맡았어요."
+    },
+    {
+     "stage": "테스트 · 출시 결정",
+     "title": "종단 간 테스트 없이 날짜를 지켰어요",
+     "text": "'종단 간 테스트를 끝내지 못했고', 성능 요구를 확인하지 않은 채 열었어요. 리더들은 '나쁜 소식에 저항'했어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "그때 대표라면? 출시 6주 전, 요구사항이 아직 바뀌고 있어요.",
+     "a": "테스트할 시간을 남기려면 요구사항을 고정하는 날을 정해요. 그 뒤 요청은 다음 버전으로 보내고, 범위를 줄여서라도 테스트를 지켜요."
+    },
+    {
+     "q": "데모가 실제 작동이 아니라 스냅숏이라면?",
+     "a": "초록색 보고서는 증거가 아니에요. 실제 작동하는 걸 보여 달라고 하고, 나쁜 소식을 말할 수 있는 분위기를 만들어요."
+    },
+    {
+     "q": "출시일이 정치적으로 고정돼 있다면 무엇을 줄여야 할까요?",
+     "a": "테스트가 아니라 범위를 줄여요. 핵심 흐름 하나만 제대로 여는 MVP식 판단이에요."
+    }
+   ],
+   "after": [
+    "시스템 통합 사업자, '배지 없는' 한 팀 문화, 철저한 우선순위로 약 두 달 만에 회복했어요(OIG).",
+    "GAO의 권고 5개는 모두 이행 완료로 닫혔어요.",
+    "2014-08-11 미국 디지털 서비스(USDS)가 만들어졌어요."
+   ],
+   "sources": [
+    {
+     "title": "GAO-14-694 Healthcare.gov: Ineffective Planning and Oversight Practices",
+     "url": "https://www.gao.gov/products/gao-14-694",
+     "date": "2014-07-30"
+    },
+    {
+     "title": "HealthCare.gov: Case Study of CMS Management of the Federal Marketplace — HHS OIG",
+     "url": "https://oig.hhs.gov/reports/all/2016/healthcaregov-case-study-of-cms-management-of-the-federal-marketplace/",
+     "date": "2016-02-22"
+    },
+    {
+     "title": "Healthcare.Gov: Progress and Performance Report — HHS (govinfo)",
+     "url": "https://www.govinfo.gov/app/details/GOVPUB-HE-PURL-gpo41857",
+     "date": "2013-12"
+    },
+    {
+     "title": "Only 6 able to sign up on healthcare.gov's first day — NBC News",
+     "url": "https://www.nbcnews.com/politics/politics-news/only-6-able-sign-healthcare-govs-first-day-documents-show-flna8c11509571",
+     "date": "2013-10-31"
+    }
+   ],
+   "caveat": "GAO는 의무액(5,600만 → 2억 900만 달러 이상), OIG는 계약 금액(5,800만 → 2억 700만 달러)을 세서 숫자가 달라요. '첫날 6건'은 하원 위원회가 공개한 상황실 메모에서 나왔고, HHS는 공식 통계가 아니라고 했어요."
+  },
+  {
+   "id": "atlassian-2022",
+   "day": 3,
+   "title": "'사이트 ID'와 '앱 ID'를 헷갈린 요청 하나가 883개 사이트를 지웠어요",
+   "when": "2022-04-05 → 2022-04-18",
+   "lead": "아틀라시안의 한 팀이 다른 팀에 오래된 앱 정리를 요청했어요. 그런데 요청서에 앱 ID 대신 고객 사이트 ID가 들어갔고, 스크립트는 경고 없이 사이트를 통째로 지웠어요. 팀 사이의 요구사항 전달 실수예요.",
+   "facts": [
+    {
+     "label": "영향",
+     "value": "고객 775곳, 사이트 883개",
+     "src": "Atlassian 사후 검토"
+    },
+    {
+     "label": "가장 긴 중단",
+     "value": "최대 14일",
+     "src": "Atlassian 사후 검토"
+    },
+    {
+     "label": "데이터 손실",
+     "value": "5분 이하 (RPO는 지킴, RTO는 놓침)",
+     "src": "Atlassian 사후 검토"
+    },
+    {
+     "label": "첫 수동 복구 절차",
+     "value": "약 70단계, 묶음당 약 48시간",
+     "src": "Atlassian 사후 검토"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "04-05 07:38–08:01",
+     "text": "스크립트가 사이트 883개를 지워요.",
+     "hot": true
+    },
+    {
+     "t": "04-05 08:17",
+     "text": "주요 장애로 선언돼요.",
+     "hot": false
+    },
+    {
+     "t": "04-05 08:53",
+     "text": "삭제가 스크립트 때문이라는 게 밝혀져요.",
+     "hot": false
+    },
+    {
+     "t": "04-08",
+     "text": "첫 사이트 복구, 코드 동결.",
+     "hot": false
+    },
+    {
+     "t": "04-13",
+     "text": "임원의 첫 공개 입장. 그 전의 침묵이 비판받아요.",
+     "hot": true
+    },
+    {
+     "t": "04-14~17",
+     "text": "더 빠른 복구 절차로 약 771개 사이트 복구.",
+     "hot": false
+    },
+    {
+     "t": "04-18",
+     "text": "모든 사이트 복구.",
+     "hot": false
+    }
+   ],
+   "causes": [
+    {
+     "stage": "요구사항 · 전달",
+     "title": "요청한 팀과 실행한 팀 사이의 '소통 공백'",
+     "text": "정리를 요청한 팀과 실행한 팀 사이에서 앱 ID 대신 사이트 ID가 넘어갔어요."
+    },
+    {
+     "stage": "설계 · 검증",
+     "title": "API가 두 종류 ID를 다 받았어요",
+     "text": "API는 어느 ID든 '경고 신호 없이' 받았어요. 스테이징에는 그 ID가 없어서 리뷰와 테스트도 놓쳤어요."
+    },
+    {
+     "stage": "운영 · 복구",
+     "title": "한 번에 많이 복구하는 방법이 없었어요",
+     "text": "복구는 사이트 하나씩만 연습돼 있었고, 수백 개를 한꺼번에 복구하는 자동화가 없었어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "그때 대표라면? 다른 팀에 '오래된 데이터 정리'를 맡길 때 요청서에 무엇을 꼭 넣을까요?",
+     "a": "무엇을 지울지의 정확한 정의(어떤 ID인지), 확인 방법(인수 조건), 되돌리는 방법이에요. 요구사항이 모호하면 실행자가 다르게 읽어요."
+    },
+    {
+     "q": "'지운다'는 요구사항에 비기능 요구사항을 하나 더한다면?",
+     "a": "'소프트 삭제로, N일 안에 되돌릴 수 있어야 한다' 같은 복구 요구예요. 아틀라시안도 이후 모든 고객 데이터에 소프트 삭제를 넣었어요."
+    },
+    {
+     "q": "장애 중 고객 소통을 누가 맡아야 할까요?",
+     "a": "한 명의 책임자를 미리 정해요. 공동 CEO는 '책임은 우리에게 있다'고 썼지만, 첫 공개 입장은 8일 뒤였어요."
+    }
+   ],
+   "after": [
+    "모든 고객 데이터에 소프트 삭제, 대량 사이트 삭제 즉시 차단.",
+    "여러 사이트를 한 번에 자동 복구하는 기능과 정기 재해 복구 훈련.",
+    "대형 장애 플레이북, 제품 밖에 백업한 고객 연락처, 24시간 에스컬레이션."
+   ],
+   "sources": [
+    {
+     "title": "Post-Incident Review on the Atlassian April 2022 outage — Atlassian",
+     "url": "https://www.atlassian.com/blog/how-we-build/post-incident-review-april-2022-outage",
+     "date": "2022-04-29"
+    },
+    {
+     "title": "Update on the Atlassian outage affecting some customers — Atlassian",
+     "url": "https://www.atlassian.com/blog/how-we-build/april-2022-outage-update",
+     "date": "2022-04-13"
+    },
+    {
+     "title": "Inside the Longest Atlassian Outage of All Time — The Pragmatic Engineer",
+     "url": "https://newsletter.pragmaticengineer.com/p/scoop-atlassian",
+     "date": "2022-04-13"
+    }
+   ],
+   "caveat": "2022-04-13 발표는 '약 400곳'이라 했지만 2주 뒤 검토는 775곳, 883개 사이트라고 해요. 사용자 수 '5만 명 이상'은 언론 보도뿐이에요. 미국 기준으로는 4월 4일 시작이에요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "PRD는 누가 써요?",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "PRD 제가 이번 주에 혼자 다 써서 드릴게요."
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "저는 완성본만 받으면 돼요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "서연이 이끌되, 지훈과 하린이 초안부터 같이 써요.",
+     "ok": true,
+     "why": "함께 써야 실현 가능성과 사용성이 일찍 들어가요."
+    },
+    {
+     "k": "B",
+     "t": "지훈이 대신 써요.",
+     "ok": false,
+     "why": "PM의 일을 빼앗는 거예요."
+    },
+    {
+     "k": "C",
+     "t": "서연이 혼자 완성해서 넘겨요.",
+     "ok": false,
+     "why": "Atlassian은 PRD를 혼자 쓰지 말라고 해요."
+    }
+   ],
+   "explain": "Atlassian: '제품 요구사항 문서를 혼자 쓰지 마세요. 늘 개발자와 함께하세요.' PO 혼자 쓰는 건 안티 패턴이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "요구사항 순위 매기기",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "요구사항 12개에 1위부터 12위까지 순위 매겼어요."
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "순위가 중간쯤이면 결국 다 하라는 거죠?"
+    }
+   ],
+   "q": "HashiCorp 방식이라면?",
+   "options": [
+    {
+     "k": "A",
+     "t": "순위를 그대로 써요.",
+     "ok": false,
+     "why": "순위만으로는 언제 무엇이 나가는지 불분명해요."
+    },
+    {
+     "k": "B",
+     "t": "가치 순서로 1단계·2단계로 나누고, 1단계만 나가도 쓸 수 있게 해요.",
+     "ok": true,
+     "why": "HashiCorp는 순위 대신 단계를 권해요."
+    },
+    {
+     "k": "C",
+     "t": "12개 다 1단계로 해요.",
+     "ok": false,
+     "why": "범위 통제가 안 돼요."
+    }
+   ],
+   "explain": "HashiCorp PRD 템플릿은 요구사항에 순위를 매기지 말고 가치 순서의 단계로 나누라고 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "PRD Template — HashiCorp",
+     "url": "https://www.hashicorp.com/how-hashicorp-works/articles/prd-template",
+     "date": "undated"
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "50쪽짜리 기획서",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "모든 화면과 예외를 50쪽에 다 정리했어요. 승인해 주시면 개발 시작해요."
+    },
+    {
+     "name": "하린",
+     "role": "디자이너",
+     "text": "저는 아직 시안도 안 그렸는데요."
+    }
+   ],
+   "q": "대표로서 무엇을 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "기획서를 버리고 감으로 만들어요.",
+     "ok": false,
+     "why": "방향 없이 가요."
+    },
+    {
+     "k": "B",
+     "t": "철저하니 바로 승인해요.",
+     "ok": false,
+     "why": "Atlassian은 '철통 같은 사전 승인'을 안티 패턴으로 꼽아요."
+    },
+    {
+     "k": "C",
+     "t": "한 쪽 PRD로 줄여 왜·범위·인수 조건을 담고, 화면은 프로토타입으로 보여 주게 해요.",
+     "ok": true,
+     "why": "글과 프로토타입의 역할을 나눠요."
+    }
+   ],
+   "explain": "Atlassian은 '한 쪽, 한 곳'을 권하고, Cagan은 명세의 대부분이 프로토타입이어야 한다고 했어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    },
+    {
+     "title": "Revisiting the Product Spec — Marty Cagan (SVPG)",
+     "url": "https://www.svpg.com/revisiting-the-product-spec/",
+     "date": "2006-10-12"
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "고객사가 'SRD'를 달래요",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "기업 고객이 계약 전에 SRD를 달래요."
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "SRD가 뭐죠? SRS 말하는 건가?"
+    }
+   ],
+   "q": "가장 먼저 할 일은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "고객에게 시스템 요구사항인지 소프트웨어 요구사항인지, 양식이 있는지 물어요.",
+     "ok": true,
+     "why": "SRD는 표준 용어가 아니에요."
+    },
+    {
+     "k": "B",
+     "t": "PRD를 그대로 보내요.",
+     "ok": false,
+     "why": "내부 문서와 계약 문서는 무게가 달라요."
+    },
+    {
+     "k": "C",
+     "t": "인터넷에서 아무 양식이나 받아 써요.",
+     "ok": false,
+     "why": "뜻이 다른 문서를 줄 수 있어요."
+    }
+   ],
+   "explain": "SRD는 ISO/IEC/IEEE 29148에 없는 말이에요. 시스템(SyRS)인지 소프트웨어(SRS)인지 뜻을 확인해야 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "ISO/IEC/IEEE 29148:2018 official preview (TOC)",
+     "url": "https://assets.vde-verlag.de/iec-normen/preview-pdf/info_isoiecieee29148%7Bed2.0%7Den.pdf",
+     "date": "2018-11"
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "\"요약이 빨라야 해요\"",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "요구사항: 요약이 빠르게 나와야 한다."
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "이건 테스트를 못 해요."
+    }
+   ],
+   "q": "어떻게 고칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "그대로 둬요. 다들 뜻을 알아요.",
+     "ok": false,
+     "why": "검증할 수 없는 요구사항이에요."
+    },
+    {
+     "k": "B",
+     "t": "'60분 녹음 요약은 [팀이 정할 값]분 안에'처럼 숫자로 바꿔요.",
+     "ok": true,
+     "why": "검증 가능하게 써요."
+    },
+    {
+     "k": "C",
+     "t": "요구사항에서 빼요.",
+     "ok": false,
+     "why": "성능은 중요한 비기능 요구사항이에요."
+    }
+   ],
+   "explain": "IEEE 830은 좋은 요구사항의 조건으로 '검증 가능'을 들어요. '빠르게'처럼 확인할 수 없는 표현은 피해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "IEEE Std 830-1998 full text (MSU course copy)",
+     "url": "https://www.cse.msu.edu/~cse870/IEEEXplore-SRS-template.pdf",
+     "date": "1998"
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "요구사항에 DB 테이블이 들어 있어요",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "요구사항에 'tasks 테이블에 assignee 컬럼 추가'라고 써 뒀어요."
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "그건 제가 정할 부분인데요."
+    }
+   ],
+   "q": "무엇이 문제일까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "지훈이 PRD를 다시 다 써요.",
+     "ok": false,
+     "why": "역할이 바뀌어요."
+    },
+    {
+     "k": "B",
+     "t": "문제없어요. 자세할수록 좋아요.",
+     "ok": false,
+     "why": "설계가 섞이면 더 나은 방법을 막아요."
+    },
+    {
+     "k": "C",
+     "t": "요구사항은 '할 일마다 담당자를 정할 수 있다'처럼 무엇만 쓰고, 어떻게는 설계로 넘겨요.",
+     "ok": true,
+     "why": "IEEE 830: SRS에 설계 세부를 넣지 말 것."
+    }
+   ],
+   "explain": "IEEE 830은 SRS가 설계나 구현 세부를 담지 말라고 해요. 요구사항은 무엇, 설계 문서는 어떻게예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "IEEE Std 830-1998 full text (MSU course copy)",
+     "url": "https://www.cse.msu.edu/~cse870/IEEEXplore-SRS-template.pdf",
+     "date": "1998"
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "공공기관 RFP를 받았어요",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "시청에서 회의록 요약 사업 제안요청서가 왔어요."
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "요구사항이 SFR, PER, SER로 나뉘어 있어요."
+    }
+   ],
+   "q": "먼저 확인할 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "11가지 분류의 요구사항을 모두 읽고, 각 번호를 우리가 감당할 수 있는지 표로 정리해요.",
+     "ok": true,
+     "why": "요구사항 번호가 곧 계약 범위와 돈이에요."
+    },
+    {
+     "k": "B",
+     "t": "일단 따고 나중에 협상해요.",
+     "ok": false,
+     "why": "대비표로 감리받아요."
+    },
+    {
+     "k": "C",
+     "t": "기능(SFR)만 보고 견적을 내요.",
+     "ok": false,
+     "why": "성능, 보안 등 다른 분류도 계약 범위예요."
+    }
+   ],
+   "explain": "과기정통부 고시 별표2는 요구사항을 11가지로 나누고, NIPA 가이드는 SFR 같은 번호를 기능점수로 바꿔 사업비를 산정해요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "소프트웨어사업 계약 및 관리감독에 관한 지침 (별표2, 별지6)",
+     "url": "https://www.law.go.kr/행정규칙/소프트웨어사업계약및관리감독에관한지침",
+     "date": "시행 2023-05-15"
+    },
+    {
+     "title": "공공SW사업 제안요청서 작성을 위한 요구사항 실무 가이드 2021 — SWIT/NIPA",
+     "url": "https://www.swit.or.kr/IS/web/isCbmRefView.jsp?ref_sq=1104",
+     "date": "2021-02-24"
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "감리 일주일 전",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "감리인이 대비표를 달래요. 그게 뭐죠?"
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "요구사항정의서는 있어요."
+    }
+   ],
+   "q": "대비표의 역할은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "요구사항정의서 표지예요.",
+     "ok": false,
+     "why": "대비표는 연결 표예요."
+    },
+    {
+     "k": "B",
+     "t": "계약 범위 항목이 요구사항에 빠짐없이 들어갔는지 보여 주는 연결 표예요. 지금 만들어 빠진 항목을 찾아요.",
+     "ok": true,
+     "why": "감리기준 제8조의 추적성 확인이에요."
+    },
+    {
+     "k": "C",
+     "t": "감리와 상관없어요.",
+     "ok": false,
+     "why": "법으로 정해진 확인이에요."
+    }
+   ],
+   "explain": "정보시스템 감리기준 제8조는 요구사항정의서와 대비표로 계약 범위가 모두 반영됐는지 확인하게 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "정보시스템 감리기준",
+     "url": "https://www.law.go.kr/행정규칙/정보시스템감리기준",
+     "date": "시행 2024-06-27"
+    },
+    {
+     "title": "SW사업자를 위한 정보시스템 감리준비 및 대응 가이드 — NIA",
+     "url": "https://nia.or.kr/site/nia_kor/ex/bbs/View.do?cbIdx=99860&bcIdx=25210&parentSeq=25210",
+     "date": "2023-02-06"
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "작은 회사가 요구사항정의서까지?",
+   "scene": [
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "우리도 공공 양식 요구사항정의서 쓸까요? 멋있어 보이던데."
+    },
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "우리 고객은 다 일반 회사예요."
+    }
+   ],
+   "q": "1주차의 SI vs 자체 서비스를 떠올리면?",
+   "options": [
+    {
+     "k": "A",
+     "t": "문서를 아예 안 써요.",
+     "ok": false,
+     "why": "범위와 인수 조건은 필요해요."
+    },
+    {
+     "k": "B",
+     "t": "무조건 공공 양식으로 써요.",
+     "ok": false,
+     "why": "계약·감리가 없는 일에는 너무 무거워요."
+    },
+    {
+     "k": "C",
+     "t": "지금은 PRD + 인수 조건으로 가고, 공공 사업을 할 때 요구사항정의서 방식으로 바꿔요.",
+     "ok": true,
+     "why": "문서 무게는 서명하는 관계에 맞춰요."
+    }
+   ],
+   "explain": "PRD는 내부 합의, 요구사항정의서는 사업자·기관·감리가 얽힌 계약 문서예요. 1주차에서 본 SI와 자체 서비스의 리듬 차이와 같아요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "정보시스템 감리기준",
+     "url": "https://www.law.go.kr/행정규칙/정보시스템감리기준",
+     "date": "시행 2024-06-27"
+    },
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "스토리 하나가 너무 커요",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "스토리: '사용자로서 회의를 녹음하고 요약받고 할 일을 팀에 배정하고 알림받고 싶다.'"
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "이건 한 스프린트에 못 끝나요."
+    }
+   ],
+   "q": "INVEST로 보면?",
+   "options": [
+    {
+     "k": "A",
+     "t": "업로드 → 요약, 할 일 배정, 알림처럼 각각 가치가 보이는 작은 스토리로 쪼개요.",
+     "ok": true,
+     "why": "작고, 독립적이고, 테스트 가능하게."
+    },
+    {
+     "k": "B",
+     "t": "스토리를 없애고 기능 목록으로 바꿔요.",
+     "ok": false,
+     "why": "대화와 확인을 잃어요."
+    },
+    {
+     "k": "C",
+     "t": "그대로 둬요.",
+     "ok": false,
+     "why": "Small을 어겨요."
+    }
+   ],
+   "explain": "Bill Wake의 INVEST에서 S는 Small, 즉 한 번에 끝낼 수 있어야 해요. 너무 큰 스토리는 흔한 실수예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "INVEST in Good Stories, and SMART Tasks — Bill Wake",
+     "url": "https://xp123.com/articles/invest-in-good-stories-and-smart-tasks/",
+     "date": "2003-08-17"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "인수 조건이 비어 있어요",
+   "scene": [
+    {
+     "name": "하린",
+     "role": "디자이너",
+     "text": "이 스토리 언제 끝난 거예요?"
+    },
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "요약이 잘 나오면요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "'잘 나오면'으로 둬요.",
+     "ok": false,
+     "why": "확인할 수 없어요."
+    },
+    {
+     "k": "B",
+     "t": "Given/When/Then으로 시작 상황, 행동, 확인할 결과를 적어요.",
+     "ok": true,
+     "why": "BDD 틀로 테스트 가능하게."
+    },
+    {
+     "k": "C",
+     "t": "QA가 알아서 판단하게 해요.",
+     "ok": false,
+     "why": "기준 없이 판단을 떠넘겨요."
+    }
+   ],
+   "explain": "Dan North의 BDD 틀 Given/When/Then은 인수 조건을 테스트로 바로 바꿀 수 있게 해 줘요(Fowler 2013 설명).",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Introducing BDD — Dan North",
+     "url": "https://dannorth.net/blog/introducing-bdd/",
+     "date": "2006-03"
+    },
+    {
+     "title": "Given When Then — Martin Fowler",
+     "url": "https://martinfowler.com/bliki/GivenWhenThen.html",
+     "date": "2013-08-21"
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "\"이것도 MVP에 넣어 주세요\"",
+   "scene": [
+    {
+     "name": "하린",
+     "role": "디자이너",
+     "text": "PRD에 실시간 자막 넣으면 데모가 멋질 거예요."
+    },
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "범위 밖으로 적어 둔 건데요."
+    }
+   ],
+   "q": "2주차 MVP 원칙과 이번 주 범위 통제를 함께 보면?",
+   "options": [
+    {
+     "k": "A",
+     "t": "PRD를 처음부터 다시 써요.",
+     "ok": false,
+     "why": "과한 대응이에요."
+    },
+    {
+     "k": "B",
+     "t": "멋지니까 넣어요.",
+     "ok": false,
+     "why": "배우려는 가설과 상관없는 기능이 들어와요."
+    },
+    {
+     "k": "C",
+     "t": "이번 MVP가 확인할 가설(요약·할 일 가치)과 관계없으면 범위 밖에 두고 v2 후보로 질문 칸에 적어요.",
+     "ok": true,
+     "why": "MVP는 배우는 실험이에요. 범위 밖이 그걸 지켜요."
+    }
+   ],
+   "explain": "Ries는 MVP를 최대한의 검증된 학습을 위한 버전이라고 했어요. Atlassian PRD의 '하지 않을 것' 칸이 그 범위를 지켜 줘요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Minimum Viable Product: a guide — Eric Ries",
+     "url": "http://www.startuplessonslearned.com/2009/08/minimum-viable-product-guide.html",
+     "date": "2009-08-03"
+    },
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "출시 3주 전 새 요구사항",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "큰 고객이 출시 전에 팀별 권한 기능을 꼭 넣어 달래요."
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "지금 넣으면 종단 간 테스트할 시간이 없어요."
+    }
+   ],
+   "q": "HealthCare.gov 사례를 떠올리면?",
+   "options": [
+    {
+     "k": "A",
+     "t": "요구사항 고정일을 지키고, 이 요청은 다음 버전 범위로 보내거나 다른 것을 빼고 맞바꿔요.",
+     "ok": true,
+     "why": "테스트 시간을 지키는 결정이에요."
+    },
+    {
+     "k": "B",
+     "t": "출시일을 무기한 미뤄요.",
+     "ok": false,
+     "why": "결정을 피해요."
+    },
+    {
+     "k": "C",
+     "t": "고객이 크니 넣고, 테스트는 출시 후에 해요.",
+     "ok": false,
+     "why": "HealthCare.gov가 그렇게 무너졌어요."
+    }
+   ],
+   "explain": "GAO는 HealthCare.gov 비용 증가가 주로 요구사항 변경 때문이라 했고, OIG는 종단 간 테스트를 끝내지 못한 채 열었다고 했어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "GAO-14-694 Healthcare.gov: Ineffective Planning and Oversight Practices",
+     "url": "https://www.gao.gov/products/gao-14-694",
+     "date": "2014-07-30"
+    },
+    {
+     "title": "HealthCare.gov: Case Study of CMS Management of the Federal Marketplace — HHS OIG",
+     "url": "https://oig.hhs.gov/reports/all/2016/healthcaregov-case-study-of-cms-management-of-the-federal-marketplace/",
+     "date": "2016-02-22"
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "다른 팀에 맡기는 정리 작업",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "오래된 테스트 계정 지워 달라고 지훈 님께 요청서 보냈어요. ID 목록 첨부했어요."
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "받은 ID대로 바로 지울게요."
+    }
+   ],
+   "q": "아틀라시안 사례를 떠올리면 무엇을 더 정할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "받은 대로 바로 지워요.",
+     "ok": false,
+     "why": "ID 종류가 헷갈리면 엉뚱한 걸 지워요."
+    },
+    {
+     "k": "B",
+     "t": "어떤 종류의 ID인지, 확인 방법, 되돌리는 방법(소프트 삭제)을 요청서에 적고 소량으로 먼저 실행해요.",
+     "ok": true,
+     "why": "요구사항 전달을 명확히 하고 되돌릴 길을 둬요."
+    },
+    {
+     "k": "C",
+     "t": "정리 작업을 하지 않아요.",
+     "ok": false,
+     "why": "필요한 일을 피해요."
+    }
+   ],
+   "explain": "아틀라시안 2022 장애는 앱 ID 대신 사이트 ID가 넘어간 '소통 공백'에서 시작했고, API는 경고 없이 받아들였어요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Post-Incident Review on the Atlassian April 2022 outage — Atlassian",
+     "url": "https://www.atlassian.com/blog/how-we-build/post-incident-review-april-2022-outage",
+     "date": "2022-04-29"
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "PRD 승인 회의",
+   "scene": [
+    {
+     "name": "서연",
+     "role": "PM",
+     "text": "PRD v1이에요. 승인해 주세요."
+    },
+    {
+     "name": "지훈",
+     "role": "CTO",
+     "text": "인수 조건은 다 있어요. 근데 성공 지표 측정은 아직 안 붙어 있어요."
+    }
+   ],
+   "q": "1주차의 데이터 역할과 이번 주 PRD를 함께 보면?",
+   "options": [
+    {
+     "k": "A",
+     "t": "지표는 출시 후에 생각해요.",
+     "ok": false,
+     "why": "나중엔 데이터가 없어요."
+    },
+    {
+     "k": "B",
+     "t": "기능은 다 정했으니 승인해요.",
+     "ok": false,
+     "why": "출시 뒤 성공 여부를 알 수 없어요."
+    },
+    {
+     "k": "C",
+     "t": "성공 지표와 그걸 재는 방법(이벤트 기록)을 PRD에 넣는 조건으로 승인해요.",
+     "ok": true,
+     "why": "지표는 출시 전에 측정되게 해야 해요."
+    }
+   ],
+   "explain": "1주차에서 본 것처럼 데이터 역할의 핵심 질문은 '출시 전에 지표가 정의되고 측정되게 되어 있나요?'예요. Atlassian PRD도 성공 지표를 스토리에 붙여요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "What is a Product Requirements Document (PRD)? — Atlassian",
+     "url": "https://www.atlassian.com/agile/product-management/requirements",
+     "date": "2026-03-03"
+    },
+    {
+     "title": "Data Analytics — The GitLab Handbook",
+     "url": "https://handbook.gitlab.com/job-description-library/marketing/enterprise-data/data-analyst/",
+     "date": "2026-03-12"
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "TMC25 | Product - 토스 PO가 기능이 아닌 흐름을 설계하는 이유",
+   "url": "https://www.youtube.com/watch?v=RjAIQ0ZVFs8",
+   "min": 19,
+   "lang": "ko",
+   "what": "요구사항을 기능 목록이 아니라 고객 흐름으로 짜는 법",
+   "day": 1
+  },
+  {
+   "id": "l2",
+   "title": "애자일의 개념 — Atlassian Agile Coach (한국어)",
+   "url": "https://www.atlassian.com/ko/agile",
+   "min": 20,
+   "lang": "ko",
+   "what": "백로그, 스토리, 스프린트 같은 기본 용어",
+   "day": 4
+  },
+  {
+   "id": "l3",
+   "title": "당근 개발자, 디자이너, PM 이렇게 협업합니다",
+   "url": "https://careers.daangn.com/blog/post/%EB%8B%B9%EA%B7%BC%EB%A7%88%EC%BC%93-it-%EA%B0%9C%EB%B0%9C-%ED%98%91%EC%97%85-pm-%EA%B0%9C%EB%B0%9C%EC%9E%90-%EB%94%94%EC%9E%90%EC%9D%B4%EB%84%88/",
+   "min": 15,
+   "lang": "ko",
+   "what": "PRD · 테크 스펙 · QA 가이드가 실제로 어떻게 오가는지, '왜 이렇게 오래 걸려요?'에 답하는 법",
+   "day": 5
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "두런 PRD v1을 한 쪽(+링크)으로 써요. 녹음 → 요약 → 할 일 흐름을 범위 안에, 실시간 자막과 화상회의 연동을 범위 밖에 두고, 스토리마다 Given/When/Then 인수 조건을 붙여요.",
+  "template": [
+   "1. 문제와 배경 (2주차 실험 결과 포함)",
+   "2. 목표와 성공 지표 (측정 방법까지)",
+   "3. 가정",
+   "4. 사용자 스토리 + 인수 조건 (FR-01…)",
+   "5. 비기능 요구사항 (성능 · 보안 · 보관 기간, 숫자는 [팀이 정할 값])",
+   "6. 질문 (아직 못 정한 것)",
+   "7. 범위 밖 (실시간 자막, 화상회의 연동 …)",
+   "8. 승인 (누가 · 언제) 과 변경 기록"
+  ]
+ },
+ "check": [
+  "29148 BRS/StRS/SyRS/SRS names: R1 marked unverified, R2 verified via official preview TOC — used R2.",
+  "SRD meaning low confidence; told learner to ask.",
+  "Lecture l3 (당근 article) minutes estimated (15); R5 lists it as an article without length.",
+  "Story size 4: 나, 지훈, 하린, 서연 only.",
+  "5 mixed problems: p07, p09, p12, p14, p15."
+ ]
+}

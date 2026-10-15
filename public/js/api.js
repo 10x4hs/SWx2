@@ -153,6 +153,11 @@ export const api = {
   mbaReview: (results) => request("PUT", "/mba/review", { results }),
   mbaDay: (minutes, plan) => request("PUT", "/mba/day", { minutes, ...(plan != null ? { plan } : {}) }),
   mbaDone: (module, item, kind, score, total, done = true) => request("PUT", "/mba/done", { module, item, kind, score, total, ...(done ? {} : { done: false }) }),
+  devState: () => request("GET", "/dev/state"),
+  devRead: (module, card, correct, total) => request("PUT", "/dev/read", { module, card, correct, total }),
+  devReview: (results) => request("PUT", "/dev/review", { results }),
+  devDay: (minutes, plan) => request("PUT", "/dev/day", { minutes, ...(plan != null ? { plan } : {}) }),
+  devDone: (module, item, kind, score, total, done = true) => request("PUT", "/dev/done", { module, item, kind, score, total, ...(done ? {} : { done: false }) }),
   bookTask: (task, done) => request("PUT", "/books/task", { task, done }),
   paperCheck: (paper, step, done) => request("PUT", "/papers/check", { paper, step, done }),
   paperNote: (paper, text) => request("PUT", "/papers/note", { paper, text }),
@@ -267,6 +272,10 @@ export function streamBookAsk(book, chapter, messages, onEvent, signal, level) {
 // 경영 마이크로디그리 튜터 — /mba/ask. context = 화면의 지금 값(슬라이더 등) 한 줄
 export function streamMbaAsk(module, card, messages, onEvent, signal, level, context) {
   return streamAsk("/api/mba/ask", { module, card, messages, ...(level ? { level } : {}), ...(context ? { context } : {}) }, onEvent, signal);
+}
+// 개발 흐름 마이크로디그리 튜터 — /dev/ask (경영 튜터와 같은 모양)
+export function streamDevAsk(module, card, messages, onEvent, signal, level, context) {
+  return streamAsk("/api/dev/ask", { module, card, messages, ...(level ? { level } : {}), ...(context ? { context } : {}) }, onEvent, signal);
 }
 export function streamPaperAsk(paper, messages, onEvent, signal, level) {
   return streamAsk("/api/papers/ask", { paper, messages, ...(level ? { level } : {}) }, onEvent, signal);

@@ -8,7 +8,7 @@ import { registerPages, servePageFile } from "./pages.js";
 import { registerProxy, handleProxy } from "./proxy.js";
 import { registerPapers } from "./papers.js";
 import { registerBooks } from "./books.js";
-import { registerMba } from "./mba.js";
+import { registerMba, registerDev } from "./mba.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth } from "./oauth.js";
 import { registerHomePad } from "./homepad.js";
@@ -121,6 +121,7 @@ registerProxy(on, { json, fail }); // 내장 브라우저(프록시) 보조 API
 registerPapers(on, { json, body, fail, now });
 registerBooks(on, { json, body, fail, now }); // AI 공부책 (#/books)
 registerMba(on, { json, body, fail, now }); // 경영 마이크로디그리 (#/mba)
+registerDev(on, { json, body, fail, now }); // 개발 흐름 마이크로디그리 (#/dev) — 같은 모양, dev_* 표
 registerMcpTokens(on, { json, body, fail, now });
 registerHomePad(on, { json, body, fail, now });
 registerCalendar(on, { json, fail });
