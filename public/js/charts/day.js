@@ -75,10 +75,11 @@ export function dayClock(d, { wide = true } = {}) {
     });
     H = y0 + rows * 36;
   }
-  const empty = blocks.length ? "" : `<text class="ch-fs" x="${cx}" y="${cy + ro + 44}" text-anchor="middle" font-size="${wide ? 15 : 19}">시간표에 할 일을 넣으면 시계에 놓여요</text>`;
+  const empty = blocks.length ? "" : `<text class="ch-fs" x="${cx}" y="${cy + ro + 44}" text-anchor="middle" font-size="${wide ? 15 : 19}">${d.drag ? "링을 끌어서 할 일을 넣어 보세요" : "시간표에 할 일을 넣으면 시계에 놓여요"}</text>`;
   if (!blocks.length) H = cy + ro + 60;
 
-  return `<svg class="ch ch-day-clock${wide ? " wide" : ""}" viewBox="0 0 ${W} ${H}" role="group" aria-label="${esc(`오늘 시간표: ${blocks.length}개 중 ${blocks.filter((b) => b.done).length}개 끝냄`)}" style="--c:${d.color}">
+  // data-dial: 홈에서 링을 끌어 계획을 넣을 때 쓰는 자리 (ring-drag.js) — 중심 · 띠 안쪽/바깥 반지름 · 잡는 여유 · 가운데 빈 원
+  return `<svg class="ch ch-day-clock${wide ? " wide" : ""}" viewBox="0 0 ${W} ${H}" data-dial="${cx} ${cy} ${ri} ${ro} 10 ${wide ? 100 : 104}" role="group" aria-label="${esc(`오늘 시간표: ${blocks.length}개 중 ${blocks.filter((b) => b.done).length}개 끝냄`)}" style="--c:${d.color}">
     <g class="ch-ring" data-ring="day" tabindex="0" role="link" aria-label="오늘 시간표 보기">
       <circle class="ch-hit" cx="${cx}" cy="${cy}" r="${g.r}" stroke-width="${g.sw + 8}"/>
       ${s}

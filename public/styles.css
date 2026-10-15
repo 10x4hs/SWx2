@@ -2868,3 +2868,23 @@ form.nm input { border-bottom: 0; } /* 아래 줄은 .foot 의 테두리 하나�
 @keyframes nm-left { to { transform: scaleX(0); } }
 @media (max-width: 560px) { .nm .foot .nm-k { display: none; } }
 @media (prefers-reduced-motion: reduce) { .nm-undo > i { animation: none; } }
+
+/* 오늘 링 끌기 (ring-drag.js) — 마우스를 대면 가는 선 + 시각, 누른 채 끌면 조각이 자라고 가운데에 +분, 놓으면 이름 칸 */
+.rd { pointer-events: none; --c: var(--r-day); }
+.rd > * { display: none; }
+.rd.hover .rd-line, .rd.hover .rd-t1, .rd.drag > *, .rd.hold > *, .rd.saved .rd-arc { display: inline; }
+.rd-line { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+.rd-arc { fill: color-mix(in srgb, var(--c) 88%, transparent); stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.rd.saved .rd-arc { fill: var(--c); stroke: none; }
+.rd-tag { font-family: var(--font); font-weight: 600; fill: var(--ink); paint-order: stroke; stroke: var(--page-bg); stroke-width: 4px; stroke-linejoin: round; font-variant-numeric: tabular-nums; }
+.rd-t0 { fill: var(--ink-3); }
+.rd-range, .rd-sub { font-family: var(--font); font-weight: 600; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+.rd-big { font-family: var(--font-display); font-weight: 300; fill: var(--ink); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.rd-warn { font-family: var(--font); font-weight: 600; fill: var(--p-max); }
+svg.rd-on .ch-big, svg.rd-on .ch-cap, svg.rd-on .ch-csub, svg.rd-on .rh-center, svg.rd-on .rh-cap { opacity: 0; }
+svg.rd-hov, svg.rd-hov * { cursor: crosshair !important; }
+html.rd-dragging, html.rd-dragging * { cursor: crosshair !important; -webkit-user-select: none; user-select: none; }
+.rd-pop { width: 280px; padding: 12px; gap: 8px; }
+.rd-pop-t { font: 600 13px var(--font); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.rd-pop .input { width: 100%; }
+.rd-pop-h { display: flex; justify-content: space-between; gap: 8px; font: 500 11.5px var(--font); color: var(--ink-3); }
