@@ -15,6 +15,7 @@
 //   ⑫ 뉴스 — 하루 한 호 (가독성 · 한국어) · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13)
 //   ⑬ 경영 마이크로디그리 — 모듈 지도 · 현황판 · 하루 60/90/120분 · 2주 계획 · 카드(정적 이익 지도 · 더 자세히 · 퀴즈 · AI 튜터) · 케이스(내 답 먼저) · 연습문제 채점 · 오늘 · 회사 세우기 세금 계산 · 용어 찾기 (2026-10-14)
 //   ⑭ 홈 오늘 링 끌기 — 마우스를 대면 선 · 끌면 +분 · 놓으면 이름 칸(Enter 저장 · Esc 취소) · 거꾸로 · 겹침 · 그냥 누르면 원래대로 · 전체 쪽 오늘 링 · 친구 차트 · 터치는 그대로 (2026-10-15)
+//   ⑮ 하루 계획표 짧은 일정 — 맞닿은 일정은 위아래로(5분 휴식 + 바로 뒤 시험) · 붙어 있으면 그 칸만 30px 로 늘어남 · 진짜 겹침은 나란히 · 늘어난 칸의 빈 칸 시각 · 끌기 시각 (2026-10-15)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -873,6 +874,39 @@ try {
         const t = await tp.evaluate(() => ({ layer: !!document.querySelector(".rd"), hash: location.hash }));
         ok(!t.layer && t.hash.startsWith("#/calendar/"), `${tv} · 터치로 링을 누르면 원래대로 하루 계획표 · 끌기 층 없음 ${!t.layer} (${t.hash})`);
         await tctx.close();
+      }
+    }
+
+    // ---------- ⑮ 하루 계획표 짧은 일정 — 맞닿으면 위아래로 · 붙어 있으면 그 칸만 늘어남 · 진짜 겹침은 나란히 (2026-10-15) ----------
+    {
+      errs = [];
+      const ahead = tv === "컴퓨터" ? 3 : 4; // 다른 검사 계획 · 다른 크기 검사와 날짜가 안 겹치게
+      const day = await p.evaluate((n) => { const d = new Date(Date.now() + n * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }, ahead);
+      const add = async (text, start, mins) => (await (await ctx.request.post(BASE + "/api/plans", { headers: H, data: { scope: "day", period: "D:" + day, text, start, mins } })).json()).plan;
+      const rest = await add("짧은 휴식", "08:55", 5); await add("짧은 뒤 시험", "09:00", 50); await add("겹침 A", "13:00", 60); await add("겹침 B", "13:30", 30);
+      await go("#/calendar/" + day, 2500);
+      await p.evaluate(() => [...document.querySelectorAll("#dp-grid .block")].find((x) => x.querySelector("[data-edit]")?.textContent === "짧은 휴식")?.scrollIntoView({ block: "center" }));
+      await sleep(300);
+      const L = await p.evaluate(() => {
+        const r = (t) => { const b = [...document.querySelectorAll("#dp-grid .block")].find((x) => x.querySelector("[data-edit]")?.textContent === t); if (!b) return null; const q = b.getBoundingClientRect(); return { top: q.top, h: q.height, left: q.left, w: q.width, cls: b.className }; };
+        const hr = (h) => document.querySelector(`#dp-grid .hour[data-h="${h}"]`)?.getBoundingClientRect().height || 0;
+        return { rest: r("짧은 휴식"), test: r("짧은 뒤 시험"), a: r("겹침 A"), b: r("겹침 B"), h8: hr(8), h11: hr(11) };
+      });
+      const stacked = L.rest && L.test && Math.abs(L.rest.left - L.test.left) <= 1 && Math.abs(L.rest.w - L.test.w) <= 1 && L.test.top >= L.rest.top + L.rest.h - 1;
+      ok(stacked && L.rest.h >= 29 && /\bthin\b/.test(L.rest.cls) && !/\btiny\b/.test(L.rest.cls) && L.h8 > 96 && Math.round(L.h11) === 96 && L.b?.left > L.a?.left + 50 && !errs.length,
+        `${tv} · 하루 계획표 — 5분 휴식 + 바로 뒤 시험 위아래로 ${stacked} · 휴식 높이 ${Math.round(L.rest?.h)}px · 8시 칸 ${Math.round(L.h8)}px(11시 ${Math.round(L.h11)}) · 진짜 겹침 나란히 ${L.b?.left > L.a?.left + 50}${errs.length ? " — " + errs[0] : ""}`);
+      if (tv === "컴퓨터") {
+        // 늘어난 칸에서도 빈 칸 시각이 맞아요: 휴식 바로 위(08:50~08:55) → "+ 08:50에 추가"
+        const sx = await p.evaluate(() => document.querySelector('#dp-grid .hour[data-h="8"] [data-slot]').getBoundingClientRect().left + 40);
+        await p.mouse.move(sx, L.rest.top - 4); await sleep(150);
+        const slot = await p.evaluate(() => document.querySelector('#dp-grid .hour[data-h="8"] [data-slot]').textContent);
+        // 끌기도 실제 시각: 휴식을 늘어난 칸 높이(시험 top − 휴식 top)만큼 내리면 09:00
+        const dy = L.test.top - L.rest.top, x = L.rest.left + 160, y = L.rest.top + L.rest.h / 2;
+        await p.mouse.move(x, y); await p.mouse.down();
+        for (let k = 1; k <= 6; k++) { await p.mouse.move(x, y + (dy * k) / 6); await sleep(30); }
+        await p.mouse.up(); await sleep(1500);
+        const moved = (await (await ctx.request.get(BASE + "/api/plans?periods=D:" + day, { headers: H })).json()).plans.find((q) => q.id === rest.id)?.start;
+        ok(slot === "+ 08:50에 추가" && moved === "09:00", `${tv} · 늘어난 칸 — 빈 칸 "${slot}" · 끌어서 내리면 ${moved}`);
       }
     }
 
