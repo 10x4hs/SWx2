@@ -23,7 +23,7 @@ export function dayClock(d, { wide = true } = {}) {
 
   // 바탕: 트랙 → 지난 시간(옅게) → 할 일 블록
   let s = sector(g, 0, 1, "ch-track");
-  if (t > 0) s += sector(g, 0, t, "ch-past ch-seg", { tip: `0시부터 지금까지 · ${d.now}` });
+  if (t > 0) s += sector(g, 0, t, "ch-past ch-seg", { tip: d.pastTip || `0시부터 지금까지 · ${d.now}` });
   // 조각 색 = 종류(영어 · 논문 · 휴식 · 사업 · 운동 · 그 밖), 끝낸 일은 진하게 · 안 한 일은 옅게. data-plan 으로 누르면 상세
   blocks.forEach((b, k) => {
     const tip = `${b.time} ${b.title} · ${b.done ? "끝냄" : "아직"}`;
@@ -78,13 +78,25 @@ export function dayClock(d, { wide = true } = {}) {
   const empty = blocks.length ? "" : `<text class="ch-fs" x="${cx}" y="${cy + ro + 44}" text-anchor="middle" font-size="${wide ? 15 : 19}">${d.drag ? "링을 끌어서 할 일을 넣어 보세요" : "시간표에 할 일을 넣으면 시계에 놓여요"}</text>`;
   if (!blocks.length) H = cy + ro + 60;
 
+  // 날짜 줄 (홈 Day 쪽): 시계 판 안 위쪽에 ‹ 10월 16일 금 › — 홈 위쪽 메모장 · 인사말에 가리지 않는 자리. 오늘이 아니면 아래에 '오늘로'
+  let nav = "";
+  if (d.nav) {
+    const y = cy - 92, fs = wide ? 13.5 : 17, br = wide ? 11 : 14, gx = wide ? 70 : 64, py = cy + (wide ? 99 : 102), pw = wide ? 58 : 72;
+    const chev = (x, dir) => `M${f2(x + dir * br * 0.16)} ${f2(y - br * 0.34)}L${f2(x - dir * br * 0.2)} ${f2(y)}L${f2(x + dir * br * 0.16)} ${f2(y + br * 0.34)}`;
+    const btn = (k, x, label, dir) => `<g class="ch-dnav-btn" data-dnav="${k}" role="button" tabindex="0" aria-label="${label}"><circle cx="${x}" cy="${y}" r="${br}"/><path d="${chev(x, dir)}"/></g>`;
+    nav = `<g class="ch-dnav">${btn("prev", cx - gx, "전날", 1)}<text class="ch-dnav-t" x="${cx}" y="${f2(y + fs * 0.36)}" text-anchor="middle" font-size="${fs}">${esc(wide ? d.nav.label : d.nav.short || d.nav.label)}</text>${btn("next", cx + gx, "다음 날", -1)}`
+      + (d.nav.today ? "" : `<g class="ch-dnav-btn ch-dnav-today" data-dnav="today" role="button" tabindex="0" aria-label="오늘로"><rect x="${cx - pw / 2}" y="${py - br}" width="${pw}" height="${br * 2}" rx="${br}"/><text x="${cx}" y="${f2(py + fs * 0.3)}" text-anchor="middle" font-size="${f2(fs * 0.86)}">오늘로</text></g>`) + `</g>`;
+  }
+  const rel = d.rel || "오늘", c = d.center || { big: d.score == null ? "–" : String(d.score), cap: d.mine ? "오늘 점수" : "오늘", sub: d.count ? `실행 ${d.doneCount}/${d.count} · ${d.now}` : d.now };
+
   // data-dial: 홈에서 링을 끌어 계획을 넣을 때 쓰는 자리 (ring-drag.js) — 중심 · 띠 안쪽/바깥 반지름 · 잡는 여유 · 가운데 빈 원
-  return `<svg class="ch ch-day-clock${wide ? " wide" : ""}" viewBox="0 0 ${W} ${H}" data-dial="${cx} ${cy} ${ri} ${ro} 10 ${wide ? 100 : 104}" role="group" aria-label="${esc(`오늘 시간표: ${blocks.length}개 중 ${blocks.filter((b) => b.done).length}개 끝냄`)}" style="--c:${d.color}">
-    <g class="ch-ring" data-ring="day" tabindex="0" role="link" aria-label="오늘 시간표 보기">
+  return `<svg class="ch ch-day-clock${wide ? " wide" : ""}" viewBox="0 0 ${W} ${H}" data-dial="${cx} ${cy} ${ri} ${ro} 10 ${wide ? 100 : 104}" role="group" aria-label="${esc(`${rel} 시간표: ${blocks.length}개 중 ${blocks.filter((b) => b.done).length}개 끝냄`)}" style="--c:${d.color}">
+    <g class="ch-ring" data-ring="day" tabindex="0" role="link" aria-label="${esc(rel)} 시간표 보기">
       <circle class="ch-hit" cx="${cx}" cy="${cy}" r="${g.r}" stroke-width="${g.sw + 8}"/>
       ${s}
     </g>
-    ${ticks}${labels}${legend}${empty}${hand}
-    ${center(cx, cy - (wide ? 12 : 24), { big: d.score == null ? "–" : String(d.score), cap: d.mine ? "오늘 점수" : "오늘", sub: d.count ? `실행 ${d.doneCount}/${d.count} · ${d.now}` : d.now, size: 88, k: wide ? 1 : 1.3 })}
+    ${ticks}${labels}${legend}${empty}${d.hand === false ? "" : hand}
+    ${center(cx, cy - (wide ? 12 : 24), { ...c, size: 88, k: wide ? 1 : 1.3 })}
+    ${nav}
   </svg>`;
 }
