@@ -1,4 +1,4 @@
-// 개발 흐름 홈의 3D 흐름 고리 — 각진(로우폴리) ∞ 고리에 12개 정거장, LED 점 화면처럼 다시 찍어요 (three.js r128, /vendor/three.min.js 를 처음 열 때 받아요)
+// 개발 흐름 홈의 3D 흐름 고리 — 각진(로우폴리) ∞ 고리를 홀로그램 점 껍질로 감싸고 12개 정거장을 놓아요. 마우스를 따라 기울고, 가리킨 정거장 둘레가 밝아져요 (three.js r128, /vendor/three.min.js 를 처음 열 때 받아요)
 //   mountLoop(canvas, { stations, progress, labels, lobes, onHover, onPick }) → { highlight(i), destroy() } | null
 //   움직임 줄이기 설정이면 날아오기 · 흐르는 점 · 맥박 · 흔들림을 끄고 멈춘 그림만 그려요. 공부 내용 그림은 전부 2D (여긴 길 찾기용).
 let threeP = null;
@@ -69,8 +69,20 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
     var rim = add(new THREE.DirectionalLight(0xffffff, 0.45)); rim.position.set(6, 2, -6);
     function polyMat(color) { var m = new THREE.MeshLambertMaterial({ color: color, flatShading: true }); mats.push(m); return m; }
     var tg = new THREE.TubeGeometry(curve, 140, 0.11, 5, true); geos.push(tg);
-    add(new THREE.Mesh(tg, polyMat(0x8a8d93)));
+    add(new THREE.Mesh(tg, polyMat(0x3a3d42)));
 
+
+    // 2-1) 홀로그램 점 껍질: 고리 둘레에 점을 고르게 뿌려요 (후처리 없이 그려서 깜빡이지 않아요). 끝낸 길은 노랑, 가리킨 정거장 근처는 밝게
+    var SEG = 900, RAD = 6, fr = curve.computeFrenetFrames(SEG, true), shN = SEG * RAD;
+    var shPos = new Float32Array(shN * 3), shCol = new Float32Array(shN * 3), shU = new Float32Array(shN);
+    for (var si = 0; si < SEG; si++) for (var ri = 0; ri < RAD; ri++) {
+      var su = si / SEG, ang = (ri / RAD) * Math.PI * 2 + (si % 2) * (Math.PI / RAD), cp = curve.getPointAt(su), nn = fr.normals[si], bb = fr.binormals[si], rr = 0.2, n3 = (si * RAD + ri) * 3;
+      shPos[n3] = cp.x + rr * (Math.cos(ang) * nn.x + Math.sin(ang) * bb.x); shPos[n3 + 1] = cp.y + rr * (Math.cos(ang) * nn.y + Math.sin(ang) * bb.y); shPos[n3 + 2] = cp.z + rr * (Math.cos(ang) * nn.z + Math.sin(ang) * bb.z);
+      shU[si * RAD + ri] = su;
+    }
+    var shG = new THREE.BufferGeometry(); shG.setAttribute("position", new THREE.BufferAttribute(shPos, 3)); shG.setAttribute("color", new THREE.BufferAttribute(shCol, 3)); geos.push(shG);
+    var shM = new THREE.PointsMaterial({ size: 0.05, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }); mats.push(shM);
+    add(new THREE.Points(shG, shM));
     // 2) 정거장 자리: 고리마다 6개를 길이 기준으로 고르게
     var F = [0.1, 0.26, 0.42, 0.58, 0.74, 0.9], U = [];
     F.forEach(function (f) { U.push(f * 0.5); }); F.forEach(function (f) { U.push(0.5 + f * 0.5); });
@@ -92,6 +104,17 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
       add(new THREE.Mesh(dg, polyMat(CYAN)));
     }
 
+
+    function paintShell(hotI) {
+      var yl = new THREE.Color(CYAN), gr = new THREE.Color(0x6d7178), wh = new THREE.Color(0xffffff), c = new THREE.Color(), hu = hotI >= 0 ? U[hotI] : -1;
+      for (var k2 = 0; k2 < shN; k2++) {
+        var u2 = shU[k2]; c.copy(u2 <= uDone ? yl : gr);
+        if (hu >= 0) { var du = Math.abs(u2 - hu); du = Math.min(du, 1 - du); if (du < 0.04) c.lerp(wh, 1 - du / 0.04); }
+        shCol[k2 * 3] = c.r; shCol[k2 * 3 + 1] = c.g; shCol[k2 * 3 + 2] = c.b;
+      }
+      shG.attributes.color.needsUpdate = true;
+    }
+    paintShell(-1);
     // 4) 정거장: 동그라미 + 바닥까지 내린 빛기둥 + 바닥 고리
     var sprites = [], pillars = [], baseOp = [];
     P.forEach(function (p, i) {
@@ -111,7 +134,7 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
 
     // 5) 바닥 격자 (멀수록 안개로 흐려져요)
     var grid = add(new THREE.GridHelper(36, 72, CYAN, CYAN));
-    grid.material.transparent = true; grid.material.opacity = 0.2; grid.material.depthWrite = false; grid.position.y = FLOOR;
+    grid.material.transparent = true; grid.material.opacity = 0.09; grid.material.depthWrite = false; grid.position.y = FLOOR;
 
     // 6) 흐르는 점: 일감이 단계를 따라 흘러가는 모습 (움직임 줄이기면 제자리)
     var N = 42, pos = new Float32Array(N * 3), seeds = [];
@@ -132,8 +155,8 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
     var cur = -1; for (var n = 0; n < st.length; n++) if (st[n].state === "now") cur = n;
     var pulse = null;
     if (cur >= 0) {
-      var rt = ringTexture(); texs.push(rt);
-      var plm = new THREE.SpriteMaterial({ map: rt, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }); mats.push(plm);
+      var rtx = ringTexture(); texs.push(rtx);
+      var plm = new THREE.SpriteMaterial({ map: rtx, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }); mats.push(plm);
       pulse = add(new THREE.Sprite(plm)); pulse.position.copy(P[cur]);
     }
 
@@ -144,30 +167,13 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
     function placeCam() {
       var f = ease(Math.min(1, flyT));
       var R = Rfit * (1 + (1 - f) * 0.8), p = 0.6 + (1 - f) * 0.55 + tilt.pitch + dragOff.pitch;
-      var y = (REDUCED ? 0 : Math.sin(clock * 0.12) * 0.05) + tilt.yaw + dragOff.yaw - (1 - f) * 0.5;
+      var y = tilt.yaw + dragOff.yaw - (1 - f) * 0.5;
       camera.position.set(Math.sin(y) * Math.cos(p) * R, Math.sin(p) * R, Math.cos(y) * Math.cos(p) * R);
       camera.lookAt(look);
     }
-    // LED 점 화면: 장면을 한 번 그린 뒤, 칸마다 밝기만큼 둥근 점으로 다시 찍어요 (회색 + 강조색만 살림)
-    var rt = new THREE.WebGLRenderTarget(2, 2), CELL = 5;
-    var post = new THREE.Scene(), pcam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    var pu = { tex: { value: rt.texture }, res: { value: new THREE.Vector2(2, 2) }, cell: { value: CELL } };
-    var pmat = new THREE.ShaderMaterial({ uniforms: pu, transparent: true,
-      vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
-      fragmentShader: [
-        "uniform sampler2D tex; uniform vec2 res; uniform float cell; varying vec2 vUv;",
-        "void main(){ vec2 px = vUv * res; vec2 c = (floor(px / cell) + 0.5) * cell;",
-        " vec4 s = texture2D(tex, c / res); float l = dot(s.rgb, vec3(0.299, 0.587, 0.114));",
-        " float r = length(px - c) / (cell * 0.5); float on = smoothstep(1.0, 0.8, r / max(0.12, sqrt(l) * 1.05));",
-        " float sat = max(s.r, max(s.g, s.b)) - min(s.r, min(s.g, s.b));",
-        " vec3 col = mix(vec3(l * 1.15), s.rgb * 1.1, step(0.25, sat));",
-        " float bg = 0.05 * smoothstep(1.0, 0.7, r);",
-        " gl_FragColor = vec4(col * on + vec3(bg), max(on * s.a, bg)); }"].join("\n") });
-    mats.push(pmat); var pq = new THREE.PlaneGeometry(2, 2); geos.push(pq); post.add(new THREE.Mesh(pq, pmat));
     function fit() {
       var w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setSize(w, h, false);
-      var dpr = renderer.getPixelRatio(); rt.setSize(w * dpr, h * dpr); pu.res.value.set(w * dpr, h * dpr); pu.cell.value = CELL * dpr;
       camera.aspect = w / h; camera.updateProjectionMatrix();
       var th = Math.tan((camera.fov / 2) * Math.PI / 180) * camera.aspect;
       Rfit = Math.max(R0, (A * 2 * 1.25) / (2 * th));
@@ -181,12 +187,12 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
         v.copy(P[i]).project(camera);
         scr[i] = { x: (v.x + 1) / 2 * w, y: (1 - v.y) / 2 * h };
         var el = labels[i];
-        if (el) el.style.transform = "translate(" + scr[i].x.toFixed(1) + "px," + (scr[i].y - 24).toFixed(1) + "px) translate(-50%,-100%)";
+        if (el) el.style.transform = "translate(" + Math.round(scr[i].x) + "px," + Math.round(scr[i].y - 24) + "px) translate(-50%,-100%)";
       }
       for (var k = 0; k < lobes.length; k++) {
         var lb = lobes[k]; if (!lb) continue;
         v.set(k ? A * 0.62 : -A * 0.62, FLOOR, A * 1.05).project(camera);
-        lb.style.transform = "translate(" + ((v.x + 1) / 2 * w).toFixed(1) + "px," + ((1 - v.y) / 2 * h).toFixed(1) + "px) translate(-50%,-50%)";
+        lb.style.transform = "translate(" + Math.round((v.x + 1) / 2 * w) + "px," + Math.round((1 - v.y) / 2 * h) + "px) translate(-50%,-50%)";
       }
     }
     var hot = -1;
@@ -195,6 +201,7 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
       if (hot >= 0) { sprites[hot].scale.setScalar(1); pillars[hot].material.opacity = baseOp[hot]; }
       hot = i;
       if (hot >= 0) { sprites[hot].scale.setScalar(1.4); pillars[hot].material.opacity = 0.85; }
+      paintShell(hot);
       canvas.style.cursor = hot >= 0 ? "pointer" : (drag ? "grabbing" : "grab");
     }
     function nearest(e) {
@@ -205,8 +212,8 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
     function down(e) { drag = { x: e.clientX, y: e.clientY }; moved = 0; if (canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId); }
     function move(e) {
       var r = canvas.getBoundingClientRect();
-      want.yaw = (((e.clientX - r.left) / r.width) * 2 - 1) * 0.12;
-      want.pitch = (((e.clientY - r.top) / r.height) * 2 - 1) * 0.05;
+      want.yaw = (((e.clientX - r.left) / r.width) * 2 - 1) * 0.28;
+      want.pitch = (((e.clientY - r.top) / r.height) * 2 - 1) * 0.12;
       if (drag) {
         var dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
         dragOff.yaw = Math.max(-0.7, Math.min(0.7, dragOff.yaw - dx * 0.004));
@@ -230,14 +237,13 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
       var dt = Math.min(0.05, (now - last) / 1000); last = now;
       if (!visible || document.hidden) return;
       clock += dt; if (flyT < 1) flyT = Math.min(1, flyT + dt / 2.0);
-      tilt.yaw += (want.yaw - tilt.yaw) * 0.06; tilt.pitch += (want.pitch - tilt.pitch) * 0.06;
+      tilt.yaw += (want.yaw - tilt.yaw) * 0.08; tilt.pitch += (want.pitch - tilt.pitch) * 0.08;
       placeCam(); placePackets(dt);
       if (pulse) {
         var ph = REDUCED ? 0.4 : (clock * 0.45) % 1, sc = 0.72 + ph * 0.95;
         pulse.scale.set(sc, sc, 1); pulse.material.opacity = REDUCED ? 0.35 : (1 - ph) * 0.65;
       }
-      renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(scene, camera);
-      renderer.setRenderTarget(null); renderer.clear(); renderer.render(post, pcam); project();
+      renderer.render(scene, camera); project();
     }
     placePackets(0); placeCam();
     raf = requestAnimationFrame(tick);
@@ -249,7 +255,7 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
         canvas.removeEventListener("pointerdown", down); canvas.removeEventListener("pointermove", move);
         canvas.removeEventListener("pointerup", up); canvas.removeEventListener("pointerleave", leave);
         geos.forEach(function (g) { g.dispose(); }); mats.forEach(function (m) { m.dispose(); }); texs.forEach(function (t) { t.dispose(); });
-        grid.geometry.dispose(); grid.material.dispose(); rt.dispose(); renderer.dispose();
+        grid.geometry.dispose(); grid.material.dispose(); renderer.dispose();
       }
     };
   }
