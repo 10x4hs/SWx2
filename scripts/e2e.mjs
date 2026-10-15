@@ -16,6 +16,7 @@
 //   ⑬ 경영 마이크로디그리 — 모듈 지도 · 현황판 · 하루 60/90/120분 · 2주 계획 · 카드(정적 이익 지도 · 더 자세히 · 퀴즈 · AI 튜터) · 케이스(내 답 먼저) · 연습문제 채점 · 오늘 · 회사 세우기 세금 계산 · 용어 찾기 (2026-10-14)
 //   ⑭ 홈 오늘 링 끌기 — 마우스를 대면 선 · 끌면 +분 · 놓으면 이름 칸(Enter 저장 · Esc 취소) · 거꾸로 · 겹침 · 그냥 누르면 원래대로 · 전체 쪽 오늘 링 · 친구 차트 · 터치는 그대로 (2026-10-15)
 //   ⑮ 하루 계획표 짧은 일정 — 맞닿은 일정은 위아래로(5분 휴식 + 바로 뒤 시험) · 붙어 있으면 그 칸만 30px 로 늘어남 · 진짜 겹침은 나란히 · 늘어난 칸의 빈 칸 시각 · 끌기 시각 (2026-10-15)
+//   ⑯ 홈 Day 쪽 ‹ 날짜 › — › 내일(바늘 없음 · 오늘로) · 내일에 끌어 넣기 → 그 날짜 · 새로 열어도 고른 날 · 지난 기억은 오늘 · ‹ 어제 점수 · 링 누르면 그날 계획표 (2026-10-15)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -908,6 +909,38 @@ try {
         const moved = (await (await ctx.request.get(BASE + "/api/plans?periods=D:" + day, { headers: H })).json()).plans.find((q) => q.id === rest.id)?.start;
         ok(slot === "+ 08:50에 추가" && moved === "09:00", `${tv} · 늘어난 칸 — 빈 칸 "${slot}" · 끌어서 내리면 ${moved}`);
       }
+    }
+
+    // ---------- ⑯ 홈 Day 쪽 ‹ 날짜 › — 내일 · 다른 날 보기와 끌어 넣기 · 고른 날 기억 (2026-10-15) ----------
+    {
+      errs = [];
+      await p.evaluate(() => { localStorage.setItem("trio-home-page", "3"); localStorage.setItem("trio-guide-off", "1"); localStorage.removeItem("trio-home-day"); });
+      await go("#/", 2500);
+      const dn = () => p.evaluate(() => { const svg = document.querySelector(".pg-slide:not(.out) svg.ch-day-clock"); return { label: svg?.querySelector(".ch-dnav-t")?.textContent || "", cap: svg?.querySelector(".ch-cap")?.textContent || "", hand: !!svg?.querySelector(".ch-hand"), todayBtn: !!svg?.querySelector('[data-dnav="today"]'), kept: localStorage.getItem("trio-home-day"), hash: location.hash }; });
+      const tap = async (k) => { await p.click(`.pg-slide:not(.out) svg [data-dnav="${k}"]`); await sleep(500); };
+      const at = (m) => p.evaluate((m) => { const svg = document.querySelector(".pg-slide:not(.out) svg[data-dial]"); const [cx, cy, ri, ro] = svg.dataset.dial.split(" ").map(Number), r = (ri + ro) / 2, a = (m / 1440) * 2 * Math.PI - Math.PI / 2; const q = new DOMPoint(cx + r * Math.cos(a), cy + r * Math.sin(a)).matrixTransform(svg.getScreenCTM()); return [q.x, q.y]; }, m);
+      const d0 = await dn();
+      await tap("next"); const d1 = await dn();
+      ok(d0.cap === "오늘 점수" && d0.hand && !d0.todayBtn && d1.cap === "내일 계획" && !d1.hand && d1.todayBtn && /^\d{4}-\d{2}-\d{2}$/.test(d1.kept || ""),
+        `${tv} · Day 쪽 › → 내일 — "${d0.label}" ${d0.cap} → "${d1.label}" ${d1.cap} · 바늘 ${d1.hand} · 오늘로 ${d1.todayBtn}`);
+      if (tv === "컴퓨터") {
+        // 내일에 끌어 넣기 (10:00 → 11:00) → 고른 날짜로 저장
+        await p.mouse.move(...await at(600)); await p.mouse.down();
+        for (let m = 605; m <= 660; m += 5) await p.mouse.move(...await at(m));
+        await p.mouse.up(); await sleep(250);
+        await p.keyboard.type("내일 끌기"); await p.keyboard.press("Enter"); await sleep(1500);
+        const tp = (await (await ctx.request.get(BASE + "/api/plans?periods=D:" + d1.kept, { headers: H })).json()).plans.find((x) => x.text === "내일 끌기");
+        // 새로 열어도 고른 날 · 지난 날짜를 기억해 두었으면 오늘부터 · ‹ 어제 · 오늘로
+        await go("#/", 2500); const d2 = await dn();
+        await p.evaluate(() => localStorage.setItem("trio-home-day", "2020-01-01")); await go("#/", 2500); const d3 = await dn();
+        await tap("prev"); const d4 = await dn(); await tap("today"); const d5 = await dn();
+        // 내일에서 링을 끌지 않고 누르면 내일 하루 계획표
+        await tap("next"); await p.mouse.click(...await at(300)); await sleep(900);
+        const h6 = await p.evaluate(() => location.hash);
+        ok(tp?.start === "10:00" && tp?.mins === 60 && d2.cap === "내일 계획" && d3.cap === "오늘 점수" && d4.cap === "어제 점수" && d5.cap === "오늘 점수" && h6 === "#/calendar/" + d1.kept && !errs.length,
+          `${tv} · 내일에 끌어 넣기 ${tp ? tp.start + " " + tp.mins + "분" : "없음"} · 새로 열어도 ${d2.cap} · 지난 기억 → ${d3.cap} · ‹ ${d4.cap} · 오늘로 ${d5.cap} · 링 → ${h6}${errs.length ? " — " + errs[0] : ""}`);
+      }
+      await p.evaluate(() => { localStorage.removeItem("trio-home-day"); localStorage.removeItem("trio-home-page"); });
     }
 
     await ctx.close();

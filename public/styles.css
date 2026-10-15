@@ -2891,3 +2891,13 @@ html.rd-dragging, html.rd-dragging * { cursor: crosshair !important; -webkit-use
 .rd-pop-t { font: 600 13px var(--font); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .rd-pop .input { width: 100%; }
 .rd-pop-h { display: flex; justify-content: space-between; gap: 8px; font: 500 11.5px var(--font); color: var(--ink-3); }
+
+/* Day 쪽 시계 위 날짜 줄 (‹ 10월 16일 금 · 내일 › · 오늘로) — 글꼴은 차트 글자와 같게 */
+.ch-day-clock .ch-dnav-btn { cursor: pointer; }
+.ch-day-clock .ch-dnav-btn circle, .ch-day-clock .ch-dnav-btn rect { fill: var(--hover); stroke: var(--lg-edge); stroke-width: 1; transition: fill .15s var(--ease); }
+.ch-day-clock .ch-dnav-btn:hover circle, .ch-day-clock .ch-dnav-btn:hover rect { fill: color-mix(in srgb, var(--ink) 16%, transparent); }
+.ch-day-clock .ch-dnav-btn path { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.ch-day-clock .ch-dnav-btn:focus { outline: none; }
+.ch-day-clock .ch-dnav-btn:focus-visible circle, .ch-day-clock .ch-dnav-btn:focus-visible rect { stroke: var(--ink); stroke-width: 2; }
+.ch-day-clock .ch-dnav-t { font-weight: 600; fill: var(--ink); }
+.ch-day-clock .ch-dnav-today text { font-weight: 600; fill: var(--ink-2); pointer-events: none; }

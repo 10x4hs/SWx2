@@ -40,8 +40,21 @@ export const catOf = (text) => (CATS.find(([, re]) => re.test(text || "")) || ["
 const CAT_LABEL = { eng: "영어", paper: "공부 · 논문", rest: "휴식", work: "일 · 사업", health: "운동", other: "그 밖" };
 const HINT = { all: "링을 누르면 그 기간 목표 · 오늘은 하루 계획표", check: "도넛 · 요일을 누르면 체크리스트로", month: "누르면 이번 달 목표", week: "누르면 이번 주 목표", day: "누르면 시간 순 하루 계획표" };
 // 마우스가 있는 컴퓨터에선 오늘 링을 끌어서 계획을 넣을 수 있어요 (ring-drag.js)
-const DRAG_HINT = { all: "오늘 링을 끌면 계획 넣기 · 링을 누르면 그 기간 목표", day: "링을 끌면 계획 넣기 · 누르면 시간 순 하루 계획표" };
+const DRAG_HINT = { all: "오늘 링을 끌면 계획 넣기 · 링을 누르면 그 기간 목표", day: "링을 끌면 계획 넣기 · ‹ › 다른 날 · 누르면 그날 하루 계획표" };
 const canDrag = () => !!window.matchMedia?.("(hover: hover) and (pointer: fine)").matches;
+// Day 쪽 시계의 날짜 (‹ ›) — 마지막에 고른 날을 이 기기에 기억하고, 그날이 지났으면 오늘부터
+const DAY_KEY = "trio-home-day";
+const keptDay = (today) => { try { const v = localStorage.getItem(DAY_KEY) || ""; return /^\d{4}-\d{2}-\d{2}$/.test(v) && v >= today ? v : today; } catch { return today; } };
+const keepDay = (v) => { try { localStorage.setItem(DAY_KEY, v); } catch {} };
+const shiftDay = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).toISOString().slice(0, 10);
+const REL = { "-2": "그저께", "-1": "어제", 0: "오늘", 1: "내일", 2: "모레" };
+const relOf = (d, today) => { const n = Math.round((Date.parse(d) - Date.parse(today)) / 864e5); return REL[n] || (n > 0 ? `${n}일 뒤` : `${-n}일 전`); };
+const dayName = (d) => { const t = new Date(d + "T00:00:00"); return `${t.getMonth() + 1}월 ${t.getDate()}일 ${"일월화수목금토"[t.getDay()]}`; };
+// 시각이 있는 할 일 → 24시간 시계 위 제자리의 조각
+const toBlocks = (list) => list.filter((p) => /^\d\d:\d\d$/.test(p.start || "")).map((p) => {
+  const [h, m] = p.start.split(":").map(Number), a0 = (h * 60 + m) / 1440;
+  return { a0, a1: Math.min(1, a0 + (p.mins || 30) / 1440), done: !!p.done, title: p.text || "비공개", time: p.start, id: p.id, priority: p.priority || "", cat: catOf(p.text), mins: p.mins || 30, missed: !!p.missed, focus: p.focus_mins || 0 };
+}).sort((a, b) => a.a0 - b.a0);
 const COLOR = { all: "var(--r-week)", check: "var(--p-max)", month: "var(--r-month)", week: "var(--r-week)", day: "var(--r-day)", team: "var(--m0)" };
 // 서버 시각은 ms · 초 · ISO 어느 쪽이 와도 ms 로
 const ms = (v) => (v == null ? null : typeof v === "string" ? Date.parse(v) : v < 1e12 ? v * 1000 : v);
@@ -53,7 +66,9 @@ export function mount(root, ctx) {
   const K = { year: periodKey("year", t), month: periodKey("month", t), week: periodKey("week", t), day: periodKey("day", t) };
   const left = daysInYear(t.getFullYear()) - dayOfYear(t);
   const HREF = { year: "#/goals/year", month: "#/goals/month", week: "#/goals/week", day: `#/calendar/${ymd(t)}`, check: "#/checklist" }; // 링 → 그 기간 목표 페이지 · 오늘 → 시간 순 하루 계획표
+  const todayStr = ymd(t);
   const S = { who: ctx.me.id, items: null, data: null, score: null, hover: null, tip: null, wide: null, first: true,
+    day: keptDay(todayStr), dayCache: {}, range: null, // Day 쪽 시계의 날짜 · 처음 범위 밖 날의 계획 (사람|날짜 → { plans, closed })
     pres: null, presAt: 0, cheers: { received: [], sent: [] }, cheering: false,
     wk: { off: 0, cache: {}, busy: false, error: null } };
   let alive = true;
@@ -146,7 +161,7 @@ export function mount(root, ctx) {
     const key = PAGES[i].key, wide = S.wide;
     if (key === "team") return renderTeam();
     if (key === "all") return ringHud(S.items, { wide, center: S.score == null ? "–" : String(S.score), caption: mine() ? "오늘 점수" : "오늘" });
-    if (key === "day") return dayClock(S.data.day, { wide });
+    if (key === "day") return dayClock(dayData(), { wide });
     if (key === "check") return checkPage(wide);
     return periodChart(S.data[key], { wide });
   }
@@ -210,12 +225,52 @@ export function mount(root, ctx) {
     drawFocusLine();
   }
 
+  // ---------- Day 쪽 시계의 날짜 (‹ ›) ----------
+  const inRange = (d) => !!S.range && d >= S.range[0] && d <= S.range[1];
+  // 그날 계획: 처음에 불러온 범위(이번 달 · 이번 주 · 내일)면 바로, 아니면 따로 불러와 기억해요 (null = 아직 불러오는 중)
+  function plansOn(d) {
+    if (inRange(d)) return { plans: (S.plans || []).filter((p) => p.period === "D:" + d), closed: !!S.closed };
+    return S.dayCache[S.who + "|" + d] || null;
+  }
+  async function fetchDay(d, force = false) {
+    const who = S.who, key = who + "|" + d;
+    if ((!force && S.dayCache[key]) || S.dayFetching === key) return;
+    S.dayFetching = key;
+    try { const res = await api.plans(["D:" + d], who); S.dayCache[key] = { plans: res.plans || [], closed: !!res.closed }; }
+    catch (e) { if (!S.dayCache[key]) S.dayCache[key] = { plans: [], closed: false }; toast(e.message, "err"); }
+    finally { if (S.dayFetching === key) S.dayFetching = null; }
+    if (alive && S.who === who && S.day === d && pageKey() === "day") draw(false);
+  }
+  // Day 쪽 시계에 넘길 값 — 오늘은 그대로(점수 · 지금 바늘), 앞날은 계획 수 · 합계 시간, 지난 날은 그날 점수
+  function dayData() {
+    const d = S.day, rel = relOf(d, todayStr), [, mm, dd] = d.split("-").map(Number);
+    const nav = { label: dayName(d), short: `${mm}/${dd} ${dayName(d).slice(-1)}`, today: d === todayStr }; // 상대 날짜(내일 · 어제)는 가운데 설명에
+    if (d === todayStr) return { ...S.data.day, rel, nav };
+    const got = plansOn(d), list = got?.plans || [], u = ctx.user(S.who) || ctx.me;
+    const base = { color: "var(--r-day)", blocks: toBlocks(list), mine: mine(), drag: mine() && canDrag(), rel, nav, hand: false, now: nowTime(), time: d < todayStr ? 1 : 0, pastTip: `${dayName(d)} · 지난 날` };
+    if (!got) return { ...base, center: { big: "…", cap: rel, sub: "불러오는 중" } };
+    if (got.closed) return { ...base, center: { big: "–", cap: rel, sub: "계획을 공개하지 않았어요" } };
+    if (d > todayStr) {
+      const timed = base.blocks, total = timed.reduce((n, b) => n + b.mins, 0);
+      return { ...base, center: { big: timed.length ? String(timed.length) : "–", cap: `${rel} 계획`, sub: timed.length ? `합계 ${hm(total)}` : "아직 비어 있어요" } };
+    }
+    const sc = dayScore(list, u.day_goal);
+    return { ...base, center: { big: sc.score == null ? "–" : String(sc.score), cap: mine() ? `${rel} 점수` : rel, sub: sc.count ? `실행 ${sc.doneCount}/${sc.count}` : "계획이 없었어요" } };
+  }
+  function stepDay(k) {
+    const d = k === "today" ? todayStr : shiftDay(S.day, k === "prev" ? -1 : 1);
+    if (d === S.day) return;
+    S.day = d; keepDay(d);
+    if (!inRange(d)) fetchDay(d, true); // 기억해 둔 값이 있으면 바로 보이고, 새 값이 오면 다시 그려요
+    draw(false);
+  }
+
   async function load(assemble) {
     try {
       const u = ctx.user(S.who) || ctx.me;
       const now = new Date(), dayPassed = (now.getHours() * 60 + now.getMinutes()) / 1440;
       // 한 번에: 올해·이번 달·이번 주 목표 + 이번 달·이번 주 날짜 범위 (예전엔 20개씩 나눠 3번 불렀어요)
-      const dayList = [...monthDays, ...weekDays].map((d) => ymd(d)).sort();
+      const dayList = [...monthDays, ...weekDays, addDays(t, 1)].map((d) => ymd(d)).sort(); // 내일도 같이 (Day 쪽 › 를 누르면 바로)
       const res = await api.plans([K.year, K.month, K.week], u.id, `${dayList[0]}..${dayList[dayList.length - 1]}`), plans = res.plans || [];
       const of = (key) => plans.filter((p) => p.period === key).sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0) || (a.sort ?? 0) - (b.sort ?? 0));
       const year = of(K.year), month = of(K.month), week = of(K.week), day = of(K.day);
@@ -223,13 +278,11 @@ export function mount(root, ctx) {
       S.closed = !!res.closed; // 친구가 계획을 not open 으로 두면 빈 차트 + 안내
       const segs = (list) => list.map((p) => ({ done: !!p.done, title: p.text || "비공개 목표", id: p.id }));
       S.plans = plans; // 조각을 누르면 id 로 찾아요
+      S.range = [dayList[0], dayList[dayList.length - 1]];
       const done = (list) => list.filter((p) => p.done).length;
       const period = (list, key, dLeft) => ({ segs: segs(list), value: list.length ? done(list) / list.length : 0, total: list.length, time: elapsed(key), detail: `D-${dLeft}` + (list.length ? ` · ${done(list)}/${list.length} 이룸` : "") });
       // 오늘: 시각이 있는 할 일은 24시간 시계 위 제자리에
-      const blocks = day.filter((p) => /^\d\d:\d\d$/.test(p.start || "")).map((p) => {
-        const [h, m] = p.start.split(":").map(Number), a0 = (h * 60 + m) / 1440;
-        return { a0, a1: Math.min(1, a0 + (p.mins || 30) / 1440), done: !!p.done, title: p.text || "비공개", time: p.start, id: p.id, priority: p.priority || "", cat: catOf(p.text), mins: p.mins || 30, missed: !!p.missed, focus: p.focus_mins || 0 };
-      }).sort((a, b) => a.a0 - b.a0);
+      const blocks = toBlocks(day);
       const val = {
         year: period(year, K.year, left),
         month: period(month, K.month, daysLeft(K.month)),
@@ -261,6 +314,7 @@ export function mount(root, ctx) {
       $$("[data-who]", root).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.who === S.who)));
       drawCheer();
       draw();
+      if (!inRange(S.day)) fetchDay(S.day, true);
     } catch (e) { toast(e.message, "err"); }
   }
 
@@ -305,7 +359,7 @@ export function mount(root, ctx) {
           { k: "go", label: timed ? "하루 계획표에서 열기" : "그 기간 페이지에서 열기" }] : []),
       ],
       onPick: async (k) => {
-        if (k === "go") { ctx.go(timed ? `#/calendar/${K.day.slice(2)}` : p.period?.startsWith("Y:") ? HREF.year : p.period?.startsWith("M:") ? HREF.month : p.period?.startsWith("W:") ? HREF.week : HREF.check); return; }
+        if (k === "go") { ctx.go(timed ? `#/calendar/${(p.period || K.day).slice(2)}` : p.period?.startsWith("Y:") ? HREF.year : p.period?.startsWith("M:") ? HREF.month : p.period?.startsWith("W:") ? HREF.week : HREF.check); return; }
         if (k !== "done" && k !== "missed") return;
         try {
           await api.updatePlan(p.id, k === "done" ? { done: !p.done } : { missed: !p.missed });
@@ -327,6 +381,8 @@ export function mount(root, ctx) {
     });
   }
   root.addEventListener("click", (e) => {
+    const dn = e.target.closest("svg [data-dnav]"); // Day 쪽 시계 위 ‹ 날짜 › · 오늘로
+    if (dn) { stepDay(dn.dataset.dnav); return; }
     const wk = e.target.closest("[data-wk]");
     if (wk) { const off = +wk.dataset.wk; if (off !== S.wk.off) { S.wk.off = off; S.wk.error = null; redrawTeam(); } return; }
     if (e.target.closest("#wk-ai-btn")) { makeReview(); return; }
@@ -341,25 +397,34 @@ export function mount(root, ctx) {
     if ((d || r) && !mine()) { // 친구 차트: 오늘·날짜 → 친구의 하루 계획표 전체 화면(보기만) · 올해·달·주 → 그 기간 목표 목록
       if (S.closed) { toast("이 친구는 계획표를 공개하지 않았어요 (not open)."); return; }
       const key = d ? "day" : r.dataset.ring;
-      if (d || key === "day") { ctx.go(`#/calendar/${d ? d.dataset.day : K.day.slice(2)}/u/${S.who}`); return; }
+      if (d || key === "day") { ctx.go(`#/calendar/${d ? d.dataset.day : pageKey() === "day" ? S.day : K.day.slice(2)}/u/${S.who}`); return; }
       if (key === "check") { ctx.go(`#/calendar/${K.day.slice(2)}/u/${S.who}`); return; }
       showPeriodList(key, e); return;
     }
     if (d) { ctx.go(dayTarget(d.dataset.day)); return; }
-    if (r) ctx.go(target(r.dataset.ring));
+    if (r) ctx.go(ringHref(r.dataset.ring));
   });
   // 오늘 링을 끌어서 계획 넣기 (하루 쪽 큰 시계 · 전체 쪽 오늘 링, 마우스 · 내 차트에서만). 끌지 않고 누르면 위의 click 그대로
   const drag = mountRingDrag(root, {
     can: () => mine() && !S.closed && !!S.items,
-    blocks: () => S.data?.day?.blocks || [],
+    blocks: () => (pageKey() === "day" ? dayData().blocks : S.data?.day?.blocks || []),
     save: async ({ start, mins, text }) => {
-      await api.addPlan({ scope: "day", period: K.day, text, start, mins });
-      toast(`넣었어요 · ${start} ${hm(mins)} ${text}`);
+      const on = pageKey() === "day" ? S.day : todayStr; // Day 쪽은 고른 날, 전체 쪽 오늘 링은 오늘
+      await api.addPlan({ scope: "day", period: "D:" + on, text, start, mins });
+      toast(`넣었어요 · ${on === todayStr ? "" : relOf(on, todayStr) + " "}${start} ${hm(mins)} ${text}`);
       ctx.changed("plans"); // 홈은 trio:changed 로 다시 그려요 — 그때쯤엔 이름 칸이 닫혀 있어요
     },
     onIdle: () => { if (S.stale && alive) { S.stale = false; load(false); } },
   });
-  root.addEventListener("keydown", (e) => { const r = e.target.closest?.("svg [data-ring]"); if (r && (e.key === "Enter" || e.key === " ") && mine()) { e.preventDefault(); ctx.go(target(r.dataset.ring)); } });
+  // Day 쪽 링은 고른 날의 하루 계획표로 (전체 쪽 오늘 링 · 다른 링은 그대로)
+  const ringHref = (key) => (key === "day" && pageKey() === "day" ? `#/calendar/${S.day}` : target(key));
+  root.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const dn = e.target.closest?.("svg [data-dnav]");
+    if (dn) { e.preventDefault(); const k = dn.dataset.dnav; stepDay(k); root.querySelector(`svg [data-dnav="${k === "today" ? "next" : k}"]`)?.focus(); return; }
+    const r = e.target.closest?.("svg [data-ring]");
+    if (r && mine()) { e.preventDefault(); ctx.go(ringHref(r.dataset.ring)); }
+  });
   // 가리키면: 칸 설명(data-tip)이 있으면 그걸, 전체 쪽에선 링 요약을 아래 줄에
   root.addEventListener("mouseover", (e) => {
     const tipEl = e.target.closest("svg [data-tip]");
