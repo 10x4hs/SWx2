@@ -102,7 +102,7 @@ export function mountHome(host, ctx) {
       b.addEventListener("focus", () => { setHover(i); loop?.highlight(i); });
       b.addEventListener("mouseleave", () => { setHover(-1); loop?.highlight(-1); });
       b.addEventListener("blur", () => { setHover(-1); loop?.highlight(-1); });
-      b.addEventListener("click", () => { if (pick === i) location.hash = "#/dev/" + idx.modules[i].id; else { pick = i; setHover(-1); } });
+      b.addEventListener("click", () => { location.hash = "#/dev/" + idx.modules[i].id; }); // 이름표를 누르면 바로 그 주로
     });
     host.querySelectorAll("[data-mod]").forEach((r) => { const i = Number(r.dataset.mod); r.addEventListener("mouseenter", () => { setHover(i); loop?.highlight(i); }); r.addEventListener("mouseleave", () => { setHover(-1); loop?.highlight(-1); }); });
     const canvas = host.querySelector("#dv-canvas");
@@ -110,7 +110,7 @@ export function mountHome(host, ctx) {
       stations: idx.modules.map((m, i) => ({ no: m.no, state: stateOf(i, pos) })),
       progress: loopProgress(idx, st),
       labels: [...host.querySelectorAll("[data-st]")], lobes: [...host.querySelectorAll("[data-lobe]")],
-      onHover: (i) => setHover(i), onPick: (i) => { pick = i; setHover(-1); },
+      onHover: (i) => setHover(i), onPick: (i) => { location.hash = "#/dev/" + idx.modules[i].id; },
     }).then((l) => { if (!alive || !canvas.isConnected) { l?.destroy(); return; } loop = l; if (!l) host.querySelectorAll("[data-st],[data-lobe]").forEach((e) => (e.style.display = "none")); });
   }
   return () => { alive = false; loop?.destroy(); loop = null; };
