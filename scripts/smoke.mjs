@@ -153,7 +153,10 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
     r = await call("a", "PUT", "/dev/done", { module: dm.id, item: dm.problems[0].id, kind: "problem", score: 1, total: 1 }); ok(r.status === 200 && r.data.done.some((x) => x.item === dm.problems[0].id && x.score === 1), "dev: meeting problem done");
     r = await call("a", "PUT", "/dev/done", { module: dm.id, item: "nope", kind: "case" }); ok(r.status === 400, "dev: unknown case → 400");
     r = await call("a", "PUT", "/dev/day", { minutes: 9, plan: "내일 회의실 2문제" }); { const d = r.data.days?.find((x) => x.day === r.data.today); ok(d?.minutes === 9 && d.plan === "내일 회의실 2문제", "dev: day minutes + plan"); }
-    r = await call("b", "GET", "/dev/state"); ok(r.status === 200 && !r.data.items.some((x) => x.card === dc && x.module === dm.id), "dev: private per user"); }
+    r = await call("b", "GET", "/dev/state"); ok(r.status === 200 && !r.data.items.some((x) => x.card === dc && x.module === dm.id), "dev: private per user");
+    r = await call("a", "POST", "/dev/ask?stream=0", { module: dm.id, card: "week", messages: [] }); ok(r.status === 400, "dev: AI 질문 (week) without question → 400");
+    r = await call("a", "POST", "/dev/ask?stream=0", { module: "nope", card: "week", messages: [{ role: "user", content: "x" }] }); ok(r.status === 400, "dev: AI 질문 (week) unknown module → 400");
+    r = await call("a", "POST", "/mba/ask?stream=0", { module: "accounting", card: "week", messages: [{ role: "user", content: "x" }] }); ok(r.status === 400, "mba: no week scope (dev only) → 400"); }
   // 케이스 · 연습문제 · 강의 끝냄 (v2) — id 는 index.json 에서 골라요
   { const mi = await (await fetch(BASE + "/mba/index.json")).json(), mm = mi.modules.find((m) => m.cases?.length && m.problems?.length && m.lectures?.length);
     ok(mi.modules.every((m) => m.cards.length >= 30), "mba: every module has 30+ cards");

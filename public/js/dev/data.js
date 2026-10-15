@@ -98,7 +98,7 @@ export function meter(cap) {
   let t = Date.now(), rest = 0;
   return () => { const ms = Math.min(cap * 60000, Date.now() - t) + rest; t = Date.now(); const n = Math.floor(ms / 60000); rest = ms - n * 60000; return n; };
 }
-export const NAV = [["", "지도"], ["today", "오늘"], ["docs", "문서"]];
+export const NAV = [["", "지도"], ["today", "오늘"], ["docs", "문서"], ["ask", "AI 질문"]];
 export function topbar(active, extra = "") {
   return `<header class="dv-top"><a class="dv-brand" href="#/dev" aria-label="개발 흐름 홈"><svg width="26" height="14" viewBox="0 0 26 14" aria-hidden="true"><path d="M13 7C9 1 3 1 3 7s6 6 10 0 10-6 10 0-6 6-10 0Z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>개발 흐름</span></a>
     <nav class="dv-nav" aria-label="개발 흐름 메뉴">${NAV.map(([k, l]) => `<a href="#/dev${k ? "/" + k : ""}"${active === k ? ' aria-current="page"' : ""}>${l}</a>`).join("")}${extra}</nav></header>`;

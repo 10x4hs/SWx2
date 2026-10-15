@@ -1,5 +1,7 @@
-// 개발 흐름 홈의 3D 흐름 고리 — 각진(로우폴리) ∞ 고리를 홀로그램 점 껍질로 감싸고 12개 정거장을 놓아요. 마우스를 따라 기울고, 가리킨 정거장 둘레가 밝아져요 (three.js r128, /vendor/three.min.js 를 처음 열 때 받아요)
-//   mountLoop(canvas, { stations, progress, labels, lobes, onHover, onPick }) → { highlight(i), destroy() } | null
+// 개발 흐름 홈의 3D 흐름 고리 — 각진(로우폴리) ∞ 고리를 홀로그램 점 껍질로 감싸고 12개 정거장을 놓아요.
+//   마우스를 대면 그 둘레 점들이 흩어졌다가 천천히 제자리로 돌아오고(점마다 세기가 달라요), 가리킨 정거장은 커지며 돌아요 (three.js r128, /vendor/three.min.js 를 처음 열 때 받아요)
+//   mountLoop(canvas, { stations, progress, labels, lobes, onHover, onPick, onLost }) → { highlight(i), destroy() } | null
+//   onLost: 브라우저가 그래픽 문맥을 잃고 1.5초 안에 되살리지 않을 때 (홈이 새 캔버스로 다시 붙여요)
 //   움직임 줄이기 설정이면 날아오기 · 흐르는 점 · 맥박 · 흔들림을 끄고 멈춘 그림만 그려요. 공부 내용 그림은 전부 2D (여긴 길 찾기용).
 let threeP = null;
 function loadThree() {
@@ -80,8 +82,40 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
       shPos[n3] = cp.x + rr * (Math.cos(ang) * nn.x + Math.sin(ang) * bb.x); shPos[n3 + 1] = cp.y + rr * (Math.cos(ang) * nn.y + Math.sin(ang) * bb.y); shPos[n3 + 2] = cp.z + rr * (Math.cos(ang) * nn.z + Math.sin(ang) * bb.z);
       shU[si * RAD + ri] = su;
     }
-    var shG = new THREE.BufferGeometry(); shG.setAttribute("position", new THREE.BufferAttribute(shPos, 3)); shG.setAttribute("color", new THREE.BufferAttribute(shCol, 3)); geos.push(shG);
-    var shM = new THREE.PointsMaterial({ size: 0.05, vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }); mats.push(shM);
+    var shSeed = new Float32Array(shN); for (var sk = 0; sk < shN; sk++) shSeed[sk] = Math.random();
+    var shG = new THREE.BufferGeometry(); shG.setAttribute("position", new THREE.BufferAttribute(shPos, 3)); shG.setAttribute("tint", new THREE.BufferAttribute(shCol, 3)); shG.setAttribute("seed", new THREE.BufferAttribute(shSeed, 1)); geos.push(shG);
+    // 흩어지기: 화면에서 마우스와 가까운 점일수록 마우스 반대쪽으로 밀리고(점마다 0.3~1배), 앞뒤로도 조금 튀어요. 세기(uPower)는 마우스 속도에 따라 커졌다가 천천히 0으로
+    var SU = { uMouse: { value: new THREE.Vector2(9, 9) }, uPower: { value: 0 }, uAspect: { value: 1 }, uTan: { value: Math.tan(18 * Math.PI / 180) }, uTime: { value: 0 }, uSize: { value: 0.058 }, uScale: { value: 400 } };
+    var shM = new THREE.ShaderMaterial({
+      uniforms: SU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: [
+        "attribute vec3 tint; attribute float seed;",
+        "uniform vec2 uMouse; uniform float uPower, uAspect, uTan, uTime, uSize, uScale;",
+        "varying vec3 vTint; varying float vHit;",
+        "void main() {",
+        "  vec4 mv = modelViewMatrix * vec4(position, 1.0);",
+        "  vec4 cp = projectionMatrix * mv;",
+        "  vec2 s = cp.xy / cp.w; s.x *= uAspect;",
+        "  vec2 d = s - uMouse; float dist = length(d);",
+        "  float hit = uPower * (1.0 - smoothstep(0.0, 0.38, dist));",
+        "  vec2 dir = dist > 0.0001 ? d / dist : vec2(0.0, 1.0);",
+        "  float wob = 0.85 + 0.15 * sin(uTime * 2.4 + seed * 6.2832);",
+        "  float push = hit * (0.06 + 0.3 * seed) * wob;",
+        "  mv.xy += dir * push * uTan * (-mv.z);",
+        "  mv.z += hit * (seed - 0.35) * 1.8;",
+        "  vHit = hit; vTint = tint;",
+        "  gl_Position = projectionMatrix * mv;",
+        "  gl_PointSize = uSize * (uScale / -mv.z) * (1.0 + hit * 1.1);",
+        "}"].join("\n"),
+      fragmentShader: [
+        "varying vec3 vTint; varying float vHit;",
+        "void main() {",
+        "  vec2 c = gl_PointCoord - 0.5; float r = length(c);",
+        "  if (r > 0.5) discard;",
+        "  float a = (1.0 - smoothstep(0.18, 0.5, r)) * 0.95;",
+        "  gl_FragColor = vec4(mix(vTint, vec3(1.0, 0.97, 0.86), min(1.0, vHit * 0.75)), a);",
+        "}"].join("\n"),
+    }); mats.push(shM);
     add(new THREE.Points(shG, shM));
     // 2) 정거장 자리: 고리마다 6개를 길이 기준으로 고르게
     var F = [0.1, 0.26, 0.42, 0.58, 0.74, 0.9], U = [];
@@ -112,7 +146,7 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
         if (hu >= 0) { var du = Math.abs(u2 - hu); du = Math.min(du, 1 - du); if (du < 0.04) c.lerp(wh, 1 - du / 0.04); }
         shCol[k2 * 3] = c.r; shCol[k2 * 3 + 1] = c.g; shCol[k2 * 3 + 2] = c.b;
       }
-      shG.attributes.color.needsUpdate = true;
+      shG.attributes.tint.needsUpdate = true;
     }
     paintShell(-1);
     // 4) 정거장: 동그라미 + 바닥까지 내린 빛기둥 + 바닥 고리
@@ -177,6 +211,9 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
       camera.aspect = w / h; camera.updateProjectionMatrix();
       var th = Math.tan((camera.fov / 2) * Math.PI / 180) * camera.aspect;
       Rfit = Math.max(R0, (A * 2 * 1.25) / (2 * th));
+      // 안개는 카메라 거리에 맞춰요: 화면이 좁아 카메라가 멀어져도 고리는 흐려지지 않고, 먼 바닥 격자만 흐려져요
+      scene.fog.near = Rfit + 5; scene.fog.far = Rfit + 24;
+      SU.uAspect.value = camera.aspect; SU.uScale.value = renderer.getDrawingBufferSize(new THREE.Vector2()).y / 2;
     }
 
     // 이름표를 정거장 위로 옮기고, 화면 좌표를 기억해 둬요 (마우스 고르기에 써요)
@@ -210,8 +247,12 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
       return best;
     }
     function down(e) { drag = { x: e.clientX, y: e.clientY }; moved = 0; if (canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId); }
+    var mouseT = new THREE.Vector2(9, 9), inside = false, speed = 0, lastPX = null;
     function move(e) {
       var r = canvas.getBoundingClientRect();
+      var nx = ((e.clientX - r.left) / r.width) * 2 - 1, ny = 1 - ((e.clientY - r.top) / r.height) * 2;
+      mouseT.set(nx * camera.aspect, ny); inside = true;
+      if (lastPX) speed += Math.hypot(e.clientX - lastPX.x, e.clientY - lastPX.y); lastPX = { x: e.clientX, y: e.clientY };
       want.yaw = (((e.clientX - r.left) / r.width) * 2 - 1) * 0.28;
       want.pitch = (((e.clientY - r.top) / r.height) * 2 - 1) * 0.12;
       if (drag) {
@@ -222,10 +263,14 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
       } else { var i = nearest(e); if (i !== hot) { setHot(i); onHover(i); } }
     }
     function up(e) { var was = drag; drag = null; canvas.style.cursor = hot >= 0 ? "pointer" : "grab"; if (was && moved < 6) { var i = nearest(e); if (i >= 0) onPick(i); } }
-    function leave() { want.yaw = 0; want.pitch = 0; if (hot >= 0) { setHot(-1); onHover(-1); } }
+    function leave() { want.yaw = 0; want.pitch = 0; inside = false; lastPX = null; if (hot >= 0) { setHot(-1); onHover(-1); } }
     canvas.addEventListener("pointerdown", down); canvas.addEventListener("pointermove", move);
     canvas.addEventListener("pointerup", up); canvas.addEventListener("pointerleave", leave);
     canvas.style.cursor = "grab"; canvas.style.touchAction = "pan-y";
+    var lostTimer = 0;
+    function ctxLost(e) { e.preventDefault(); clearTimeout(lostTimer); lostTimer = setTimeout(function () { if (alive && opts.onLost) opts.onLost(); }, 1500); }
+    function ctxBack() { clearTimeout(lostTimer); }
+    canvas.addEventListener("webglcontextlost", ctxLost); canvas.addEventListener("webglcontextrestored", ctxBack);
 
     var ro = new ResizeObserver(fit); ro.observe(canvas); fit();
     var visible = true, io = null;
@@ -239,6 +284,12 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
       clock += dt; if (flyT < 1) flyT = Math.min(1, flyT + dt / 2.0);
       tilt.yaw += (want.yaw - tilt.yaw) * 0.08; tilt.pitch += (want.pitch - tilt.pitch) * 0.08;
       placeCam(); placePackets(dt);
+      // 흩어지기: 마우스 위치는 살짝 늦게 따라가고, 세기는 빨리 차오르고 천천히 가라앉아요 (움직임 줄이기면 0)
+      SU.uTime.value = clock; speed *= 0.88;
+      SU.uMouse.value.lerp(mouseT, 0.22);
+      var want0 = REDUCED || !inside ? 0 : Math.min(1.6, 0.85 + speed * 0.012), pw = SU.uPower.value;
+      SU.uPower.value = pw + (want0 - pw) * (want0 > pw ? 0.16 : 0.05);
+      if (hot >= 0 && !REDUCED) { sprites[hot].rotation.y += dt * 1.6; sprites[hot].rotation.x += dt * 0.5; }
       if (pulse) {
         var ph = REDUCED ? 0.4 : (clock * 0.45) % 1, sc = 0.72 + ph * 0.95;
         pulse.scale.set(sc, sc, 1); pulse.material.opacity = REDUCED ? 0.35 : (1 - ph) * 0.65;
@@ -254,8 +305,10 @@ var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion
         alive = false; cancelAnimationFrame(raf); ro.disconnect(); if (io) io.disconnect();
         canvas.removeEventListener("pointerdown", down); canvas.removeEventListener("pointermove", move);
         canvas.removeEventListener("pointerup", up); canvas.removeEventListener("pointerleave", leave);
+        canvas.removeEventListener("webglcontextlost", ctxLost); canvas.removeEventListener("webglcontextrestored", ctxBack); clearTimeout(lostTimer);
         geos.forEach(function (g) { g.dispose(); }); mats.forEach(function (m) { m.dispose(); }); texs.forEach(function (t) { t.dispose(); });
         grid.geometry.dispose(); grid.material.dispose(); renderer.dispose();
+        try { renderer.forceContextLoss(); } catch (e) {} // 문맥을 바로 돌려줘요 (브라우저마다 WebGL 문맥 수에 한도가 있어요)
       }
     };
   }
