@@ -52,6 +52,8 @@ export function mountRunner(host, ctx, page, { preview = null } = {}) {
   async function handle(m) {
     if (m.type === "api") {
       if (!/^\/[\w\-./?=&%:,+@]*$/.test(m.path) || m.path.startsWith("/auth") || m.path.startsWith("/pages")) throw new Error("이 주소는 페이지에서 못 써요.");
+      // 일기: 함께 보는 사람의 일기(/diary/of · /diary/circle)는 어떤 페이지에서도, 남이 공유한 페이지에선 내 일기도 못 읽어요 (내 세션으로 남의 일기를 가져가지 못하게)
+      if (/^\/diary\/(?:of|circle)\b/.test(m.path) || (readonly && m.path.startsWith("/diary"))) throw new Error("일기는 이 페이지에서 못 읽어요.");
       if (readonly && m.method !== "GET") throw new Error("남이 공유한 페이지는 읽기만 할 수 있어요.");
       if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(m.method)) throw new Error("모르는 method");
       return api.raw(m.method, m.path, m.body);
