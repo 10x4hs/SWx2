@@ -21,7 +21,8 @@ export function initDock(deps) {
 }
 
 // until 이 지난 메뉴는 Dock 에서 빠져요 (한국 시간 기준) — 주소로 들어가면 결과는 볼 수 있어요
-const navLive = () => NAV.filter((n) => !n.until || kstDay() <= n.until);
+// when(me) 이 있는 메뉴는 그 사람에게만 (예: 일기 = 일기 모임)
+const navLive = () => NAV.filter((n) => (!n.until || kstDay() <= n.until) && (!n.when || n.when(ctx.me)));
 
 // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점. data-dock = 순서를 기억하는 이름
 const navItem = (n) => `<a class="rail-btn" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.key === "study" ? studyView.lastHash() : n.hash}" data-nav="${n.key}" data-dock="nav:${n.key}" draggable="false" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;

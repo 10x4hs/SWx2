@@ -18,6 +18,7 @@
 //   ⑮ 하루 계획표 짧은 일정 — 맞닿은 일정은 위아래로(5분 휴식 + 바로 뒤 시험) · 붙어 있으면 그 칸만 30px 로 늘어남 · 진짜 겹침은 나란히 · 늘어난 칸의 빈 칸 시각 · 끌기 시각 (2026-10-15)
 //   ⑯ 홈 Day 쪽 ‹ 날짜 › — › 내일(바늘 없음 · 오늘로) · 내일에 끌어 넣기 → 그 날짜 · 새로 열어도 고른 날 · 지난 기억은 오늘 · ‹ 어제 점수 · 링 누르면 그날 계획표 (2026-10-15)
 //   ⑰ 계획 복사 · 붙여넣기 — 마우스 올리고 ⌘C · 붙일 시각에 ⌘V(우선순위까지) · ⌘Z 되돌리기 · Shift+클릭 여러 개(간격 그대로) · 다른 앱의 "07:00–07:30 이름" 줄 · 그냥 글은 무시 · 홈 시계 링 시각 (2026-10-16)
+//   ⑱ 둘이 같이 보는 일기 — 일기 모임만 독 아이콘 · 새 일기 기본 공개 → 상대가 읽음 · 비공개면 자물쇠만(글은 서버에서도 안 와요) · 지난 일기 비공개 · 상대 탭 읽기 · 모임 밖은 403 · 아이콘 없음 (2026-10-16)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -30,10 +31,11 @@ const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); if (!
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await sleep(500); } }
 
-const tag = Date.now().toString(36), user = "t_e2e" + tag, friend = "t_e2f" + tag;
+const tag = Date.now().toString(36), user = "t_e2e" + tag, friend = "t_e2f" + tag, outsider = "t_e2o" + tag; // outsider = ⑱ 일기 모임 밖
 execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1"], { stdio: "ignore" });
 execFileSync("node", ["scripts/add-user.mjs", friend, "검사친구", "password1"], { stdio: "ignore" }); // ⑨ 공개 페이지를 올리는 친구
-const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username IN ('${user}', '${friend}')`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
+execFileSync("node", ["scripts/add-user.mjs", outsider, "모임밖", "password1"], { stdio: "ignore" });
+const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username IN ('${user}', '${friend}', '${outsider}')`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
 
 // 과목 페이지: 화면을 꽉 채우는 한 장짜리 · 여러 파일(style.css · app.js)짜리
 const FULL = `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%}body{display:grid;place-items:center;background:#1b6}</style><p>꽉 차야 해요</p>`;
@@ -988,6 +990,53 @@ try {
       const home = await list(today);
       ok(home.includes("20:00 30 홈 복사"), `${tv} · 홈 시계 — 조각 복사 → 링 20시에 붙여넣기 ${home.includes("20:00 30 홈 복사")}`);
       await p.evaluate(() => localStorage.removeItem("trio-home-page"));
+    }
+
+    // ---------- ⑱ 둘이 같이 보는 일기 — 일기 모임(user · friend)만, 모임 밖(outsider)은 서버가 막아요 (2026-10-16) ----------
+    {
+      errs = [];
+      // 일기 모임은 이 검사 동안만 (켜 둔 채 다음 차례로 가면 독 아이콘이 하나 늘어 폰의 ⑧ Dock 순서 검사가 '대화'를 못 잡아요)
+      const circle = (v) => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `UPDATE users SET diary_circle = ${v} WHERE username IN ('${user}', '${friend}')`], { stdio: "ignore" });
+      circle(1);
+      // 이 차례 앞에서 서비스 워커가 받아 둔 /api/me(모임 전)를 비우고 열어요 — 운영에선 배포 때 VERSION 이 바뀌어 API 캐시가 저절로 비워져요
+      await p.evaluate(() => new Promise((res) => { const sw = navigator.serviceWorker?.controller; if (!sw) return res(); const ch = new MessageChannel(); ch.port1.onmessage = () => res(); sw.postMessage({ type: "clear-api" }, [ch.port2]); setTimeout(res, 1500); }));
+      const day = await p.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
+      await go("#/diary", 2500);
+      const pg = await p.evaluate(() => ({ dock: !!document.querySelector('[data-nav="diary"]'), tabs: document.querySelectorAll(".dr-tabs [data-who]").length, share: document.querySelector("[data-share]")?.getAttribute("aria-pressed"), grass: document.querySelectorAll(".dr-grass .g").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(pg.dock && pg.tabs === 2 && (tv === "컴퓨터" ? pg.share === "true" : pg.share != null) && pg.grass >= 365 && !pg.over && !errs.length, `${tv} · 일기 페이지 — 독 아이콘 ${pg.dock} · 탭 ${pg.tabs} · 새 일기 공개 ${pg.share} · 잔디 ${pg.grass}칸 · 가로 넘침 ${pg.over}${errs.length ? " — " + errs[0] : ""}`);
+      if (tv === "컴퓨터") {
+        const fc = await browser.newContext(), oc = await browser.newContext();
+        const fid = (await (await fc.request.post(BASE + "/api/auth/login", { headers: H, data: { username: friend } })).json()).user.id;
+        await oc.request.post(BASE + "/api/auth/login", { headers: H, data: { username: outsider } });
+        const myId = (await (await ctx.request.get(BASE + "/api/me", { headers: H })).json()).user.id;
+        const of = async (c, who, d) => { const r = await c.request.get(BASE + `/api/diary/of?user=${who}&day=${d}`, { headers: H }); return r.ok() ? (await r.json()).diary : r.status(); };
+        // 새 일기는 기본 공개 → 친구가 읽어요. 비공개로 바꾸면 날짜 · 비공개 표시만 (기분 · 글은 안 와요)
+        await p.click(".diary-text"); await p.keyboard.type("모임 일기 검사"); await sleep(1800);
+        const seen1 = await of(fc, myId, day);
+        await p.click("[data-share]"); await sleep(1500);
+        const seen2 = await of(fc, myId, day);
+        // 지난 일기(공개 여부 없이 저장)는 비공개
+        const past = new Date(Date.parse(day) - 2 * 864e5).toISOString().slice(0, 10);
+        await ctx.request.put(BASE + "/api/diary", { headers: H, data: { day: past, body: "지난 일기", mood: 2 } });
+        const seen3 = await of(fc, myId, past);
+        ok(seen1?.body === "모임 일기 검사" && seen2?.private === true && seen2.body === undefined && seen2.mood === undefined && seen3?.private === true && seen3.body === undefined,
+          `${tv} · 일기 공개 · 비공개 — 새 일기 친구가 읽음 ${seen1?.body === "모임 일기 검사"} · 비공개면 자물쇠만 ${seen2?.private === true && seen2.body === undefined} · 지난 일기 비공개 ${seen3?.private === true}`);
+        // 친구 탭: 공개 일기는 글, 비공개로 바꾸면 자물쇠 (새로 고침해도 예전 글이 남지 않아요)
+        await fc.request.put(BASE + "/api/diary", { headers: H, data: { day, body: "친구의 공개 일기", mood: 4, shared: true } });
+        await go(`#/diary/u/${fid}/${day}`, 2500);
+        const r1 = await p.evaluate(() => document.querySelector(".dr-body")?.textContent || "");
+        await fc.request.put(BASE + "/api/diary", { headers: H, data: { day, body: "친구의 공개 일기", mood: 4, shared: false } });
+        await p.reload(); await sleep(2500);
+        const r2 = await p.evaluate(() => ({ lock: !!document.querySelector(".dr-lock"), body: !!document.querySelector(".dr-body") }));
+        // 모임 밖: 모임 · 남의 일기 403, 독 아이콘 없고 #/diary 는 예전처럼 캘린더로
+        const s1 = (await oc.request.get(BASE + "/api/diary/circle", { headers: H })).status(), s2 = await of(oc, myId, day), s3 = await of(ctx, (await (await oc.request.get(BASE + "/api/me", { headers: H })).json()).user.id, day);
+        const op = await oc.newPage(); await op.goto(BASE + "/#/diary"); await sleep(2500);
+        const ov = await op.evaluate(() => ({ dock: !!document.querySelector('[data-nav="diary"]'), hash: location.hash }));
+        ok(r1 === "친구의 공개 일기" && r2.lock && !r2.body && s1 === 403 && s2 === 403 && s3 === 403 && !ov.dock && ov.hash.startsWith("#/calendar/") && !errs.length,
+          `${tv} · 친구 탭 읽기 ${r1 === "친구의 공개 일기"} · 비공개 후 자물쇠 ${r2.lock && !r2.body} · 모임 밖 403 ${[s1, s2, s3].join("/")} · 아이콘 없음 ${!ov.dock} (${ov.hash})${errs.length ? " — " + errs[0] : ""}`);
+        await fc.close(); await oc.close();
+      }
+      circle(0);
     }
 
     await ctx.close();

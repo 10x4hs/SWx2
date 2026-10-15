@@ -9,6 +9,7 @@ import * as brainView from "./views/brain.js"; // Brain = 노트 + 공부를 한
 import * as aiView from "./views/ai.js";
 import * as plannerView from "./views/planner.js";
 import * as diaryView from "./views/diary.js";
+import * as diaryRoomView from "./views/diary-room.js";
 import * as goalsView from "./views/goals.js";
 import * as checklistView from "./views/checklist.js";
 import * as homeView from "./views/home.js";
@@ -120,6 +121,7 @@ window.addEventListener("trio:me", (e) => {
 const NAV = [
   { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
+  { key: "diary", hash: "#/diary", label: "일기", tip: "일기 · 둘이 같이 보기 (공개 · 비공개)", when: (me) => !!me?.diary_circle }, // 일기 모임(HSK · GYK)에게만
   { key: "brain", hash: "#/brain", label: "Brain", tip: "Brain · notes + study in one tree" }, // 노트 · 공부 아이콘을 하나로
   { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI" }, // Brain 안에 묻히면 AI 공부책을 못 찾아서 바로 가는 아이콘은 남겨요
   { key: "news", hash: "#/news", label: "News", tip: "News · daily edition" },
@@ -272,6 +274,7 @@ initCustomize(ctx);
 const OLD_DAY = /^#\/(?:today|diary|records)(?:\/(\d{4}-\d{2}-\d{2}))?\/?$/;
 function redirectOld() {
   const m = location.hash.match(OLD_DAY);
+  if (m && /^#\/diary/.test(location.hash) && (!ctx.me || ctx.me.diary_circle)) return; // 일기 모임은 #/diary 가 일기 페이지 (로그인 전엔 그대로 두기)
   if (m) history.replaceState(history.state, "", "#/calendar/" + (m[1] || ymd(today())));
   { const m = location.hash.match(/^#\/plans(?:\/(year|month|week))?/); if (m) history.replaceState(history.state, "", m[1] ? "#/goals/" + m[1] : "#/goals/week"); } // 옛 계획 주소 → 목표 페이지
 }
@@ -290,7 +293,8 @@ function parseRoute() {
   if (a === "planner") return { view: "planner", nav: "ai", scope: b || null };
   if (a === "checklist") return { view: "checklist", nav: "calendar", day: b || null }; // 하루 체크리스트 (홈의 오늘 링에서)
   if (a === "goals") return { view: "goals", nav: "home", scope: b || "week", key: c || null }; // 이번 주 · 이번 달 · 올해 목표 (홈 링에서)
-  if (a === "calendar" && b === "diary") return { view: "diary", nav: "calendar", day: c || null }; // 일기 페이지
+  if (a === "diary" && ctx.me?.diary_circle) return { view: "diaryRoom", nav: "diary", who: b === "u" ? c || null : null, day: b === "u" ? d || null : b || null }; // 둘이 같이 보는 일기 (#/diary/<날짜> · #/diary/u/<id>/<날짜>)
+  if (a === "calendar" && b === "diary") return ctx.me?.diary_circle ? { view: "diaryRoom", nav: "diary", who: null, day: c || null } : { view: "diary", nav: "calendar", day: c || null }; // 일기 페이지 (일기 모임은 새 페이지로)
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar" && b === "m") return { view: "calendar", nav: "calendar", mode: "month", day: c ? `m/${c}` : null }; // #/calendar/m/2026-10 = 그 달 달력만
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null, who: c === "u" && d ? d : null }; // #/calendar/2026-10-04 = 그날 전체 화면 · /u/<id> = 친구의 그날
@@ -307,7 +311,7 @@ function parseRoute() {
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {
@@ -322,6 +326,7 @@ function route(redraw = false) {
   if (lastView === "brain" && r.view === "brain") { brainView.update(r); return; } // 층만 바뀌면 껍데기는 그대로
   if (lastView === "ai" && r.view === "ai") return; // the chat view follows its own hash changes
   if (lastView === "diary" && r.view === "diary") { diaryView.update(r); return; }
+  if (lastView === "diaryRoom" && r.view === "diaryRoom") { diaryRoomView.update(r); return; }
   if (lastView === "goals" && r.view === "goals") { goalsView.update(r); return; }
   if (lastView === "checklist" && r.view === "checklist") { checklistView.update(r); return; } // 주·월·년 탭은 판을 그대로 // 날짜만 바뀌면 편집기만 바꿔요
   if (lastView === "calendar" && r.view === "calendar" && calendarView.update) { calendarView.update(r); return; } // 날짜만 바뀌면 달력은 그대로

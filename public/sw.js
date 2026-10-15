@@ -6,7 +6,7 @@
 // - /api/* GET: network-first + 캐시 대체 (별도 캐시). 화면을 막 열 때 부른 GET(x-swr 머리말)은 받아 둔 답을 바로 주고
 //   뒤에서 새로 받아요 → 내용이 다르면 열린 탭에 "api-fresh" (app.js 가 손대지 않은 화면이면 다시 그려요)
 // - GET 아닌 /api 요청(저장 · 지우기)이 지나가면 API 캐시를 비워요 → 내가 바꾼 건 항상 새로 받아요
-// - /api/auth/*, ok 아닌 응답은 절대 저장 안 함
+// - /api/auth/*, /api/diary*(일기 — 상대가 비공개로 바꾸면 바로 안 보여야 하고 남의 기기에 남으면 안 돼요), ok 아닌 응답은 절대 저장 안 함
 // 개발(VERSION "dev", 로컬): 코드는 network-first 그대로 (고친 게 바로 보이게).
 
 const VERSION = "dev"; // deploy.sh 가 배포마다 "v<시각>" 으로 찍어요
@@ -72,7 +72,7 @@ self.addEventListener("fetch", (event) => {
       event.waitUntil(caches.delete(API_CACHE));
     }
     if (req.method !== "GET") { gen++; event.waitUntil(caches.delete(API_CACHE)); return; } // 저장 · 지우기 → 그대로 네트워크로, 캐시는 비워요
-    if (url.pathname.startsWith("/api/auth/")) return;
+    if (url.pathname.startsWith("/api/auth/") || url.pathname.startsWith("/api/diary")) return; // 일기는 늘 서버에서 (저장 안 함)
     event.respondWith(req.headers.has("x-swr") ? apiCacheThenFresh(event) : apiNetworkFirst(event));
     return;
   }
