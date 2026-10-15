@@ -71,6 +71,7 @@ export function mountRingDrag(root, opts) {
     if (!p || !onBand(d, p)) { hideHover(); return; }
     if (hov?.svg !== svg) { hideHover(); hov = { svg, d, g: layerOf(svg) }; }
     const m = snap(minuteAt(d, p)) % DAY;
+    hov.m = m;
     lineAt(d, $q(hov.g, "rd-line"), m);
     tagAt(svg, d, $q(hov.g, "rd-t1"), m, clock(m));
     hov.g.classList.add("hover"); svg.classList.add("rd-hov");
@@ -225,6 +226,7 @@ export function mountRingDrag(root, opts) {
 
   return {
     busy: () => !!((drag?.moved && !drag.dead) || pop),
+    at: () => (hov && !drag && !pop ? hov.m : null), // 마우스가 링 위면 그 시각 (계획 붙여넣기 자리)
     destroy() {
       cancelDrag(); drag = null; close(); hideHover();
       root.removeEventListener("pointerdown", down);

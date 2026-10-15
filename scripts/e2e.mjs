@@ -17,6 +17,7 @@
 //   ⑭ 홈 오늘 링 끌기 — 마우스를 대면 선 · 끌면 +분 · 놓으면 이름 칸(Enter 저장 · Esc 취소) · 거꾸로 · 겹침 · 그냥 누르면 원래대로 · 전체 쪽 오늘 링 · 친구 차트 · 터치는 그대로 (2026-10-15)
 //   ⑮ 하루 계획표 짧은 일정 — 맞닿은 일정은 위아래로(5분 휴식 + 바로 뒤 시험) · 붙어 있으면 그 칸만 30px 로 늘어남 · 진짜 겹침은 나란히 · 늘어난 칸의 빈 칸 시각 · 끌기 시각 (2026-10-15)
 //   ⑯ 홈 Day 쪽 ‹ 날짜 › — › 내일(바늘 없음 · 오늘로) · 내일에 끌어 넣기 → 그 날짜 · 새로 열어도 고른 날 · 지난 기억은 오늘 · ‹ 어제 점수 · 링 누르면 그날 계획표 (2026-10-15)
+//   ⑰ 계획 복사 · 붙여넣기 — 마우스 올리고 ⌘C · 붙일 시각에 ⌘V(우선순위까지) · ⌘Z 되돌리기 · Shift+클릭 여러 개(간격 그대로) · 다른 앱의 "07:00–07:30 이름" 줄 · 그냥 글은 무시 · 홈 시계 링 시각 (2026-10-16)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -941,6 +942,52 @@ try {
           `${tv} · 내일에 끌어 넣기 ${tp ? tp.start + " " + tp.mins + "분" : "없음"} · 새로 열어도 ${d2.cap} · 지난 기억 → ${d3.cap} · ‹ ${d4.cap} · 오늘로 ${d5.cap} · 링 → ${h6}${errs.length ? " — " + errs[0] : ""}`);
       }
       await p.evaluate(() => { localStorage.removeItem("trio-home-day"); localStorage.removeItem("trio-home-page"); });
+    }
+
+    // ---------- ⑰ 계획 복사 · 붙여넣기 (⌘C · ⌘V · ⌘Z, Ctrl 도 돼요) — 하루 계획표 · 홈 시계 (2026-10-16) ----------
+    if (tv === "컴퓨터") {
+      errs = [];
+      const day = await p.evaluate(() => { const d = new Date(Date.now() + 7 * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
+      const add = async (text, start, mins, priority) => (await (await ctx.request.post(BASE + "/api/plans", { headers: H, data: { scope: "day", period: "D:" + day, text, start, mins, ...(priority ? { priority } : {}) } })).json()).plan;
+      const list = async (d) => (await (await ctx.request.get(BASE + "/api/plans?periods=D:" + d, { headers: H })).json()).plans.map((x) => `${x.start} ${x.mins} ${x.text}${x.priority ? " " + x.priority : ""}`).sort();
+      await add("복사 A", "09:00", 60, "high"); await add("복사 B", "10:00", 30);
+      await go("#/calendar/" + day, 2500);
+      const blockAt = (t) => p.evaluate((t) => { const b = [...document.querySelectorAll("#dp-grid .block")].find((x) => x.querySelector("[data-edit]")?.textContent === t); b?.scrollIntoView({ block: "center" }); const r = b?.getBoundingClientRect(); return r ? [r.left + Math.min(200, r.width / 2), r.top + r.height / 2] : [0, 0]; }, t);
+      const hourAt = (h) => p.evaluate((h) => { const r = document.querySelector(`#dp-grid .hour[data-h="${h}"]`); r.scrollIntoView({ block: "center" }); const q = r.getBoundingClientRect(); return [q.left + 300, q.top + 2]; }, h);
+      const shiftClick = async ([x, y]) => { await p.keyboard.down("Shift"); await p.mouse.click(x, y); await p.keyboard.up("Shift"); };
+      // 하나: A 에 마우스 → ⌘C → 14시 칸에 마우스 → ⌘V → 14:00 (우선순위까지) → ⌘Z 로 되돌리기
+      await p.mouse.move(...await blockAt("복사 A")); await p.keyboard.press("Control+C"); await sleep(200);
+      await p.mouse.move(...await hourAt(14)); await p.keyboard.press("Control+V"); await sleep(1500);
+      const one = await list(day);
+      await p.keyboard.press("Control+Z"); await sleep(1500);
+      const undone = await list(day);
+      // 여러 개: Shift+클릭 A · B → ⌘C → 16시 칸 → ⌘V → 16:00 · 17:00 (간격 그대로)
+      await shiftClick(await blockAt("복사 A")); await shiftClick(await blockAt("복사 B"));
+      const sel = await p.evaluate(() => document.querySelectorAll("#dp-grid .block.sel").length);
+      await p.keyboard.press("Control+C"); await sleep(200);
+      await p.mouse.move(...await hourAt(16)); await p.keyboard.press("Control+V"); await sleep(2000);
+      const multi = await list(day);
+      ok(one.includes("14:00 60 복사 A high") && undone.length === 2 && sel === 2 && multi.includes("16:00 60 복사 A high") && multi.includes("17:00 30 복사 B") && multi.length === 4 && !errs.length,
+        `${tv} · 계획 복사 · 붙여넣기 — 14시에 ${one.includes("14:00 60 복사 A high")} · ⌘Z ${undone.length === 2} · Shift+클릭 ${sel}개 → 16:00 · 17:00 ${multi.includes("17:00 30 복사 B")}${errs.length ? " — " + errs[0] : ""}`);
+      // 다른 앱에서 복사한 "07:00–07:30 이름" 줄은 계획으로 · 그냥 글은 그대로 무시 (마우스가 시간표 밖이면 줄에 적힌 시각에)
+      await p.mouse.move(5, 5);
+      const pasteText = (t) => p.evaluate((t) => { const dt = new DataTransfer(); dt.setData("text/plain", t); document.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true })); }, t);
+      await pasteText("07:00–07:30 아침 운동"); await sleep(1500);
+      await pasteText("그냥 글이에요"); await sleep(800);
+      const txt = await list(day);
+      ok(txt.includes("07:00 30 아침 운동") && txt.length === 5, `${tv} · 다른 앱의 계획 줄 붙여넣기 ${txt.includes("07:00 30 아침 운동")} · 그냥 글은 무시 ${txt.length === 5}`);
+      // 홈 시계: 조각에 마우스 → ⌘C → 링 20시 자리에 마우스 → ⌘V → 오늘 20:00
+      const today = await p.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
+      await ctx.request.post(BASE + "/api/plans", { headers: H, data: { scope: "day", period: "D:" + today, text: "홈 복사", start: "06:00", mins: 30 } });
+      await p.evaluate(() => { localStorage.setItem("trio-home-page", "3"); localStorage.removeItem("trio-home-day"); });
+      await go("#/", 2500);
+      const seg = await p.evaluate(() => { const b = [...document.querySelectorAll(".pg-slide:not(.out) svg .ch-block")].find((x) => /홈 복사/.test(x.querySelector("title")?.textContent || "")); const r = b?.getBoundingClientRect(); return r ? [r.left + r.width / 2, r.top + r.height / 2] : [0, 0]; });
+      await p.mouse.move(...seg); await sleep(150); await p.keyboard.press("Control+C"); await sleep(200);
+      const ring = await p.evaluate(() => { const svg = document.querySelector(".pg-slide:not(.out) svg[data-dial]"); const [cx, cy, ri, ro] = svg.dataset.dial.split(" ").map(Number), r = (ri + ro) / 2, a = (1200 / 1440) * 2 * Math.PI - Math.PI / 2; const q = new DOMPoint(cx + r * Math.cos(a), cy + r * Math.sin(a)).matrixTransform(svg.getScreenCTM()); return [q.x, q.y]; });
+      await p.mouse.move(...ring); await sleep(150); await p.keyboard.press("Control+V"); await sleep(1800);
+      const home = await list(today);
+      ok(home.includes("20:00 30 홈 복사"), `${tv} · 홈 시계 — 조각 복사 → 링 20시에 붙여넣기 ${home.includes("20:00 30 홈 복사")}`);
+      await p.evaluate(() => localStorage.removeItem("trio-home-page"));
     }
 
     await ctx.close();

@@ -15,6 +15,7 @@ import { prioDonut, prioStats, PRIO_COLOR, PRIO_LABEL } from "../charts/prio.js"
 import { mountPad } from "../home-pad.js";
 import { openMenu } from "../ctxmenu.js";
 import { mountRingDrag } from "../ring-drag.js";
+import { mountPlanClip } from "../plan-clip.js";
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
 const daysLeft = (key) => Math.max(0, Math.ceil((periodEnd(key) - Date.now()) / 864e5));
@@ -427,6 +428,7 @@ export function mount(root, ctx) {
   });
   // 가리키면: 칸 설명(data-tip)이 있으면 그걸, 전체 쪽에선 링 요약을 아래 줄에
   root.addEventListener("mouseover", (e) => {
+    S.hoverPlan = e.target.closest("svg [data-plan]")?.dataset.plan || null; // ⌘C 로 복사할 계획
     const tipEl = e.target.closest("svg [data-tip]");
     const tip = tipEl ? { text: tipEl.dataset.tip, go: tipEl.hasAttribute("data-day") ? (mine() ? "눌러서 그날 보기 →" : "차트만 공개") : "" } : null;
     const r = e.target.closest("[data-ring]"), k = r?.dataset.ring || null;
@@ -535,6 +537,23 @@ export function mount(root, ctx) {
     finally { S.wk.busy = false; if (alive) redrawTeam(); }
   }
 
+  // ---------- 계획 복사 · 붙여넣기 (⌘C · ⌘V · ⌘Z — plan-clip.js) ----------
+  // 조각에 마우스를 대고 ⌘C, 링 위 시각에 대고 ⌘V (링 밖이면 원래 시각). 친구 계획도 복사는 돼요, 붙이는 건 내 차트에만
+  const findPlan = (id) => S.plans?.find((x) => x.id === id) || Object.values(S.dayCache).flatMap((c) => c.plans || []).find((x) => x.id === id);
+  root.addEventListener("mouseleave", () => { S.hoverPlan = null; });
+  const stopClip = mountPlanClip({
+    active: () => alive && root.isConnected && !!S.items && (pageKey() === "day" || pageKey() === "all"),
+    pick: () => { const p = S.hoverPlan && findPlan(S.hoverPlan); return p ? [p] : []; },
+    target: () => (mine() && !S.closed ? { at: drag.at() } : null),
+    paste: async (list) => {
+      const on = pageKey() === "day" ? S.day : todayStr, ids = [];
+      for (const b of list) ids.push((await api.addPlan({ scope: "day", period: "D:" + on, text: b.text, start: b.start, mins: b.mins, ...(b.priority ? { priority: b.priority } : {}) })).plan.id);
+      ctx.changed("plans");
+      return ids;
+    },
+    remove: async (ids) => { await Promise.all(ids.map((id) => api.deletePlan(id))); ctx.changed("plans"); },
+  });
+
   load(true);
   loadTogether();
   const tick = setInterval(() => { load(false); loadTogether(); if (pageKey() === "team") loadWeek(true); }, 60_000);
@@ -543,5 +562,5 @@ export function mount(root, ctx) {
   // 프로필(이름 · 사진)을 바꾸면 오른쪽 아래 사람 고르기도 바로 새 모습으로
   const onMe = () => { $$("[data-who]", root).forEach((btn) => { const u = ctx.user(btn.dataset.who); const old = btn.querySelector(".av"); if (u && old) old.outerHTML = avatar(u, "sm"); }); pad.refresh?.(); };
   window.addEventListener("trio:me", onMe);
-  return () => { alive = false; drag.destroy(); stopAi?.(); pad.destroy(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); window.removeEventListener("trio:me", onMe); };
+  return () => { alive = false; drag.destroy(); stopClip(); stopAi?.(); pad.destroy(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); window.removeEventListener("trio:me", onMe); };
 }

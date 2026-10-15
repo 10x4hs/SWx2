@@ -2901,3 +2901,6 @@ html.rd-dragging, html.rd-dragging * { cursor: crosshair !important; -webkit-use
 .ch-day-clock .ch-dnav-btn:focus-visible circle, .ch-day-clock .ch-dnav-btn:focus-visible rect { stroke: var(--ink); stroke-width: 2; }
 .ch-day-clock .ch-dnav-t { font-weight: 600; fill: var(--ink); }
 .ch-day-clock .ch-dnav-today text { font-weight: 600; fill: var(--ink-2); pointer-events: none; }
+
+/* 계획 복사용으로 고른 블록 (Shift+클릭 · ⌘A) — plan-clip.js */
+.block.sel { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 3; }

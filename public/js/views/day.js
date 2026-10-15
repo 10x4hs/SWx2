@@ -12,6 +12,7 @@ import { MOODS } from "../diary.js";
 import { openMenu, closeMenu } from "../ctxmenu.js";
 import { icon } from "../icons.js";
 import { BLOCKS } from "../english/data.js";
+import { mountPlanClip, MOD } from "../plan-clip.js";
 
 const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게). 짧은 계획 바로 뒤에 다음 계획이 붙어 있으면 그 자리만 늘어나요 (axis)
 const STEP = 5;     // 시간표를 누르거나 끌 때만 5분 칸 (적는 시각 · 길이는 1분 단위)
@@ -60,7 +61,8 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   // 누구의 하루를 볼지. 친구 것은 그 사람이 open 했을 때만, 읽기 전용 (추가 · 고치기 · 끌기 없음)
   let who = startWho && ctx.users.some((u) => u.id === startWho) ? startWho : me.id; // 홈의 친구 차트에서 오면 그 친구로 시작 (보기만)
   const ro = () => who !== me.id;
-  const S = { plans: null, goals: null, diary: undefined, logs: [], english: null, record: null, notes: [], carry: 0, editSlot: null };
+  const S = { plans: null, goals: null, diary: undefined, logs: [], english: null, record: null, notes: [], carry: 0, editSlot: null,
+    sel: new Set(), hoverId: null, hoverMin: null }; // 복사 · 붙여넣기: 고른 계획(Shift+클릭 · ⌘A) · 마우스를 올린 계획 · 시간표 위 시각
   const wKey = periodKey("week", date), mKey = periodKey("month", date), yKey = periodKey("year", date);
   const GOAL_KEY = { week: wKey, month: mKey, year: yKey }, GOAL_LAB = { week: "이번 주", month: "이번 달", year: "올해" };
   const wk = isoWeek(date);
@@ -234,7 +236,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       const size = hh < 21 ? " thin tiny micro" : hh < 30 ? " thin tiny" : hh < 50 ? " thin" : "";
       const narrow = (frac < 0.5 ? " narrow xnarrow" : frac < 1 ? " narrow" : "") + (frac < 1 && c + span === n ? " edge-r" : "");
       const tip = `${p.start}–${toTime(e)} · ${p.text}${p.priority ? ` · ${p.priority}` : ""}`;
-      return `<div class="block ${status(p)}${size}${narrow}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tip)}" style="top:${top}px;height:${r2(h)}px;left:calc(${c * w}% + ${c ? 2 : 0}px);right:auto;width:calc(${w * span}% - ${n > 1 ? 2 : 0}px)" data-id="${esc(p.id)}">
+      return `<div class="block ${status(p)}${size}${narrow}${S.sel.has(p.id) ? " sel" : ""}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tip)}" style="top:${top}px;height:${r2(h)}px;left:calc(${c * w}% + ${c ? 2 : 0}px);right:auto;width:calc(${w * span}% - ${n > 1 ? 2 : 0}px)" data-id="${esc(p.id)}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">${missBtn(p)}
         <div class="txt">${h < 50 ? `<span class="when-i">${esc(p.start)}</span>` : ""}<span data-edit="${esc(p.id)}">${esc(p.text)}</span>${h >= 50 ? `<span class="when">${esc(p.start)}–${toTime(e)} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
         ${playBtn(p)}
@@ -260,7 +262,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     el.classList.toggle("ro", ro());
     const u = ctx.users.find((x) => x.id === who);
     const hintEl = $(".dp-hint", el);
-    if (hintEl) hintEl.textContent = ro() ? (S.closed ? `${u?.display_name || "친구"} 님은 하루 계획표를 공개하지 않았어요 (not open).` : `${u?.display_name || "친구"} 님의 하루 계획표예요 · 보기만 할 수 있어요.`) : "빈 시각을 누르면 바로 적을 수 있어요. 시각 · 길이는 1분 단위로 고쳐도 돼요. Enter 추가 · Esc 닫기.";
+    if (hintEl) hintEl.textContent = ro() ? (S.closed ? `${u?.display_name || "친구"} 님은 하루 계획표를 공개하지 않았어요 (not open).` : `${u?.display_name || "친구"} 님의 하루 계획표예요 · 보기만 할 수 있어요.`) : `빈 시각을 누르면 바로 적을 수 있어요. 시각 · 길이는 1분 단위로 고쳐도 돼요. Enter 추가 · Esc 닫기.${matchMedia("(hover: hover) and (pointer: fine)").matches ? ` 계획에 마우스를 대고 ${MOD}C · 붙일 시각에 대고 ${MOD}V (Shift+클릭 여러 개 · ${MOD}A 전체).` : ""}`;
     if (ro()) { S.editSlot = null; S.editId = null; }
     const sheet = phone();
     $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine + (sheet ? "" : pop);
@@ -426,8 +428,10 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     });
   }
   async function onElClick(e) {
+    const sb = !ro() && e.shiftKey && e.target.closest("#dp-grid .block");
+    if (sb && !e.target.closest("button, input, select, a")) { e.preventDefault(); const id = sb.dataset.id; S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); sb.classList.toggle("sel", S.sel.has(id)); return; }
     const wb = e.target.closest("[data-dpwho]");
-    if (wb) { if (wb.dataset.dpwho === who) return; who = wb.dataset.dpwho; $$("[data-dpwho]", el).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.dpwho === who))); S.plans = null; S.closed = false; S.editSlot = null; S.editId = null; drawGrid(); load(); return; }
+    if (wb) { if (wb.dataset.dpwho === who) return; who = wb.dataset.dpwho; S.sel.clear(); $$("[data-dpwho]", el).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.dpwho === who))); S.plans = null; S.closed = false; S.editSlot = null; S.editId = null; drawGrid(); load(); return; }
     if (ro()) { const b = e.target.closest("#dp-grid .block"); const p = b && S.plans?.find((x) => x.id === b.dataset.id); if (p) showPlanCard(p, e); return; } // 친구 계획표는 보기만 · 누르면 상세
     const mb = e.target.closest("[data-miss]");
     if (mb && S.plans) { const p = S.plans.find((x) => x.id === mb.dataset.miss); if (p) setMissed(p.id, !p.missed); return; }
@@ -617,6 +621,48 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   if (!future) loadTrend();
   const stopAic = mountCommand(el.querySelector("#dp-aic"), { day: () => day, onDone: () => changed("plans") });
 
+  // ---------- 계획 복사 · 붙여넣기 (⌘C · ⌘V · ⌘Z — plan-clip.js) ----------
+  // 마우스가 올라간 계획 · 시간표 위 시각(5분 단위, 늘어난 칸에서도 실제 시각)
+  el.addEventListener("pointermove", (e) => {
+    const g = $("#dp-grid", el);
+    if (!g || !S.axis) return;
+    S.hoverId = e.target.closest?.("#dp-grid .block")?.dataset.id || null;
+    const r = g.getBoundingClientRect(), inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+    S.hoverMin = inside ? Math.max(0, Math.min(1435, Math.floor(minuteAt(S.axis.Y, e.clientY - r.top, S.axis.m0) / STEP) * STEP)) : null;
+  });
+  el.addEventListener("pointerleave", () => { S.hoverId = null; S.hoverMin = null; });
+  el.addEventListener("mousedown", (e) => { if (e.shiftKey && e.target.closest("#dp-grid .block")) e.preventDefault(); }); // Shift+클릭이 글자를 고르지 않게
+  // Esc = 고른 것 풀기 · ⌘A = 이날 시각 있는 계획 전부 고르기 (입력 중엔 원래대로)
+  const onSelKey = (e) => {
+    if (!alive || !el.isConnected || ro() || !S.plans) return;
+    const a = document.activeElement;
+    if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+    if (e.key === "Escape" && S.sel.size) { S.sel.clear(); $$("#dp-grid .block.sel", el).forEach((b) => b.classList.remove("sel")); }
+    else if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "a") {
+      const timed = S.plans.filter((p) => p.start);
+      if (!timed.length) return;
+      e.preventDefault();
+      S.sel = new Set(timed.map((p) => p.id)); $$("#dp-grid .block", el).forEach((b) => b.classList.add("sel"));
+      toast(`계획 ${timed.length}개를 골랐어요 — ${MOD}C 로 복사`);
+    }
+  };
+  document.addEventListener("keydown", onSelKey);
+  const stopClip = mountPlanClip({
+    active: () => alive && el.isConnected && !!S.plans,
+    pick: () => (S.sel.size ? [...S.sel] : S.hoverId ? [S.hoverId] : []).map((id) => S.plans.find((p) => p.id === id)).filter(Boolean),
+    target: () => (ro() ? null : { at: S.hoverMin }), // 친구 계획표엔 못 붙여요 (복사는 돼요)
+    paste: async (list) => {
+      const made = [];
+      for (const b of list) made.push((await api.addPlan({ scope: "day", period: key, text: b.text, start: b.start, mins: b.mins, ...(b.priority ? { priority: b.priority } : {}) })).plan);
+      S.plans.push(...made); S.sel = new Set(made.map((p) => p.id)); drawAll(); changed("plans");
+      return made.map((p) => p.id);
+    },
+    remove: async (ids) => {
+      await Promise.all(ids.map((id) => api.deletePlan(id)));
+      S.plans = S.plans.filter((p) => !ids.includes(p.id)); ids.forEach((id) => S.sel.delete(id)); drawAll(); changed("plans");
+    },
+  });
+
   return () => {
     alive = false; stopAic?.(); closeMenu();
     ["pointerup", "pointercancel"].forEach((t) => window.removeEventListener(t, cancelPress));
@@ -624,6 +670,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     el.removeEventListener("change", onElChange);
     el.removeEventListener("click", onElClick);
     el.removeEventListener("dblclick", onElDbl);
+    stopClip(); document.removeEventListener("keydown", onSelKey);
     clearInterval(tick);
   };
 }
