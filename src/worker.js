@@ -25,6 +25,7 @@ import { on, match } from "./router.js";
 import { requireUser, sessionUser, tokenUser, loginWith, MUST_CHANGE_OPEN, registerAuth } from "./auth.js";
 import { registerPlans } from "./plans.js";
 import { registerDiary } from "./diary.js";
+import { registerAdmin } from "./admin.js";
 import { registerCustom } from "./custom.js";
 import { registerFiles } from "./files.js";
 import { registerNotes, indexStmts, MAX_NOTE } from "./notes.js";
@@ -116,6 +117,7 @@ async function internalCall(env, ec, origin, user, method, path, payload) {
 registerAuth(on);
 registerPlans(on);
 registerDiary(on);
+registerAdmin(on);
 registerNotes(on);
 registerRecords(on);
 registerCustom(on); // Dock 아이콘 우클릭 → 내 CSS · HTML · JS
