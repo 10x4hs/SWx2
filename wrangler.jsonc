@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "dsm-mafia",
+  "name": "swx2",
   "main": "src/worker.js",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_als"], // src/lib/budget.js 가 크론마다 바깥 요청 수를 세요 (AsyncLocalStorage)

@@ -54,7 +54,7 @@ export function mount(root, ctx, r) {
             <p class="gn-tagline">The daily paper for the three of us</p>
             <div class="gn-mast-row">
               <span class="gn-clocks" data-side="l">${CLOCKS.slice(0, 3).map(clockHtml).join("")}</span>
-              <a class="gn-wordmark" href="#/news">DSM MAFIA</a>
+              <a class="gn-wordmark" href="#/news">SWX2</a>
               <span class="gn-clocks" data-side="r">${CLOCKS.slice(3).map(clockHtml).join("")}</span>
             </div>
           </div>

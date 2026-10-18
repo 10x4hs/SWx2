@@ -1,4 +1,4 @@
-// Dsm-mafia — app shell: auth, routing, sidebar, command palette, focus timer.
+// SWx2 — app shell: auth, routing, sidebar, command palette, focus timer.
 import { api, navStart } from "./api.js";
 import { syncAiPrefs } from "./ai-pick.js";
 import { $, $$, esc, initial, ymd, today, toast, avatar } from "./util.js";

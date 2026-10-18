@@ -4,6 +4,6 @@
   "version": "1.0.0",
   "minAppVersion": "1.4.0",
   "description": "10월 5일(한국 시간)이 지나면 '논문 공부' 구역을 휴지통으로 옮기고 홈의 논문 칸을 지워요. 그 전에는 상태 표시줄에 D-day 만 보여요.",
-  "author": "Dsm-mafia",
+  "author": "SWx2",
   "isDesktopOnly": false
 }

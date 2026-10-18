@@ -1,4 +1,4 @@
-// Dsm-mafia — 명령 팔레트 (Cmd/Ctrl+K · app.js 에서 나눴어요).
+// SWx2 — 명령 팔레트 (Cmd/Ctrl+K · app.js 에서 나눴어요).
 import { api } from "./api.js";
 import { $, esc, debounce, ymd, today, planHash } from "./util.js";
 import * as notesView from "./views/notes.js";

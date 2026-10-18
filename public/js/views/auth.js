@@ -11,7 +11,7 @@ export function mountAuth(root, { onDone }) {
     <div class="gate" id="gate">
       <div class="gate-media" aria-hidden="true"></div>
       <div class="gate-veil" aria-hidden="true"></div>
-      <p class="gate-mark">Dsm-mafia</p>
+      <p class="gate-mark">SWx2</p>
       <form class="gate-form" id="gate-form" autocomplete="on" novalidate>
         <div class="pill" id="pill">
           <button type="button" class="pill-who" id="pill-who" hidden aria-label="아이디 다시 입력"></button>

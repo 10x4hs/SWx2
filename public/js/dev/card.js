@@ -42,7 +42,7 @@ export function mountCard(host, ctx, modId, cardId) {
         </article>
         <aside class="dv-side">
           ${c.ask?.length ? `<div class="dv-panel"><div class="m acc">대표가 할 질문</div><p>${c.ask.map((a, i) => `${"①②③④"[i] || "·"} ${esc(a)}`).join("<br>")}</p></div>` : ""}
-          ${c.mine ? `<div class="dv-panel"><div class="m">내 앱에서는? · dsm-mafia</div><p>${md(c.mine)}</p></div>` : ""}
+          ${c.mine ? `<div class="dv-panel"><div class="m">내 앱에서는? · SWx2</div><p>${md(c.mine)}</p></div>` : ""}
           <div class="dv-panel"><div class="m">왜 이렇게 배우나</div><p>읽고 나서 보지 않고 떠올려 적어요. 꺼내 보는 연습이 다시 읽기보다 오래 남아요 (Roediger &amp; Karpicke, 2006).</p></div>
           <div class="dv-panel" id="dv-ai" aria-label="AI 튜터" style="padding:16px">
             <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:8px"><span class="m">답 수준</span><button class="dv-chip" id="dv-lv" aria-pressed="false" style="height:36px;padding:0 12px">쉽게</button></div>

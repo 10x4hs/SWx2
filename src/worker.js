@@ -1,4 +1,4 @@
-// Dsm-mafia API — Cloudflare Worker + D1.
+// SWx2 API — Cloudflare Worker + D1.
 import "./lib/budget.js"; // 맨 먼저: fetch 를 세는 포장 (크론 예산)
 // Static files in ./public are served by the assets binding; only /api/* reaches this code.
 import { registerAi } from "./ai.js";

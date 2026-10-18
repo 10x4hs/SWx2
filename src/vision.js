@@ -42,7 +42,7 @@ async function viaGemini(env, model, images, q) {
 }
 async function viaOpenRouter(env, model, images, q) {
   const j = await postJson("OpenRouter", "https://openrouter.ai/api/v1/chat/completions",
-    { "content-type": "application/json", authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" },
+    { "content-type": "application/json", authorization: `Bearer ${env.OPENROUTER_API_KEY}`, "HTTP-Referer": "https://swx2.dsm-mafia.workers.dev", "X-Title": "SWx2" },
     { model, max_tokens: 4096, temperature: 0.1, messages: [{ role: "user", content: [{ type: "text", text: PROMPT(q) }, ...images.map((i) => ({ type: "image_url", image_url: { url: `data:${i.mime};base64,${i.data}` } }))] }] });
   return String(j.choices?.[0]?.message?.content || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }

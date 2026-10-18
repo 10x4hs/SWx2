@@ -64,7 +64,7 @@ export function mount(root, ctx, r) {
     $("#gl-next", root).href = `#/goals/${S.scope}/${shiftPeriod(S.key, 1).slice(2)}`;
     $("#gl-now", root).href = `#/goals/${S.scope}`;
     $("#gl-now", root).hidden = periodKey(S.scope, today()) === S.key;
-    document.title = `${t.eye} · Dsm-mafia`;
+    document.title = `${t.eye} · SWx2`;
   }
   function drawProg() {
     const box = $("#gl-prog", root); if (!S.list) { box.innerHTML = ""; return; }

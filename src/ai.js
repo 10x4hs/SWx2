@@ -23,9 +23,9 @@ const JSON_DEFAULTS = { suffix: "\n반드시 JSON 객체 하나만 출력해. �
 const OPENAI_LIKE = {
   groq: { url: GROQ_URL, name: "Groq", json: { suffix: "\n반드시 JSON 객체 하나만 출력해.", extra: groqExtra, jsonMode: true, checkError: false, stripThink: false, routed: false } },
   mimo: { url: MIMO_URL, name: "MiMo", json: { suffix: "\n반드시 JSON 객체 하나만 출력해.", maxTokens: 16384, checkError: false, stripThink: false, routed: false } },
-  openrouter: { url: OPENROUTER_URL, name: "OpenRouter", headers: { "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" } },
+  openrouter: { url: OPENROUTER_URL, name: "OpenRouter", headers: { "HTTP-Referer": "https://swx2.dsm-mafia.workers.dev", "X-Title": "SWx2" } },
   zhipu: { url: ZHIPU_URL, name: "GLM", body: { thinking: { type: "disabled" } } },   // 생각 모드를 끄지 않으면 본문이 빈 채로 와요
-  kilo: { url: KILO_URL, name: "Kilo", headers: { "HTTP-Referer": "https://dsm-mafia.dsm-mafia.workers.dev", "X-Title": "Dsm-mafia" } },
+  kilo: { url: KILO_URL, name: "Kilo", headers: { "HTTP-Referer": "https://swx2.dsm-mafia.workers.dev", "X-Title": "SWx2" } },
   ollama: { url: OLLAMA_URL, name: "Ollama" },
 };
 const KEY = { gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY", cohere: "COHERE_API_KEY", mimo: "MIMO_API_KEY", openrouter: "OPENROUTER_API_KEY", zhipu: "ZHIPU_API_KEY", kilo: "KILO_API_KEY", ollama: "OLLAMA_API_KEY" };
@@ -277,7 +277,7 @@ const TOOL_KO = { web_search: "웹 검색", read_page: "페이지 읽기", searc
 // ---------- prompts ----------
 function basePrompt(user) {
   return [
-    `너는 세 친구가 함께 쓰는 공부 앱 'Dsm-mafia'의 AI 튜터야. 지금 대화하는 사람은 ${user.display_name}이야.`,
+    `너는 세 친구가 함께 쓰는 공부 앱 'SWx2'의 AI 튜터야. 지금 대화하는 사람은 ${user.display_name}이야.`,
     "항상 한국어로, 친절하지만 군더더기 없이 답해. 마크다운(제목, 목록, 표, 코드블록)을 적절히 써.",
     "개념 설명은 핵심 → 예시 → 헷갈리기 쉬운 점 순서로. 문제 풀이는 단계별로.",
     "모르는 건 모른다고 말하고, 사용자의 기록에 없는 내용을 기록인 것처럼 지어내지 마.",

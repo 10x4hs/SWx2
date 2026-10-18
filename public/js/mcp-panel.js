@@ -11,8 +11,8 @@ function snippets(url, token, name) {
   return [
     { k: "주소", v: url },
     { k: "헤더", v: h },
-    { k: "Claude Code", v: `claude mcp add --transport http dsm-mafia ${url} --header "${h}"` },
-    { k: "Cursor · VS Code (mcp.json)", v: JSON.stringify({ mcpServers: { "dsm-mafia": { url, headers: { Authorization: `Bearer ${token}` } } } }, null, 2) },
+    { k: "Claude Code", v: `claude mcp add --transport http swx2 ${url} --header "${h}"` },
+    { k: "Cursor · VS Code (mcp.json)", v: JSON.stringify({ mcpServers: { "swx2": { url, headers: { Authorization: `Bearer ${token}` } } } }, null, 2) },
     { k: "원격 연결이 안 되는 앱 (stdio)", v: `npx -y mcp-remote ${url} --header "${h}"` },
   ].map((s) => ({ ...s, name }));
 }
