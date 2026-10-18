@@ -2991,3 +2991,13 @@ html.rd-dragging, html.rd-dragging * { cursor: crosshair !important; -webkit-use
 .tm-code code { font-size: 15px; padding: 2px 6px; user-select: all; }
 .tm-acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .rm-none { padding: 12px; font-size: 13px; }
+.adm-sec { margin-top: 32px; }
+.adm-sec h2 { font-size: 17px; margin: 0 0 6px; }
+.adm-ann { display: flex; gap: 6px; margin-top: 8px; }
+.adm-ann .input { flex: 1; min-width: 0; }
+.adm-team { padding: 10px 0; border-bottom: 1px solid var(--line, rgba(127,127,127,.12)); }
+.adm-team-m { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: 13.5px; }
+.adm-day { margin: 10px 0; }
+.adm-day ul { margin: 4px 0 0; padding-left: 18px; font-size: 13.5px; }
+.adm-day li.done { opacity: .6; }
+.ann-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 9998; display: flex; gap: 10px; align-items: center; max-width: calc(100% - 32px); padding: 8px 10px 8px 16px; border-radius: 12px; background: var(--ink, #111); color: var(--glass-3, #fff); font-size: 13.5px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }

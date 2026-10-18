@@ -76,6 +76,19 @@ function showAuth() {
 // 무채색 테마: 멤버 색은 가입 순서대로 먹 · 슬레이트 · 실버 톤
 const MEMBER_TONES = ["var(--m0)", "var(--m1)", "var(--m2)"];
 const toned = (users) => users.map((u, i) => ({ ...u, color: MEMBER_TONES[i % MEMBER_TONES.length] }));
+// 관리자 공지: 맨 위 띠 (닫으면 이 브라우저에서 그 공지만 숨겨요)
+function annBar() {
+  api.announcement().then(({ announcement: a }) => {
+    document.querySelector(".ann-bar")?.remove();
+    let hid = ""; try { hid = localStorage.getItem("trio-ann-hidden") || ""; } catch {}
+    if (!a || a.id === hid) return;
+    const bar = document.createElement("div");
+    bar.className = "ann-bar";
+    bar.innerHTML = `<span>📢 ${esc(a.body)}</span><button type="button" class="icon-btn sm" aria-label="공지 닫기">✕</button>`;
+    bar.querySelector("button").addEventListener("click", () => { try { localStorage.setItem("trio-ann-hidden", a.id); } catch {} bar.remove(); });
+    document.body.append(bar);
+  }).catch(() => {});
+}
 // 관리자가 이 회원으로 들어간 동안: 맨 위 띠 + 관리자로 돌아가기
 function impBar() {
   document.querySelector(".imp-bar")?.remove();
@@ -98,6 +111,7 @@ async function enter(user) {
   renderShell();
   loadCustom();
   impBar();
+  annBar();
   // 스터디장이 정해 준 비밀번호 그대로면: 화면을 열기 전에 먼저 바꾸게 해요
   if (ctx.me.must_change_pw) { openPassword({ force: true }); return; }
   route();
