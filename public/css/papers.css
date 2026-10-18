@@ -621,3 +621,4 @@ iframe.pp-vid-frame { cursor: auto; }
 .pp-hl-lost { font-size: 11px; }
 @media (max-width: 900px) { .pp-marks { margin: 0 0 8px; } }
 @media (prefers-reduced-motion: reduce) { .pp-hlbar, .pp-hlpop { animation: none; } }
+.mcp-widget-go { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }

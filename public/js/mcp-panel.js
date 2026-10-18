@@ -36,7 +36,7 @@ export function openMcpPanel(ctx) {
   document.addEventListener("keydown", onKey);
   back.addEventListener("click", (e) => { if (e.target === back || e.target.closest("[data-close]")) close(); });
 
-  let info = null, fresh = null; // fresh = 방금 만든 토큰 (이 창이 닫히면 다시 못 봐요)
+  let info = null, fresh = null, widget = null; // widget = 방금 만든 위젯 연결 주소 (triowidget://…) // fresh = 방금 만든 토큰 (이 창이 닫히면 다시 못 봐요)
 
   function paint() {
     const list = info.tokens.length
@@ -49,6 +49,10 @@ export function openMcpPanel(ctx) {
           <b>${esc(fresh.name)} 토큰을 만들었어요 — 지금만 보여요.</b> 창을 닫기 전에 복사해서 쓰는 앱에 넣어 주세요. 잃어버리면 '새 토큰'으로 다시 만들면 돼요.
           ${snippets(fresh.url, fresh.token, fresh.name).map((s, i) => `<div class="mcp-snip"><div class="mcp-snip-k">${esc(s.k)}<button class="btn ghost sm" type="button" data-copy="${i}">복사</button></div><pre>${esc(s.v)}</pre></div>`).join("")}
         </div>` : ""}
+      <h3 class="mcp-h">Mac 위젯</h3>
+      <div class="mcp-oauth-how">바탕화면 위젯(TrioWidget 앱)에 내 계획을 띄워요. 앱을 설치한 Mac 에서 아래 버튼을 누르면 앱이 열리면서 바로 연결돼요.
+        ${widget ? `<div class="mcp-widget-go"><a class="btn accent sm" href="${esc(widget)}">TrioWidget 에 연결</a><button class="btn ghost sm" type="button" data-copy-widget>연결 주소 복사</button></div><p class="faint">이 주소는 지금만 보여요. 앱의 '연결 주소 붙여 넣기'에 넣어도 돼요.</p>`
+          : `<div class="mcp-widget-go"><button class="btn sm" type="button" data-widget>${info.tokens.some((t) => t.agent === "mac-widget") ? "다시 연결 (새 토큰)" : "위젯 연결 만들기"}</button></div>`}</div>
       <h3 class="mcp-h">ChatGPT · claude.ai 처럼 OAuth 로 붙는 앱</h3>
       <div class="mcp-oauth-how">그 앱의 커넥터(연결) 추가 화면에 서버 주소 <code>${esc(info.url)}</code> 를 넣고 인증을 <b>OAuth</b> 로 두면,
         이 앱의 로그인 · 허용 화면이 떠요. 내 아이디로 로그인해서 <b>허용</b>을 누르면 끝이에요. 토큰을 따로 만들 필요 없어요.</div>
@@ -72,6 +76,13 @@ export function openMcpPanel(ctx) {
       if (!confirm(`'${b.dataset.label}' 연결을 끊을까요? 그 앱에서 다시 허용해야 쓸 수 있어요.`)) return;
       try { await api.mcpRevokeOAuth(b.dataset.revokeOauth); await load(); toast("끊었어요."); } catch (e) { toast(e.message, "err"); }
     }));
+    body.querySelector("[data-widget]")?.addEventListener("click", async () => {
+      try { const t = await api.mcpCreate("mac-widget"); widget = `triowidget://connect?base=${encodeURIComponent(location.origin)}&token=${encodeURIComponent(t.token)}`; await load(); }
+      catch (e) { toast(e.message, "err"); }
+    });
+    body.querySelector("[data-copy-widget]")?.addEventListener("click", async (e) => {
+      try { await navigator.clipboard.writeText(widget); e.currentTarget.textContent = "복사됨"; } catch { toast("복사하지 못했어요.", "err"); }
+    });
     body.querySelectorAll("[data-renew]").forEach((b) => b.addEventListener("click", () => create(b.dataset.renew, true)));
     body.querySelector("#mcp-new").addEventListener("submit", (e) => { e.preventDefault(); create(e.currentTarget.name.value.trim().toLowerCase()); });
   }

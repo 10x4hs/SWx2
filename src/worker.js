@@ -71,6 +71,7 @@ export default {
 };
 
 // ---------- routing ----------
+const WIDGET_PATH = /^\/(?:me|users|plans(?:\/[A-Za-z0-9_-]+)?|widget\/stamp)$/;
 async function route(req, env, url, ec) {
   const path = url.pathname.slice(4); // strip "/api"
   const hit = match(req.method, path);
@@ -80,6 +81,14 @@ async function route(req, env, url, ec) {
   if (req.method !== "GET" && req.headers.get("x-trio") !== "1") fail(403, "잘못된 요청이에요.");
   const ctx = { req, env, ec, url, params: m.groups || {}, q: url.searchParams };
   if (r.auth) {
+    // Mac 위젯: 쿠키 대신 내 토큰(Authorization: Bearer)으로 — 계획 · 멤버 · 바뀜 확인만
+    const bearer = /^Bearer\s+([A-Za-z0-9_-]{20,})$/.exec(req.headers.get("authorization") || "")?.[1];
+    if (bearer && WIDGET_PATH.test(path)) {
+      const t = await tokenUser(env, bearer);
+      if (!t) fail(401, "위젯 연결이 끊겼어요. 웹에서 다시 연결해 주세요.");
+      ctx.user = t.user;
+      return r.handler(ctx);
+    }
     ctx.user = await requireUser(req, env);
     // 첫 로그인: 비밀번호를 바꾸기 전에는 내 정보·멤버 목록·로그인 관련 API만 쓸 수 있어요
     if (ctx.user.must_change_pw && !MUST_CHANGE_OPEN(path)) fail(403, "먼저 비밀번호를 바꿔 주세요.", { must_change_password: true });

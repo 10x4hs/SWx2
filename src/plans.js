@@ -64,6 +64,14 @@ export function registerPlans(on) {
     return json({ plans: results });
   });
 
+  // Mac 위젯이 몇 초마다 묻는 '바뀐 게 있나' — 그 날들의 계획 수 + 마지막 수정 시각 (누구 것이든). 값이 달라지면 위젯이 다시 그려요
+  on("GET", "/widget/stamp", async ({ env, q }) => {
+    const m = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/.exec(q.get("days") || "");
+    if (!m || m[1] > m[2]) fail(400, "days=YYYY-MM-DD..YYYY-MM-DD 형식이에요.");
+    const r = await env.DB.prepare("SELECT COUNT(*) AS n, COALESCE(MAX(updated_at), 0) AS t FROM plans WHERE period >= ? AND period <= ?").bind("D:" + m[1], "D:" + m[2]).first();
+    return json({ stamp: `${r.n}:${r.t}` });
+  });
+
   on("POST", "/plans", async ({ req, env, user }) => {
     const b = await body(req);
     checkPeriod(b.scope, b.period);
