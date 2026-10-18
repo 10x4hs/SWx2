@@ -1,4 +1,4 @@
-// Dsm-mafia — 집중 타이머 (app.js 에서 나눴어요).
+// SWx2 — 집중 타이머 (app.js 에서 나눴어요).
 import { api } from "./api.js";
 import { $, esc, ymd, today, nowTime, toast, pad } from "./util.js";
 import { icon } from "./icons.js";
@@ -40,13 +40,13 @@ export const timer = {
   },
   pause() { this.running = false; clearInterval(this.t); presence("idle"); renderTimer(); },
   reset() { this.pause(); this.left = this.total; renderTimer(); },
-  stop() { this.running = false; clearInterval(this.t); presence("idle"); this.left = this.total; this.plan_id = null; this.label = ""; document.title = "Dsm-mafia"; },
+  stop() { this.running = false; clearInterval(this.t); presence("idle"); this.left = this.total; this.plan_id = null; this.label = ""; document.title = "SWx2"; },
   async finish() {
     clearInterval(this.t);
     this.running = false;
     const mins = Math.round(this.total / 60);
     chime();
-    document.title = "Dsm-mafia";
+    document.title = "SWx2";
     presence("idle");
     try {
       const b = { day: ymd(today()), at: nowTime(), text: `집중 ${mins}분${this.label ? " · " + this.label : ""}`, kind: "focus", mins };
@@ -64,7 +64,7 @@ export const timer = {
     const t = `${pad(Math.floor(this.left / 60))}:${pad(this.left % 60)}`;
     el.textContent = t;
     bar.style.width = `${(1 - this.left / this.total) * 100}%`;
-    document.title = this.running ? `${t} · 집중 중` : "Dsm-mafia";
+    document.title = this.running ? `${t} · 집중 중` : "SWx2";
     const mini = $("#timer-mini");
     if (mini) { mini.classList.toggle("on", this.running); mini.textContent = this.running ? t : ""; }
   },

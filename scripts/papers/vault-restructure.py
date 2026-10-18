@@ -33,7 +33,7 @@ PAPERS = "논문 공부"
 KEEP = {".obsidian", ".git", ".gitignore", ".trash", ".DS_Store"}
 OBS_JSON = Path(os.environ.get("STUDY_OBS_JSON", HOME / "Library" / "Application Support" / "obsidian" / "obsidian.json"))
 HERE = Path(__file__).resolve().parent
-APP = "https://dsm-mafia.dsm-mafia.workers.dev"
+APP = "https://swx2.dsm-mafia.workers.dev"
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--dry-run", action="store_true")

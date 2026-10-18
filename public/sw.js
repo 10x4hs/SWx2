@@ -1,4 +1,4 @@
-// Dsm-mafia service worker
+// SWx2 service worker
 // 배포본(VERSION 이 찍힌 SW): 한국 ↔ Cloudflare 길이 느린 날에도 바로 뜨게, 서버에 묻는 횟수를 줄여요.
 // - 코드(js·css) · 앱 파일(json) · 첫 화면("/"): 캐시 먼저. 파일은 배포 때만 바뀌고, 배포하면 VERSION 이 바뀌어
 //   새 SW 가 코드 전체(PRECACHE)를 한 벌로 받아 두고 → 옛 캐시 삭제 → 열린 탭에 "updated" (새로고침하면 새 버전)
@@ -161,7 +161,7 @@ async function navigate(event) {
   const path = new URL(event.request.url).pathname;
   if (path !== "/" && path !== "/index.html") {
     try { return (await event.preloadResponse) || (await fetch(event.request)); }
-    catch { return new Response("<!doctype html><meta charset=utf-8><title>Dsm-mafia</title><p style=\"font:15px system-ui;padding:24px\">오프라인이에요. 연결되면 다시 열어 주세요.", { status: 503, headers: { "content-type": "text/html; charset=utf-8" } }); }
+    catch { return new Response("<!doctype html><meta charset=utf-8><title>SWx2</title><p style=\"font:15px system-ui;padding:24px\">오프라인이에요. 연결되면 다시 열어 주세요.", { status: 503, headers: { "content-type": "text/html; charset=utf-8" } }); }
   }
   const cache = await caches.open(STATIC_CACHE);
   const network = (async () => {
@@ -179,7 +179,7 @@ async function navigate(event) {
   } catch {
     const cached = await cachedShell();
     if (cached) return cached;
-    return new Response("<!doctype html><meta charset=utf-8><title>Dsm-mafia</title><p style=\"font:15px system-ui;padding:24px\">오프라인이에요. 연결되면 다시 열어 주세요.", { status: 503, headers: { "content-type": "text/html; charset=utf-8" } });
+    return new Response("<!doctype html><meta charset=utf-8><title>SWx2</title><p style=\"font:15px system-ui;padding:24px\">오프라인이에요. 연결되면 다시 열어 주세요.", { status: 503, headers: { "content-type": "text/html; charset=utf-8" } });
   }
 }
 
@@ -268,7 +268,7 @@ self.addEventListener("push", (event) => {
     try { const r = await fetch("/api/room/unread", { headers: { "x-trio": "1" }, credentials: "include" }); if (r.ok) { const j = await r.json(); n = j.total ?? j.unread ?? 0; last = j.last || null; } } catch {}
     if (!n) return;
     // 1:1 방도 포함한 전체 안 읽음. 나를 @로 부르면 제목이 "○○님이 불렀어요"
-    const title = last?.mention ? `${last.who}님이 불렀어요` : last ? `${last.who}${last.dm ? " · 1:1" : " · 우리 셋"}` : "Dsm-mafia 대화방";
+    const title = last?.mention ? `${last.who}님이 불렀어요` : last ? `${last.who}${last.dm ? " · 1:1" : " · 우리 셋"}` : "SWx2 대화방";
     const body = last ? `${last.body}${n > 1 ? `  (안 읽은 메시지 ${n}개)` : ""}` : `새 메시지 ${n}개`;
     const url = last?.room?.startsWith("dm:") ? "/#/room/chat" : "/#/room/chat";
     await self.registration.showNotification(title, { body, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "room", renotify: true, requireInteraction: !!last?.mention, data: { url } });

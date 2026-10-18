@@ -1,4 +1,4 @@
-# DESIGN.md — Dsm-mafia
+# DESIGN.md — SWx2
 
 > 이 파일은 사람과 AI 에이전트가 디자인을 고칠 때 먼저 읽는 규칙서예요.
 > 값은 `public/css/tokens.css` 에, 컴포넌트는 `public/styles.css` (맨 아래 **v8 → v9 → v10(영어) → v11(캘린더) → v12(정리 + 같이 하기) → v13(대화방 · 창고)** 레이어가 최신) 에 있어요. **색·반경·그림자는 토큰만 바꾸세요.**

@@ -121,7 +121,7 @@ async function previewYoutube(id) {
 async function previewPage(u) {
   const out = { kind: "link", url: u.href, title: null, author: null, thumb: null, description: null, isbn: null, video_id: null };
   try {
-    const res = await fetchTimeout(u.href, { headers: { accept: "text/html,*/*;q=0.5", "user-agent": "Mozilla/5.0 (compatible; dsm-mafia-preview)" } });
+    const res = await fetchTimeout(u.href, { headers: { accept: "text/html,*/*;q=0.5", "user-agent": "Mozilla/5.0 (compatible; swx2-preview)" } });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const type = res.headers.get("content-type") || "";
     if (!/html|xml|text\//i.test(type)) { out.title = u.hostname; out.warning = "웹 페이지가 아니라서 제목만 주소로 채웠어요."; return out; }

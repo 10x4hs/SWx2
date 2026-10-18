@@ -32,7 +32,7 @@ async function vapidJwt(env, audience) {
   const jwk = JSON.parse(env.VAPID_PRIVATE_KEY);
   const key = await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
   const header = enc(JSON.stringify({ typ: "JWT", alg: "ES256" }));
-  const payload = enc(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: "mailto:admin@dsm-mafia.local" }));
+  const payload = enc(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: "mailto:admin@swx2.local" }));
   const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(`${header}.${payload}`));
   return `${header}.${payload}.${b64url(sig)}`; // WebCrypto 의 ECDSA 서명은 이미 r||s 64바이트라 그대로 써요
 }

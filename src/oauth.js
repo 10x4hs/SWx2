@@ -55,7 +55,7 @@ export async function handleOAuth(req, env, url, deps) {
   if (req.method === "OPTIONS" && (p.startsWith("/.well-known/") || p.startsWith("/oauth/"))) return new Response(null, { status: 204, headers: { ...CORS, "access-control-max-age": "86400" } });
 
   if (p === "/.well-known/oauth-protected-resource" || p === "/.well-known/oauth-protected-resource/mcp") {
-    return j({ resource: `${origin}/mcp`, authorization_servers: [origin], scopes_supported: [SCOPE], bearer_methods_supported: ["header"], resource_name: "Dsm-mafia 공부 앱" });
+    return j({ resource: `${origin}/mcp`, authorization_servers: [origin], scopes_supported: [SCOPE], bearer_methods_supported: ["header"], resource_name: "SWx2 공부 앱" });
   }
   if (p === "/.well-known/oauth-authorization-server" || p === "/.well-known/oauth-authorization-server/mcp" || p === "/.well-known/openid-configuration" || p === "/.well-known/openid-configuration/mcp") {
     return j(asMeta(origin));
@@ -113,7 +113,7 @@ async function authorize(req, env, url, deps) {
   const hidden = Object.entries(P).map(([k, v]) => `<input type="hidden" name="${k}" value="${esc(v)}">`).join("");
   if (!user) {
     return page(`${esc(client.client_name)} 연결`, `
-      <p class="lead"><b>${esc(client.client_name)}</b> 이(가) Dsm-mafia 계정에 연결하려고 해요. 먼저 로그인해 주세요.</p>
+      <p class="lead"><b>${esc(client.client_name)}</b> 이(가) SWx2 계정에 연결하려고 해요. 먼저 로그인해 주세요.</p>
       <form method="post" class="card">${hidden}<input type="hidden" name="action" value="login">
         <label>아이디<input name="username" autocomplete="username" required autofocus></label>
         <label>비밀번호<input name="password" type="password" autocomplete="current-password" required></label>
@@ -130,7 +130,7 @@ async function authorize(req, env, url, deps) {
     return back({ code });
   }
   return page(`${esc(client.client_name)} 연결`, `
-    <p class="lead"><b>${esc(client.client_name)}</b> 이(가) <b>${esc(user.display_name)} (@${esc(user.username)})</b> 계정으로 Dsm-mafia 를 쓰려고 해요.</p>
+    <p class="lead"><b>${esc(client.client_name)}</b> 이(가) <b>${esc(user.display_name)} (@${esc(user.username)})</b> 계정으로 SWx2 를 쓰려고 해요.</p>
     <div class="card"><b>허용하면 할 수 있는 일</b><ul>
       <li>논문 스프린트 자료 읽기 · 내 진도 체크</li><li>내 노트 찾기 · 읽기 · 쓰기</li><li>내 계획 보기 · 넣기</li><li>에이전트 작업판 쓰기</li></ul>
       <p class="muted">언제든 앱의 프로필 메뉴 → <b>MCP 연결</b>에서 끊을 수 있어요. 돌아갈 곳: ${esc(new URL(P.redirect_uri).host)}</p></div>
@@ -141,7 +141,7 @@ async function authorize(req, env, url, deps) {
 }
 
 function page(title, inner, status = 200, setCookie = null) {
-  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${title} · Dsm-mafia</title>
+  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex"><title>${title} · SWx2</title>
 <style>
 :root{color-scheme:dark;--ink:#F5F5F7;--ink2:rgba(245,245,247,.72);--line:rgba(255,255,255,.12);--bg:#141416;--card:rgba(255,255,255,.05)}
 @media (prefers-color-scheme: light){:root{color-scheme:light;--ink:#1D1D1F;--ink2:#555;--line:rgba(0,0,0,.12);--bg:#F2F2F5;--card:#fff}}
@@ -152,7 +152,7 @@ main{width:min(420px,100%)}h1{font-size:22px;letter-spacing:-.02em;margin:0 0 6p
 label{display:grid;gap:4px;font-size:13px;color:var(--ink2)}input{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:11px;padding:10px 12px}
 button{font:600 14px/1 inherit;font-family:inherit;padding:12px 16px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
 .primary{background:var(--ink);color:var(--bg);border-color:transparent}.row{display:flex;gap:8px;justify-content:flex-end}.err{color:#ff6b6b;margin:0;font-size:13px}a{color:inherit}
-</style></head><body><main><div class="brand">Dsm-mafia · MCP 연결</div><h1>${title}</h1>${inner}</main></body></html>`;
+</style></head><body><main><div class="brand">SWx2 · MCP 연결</div><h1>${title}</h1>${inner}</main></body></html>`;
   const headers = { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-frame-options": "DENY", "content-security-policy": "frame-ancestors 'none'; form-action 'self' https: http://localhost:* http://127.0.0.1:*", "referrer-policy": "same-origin" };
   if (setCookie) headers["set-cookie"] = setCookie;
   return new Response(html, { status, headers });

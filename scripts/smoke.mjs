@@ -849,7 +849,7 @@ if (!process.env.SKIP_AI) {
   r = await mcp(null, "initialize", {}); ok(r.status === 401, "mcp: no token → 401");
   r = await mcp("x".repeat(43), "initialize", {}); ok(r.status === 401, "mcp: wrong token → 401");
   r = await mcp(TA, "initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "smoke", version: "1" } });
-  ok(r.data?.result?.protocolVersion === "2025-03-26" && r.data.result.serverInfo?.name === "dsm-mafia", "mcp: initialize echoes supported protocol");
+  ok(r.data?.result?.protocolVersion === "2025-03-26" && r.data.result.serverInfo?.name === "swx2", "mcp: initialize echoes supported protocol");
   { const res = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + TA }, body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) }); ok(res.status === 202, "mcp: notification → 202"); }
   r = await mcp(TA, "tools/list"); ok(r.data?.result?.tools?.length >= 14 && r.data.result.tools.every((t) => t.inputSchema?.type === "object"), "mcp: tools/list with schemas");
   r = await mcp(TA, "nope/method"); ok(r.data?.error?.code === -32601, "mcp: unknown method → -32601");

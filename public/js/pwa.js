@@ -150,7 +150,7 @@ if (!standalone && !store.get(HINT_KEY)) {
       if (!deferred || store.get(HINT_KEY)) return;
       store.set(HINT_KEY, "shown");
       showHint({
-        text: "Dsm-mafia 를 앱처럼 쓸 수 있어요",
+        text: "SWx2 를 앱처럼 쓸 수 있어요",
         action: "홈 화면에 추가",
         onAction: async () => { const d = deferred; deferred = null; d.prompt(); try { await d.userChoice; } catch {} },
       });

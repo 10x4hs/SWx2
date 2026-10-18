@@ -1,4 +1,4 @@
-// Dsm-mafia — 비밀번호 바꾸기 대화상자 (app.js 에서 나눴어요).
+// SWx2 — 비밀번호 바꾸기 대화상자 (app.js 에서 나눴어요).
 import { api } from "./api.js";
 import { $, esc, toast } from "./util.js";
 import { icon } from "./icons.js";

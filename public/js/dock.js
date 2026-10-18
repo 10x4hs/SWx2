@@ -1,4 +1,4 @@
-// Dsm-mafia — Dock: 대화방 안 읽은 배지 + 사용자 페이지 아이콘 · 메뉴 (app.js 에서 나눴어요).
+// SWx2 — Dock: 대화방 안 읽은 배지 + 사용자 페이지 아이콘 · 메뉴 (app.js 에서 나눴어요).
 import { api } from "./api.js";
 import { $, $$, esc, ymd, today, toast, kstDay } from "./util.js";
 import { appIcon } from "./icons.js";
