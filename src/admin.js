@@ -1,7 +1,7 @@
 // 관리자(users.role = 'admin', 지금은 HSK · GYK) 전용: 회원 목록 · 가입 승인(관리자 모두 승인해야 들어와요) · 정지 · 삭제 ·
 // 임시 비밀번호 · 이 회원으로 들어가기(비밀번호 없이, 하루짜리 세션 — 돌아가기로 관리자 세션으로 돌아와요)
 import { b64url } from "./lib/crypto.js";
-import { fail, json, now } from "./http.js";
+import { fail, json, now, uid, body } from "./http.js";
 import { startSession, sessionId, hashPassword } from "./auth.js";
 
 // 대신 들어간 세션에서는 관리자 기능을 못 써요 (회원 화면만)
@@ -12,14 +12,17 @@ const notAdmin = (u) => { if (u.role === "admin") fail(400, "관리자 계정에
 export function registerAdmin(on) {
   on("GET", "/admin/users", async ({ env, user }) => {
     needAdmin(user);
-    const [us, ap, ad] = await env.DB.batch([
+    const [us, ap, ad, tres] = await env.DB.batch([
       env.DB.prepare("SELECT id, username, display_name, color, role, state, created_at, last_seen_at, pw_changed_at, must_change_pw, locked_until FROM users ORDER BY state = 'pending' DESC, created_at"),
       env.DB.prepare("SELECT a.user_id, u.username FROM signup_approvals a JOIN users u ON u.id = a.admin_id"),
       env.DB.prepare("SELECT id, username FROM users WHERE role = 'admin' ORDER BY username"),
+      env.DB.prepare("SELECT m.user_id, t.name FROM team_members m JOIN teams t ON t.id = m.team_id ORDER BY m.joined_at"),
     ]);
+    const tm = {};
+    for (const r of tres.results) (tm[r.user_id] ||= []).push(r.name);
     const by = {};
     for (const a of ap.results) (by[a.user_id] ||= []).push(a.username);
-    const users = us.results.map((u) => ({ ...u, must_change_pw: u.must_change_pw === 1, approvals: by[u.id] || [] }));
+    const users = us.results.map((u) => ({ ...u, must_change_pw: u.must_change_pw === 1, approvals: by[u.id] || [], teams: tm[u.id] || [] }));
     const week = now() - 7 * 864e5;
     const stats = {
       total: users.length,
@@ -29,6 +32,48 @@ export function registerAdmin(on) {
       seen_week: users.filter((u) => u.last_seen_at > week).length,
     };
     return json({ users, admins: ad.results.map((a) => a.username), stats });
+  });
+
+  // 팀 전체: 이름 · 팀장 · 팀원 · 초대 코드
+  on("GET", "/admin/teams", async ({ env, user }) => {
+    needAdmin(user);
+    const [ts, ms] = await env.DB.batch([
+      env.DB.prepare("SELECT t.id, t.name, t.code, t.created_at, o.username AS owner FROM teams t LEFT JOIN users o ON o.id = t.owner_id ORDER BY t.created_at"),
+      env.DB.prepare("SELECT m.team_id, u.id, u.username, u.display_name, m.joined_at FROM team_members m JOIN users u ON u.id = m.user_id ORDER BY m.joined_at"),
+    ]);
+    return json({ teams: ts.results.map((t) => ({ ...t, members: ms.results.filter((m) => m.team_id === t.id).map(({ team_id, ...m }) => m) })) });
+  });
+  // 한 회원의 일정: 날짜 범위(최대 31일)의 계획 (공개 여부와 상관없이 — 가입 화면에 알린 대로)
+  on("GET", "/admin/users/:id/plans", async ({ env, user, params, q }) => {
+    needAdmin(user);
+    const u = await target(env, params.id);
+    const from = q.get("from") || "", to = q.get("to") || from;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || to < from || (Date.parse(to) - Date.parse(from)) / 864e5 > 31) fail(400, "날짜 범위가 올바르지 않아요 (31일까지).");
+    const { results } = await env.DB.prepare("SELECT id, period, text, start, mins, done FROM plans WHERE user_id = ? AND scope = 'day' AND period BETWEEN ? AND ? ORDER BY period, CASE WHEN start IS NULL THEN 1 ELSE 0 END, start, sort").bind(u.id, "D:" + from, "D:" + to).all();
+    return json({ user: { id: u.id, username: u.username }, plans: results });
+  });
+  // 공지
+  on("POST", "/admin/announcements", async ({ env, user, req }) => {
+    needAdmin(user);
+    const b = await body(req);
+    const text = String(b.body || "").trim();
+    if (!text || text.length > 300) fail(400, "공지는 1~300자로 써 주세요.");
+    const a = { id: uid(), body: text, created_at: now() };
+    await env.DB.batch([
+      env.DB.prepare("UPDATE announcements SET active = 0 WHERE active = 1"),
+      env.DB.prepare("INSERT INTO announcements (id, body, created_by, created_at) VALUES (?, ?, ?, ?)").bind(a.id, a.body, user.id, a.created_at),
+    ]);
+    return json({ announcement: a }, 201);
+  });
+  on("DELETE", "/admin/announcements/:id", async ({ env, user, params }) => {
+    needAdmin(user);
+    await env.DB.prepare("UPDATE announcements SET active = 0 WHERE id = ?").bind(params.id).run();
+    return json({ ok: true });
+  });
+  // 모든 사람: 지금 공지 (없으면 null)
+  on("GET", "/announcement", async ({ env }) => {
+    const a = await env.DB.prepare("SELECT id, body, created_at FROM announcements WHERE active = 1 ORDER BY created_at DESC LIMIT 1").first();
+    return json({ announcement: a || null });
   });
 
   // 승인: 관리자마다 한 번씩. 관리자 모두가 승인하면 그때 '활성'
