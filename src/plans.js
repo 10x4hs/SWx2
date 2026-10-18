@@ -1,5 +1,6 @@
 // 계획(plans) · 기간 요약(summary) · 실행 기록(logs). 계획은 모두가 읽고 주인만 써요.
 import { fail, json, body, now, uid, str, dayParam, yearParam } from "./http.js";
+import { PEERS } from "./teams.js";
 
 const PERIOD_RE = {
   year: /^Y:\d{4}$/,
@@ -54,7 +55,7 @@ export function registerPlans(on) {
     ).bind(who, ...periods, ...(range || []));
     // 친구 계획은 그 사람이 공개(open)했을 때만. 아니면 빈 목록 + closed 표시 (공개 여부와 목록을 한 번에 물어보고, 닫혀 있으면 목록은 버려요)
     if (who !== user.id) {
-      const [o, l] = await env.DB.batch([env.DB.prepare("SELECT plans_open FROM users WHERE id = ?").bind(who), list]);
+      const [o, l] = await env.DB.batch([env.DB.prepare(`SELECT plans_open FROM users WHERE id = ?1 AND id IN ${PEERS("?2")}`).bind(who, user.id), list]);
       if (!o.results[0] || o.results[0].plans_open === 0) return json({ plans: [], closed: true });
       return json({ plans: l.results });
     }
@@ -125,7 +126,7 @@ export function registerPlans(on) {
     ).bind(who, `D:${year}-%`);
     // 친구의 하루별 개수도 그 사람이 계획을 공개(open)했을 때만 — GET /plans 와 같은 규칙 (닫혀 있으면 빈 목록 + closed)
     if (who !== user.id) {
-      const [o, h] = await env.DB.batch([env.DB.prepare("SELECT plans_open FROM users WHERE id = ?").bind(who), heat]);
+      const [o, h] = await env.DB.batch([env.DB.prepare(`SELECT plans_open FROM users WHERE id = ?1 AND id IN ${PEERS("?2")}`).bind(who, user.id), heat]);
       if (!o.results[0] || o.results[0].plans_open === 0) return json({ days: [], closed: true });
       return json({ days: h.results });
     }
@@ -197,8 +198,8 @@ export function registerPlans(on) {
     const from = q.get("from") || "", to = q.get("to") || "";
     dayParam(from); dayParam(to);
     const { results } = await env.DB.prepare(
-      "SELECT user_id, day, SUM(COALESCE(mins, 0)) AS mins, COUNT(*) AS sessions FROM logs WHERE kind = 'focus' AND day BETWEEN ? AND ? AND (? = '' OR user_id = ?) GROUP BY user_id, day"
-    ).bind(from, to, q.get("user") || "", q.get("user") || "").all();
+      `SELECT user_id, day, SUM(COALESCE(mins, 0)) AS mins, COUNT(*) AS sessions FROM logs WHERE kind = 'focus' AND day BETWEEN ? AND ? AND (? = '' OR user_id = ?) AND user_id IN ${PEERS("?")} GROUP BY user_id, day`
+    ).bind(from, to, q.get("user") || "", q.get("user") || "", user.id).all();
     return json({ days: results });
   });
 }

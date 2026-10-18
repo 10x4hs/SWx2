@@ -5,6 +5,7 @@
 import { aiJson } from "./ai.js";
 import { b64u, unb64u } from "./proxy.js";
 import { kstToday } from "./lib/day.js";
+import { PEERS, isPeer } from "./teams.js";
 
 export const MAX_FILE = 300_000;      // 파일 하나 글자 수
 export const MAX_FILES = 40;          // 페이지당 파일 수
@@ -70,7 +71,7 @@ export function registerPages(on, { json, body, fail, uid, now }) {
   };
   const visible = async (env, id, user) => {
     const p = await env.DB.prepare("SELECT * FROM user_pages WHERE id = ?").bind(id).first();
-    if (!p || (p.user_id !== user.id && !p.shared)) fail(404, "페이지를 찾을 수 없어요.");
+    if (!p || (p.user_id !== user.id && !(p.shared && (await isPeer(env, user.id, p.user_id))))) fail(404, "페이지를 찾을 수 없어요."); // 공개 페이지도 같은 팀 사람만
     return p;
   };
   const cleanTitle = (s, fallback = "새 페이지") => (String(s || "").replace(/\s+/g, " ").trim().slice(0, 40) || fallback);
@@ -118,7 +119,7 @@ export function registerPages(on, { json, body, fail, uid, now }) {
   const shape = (p, me, files) => ({ id: p.id, user_id: p.user_id, title: p.title, icon: p.icon, purpose: p.purpose, kind: p.kind || "code", url: p.url || "", place: p.place === "study" ? "study" : "dock", shared: !!p.shared, sort: p.sort, created_at: p.created_at, updated_at: p.updated_at, mine: p.user_id === me.id, ...(files ? { files, code: files["index.html"] || "" } : {}) });
 
   on("GET", "/pages", async ({ env, user }) => {
-    const { results } = await env.DB.prepare(`SELECT ${LIST_COLS} FROM user_pages WHERE user_id = ? OR shared = 1 ORDER BY (user_id = ?) DESC, sort ASC, created_at ASC`).bind(user.id, user.id).all();
+    const { results } = await env.DB.prepare(`SELECT ${LIST_COLS} FROM user_pages WHERE user_id = ?1 OR (shared = 1 AND user_id IN ${PEERS("?1")}) ORDER BY (user_id = ?1) DESC, sort ASC, created_at ASC`).bind(user.id).all();
     return json({ pages: results.map((p) => shape(p, user)) });
   });
   on("GET", "/pages/guide", async () => json({ guide: BRIDGE_GUIDE }));
@@ -126,7 +127,7 @@ export function registerPages(on, { json, body, fail, uid, now }) {
   on("GET", "/pages/:id", async ({ env, user, params }) => {
     const [pg, fs] = await env.DB.batch([env.DB.prepare("SELECT * FROM user_pages WHERE id = ?").bind(params.id), env.DB.prepare("SELECT path, content FROM user_page_files WHERE page_id = ? ORDER BY path").bind(params.id)]);
     const p = pg.results[0];
-    if (!p || (p.user_id !== user.id && !p.shared)) fail(404, "페이지를 찾을 수 없어요.");
+    if (!p || (p.user_id !== user.id && !(p.shared && (await isPeer(env, user.id, p.user_id))))) fail(404, "페이지를 찾을 수 없어요."); // 공개 페이지도 같은 팀 사람만
     return json({ page: shape(p, user, Object.fromEntries(fs.results.map((r) => [r.path, r.content]))) });
   });
   on("GET", "/pages/:id/versions", async ({ env, user, params }) => {
@@ -192,7 +193,7 @@ export function registerPages(on, { json, body, fail, uid, now }) {
   // 사람별 저장소 (trio.store): 내 것 읽기·쓰기. 공개 페이지면 셋의 것을 읽기(trio.others)
   on("GET", "/pages/:id/state", async ({ env, user, params }) => {
     // 볼 수 있는 페이지일 때만 내 저장값 (쿼리 하나)
-    const r = await env.DB.prepare("SELECT s.data FROM user_pages p LEFT JOIN user_page_state s ON s.page_id = p.id AND s.user_id = ?1 WHERE p.id = ?2 AND (p.user_id = ?1 OR p.shared)").bind(user.id, params.id).first();
+    const r = await env.DB.prepare(`SELECT s.data FROM user_pages p LEFT JOIN user_page_state s ON s.page_id = p.id AND s.user_id = ?1 WHERE p.id = ?2 AND (p.user_id = ?1 OR (p.shared AND p.user_id IN ${PEERS("?1")}))`).bind(user.id, params.id).first();
     if (!r) fail(404, "페이지를 찾을 수 없어요.");
     let data = {}; try { data = JSON.parse(r?.data || "{}"); } catch {}
     return json({ data });
@@ -201,14 +202,14 @@ export function registerPages(on, { json, body, fail, uid, now }) {
     const b = await body(req), data = b && typeof b.data === "object" && b.data ? b.data : {};
     const text = JSON.stringify(data); if (text.length > MAX_STATE) fail(400, "저장할 게 너무 커요 (200KB 까지).");
     // 볼 수 있는 페이지일 때만 저장 (권한 확인 + 저장을 쿼리 하나로). 안 들어갔으면 404
-    const r = await env.DB.prepare("INSERT INTO user_page_state (page_id, user_id, data, updated_at) SELECT ?1, ?2, ?3, ?4 WHERE EXISTS (SELECT 1 FROM user_pages WHERE id = ?1 AND (user_id = ?2 OR shared)) ON CONFLICT(page_id, user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at").bind(params.id, user.id, text, now()).run();
+    const r = await env.DB.prepare(`INSERT INTO user_page_state (page_id, user_id, data, updated_at) SELECT ?1, ?2, ?3, ?4 WHERE EXISTS (SELECT 1 FROM user_pages WHERE id = ?1 AND (user_id = ?2 OR (shared AND user_id IN ${PEERS("?2")}))) ON CONFLICT(page_id, user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`).bind(params.id, user.id, text, now()).run();
     if (!r.meta.changes) fail(404, "페이지를 찾을 수 없어요.");
     return json({ ok: true });
   });
   on("GET", "/pages/:id/state/all", async ({ env, user, params }) => {
     const p = await visible(env, params.id, user);
     if (!p.shared && p.user_id !== user.id) fail(403, "공개 페이지만 친구 저장값을 볼 수 있어요.");
-    const { results } = await env.DB.prepare("SELECT s.user_id, s.data, s.updated_at, u.display_name, u.color FROM user_page_state s JOIN users u ON u.id = s.user_id WHERE s.page_id = ?").bind(params.id).all();
+    const { results } = await env.DB.prepare(`SELECT s.user_id, s.data, s.updated_at, u.display_name, u.color FROM user_page_state s JOIN users u ON u.id = s.user_id WHERE s.page_id = ? AND s.user_id IN ${PEERS("?")}`).bind(params.id, user.id).all();
     return json({ states: results.map((r) => { let data = {}; try { data = JSON.parse(r.data || "{}"); } catch {} return { user_id: r.user_id, display_name: r.display_name, color: r.color, updated_at: r.updated_at, data }; }) });
   });
   on("POST", "/pages/:id/restore", async ({ req, env, user, params }) => {
@@ -287,7 +288,7 @@ export async function servePageFile(req, env, url, getUser) {
   if (path.endsWith("/")) path += "index.html";
   // 페이지 권한 + 파일을 쿼리 하나로 (f.page_id 가 NULL 이면 파일이 없는 것)
   const p = await env.DB.prepare("SELECT p.user_id, p.shared, f.page_id AS has, f.content FROM user_pages p LEFT JOIN user_page_files f ON f.page_id = p.id AND f.path = ? WHERE p.id = ?").bind(path, id).first();
-  if (!p || (p.user_id !== viewer && !p.shared)) return new Response("not found", { status: 404 });
+  if (!p || (p.user_id !== viewer && !(p.shared && (await isPeer(env, viewer, p.user_id))))) return new Response("not found", { status: 404 });
   const f = p.has == null ? null : p;
   if (!f) return new Response(`파일이 없어요: ${path}`, { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
   const html = isHtml(path);

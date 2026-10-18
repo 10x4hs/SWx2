@@ -17,6 +17,7 @@ import { SEED } from "./feeds.js";
 import { pushUsers } from "./push.js";
 import { charge, left, withBudget } from "./lib/budget.js";
 import { kstToday } from "./lib/day.js";
+import { PEERS } from "./teams.js";
 
 // 로컬 시험용: NEWS_FAKE_AI=1 이면 AI 를 부르지 않고 정해진 답을 돌려줘요 (smoke · e2e 가 키 없이 돌게).
 // 가짜도 바깥 요청 1개로 세요(lib/budget.js) — 시험에서 크론 예산을 실제처럼 확인하려고요.
@@ -705,9 +706,10 @@ ${String(item.raw || "").slice(0, 12000)}
   return points.map((p, i) => `${i + 1}. ${p.claim}${p.evidence ? `\n> ${p.evidence}` : ""}`).join("\n").slice(0, 2000);
 }
 
-async function talkOf(env, itemId) {
+// 메모 · 답글은 같은 팀 사람(나 포함) 것만
+async function talkOf(env, itemId, me) {
   const { results } = await env.DB.prepare(`SELECT c.*, u.display_name FROM news_comments c JOIN users u ON u.id = c.user_id
-      WHERE c.item_id = ? ORDER BY c.created_at ASC`).bind(itemId).all();
+      WHERE c.item_id = ? AND c.user_id IN ${PEERS("?")} ORDER BY c.created_at ASC`).bind(itemId, me).all();
   return results || [];
 }
 
@@ -791,7 +793,7 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
   });
 
   // [GET /news/item/:id/talk] 토론 (메모 → 답글 2단)
-  on("GET", "/news/item/:id/talk", async ({ env, params }) => json({ comments: await talkOf(env, params.id) }));
+  on("GET", "/news/item/:id/talk", async ({ env, params, user }) => json({ comments: await talkOf(env, params.id, user.id) }));
 
   // [POST /news/item/:id/comments] { body, stance, parent_id? } — 맨 위는 메모, 답글은 반박/동의, 2단까지
   on("POST", "/news/item/:id/comments", async ({ env, ec, req, params, user }) => {
@@ -802,7 +804,7 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     if (!item) fail(404, "그 글이 없어요.");
     let parent = null, stance = "memo";
     if (b.parent_id) {
-      parent = await env.DB.prepare("SELECT id, user_id, parent_id FROM news_comments WHERE id = ? AND item_id = ?").bind(String(b.parent_id), params.id).first();
+      parent = await env.DB.prepare(`SELECT id, user_id, parent_id FROM news_comments WHERE id = ? AND item_id = ? AND user_id IN ${PEERS("?")}`).bind(String(b.parent_id), params.id, user.id).first();
       if (!parent) fail(404, "답할 메모가 없어요.");
       if (parent.parent_id) fail(400, "답글에는 다시 답할 수 없어요 (2단까지).");
       stance = ["rebut", "agree", "memo"].includes(b.stance) ? b.stance : "memo";
@@ -817,7 +819,7 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
 
   // [POST /news/comments/:id/ai-rebut] 🤖 반박 하나 (메모에만)
   on("POST", "/news/comments/:id/ai-rebut", async ({ env, ec, params, user }) => {
-    const memo = await env.DB.prepare("SELECT * FROM news_comments WHERE id = ?").bind(params.id).first();
+    const memo = await env.DB.prepare(`SELECT * FROM news_comments WHERE id = ? AND user_id IN ${PEERS("?")}`).bind(params.id, user.id).first();
     if (!memo) fail(404, "그 메모가 없어요.");
     if (memo.parent_id) fail(400, "메모에만 AI 반박을 달 수 있어요.");
     const had = await env.DB.prepare("SELECT id FROM news_comments WHERE parent_id = ? AND ai = 1").bind(memo.id).first();
@@ -847,8 +849,8 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     const seen = (await env.DB.prepare("SELECT at FROM news_inbox_seen WHERE user_id = ?").bind(user.id).first())?.at || 0;
     const { results } = await env.DB.prepare(`SELECT c.stance, c.body, c.ai, c.item_id, c.created_at, u.display_name AS who
         FROM news_comments c JOIN news_comments m ON m.id = c.parent_id JOIN users u ON u.id = c.user_id
-       WHERE m.user_id = ? AND c.user_id <> ? AND c.stance <> 'memo' AND c.created_at > ? ORDER BY c.created_at DESC LIMIT 20`)
-      .bind(user.id, user.id, seen).all();
+       WHERE m.user_id = ? AND c.user_id <> ? AND c.stance <> 'memo' AND c.created_at > ? AND c.user_id IN ${PEERS("?")} ORDER BY c.created_at DESC LIMIT 20`)
+      .bind(user.id, user.id, seen, user.id).all();
     return json({ n: (results || []).length, last: results?.[0] || null });
   });
   on("PUT", "/news/inbox/seen", async ({ env, user }) => {
@@ -933,13 +935,13 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
 
   // ---------- 읽기 대결 ----------
   // [GET /news/leaderboard] 셋의 오늘 · 이번 주(월요일부터, 한국 시간) · 전체 읽은 수 + 하루 몫 연속 달성 일수
-  on("GET", "/news/leaderboard", async ({ env }) => {
+  on("GET", "/news/leaderboard", async ({ env, user }) => {
     const KST = 9 * 36e5, day = (t) => new Date(t + KST).toISOString().slice(0, 10);
     const today = day(Date.now());
     const dow = (new Date(Date.now() + KST).getUTCDay() + 6) % 7; // 월=0
     const weekFrom = day(Date.now() - dow * 864e5);
     const [{ results: users }, { results: prefs }, { results: rows }] = await env.DB.batch([
-      env.DB.prepare("SELECT id FROM users WHERE username NOT LIKE 't\\_%' ESCAPE '\\'"),
+      env.DB.prepare(`SELECT id FROM users WHERE username NOT LIKE 't\\_%' ESCAPE '\\' AND id IN ${PEERS("?")}`).bind(user.id),
       env.DB.prepare("SELECT user_id, quota FROM news_prefs"),
       env.DB.prepare("SELECT user_id, date((read_at + 32400000) / 1000, 'unixepoch') AS d, COUNT(*) AS n FROM news_reads WHERE read = 1 AND read_at IS NOT NULL AND read_at > ? GROUP BY user_id, d").bind(Date.now() - 400 * 864e5),
     ]);
@@ -1329,9 +1331,9 @@ export function registerNews(on, { json, body, fail, now }) {
     const { results: notes } = await env.DB.prepare(
       `SELECT r.note, r.user_id, u.display_name, u.color FROM news_reads r
          JOIN users u ON u.id = r.user_id
-        WHERE r.item_id = ? AND r.note IS NOT NULL AND r.note <> ''
+        WHERE r.item_id = ? AND r.note IS NOT NULL AND r.note <> '' AND r.user_id IN ${PEERS("?")}
         ORDER BY r.updated_at DESC`
-    ).bind(params.id).all();
+    ).bind(params.id, user.id).all();
 
     const mine = await env.DB.prepare(
       "SELECT read, saved, flagged, note FROM news_reads WHERE item_id = ? AND user_id = ?"
@@ -1345,7 +1347,7 @@ export function registerNews(on, { json, body, fail, now }) {
         feed: item.feed, topic: item.topic, thread_id: item.thread_id, dated: item.dated,
         geo: marked.geo, readers: marked.readers, stars: marked.stars,
       },
-      comments: await talkOf(env, item.id),
+      comments: await talkOf(env, item.id, user.id),
       thread: item.thread_id ? await env.DB.prepare("SELECT id, title FROM news_threads WHERE id = ?").bind(item.thread_id).first() : null,
       deep,
       excerpt: String(item.raw || "").slice(0, 700),

@@ -2977,3 +2977,17 @@ html.rd-dragging, html.rd-dragging * { cursor: crosshair !important; -webkit-use
 .adm-acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .btn.danger { color: #c33; }
 .imp-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 9999; display: flex; gap: 12px; align-items: center; justify-content: center; padding: 6px 16px; background: #e8a028; color: #111; font-size: 13px; flex-wrap: wrap; }
+
+/* 팀 (#/teams) */
+.tm { max-width: 760px; margin: 0 auto; padding: 28px 16px 60px; }
+.tm-head h1 { margin: 0 0 4px; font-size: 26px; }
+.tm-forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 20px 0; }
+.tm-form label { display: block; font-size: 12.5px; opacity: .7; margin-bottom: 6px; }
+.tm-form div { display: flex; gap: 6px; }
+.tm-form .input { flex: 1; min-width: 0; }
+.tm-card { padding: 16px; border-radius: 12px; background: var(--glass-2, rgba(127,127,127,.08)); margin-bottom: 12px; }
+.tm-card h2 { margin: 0 0 8px; font-size: 17px; }
+.tm-members { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 4px; font-size: 14px; }
+.tm-code code { font-size: 15px; padding: 2px 6px; user-select: all; }
+.tm-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.rm-none { padding: 12px; font-size: 13px; }

@@ -45,7 +45,7 @@ import { applyView, remindAt, isDue } from "../public/js/blocks/dbview.js";
   void T;
 }
 const tag = Date.now().toString(36).slice(-5);
-const mk = (u, n, pw) => execFileSync("node", ["scripts/add-user.mjs", u, n, pw], { stdio: "ignore" });
+const mk = (u, n, pw) => execFileSync("node", ["scripts/add-user.mjs", u, n, pw, "--team=swx2"], { stdio: "ignore" }); // 테스트 사람들은 한 팀 (서로 보기 검사)
 // 로컬 D1 에 직접 묻기 (서버를 거치지 않고 저장된 값 확인)
 const d1 = (sql) => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", sql], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }))[0].results;
 let r = await call("a", "POST", "/auth/signup", { username: "x" + tag, password: "password1", display_name: "x", invite: "trio-2026" });
@@ -647,7 +647,7 @@ const dm = uidA < uidB ? `dm:${uidA}:${uidB}` : `dm:${uidB}:${uidA}`, dmRev = ui
 r = await call("a", "POST", "/room", { room: "dm:x:y", body: "hi" }); ok(r.status === 400, "room: bad room id 400");
 r = await call("a", "POST", "/room", { room: dmRev, body: "hi" }); ok(r.status === 400, "room: unsorted dm id 400");
 r = await call("a", "POST", "/room", { room: `dm:${uidA}:${uidA}`, body: "hi" }); ok(r.status === 400, "room: dm with self 400");
-r = await call("a", "POST", "/room", { room: [uidA, "00000000-0000-4000-8000-000000000000"].sort().join(":").replace(/^/, "dm:"), body: "hi" }); ok(r.status === 404, "room: dm with unknown member 404");
+r = await call("a", "POST", "/room", { room: [uidA, "00000000-0000-4000-8000-000000000000"].sort().join(":").replace(/^/, "dm:"), body: "hi" }); ok(r.status === 403, "room: dm with someone outside my teams 403");
 r = await call("a", "POST", "/room", { room: dm, body: "둘만 얘기하자" }); ok(r.status === 201 && r.data.message.room === dm, "room: dm message posted");
 const dm1 = r.data.message;
 r = await call("d", "GET", "/room?room=" + dm); ok(r.status === 403, "room: third user cannot read dm");

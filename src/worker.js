@@ -26,6 +26,7 @@ import { requireUser, sessionUser, tokenUser, loginWith, MUST_CHANGE_OPEN, regis
 import { registerPlans } from "./plans.js";
 import { registerDiary } from "./diary.js";
 import { registerAdmin } from "./admin.js";
+import { registerTeams } from "./teams.js";
 import { registerCustom } from "./custom.js";
 import { registerFiles } from "./files.js";
 import { registerNotes, indexStmts, MAX_NOTE } from "./notes.js";
@@ -91,10 +92,20 @@ async function route(req, env, url, ec) {
       return r.handler(ctx);
     }
     ctx.user = await requireUser(req, env);
+    // AI 하루 사용량: 첫 팀(SWx2) 밖의 사람은 하루 AI_DAILY 번까지 (키 비용)
+    if (req.method === "POST" && AI_PATH.test(path)) await aiQuota(env, ctx.user);
     // 첫 로그인: 비밀번호를 바꾸기 전에는 내 정보·멤버 목록·로그인 관련 API만 쓸 수 있어요
     if (ctx.user.must_change_pw && !MUST_CHANGE_OPEN(path)) fail(403, "먼저 비밀번호를 바꿔 주세요.", { must_change_password: true });
   }
   return r.handler(ctx);
+}
+
+const AI_PATH = /^\/(?:ai\/[a-z-]+|books\/ask|papers\/(?:ask|explain|quiz)|review\/week\/ai|room\/ai|news\/(?:summarize|item\/[^/]+\/(?:deep|summarize)|comments\/[^/]+\/ai-rebut))$/;
+async function aiQuota(env, user) {
+  if (await env.DB.prepare("SELECT 1 FROM team_members WHERE team_id = 'swx2' AND user_id = ?").bind(user.id).first()) return;
+  const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), max = Number(env.AI_DAILY || 30);
+  const r = await env.DB.prepare("INSERT INTO ai_quota (user_id, day, n) VALUES (?1, ?2, 1) ON CONFLICT(user_id, day) DO UPDATE SET n = n + 1 WHERE n < ?3").bind(user.id, day, max).run();
+  if (!r.meta.changes) fail(429, `오늘 AI 는 ${max}번까지 쓸 수 있어요. 내일 다시 써 주세요.`);
 }
 
 // 앱 API 를 HTTP 없이 안에서 부르기 (MCP 도구가 웹 화면과 같은 검증 · 권한을 쓰게)
@@ -118,6 +129,7 @@ registerAuth(on);
 registerPlans(on);
 registerDiary(on);
 registerAdmin(on);
+registerTeams(on);
 registerNotes(on);
 registerRecords(on);
 registerCustom(on); // Dock 아이콘 우클릭 → 내 CSS · HTML · JS
