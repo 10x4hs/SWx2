@@ -4,7 +4,7 @@
 import { api } from "../api.js";
 import { $, esc, ymd, parseYmd, addDays, today, DOW, toast } from "../util.js";
 import { icon } from "../icons.js";
-import { mountDiary, MOODS } from "../diary.js";
+import { mountDiary, renderDiaryRead, MOODS } from "../diary.js";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const NOTE_KEY = "trio-diary-share-note"; // 처음 열 때 안내를 닫았는지 (이 기기에만)
@@ -12,6 +12,8 @@ const longDate = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDat
 const shortDate = (s) => { const d = parseYmd(s); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})`; };
 const moodChip = (v) => { const m = MOODS.find((x) => x.v === v); return m ? `<span class="chip">${esc(m.label)}</span>` : ""; };
 const lockChip = (t = "비공개") => `<span class="chip dr-lockchip">${icon.lock(11)}${t}</span>`;
+// 목록 · 글자 수용 글: 마크다운 사진 · 태그 · 기호를 빼요
+const plainText = (s) => (s || "").replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/<[^>]+>/g, "").replace(/[*_~`#>]+/g, "").replace(/\s+/g, " ").trim();
 const noteOff = () => { try { return localStorage.getItem(NOTE_KEY) === "1"; } catch { return false; } };
 
 let inst = null;
@@ -19,7 +21,7 @@ export function update(r) { inst?.update(r); }
 
 export function mount(root, ctx, r) {
   const me = ctx.me.id, todayStr = ymd(today());
-  let who = r.who || me, day = DAY_RE.test(r.day || "") ? r.day : todayStr, members = null, stopEditor = null, alive = true;
+  let who = r.who || me, day = DAY_RE.test(r.day || "") ? r.day : todayStr, members = null, stopEditor = null, stopRead = null, alive = true;
   const nameOf = (id) => { const u = members?.find((m) => m.id === id) || ctx.user(id); return u?.display_name || u?.username || "친구"; };
   const href = (w, d) => (w === me ? `#/diary/${d}` : `#/diary/u/${encodeURIComponent(w)}/${d}`);
   root.innerHTML = `<div class="dy dr"><p class="faint">불러오는 중…</p></div>`;
@@ -53,7 +55,7 @@ export function mount(root, ctx, r) {
 
   // 가운데: 내 일기는 편집기, 상대 일기는 읽기 (공개 → 기분 · 글, 비공개 → 자물쇠, 안 씀 → 빈 칸)
   async function drawPaper() {
-    stopEditor?.(); stopEditor = null;
+    stopEditor?.(); stopEditor = null; stopRead?.(); stopRead = null;
     const paper = $("#dr-paper", root);
     if (who === me) {
       const partners = members.filter((m) => m.id !== me).map((m) => m.display_name || m.username).join(" · ");
@@ -68,7 +70,8 @@ export function mount(root, ctx, r) {
       const name = esc(nameOf(who));
       paper.innerHTML = !diary ? `<div class="dr-empty"><b>이날 ${name}님은 일기를 쓰지 않았어요.</b></div>`
         : diary.private ? `<div class="dr-lock">${icon.lock(28)}<b>비공개로 둔 날이에요</b><p class="faint">${name}님이 이날 일기를 비공개로 두었어요.</p></div>`
-        : `<article class="dr-read"><div class="dr-read-top">${moodChip(diary.mood)}<span class="faint">${(diary.body || "").length.toLocaleString()}자</span></div><div class="dr-body">${esc(diary.body || "")}</div></article>`;
+        : `<article class="dr-read"><div class="dr-read-top">${moodChip(diary.mood)}<span class="faint">${plainText(diary.body).length.toLocaleString()}자</span></div><div class="dr-read-doc"></div></article>`;
+      const rd = paper.querySelector(".dr-read-doc"); if (rd) stopRead = renderDiaryRead(rd, diary);
     } catch (e) { paper.innerHTML = `<p class="faint">${esc(e.message || "불러오지 못했어요.")}</p>`; }
   }
 
@@ -92,7 +95,7 @@ export function mount(root, ctx, r) {
           : `<a class="g${cls}${ds === day ? " sel" : ""}" href="${href(who, ds)}" style="grid-column:${wk + 1};grid-row:${k + 1}" title="${tip}" aria-label="${tip}"></a>`;
       }
       $("#dr-grass", root).innerHTML = `<div class="dr-grass-wrap"><div class="dr-grass">${cells}</div></div><p class="dr-key faint"><i class="g m3"></i>쓴 날 <i class="g ${who === me ? "m3 priv" : "lock"}"></i>비공개${who === me ? " (나만)" : ""}</p>`;
-      $("#dr-list", root).innerHTML = entries.length ? entries.slice(0, 30).map((e) => `<li><a href="${href(who, e.day)}" ${e.day === day ? 'aria-current="page"' : ""}><b>${esc(shortDate(e.day))}</b>${e.private ? lockChip() : `${moodChip(e.mood)}${e.shared === false ? lockChip("나만") : ""}<span class="sn">${esc((e.snippet || "").replace(/\s+/g, " ").slice(0, 70))}</span>`}</a></li>`).join("")
+      $("#dr-list", root).innerHTML = entries.length ? entries.slice(0, 30).map((e) => `<li><a href="${href(who, e.day)}" ${e.day === day ? 'aria-current="page"' : ""}><b>${esc(shortDate(e.day))}</b>${e.private ? lockChip() : `${moodChip(e.mood)}${e.shared === false ? lockChip("나만") : ""}<span class="sn">${esc(plainText(e.snippet).slice(0, 70))}</span>`}</a></li>`).join("")
         : `<li class="faint">${who === me ? "아직 쓴 일기가 없어요." : "아직 볼 수 있는 일기가 없어요."}</li>`;
     } catch (e) { $("#dr-grass", root).innerHTML = `<p class="faint">${esc(e.message || "불러오지 못했어요.")}</p>`; }
   }
@@ -129,5 +132,5 @@ export function mount(root, ctx, r) {
       who = w; day = d; open();
     },
   };
-  return () => { alive = false; stopEditor?.(); inst = null; };
+  return () => { alive = false; stopEditor?.(); stopRead?.(); inst = null; };
 }

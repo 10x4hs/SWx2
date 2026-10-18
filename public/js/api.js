@@ -111,6 +111,15 @@ export const api = {
   resetCustom: (slot) => request("DELETE", "/custom/" + encodeURIComponent(slot)),
   diary: (day) => request("GET", "/diary?" + qs({ day })),
   saveDiary: (b) => request("PUT", "/diary", b),
+  // 일기 사진: 파일 그대로(JSON 아님) 올려요 → { src: "/api/diary/img/…" }
+  diaryImage: async (blob) => {
+    let res;
+    try { res = await fetch("/api/diary/img", { method: "POST", credentials: "same-origin", headers: { "content-type": blob.type || "image/jpeg", "x-trio": "1" }, body: blob }); }
+    catch { throw new ApiError(0, "서버에 연결할 수 없어요. 인터넷 연결을 확인해 주세요."); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(res.status, data.error || "사진을 올리지 못했어요.", data);
+    return data;
+  },
   diaryDays: (year) => request("GET", "/diary/days?" + qs({ year })),
   diaries: (before) => request("GET", "/diary/list?" + qs({ before })),
   // 일기 모임(서로 보기) — 모임 밖이면 403. 남의 비공개 날은 { day, private: true } 만 와요

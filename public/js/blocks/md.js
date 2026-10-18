@@ -24,6 +24,7 @@ export function bid() {
 export const block = (type, text = "", props = {}, children = []) => ({ id: bid(), type, text, props, children });
 
 // ---------- validation (server trusts nothing) ----------
+export const SIZES = new Set(["s", "l", "xl"]);
 const str = (v, max) => (typeof v === "string" ? v.slice(0, max) : "");
 function cleanProps(type, p) {
   p = p && typeof p === "object" && !Array.isArray(p) ? p : {};
@@ -31,9 +32,10 @@ function cleanProps(type, p) {
   if (/^h[123]$/.test(type) && p.toggle) o.toggle = true;
   if (type === "todo") o.checked = !!p.checked;
   if (TEXTY.has(type) && typeof p.color === "string" && BLOCK_COLORS.has(p.color)) o.color = p.color;
+  if (TEXTY.has(type) && SIZES.has(p.size)) o.size = p.size; // 블록 글씨 크기 (s · l · xl, 보통은 없음)
   if (type === "callout") o.icon = str(p.icon, 16) || "💡";
   if (type === "code") o.lang = str(p.lang, 30);
-  if (type === "image") { o.src = str(p.src, 2000); o.caption = str(p.caption, 500); }
+  if (type === "image") { o.src = str(p.src, 2000); o.caption = str(p.caption, 500); const w = Math.round(Number(p.width)); if (w >= 10 && w < 100) o.width = w; } // width = 줄 너비의 %
   if (type === "file") { o.src = str(p.src, 2000); o.name = str(p.name, 200); }
   if (type === "bookmark" || type === "embed") { o.url = str(p.url, 2000); if (p.caption) o.caption = str(p.caption, 500); }
   if (type === "equation") o.expr = str(p.expr, 5000);
@@ -64,7 +66,9 @@ export function validateDoc(doc) {
       return out;
     });
   };
-  return { v: 1, blocks: walk(doc.blocks, 0) };
+  const out = { v: 1, blocks: walk(doc.blocks, 0) };
+  if (SIZES.has(doc.size)) out.size = doc.size; // 문서 전체 글씨 크기 (일기)
+  return out;
 }
 
 // ---------- blocks → markdown ----------
