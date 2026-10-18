@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 // 볼트는 STUDY-OS 의 "영어 공부/" 구역으로 옮겼어요 (scripts/papers/vault-restructure.py). 옛 위치도 찾아봐요.
 const VAULT = process.env.ENGLISH_OS || ["/Users/prime/Documents/STUDY-OS/영어 공부", "/Users/prime/Documents/ENGLISH-OS"].find((p) => existsSync(p)) || "/Users/prime/Documents/STUDY-OS/영어 공부";
-const API = (process.env.API || "https://swx2.dsm-mafia.workers.dev").replace(/\/+$/, "");
+const API = (process.env.API || "https://swx2.swx2.workers.dev").replace(/\/+$/, "");
 const USER = process.env.EN_USER, PASS = process.env.EN_PASS;
 const DRY = process.argv.includes("--dry-run");
 const TO_ARG = process.argv.find((a) => a.startsWith("--to="))?.slice(5);

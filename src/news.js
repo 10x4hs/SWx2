@@ -311,7 +311,7 @@ async function fitOne(env, one) {
 async function pageText(url) {
   const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 6000);
   try {
-    const r = await fetch(url, { signal: ctl.signal, headers: { "user-agent": "Mozilla/5.0 (compatible; DsmMafiaNews/1.0)", accept: "text/html" } });
+    const r = await fetch(url, { signal: ctl.signal, headers: { "user-agent": "Mozilla/5.0 (compatible; SWx2News/1.0)", accept: "text/html" } });
     if (!r.ok) return "";
     const html = (await r.text()).slice(0, 400000);
     const dec = (x) => x.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;|&rsquo;|&lsquo;/g, "'").replace(/\s+/g, " ").trim();

@@ -23,9 +23,9 @@ const JSON_DEFAULTS = { suffix: "\n반드시 JSON 객체 하나만 출력해. �
 const OPENAI_LIKE = {
   groq: { url: GROQ_URL, name: "Groq", json: { suffix: "\n반드시 JSON 객체 하나만 출력해.", extra: groqExtra, jsonMode: true, checkError: false, stripThink: false, routed: false } },
   mimo: { url: MIMO_URL, name: "MiMo", json: { suffix: "\n반드시 JSON 객체 하나만 출력해.", maxTokens: 16384, checkError: false, stripThink: false, routed: false } },
-  openrouter: { url: OPENROUTER_URL, name: "OpenRouter", headers: { "HTTP-Referer": "https://swx2.dsm-mafia.workers.dev", "X-Title": "SWx2" } },
+  openrouter: { url: OPENROUTER_URL, name: "OpenRouter", headers: { "HTTP-Referer": "https://swx2.swx2.workers.dev", "X-Title": "SWx2" } },
   zhipu: { url: ZHIPU_URL, name: "GLM", body: { thinking: { type: "disabled" } } },   // 생각 모드를 끄지 않으면 본문이 빈 채로 와요
-  kilo: { url: KILO_URL, name: "Kilo", headers: { "HTTP-Referer": "https://swx2.dsm-mafia.workers.dev", "X-Title": "SWx2" } },
+  kilo: { url: KILO_URL, name: "Kilo", headers: { "HTTP-Referer": "https://swx2.swx2.workers.dev", "X-Title": "SWx2" } },
   ollama: { url: OLLAMA_URL, name: "Ollama" },
 };
 const KEY = { gemini: "GEMINI_API_KEY", groq: "GROQ_API_KEY", cohere: "COHERE_API_KEY", mimo: "MIMO_API_KEY", openrouter: "OPENROUTER_API_KEY", zhipu: "ZHIPU_API_KEY", kilo: "KILO_API_KEY", ollama: "OLLAMA_API_KEY" };

@@ -10,7 +10,7 @@ const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const STATUSES = ["todo", "doing", "blocked", "done"];
 const MAX_LOG = 60;
 
-const INSTRUCTIONS = `SWx2 — 셋이 쓰는 공부 앱(논문 스프린트 · 노트 · 계획)이에요. 이 연결은 한 사람의 계정으로, 에이전트 이름(whoami)이 붙어요.
+const INSTRUCTIONS = `SWx2 — 팀이 같이 쓰는 공부 앱(논문 스프린트 · 노트 · 계획)이에요. 이 연결은 한 사람의 계정으로, 에이전트 이름(whoami)이 붙어요.
 여러 에이전트가 같이 일할 때는 **작업판**으로 나눠요 (whoami 의 에이전트 이름이 곧 내 이름):
 1) 시작할 때 tasks_list 로 열린 일을 보고, 2) 할 일을 고르면 task_claim 으로 맡고(다른 에이전트가 맡은 일은 건드리지 않기),
 3) 중간 진행은 task_update(note) 로 짧게 남기고, 4) 끝나면 task_update(status="done", result=무엇을 했는지 · 어디에 남겼는지).
