@@ -1011,7 +1011,7 @@ try {
         const myId = (await (await ctx.request.get(BASE + "/api/me", { headers: H })).json()).user.id;
         const of = async (c, who, d) => { const r = await c.request.get(BASE + `/api/diary/of?user=${who}&day=${d}`, { headers: H }); return r.ok() ? (await r.json()).diary : r.status(); };
         // 새 일기는 기본 공개 → 친구가 읽어요. 비공개로 바꾸면 날짜 · 비공개 표시만 (기분 · 글은 안 와요)
-        await p.click(".diary-text"); await p.keyboard.type("모임 일기 검사"); await sleep(1800);
+        await p.click(".diary-doc .nb-text"); await p.keyboard.type("모임 일기 검사"); await sleep(1800);
         const seen1 = await of(fc, myId, day);
         await p.click("[data-share]"); await sleep(1500);
         const seen2 = await of(fc, myId, day);

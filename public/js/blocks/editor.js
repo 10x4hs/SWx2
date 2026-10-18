@@ -8,6 +8,8 @@ import { inlineWithMath, paintMath } from "./math.js";
 import { touchDrag } from "./touchdrag.js";
 
 const LISTY = new Set(["bullet", "number", "todo"]);
+const SIZED = new Set(["paragraph", "h1", "h2", "h3", "bullet", "number", "todo", "toggle", "callout", "quote"]); // 글씨 크기를 바꿀 수 있는 블록
+const FS = [["s", "작게"], ["m", "보통"], ["l", "크게"], ["xl", "아주 크게"]];
 const WIDGET = new Set(["divider", "image", "table", "page", "database", "file", "bookmark", "embed", "equation", "columns", "column"]);
 const COLISH = new Set(["columns", "column"]);
 const nestOk = (b) => canNest(b) && !COLISH.has(b.type); // 들여쓰기(Tab)로 단 안에 넣지는 않아요
@@ -124,7 +126,7 @@ export function createBlockEditor(host, opts) {
   function renderBlock(b, num) {
     const wrap = document.createElement("div");
     const col = b.props?.color || "";
-    wrap.className = "nb nb-" + b.type + (b.props?.toggle ? " nb-fold" : "") + (col ? (col.endsWith("_background") ? " nb-bg-" + col.slice(0, -11) : " nb-color-" + col) : "");
+    wrap.className = "nb nb-" + b.type + (b.props?.toggle ? " nb-fold" : "") + (col ? (col.endsWith("_background") ? " nb-bg-" + col.slice(0, -11) : " nb-color-" + col) : "") + (b.props?.size ? " nb-fs-" + b.props.size : "");
     wrap.dataset.id = b.id; wrap.dataset.type = b.type;
     const row = document.createElement("div"); row.className = "nb-row";
     if (!ro) { const h = document.createElement("span"); h.className = "nb-handle"; h.draggable = true; h.title = "Drag to move · click for menu"; h.textContent = "⋮⋮"; row.appendChild(h); }
@@ -184,8 +186,8 @@ export function createBlockEditor(host, opts) {
       }
       case "image": {
         const f = document.createElement("figure"); f.className = "nb-body nb-img";
-        if (p.src) f.innerHTML = `<img src="${esc(p.src)}" alt="${esc(p.caption || "")}" loading="lazy"><figcaption ${ro ? "" : 'contenteditable="true"'} class="nb-cap" data-ph="Add a caption">${esc(p.caption || "")}</figcaption>`;
-        else f.innerHTML = ro ? "" : `<input class="input nb-url" placeholder="Paste an image URL and press Enter" aria-label="Image URL">`;
+        if (p.src) f.innerHTML = `<div class="nb-imgbox"${p.width ? ` style="width:${p.width}%"` : ""}><img src="${esc(p.src)}" alt="${esc(p.caption || "")}" loading="lazy">${ro ? "" : '<span class="nb-resize" title="끌어서 크기 조절" aria-hidden="true"></span>'}</div><figcaption ${ro ? "" : 'contenteditable="true"'} class="nb-cap" data-ph="Add a caption">${esc(p.caption || "")}</figcaption>`;
+        else f.innerHTML = ro ? "" : `${opts.uploadImage ? `<button type="button" class="btn sm nb-pick">이미지 올리기</button>` : ""}<input class="input nb-url" placeholder="${opts.uploadImage ? "또는 이미지 주소를 붙여 넣고 Enter" : "Paste an image URL and press Enter"}" aria-label="Image URL">`;
         return f;
       }
       case "bookmark": case "embed": case "file": {
@@ -317,6 +319,8 @@ export function createBlockEditor(host, opts) {
     if (eq) { eqEdit(blockOf(eq)); return; }
     const hd = e.target.closest(".nb-handle");
     if (hd) { openBlockMenu(blockOf(hd), hd); return; }
+    const pick = e.target.closest(".nb-pick");
+    if (pick) { pickImages(blockOf(pick)); return; }
     // clicking empty space below the last block → focus/add a paragraph
     if (e.target === root) {
       const last = doc.blocks.at(-1);
@@ -429,6 +433,8 @@ export function createBlockEditor(host, opts) {
   root.addEventListener("paste", (e) => {
     if (e.target.closest?.(".db-host")) return;
     if (ro) return;
+    const imgs = imageFiles(e.clipboardData?.files);
+    if (imgs.length) { e.preventDefault(); addImages(imgs, e.target.closest?.(".nb")?.dataset.id); return; }
     const el = e.target.closest?.(".nb-text, td, .nb-cap"); if (!el) return;
     const text = e.clipboardData?.getData("text/plain") || "";
     e.preventDefault();
@@ -468,7 +474,7 @@ export function createBlockEditor(host, opts) {
     openMenu(el, m[2].toLowerCase());
   }
   function openMenu(anchor, q) {
-    menuItems = MENU.filter(([t, label]) => !q || label.toLowerCase().includes(q.trim()) || t.includes(q.trim()));
+    menuItems = MENU.filter(([t]) => !opts.hide?.includes(t)).filter(([t, label]) => !q || label.toLowerCase().includes(q.trim()) || t.includes(q.trim()));
     if (menuMode === "turn") menuItems = menuItems.filter(([t]) => !["page", "database", "columns2", "columns3"].includes(t));
     if (!menuItems.length) return closeMenu();
     menuSel = 0;
@@ -526,6 +532,7 @@ export function createBlockEditor(host, opts) {
     closeMenu();
     const m = document.createElement("div"); m.className = "nb-menu nb-bmenu"; document.body.appendChild(m); menu = m;
     m.innerHTML = `${COLISH.has(b.type) ? "" : `<button type="button" data-a="turn"><span class="nb-menu-ic">↻</span><span><b>Turn into</b></span></button>`}<button type="button" data-a="dup"><span class="nb-menu-ic">⧉</span><span><b>Duplicate</b></span></button><button type="button" data-a="del"><span class="nb-menu-ic">🗑</span><span><b>Delete</b></span></button>${editable(b) && b.type !== "code" ? `<div class="nb-menu-h">Color</div>${swatches()}` : ""}`;
+    if (SIZED.has(b.type)) m.insertAdjacentHTML("beforeend", `<div class="nb-sizes" role="group" aria-label="글씨 크기">${FS.map(([k, t]) => `<button type="button" data-bsize="${k}" aria-pressed="${(b.props.size || "m") === k}">${t}</button>`).join("")}</div>`);
     const r = anchor.getBoundingClientRect(); m.style.left = Math.max(8, r.left) + "px"; m.style.top = r.bottom + 4 + "px";
     m.addEventListener("mousedown", (e) => {
       e.preventDefault(); const a = e.target.closest("[data-a]")?.dataset.a; if (!a) return;
@@ -534,6 +541,8 @@ export function createBlockEditor(host, opts) {
       if (a === "turn") { closeMenu(); menuFor = b; menuMode = "turn"; openMenu(anchor, ""); }
     });
     m.addEventListener("mousedown", (e) => {
+      const bs = e.target.closest("[data-bsize]");
+      if (bs) { if (bs.dataset.bsize === "m") delete b.props.size; else b.props.size = bs.dataset.bsize; closeMenu(); changed(); render(); return; }
       const sw = e.target.closest("[data-col]"); if (!sw) return;
       const c = sw.dataset.col, kind = sw.dataset.kind;
       if (c === "default") delete b.props.color; else b.props.color = kind === "bg" ? c + "_background" : c;
@@ -560,10 +569,13 @@ export function createBlockEditor(host, opts) {
     if (!tb) {
       tb = document.createElement("div"); tb.className = "nb-tb"; document.body.appendChild(tb);
       tb.innerHTML = `<button type="button" data-f="b" title="Bold"><b>B</b></button><button type="button" data-f="i" title="Italic"><i>i</i></button><button type="button" data-f="s" title="Strike"><s>S</s></button><button type="button" data-f="code" title="Code">&lt;/&gt;</button><button type="button" data-f="link" title="Link">🔗</button><button type="button" data-f="color" title="Color">A▾</button>`;
+      tb.insertAdjacentHTML("beforeend", `<span class="nb-tb-sep"></span>${FS.map(([k, t]) => `<button type="button" data-fs="${k}" title="글씨 크기: ${t}">${t}</button>`).join("")}`);
       tb.addEventListener("mousedown", (e) => {
         e.preventDefault();
         const sw = e.target.closest("[data-col]");
         if (sw) return wrapSel(sw.dataset.col === "default" ? null : sw.dataset.kind === "bg" ? [`<mark class="bg-${sw.dataset.col}">`, "</mark>"] : [`<span class="c-${sw.dataset.col}">`, "</span>"]);
+        const fs = e.target.closest("[data-fs]")?.dataset.fs;
+        if (fs) return sizeSel(fs);
         const f = e.target.closest("[data-f]")?.dataset.f; if (!f) return;
         if (f === "color") { const open = tb.querySelector(".nb-sw"); if (open) open.remove(); else tb.insertAdjacentHTML("beforeend", swatches()); return; }
         if (f === "link") { const u = prompt("Link URL", "https://"); if (u && u.trim()) wrapSel(["[", "](" + u.trim() + ")"]); return; }
@@ -584,7 +596,52 @@ export function createBlockEditor(host, opts) {
     const end = tbSel.start + out.length;
     closeTb(); changed(); render({ id: b.id, off: end });
   }
+  // 글자 크기: <span class="fs-l">…</span> 로 감싸요 (보통 = 크기 표시만 지우기)
+  function sizeSel(k) {
+    if (!tbSel) return;
+    const at = find(tbSel.id); if (!at) return closeTb();
+    const b = at.b, t = b.text;
+    let mid = t.slice(tbSel.start, tbSel.end);
+    for (let i = 0; i < 5; i++) mid = mid.replace(/<span class="fs-(?:s|l|xl)">([\s\S]*?)<\/span>/g, "$1");
+    const out = k === "m" ? mid : `<span class="fs-${k}">${mid}</span>`;
+    b.text = t.slice(0, tbSel.start) + out + t.slice(tbSel.end);
+    const end = tbSel.start + out.length;
+    closeTb(); changed(); render({ id: b.id, off: end });
+  }
   document.addEventListener("selectionchange", onSel);
+
+  // ---------- 이미지 올리기 (opts.uploadImage(file) → src): 붙여 넣기 · 끌어다 놓기 · '이미지 올리기' 버튼 ----------
+  function imageFiles(list) { return opts.uploadImage ? [...(list || [])].filter((f) => /^image\//.test(f.type)) : []; }
+  async function addImages(files, afterId, into = null) {
+    let prev = afterId;
+    for (const f of files) {
+      let src;
+      try { src = await opts.uploadImage(f); } catch (err) { opts.onError?.(err); continue; }
+      if (into) { into.props.src = src; prev = into.id; into = null; changed(); render(); continue; }
+      const nb = block("image", "", { src, caption: "" });
+      if (prev && find(prev)) insertAfter(prev, nb); else doc.blocks.push(nb);
+      prev = nb.id; changed(); render();
+    }
+  }
+  function pickImages(b) {
+    const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.multiple = true;
+    inp.onchange = () => addImages(imageFiles(inp.files), b.id, b);
+    inp.click();
+  }
+  // 이미지 크기: 오른쪽 아래 손잡이를 끌면 줄 너비의 % 로
+  root.addEventListener("pointerdown", (e) => {
+    const h = e.target.closest?.(".nb-resize"); if (!h || ro) return;
+    e.preventDefault();
+    const box = h.parentElement, full = box.parentElement.getBoundingClientRect().width, x0 = e.clientX, w0 = box.getBoundingClientRect().width, b = blockOf(h);
+    const move = (ev) => { box.style.width = Math.max(10, Math.min(100, ((w0 + ev.clientX - x0) / full) * 100)) + "%"; };
+    const up = () => {
+      removeEventListener("pointermove", move); removeEventListener("pointerup", up);
+      const w = Math.round(parseFloat(box.style.width));
+      if (w >= 98) delete b.props.width; else b.props.width = w;
+      changed();
+    };
+    addEventListener("pointermove", move); addEventListener("pointerup", up);
+  });
 
   // ---------- [[ autocomplete ----------
   // "[[" → page titles · "@" → pages, dates and reminders (mention menu)
@@ -682,10 +739,12 @@ export function createBlockEditor(host, opts) {
     endDrag(); render();
   }
   root.addEventListener("dragover", (e) => {
-    if (!dragId) return;
+    if (!dragId) { if (!ro && opts.uploadImage && e.dataTransfer?.types?.includes("Files")) e.preventDefault(); return; }
     if (showMarker(e.clientX, e.clientY, e.target.closest?.(".nb"))) e.preventDefault();
   });
-  root.addEventListener("drop", (e) => { if (!dragId || !marker?.dataset.target) return; e.preventDefault(); dropAtMarker(); });
+  root.addEventListener("drop", (e) => {
+    if (!dragId) { const imgs = ro ? [] : imageFiles(e.dataTransfer?.files); if (imgs.length) { e.preventDefault(); addImages(imgs, e.target.closest?.(".nb")?.dataset.id); } return; }
+    if (!marker?.dataset.target) return; e.preventDefault(); dropAtMarker(); });
   if (!ro) touchDrag(root, ".nb-handle", {
     over: (x, y, h) => { dragId = h.closest(".nb").dataset.id; showMarker(x, y, document.elementFromPoint(x, y)?.closest?.(".nb")); },
     drop: (x, y, h) => { dragId = h.closest(".nb").dataset.id; dropAtMarker(); },
