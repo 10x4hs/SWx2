@@ -38,7 +38,7 @@ const token = randomBytes(32).toString("base64url");
 const hash = createHash("sha256").update(token).digest("hex");
 d1(`INSERT INTO api_tokens (token_hash, user_id, agent, created_at) VALUES (${q(hash)}, ${q(user.id)}, ${q(name)}, ${Date.now()})
     ON CONFLICT (user_id, agent) DO UPDATE SET token_hash = excluded.token_hash, created_at = excluded.created_at, last_used_at = NULL`);
-const url = REMOTE ? "https://swx2.dsm-mafia.workers.dev/mcp" : "http://127.0.0.1:8787/mcp";
+const url = REMOTE ? "https://swx2.swx2.workers.dev/mcp" : "http://127.0.0.1:8787/mcp";
 if (OUT) {
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify({ url, agent: name, user: username, token }, null, 2) + "\n", { mode: 0o600 });
