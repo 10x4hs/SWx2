@@ -4,6 +4,7 @@
 import { aiJson, aiText } from "./ai.js";
 import { sha256, b64url } from "./lib/crypto.js";
 import { kstTodayReq } from "./lib/day.js";
+import { PEERS } from "./teams.js";
 
 export const PAPER_IDS = ["yolov10", "bytetrack", "fdta", "sam", "sam3", "dino", "dinov3", "rtdetrv4", "cradiov4", "videomae", "vjepa21", "adaptformer", "cmx", "mspecgene", "intquant", "iptqvit"];
 const PAPER_SET = new Set(PAPER_IDS);
@@ -24,12 +25,12 @@ export function registerPapers(on, { json, body, fail, now }) {
   const stepOf = (v) => (STEPS.includes(v) ? v : fail(400, "단계는 read · quiz · explain 중 하나예요."));
   const open = (req, env) => { if (papersEnded(req, env)) fail(410, "논문 스프린트가 끝났어요. 결과만 볼 수 있어요."); };
 
-  // 셋 모두의 체크 · 한 줄 정리
-  async function progress(env) {
+  // 같은 팀 사람(나 포함)의 체크 · 한 줄 정리
+  async function progress(env, me) {
     const [users, checks, notes] = await Promise.all([
-      env.DB.prepare("SELECT id, display_name, color FROM users ORDER BY created_at").all(),
-      env.DB.prepare("SELECT user_id, paper, step, score, done_at FROM paper_checks").all(),
-      env.DB.prepare("SELECT user_id, paper, body, updated_at FROM paper_notes").all(),
+      env.DB.prepare(`SELECT id, display_name, color FROM users WHERE id IN ${PEERS("?")} ORDER BY created_at`).bind(me).all(),
+      env.DB.prepare(`SELECT user_id, paper, step, score, done_at FROM paper_checks WHERE user_id IN ${PEERS("?")}`).bind(me).all(),
+      env.DB.prepare(`SELECT user_id, paper, body, updated_at FROM paper_notes WHERE user_id IN ${PEERS("?")}`).bind(me).all(),
     ]);
     const by = new Map(users.results.map((u) => [u.id, { user_id: u.id, name: u.display_name, color: u.color, checks: {}, notes: {} }]));
     for (const c of checks.results) {
@@ -42,7 +43,7 @@ export function registerPapers(on, { json, body, fail, now }) {
     for (const n of notes.results) by.get(n.user_id) && (by.get(n.user_id).notes[n.paper] = n.body);
     return [...by.values()].map((m) => ({ ...m, done: Object.values(m.checks).reduce((s, p) => s + STEPS.filter((k) => p[k]).length, 0) }));
   }
-  const shape = async (req, env, extra = {}) => ({ until: PAPERS_UNTIL, today: kstTodayReq(req, env), ended: papersEnded(req, env), total: PAPER_IDS.length * STEPS.length, members: await progress(env), ...extra });
+  const shape = async (req, env, extra = {}) => ({ until: PAPERS_UNTIL, today: kstTodayReq(req, env), ended: papersEnded(req, env), total: PAPER_IDS.length * STEPS.length, members: await progress(env, extra.me), ...extra });
 
   async function setCheck(env, userId, paper, step, done, score = null) {
     if (done) {

@@ -4,6 +4,7 @@ import { agentName } from "./oauth.js";
 import { hex, sha256, b64url } from "./lib/crypto.js";
 import { HttpError, fail, json, body, now, uid, str } from "./http.js";
 import { match } from "./router.js";
+import { PEERS } from "./teams.js";
 
 const COLORS = ["#E8552B", "#4C6FFF", "#14A38B"]; // Golden Gate orange, bay blue, cypress green
 const SESSION_DAYS = 30;
@@ -220,8 +221,9 @@ export function registerAuth(on) {
     return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar, status, plans_open, ai_model: aiModel, dock_order: readList(dockOrder), hidden_pages: readList(hiddenPages), graph_prefs: readObj(graphPrefs) } });
   });
 
-  on("GET", "/users", async ({ env }) => {
-    const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal, bio, avatar, status, plans_open FROM users WHERE state = 'active' ORDER BY created_at").all();
+  // 같은 팀 사람(나 포함)만
+  on("GET", "/users", async ({ env, user }) => {
+    const { results } = await env.DB.prepare(`SELECT id, username, display_name, color, day_goal, bio, avatar, status, plans_open FROM users WHERE state = 'active' AND id IN ${PEERS("?")} ORDER BY created_at`).bind(user.id).all();
     return json({ users: results.map((u) => ({ ...u, status: readStatus(u.status), plans_open: u.plans_open !== 0 })) });
   });
 }

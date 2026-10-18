@@ -1,5 +1,6 @@
 // 홈 첫 화면의 글 쓰는 자리: 오늘의 다짐(셋이 봐요 · 날마다 한 줄) · 메모장(나만 봐요 · 한 장, 자동 저장)
 import { kstToday } from "./lib/day.js";
+import { PEERS } from "./teams.js";
 
 const MAX_PLEDGE = 120;
 const MAX_MEMO = 20000;
@@ -10,7 +11,7 @@ export function registerHomePad(on, { json, body, fail, now }) {
   on("GET", "/home/pad", async ({ env, user, q }) => {
     const day = DAY_RE.test(q.get("day") || "") ? q.get("day") : kstToday();
     const [today, mine, memo] = await env.DB.batch([
-      env.DB.prepare("SELECT user_id, body, updated_at FROM pledges WHERE day = ?").bind(day),
+      env.DB.prepare(`SELECT user_id, body, updated_at FROM pledges WHERE day = ? AND user_id IN ${PEERS("?")}`).bind(day, user.id),
       env.DB.prepare("SELECT day, body FROM pledges WHERE user_id = ? AND day <= ? ORDER BY day DESC LIMIT 30").bind(user.id, day),
       env.DB.prepare("SELECT body, updated_at FROM home_memos WHERE user_id = ?").bind(user.id),
     ]);

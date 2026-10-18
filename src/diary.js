@@ -3,6 +3,7 @@
 // 비공개 날은 상대에게 날짜와 비공개 표시만 — 기분 · 글은 서버에서 아예 보내지 않아요. 모임 밖 사람은 모임 API 를 못 써요(403).
 import { fail, json, body, now, uid, DAY_RE, dayParam, yearParam } from "./http.js";
 import { blocksToMd, validateDoc } from "../public/js/blocks/md.js";
+import { PEERS } from "./teams.js";
 
 const NOT_CIRCLE = "일기를 함께 보는 사람만 열 수 있어요.";
 const MAX_BLOCKS = 300000; // 블록 JSON 글자 수
@@ -17,11 +18,11 @@ function readBlocks(v) {
   if (text.length > MAX_BLOCKS) fail(400, "일기가 너무 길어요.");
   return { text, md: blocksToMd(doc).trim(), empty: !doc.blocks.some((b) => b.text?.trim() || b.type !== "paragraph" || b.children?.length) };
 }
-// 누구의 일기를 볼지: 나는 늘, 다른 사람은 둘 다 모임일 때만
+// 누구의 일기를 볼지: 나는 늘, 다른 사람은 둘 다 모임이고 같은 팀일 때만
 async function peer(env, user, id) {
   if (user.diary_circle !== 1) fail(403, NOT_CIRCLE);
   if (!id || id === user.id) return { id: user.id, self: true };
-  const u = await env.DB.prepare("SELECT id, diary_circle FROM users WHERE id = ?").bind(id).first();
+  const u = await env.DB.prepare(`SELECT id, diary_circle FROM users WHERE id = ?1 AND id IN ${PEERS("?2")}`).bind(id, user.id).first();
   if (!u || u.diary_circle !== 1) fail(403, NOT_CIRCLE);
   return { id: u.id, self: false };
 }
@@ -77,7 +78,7 @@ export function registerDiary(on) {
   // ---------- 일기 모임 (서로 보기) ----------
   on("GET", "/diary/circle", async ({ env, user }) => {
     if (user.diary_circle !== 1) fail(403, NOT_CIRCLE);
-    const { results } = await env.DB.prepare("SELECT id, username, display_name, color FROM users WHERE diary_circle = 1 ORDER BY username").all();
+    const { results } = await env.DB.prepare(`SELECT id, username, display_name, color FROM users WHERE diary_circle = 1 AND id IN ${PEERS("?")} ORDER BY username`).bind(user.id).all();
     return json({ members: results });
   });
 

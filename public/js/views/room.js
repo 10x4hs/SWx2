@@ -1,5 +1,5 @@
 // 대화방 — 우리 셋 방 + 1:1 방(두 사람) + 공통 창고(책 · 링크 · 영상).
-// 주소: #/room (마지막 탭) · #/room/chat (우리 셋) · #/room/dm/<상대 id> (1:1) · #/room/library[/<항목 id>].
+// 주소: #/room (마지막 탭) · #/room/chat (첫 팀 방) · #/room/team/<팀 id> · #/room/dm/<상대 id> (1:1, 같은 팀 사람) · #/room/library[/<항목 id>].
 // 탭·방 전환은 판을 다시 만들지 않아요. AI 이름 설정은 방 모두에 공통이에요.
 import { api } from "../api.js";
 import { $, esc, toast } from "../util.js";
@@ -19,10 +19,13 @@ export function mount(root, ctx, r) {
   let tab = tabOf(r.tab) || tabOf(store.get(TAB_KEY)) || "chat";
   const dmId = (other) => "dm:" + [ctx.me.id, other].sort().join(":");
   const others = () => ctx.users.filter((u) => u.id !== ctx.me.id);
-  const roomOf = (dm) => (dm && others().some((u) => u.id === dm) ? dmId(dm) : "all");
-  let roomId = roomOf(r.dm);
+  const teams = () => ctx.teams || [];
+  // 팀이 없고 같은 팀 사람도 없으면 방이 없어요 (null)
+  const firstRoom = () => teams()[0]?.room || (others()[0] ? dmId(others()[0].id) : null);
+  const roomOf = (dm, team) => (team && teams().some((t) => t.id === team) ? teams().find((t) => t.id === team).room : dm && others().some((u) => u.id === dm) ? dmId(dm) : firstRoom());
+  let roomId = roomOf(r.dm, r.team);
   let aiName = "마피아", chat = null, lib = null, unreadMap = {};
-  if (!r.tab && !r.dm) history.replaceState(null, "", "#/room/" + tab);
+  if (!r.tab && !r.dm && !r.team) history.replaceState(null, "", "#/room/" + tab);
 
   root.innerHTML = `
     <div class="rm" id="rm">
@@ -46,11 +49,11 @@ export function mount(root, ctx, r) {
   // ---------- 방 목록: 우리 셋 + 다른 멤버마다 1:1 ----------
   const badge = (n) => n > 0 ? `<span class="rm-unread" aria-label="안 읽음 ${n}개">${n > 99 ? "99+" : n}</span>` : "";
   function drawRooms() {
-    const all = `<a class="rm-room${roomId === "all" ? " on" : ""}" href="#/room/chat" data-room="all" ${roomId === "all" ? 'aria-current="true"' : ""}>
-      <span class="rm-room-av all">${icon.home(14)}</span><span class="rm-room-n">우리 셋</span>${badge(Number(unreadMap.all) || 0)}</a>`;
+    const all = teams().map((t) => `<a class="rm-room${roomId === t.room ? " on" : ""}" href="#/room/team/${encodeURIComponent(t.id)}" data-room="${esc(t.room)}" ${roomId === t.room ? 'aria-current="true"' : ""}>
+      <span class="rm-room-av all">${icon.home(14)}</span><span class="rm-room-n">${esc(t.name)}</span>${badge(Number(unreadMap[t.room]) || 0)}</a>`).join("");
     const dms = others().map((u) => { const id = dmId(u.id); return `<a class="rm-room${roomId === id ? " on" : ""}" href="#/room/dm/${encodeURIComponent(u.id)}" data-room="${esc(id)}" ${roomId === id ? 'aria-current="true"' : ""}>
       ${avatar(u, "sm")}<span class="rm-room-n">${esc(u.display_name)}</span>${badge(Number(unreadMap[id]) || 0)}</a>`; }).join("");
-    roomsEl.innerHTML = all + dms;
+    roomsEl.innerHTML = all + dms || `<p class="faint rm-none">아직 팀이 없어요. 프로필 메뉴 → <b>팀</b>에서 팀을 만들거나 초대 코드로 들어가요.</p>`;
   }
   // rooms: { all: n, "dm:..": n } — GET /room 응답마다 같이 오고, 읽음 처리 뒤(trio:changed room)엔 따로 한 번 받아요
   function takeRooms(r) {
@@ -83,7 +86,7 @@ export function mount(root, ctx, r) {
       if (v.length < 2 || v.length > 12) { toast("AI 이름은 2~12자로 정해 주세요.", "err"); return; }
       if (v === aiName) { drawAi(false); return; }
       try {
-        const res = await api.roomSettings({ ai_name: v });
+        const res = await api.roomSettings({ ai_name: v, room: roomId });
         aiName = res?.ai_name || v;
         toast(`AI 이름을 '${aiName}' 로 바꿨어요.`);
         drawAi(false); chat?.rename(); chat?.refresh();
@@ -114,7 +117,7 @@ export function mount(root, ctx, r) {
     onShared: () => chat?.refresh(),
   };
   function ensure() {
-    if (tab === "chat" && !chat) chat = mountChat($("#rm-chat-host", root), env);
+    if (tab === "chat" && !chat && roomId) chat = mountChat($("#rm-chat-host", root), env);
     if (tab === "library" && !lib) lib = mountLibrary(paneLib, env);
   }
   function show(focusId) {
@@ -134,14 +137,14 @@ export function mount(root, ctx, r) {
     drawRooms();
     chat?.setRoom();
   }
-  function hashFor(t, rid) { return t === "library" ? "#/room/library" : rid === "all" ? "#/room/chat" : "#/room/dm/" + encodeURIComponent(rid.split(":").slice(1).find((x) => x !== ctx.me.id)); }
+  function hashFor(t, rid) { const tm = teams().find((x) => x.room === rid); return t === "library" ? "#/room/library" : !rid ? "#/room/chat" : tm ? "#/room/team/" + encodeURIComponent(tm.id) : "#/room/dm/" + encodeURIComponent(rid.split(":").slice(1).find((x) => x !== ctx.me.id)); }
   function go(t) { if (t !== tab) { tab = t; history.replaceState(null, "", hashFor(t, roomId)); show(); } }
 
   inst = {
     update(nr) {
       const t = tabOf(nr.tab) || tab;
-      if (!nr.tab && !nr.dm) history.replaceState(null, "", hashFor(t, roomId));
-      const rid = nr.dm !== undefined ? roomOf(nr.dm) : t === "chat" && nr.tab === "chat" ? "all" : roomId;
+      if (!nr.tab && !nr.dm && !nr.team) history.replaceState(null, "", hashFor(t, roomId));
+      const rid = nr.dm !== undefined || nr.team ? roomOf(nr.dm, nr.team) : t === "chat" && nr.tab === "chat" ? firstRoom() : roomId;
       const sameTab = t === tab;
       tab = t;
       if (!sameTab) show(nr.id || null);

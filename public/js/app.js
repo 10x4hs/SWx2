@@ -18,6 +18,7 @@ import * as papersView from "./views/papers.js";
 import * as booksView from "./views/books.js";
 import * as updatesView from "./views/updates.js";
 import * as adminView from "./views/admin.js";
+import * as teamsView from "./views/teams.js";
 import { openMcpPanel } from "./mcp-panel.js";
 import { openProfile } from "./profile-edit.js";
 import { statusPicker, statusText } from "./status.js";
@@ -89,7 +90,7 @@ function impBar() {
   document.body.append(bar);
 }
 async function enter(user) {
-  ctx.users = toned((await api.users()).users);
+  [ctx.users, ctx.teams] = await Promise.all([api.users().then((r) => toned(r.users)), api.teams().then((r) => r.teams).catch(() => [])]);
   ctx.me = { ...user, color: ctx.users.find((u) => u.id === user.id)?.color || MEMBER_TONES[0] };
   syncAiPrefs(ctx.me); // 계정에 저장된 AI 모델로 맞춰요
   setHiddenMe(ctx.me); // 내 화면에서 숨긴 친구 페이지
@@ -204,6 +205,7 @@ function renderMeRow() {
       <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
       <button type="button" role="menuitem" id="pw-btn">${icon.lock(16)}비밀번호 바꾸기</button>
       ${ctx.me.role === "admin" && !ctx.me.impersonated_by ? `<a role="menuitem" class="me-link" id="adm-btn" href="#/admin">${icon.lock(16)}관리자</a>` : ""}
+      <a role="menuitem" class="me-link" id="teams-btn" href="#/teams">${icon.share(16)}팀</a>
       <a role="menuitem" class="me-link" id="upd-btn" href="#/updates">${icon.spark(16)}업데이트 기록<span class="me-badge" id="upd-badge" hidden></span></a>
       <button type="button" role="menuitem" id="mcp-btn">${icon.share(16)}MCP 연결 (AI 에이전트)</button>
       <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
@@ -226,6 +228,7 @@ function renderMeRow() {
   });
   $("#pw-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openPassword(); });
   $("#adm-btn")?.addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
+  $("#teams-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
   $("#upd-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
   // 마지막으로 본 뒤 생긴 업데이트 수 → 메뉴에 숫자 · 프로필 버튼에 점
   const updBadge = () => updatesView.unseenCount().then((n) => { const b = $("#upd-badge"); if (b) { b.hidden = !n; b.textContent = n; } btn.classList.toggle("has-new", n > 0); });
@@ -318,6 +321,7 @@ function parseRoute() {
   if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
   if (a === "admin") return { view: "admin", nav: "home" }; // 관리자 (HSK · GYK)
+  if (a === "teams") return { view: "teams", nav: "home", code: b === "join" ? c || null : null }; // 팀 · 초대 링크 #/teams/join/<코드>
   if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지
   if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
   if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
@@ -325,11 +329,12 @@ function parseRoute() {
   if (a === "dev") return { view: "dev", nav: "dev", id: b || null, sub: c || null, item: d || null }; // 개발 흐름 마이크로디그리
   if (a === "mba") return { view: "mba", nav: "biz", id: b || null, sub: c || null, item: d || null }; // 경영 마이크로디그리
   if (a === "news") return { view: "news", nav: "news", sub: ["item", "world", "co", "talk", "board", "library", "history"].includes(b) ? b : null, id: c || null, day: /^\d{4}-\d{2}-\d{2}$/.test(b || "") ? b : null }; // #/news · #/news/<day> · #/news/item/<id>
+  if (a === "room" && b === "team") return { view: "room", nav: "room", tab: "chat", team: c || null }; // 팀 방
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, admin: adminView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, admin: adminView, teams: teamsView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {

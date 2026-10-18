@@ -5,7 +5,9 @@
 //   PUT  /library/:id/mark { state|null, note? }  내 표시 · 메모
 //   POST /library/:id/share { room? }             방에 share 메시지 (기본 'all', dm 방도 됨)
 //   DELETE /library/:id                           넣은 사람만
-import { postRoomMessage, checkRoom } from "./room.js";
+import { postRoomMessage, checkRoom, canEnter } from "./room.js";
+import { PEERS } from "./teams.js";
+// 창고는 같은 팀 사람(나 포함)이 넣은 것만 보여요. 표시(읽는 중 · 메모)도 같은 팀 사람 것만
 
 const KINDS = new Set(["book", "link", "video"]);
 const STATES = new Set(["todo", "doing", "done"]);
@@ -187,7 +189,7 @@ export function registerLibrary(on, { json, body, fail, uid, now }) {
   const withMarks = async (env, items, me) => {
     if (!items.length) return [];
     const ids = items.map((i) => i.id);
-    const { results } = await env.DB.prepare(`SELECT item_id, user_id, state, note FROM library_marks WHERE item_id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all();
+    const { results } = await env.DB.prepare(`SELECT item_id, user_id, state, note FROM library_marks WHERE item_id IN (${ids.map(() => "?").join(",")}) AND user_id IN ${PEERS("?")}`).bind(...ids, me).all();
     return joinMarks(items, results, me);
   };
   const joinMarks = (items, results, me) => {
@@ -199,14 +201,15 @@ export function registerLibrary(on, { json, body, fail, uid, now }) {
       return { ...it, marks, my: mine ? { state: mine.state, note: mine.note } : null };
     });
   };
-  const getItem = async (env, id) => {
-    const it = await env.DB.prepare("SELECT * FROM library_items WHERE id = ?").bind(id).first();
+  const getItem = async (env, id, me) => {
+    const it = await env.DB.prepare(`SELECT * FROM library_items WHERE id = ?1 AND added_by IN ${PEERS("?2")}`).bind(id, me).first();
     if (!it) fail(404, "창고에 그런 항목이 없어요.");
     return it;
   };
   const shareMsg = (env, user, item, room) => postRoomMessage(env, { id: uid(), room, user_id: user.id, kind: "share", body: item.title, ref_id: item.id, reply_to: null, created_at: now() });
   // share: true → room(기본 'all') · share: 'dm:...' → 그 방 · 아니면 null. 들어갈 수 없는 방이면 403
-  const shareRoom = (b, user) => (b.share === true ? checkRoom(b.room, user, fail) : typeof b.share === "string" && b.share ? checkRoom(b.share, user, fail) : null);
+  const enter = async (env, room, user) => { if (room && !(await canEnter(env, room, user))) fail(403, "들어갈 수 없는 방이에요."); return room; };
+  const shareRoom = (env, b, user) => enter(env, b.share === true ? checkRoom(b.room, user, fail) : typeof b.share === "string" && b.share ? checkRoom(b.share, user, fail) : null, user);
   const optBody = async (req) => { try { return (await req.json()) || {}; } catch { return {}; } };
 
   // 저장 없이 메타데이터만. 바깥 서비스가 죽어도 200 + warning
@@ -231,14 +234,14 @@ export function registerLibrary(on, { json, body, fail, uid, now }) {
     const kind = q.get("kind") || "";
     const text = (q.get("q") || "").trim().slice(0, 100);
     if (kind && !KINDS.has(kind)) fail(400, "종류는 book · link · video 중 하나예요.");
-    const where = [], args = [];
+    const where = [`added_by IN ${PEERS("?")}`], args = [user.id];
     if (kind) { where.push("kind = ?"); args.push(kind); }
     if (text) { const like = "%" + text.replace(/[%_\\]/g, "\\$&") + "%"; where.push("(title LIKE ? ESCAPE '\\' OR author LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')"); args.push(like, like, like); }
     // 항목 + 그 항목들의 표시를 왕복 한 번에 (같은 목록 쿼리를 하위 쿼리로)
     const list = `SELECT * FROM library_items ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY created_at DESC LIMIT ?`;
     const [items, marks] = await env.DB.batch([
       env.DB.prepare(list).bind(...args, LIST_LIMIT),
-      env.DB.prepare(`SELECT item_id, user_id, state, note FROM library_marks WHERE item_id IN (SELECT id FROM (${list}))`).bind(...args, LIST_LIMIT),
+      env.DB.prepare(`SELECT item_id, user_id, state, note FROM library_marks WHERE item_id IN (SELECT id FROM (${list})) AND user_id IN ${PEERS("?")}`).bind(...args, LIST_LIMIT, user.id),
     ]);
     return json({ items: joinMarks(items.results, marks.results, user.id) });
   });
@@ -246,7 +249,7 @@ export function registerLibrary(on, { json, body, fail, uid, now }) {
   on("POST", "/library", async ({ req, env, user }) => {
     const b = await body(req);
     if (!KINDS.has(b.kind)) fail(400, "종류는 book · link · video 중 하나예요.");
-    const room = shareRoom(b, user);   // 방 검사는 저장 전에 (403 이면 아무것도 안 넣어요)
+    const room = await shareRoom(env, b, user);   // 방 검사는 저장 전에 (403 이면 아무것도 안 넣어요)
     if (typeof b.title !== "string" || !b.title.trim()) fail(400, "제목을 입력해 주세요.");
     const title = b.title.trim();
     if (title.length > 200) fail(400, "제목은 200자까지 쓸 수 있어요.");
@@ -269,7 +272,7 @@ export function registerLibrary(on, { json, body, fail, uid, now }) {
       added_by: user.id, created_at: now(),
     };
     if (url) {
-      const dup = await env.DB.prepare("SELECT * FROM library_items WHERE url = ?").bind(url).first();
+      const dup = await env.DB.prepare(`SELECT * FROM library_items WHERE url = ?1 AND added_by IN ${PEERS("?2")}`).bind(url, user.id).first();
       if (dup) return json({ error: "이미 창고에 있는 주소예요.", item: (await withMarks(env, [dup], user.id))[0] }, 409);
     }
     await env.DB.prepare(
@@ -285,7 +288,7 @@ export function registerLibrary(on, { json, body, fail, uid, now }) {
   // state 가 null 이고 메모도 없으면 표시를 지워요. 메모만 남기는 것도 돼요 (state null + note)
   on("PUT", "/library/:id/mark", async ({ req, env, params, user }) => {
     const b = await body(req);
-    const item = await getItem(env, params.id);
+    const item = await getItem(env, params.id, user.id);
     const state = b.state == null ? null : b.state;
     if (state !== null && !STATES.has(state)) fail(400, "표시는 todo · doing · done 중 하나예요.");
     const note = optStr(b.note, 200, "메모");
@@ -303,14 +306,14 @@ export function registerLibrary(on, { json, body, fail, uid, now }) {
 
   on("POST", "/library/:id/share", async ({ req, env, params, user }) => {
     const b = await optBody(req);
-    const room = checkRoom(b.room, user, fail);
-    const item = await getItem(env, params.id);
+    const room = await enter(env, checkRoom(b.room, user, fail), user);
+    const item = await getItem(env, params.id, user.id);
     const message = await shareMsg(env, user, item, room);
     return json({ message: { ...message, item: { id: item.id, kind: item.kind, title: item.title, thumb: item.thumb, url: item.url, video_id: item.video_id } } }, 201);
   });
 
   on("DELETE", "/library/:id", async ({ env, params, user }) => {
-    const item = await getItem(env, params.id);
+    const item = await getItem(env, params.id, user.id);
     if (item.added_by !== user.id) fail(403, "내가 넣은 항목만 지울 수 있어요.");
     await env.DB.prepare("DELETE FROM library_items WHERE id = ?").bind(item.id).run();
     return json({ ok: true });

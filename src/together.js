@@ -5,6 +5,7 @@
 //   POST /review/week/ai       AI가 내 기록만으로 회고 쓰기 (일기 본문은 절대 안 보내요)
 import { aiJson } from "./ai.js";
 import { kstToday } from "./lib/day.js";
+import { PEERS } from "./teams.js";
 
 const DAY_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const WEEK_RE = /^(\d{4})-W(\d{2})$/;
@@ -76,11 +77,11 @@ export function registerTogether(on, { json, body, fail, now }) {
   });
 
   // 멤버 전원. ends_at 이 지났으면 focus=false (타이머를 끄지 않고 창을 닫은 경우)
-  on("GET", "/presence", async ({ env }) => {
+  on("GET", "/presence", async ({ env, user }) => {
     const t = now();
     const { results } = await env.DB.prepare(
-      "SELECT u.id AS user_id, p.state, p.started_at, p.ends_at FROM users u LEFT JOIN presence p ON p.user_id = u.id ORDER BY u.created_at"
-    ).all();
+      `SELECT u.id AS user_id, p.state, p.started_at, p.ends_at FROM users u LEFT JOIN presence p ON p.user_id = u.id WHERE u.id IN ${PEERS("?")} ORDER BY u.created_at`
+    ).bind(user.id).all();
     const members = results.map((r) => {
       const focus = r.state === "focus" && r.ends_at > t;
       return { user_id: r.user_id, focus, started_at: focus ? r.started_at : null, ends_at: focus ? r.ends_at : null };
@@ -93,7 +94,7 @@ export function registerTogether(on, { json, body, fail, now }) {
     const b = await body(req);
     if (typeof b.to !== "string" || !b.to) fail(400, "누구에게 응원할지 알려 주세요.");
     if (b.to === user.id) fail(400, "나에게는 응원할 수 없어요.");
-    const to = await env.DB.prepare("SELECT id FROM users WHERE id = ?").bind(b.to).first();
+    const to = await env.DB.prepare(`SELECT id FROM users WHERE id = ?1 AND id IN ${PEERS("?2")}`).bind(b.to, user.id).first();
     if (!to) fail(404, "없는 멤버예요.");
     const day = kstToday(), at = now();
     const r = await env.DB.prepare("INSERT OR IGNORE INTO cheers (from_id, to_id, day, created_at) VALUES (?, ?, ?, ?)").bind(user.id, b.to, day, at).run();
@@ -118,7 +119,7 @@ export function registerTogether(on, { json, body, fail, now }) {
     const { week, from, to } = pickWeek(q.get("week"));
     const P = ["D:" + from, "D:" + to];
     const [users, plans, focus, english, diary, score, cheers, active, mine] = await env.DB.batch([
-      env.DB.prepare("SELECT id FROM users ORDER BY created_at"),
+      env.DB.prepare(`SELECT id FROM users WHERE id IN ${PEERS("?")} ORDER BY created_at`).bind(user.id),
       env.DB.prepare("SELECT user_id, COUNT(*) AS total, SUM(done) AS done FROM plans WHERE scope = 'day' AND period BETWEEN ? AND ? GROUP BY user_id").bind(...P),
       env.DB.prepare("SELECT user_id, SUM(COALESCE(mins, 0)) AS mins FROM logs WHERE kind = 'focus' AND day BETWEEN ? AND ? GROUP BY user_id").bind(from, to),
       env.DB.prepare("SELECT user_id, SUM(minutes) AS mins FROM english_days WHERE day BETWEEN ? AND ? GROUP BY user_id").bind(from, to),

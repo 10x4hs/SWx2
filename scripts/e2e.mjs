@@ -32,9 +32,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await sleep(500); } }
 
 const tag = Date.now().toString(36), user = "t_e2e" + tag, friend = "t_e2f" + tag, outsider = "t_e2o" + tag; // outsider = ⑱ 일기 모임 밖
-execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1"], { stdio: "ignore" });
-execFileSync("node", ["scripts/add-user.mjs", friend, "검사친구", "password1"], { stdio: "ignore" }); // ⑨ 공개 페이지를 올리는 친구
-execFileSync("node", ["scripts/add-user.mjs", outsider, "모임밖", "password1"], { stdio: "ignore" });
+execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1", "--team=swx2"], { stdio: "ignore" });
+execFileSync("node", ["scripts/add-user.mjs", friend, "검사친구", "password1", "--team=swx2"], { stdio: "ignore" }); // ⑨ 공개 페이지를 올리는 친구
+execFileSync("node", ["scripts/add-user.mjs", outsider, "모임밖", "password1", "--team=swx2"], { stdio: "ignore" });
 const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username IN ('${user}', '${friend}', '${outsider}')`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
 
 // 과목 페이지: 화면을 꽉 채우는 한 장짜리 · 여러 파일(style.css · app.js)짜리
