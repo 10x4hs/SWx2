@@ -22,16 +22,13 @@ targets:
         CFBundleDisplayName: TrioWidget
         LSApplicationCategoryType: public.app-category.productivity
         LSUIElement: true
-        TrioGroup: $(TeamIdentifierPrefix)dev.dsmmafia.trio
         CFBundleURLTypes:
           - CFBundleURLName: dev.dsmmafia.trio
             CFBundleURLSchemes: [triowidget]
     entitlements:
       path: App/TrioWidget.entitlements
       properties:
-        com.apple.security.app-sandbox: true
-        com.apple.security.network.client: true
-        com.apple.security.application-groups: [$(TeamIdentifierPrefix)dev.dsmmafia.trio]
+        com.apple.security.app-sandbox: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.dsmmafia.trio
@@ -45,7 +42,6 @@ targets:
       path: Widget/Info.plist
       properties:
         CFBundleDisplayName: Trio 계획
-        TrioGroup: $(TeamIdentifierPrefix)dev.dsmmafia.trio
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
@@ -53,7 +49,7 @@ targets:
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
-        com.apple.security.application-groups: [$(TeamIdentifierPrefix)dev.dsmmafia.trio]
+        com.apple.security.temporary-exception.shared-preference.read-write: [dev.dsmmafia.trio.shared]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.dsmmafia.trio.widget

@@ -52,6 +52,10 @@ struct MainView: View {
         .padding(20)
         .frame(width: 420, height: 460)
         .task { await loadMe() }
+        // 웹의 '연결' 링크로 연결되면(창이 이미 떠 있어도) 화면을 바꿔요
+        .onChange(of: live.status) { _, _ in
+            if connected != Trio.connected { Task { await loadMe() } }
+        }
     }
 
     func loadMe() async {

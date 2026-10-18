@@ -13,4 +13,4 @@
 - 연결: 웹 프로필 → MCP 연결 → Mac 위젯 → 토큰 `mac-widget` 을 만들고 `triowidget://connect?base&token` 링크로 앱에 넘겨요.
 
 ## 배포
-- 무료 Apple ID(개인 팀)로 서명 — 이 Mac 에서 빌드해서 써요. 친구 Mac 은 각자 빌드하거나 받은 앱을 시험해 봐야 해요.
+- 무료(ad-hoc) 서명. 앱 그룹 대신 위젯 샌드박스의 shared-preference 예외로 설정을 공유해요(앱은 샌드박스 없음). 친구 Mac 은 build.sh 로 빌드하거나 받은 앱을 시험해 봐야 해요.

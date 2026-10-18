@@ -3,9 +3,9 @@ import Foundation
 import WidgetKit
 
 enum Trio {
-    /// 앱 그룹 이름 — Info.plist 의 TrioGroup (팀 ID 접두사가 빌드 때 채워져요)
-    static let group = Bundle.main.object(forInfoDictionaryKey: "TrioGroup") as? String ?? "dev.dsmmafia.trio"
-    static let defaults = UserDefaults(suiteName: group) ?? .standard
+    /// 앱과 위젯이 같이 읽는 설정 (~/Library/Preferences/dev.dsmmafia.trio.shared.plist).
+    /// 앱 그룹은 유료 개발자 서명이 있어야 해서, 위젯 샌드박스의 shared-preference 예외로 읽어요 — 무료 · 서명 없이도 돼요
+    static let defaults = UserDefaults(suiteName: "dev.dsmmafia.trio.shared") ?? .standard
     static let widgetKind = "TrioPlans"
 
     static var base: URL? {
