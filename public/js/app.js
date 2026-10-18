@@ -17,6 +17,7 @@ import * as englishView from "./views/english.js";
 import * as papersView from "./views/papers.js";
 import * as booksView from "./views/books.js";
 import * as updatesView from "./views/updates.js";
+import * as adminView from "./views/admin.js";
 import { openMcpPanel } from "./mcp-panel.js";
 import { openProfile } from "./profile-edit.js";
 import { statusPicker, statusText } from "./status.js";
@@ -74,6 +75,19 @@ function showAuth() {
 // 무채색 테마: 멤버 색은 가입 순서대로 먹 · 슬레이트 · 실버 톤
 const MEMBER_TONES = ["var(--m0)", "var(--m1)", "var(--m2)"];
 const toned = (users) => users.map((u, i) => ({ ...u, color: MEMBER_TONES[i % MEMBER_TONES.length] }));
+// 관리자가 이 회원으로 들어간 동안: 맨 위 띠 + 관리자로 돌아가기
+function impBar() {
+  document.querySelector(".imp-bar")?.remove();
+  if (!ctx.me?.impersonated_by) return;
+  const bar = document.createElement("div");
+  bar.className = "imp-bar";
+  bar.innerHTML = `<span>관리자 @${esc(ctx.me.impersonated_by)} 가 @${esc(ctx.me.username)} 로 보고 있어요</span><button type="button" class="btn sm">관리자로 돌아가기</button>`;
+  bar.querySelector("button").addEventListener("click", async () => {
+    try { await api.unimpersonate(); } catch {}
+    location.hash = "#/admin"; location.reload();
+  });
+  document.body.append(bar);
+}
 async function enter(user) {
   ctx.users = toned((await api.users()).users);
   ctx.me = { ...user, color: ctx.users.find((u) => u.id === user.id)?.color || MEMBER_TONES[0] };
@@ -82,6 +96,7 @@ async function enter(user) {
   document.documentElement.style.setProperty("--me", ctx.me.color);
   renderShell();
   loadCustom();
+  impBar();
   // 스터디장이 정해 준 비밀번호 그대로면: 화면을 열기 전에 먼저 바꾸게 해요
   if (ctx.me.must_change_pw) { openPassword({ force: true }); return; }
   route();
@@ -188,6 +203,7 @@ function renderMeRow() {
       <button type="button" role="menuitem" id="prof-btn">${icon.edit(16)}프로필 바꾸기</button>
       <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
       <button type="button" role="menuitem" id="pw-btn">${icon.lock(16)}비밀번호 바꾸기</button>
+      ${ctx.me.role === "admin" && !ctx.me.impersonated_by ? `<a role="menuitem" class="me-link" id="adm-btn" href="#/admin">${icon.lock(16)}관리자</a>` : ""}
       <a role="menuitem" class="me-link" id="upd-btn" href="#/updates">${icon.spark(16)}업데이트 기록<span class="me-badge" id="upd-badge" hidden></span></a>
       <button type="button" role="menuitem" id="mcp-btn">${icon.share(16)}MCP 연결 (AI 에이전트)</button>
       <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
@@ -209,6 +225,7 @@ function renderMeRow() {
     renderMeRow();
   });
   $("#pw-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openPassword(); });
+  $("#adm-btn")?.addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
   $("#upd-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
   // 마지막으로 본 뒤 생긴 업데이트 수 → 메뉴에 숫자 · 프로필 버튼에 점
   const updBadge = () => updatesView.unseenCount().then((n) => { const b = $("#upd-badge"); if (b) { b.hidden = !n; b.textContent = n; } btn.classList.toggle("has-new", n > 0); });
@@ -300,6 +317,7 @@ function parseRoute() {
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null, who: c === "u" && d ? d : null }; // #/calendar/2026-10-04 = 그날 전체 화면 · /u/<id> = 친구의 그날
   if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
+  if (a === "admin") return { view: "admin", nav: "home" }; // 관리자 (HSK · GYK)
   if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지
   if (a === "study") return { view: "page", nav: "study", id: b || "new", place: "study", sub: c || null }; // 공부 탭 안의 과목 페이지 (#/study/<id> · #/study/new · #/study/<id>/graph)
   if (a === "papers") return { view: "papers", nav: "study", id: b || null, sub: c || null }; // #/papers/<id>/easy · #/papers/easy[/review]
@@ -311,7 +329,7 @@ function parseRoute() {
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, admin: adminView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {

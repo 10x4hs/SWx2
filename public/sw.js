@@ -72,7 +72,7 @@ self.addEventListener("fetch", (event) => {
       event.waitUntil(caches.delete(API_CACHE));
     }
     if (req.method !== "GET") { gen++; event.waitUntil(caches.delete(API_CACHE)); return; } // 저장 · 지우기 → 그대로 네트워크로, 캐시는 비워요
-    if (url.pathname.startsWith("/api/auth/") || url.pathname.startsWith("/api/diary")) return; // 일기는 늘 서버에서 (저장 안 함)
+    if (url.pathname.startsWith("/api/auth/") || url.pathname.startsWith("/api/diary") || url.pathname.startsWith("/api/admin")) return; // 일기 · 관리자는 늘 서버에서 (저장 안 함)
     event.respondWith(req.headers.has("x-swr") ? apiCacheThenFresh(event) : apiNetworkFirst(event));
     return;
   }

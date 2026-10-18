@@ -49,7 +49,10 @@ const mk = (u, n, pw) => execFileSync("node", ["scripts/add-user.mjs", u, n, pw]
 // 로컬 D1 에 직접 묻기 (서버를 거치지 않고 저장된 값 확인)
 const d1 = (sql) => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", sql], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }))[0].results;
 let r = await call("a", "POST", "/auth/signup", { username: "x" + tag, password: "password1", display_name: "x", invite: "trio-2026" });
-ok(r.status === 403, "signup is closed");
+ok(r.status === 201 && r.data.pending === true, "signup creates a pending account");
+r = await call("x", "POST", "/auth/login", { username: "x" + tag });
+ok(r.status === 403 && r.data.account_state === "pending", "pending account can't log in until admins approve");
+d1(`DELETE FROM users WHERE username = 'x${tag}'`);
 mk("t_a" + tag, "테스트A", "password1"); mk("t_b" + tag, "테스트B", "password2");
 r = await call("x", "POST", "/auth/login", { username: "nobody" + tag }); ok(r.status === 401, "unknown id rejected");
 r = await call("a", "POST", "/auth/login", { username: "t_a" + tag }); ok(r.status === 200, "login a by id only");

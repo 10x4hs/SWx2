@@ -5,7 +5,8 @@ import { $, esc } from "../util.js";
 const arrow = `<svg width="20" height="14" viewBox="0 0 20 14" aria-hidden="true"><path d="M1 7h17M12 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 export function mountAuth(root, { onDone }) {
-  let step = "user", username = "";
+  // step: user → pass (로그인) / s-user → s-pass → s-pass2 (가입 신청)
+  let step = "user", username = "", signup = false, pw1 = "";
   document.body.classList.add("at-gate");
   root.innerHTML = `
     <div class="gate" id="gate">
@@ -21,25 +22,33 @@ export function mountAuth(root, { onDone }) {
         </div>
         <p class="gate-msg" id="gate-msg" role="alert"></p>
       </form>
-      <p class="gate-foot">세 사람만의 공부 공간</p>
+      <p class="gate-foot"><span id="gate-note">함께 쓰는 공부 공간</span> · <button type="button" class="gate-switch" id="gate-switch">가입 신청</button></p>
     </div>`;
 
   const gate = $("#gate", root), form = $("#gate-form", root), input = $("#gate-input", root);
   const pill = $("#pill", root), who = $("#pill-who", root), msg = $("#gate-msg", root), label = $("#gate-label", root);
   const setHas = () => pill.classList.toggle("has", input.value.length > 0);
 
+  const sw = $("#gate-switch", root), note = $("#gate-note", root);
+  const setMode = (on) => {
+    signup = on; pw1 = ""; msg.textContent = "";
+    sw.textContent = on ? "로그인" : "가입 신청";
+    note.textContent = on ? "관리자 두 사람이 승인하면 들어와요 · 관리자는 계정 · 팀 · 계획을 볼 수 있어요" : "함께 쓰는 공부 공간";
+    toUser();
+  };
+  sw.addEventListener("click", () => setMode(!signup));
   const toUser = () => {
-    step = "user";
+    step = signup ? "s-user" : "user";
     who.hidden = true;
     input.type = "text"; input.name = "username"; input.autocomplete = "username";
-    input.placeholder = "아이디"; label.textContent = "아이디";
+    input.placeholder = signup ? "새 아이디 (영문 소문자 · 숫자 · _)" : "아이디"; label.textContent = "아이디";
     input.value = username; setHas(); input.focus();
   };
-  const toPass = () => {
-    step = "pass";
+  const toPass = (again = false) => {
+    step = signup ? (again ? "s-pass2" : "s-pass") : "pass";
     who.hidden = false; who.textContent = username;
-    input.type = "password"; input.name = "password"; input.autocomplete = "current-password";
-    input.placeholder = "비밀번호"; label.textContent = "비밀번호";
+    input.type = "password"; input.name = "password"; input.autocomplete = signup ? "new-password" : "current-password";
+    input.placeholder = signup ? (again ? "비밀번호 한 번 더" : "비밀번호 (8자 이상)") : "비밀번호"; label.textContent = "비밀번호";
     input.value = ""; setHas(); input.focus();
   };
   const shake = (text) => {
@@ -48,11 +57,25 @@ export function mountAuth(root, { onDone }) {
   };
 
   input.addEventListener("input", () => { setHas(); msg.textContent = ""; });
-  input.addEventListener("keydown", (e) => { if (e.key === "Escape" && step === "pass") toUser(); if (e.key === "Backspace" && step === "pass" && !input.value) toUser(); });
+  input.addEventListener("keydown", (e) => { if (e.key === "Escape" && step !== "user" && step !== "s-user") toUser(); if (e.key === "Backspace" && /pass/.test(step) && !input.value) toUser(); });
   who.addEventListener("click", toUser);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const v = input.value.trim();
+    if (signup) {
+      if (step === "s-user") {
+        if (!/^[a-z0-9_]{3,20}$/.test(v.toLowerCase())) return shake("아이디는 영문 소문자·숫자·_ 로 3~20자예요.");
+        username = v.toLowerCase(); return toPass();
+      }
+      if (step === "s-pass") { if (input.value.length < 8) return shake("비밀번호는 8자 이상이어야 해요."); pw1 = input.value; return toPass(true); }
+      if (input.value !== pw1) { toPass(); return shake("두 비밀번호가 달라요. 다시 입력해 주세요."); }
+      pill.classList.add("busy");
+      try {
+        const r = await api.signup({ username, password: pw1 });
+        pill.classList.remove("busy"); setMode(false); msg.textContent = r.message || "가입 신청을 받았어요.";
+      } catch (ex) { pill.classList.remove("busy"); toUser(); shake(ex.message); }
+      return;
+    }
     if (step === "user") {
       if (!v) return shake("아이디를 입력해 주세요.");
       username = v.toLowerCase();

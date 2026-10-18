@@ -14,9 +14,9 @@ export async function tokenUser(env, token) {
   const h = await sha256(token), t = now();
   // 한 번에(왕복 1번): 직접 토큰 찾기 + 쓴 시각, OAuth 토큰 찾기 + (직접 토큰이 아니고 안 끝났으면) 쓴 시각
   const [api, , oa] = await env.DB.batch([
-    env.DB.prepare("SELECT t.agent, u.id, u.username, u.display_name, u.color, u.day_goal FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?").bind(h),
+    env.DB.prepare("SELECT t.agent, u.id, u.username, u.display_name, u.color, u.day_goal FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ? AND u.state = 'active'").bind(h),
     env.DB.prepare("UPDATE api_tokens SET last_used_at = ? WHERE token_hash = ?").bind(t, h),
-    env.DB.prepare("SELECT t.access_expires, c.client_name, c.client_id, u.id, u.username, u.display_name, u.color, u.day_goal FROM oauth_tokens t JOIN oauth_clients c ON c.client_id = t.client_id JOIN users u ON u.id = t.user_id WHERE t.access_hash = ?").bind(h),
+    env.DB.prepare("SELECT t.access_expires, c.client_name, c.client_id, u.id, u.username, u.display_name, u.color, u.day_goal FROM oauth_tokens t JOIN oauth_clients c ON c.client_id = t.client_id JOIN users u ON u.id = t.user_id WHERE t.access_hash = ? AND u.state = 'active'").bind(h),
     env.DB.prepare("UPDATE oauth_tokens SET last_used_at = ?1 WHERE access_hash = ?2 AND access_expires >= ?1 AND NOT EXISTS (SELECT 1 FROM api_tokens WHERE token_hash = ?2)").bind(t, h),
   ]);
   const shape = (u, agent) => ({ agent, user: { id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, must_change_pw: false } });
@@ -45,7 +45,7 @@ export async function loginWith(env, req, username, password) {
 
 export const MUST_CHANGE_OPEN = (path) => path === "/me" || path === "/users" || path.startsWith("/auth/");
 
-async function hashPassword(password, saltHex) {
+export async function hashPassword(password, saltHex) {
   const salt = saltHex ? Uint8Array.from(saltHex.match(/../g), (h) => parseInt(h, 16)) : crypto.getRandomValues(new Uint8Array(16));
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: PBKDF2_ITERATIONS }, key, 256);
@@ -61,12 +61,18 @@ function cookie(req, token, maxAge) {
   const secure = new URL(req.url).protocol === "https:" ? "; Secure" : "";
   return `trio_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
-async function startSession(req, env, userId) {
+// impBy: 관리자가 '이 회원으로 들어가기' 한 세션이면 그 관리자 id (하루만 유효)
+export async function startSession(req, env, userId, impBy = null) {
   const token = b64url(crypto.getRandomValues(new Uint8Array(32)));
-  await env.DB.prepare("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)")
-    .bind(await sha256(token), userId, now() + SESSION_DAYS * 864e5).run();
-  return cookie(req, token, SESSION_DAYS * 86400);
+  const days = impBy ? 1 : SESSION_DAYS;
+  await env.DB.prepare("INSERT INTO sessions (id, user_id, expires_at, imp_by) VALUES (?, ?, ?, ?)")
+    .bind(await sha256(token), userId, now() + days * 864e5, impBy).run();
+  return cookie(req, token, days * 86400);
 }
+export const sessionId = async (req) => { const t = sessionToken(req); return t ? sha256(t) : null; };
+// 승인 대기 · 정지된 계정은 들어올 수 없어요
+const STATE_MSG = { pending: "가입 승인을 기다리는 중이에요. 관리자 두 사람(HSK · GYK)이 모두 승인하면 들어올 수 있어요.", suspended: "정지된 계정이에요. 관리자에게 문의해 주세요." };
+const checkState = (u) => { if (u.state && u.state !== "active") fail(403, STATE_MSG[u.state] || "들어올 수 없는 계정이에요.", { account_state: u.state }); };
 // 비밀번호를 꼭 바꿔야 하는지. 아이디만으로 들어가는 로컬(PASSWORDLESS=1)에서는 묻지 않아요.
 // 단, 요청에 "x-trio-strict: 1" 이 있으면 로컬에서도 배포본처럼 검사해요 (smoke 테스트용 — 더 엄격해지기만 하고 풀어 주는 일은 없어요)
 const pwStrict = (req, env) => env.PASSWORDLESS !== "1" || req.headers.get("x-trio-strict") === "1";
@@ -83,38 +89,40 @@ export async function requireUser(req, env) {
   const token = sessionToken(req);
   if (!token) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.hidden_pages, u.graph_prefs, u.diary_circle FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
+    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.hidden_pages, u.graph_prefs, u.diary_circle, u.role, u.state, u.last_seen_at, s.imp_by, (SELECT username FROM users a WHERE a.id = s.imp_by) AS imp_name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
   ).bind(await sha256(token), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
+  if (row.state !== "active") fail(401, STATE_MSG[row.state] || "들어올 수 없는 계정이에요.");
+  // 최근 접속: 5분에 한 번만 적어요 (관리자가 대신 들어간 건 안 적어요)
+  if (!row.imp_by && !(row.last_seen_at > now() - 300e3)) await env.DB.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").bind(now(), row.id).run();
   return { ...row, must_change_pw: mustChange(req, env, row) };
 }
 // must_change_pw 는 requireUser / login 에서 이미 true·false 로 바뀐 값이에요
 // 활동 상태: 정해진 단어만 · coding 이면 쓰는 AI 도구(여럿)
 const STATUSES = ["coding", "working", "studying", "reading", "resting", "sleeping", "away"], TOOLS = ["claude", "codex", "gemini"];
 const readStatus = (raw) => { try { const o = typeof raw === "string" ? JSON.parse(raw) : raw; return o && STATUSES.includes(o.s) ? { s: o.s, tools: o.s === "coding" ? (o.tools || []).filter((t) => TOOLS.includes(t)) : [], at: o.at || null } : null; } catch { return null; } };
-const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true, ai_model: u.ai_model || null, dock_order: readList(u.dock_order), hidden_pages: readList(u.hidden_pages), graph_prefs: readObj(u.graph_prefs), diary_circle: u.diary_circle === 1 }); // 본인에게만 (로그인 · /me)
+const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true, ai_model: u.ai_model || null, dock_order: readList(u.dock_order), hidden_pages: readList(u.hidden_pages), graph_prefs: readObj(u.graph_prefs), diary_circle: u.diary_circle === 1, role: u.role || "member", impersonated_by: u.imp_name || null }); // 본인에게만 (로그인 · /me)
 function readObj(v) { try { const o = JSON.parse(v || "null"); return o && typeof o === "object" && !Array.isArray(o) ? o : null; } catch { return null; } }
 function readList(v) { try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; } catch { return []; } }
 
 export function registerAuth(on) {
   // ---------- auth ----------
-  // 가입은 기본으로 꺼져 있어요. 계정은 scripts/add-user.mjs 로 만들어요 (ALLOW_SIGNUP=1 이면 켜짐)
+  // 가입 신청: 누구나. 만들어진 계정은 '승인 대기' — 관리자 모두(HSK · GYK)가 승인해야 로그인돼요 (src/admin.js)
   on("POST", "/auth/signup", async ({ req, env }) => {
-    if (env.ALLOW_SIGNUP !== "1") fail(403, "가입은 닫혀 있어요. 스터디장에게 계정을 받아 주세요.");
     const b = await body(req);
-    if (!env.INVITE_CODE || typeof b.invite !== "string" || !safeEqual(b.invite.trim(), env.INVITE_CODE)) fail(403, "초대 코드가 맞지 않아요.");
     const username = str(b.username, 20, "아이디").toLowerCase();
     if (!/^[a-z0-9_]{3,20}$/.test(username)) fail(400, "아이디는 영문 소문자·숫자·_ 로 3~20자예요.");
     if (typeof b.password !== "string" || b.password.length < 8) fail(400, "비밀번호는 8자 이상이어야 해요.");
-    const display = str(b.display_name, 12, "이름");
-    const { n } = await env.DB.prepare("SELECT COUNT(*) AS n FROM users").first();
-    if (n >= Number(env.MAX_USERS || 3)) fail(403, `이미 ${env.MAX_USERS || 3}명이 모두 가입했어요.`);
+    if (b.password.length > 200) fail(400, "비밀번호가 너무 길어요.");
+    const display = b.display_name ? str(b.display_name, 12, "이름") : username.slice(0, 12);
+    const { n, waiting } = await env.DB.prepare("SELECT COUNT(*) AS n, SUM(state = 'pending') AS waiting FROM users").first();
+    if ((waiting || 0) >= Number(env.MAX_PENDING || 30)) fail(429, "가입 신청이 밀려 있어요. 잠시 뒤에 다시 해 주세요.");
     if (await env.DB.prepare("SELECT 1 FROM users WHERE username = ?").bind(username).first()) fail(409, "이미 있는 아이디예요.");
     const { hash, salt } = await hashPassword(b.password);
-    const user = { id: uid(), username, display_name: display, color: COLORS[n % COLORS.length], day_goal: 240 };
-    await env.DB.prepare("INSERT INTO users (id, username, display_name, color, pw_hash, pw_salt, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .bind(user.id, username, display, user.color, hash, salt, now()).run();
-    return json({ user }, 201, { "set-cookie": await startSession(req, env, user.id) });
+    const t = now();
+    await env.DB.prepare("INSERT INTO users (id, username, display_name, color, pw_hash, pw_salt, created_at, state, pw_changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)")
+      .bind(uid(), username, display, COLORS[n % COLORS.length], hash, salt, t, t).run();
+    return json({ pending: true, message: STATE_MSG.pending }, 201);
   }, { auth: false });
 
   on("POST", "/auth/login", async ({ req, env }) => {
@@ -124,6 +132,7 @@ export function registerAuth(on) {
     // 아이디만으로 들어가기 (PASSWORDLESS=1): 세 사람만 쓰는 공간이라 비밀번호를 묻지 않아요
     if (env.PASSWORDLESS === "1") {
       if (!u) fail(401, "없는 아이디예요.");
+      checkState(u);
       return json({ user: publicUser({ ...u, must_change_pw: mustChange(req, env, u) }) }, 200, { "set-cookie": await startSession(req, env, u.id) });
     }
     if (!b.password) return json({ error: "비밀번호를 입력해 주세요.", need_password: true }, 401);
@@ -135,6 +144,7 @@ export function registerAuth(on) {
       await bumpFail(env, u);
       fail(401, wrong);
     }
+    checkState(u);
     await env.DB.batch([
       env.DB.prepare("UPDATE users SET fail_count = 0, locked_until = 0 WHERE id = ?").bind(u.id),
       env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now()),
@@ -166,7 +176,7 @@ export function registerAuth(on) {
     const next = await hashPassword(b.next);
     const keep = await sha256(sessionToken(req));
     const r = await env.DB.batch([
-      env.DB.prepare("UPDATE users SET pw_hash = ?, pw_salt = ?, fail_count = 0, locked_until = 0, must_change_pw = 0 WHERE id = ?").bind(next.hash, next.salt, u.id),
+      env.DB.prepare("UPDATE users SET pw_hash = ?, pw_salt = ?, fail_count = 0, locked_until = 0, must_change_pw = 0, pw_changed_at = ? WHERE id = ?").bind(next.hash, next.salt, now(), u.id),
       env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND id != ?").bind(u.id, keep),
     ]);
     return json({ ok: true, signed_out: r[1].meta.changes || 0 });
@@ -211,7 +221,7 @@ export function registerAuth(on) {
   });
 
   on("GET", "/users", async ({ env }) => {
-    const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal, bio, avatar, status, plans_open FROM users ORDER BY created_at").all();
+    const { results } = await env.DB.prepare("SELECT id, username, display_name, color, day_goal, bio, avatar, status, plans_open FROM users WHERE state = 'active' ORDER BY created_at").all();
     return json({ users: results.map((u) => ({ ...u, status: readStatus(u.status), plans_open: u.plans_open !== 0 })) });
   });
 }
