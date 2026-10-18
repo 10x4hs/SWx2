@@ -1,0 +1,59 @@
+name: TrioWidget
+options:
+  bundleIdPrefix: dev.dsmmafia
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: $(TRIO_TEAM)
+    ENABLE_HARDENED_RUNTIME: YES
+targets:
+  TrioWidget:
+    type: application
+    platform: macOS
+    sources: [App, Shared]
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: TrioWidget
+        LSApplicationCategoryType: public.app-category.productivity
+        LSUIElement: true
+        TrioGroup: $(TeamIdentifierPrefix)dev.dsmmafia.trio
+        CFBundleURLTypes:
+          - CFBundleURLName: dev.dsmmafia.trio
+            CFBundleURLSchemes: [triowidget]
+    entitlements:
+      path: App/TrioWidget.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.application-groups: [$(TeamIdentifierPrefix)dev.dsmmafia.trio]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.dsmmafia.trio
+    dependencies:
+      - target: TrioWidgetExtension
+  TrioWidgetExtension:
+    type: app-extension
+    platform: macOS
+    sources: [Widget, Shared]
+    info:
+      path: Widget/Info.plist
+      properties:
+        CFBundleDisplayName: Trio 계획
+        TrioGroup: $(TeamIdentifierPrefix)dev.dsmmafia.trio
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widget/TrioWidgetExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.application-groups: [$(TeamIdentifierPrefix)dev.dsmmafia.trio]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.dsmmafia.trio.widget
