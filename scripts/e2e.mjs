@@ -773,16 +773,18 @@ try {
     {
       errs = [];
       await go("#/sw", 2500);
-      const sw = await p.evaluate(() => ({ rows: [...document.querySelectorAll(".sw-row")].map((a) => a.getAttribute("href")), field: !!document.querySelector(".sw-field"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      const sw = await p.evaluate(() => ({ rows: [...document.querySelectorAll(".sw-row")].map((a) => a.getAttribute("href")), field: !!document.querySelector(".sw-canvas"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await hop("#/dev/security", ".dv-days", 600);
       const old = await p.evaluate(() => !!document.querySelector('a[href="#/sw/dev/ask/security"]'));
-      await hop("#/sw/vg", ".sw-row", 800);
-      const vg = await p.evaluate(() => ({ mods: document.querySelectorAll(".sw-row").length, nav: document.querySelectorAll(".dv-nav a").length, acc: getComputedStyle(document.querySelector(".dv")).getPropertyValue("--dv-acc").trim(), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await hop("#/sw/vg", ".sw-row", 1500);
+      await p.click("#sw-next").catch(() => {}); await sleep(400);
+      const car = await p.evaluate(() => document.querySelector("#sw-car-t")?.textContent || "");
+      const vg = await p.evaluate(() => ({ mods: document.querySelectorAll(".sw-row").length, nav: document.querySelectorAll(".sw-pill a").length, acc: getComputedStyle(document.querySelector(".dv")).getPropertyValue("--dv-acc").trim(), over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await hop("#/sw/vg/vg-embeddings", ".dv-days", 600);
       await hop("#/sw/vg/vg-embeddings/c01", "#dv-read h1", 700);
       const vc = await p.evaluate(() => ({ h: document.querySelector("#dv-read h1")?.textContent || "", over: document.documentElement.scrollWidth > innerWidth + 1 }));
-      ok(sw.rows.includes("#/sw/vg") && sw.rows.includes("#/sw/dev") && sw.field && !sw.over && old && vg.mods === 8 && vg.nav === 3 && /a9e8ff/i.test(vg.acc) && !vg.over && vc.h && !vc.over && !errs.length,
-        `${tv} · SW 공간 — 과정 ${sw.rows.length} · 옛 주소 ${old} · VG 모듈 ${vg.mods} · 탭 ${vg.nav} · 카드 "${vc.h.slice(0, 20)}"${errs.length ? " — " + errs[0] : ""}`);
+      ok(sw.rows.includes("#/sw/vg") && sw.rows.includes("#/sw/dev") && sw.field && !sw.over && old && vg.mods === 8 && vg.nav === 3 && /a9e8ff/i.test(vg.acc) && !vg.over && /^01 · /.test(car) && vc.h && !vc.over && !errs.length,
+        `${tv} · SW 공간 — 과정 ${sw.rows.length} · 옛 주소 ${old} · VG 모듈 ${vg.mods} · 메뉴 ${vg.nav} · 넘기기 "${car}" · 카드 "${vc.h.slice(0, 20)}"${errs.length ? " — " + errs[0] : ""}`);
     }
 
     // ---------- ⑭ 영상 노트 한 화면 — 맨 위 인용에 YouTube 영상이 있으면 왼쪽 영상 · 목차 · 접힌 스크립트, 오른쪽 정리 (2026-10-14) ----------

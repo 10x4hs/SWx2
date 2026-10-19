@@ -2,11 +2,12 @@
 import { esc } from "../util.js";
 import { index, state, minutes, setMinutes, MINUTES, split, steps, cardsPerDay, nextCards, position, progressOf, loopProgress, metrics, kday, WHY, topbar, C, cApi } from "./data.js";
 import { mountLoop } from "./loop3d.js";
+import { swipe } from "./sw.js";
 
 const COLORS = ["#FFE14D", "rgba(255,225,77,.55)", "#EEEFF1", "rgba(238,239,241,.5)", "rgba(238,239,241,.26)"];
 
 export function mountHome(host, ctx) {
-  let alive = true, loop = null, hover = -1, pick = -1, idx = null, st = null, mins = minutes(), lostTries = 0;
+  let onKey = null, alive = true, loop = null, hover = -1, pick = -1, idx = null, st = null, mins = minutes(), lostTries = 0;
   host.innerHTML = `${topbar("")}<p class="dv-loading">불러오는 중…</p>`;
   (async () => {
     [idx, st] = await Promise.all([index(), state()]);
@@ -86,6 +87,7 @@ export function mountHome(host, ctx) {
           ${idx.modules.map((m, i) => `<button class="dv-st ${stateOf(i, pos)}" data-st="${i}" aria-label="${m.no} ${esc(m.title)} 열기"><b>${m.no}</b><span>${esc(m.short)}</span></button>`).join("")}
           <div class="dv-legend m"><span><i class="dv-dot" style="background:var(--dv-acc)"></i>끝냄</span><span><i class="dv-dot" style="box-shadow:inset 0 0 0 2px #fff"></i>지금</span><span><i class="dv-dot" style="box-shadow:inset 0 0 0 1.5px #777"></i>아직</span><span>마우스를 대면 흩어져요 · 끌어서 둘러보기</span></div>
         </div>
+        <div class="sw-car"><button class="sw-arrow" id="sw-prev" aria-label="이전 주">&lt;&lt;</button><span class="sw-car-t m" id="sw-car-t">${cur.no} · ${esc(cur.short)}</span><button class="sw-arrow" id="sw-next" aria-label="다음 주">&gt;&gt;</button></div>
       </section>
 
       ${todaySec()}
@@ -124,6 +126,18 @@ export function mountHome(host, ctx) {
     });
     host.querySelectorAll("[data-mod]").forEach((r) => { const i = Number(r.dataset.mod); r.addEventListener("mouseenter", () => { setHover(i); loop?.highlight(i); }); r.addEventListener("mouseleave", () => { setHover(-1); loop?.highlight(-1); }); });
     mount3d(pos, setHover);
+    // << 주 >> 넘기기 (← → 키 · 옆으로 밀기): 고른 정거장이 커지고 왼쪽 칸이 그 주로 바뀌어요
+    const n = idx.modules.length, step = (d) => {
+      pick = ((pick < 0 ? pos.i : pick) + d + n) % n;
+      host.querySelector("#dv-hud").innerHTML = hud(pos); loop?.highlight(pick);
+      host.querySelectorAll("[data-st]").forEach((b) => b.classList.toggle("on", Number(b.dataset.st) === pick));
+      host.querySelector("#sw-car-t").textContent = `${idx.modules[pick].no} · ${idx.modules[pick].short}`;
+    };
+    host.querySelector("#sw-prev").addEventListener("click", () => step(-1));
+    host.querySelector("#sw-next").addEventListener("click", () => step(1));
+    if (!onKey) { onKey = (e) => { if (e.target.closest?.("input,textarea,[contenteditable]")) return; if (e.key === "ArrowRight") step(1); else if (e.key === "ArrowLeft") step(-1); }; document.addEventListener("keydown", onKey); }
+    swipe(host.querySelector(".dv-hero"), step);
+    ctx.scene?.mode("dev");
   }
 
   // 3D 고리 붙이기. 브라우저가 그래픽 문맥(WebGL)을 잃고 되살리지 않으면 새 캔버스로 다시 붙여요 (최대 3번)
@@ -139,5 +153,5 @@ export function mountHome(host, ctx) {
       onLost: () => { if (!alive || lostTries >= 3) return; lostTries++; loop?.destroy(); loop = null; mount3d(pos, setHover); },
     }).then((l) => { if (!alive || !canvas.isConnected) { l?.destroy(); return; } loop = l; if (!l) host.querySelectorAll("[data-st],[data-lobe]").forEach((e) => (e.style.display = "none")); });
   }
-  return () => { alive = false; loop?.destroy(); loop = null; };
+  return () => { alive = false; loop?.destroy(); loop = null; if (onKey) document.removeEventListener("keydown", onKey); };
 }
