@@ -117,7 +117,28 @@ export function meter(cap) {
   return () => { const ms = Math.min(cap * 60000, Date.now() - t) + rest; t = Date.now(); const n = Math.floor(ms / 60000); rest = ms - n * 60000; return n; };
 }
 const NAV = [["", "지도"], ["today", "오늘"], ["docs", "문서"], ["ask", "AI 질문"]];
-export function topbar(active, extra = "") {
-  return `<header class="dv-top"><a class="dv-brand dv-sw" href="#/sw" aria-label="SW 공간">SW</a><a class="dv-brand" href="${C.base}" aria-label="${esc(C.brand)} 홈"><svg width="26" height="14" viewBox="0 0 26 14" aria-hidden="true"><path d="M13 7C9 1 3 1 3 7s6 6 10 0 10-6 10 0-6 6-10 0Z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>${esc(C.brand)}</span></a>
+// 책처럼 — 위 띠: SWX2 / 과정 / 지금 쪽(crumbs) + 오른쪽 메뉴. 아래 띠(nextBar): 지금 할 일 하나만 크게
+export function topbar(active, extra = "", crumbs = []) {
+  return `<header class="dv-top sw-ui"><nav class="dv-crumbs" aria-label="지금 위치"><a class="dv-brand dv-sw" href="#/sw">SWX2</a><span aria-hidden="true">/</span><a class="dv-brand" href="${C.base}">${esc(C.name)}</a>${crumbs.map((c) => `<span aria-hidden="true">/</span>${c.href ? `<a href="${c.href}">${esc(c.t)}</a>` : `<b aria-current="page">${esc(c.t)}</b>`}`).join("")}</nav>
     <nav class="dv-nav" aria-label="${esc(C.brand)} 메뉴">${NAV.filter(([k]) => k !== "docs" || C.docs).map(([k, l]) => `<a href="${C.base}${k ? "/" + k : ""}"${active === k ? ' aria-current="page"' : ""}>${l}</a>`).join("")}${extra}</nav></header>`;
+}
+// 아래 고정 띠: 다음 할 일 하나 (href 면 링크, id 면 버튼) · back = 왼쪽 작은 링크(이전 등)
+export function nextBar({ href = "", id = "", label, sub = "", back = "" }) {
+  const inner = `<span class="bk-go-t">${esc(label)}</span>${sub ? `<small class="bk-go-s">${esc(sub)}</small>` : ""}<i aria-hidden="true">→</i>`;
+  return `<div class="bk-next sw-ui" role="region" aria-label="다음 할 일"><div class="bk-next-in">${back || "<span></span>"}${id ? `<button type="button" class="bk-go" id="${id}">${inner}</button>` : `<a class="bk-go" href="${href}">${inner}</a>`}</div></div>`;
+}
+// 한 모듈 안에서 지금 할 일 하나: 안 읽은 카드 → 그날 회의실 → 사례 → 다음 모듈
+export function nextInModule(m, doc, read, done, base, nextM) {
+  const has = (s, x) => s.has(m.id + "/" + x);
+  const card = doc.cards.find((c) => !has(read, c.id));
+  if (card) {
+    const day = card.day || 1, prevDay = doc.problems.filter((p) => p.day < day && !has(done, p.id))[0];
+    if (prevDay) return { href: `${base}/${m.id}/practice/${prevDay.day}`, label: `회의실 ${prevDay.day}일째 풀기`, sub: prevDay.title, kind: "practice" };
+    return { href: `${base}/${m.id}/${card.id}`, label: `카드 읽기 · ${m.no}-${card.id.slice(1)}`, sub: card.title, kind: "card" };
+  }
+  const prob = doc.problems.find((p) => !has(done, p.id));
+  if (prob) return { href: `${base}/${m.id}/practice/${prob.day}`, label: `회의실 ${prob.day}일째 풀기`, sub: prob.title, kind: "practice" };
+  const kase = doc.cases.find((k) => !has(done, k.id));
+  if (kase) return { href: `${base}/${m.id}/case/${kase.id}`, label: "사례 읽기", sub: kase.title, kind: "case" };
+  return nextM ? { href: `${base}/${nextM.id}`, label: `다음 모듈 · ${nextM.no}`, sub: nextM.title, kind: "module" } : { href: base, label: "과정 지도로", sub: "모든 모듈을 끝냈어요", kind: "done" };
 }

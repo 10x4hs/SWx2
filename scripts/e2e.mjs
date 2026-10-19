@@ -718,14 +718,14 @@ try {
     // ---------- ⑬-2 개발 흐름 마이크로디그리 — 3D 흐름 지도 · 현황판 · 한 주 · 카드 · 사례 · 회의실 · 오늘 · 문서 지도 (2026-10-15) ----------
     {
       errs = [];
-      await go("#/sw/dev", 3000);
-      const dh = await p.evaluate(() => ({ dock: !!document.querySelector('[data-nav="dev"]'), disp: /dev flow/i.test(document.querySelector(".dv-disp")?.textContent || ""), st: document.querySelectorAll(".dv-st").length,
-        canvas: !!document.querySelector("#dv-canvas"), placed: [...document.querySelectorAll(".dv-st")].filter((b) => !/-9999/.test(b.style.transform) && b.style.display !== "none").length, hidden3d: [...document.querySelectorAll(".dv-st")].every((b) => b.style.display === "none"),
-        plan: document.querySelectorAll(".dv-plan li").length, why: document.querySelectorAll(".dv-why .dv-panel").length, mods: document.querySelectorAll(".dv-mod").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await go("#/sw/dev", 3500);
+      // 과정 홈: 3D 세계의 모듈 유리 패널 12장 + 지금 모듈 카드 + 아래 과정 정보(하루 순서 · 학습 설계 · 모듈 목록 · 하루 시간)
+      const dh = await p.evaluate(() => ({ dock: !!document.querySelector('[data-nav="dev"]'), card: (document.querySelector("#cs-card .cs-title")?.textContent || "").length > 1, today: /오늘 할 일/.test(document.querySelector("#cs-card .cs-btn")?.textContent || ""),
+        panels: document.querySelector(".sw-canvas")?.__panels?.() ?? -1, plan: document.querySelectorAll(".dv-plan li").length, why: document.querySelectorAll(".dv-why .dv-panel").length, mods: document.querySelectorAll(".dv-mod").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await p.click('.dv [data-min="60"]').catch(() => {}); await sleep(250);
       const d60 = await p.evaluate(() => /60분/.test(document.querySelector("#dv-today-h")?.textContent || "") && document.querySelector('[data-min="60"]')?.getAttribute("aria-pressed") === "true");
       await p.click('.dv [data-min="45"]').catch(() => {});
-      ok(dh.dock && dh.disp && dh.st === 12 && dh.canvas && (dh.placed === 12 || dh.hidden3d) && dh.plan === 5 && dh.why === 6 && dh.mods === 12 && d60 && !dh.over && !errs.length, `${tv} · 개발 홈 — 독 ${dh.dock} · 제목 ${dh.disp} · 정거장 ${dh.st}(놓임 ${dh.placed}) · 순서 ${dh.plan} · 학습 설계 ${dh.why} · 모듈 ${dh.mods} · 60분 ${d60} · 가로 넘침 ${dh.over}${errs.length ? " — " + errs[0] : ""}`);
+      ok(dh.dock && dh.card && dh.today && (dh.panels === 12 || dh.panels === -1) && dh.plan === 5 && dh.why === 6 && dh.mods === 12 && d60 && !dh.over && !errs.length, `${tv} · 개발 홈 — 독 ${dh.dock} · 모듈 카드 ${dh.card} · 오늘 할 일 ${dh.today} · 3D 패널 ${dh.panels} · 순서 ${dh.plan} · 학습 설계 ${dh.why} · 모듈 ${dh.mods} · 60분 ${d60} · 가로 넘침 ${dh.over}${errs.length ? " — " + errs[0] : ""}`);
       const di = await (await ctx.request.get(BASE + "/dev/index.json")).json(), sm = di.modules.find((m) => m.id === "security");
       const sd = await (await ctx.request.get(BASE + "/dev/security.json")).json();
       errs = [];
@@ -776,15 +776,15 @@ try {
       const sw = await p.evaluate(() => ({ rows: [...document.querySelectorAll(".sx-row")].map((a) => a.getAttribute("href")), field: !!document.querySelector(".sw-canvas"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await hop("#/dev/security", ".dv-days", 600);
       const old = await p.evaluate(() => !!document.querySelector('a[href="#/sw/dev/ask/security"]'));
-      await hop("#/sw/vg", ".sw-row", 1500);
-      await p.click("#sw-next").catch(() => {}); await sleep(400);
+      await hop("#/sw/vg", "#cs-card .cs-title", 1500);
+      await p.click("#sw-next").catch(() => {}); await sleep(1800);
       const car = await p.evaluate(() => document.querySelector("#sw-car-t")?.textContent || "");
-      const vg = await p.evaluate(() => ({ mods: document.querySelectorAll(".sw-row").length, nav: document.querySelectorAll(".sw-pill a").length, acc: getComputedStyle(document.querySelector(".dv")).getPropertyValue("--dv-acc").trim(), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      const vg = await p.evaluate(() => ({ mods: document.querySelectorAll(".dv-mod").length, nav: document.querySelectorAll(".dv-nav a").length, panels: document.querySelector(".sw-canvas")?.__panels?.() ?? -1, acc: getComputedStyle(document.querySelector(".dv")).getPropertyValue("--dv-acc").trim(), over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await hop("#/sw/vg/vg-embeddings", ".dv-days", 600);
       await hop("#/sw/vg/vg-embeddings/c01", "#dv-read h1", 700);
       const vc = await p.evaluate(() => ({ h: document.querySelector("#dv-read h1")?.textContent || "", over: document.documentElement.scrollWidth > innerWidth + 1 }));
-      ok(sw.rows.includes("#/sw/vg") && sw.rows.includes("#/sw/dev") && sw.field && !sw.over && old && vg.mods === 8 && vg.nav === 3 && /a9e8ff/i.test(vg.acc) && !vg.over && /^01 · /.test(car) && vc.h && !vc.over && !errs.length,
-        `${tv} · SW 공간 — 과정 ${sw.rows.length} · 옛 주소 ${old} · VG 모듈 ${vg.mods} · 메뉴 ${vg.nav} · 넘기기 "${car}" · 카드 "${vc.h.slice(0, 20)}"${errs.length ? " — " + errs[0] : ""}`);
+      ok(sw.rows.includes("#/sw/vg") && sw.rows.includes("#/sw/dev") && sw.field && !sw.over && old && vg.mods === 8 && vg.nav === 3 && (vg.panels === 8 || vg.panels === -1) && /a9e8ff/i.test(vg.acc) && !vg.over && /^02 · /.test(car) && vc.h && !vc.over && !errs.length,
+        `${tv} · SW 공간 — 과정 ${sw.rows.length} · 옛 주소 ${old} · VG 모듈 ${vg.mods} · 패널 ${vg.panels} · 메뉴 ${vg.nav} · 넘기기 "${car}" · 카드 "${vc.h.slice(0, 20)}"${errs.length ? " — " + errs[0] : ""}`);
     }
 
     // ---------- ⑭ 영상 노트 한 화면 — 맨 위 인용에 YouTube 영상이 있으면 왼쪽 영상 · 목차 · 접힌 스크립트, 오른쪽 정리 (2026-10-14) ----------
