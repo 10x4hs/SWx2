@@ -1,11 +1,13 @@
 // 일기: 하루 한 편. 기본은 본인만.
-// '일기 모임' = 같은 팀에서 일기를 쓸 수 있는 사람들(관리자 · 무료체험 · 일기 기능을 연 사람 · 예전 모임 HSK · GYK)끼리 공개(shared = 1)한 날의 일기를 서로 읽어요 (쓰기는 늘 자기 일기만).
+// '일기 친구' = 아이디로 초대하고 상대가 수락한 두 사람(diary_links). 둘 다 일기를 쓸 수 있을 때(관리자 · 무료체험 · 일기 기능 · 예전 모임)
+// 공개(shared = 1)한 날의 일기를 서로 읽어요 — 팀이 같아도 초대 · 수락이 없으면 못 봐요 (쓰기는 늘 자기 일기만).
 // 비공개 날은 상대에게 날짜와 비공개 표시만 — 기분 · 글은 서버에서 아예 보내지 않아요. 모임 밖 사람은 모임 API 를 못 써요(403).
 import { fail, json, body, now, uid, DAY_RE, dayParam, yearParam } from "./http.js";
 import { blocksToMd, validateDoc } from "../public/js/blocks/md.js";
-import { PEERS } from "./teams.js";
+import { pushUsers } from "./push.js";
 
 const NOT_CIRCLE = "일기를 함께 보는 사람만 열 수 있어요.";
+const MAX_WAIT = 20; // 수락을 기다리는 보낸 초대는 20개까지
 // 일기를 쓸 수 있는 사람 (SQL · 자리표시자 ?now 대신 지금 시각을 숫자로 넣어요)
 const DIARY_OK = (a) => `(${a}.role = 'admin' OR ${a}.diary_circle = 1 OR ${a}.trial_until > ${Date.now()} OR EXISTS (SELECT 1 FROM user_features f WHERE f.user_id = ${a}.id AND f.feature = 'diary'))`;
 const canDiary = (u) => u.role === "admin" || u.diary_circle === 1 || (u.trial_until || 0) > Date.now() || (u.features || []).includes("diary");
@@ -21,11 +23,14 @@ function readBlocks(v) {
   if (text.length > MAX_BLOCKS) fail(400, "일기가 너무 길어요.");
   return { text, md: blocksToMd(doc).trim(), empty: !doc.blocks.some((b) => b.text?.trim() || b.type !== "paragraph" || b.children?.length) };
 }
-// 누구의 일기를 볼지: 나는 늘, 다른 사람은 둘 다 일기를 쓸 수 있고 같은 팀일 때만
+// 두 사람 사이 줄 (작은 id 가 a)
+const pair = (x, y) => (x < y ? [x, y] : [y, x]);
+// 누구의 일기를 볼지: 나는 늘, 다른 사람은 서로 수락한 일기 친구이고 그 사람도 일기를 쓸 수 있을 때만
 async function peer(env, user, id) {
   if (!canDiary(user)) fail(403, NOT_CIRCLE);
   if (!id || id === user.id) return { id: user.id, self: true };
-  const u = await env.DB.prepare(`SELECT u.id FROM users u WHERE u.id = ?1 AND u.id IN ${PEERS("?2")} AND ${DIARY_OK("u")}`).bind(id, user.id).first();
+  const [a, b] = pair(user.id, String(id));
+  const u = await env.DB.prepare(`SELECT u.id FROM users u JOIN diary_links l ON l.a = ?2 AND l.b = ?3 AND l.state = 'accepted' WHERE u.id = ?1 AND u.state = 'active' AND ${DIARY_OK("u")}`).bind(id, a, b).first();
   if (!u) fail(403, NOT_CIRCLE);
   return { id: u.id, self: false };
 }
@@ -79,10 +84,53 @@ export function registerDiary(on) {
   });
 
   // ---------- 일기 모임 (서로 보기) ----------
+  // 나 + 서로 수락한 일기 친구(읽을 수 있는 사람) · 받은 초대 · 보낸 초대
   on("GET", "/diary/circle", async ({ env, user }) => {
     if (!canDiary(user)) fail(403, NOT_CIRCLE);
-    const { results } = await env.DB.prepare(`SELECT u.id, u.username, u.display_name, u.color FROM users u WHERE u.id IN ${PEERS("?")} AND ${DIARY_OK("u")} ORDER BY u.username`).bind(user.id).all();
-    return json({ members: results });
+    const [fr, inc, out] = await env.DB.batch([
+      env.DB.prepare(`SELECT u.id, u.username, u.display_name, u.color, l.inviter, l.accepted_at FROM users u JOIN diary_links l ON l.state = 'accepted' AND ((l.a = ?1 AND l.b = u.id) OR (l.b = ?1 AND l.a = u.id)) WHERE u.state = 'active' AND ${DIARY_OK("u")} ORDER BY u.username`).bind(user.id),
+      env.DB.prepare("SELECT u.id, u.username, u.display_name, l.created_at AS at FROM diary_links l JOIN users u ON u.id = l.inviter WHERE l.state = 'pending' AND l.inviter != ?1 AND (l.a = ?1 OR l.b = ?1) ORDER BY l.created_at DESC").bind(user.id),
+      env.DB.prepare("SELECT u.id, u.username, u.display_name FROM diary_links l JOIN users u ON u.id = (CASE WHEN l.a = ?1 THEN l.b ELSE l.a END) WHERE l.state = 'pending' AND l.inviter = ?1 ORDER BY l.created_at DESC").bind(user.id),
+    ]);
+    const me = { id: user.id, username: user.username, display_name: user.display_name, color: user.color };
+    return json({ members: [me, ...fr.results], invites: { incoming: inc.results, outgoing: out.results } });
+  });
+  // 초대: 아이디로 (팀과 상관없이). 상대가 이미 나를 초대했으면 바로 이어져요. 상대에게 푸시 (서비스 워커가 /diary/circle 을 읽어 띄워요)
+  //   locked = 상대가 아직 일기를 못 써요(기능이 잠김) → 초대는 남고, 열리면 상대 일기 화면에 보여요
+  on("POST", "/diary/invite", async ({ req, env, user, ec }) => {
+    if (!canDiary(user)) fail(403, NOT_CIRCLE);
+    const b = await body(req), name = String(b.username || "").trim().toLowerCase();
+    const t = name && (await env.DB.prepare(`SELECT u.id, u.username, ${DIARY_OK("u")} AS ok FROM users u WHERE u.username = ? AND u.state = 'active'`).bind(name).first());
+    if (!t) fail(404, "그 아이디의 회원이 없어요.");
+    if (t.id === user.id) fail(400, "나는 초대할 수 없어요.");
+    const [a, bb] = pair(user.id, t.id), cur = await env.DB.prepare("SELECT inviter, state FROM diary_links WHERE a = ? AND b = ?").bind(a, bb).first();
+    if (cur?.state === "accepted") fail(409, "이미 일기 친구예요.");
+    if (cur && cur.inviter !== user.id) {
+      await env.DB.prepare("UPDATE diary_links SET state = 'accepted', accepted_at = ? WHERE a = ? AND b = ?").bind(now(), a, bb).run();
+      pushUsers(env, ec, [t.id], { room: "diary" });
+      return json({ ok: true, accepted: true });
+    }
+    if (cur) return json({ ok: true, pending: true, locked: !t.ok });
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM diary_links WHERE inviter = ? AND state = 'pending'").bind(user.id).first();
+    if (n.n >= MAX_WAIT) fail(429, `수락을 기다리는 초대가 ${MAX_WAIT}개예요. 보낸 초대를 몇 개 취소하고 다시 해 주세요.`);
+    await env.DB.prepare("INSERT OR IGNORE INTO diary_links (a, b, inviter, state, created_at) VALUES (?, ?, ?, 'pending', ?)").bind(a, bb, user.id, now()).run(); // 둘이 동시에 초대하면 먼저 온 쪽만
+    if (t.ok) pushUsers(env, ec, [t.id], { room: "diary" });
+    return json({ ok: true, pending: true, locked: !t.ok }, 201);
+  });
+  // 받은 초대 수락 → 초대한 사람에게 푸시
+  on("POST", "/diary/invite/:id/accept", async ({ env, user, params, ec }) => {
+    if (!canDiary(user)) fail(403, NOT_CIRCLE);
+    const [a, b] = pair(user.id, params.id);
+    const r = await env.DB.prepare("UPDATE diary_links SET state = 'accepted', accepted_at = ? WHERE a = ? AND b = ? AND state = 'pending' AND inviter = ?").bind(now(), a, b, params.id).run();
+    if (!r.meta.changes) fail(404, "받은 초대가 없어요.");
+    pushUsers(env, ec, [params.id], { room: "diary" });
+    return json({ ok: true });
+  });
+  // 끊기 · 거절 · 보낸 초대 취소 (둘 중 누구나)
+  on("DELETE", "/diary/link/:id", async ({ env, user, params }) => {
+    const [a, b] = pair(user.id, params.id);
+    await env.DB.prepare("DELETE FROM diary_links WHERE a = ? AND b = ?").bind(a, b).run();
+    return json({ ok: true });
   });
 
   // 모임 사람의 그날 일기 — 공개면 기분 · 글, 비공개면 { day, private: true }, 안 썼으면 null

@@ -1,5 +1,6 @@
-// 일기 — 둘이 같이 보는 일기 페이지 (#/diary). 일기 모임(지금은 HSK · GYK)만 열려요 — 서버도 모임 밖은 막아요(403).
-// 위: ‹ 날짜 › · [내 일기 | 상대 일기] 탭. 내 일기는 쓰기(기분 + 글 + 공개/비공개, 자동 저장), 상대 일기는 읽기만 — 비공개 날은 자물쇠만.
+// 일기 — 일기 친구끼리 같이 보는 일기 페이지 (#/diary). 일기 친구 = 아이디로 초대하고 상대가 수락한 사람 — 서버도 친구가 아니면 막아요(403).
+// 위: ‹ 날짜 › · [내 일기 | 친구 일기 …] 탭 · 받은 초대(수락 · 거절). 내 일기는 쓰기(기분 + 글 + 공개/비공개, 자동 저장), 친구 일기는 읽기만 — 비공개 날은 자물쇠만.
+// 옆: '일기 친구' 칸 — 아이디로 초대 · 보낸 초대 취소 · 친구 끊기.
 // 탭 아래: 그 사람의 올해 잔디(비공개 날은 자물쇠 칸) · 옆: 지난 일기. 주소: #/diary/<날짜> · #/diary/u/<사람 id>/<날짜>
 import { api } from "../api.js";
 import { $, esc, ymd, parseYmd, addDays, today, DOW, toast } from "../util.js";
@@ -7,7 +8,7 @@ import { icon } from "../icons.js";
 import { mountDiary, renderDiaryRead, MOODS } from "../diary.js";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
-const NOTE_KEY = "trio-diary-share-note"; // 처음 열 때 안내를 닫았는지 (이 기기에만)
+const NOTE_KEY = "trio-diary-friends-note"; // 처음 열 때 안내를 닫았는지 (이 기기에만)
 const longDate = (d) => `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${DOW[d.getDay()]}요일`;
 const shortDate = (s) => { const d = parseYmd(s); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DOW[d.getDay()]})`; };
 const moodChip = (v) => { const m = MOODS.find((x) => x.v === v); return m ? `<span class="chip">${esc(m.label)}</span>` : ""; };
@@ -21,10 +22,20 @@ export function update(r) { inst?.update(r); }
 
 export function mount(root, ctx, r) {
   const me = ctx.me.id, todayStr = ymd(today());
-  let who = r.who || me, day = DAY_RE.test(r.day || "") ? r.day : todayStr, members = null, stopEditor = null, stopRead = null, alive = true;
+  let who = r.who || me, day = DAY_RE.test(r.day || "") ? r.day : todayStr, members = null, invites = { incoming: [], outgoing: [] }, stopEditor = null, stopRead = null, alive = true;
   const nameOf = (id) => { const u = members?.find((m) => m.id === id) || ctx.user(id); return u?.display_name || u?.username || "친구"; };
   const href = (w, d) => (w === me ? `#/diary/${d}` : `#/diary/u/${encodeURIComponent(w)}/${d}`);
   root.innerHTML = `<div class="dy dr"><p class="faint">불러오는 중…</p></div>`;
+
+  const nm = (u) => esc(u.display_name || u.username);
+  // 일기 친구 칸: 친구(끊기) · 보낸 초대(취소) · 아이디로 초대
+  const friendsCard = (others) => `<section class="dy-card glass dr-friends" id="dr-friends"><h2>일기 친구</h2>
+      <p class="faint dr-fr-sub">서로 수락한 친구는 내가 '공개'로 둔 날의 일기를 지난 날까지 모두 볼 수 있어요.</p>
+      <ul class="dr-fr-list">${others.map((m) => `<li><span class="dr-fr-n">${nm(m)}<small>@${esc(m.username)}</small></span><button type="button" class="btn sm ghost" data-unlink="${esc(m.id)}" data-name="${nm(m)}">끊기</button></li>`).join("")}
+        ${invites.outgoing.map((m) => `<li class="wait"><span class="dr-fr-n">${nm(m)}<small>@${esc(m.username)} · 수락 기다리는 중</small></span><button type="button" class="btn sm ghost" data-unlink="${esc(m.id)}">취소</button></li>`).join("")}
+        ${others.length || invites.outgoing.length ? "" : `<li class="faint">아직 일기 친구가 없어요. 아이디로 초대해 보세요.</li>`}</ul>
+      <form class="dr-invite" id="dr-invite"><input class="input" id="dr-invite-in" name="username" maxlength="20" placeholder="친구 아이디 (예: gyk)" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="초대할 친구 아이디" required><button class="btn sm accent" id="dr-invite-b">초대</button></form>
+    </section>`;
 
   function shell() {
     const others = members.filter((m) => m.id !== me);
@@ -39,18 +50,39 @@ export function mount(root, ctx, r) {
           </div>
         </header>
         <nav class="dr-tabs" role="tablist" aria-label="누구의 일기">
-          <a role="tab" data-who="${esc(me)}">내 일기</a>${others.map((m) => `<a role="tab" data-who="${esc(m.id)}">${esc(m.display_name || m.username)} 일기</a>`).join("")}
+          <a role="tab" data-who="${esc(me)}">내 일기</a>${others.map((m) => `<a role="tab" data-who="${esc(m.id)}">${nm(m)} 일기</a>`).join("")}
+          <button type="button" class="dr-add" data-invite-go>${icon.plus(13)}일기 친구</button>
         </nav>
-        ${noteOff() ? "" : `<div class="dr-note glass" role="note"><p><b>이제 ${esc(members.map((m) => m.display_name || m.username).join(" · "))} 둘이 서로의 일기를 볼 수 있어요.</b> 새로 쓰는 일기는 기본 공개예요. 힘든 날은 '비공개'로 바꾸면 상대에겐 자물쇠만 보여요. 지금까지 쓴 일기는 모두 비공개로 두었어요 — 날마다 직접 공개할 수 있어요.</p><button type="button" class="icon-btn sm" data-note-x aria-label="안내 닫기">${icon.x(14)}</button></div>`}
+        ${invites.incoming.map((m) => `<div class="dr-inv glass" role="status"><p><b>${nm(m)}</b><span class="faint"> @${esc(m.username)}</span> 님이 일기 친구 초대를 보냈어요. 수락하면 서로 '공개'로 둔 날의 일기를 지난 날까지 볼 수 있어요.</p><div class="dr-inv-acts"><button type="button" class="btn sm accent" data-accept="${esc(m.id)}">수락</button><button type="button" class="btn sm ghost" data-unlink="${esc(m.id)}">거절</button></div></div>`).join("")}
+        ${noteOff() ? "" : `<div class="dr-note glass" role="note"><p><b>일기는 초대해서 이어진 친구끼리만 서로 볼 수 있어요.</b> 아이디로 초대하고 상대가 수락하면, 서로 '공개'로 둔 날의 일기를 (지난 날까지) 읽어요. 같은 팀이어도 초대 없이는 못 봐요. 힘든 날은 '비공개'로 — 친구에겐 자물쇠만 보여요. 언제든 끊을 수 있어요.</p><button type="button" class="icon-btn sm" data-note-x aria-label="안내 닫기">${icon.x(14)}</button></div>`}
         <section class="dy-card glass dr-year"><h2 class="dy-h2" id="dr-grass-h">올해</h2><div id="dr-grass"><p class="faint">불러오는 중…</p></div></section>
         <div class="dy-cols">
           <section class="dy-paper glass" id="dr-paper" aria-live="polite"></section>
           <aside class="dy-side">
+            ${friendsCard(others)}
             <section class="dy-card glass"><h2>지난 일기</h2><ul class="dy-list" id="dr-list"><li class="faint">불러오는 중…</li></ul></section>
           </aside>
         </div>
       </div>`;
     root.querySelector("[data-note-x]")?.addEventListener("click", (e) => { try { localStorage.setItem(NOTE_KEY, "1"); } catch {} e.currentTarget.closest(".dr-note").remove(); });
+    root.querySelector("[data-invite-go]").addEventListener("click", () => { const i = $("#dr-invite-in", root); i.scrollIntoView({ block: "center", behavior: "smooth" }); i.focus({ preventScroll: true }); });
+    $("#dr-invite", root).addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const i = $("#dr-invite-in", root), b = $("#dr-invite-b", root), name = i.value.trim().toLowerCase();
+      if (!name) return;
+      b.disabled = true;
+      try { const r = await api.diaryInvite(name); toast(r.accepted ? `@${name} 님도 나를 초대해 둬서 바로 이어졌어요` : r.locked ? `@${name} 님에게 초대를 보냈어요 · 아직 일기가 잠겨 있어서, 열리면 초대가 보여요` : `@${name} 님에게 초대를 보냈어요 · 수락하면 이어져요`); await load(); }
+      catch (x) { b.disabled = false; toast(x.message || "초대하지 못했어요.", "err"); }
+    });
+    root.querySelectorAll("[data-accept]").forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      try { await api.diaryAccept(b.dataset.accept); toast("일기 친구가 됐어요"); await load(); } catch (x) { b.disabled = false; toast(x.message || "수락하지 못했어요.", "err"); }
+    }));
+    root.querySelectorAll("[data-unlink]").forEach((b) => b.addEventListener("click", async () => {
+      if (b.dataset.name && !confirm(`${b.dataset.name} 님과 일기 친구를 끊을까요? 서로의 일기를 더는 볼 수 없어요.`)) return;
+      b.disabled = true;
+      try { await api.diaryUnlink(b.dataset.unlink); await load(); } catch (x) { b.disabled = false; toast(x.message || "하지 못했어요.", "err"); }
+    }));
   }
 
   // 가운데: 내 일기는 편집기, 상대 일기는 읽기 (공개 → 기분 · 글, 비공개 → 자물쇠, 안 씀 → 빈 칸)
@@ -112,17 +144,22 @@ export function mount(root, ctx, r) {
     if (who === me) setTimeout(() => root.querySelector(".diary-text")?.focus({ preventScroll: true }), 60);
   }
 
-  (async () => {
-    try { ({ members } = await api.diaryCircle()); }
-    catch (e) {
-      if (!alive) return;
-      root.innerHTML = `<div class="dy dr"><div class="dr-blocked glass">${icon.lock(28)}<b>이 일기 페이지는 일기를 함께 보는 사람만 열 수 있어요.</b><a class="btn sm" href="#/calendar/diary/${todayStr}">내 일기 쓰기</a></div></div>`;
-      return;
-    }
+  // 나 + 일기 친구 · 받은/보낸 초대를 읽고 화면을 다시 그려요 (쓰던 일기는 편집기를 닫을 때 먼저 저장돼요)
+  async function load() {
+    const c = await api.diaryCircle();
     if (!alive) return;
-    if (!members.some((m) => m.id === who)) who = me; // 모임 밖 사람 주소면 내 일기로
+    members = c.members; invites = c.invites || { incoming: [], outgoing: [] };
+    if (!members.some((m) => m.id === who)) who = me; // 친구가 아닌 사람 주소면 내 일기로
     shell(); open();
-  })();
+  }
+  const start = () => load().catch((e) => {
+    if (!alive) return;
+    root.innerHTML = e?.status === 403
+      ? `<div class="dy dr"><div class="dr-blocked glass">${icon.lock(28)}<b>이 일기 페이지는 일기 기능이 열린 사람만 쓸 수 있어요.</b><a class="btn sm" href="#/calendar/diary/${todayStr}">내 일기 쓰기</a></div></div>`
+      : `<div class="dy dr"><div class="dr-blocked glass"><b>일기를 불러오지 못했어요.</b><p class="faint">${esc(e?.message || "")}</p><button type="button" class="btn sm" data-retry>다시 불러오기</button></div></div>`;
+    root.querySelector("[data-retry]")?.addEventListener("click", () => { root.innerHTML = `<div class="dy dr"><p class="faint">불러오는 중…</p></div>`; start(); });
+  });
+  start();
 
   inst = {
     update(rr) {

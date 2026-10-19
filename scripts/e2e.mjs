@@ -18,7 +18,8 @@
 //   ⑮ 하루 계획표 짧은 일정 — 맞닿은 일정은 위아래로(5분 휴식 + 바로 뒤 시험) · 붙어 있으면 그 칸만 30px 로 늘어남 · 진짜 겹침은 나란히 · 늘어난 칸의 빈 칸 시각 · 끌기 시각 (2026-10-15)
 //   ⑯ 홈 Day 쪽 ‹ 날짜 › — › 내일(바늘 없음 · 오늘로) · 내일에 끌어 넣기 → 그 날짜 · 새로 열어도 고른 날 · 지난 기억은 오늘 · ‹ 어제 점수 · 링 누르면 그날 계획표 (2026-10-15)
 //   ⑰ 계획 복사 · 붙여넣기 — 마우스 올리고 ⌘C · 붙일 시각에 ⌘V(우선순위까지) · ⌘Z 되돌리기 · Shift+클릭 여러 개(간격 그대로) · 다른 앱의 "07:00–07:30 이름" 줄 · 그냥 글은 무시 · 홈 시계 링 시각 (2026-10-16)
-//   ⑱ 둘이 같이 보는 일기 — 일기 모임만 독 아이콘 · 새 일기 기본 공개 → 상대가 읽음 · 비공개면 자물쇠만(글은 서버에서도 안 와요) · 지난 일기 비공개 · 상대 탭 읽기 · 모임 밖은 403 · 아이콘 없음 (2026-10-16)
+//   ⑱ 일기 친구 — 친구 없으면 탭 하나 · 같은 팀도 403 · 아이디로 초대 → 친구 화면의 초대 띠에서 수락 → 탭 둘 · 새 일기 기본 공개 → 친구가 읽음 · 비공개면 자물쇠만(글은 서버에서도 안 와요)
+//      · 지난 일기 비공개 · 친구 탭 읽기 · 일기 기능 없는 사람은 403 · 아이콘 자물쇠 · 끊기 → 다시 403 (2026-10-19)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -31,7 +32,7 @@ const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); if (!
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await sleep(500); } }
 
-const tag = Date.now().toString(36), user = "t_e2e" + tag, friend = "t_e2f" + tag, outsider = "t_e2o" + tag; // outsider = ⑱ 일기 모임 밖
+const tag = Date.now().toString(36), user = "t_e2e" + tag, friend = "t_e2f" + tag, outsider = "t_e2o" + tag; // outsider = ⑱ 같은 팀이지만 일기 기능이 없는 사람
 execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" });
 execFileSync("node", ["scripts/add-user.mjs", friend, "검사친구", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" }); // ⑨ 공개 페이지를 올리는 친구
 execFileSync("node", ["scripts/add-user.mjs", outsider, "모임밖", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" });
@@ -1010,26 +1011,49 @@ try {
       await p.evaluate(() => localStorage.removeItem("trio-home-page"));
     }
 
-    // ---------- ⑱ 둘이 같이 보는 일기 — 일기 모임(user · friend)만, 모임 밖(outsider)은 서버가 막아요 (2026-10-16) ----------
+    // ---------- ⑱ 일기 친구 — 아이디로 초대하고 상대가 수락한 사람끼리만 서로의 공개 일기를 봐요. 같은 팀이어도 친구가 아니면 서버가 막아요 (2026-10-19) ----------
     {
       errs = [];
-      // 일기 모임은 이 검사 동안만 (켜 둔 채 다음 차례로 가면 독 아이콘이 하나 늘어 폰의 ⑧ Dock 순서 검사가 '대화'를 못 잡아요)
-      const circle = (v) => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `UPDATE users SET diary_circle = ${v} WHERE username IN ('${user}', '${friend}')`], { stdio: "ignore" });
-      circle(1);
-      // 2026-10-19 부터 '일기 모임' = 같은 팀에서 일기 기능을 연 사람들. 모임 밖 검사용 outsider 는 일기 기능만 닫아요
-      execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM user_features WHERE feature = 'diary' AND user_id = (SELECT id FROM users WHERE username = '${outsider}')`], { stdio: "ignore" });
-      // 이 차례 앞에서 서비스 워커가 받아 둔 /api/me(모임 전)를 비우고 열어요 — 운영에선 배포 때 VERSION 이 바뀌어 API 캐시가 저절로 비워져요
-      await p.evaluate(() => new Promise((res) => { const sw = navigator.serviceWorker?.controller; if (!sw) return res(); const ch = new MessageChannel(); ch.port1.onmessage = () => res(); sw.postMessage({ type: "clear-api" }, [ch.port2]); setTimeout(res, 1500); }));
+      const sql = (c) => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", c], { stdio: "ignore" });
+      const ids = `(SELECT id FROM users WHERE username IN ('${user}', '${friend}', '${outsider}'))`;
+      sql(`DELETE FROM diary_links WHERE a IN ${ids} OR b IN ${ids}`); // 차례마다 친구 없이 시작해요
+      // outsider = 같은 팀이지만 일기 기능이 없는 사람
+      sql(`DELETE FROM user_features WHERE feature = 'diary' AND user_id = (SELECT id FROM users WHERE username = '${outsider}')`);
       const day = await p.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
+      const fc = await browser.newContext();
+      const fid = (await (await fc.request.post(BASE + "/api/auth/login", { headers: H, data: { username: friend } })).json()).user.id;
+      const myId = (await (await ctx.request.get(BASE + "/api/me", { headers: H })).json()).user.id;
+      const of = async (c, who, d) => { const r = await c.request.get(BASE + `/api/diary/of?user=${who}&day=${d}`, { headers: H }); return r.ok() ? (await r.json()).diary : r.status(); };
+      const frText = () => p.evaluate(() => document.querySelector("#dr-friends")?.textContent || "");
+      if (tv === "컴퓨터") {
+        // 친구가 없으면: 탭은 '내 일기' 하나 · 공개 스위치 없음(새 일기는 나만) · 같은 팀 친구도 403
+        await go("#/diary", 2500);
+        const p0 = await p.evaluate(() => ({ tabs: document.querySelectorAll(".dr-tabs [data-who]").length, share: !!document.querySelector("[data-share]") }));
+        const empty = /아직 일기 친구가 없어요/.test(await frText()), s0 = await of(fc, myId, day);
+        // '+ 일기 친구' → 초대 칸 · 아이디로 초대 → 수락 기다리는 중 (수락 전엔 여전히 403)
+        await p.click("[data-invite-go]"); await sleep(600);
+        const focused = await p.evaluate(() => document.activeElement?.id);
+        await p.fill("#dr-invite-in", friend); await p.click("#dr-invite-b"); await sleep(1500);
+        const wait = /수락 기다리는 중/.test(await frText()), s1 = await of(fc, myId, day);
+        // 친구 화면: 받은 초대 띠 → 수락 → 탭 2개
+        const fp = await fc.newPage(); await fp.goto(BASE + "/#/diary"); await sleep(2500);
+        const inv = await fp.evaluate(() => /일기 친구 초대를 보냈어요/.test(document.querySelector(".dr-inv")?.textContent || ""));
+        await fp.click(".dr-inv [data-accept]"); await sleep(1500);
+        const ftabs = await fp.evaluate(() => ({ tabs: document.querySelectorAll(".dr-tabs [data-who]").length, inv: !!document.querySelector(".dr-inv") }));
+        await fp.close();
+        ok(p0.tabs === 1 && !p0.share && empty && s0 === 403 && focused === "dr-invite-in" && wait && s1 === 403 && inv && ftabs.tabs === 2 && !ftabs.inv && !errs.length,
+          `${tv} · 일기 친구 없음 — 탭 ${p0.tabs} · 공개 스위치 ${p0.share} · 친구 ${s0} → 아이디로 초대 ${wait} (수락 전 ${s1}) → 친구 화면 초대 띠 ${inv} → 수락 후 탭 ${ftabs.tabs}${errs.length ? " — " + errs[0] : ""}`);
+      } else {
+        // 폰: 초대 · 수락은 API 로 (화면 흐름은 컴퓨터 차례에서 봐요)
+        await ctx.request.post(BASE + "/api/diary/invite", { headers: H, data: { username: friend } });
+        await fc.request.post(BASE + `/api/diary/invite/${myId}/accept`, { headers: H });
+      }
       await go("#/diary", 2500);
       const pg = await p.evaluate(() => ({ dock: !!document.querySelector('[data-nav="diary"]'), tabs: document.querySelectorAll(".dr-tabs [data-who]").length, share: document.querySelector("[data-share]")?.getAttribute("aria-pressed"), grass: document.querySelectorAll(".dr-grass .g").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
       ok(pg.dock && pg.tabs === 2 && (tv === "컴퓨터" ? pg.share === "true" : pg.share != null) && pg.grass >= 365 && !pg.over && !errs.length, `${tv} · 일기 페이지 — 독 아이콘 ${pg.dock} · 탭 ${pg.tabs} · 새 일기 공개 ${pg.share} · 잔디 ${pg.grass}칸 · 가로 넘침 ${pg.over}${errs.length ? " — " + errs[0] : ""}`);
       if (tv === "컴퓨터") {
-        const fc = await browser.newContext(), oc = await browser.newContext();
-        const fid = (await (await fc.request.post(BASE + "/api/auth/login", { headers: H, data: { username: friend } })).json()).user.id;
+        const oc = await browser.newContext();
         await oc.request.post(BASE + "/api/auth/login", { headers: H, data: { username: outsider } });
-        const myId = (await (await ctx.request.get(BASE + "/api/me", { headers: H })).json()).user.id;
-        const of = async (c, who, d) => { const r = await c.request.get(BASE + `/api/diary/of?user=${who}&day=${d}`, { headers: H }); return r.ok() ? (await r.json()).diary : r.status(); };
         // 새 일기는 기본 공개 → 친구가 읽어요. 비공개로 바꾸면 날짜 · 비공개 표시만 (기분 · 글은 안 와요)
         await p.click(".diary-doc .nb-text"); await p.keyboard.type("모임 일기 검사"); await sleep(1800);
         const seen1 = await of(fc, myId, day);
@@ -1054,9 +1078,17 @@ try {
         const ov = await op.evaluate(() => ({ locked: !!document.querySelector('[data-nav="diary"].locked'), lockView: !!document.querySelector(".lock-view"), hash: location.hash }));
         ok(r1 === "친구의 공개 일기" && r2.lock && !r2.body && s1 === 403 && s2 === 403 && s3 === 403 && ov.locked && ov.lockView && !errs.length,
           `${tv} · 친구 탭 읽기 ${r1 === "친구의 공개 일기"} · 비공개 후 자물쇠 ${r2.lock && !r2.body} · 모임 밖 403 ${[s1, s2, s3].join("/")} · 아이콘 자물쇠 ${ov.locked} · 사용 신청 화면 ${ov.lockView} (${ov.hash})${errs.length ? " — " + errs[0] : ""}`);
-        await fc.close(); await oc.close();
+        // 끊기 → 탭 하나로 · 친구도 다시 403 · 초대도 아이디가 없으면 404
+        await go("#/diary", 2000);
+        p.once("dialog", (d) => d.accept());
+        await p.click(`#dr-friends [data-unlink="${fid}"]`); await sleep(1500);
+        const cut = await p.evaluate(() => document.querySelectorAll(".dr-tabs [data-who]").length), s4 = await of(fc, myId, day), s5 = await of(ctx, fid, day);
+        const nobody = (await ctx.request.post(BASE + "/api/diary/invite", { headers: H, data: { username: "zzzzzz" + Date.now() } })).status();
+        ok(cut === 1 && s4 === 403 && s5 === 403 && nobody === 404 && !errs.length, `${tv} · 일기 친구 끊기 — 탭 ${cut} · 서로 ${s4}/${s5} · 없는 아이디 초대 ${nobody}${errs.length ? " — " + errs[0] : ""}`);
+        await oc.close();
       }
-      circle(0);
+      await fc.close();
+      sql(`DELETE FROM diary_links WHERE a IN ${ids} OR b IN ${ids}`);
     }
 
     await ctx.close();

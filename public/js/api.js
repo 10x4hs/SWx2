@@ -148,6 +148,9 @@ export const api = {
   diaries: (before) => request("GET", "/diary/list?" + qs({ before })),
   // 일기 모임(서로 보기) — 모임 밖이면 403. 남의 비공개 날은 { day, private: true } 만 와요
   diaryCircle: () => request("GET", "/diary/circle"),
+  diaryInvite: (username) => request("POST", "/diary/invite", { username }),
+  diaryAccept: (id) => request("POST", `/diary/invite/${encodeURIComponent(id)}/accept`),
+  diaryUnlink: (id) => request("DELETE", `/diary/link/${encodeURIComponent(id)}`),
   diaryOf: (user, day) => request("GET", "/diary/of?" + qs({ user, day })),
   diaryOfDays: (user, year) => request("GET", "/diary/of/days?" + qs({ user, year })),
   diaryOfList: (user, before) => request("GET", "/diary/of/list?" + qs({ user, before })),
