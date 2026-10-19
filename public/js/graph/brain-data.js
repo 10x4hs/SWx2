@@ -22,7 +22,7 @@ const STUDY = [
 
 const low = (s) => String(s || "").trim().toLowerCase();
 
-export function buildBrain({ notes = [], edges = [], subjects = [] }) {
+export function buildBrain({ notes = [], edges = [], subjects = [], study = true }) {
   const N = new Map(); // id → { id, title, parent, kind, href? }
   const conceptId = new Map(); // 개념 제목(소문자) → id
   for (const c of CONCEPTS) {
@@ -39,7 +39,7 @@ export function buildBrain({ notes = [], edges = [], subjects = [] }) {
     N.set(n.id, { id: n.id, title: n.title, parent, kind: "note", note: true });
   }
   if (unsorted) N.set("c:" + UNSORTED, { id: "c:" + UNSORTED, title: UNSORTED, parent: null, kind: "concept", concept: UNSORTED });
-  for (const s of STUDY) N.set(s.id, { id: s.id, title: s.title, parent: conceptId.get(low(s.concept)), kind: "study", href: s.href });
+  for (const s of study ? STUDY : []) N.set(s.id, { id: s.id, title: s.title, parent: conceptId.get(low(s.concept)), kind: "study", href: s.href });
   for (const p of subjects) N.set("s:p:" + p.id, { id: "s:p:" + p.id, title: p.title, parent: conceptId.get(low("Records")), kind: "study", href: "#/study/" + p.id });
 
   const kids = new Map();

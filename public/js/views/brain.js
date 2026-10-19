@@ -6,6 +6,7 @@ import { $, esc, toast } from "../util.js";
 import { mountGraph } from "../graph/obsidian.js";
 import { buildBrain, levelOf } from "../graph/brain-data.js";
 import { openNoteMenu, bindNoteMenu, withoutGone } from "../note-menu.js";
+import { isOpen } from "../features.js";
 
 let inst = null;
 export function update(r) { inst?.update(r); }
@@ -32,7 +33,7 @@ export function mount(root, ctx, r) {
     if (!tree || !alive) return;
     const L = levelOf(tree, focus);
     if (focus && !L.here) { focus = null; return draw(); }
-    $("[data-crumbs]", root).innerHTML = [`<a href="#/brain">Brain</a>`, ...L.crumbs.map((c, i) => i === L.crumbs.length - 1 ? `<b>${esc(c.title)}</b>` : `<a href="#/brain/${encodeURIComponent(c.id)}">${esc(c.title)}</a>`)].join(`<i aria-hidden="true">›</i>`);
+    $("[data-crumbs]", root).innerHTML = [`<a href="#/brain">Second Brain</a>`, ...L.crumbs.map((c, i) => i === L.crumbs.length - 1 ? `<b>${esc(c.title)}</b>` : `<a href="#/brain/${encodeURIComponent(c.id)}">${esc(c.title)}</a>`)].join(`<i aria-hidden="true">›</i>`);
     $("[data-actions]", root).innerHTML = (L.here?.note ? `<a class="btn" href="#/notes/${esc(L.here.id)}">Open page</a>` : "")
       + `<a class="btn" href="#/brain/graph" title="All notes grouped into concepts">Graph view</a>`
       + `<button class="btn" type="button" data-new>+ New page</button>`
@@ -56,7 +57,9 @@ export function mount(root, ctx, r) {
     if (!raw || !alive) return;
     const notes = withoutGone(raw.g.nodes || []);
     parents = new Map(notes.map((n) => [n.id, n.parent_id]));
-    tree = buildBrain({ notes, edges: raw.g.edges || [], subjects: (raw.pages.pages || []).filter((p) => p.place === "study") });
+    // 공부 기능이 없으면 우리 공부 화면 점(AI Books · 논문 · 영어 · 과목)은 빼요 — 내 노트만
+    const study = isOpen(ctx, "study");
+    tree = buildBrain({ notes, edges: raw.g.edges || [], subjects: study ? (raw.pages.pages || []).filter((p) => p.place === "study") : [], study });
     draw();
   }
   async function load() {

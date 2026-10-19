@@ -67,7 +67,7 @@ export function mount(root, ctx, r) {
         <div class="top">
           <div class="row" style="justify-content:space-between">
             <h1 class="sr-only">노트</h1>
-            <nav class="seg nt-tabs" aria-label="Notes · Brain"><a href="#/notes" aria-current="page">Notes</a><a href="#/brain">Brain</a></nav>
+            <nav class="seg nt-tabs" aria-label="Notes · Second Brain"><a href="#/notes" aria-current="page">Notes</a><a href="#/brain">Second Brain</a></nav>
             <span class="row" style="gap:2px">
               <button class="btn ghost sm" type="button" id="daily">Today</button>
               <button class="btn sm accent" type="button" id="new">${icon.plus(14)}New page</button>
@@ -128,12 +128,12 @@ export function mount(root, ctx, r) {
     $("#ed", root).innerHTML = `
       <div class="ed-body"><div class="ed-inner" style="max-width:520px;padding-top:8vh">
         <span class="eyebrow">// Brain</span>
-        <h2 class="h1 vault-title">Brain<br><span class="muted">Everything I learn, in one tree</span></h2>
+        <h2 class="h1 vault-title">Second Brain<br><span class="muted">Everything I learn, in one tree</span></h2>
         <div class="md muted">
           <ul>
             <li>Write like Notion. Type <code>/</code> for headings, lists, to-dos, code, pages and AI blocks.</li>
             <li><code>[[Page title]]</code> links pages. A missing title becomes a new page when you open it.</li>
-            <li>Every page can hold pages. Put new pages under one of the five concepts in <a href="#/brain">Brain</a>.</li>
+            <li>Every page can hold pages. Put new pages under one of the five concepts in <a href="#/brain">Second Brain</a>.</li>
             <li><code>#tag</code> groups pages in the left panel. <b>Backlinks</b> show who points here.</li>
             <li><kbd>${/Mac/.test(navigator.platform) ? "⌘" : "Ctrl"} K</kbd> finds anything, or creates it.</li>
             <li>Pages are private. The other two only see charts.</li>
@@ -170,7 +170,7 @@ export function mount(root, ctx, r) {
       </div>
       ${own ? `<form class="ai-refine" id="ed-refine" title="AI 와 이 페이지를 같이 고쳐요"><span class="ai-refine-ic">${icon.spark(14)}</span><input class="input" id="ed-refine-in" maxlength="1000" placeholder="Ask AI: make this a table · add a review section · shorter" aria-label="AI 에게 고쳐 달라고 하기"><button class="btn sm accent" type="submit">Apply</button></form>` : ""}
       <div class="ed-body"><div class="ed-inner" style="${mode === "md" ? "max-width:1180px" : vn ? "max-width:1240px" : ""}">
-        <nav class="crumbs" aria-label="Path"><a href="#/brain">Brain</a><span>›</span>${S.crumbs.map((c) => `<a href="#/notes/${c.id}">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b><a class="crumb-map" href="#/brain/${encodeURIComponent(S.children.length ? n.id : S.crumbs.at(-1)?.id || "")}" title="See this page in the Brain graph">◎ Map</a></nav>
+        <nav class="crumbs" aria-label="Path"><a href="#/brain">Second Brain</a><span>›</span>${S.crumbs.map((c) => `<a href="#/notes/${c.id}">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b><a class="crumb-map" href="#/brain/${encodeURIComponent(S.children.length ? n.id : S.crumbs.at(-1)?.id || "")}" title="See this page in the Brain graph">◎ Map</a></nav>
         <input class="ed-title" id="ed-title" value="${esc(n.title)}" aria-label="노트 제목" ${own ? "" : "readonly"} maxlength="120">
         <div class="row faint" style="font-size:12px;gap:10px">
           <span class="row" style="gap:6px">${avatar({ ...(u || {}), color: u?.color || "#999" }, "sm")}${esc(u?.display_name || "")}</span>
