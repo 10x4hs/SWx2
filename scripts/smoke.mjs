@@ -61,6 +61,13 @@ r = await call("x", "POST", "/auth/login", { username: "nobody" + tag }); ok(r.s
 r = await call("a", "POST", "/auth/login", { username: "t_a" + tag }); ok(r.status === 200, "login a by id only");
 r = await call("b", "POST", "/auth/login", { username: "t_b" + tag }); ok(r.status === 200, "login b by id only");
 r = await call("a", "GET", "/me"); ok(r.status === 200 && r.data.user.display_name === "테스트A", "me");
+// 기능 잠금: 열린 기능이 없는 사람은 경영 · SW 과정 API 도 403 (Dock 자물쇠와 같게), 계획은 그대로
+execFileSync("node", ["scripts/add-user.mjs", "t_l" + tag, "잠긴사람", "password1", "--team=swx2"], { stdio: "ignore" });
+await call("l", "POST", "/auth/login", { username: "t_l" + tag });
+for (const [p, f] of [["/mba/state", "biz"], ["/dev/state", "dev"], ["/vg/state", "dev"]]) { r = await call("l", "GET", p); ok(r.status === 403 && r.data.locked === f, `locked: ${p} → 403 (${f})`); }
+r = await call("l", "PUT", "/mba/read", { module: "accounting", card: "profit-vs-revenue" }); ok(r.status === 403, "locked: mba write → 403");
+r = await call("l", "GET", "/plans?periods=D:2026-09-28"); ok(r.status === 200, "locked: plans stay open");
+d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
 r = await call("x", "GET", "/me"); ok(r.status === 401, "anon rejected");
 r = await fetch(BASE + "/api/plans", { method: "POST", headers: { cookie: jar.a, "content-type": "application/json" }, body: "{}" });
 ok(r.status === 403, "csrf header required");
