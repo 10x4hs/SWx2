@@ -276,6 +276,20 @@ self.addEventListener("push", (event) => {
         return;
       }
     } catch {}
+    // 일기 친구: 방금 받은 초대 · 내 초대를 방금 수락함 (일기를 못 쓰는 사람은 403 이라 건너뛰어요)
+    try {
+      const r = await fetch("/api/diary/circle", { headers: { "x-trio": "1" }, credentials: "include" });
+      const j = r.ok ? await r.json() : null, me = j?.members?.[0]?.id;
+      const inv = j?.invites?.incoming?.[0], acc = (j?.members || []).find((m) => m.inviter === me && m.accepted_at && Date.now() - m.accepted_at < 120000);
+      if (inv && Date.now() - inv.at < 120000) {
+        await self.registration.showNotification(`${inv.display_name || inv.username}님이 일기 친구 초대를 보냈어요`, { body: "수락하면 서로 공개한 날의 일기를 볼 수 있어요", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "diary-invite", renotify: true, data: { url: "/#/diary" } });
+        return;
+      }
+      if (acc) {
+        await self.registration.showNotification(`${acc.display_name || acc.username}님과 일기 친구가 됐어요`, { body: "이제 서로 공개한 날의 일기를 볼 수 있어요", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "diary-invite", renotify: true, data: { url: "/#/diary" } });
+        return;
+      }
+    } catch {}
     if (wins.some((w) => w.visibilityState === "visible" && w.focused)) { for (const w of wins) w.postMessage({ type: "room-ping" }); return; }
     // 뉴스: 내 메모에 친구가 반박 · 동의를 달았으면 그걸 먼저 알려요 (푸시는 내용 없이 깨우기만 해서 여기서 물어봐요)
     try {

@@ -42,6 +42,11 @@ import { applyView, remindAt, isDue } from "../public/js/blocks/dbview.js";
   ok(calls.every(([t, n]) => (parseToolCall(t)?.name ?? null) === n), "agent: tool lines parsed even with missing brackets / xml");
   ok(calls.filter(([, n]) => n).every(([t]) => stripToolLines("앞 " + t + " 뒤") === "앞  뒤" || stripToolLines("앞 " + t + " 뒤") === "앞 뒤"), "agent: tool lines stripped from visible text");
   ok(["추가했어", "일정이 추가됐어", "이미 추가되어 있어", "넣어 뒀어", "등록했어요"].every((t) => CLAIM_RE.test(t)) && !CLAIM_RE.test("오늘은 10월 1일이야"), "agent: claim detector");
+  // 사용자 페이지 브리지: 일기 친구 · 친구 일기는 막고, 점 조각(../ · %2e)으로 돌아가는 주소도 막아요
+  const { pageApiBlock: B } = await import("../public/js/page-guard.js");
+  const blocked = [["POST", "/diary/invite"], ["POST", "/x/../diary/invite/abc/accept"], ["DELETE", "/diary/link/abc"], ["GET", "/diary/circle"], ["GET", "/notes/%2e%2e/diary/of?user=a&day=2026-10-01"], ["POST", "/%2E%2E/auth/login"], ["GET", "/plans/./../auth/me"], ["GET", "/pages"]];
+  const open = [["GET", "/plans?periods=D:2026-09-28"], ["PUT", "/diary"], ["GET", "/files/a.b.png"], ["POST", "/plans"]];
+  ok(blocked.every(([m, p]) => B(m, p, false)) && open.every(([m, p]) => !B(m, p, false)) && B("GET", "/diary?day=2026-09-28", true) && B("POST", "/plans", true) && !B("GET", "/plans?periods=D:2026-09-28", true), "page bridge: diary friends · dot-segment paths blocked, normal paths open");
   void T;
 }
 const tag = Date.now().toString(36).slice(-5);
@@ -419,6 +424,29 @@ r = await call("a", "GET", "/diary?day=2026-09-28"); ok(r.data.diary?.body === "
 r = await call("b", "GET", "/diary?day=2026-09-28"); ok(r.data.diary === null, "diary private to owner");
 r = await call("a", "PUT", "/diary", { day: "2026-09-28", mood: 9 }); ok(r.status === 400, "bad mood rejected");
 r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diary list");
+// 일기 친구: 같은 팀이어도 아이디로 초대하고 상대가 수락하기 전엔 서로의 일기를 못 봐요
+{
+  const ida = (await call("a", "GET", "/me")).data.user.id, idb = (await call("b", "GET", "/me")).data.user.id, D = "2026-09-29";
+  await call("b", "PUT", "/diary", { day: D, mood: 3, body: "b 의 공개 일기", shared: true });
+  r = await call("a", "GET", `/diary/of?user=${idb}&day=${D}`); ok(r.status === 403, "diary friends: same team without invite → 403");
+  r = await call("a", "POST", "/diary/invite", { username: "t_a" + tag }); ok(r.status === 400, "diary friends: can't invite yourself");
+  r = await call("a", "POST", "/diary/invite", { username: "nobody" + tag }); ok(r.status === 404, "diary friends: unknown id → 404");
+  r = await call("a", "POST", "/diary/invite", { username: "T_B" + tag }); ok(r.status === 201 && r.data.pending === true && r.data.locked === false, "diary friends: invite by id (any case) → pending");
+  r = await call("b", "GET", "/diary/circle"); ok(r.data.invites.incoming.some((x) => x.id === ida && x.at > 0) && r.data.members.length === 1 && r.data.members[0].id === idb, "diary friends: invitee sees the invite, not a friend yet");
+  r = await call("a", "GET", "/diary/circle"); ok(r.data.invites.outgoing.some((x) => x.id === idb), "diary friends: inviter sees it waiting");
+  r = await call("a", "GET", `/diary/of?user=${idb}&day=${D}`); ok(r.status === 403, "diary friends: still 403 while pending");
+  r = await call("a", "POST", `/diary/invite/${idb}/accept`); ok(r.status === 404, "diary friends: inviter can't accept their own invite");
+  r = await call("b", "POST", `/diary/invite/${ida}/accept`); ok(r.status === 200, "diary friends: invitee accepts");
+  r = await call("a", "GET", `/diary/of?user=${idb}&day=${D}`); ok(r.data.diary?.body === "b 의 공개 일기", "diary friends: friend reads a shared day");
+  r = await call("b", "GET", `/diary/of?user=${ida}&day=2026-09-28`); ok(r.status === 200 && r.data.diary?.private === true && r.data.diary.body === undefined, "diary friends: unshared day shows a lock only");
+  r = await call("a", "POST", "/diary/invite", { username: "t_b" + tag }); ok(r.status === 409, "diary friends: already friends → 409");
+  r = await call("b", "DELETE", `/diary/link/${ida}`); ok(r.status === 200, "diary friends: either side can unlink");
+  r = await call("a", "GET", `/diary/of?user=${idb}&day=${D}`); ok(r.status === 403, "diary friends: 403 again after unlink");
+  await call("b", "POST", "/diary/invite", { username: "t_a" + tag });
+  r = await call("a", "POST", "/diary/invite", { username: "t_b" + tag }); ok(r.data.accepted === true, "diary friends: inviting each other connects at once");
+  await call("a", "DELETE", `/diary/link/${idb}`);
+  await call("b", "PUT", "/diary", { day: D, mood: null, body: "" });
+}
 
 // ---- 서로는 차트만 + 하루 기록 ----
 {
