@@ -78,6 +78,22 @@ function showAuth() {
 const MEMBER_TONES = ["var(--m0)", "var(--m1)", "var(--m2)"];
 const toned = (users) => users.map((u, i) => ({ ...u, color: MEMBER_TONES[i % MEMBER_TONES.length] }));
 // 관리자 공지: 맨 위 띠 (닫으면 이 브라우저에서 그 공지만 숨겨요)
+// 24시간 무료체험: 남은 시간 띠 + 끝나는 순간 잠긴 기능을 다시 잠가요 (새로 고침 없이)
+let trialTimer = 0;
+function trialBar() {
+  clearInterval(trialTimer); document.querySelector(".trial-bar")?.remove();
+  const until = ctx.features?.trial_until; if (!until || until <= Date.now()) return;
+  const bar = document.createElement("div");
+  bar.className = "trial-bar"; bar.setAttribute("role", "status");
+  const paint = () => {
+    const ms = until - Date.now();
+    if (ms <= 0) { clearInterval(trialTimer); bar.remove(); loadFeatures(ctx).then(() => { drawDock(); route(true); toast("무료 체험이 끝났어요 · 더 쓰려면 '사용 신청'을 해 주세요"); }); return; }
+    const h = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
+    bar.innerHTML = `<b>무료 체험 중</b><span>${h}시간 ${m}분 남음 · 모든 기능을 써 볼 수 있어요</span>`;
+  };
+  paint(); trialTimer = setInterval(paint, 30e3);
+  document.body.append(bar);
+}
 function annBar() {
   api.announcement().then(({ announcement: a }) => {
     document.querySelector(".ann-bar")?.remove();
@@ -113,6 +129,7 @@ async function enter(user) {
   loadCustom();
   impBar();
   annBar();
+  trialBar();
   // 스터디장이 정해 준 비밀번호 그대로면: 화면을 열기 전에 먼저 바꾸게 해요
   if (ctx.me.must_change_pw) { openPassword({ force: true }); return; }
   route();
@@ -149,16 +166,17 @@ window.addEventListener("trio:me", (e) => {
 // ---------- shell ----------
 // 검색 | 홈 · 캘린더 | 노트 · 영어 · AI · 대화 | 타이머 · 프로필 (연·월·주 목표는 캘린더 그날 판의 "목표" 칸)
 // 오늘 · 일기 · 기록은 캘린더 안으로(그날 페이지 · 연 잔디), 그래프는 노트 안의 탭으로 들어갔어요.
+// Dock 기본 이름 · 아이콘 — HSK 가 쓰던 이름(2026-10-19)을 모두의 기본으로, 아이콘은 실제 앱 그림 (/assets/dock, 우리끼리 쓰는 화면)
 const NAV = [
-  { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
-  { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
-  { key: "diary", hash: "#/diary", label: "일기", tip: "일기 · 둘이 같이 보기 (공개 · 비공개)", when: (me) => !!me?.diary_circle }, // 일기 모임(HSK · GYK)에게만
-  { key: "brain", hash: "#/brain", label: "Second Brain", tip: "Second Brain · 내 노트를 한 나무로" }, // 노트 · 공부 아이콘을 하나로
-  { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI" }, // Brain 안에 묻히면 AI 공부책을 못 찾아서 바로 가는 아이콘은 남겨요
-  { key: "news", hash: "#/news", label: "News", tip: "News · daily edition" },
-  { key: "biz", hash: "#/mba", label: "경영", tip: "경영 · 마이크로디그리 (24주 · 하루 1~2시간)" },
-  { key: "dev", hash: "#/sw", label: "SW", tip: "SW · Dev Flow · Vector & Graph" },
-  { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
+  { key: "home", hash: "#/", label: "Home", tip: "Home · 차트 · 우리 셋", img: "/assets/dock/home.png" },
+  { key: "calendar", icon: "today", hash: "#/calendar", label: "Plan", tip: "Plan · 캘린더 · 그날 할 일·시간표·일기" }, // 오늘 날짜가 나오는 달력 그대로
+  { key: "diary", hash: "#/diary", label: "Diary", tip: "Diary · 둘이 같이 보기 (공개 · 비공개)", img: "/assets/dock/journal.png", when: (me) => !!me?.diary_circle }, // 일기 모임(HSK · GYK)에게만
+  { key: "brain", hash: "#/brain", label: "Obsidian", tip: "Obsidian · Second Brain · 내 노트를 한 나무로", img: "/assets/dock/obsidian.png" },
+  { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI", img: "/assets/dock/books.png" },
+  { key: "news", hash: "#/news", label: "Newsletter", tip: "Newsletter · 오늘의 뉴스 · AI · HW 트렌드", img: "/assets/dock/substack.png" },
+  { key: "biz", hash: "#/mba", label: "MBA", tip: "MBA · 경영 마이크로디그리 (24주 · 하루 1~2시간)", img: "/assets/dock/stocks.png" },
+  { key: "dev", hash: "#/dev", label: "Code Flow", tip: "Code Flow · SW 공간 (Dev Flow · Vector & Graph)", img: "/assets/dock/vscode.png" },
+  { key: "room", hash: "#/room", label: "Message", tip: "Message · 대화 · 창고", badge: "room-badge", img: "/assets/dock/messages.png" },
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 

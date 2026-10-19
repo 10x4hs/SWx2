@@ -23,7 +23,9 @@ const MAP = [
   [/^\/mcp\/tokens/, "mcp"],
 ];
 export const featureOf = (path) => MAP.find(([re]) => re.test(path))?.[1] || null;
-export const canUse = (user, f) => !f || user.role === "admin" || (user.features || []).includes(f);
+export const TRIAL_MS = 24 * 3600e3; // 무료체험 24시간 (계정이 열리는 순간부터)
+export const inTrial = (user) => (user.trial_until || 0) > Date.now();
+export const canUse = (user, f) => !f || user.role === "admin" || inTrial(user) || (user.features || []).includes(f);
 // route() 에서: 잠긴 기능이면 403 (Dock 의 페이지 목록만은 빈 목록으로 — 화면이 깨지지 않게)
 export function gate(method, path, user) {
   const f = featureOf(path);
@@ -36,7 +38,7 @@ export function registerFeatures(on) {
   // 내 기능: 열린 것 · 신청 중인 것
   on("GET", "/features", async ({ env, user }) => {
     const { results } = await env.DB.prepare("SELECT feature FROM feature_requests WHERE user_id = ? AND status = 'pending'").bind(user.id).all();
-    return json({ all: FEATURES, open: user.role === "admin" ? Object.keys(FEATURES) : user.features || [], pending: results.map((r) => r.feature) });
+    return json({ all: FEATURES, open: user.role === "admin" || inTrial(user) ? Object.keys(FEATURES) : user.features || [], pending: results.map((r) => r.feature), trial_until: inTrial(user) ? user.trial_until : null });
   });
   on("POST", "/features/request", async ({ req, env, user, ec }) => {
     const b = await body(req);

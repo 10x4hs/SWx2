@@ -4,6 +4,7 @@ import { b64url } from "./lib/crypto.js";
 import { fail, json, now, uid, body } from "./http.js";
 import { startSession, sessionId, hashPassword } from "./auth.js";
 import { pushUsers } from "./push.js";
+import { TRIAL_MS } from "./features.js";
 
 // 대신 들어간 세션에서는 관리자 기능을 못 써요 (회원 화면만)
 const DEMO_IDS = ["dmo"]; // 확인이 끝나면 빼요
@@ -15,7 +16,7 @@ export function registerAdmin(on) {
   on("GET", "/admin/users", async ({ env, user }) => {
     needAdmin(user);
     const [us, ap, ad, tres] = await env.DB.batch([
-      env.DB.prepare("SELECT id, username, display_name, color, role, state, created_at, last_seen_at, pw_changed_at, must_change_pw, locked_until FROM users ORDER BY state = 'pending' DESC, created_at"),
+      env.DB.prepare("SELECT id, username, display_name, color, role, state, created_at, last_seen_at, pw_changed_at, must_change_pw, locked_until, trial_until FROM users ORDER BY state = 'pending' DESC, created_at"),
       env.DB.prepare("SELECT a.user_id, u.username, a.at FROM signup_approvals a JOIN users u ON u.id = a.admin_id"),
       env.DB.prepare("SELECT id, username FROM users WHERE role = 'admin' ORDER BY username"),
       env.DB.prepare("SELECT m.user_id, t.name FROM team_members m JOIN teams t ON t.id = m.team_id ORDER BY m.joined_at"),
@@ -45,6 +46,20 @@ export function registerAdmin(on) {
       env.DB.prepare("SELECT a.username AS by, u.username, s.at FROM signup_approvals s JOIN users a ON a.id = s.admin_id JOIN users u ON u.id = s.user_id WHERE s.admin_id != ?1 AND u.state = 'pending' AND NOT EXISTS (SELECT 1 FROM signup_approvals m WHERE m.user_id = u.id AND m.admin_id = ?1) ORDER BY s.at DESC LIMIT 1").bind(user.id),
     ]);
     return json({ n: mine.results.length, last: mine.results[0] || null, recent: rec.results[0] || null });
+  });
+  // 뉴스 출석 인정: 그날은 연속 출석이 끊기지 않아요 (YYYY-MM-DD, 오늘까지)
+  on("POST", "/admin/users/:id/news-excuse", async ({ env, user, params, req }) => {
+    needAdmin(user);
+    const u = await target(env, params.id), b = await body(req), day = String(b.day || "");
+    const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > today) fail(400, "날짜가 올바르지 않아요 (오늘까지).");
+    await env.DB.prepare("INSERT OR REPLACE INTO news_excused (user_id, day, by, at) VALUES (?, ?, ?, ?)").bind(u.id, day, user.id, now()).run();
+    return json({ ok: true, day });
+  });
+  on("DELETE", "/admin/users/:id/news-excuse/:day", async ({ env, user, params }) => {
+    needAdmin(user);
+    await env.DB.prepare("DELETE FROM news_excused WHERE user_id = ? AND day = ?").bind(params.id, params.day).run();
+    return json({ ok: true });
   });
   // 팀 전체: 이름 · 팀장 · 팀원 · 초대 코드
   on("GET", "/admin/teams", async ({ env, user }) => {
@@ -96,8 +111,8 @@ export function registerAdmin(on) {
     await env.DB.prepare("INSERT OR IGNORE INTO signup_approvals (user_id, admin_id, at) VALUES (?, ?, ?)").bind(u.id, user.id, now()).run();
     // 데모 아이디(DEMO_IDS)는 관리자 한 명 승인으로 바로 — 가입 흐름 확인용
     const r = await env.DB.prepare(
-      "UPDATE users SET state = 'active' WHERE id = ?1 AND state = 'pending' AND (?2 OR NOT EXISTS (SELECT 1 FROM users a WHERE a.role = 'admin' AND NOT EXISTS (SELECT 1 FROM signup_approvals s WHERE s.user_id = ?1 AND s.admin_id = a.id)))"
-    ).bind(u.id, DEMO_IDS.includes(u.username) ? 1 : 0).run();
+      "UPDATE users SET state = 'active', trial_until = ?3 WHERE id = ?1 AND state = 'pending' AND (?2 OR NOT EXISTS (SELECT 1 FROM users a WHERE a.role = 'admin' AND NOT EXISTS (SELECT 1 FROM signup_approvals s WHERE s.user_id = ?1 AND s.admin_id = a.id)))"
+    ).bind(u.id, DEMO_IDS.includes(u.username) ? 1 : 0, now() + TRIAL_MS).run(); // 열리는 순간부터 24시간 무료체험
     const active = (r.meta.changes || 0) > 0;
     // 아직 남았으면 다른 관리자에게 "내 승인만 남았어요" 알림
     if (!active) { const others = (await env.DB.prepare("SELECT id FROM users WHERE role = 'admin' AND state = 'active' AND id != ?").bind(user.id).all()).results.map((x) => x.id); pushUsers(env, ec, others, { room: "approve" }); }
