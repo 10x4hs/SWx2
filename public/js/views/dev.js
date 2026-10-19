@@ -36,6 +36,8 @@ export function mount(root, ctx, r) {
     mode: (...a) => { want = a; stage?.mode(...a); },
     focus: (i) => stage?.focus(i),
     accent: (k) => stage?.accent(k),
+    kick: () => stage?.kick?.(),
+    dive: () => stage?.dive?.() || Promise.resolve(),
     ready,
   };
 
