@@ -167,16 +167,17 @@ window.addEventListener("trio:me", (e) => {
 // 검색 | 홈 · 캘린더 | 노트 · 영어 · AI · 대화 | 타이머 · 프로필 (연·월·주 목표는 캘린더 그날 판의 "목표" 칸)
 // 오늘 · 일기 · 기록은 캘린더 안으로(그날 페이지 · 연 잔디), 그래프는 노트 안의 탭으로 들어갔어요.
 // Dock 기본 이름 · 아이콘 · 순서 — HSK 가 쓰던 이름 · 순서(2026-10-19)를 모두의 기본으로, 아이콘은 실제 앱 그림 (/assets/dock, 우리끼리 쓰는 화면)
+// 마우스를 올리면 뜨는 이름표도 이름 한 단어만 (설명 없이, 2026-10-20)
 const NAV = [
-  { key: "home", hash: "#/", label: "Home", tip: "Home · 차트 · 우리 셋", img: "/assets/dock/home.png" },
-  { key: "calendar", icon: "today", hash: "#/calendar", label: "Plan", tip: "Plan · 캘린더 · 그날 할 일·시간표·일기" }, // 오늘 날짜가 나오는 달력 그대로
-  { key: "brain", hash: "#/brain", label: "Obsidian", tip: "Obsidian · Second Brain · 내 노트를 한 나무로", img: "/assets/dock/obsidian.png" },
-  { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI", img: "/assets/dock/books.png" },
-  { key: "news", hash: "#/news", label: "Newsletter", tip: "Newsletter · 오늘의 뉴스 · AI · HW 트렌드", img: "/assets/dock/substack.png" },
-  { key: "room", hash: "#/room", label: "Message", tip: "Message · 대화 · 창고", badge: "room-badge", img: "/assets/dock/messages.png" },
-  { key: "diary", hash: "#/diary", label: "Diary", tip: "Diary · 일기 · 같은 팀과 공개 · 비공개", img: "/assets/dock/journal.png" }, // 일기 기능이 열린 사람끼리(같은 팀) 공개한 날을 서로 봐요 · 안 열렸으면 자물쇠
-  { key: "biz", hash: "#/mba", label: "MBA", tip: "MBA · 경영 마이크로디그리 (24주 · 하루 1~2시간)", img: "/assets/dock/stocks.png" },
-  { key: "dev", hash: "#/dev", label: "Code Flow", tip: "Code Flow · SW 공간 (Dev Flow · Vector & Graph)", img: "/assets/dock/vscode.png" },
+  { key: "home", hash: "#/", label: "Home", img: "/assets/dock/home.png" }, // 차트 · 우리 셋
+  { key: "calendar", icon: "today", hash: "#/calendar", label: "Plan" }, // 캘린더 · 그날 할 일 · 시간표 · 일기 — 오늘 날짜가 나오는 달력 그대로
+  { key: "brain", hash: "#/brain", label: "Obsidian", img: "/assets/dock/obsidian.png" }, // Second Brain · 내 노트를 한 나무로
+  { key: "study", hash: "#/english", label: "Study", img: "/assets/dock/books.png" }, // 영어 · 논문 · AI
+  { key: "news", hash: "#/news", label: "Newsletter", img: "/assets/dock/substack.png" }, // 오늘의 뉴스 · AI · HW 트렌드
+  { key: "room", hash: "#/room", label: "Message", badge: "room-badge", img: "/assets/dock/messages.png" }, // 대화 · 창고 · 관리자 문의방
+  { key: "diary", hash: "#/diary", label: "Diary", img: "/assets/dock/journal.png" }, // 일기 친구(초대 · 수락)끼리 공개한 날을 서로 봐요 · 일기 기능이 안 열렸으면 자물쇠
+  { key: "biz", hash: "#/mba", label: "MBA", img: "/assets/dock/stocks.png" }, // 경영 마이크로디그리 (24주 · 하루 1~2시간)
+  { key: "dev", hash: "#/dev", label: "Code Flow", img: "/assets/dock/vscode.png" }, // SW 공간 (Dev Flow · Vector & Graph)
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
