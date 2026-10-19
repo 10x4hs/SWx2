@@ -6,7 +6,7 @@
 //   createStage(root) → { mode(name, opts), focus(i), reveal(), destroy() } | null — WebGL 이 없으면 null (화면은 장면 없이도 다 읽혀요)
 //   움직임 줄이기면 한 장만 그리고 멈춰요 (꼬리 · 진자 · 터짐 없음).
 let threeP = null;
-function loadThree() {
+export function loadThree() {
   if (window.THREE) return Promise.resolve(window.THREE);
   if (!threeP) threeP = new Promise((ok, no) => {
     const s = document.createElement("script"); s.src = "/vendor/three.min.js"; s.async = true;
@@ -254,6 +254,7 @@ export async function createStage(root) {
   const tint = { a: col(LOOK.sw.c[0]), b: col(LOOK.sw.c[1]), c: col(LOOK.sw.c[2]), fog: col(LOOK.sw.fog), fogPos: new THREE.Vector2(...LOOK.sw.fogPos) };
   function look_(k) { const p = LOOK[k] || LOOK.sw; tint.a = col(p.c[0]); tint.b = col(p.c[1]); tint.c = col(p.c[2]); tint.fog = col(p.fog); tint.fogPos.set(...p.fogPos); }
   let raf = 0, last = performance.now(), t = 0, alive = true, visible = true;
+  let paused = false;
   const fx = { warp: 0, lastScroll: 0, dive: 0, ca: 0, shake: 0, onDive: null };
   function frame(now) {
     now = now || performance.now();
@@ -327,9 +328,9 @@ export async function createStage(root) {
     mBright.uniforms.t.value = rtS.texture; pass(mBright, rtA);
     for (let i = 0; i < 2; i++) { mBlur.uniforms.t.value = rtA.texture; mBlur.uniforms.uDir.value.set(1.4 / rtA.width, 0); pass(mBlur, rtB); mBlur.uniforms.t.value = rtB.texture; mBlur.uniforms.uDir.value.set(0, 1.4 / rtA.height); pass(mBlur, rtA); }
     cU.tScene.value = rtS.texture; cU.tBloom.value = rtA.texture; pass(mComp, null);
-    if (alive && visible && !REDUCED) raf = requestAnimationFrame(frame);
+    if (alive && visible && !paused && !REDUCED) raf = requestAnimationFrame(frame);
   }
-  const vis = () => { const was = visible; visible = !document.hidden; if (visible && !was && alive && !REDUCED) { last = performance.now(); raf = requestAnimationFrame(frame); } };
+  const vis = () => { const was = visible; visible = !document.hidden; if (visible && !was && alive && !paused && !REDUCED) { last = performance.now(); raf = requestAnimationFrame(frame); } };
   document.addEventListener("visibilitychange", vis);
   canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); cancelAnimationFrame(raf); canvas.style.display = "none"; });
 
@@ -350,6 +351,8 @@ export async function createStage(root) {
       }
       if (REDUCED) { Object.assign(cur, target); look.copy(lookTo); camZ = camZTo; frame(); }
     },
+    // 잠시 멈추기: SW 홈은 자기 3D 갤러리를 따로 그려서, 그동안 뒤 장면은 쉬어요
+    pause(on) { if (on) { paused = true; cancelAnimationFrame(raf); canvas.style.visibility = "hidden"; } else if (paused) { paused = false; canvas.style.visibility = ""; last = performance.now(); if (!REDUCED) raf = requestAnimationFrame(frame); else frame(); } },
     // 들어가기: 카메라가 로고로 돌진하며 빛으로 번져요. 0.75초 뒤 resolve (그때 화면을 바꾸면 돼요)
     dive() { if (REDUCED) return Promise.resolve(); fx.dive = 0.001; fx.ca = 1; return new Promise((ok) => setTimeout(ok, 750)); },
     // 과정 넘김: 순간 색번짐 + 카메라 흔들림 (모양 바뀜 · 터짐은 mode 가 해요)

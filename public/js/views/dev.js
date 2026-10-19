@@ -29,14 +29,15 @@ export function mount(root, ctx, r) {
   const main = root.closest(".main");
   const fit = () => { const hh = main?.clientHeight || innerHeight; bg.style.height = hh + "px"; bg.style.marginBottom = -hh + "px"; root.style.setProperty("--sw-h", hh + "px"); };
   const ro = new ResizeObserver(fit); if (main) ro.observe(main); fit();
-  let stage = null, want = null;
-  const ready = createStage(bg).then((s) => { if (!alive) { s?.destroy(); return null; } stage = s; if (want) stage?.mode(...want); return s; });
+  let stage = null, want = null, wantPause = false;
+  const ready = createStage(bg).then((s) => { if (!alive) { s?.destroy(); return null; } stage = s; if (want) stage?.mode(...want); if (wantPause) stage?.pause?.(true); return s; });
   // 화면이 장면을 부를 때: 장면이 아직 준비 전이면 기억해 뒀다가 준비되면 바로
   const scene = {
     mode: (...a) => { want = a; stage?.mode(...a); },
     focus: (i) => stage?.focus(i),
     accent: (k) => stage?.accent(k),
     kick: () => stage?.kick?.(),
+    pause: (on) => { wantPause = on; stage?.pause?.(on); },
     dive: () => stage?.dive?.() || Promise.resolve(),
     ready,
   };
