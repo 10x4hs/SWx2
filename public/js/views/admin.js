@@ -21,7 +21,7 @@ export function mount(root, ctx) {
     const mine = u.approvals.includes(ctx.me.username), admin = u.role === "admin";
     const plansBtn = u.state !== "pending" ? `<button type="button" class="btn sm ghost" data-act="plans">일정</button>` : "";
     const acts = u.state === "pending"
-      ? `<button type="button" class="btn sm" data-act="approve" ${mine ? "disabled" : ""}>${mine ? "승인함" : "승인"}</button><button type="button" class="btn sm ghost" data-act="reject">거절</button>`
+      ? `<button type="button" class="btn sm adm-ok" data-act="approve" ${mine ? "disabled" : ""}>${mine ? "승인함" : "승인"}</button><button type="button" class="btn sm adm-no" data-act="reject">거절</button>`
       : admin ? `${plansBtn}<span class="faint">관리자</span>`
       : `${plansBtn}${u.state === "active" ? `<button type="button" class="btn sm" data-act="impersonate">들어가기</button>` : ""}<button type="button" class="btn sm ghost" data-act="reset">임시 비밀번호</button><button type="button" class="btn sm ghost" data-act="suspend">${u.state === "suspended" ? "정지 풀기" : "정지"}</button><button type="button" class="btn sm ghost danger" data-act="delete">삭제</button>`;
     return `<tr data-id="${esc(u.id)}" data-name="${esc(u.username)}" class="st-${u.state}">
