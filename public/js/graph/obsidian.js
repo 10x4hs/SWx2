@@ -10,7 +10,9 @@ import { esc } from "../util.js";
 export const GRAPH_DEFAULTS = { basis: "deg", node: 1, text: 12, line: 1, fade: 1.2, center: 1, repel: 1, link: 1, dist: 1, open: true, hide: {} };
 const TIER_R = [11, 7, 4.5, 3.2];
 
-export function mountGraph(host, { data, types, onOpen, onMenu, prefs: p0, savePrefs, empty, scope = "" }) {
+// onClick(node, e)?: 있으면 왼쪽 클릭이 열기 대신 이것 (두 번 빨리 누르면 열기) · onBlank(e)?: 빈 곳 왼쪽 클릭
+export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank, prefs: p0, savePrefs, empty, scope = "" }) {
+  let lastTap = { n: null, t: 0 };
   const P = { ...GRAPH_DEFAULTS, open: innerWidth > 760, ...(p0 || {}) }; // 폰은 설정 패널을 접고 시작해요
   const hidden = () => new Set(P.hide?.[scope] || []);
   host.innerHTML = `
@@ -223,9 +225,16 @@ export function mountGraph(host, { data, types, onOpen, onMenu, prefs: p0, saveP
     drag = null; pan = null;
     if (held) { held = false; return; }
     if (moved) return;
-    if (!n) { pinned = null; showTip(null); kick(); return; }
+    if (!n) { pinned = null; showTip(null); kick(); if (onBlank && hit(w) == null) onBlank({ clientX: e.clientX, clientY: e.clientY, preventDefault() {} }); return; }
     // 마우스: 한 번 누르면 열기 · 손가락: 처음엔 이웃을 밝게(이름표), 같은 점을 다시 누르면 열기
     if (wasTouch && pinned !== n) { pinned = n; showTip(n, w); kick(); return; }
+    if (onClick) {
+      const t = performance.now(), dbl = lastTap.n === n && t - lastTap.t < 350;
+      lastTap = { n, t };
+      if (dbl) { onOpen?.(n); return; }
+      onClick(n, { clientX: e.clientX, clientY: e.clientY, preventDefault() {} });
+      return;
+    }
     onOpen?.(n);
   });
   canvas.addEventListener("pointercancel", () => { clearTimeout(hold); hold = 0; drag = null; pan = null; });

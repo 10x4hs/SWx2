@@ -7,6 +7,7 @@ import { mountGraph } from "../graph/obsidian.js";
 import { buildBrain, levelOf } from "../graph/brain-data.js";
 import { openNoteMenu, bindNoteMenu, withoutGone } from "../note-menu.js";
 import { isOpen } from "../features.js";
+import { openMenu } from "../ctxmenu.js";
 
 let inst = null;
 export function update(r) { inst?.update(r); }
@@ -50,6 +51,10 @@ export function mount(root, ctx, r) {
       savePrefs: async (p) => { try { const res = await api.updateMe({ graph_prefs: { ...p, open: ctx.me.graph_prefs?.open } }); ctx.me.graph_prefs = res.user.graph_prefs; } catch {} },
       onOpen: (n) => ctx.go(hrefOf(n)),
       onMenu: (n, e) => { const p = pointOf(n.id); if (p) openNoteMenu(e, p, menu); },
+      // 왼쪽 클릭도 메뉴 (열기 · 이름 바꾸기 · 고치기 · 하위 만들기 · 옮기기 · 지우기). 두 번 빨리 누르면 바로 열기
+      onClick: (n, e) => { const p = pointOf(n.id); if (p) openNoteMenu(e, p, menu); else ctx.go(hrefOf(n)); },
+      // 빈 곳 왼쪽 클릭: 여기(지금 층)에 새 노드
+      onBlank: (e) => openMenu(e, { title: levelOf(tree, focus).here?.title || "Second Brain", items: [{ k: "new", label: "New node here" }], onPick: (k) => k === "new" && newHere() }),
     });
   }
   // 받아 둔 것(raw)으로 나무를 다시 — 지우는 중인 노트는 빼고 그 하위는 한 칸 위로 (지우기 · Undo 는 다시 받지 않고 이것만)
@@ -70,6 +75,12 @@ export function mount(root, ctx, r) {
     } catch (e) { if (alive) { stop?.(); stop = null; drawn = ""; $("[data-graph]", root).innerHTML = `<p class="og-loading">Could not load the brain. ${esc(e.message || "")}</p>`; } }
   }
   bindNoteMenu($("[data-list]", root), "a[data-id]", (a) => pointOf(a.dataset.id), menu);
+  async function newHere() {
+    const title = prompt("New node title"); if (!title?.trim()) return;
+    const parent = levelOf(tree, focus).here;
+    try { await api.addNote({ title: title.trim(), body: "", parent_id: parent?.note ? parent.id : null }); toast("Added."); ctx.changed?.("notes"); load(); }
+    catch (err) { toast(err.message || "Could not create the node.", "err"); }
+  }
   root.addEventListener("click", async (e) => {
     if (!e.target.closest("[data-new]")) return;
     const title = prompt("New page title"); if (!title?.trim()) return;
