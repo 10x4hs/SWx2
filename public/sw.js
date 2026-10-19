@@ -261,6 +261,10 @@ self.addEventListener("push", (event) => {
         await self.registration.showNotification("가입 신청이 왔어요", { body: `@${j.last.username} · 승인 대기 ${j.n}명`, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "signup", renotify: true, data: { url: "/#/admin" } });
         return;
       }
+      if (j?.recent && Date.now() - j.recent.at < 120000) {
+        await self.registration.showNotification(`${String(j.recent.by).toUpperCase()}가 @${j.recent.username} 를 승인했어요`, { body: "내 승인만 남았어요 · 관리자 화면에서 승인해요", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "approve", renotify: true, data: { url: "/#/admin" } });
+        return;
+      }
     } catch {}
     // 관리자: 방금 온 기능 사용 신청
     try {
