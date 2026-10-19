@@ -45,7 +45,7 @@ import { applyView, remindAt, isDue } from "../public/js/blocks/dbview.js";
   void T;
 }
 const tag = Date.now().toString(36).slice(-5);
-const mk = (u, n, pw) => execFileSync("node", ["scripts/add-user.mjs", u, n, pw, "--team=swx2"], { stdio: "ignore" }); // 테스트 사람들은 한 팀 (서로 보기 검사)
+const mk = (u, n, pw) => execFileSync("node", ["scripts/add-user.mjs", u, n, pw, "--team=swx2", "--features=all"], { stdio: "ignore" }); // 테스트 사람들은 한 팀 (서로 보기 검사)
 // 로컬 D1 에 직접 묻기 (서버를 거치지 않고 저장된 값 확인)
 const d1 = (sql) => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", sql], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }))[0].results;
 const sid = "q" + [...crypto.getRandomValues(new Uint8Array(2))].map((b) => String.fromCharCode(97 + (b % 26))).join(""); // 가입 아이디는 영문 3글자

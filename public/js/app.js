@@ -19,6 +19,7 @@ import * as booksView from "./views/books.js";
 import * as updatesView from "./views/updates.js";
 import * as adminView from "./views/admin.js";
 import * as teamsView from "./views/teams.js";
+import { featureOfRoute, isOpen, loadFeatures, mountLocked } from "./features.js";
 import { openMcpPanel } from "./mcp-panel.js";
 import { openProfile } from "./profile-edit.js";
 import { statusPicker, statusText } from "./status.js";
@@ -103,7 +104,7 @@ function impBar() {
   document.body.append(bar);
 }
 async function enter(user) {
-  [ctx.users, ctx.teams] = await Promise.all([api.users().then((r) => toned(r.users)), api.teams().then((r) => r.teams).catch(() => [])]);
+  [ctx.users, ctx.teams] = await Promise.all([api.users().then((r) => toned(r.users)), api.teams().then((r) => r.teams).catch(() => []), loadFeatures(ctx)]);
   ctx.me = { ...user, color: ctx.users.find((u) => u.id === user.id)?.color || MEMBER_TONES[0] };
   syncAiPrefs(ctx.me); // 계정에 저장된 AI 모델로 맞춰요
   setHiddenMe(ctx.me); // 내 화면에서 숨긴 친구 페이지
@@ -356,6 +357,16 @@ function route(redraw = false) {
   navStart(); routedAt = performance.now();
   if (!redraw) redrawn = false;
   const r = parseRoute();
+  // 잠긴 기능: 화면 대신 '사용 신청'
+  const lockF = featureOfRoute(r);
+  if (!isOpen(ctx, lockF)) {
+    if (cleanup) { cleanup(); cleanup = null; }
+    const host = document.createElement("div"); host.className = "host host-locked";
+    $("#main").replaceChildren(host);
+    cleanup = mountLocked(host, ctx, lockF); lastView = "locked:" + lockF;
+    $$("[data-nav]").forEach((a) => { if (a.dataset.nav === r.nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    return;
+  }
   $$("[data-nav]").forEach((a) => { if (a.dataset.nav === r.nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   const main = $("#main");
   // notes view keeps its list mounted while switching notes

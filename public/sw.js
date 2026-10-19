@@ -262,6 +262,16 @@ self.addEventListener("push", (event) => {
         return;
       }
     } catch {}
+    // 관리자: 방금 온 기능 사용 신청
+    try {
+      const r = await fetch("/api/admin/feature-requests", { headers: { "x-trio": "1" }, credentials: "include" });
+      const j = r.ok ? await r.json() : null;
+      const q = j?.requests?.[j.requests.length - 1];
+      if (q && Date.now() - q.created_at < 120000) {
+        await self.registration.showNotification("기능 사용 신청이 왔어요", { body: `@${q.username} · ${j.all?.[q.feature] || q.feature}`, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "feature", renotify: true, data: { url: "/#/admin" } });
+        return;
+      }
+    } catch {}
     if (wins.some((w) => w.visibilityState === "visible" && w.focused)) { for (const w of wins) w.postMessage({ type: "room-ping" }); return; }
     // 뉴스: 내 메모에 친구가 반박 · 동의를 달았으면 그걸 먼저 알려요 (푸시는 내용 없이 깨우기만 해서 여기서 물어봐요)
     try {

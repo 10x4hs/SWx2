@@ -27,6 +27,7 @@ import { registerPlans } from "./plans.js";
 import { registerDiary } from "./diary.js";
 import { registerAdmin } from "./admin.js";
 import { registerTeams } from "./teams.js";
+import { registerFeatures, gate } from "./features.js";
 import { registerCustom } from "./custom.js";
 import { registerFiles } from "./files.js";
 import { registerNotes, indexStmts, MAX_NOTE } from "./notes.js";
@@ -92,6 +93,9 @@ async function route(req, env, url, ec) {
       return r.handler(ctx);
     }
     ctx.user = await requireUser(req, env);
+    // 기능 잠금: 관리자 말고는 승인받은 기능만 (뉴스 · 대화방 · 계획은 누구나)
+    const locked = gate(req.method, path, ctx.user);
+    if (locked) return locked;
     // AI 하루 사용량: 첫 팀(SWx2) 밖의 사람은 하루 AI_DAILY 번까지 (키 비용)
     if (req.method === "POST" && AI_PATH.test(path)) await aiQuota(env, ctx.user);
     // 첫 로그인: 비밀번호를 바꾸기 전에는 내 정보·멤버 목록·로그인 관련 API만 쓸 수 있어요
@@ -130,6 +134,7 @@ registerPlans(on);
 registerDiary(on);
 registerAdmin(on);
 registerTeams(on);
+registerFeatures(on);
 registerNotes(on);
 registerRecords(on);
 registerCustom(on); // Dock 아이콘 우클릭 → 내 CSS · HTML · JS
