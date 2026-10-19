@@ -226,6 +226,7 @@ export const api = {
   newsCompanies: () => request("GET", "/news/companies"),
   newsCompanySub: (key, on) => request("PUT", "/news/companies/" + key, { on }),
   newsCompany: (key) => request("GET", "/news/company/" + key),
+  newsTrend: (kind, before) => request("GET", "/news/trend/" + kind + (before ? "?before=" + before : "")),
   newsHistory: (before) => request("GET", "/news/history?days=7" + (before ? "&before=" + before : "")),
   newsSearch: (q) => request("GET", "/news/search?limit=60&q=" + encodeURIComponent(q)),
   newsUsage: (days) => request("GET", "/news/usage?days=" + (days || 30)),

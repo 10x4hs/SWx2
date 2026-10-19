@@ -51,7 +51,7 @@ export function mount(root, ctx, r) {
         <header class="gn-mast">
           <div class="gn-mast-l"><span id="gn-today"></span></div>
           <div class="gn-mast-c">
-            <p class="gn-tagline">The daily paper for the three of us</p>
+            <p class="gn-tagline">The daily paper for SWx2</p>
             <div class="gn-mast-row">
               <span class="gn-clocks" data-side="l">${CLOCKS.slice(0, 3).map(clockHtml).join("")}</span>
               <a class="gn-wordmark" href="#/news">SWX2</a>
@@ -61,7 +61,7 @@ export function mount(root, ctx, r) {
           <div class="gn-mast-r"><span class="gn-clock"><i>KST</i> <b id="gn-clk"></b></span></div>
         </header>
         <div class="gn-bar">
-          <nav class="gn-views" aria-label="News sections"><a href="#/news" data-view="today">Today</a><a href="#/news/world" data-view="world">World</a><a href="#/news/history" data-view="history">History</a><a href="#/news/co" data-view="co">Following</a><a href="#/news/library" data-view="library">My Library</a><a href="#/news/board" data-view="board">Leaderboard</a><a href="#/news/talk" data-view="talk">Comments <i class="gn-badge" id="gn-talk-badge" hidden></i></a></nav>
+          <nav class="gn-views" aria-label="News sections"><a href="#/news" data-view="today">Today</a><a href="#/news/world" data-view="world">World</a><a href="#/news/ai-trend" data-view="ai-trend">AI Trend</a><a href="#/news/hw-trend" data-view="hw-trend">HW Trend</a><a href="#/news/history" data-view="history">History</a><a href="#/news/co" data-view="co">Following</a><a href="#/news/library" data-view="library">My Library</a><a href="#/news/board" data-view="board">Leaderboard</a><a href="#/news/talk" data-view="talk">Comments <i class="gn-badge" id="gn-talk-badge" hidden></i></a></nav>
           <div class="gn-daynav">
             <a class="gn-nav" id="gn-prev" href="#" aria-label="Previous day">←</a>
             <button class="gn-date" id="gn-date" type="button" aria-haspopup="dialog" aria-expanded="false"><span id="gn-date-t">Today</span></button>
@@ -605,6 +605,26 @@ export function mount(root, ctx, r) {
     page.querySelector("#gn-hsearch").addEventListener("submit", (e) => { e.preventDefault(); hist.q = page.querySelector("#gn-hq").value.trim(); if (hist.q && hist.q.length < 2) return toast("Type at least 2 characters."); drawHistory(); });
   }
 
+  // ---------- 트렌드 (#/news/ai-trend · #/news/hw-trend) — 새로 나온 SW · HW 기술만 ----------
+  const TREND = { "ai-trend": { kind: "sw", title: "AI Trend", sub: "새 AI 모델 · 구조(JEPA 등) · RAG · 에이전트 · 개발 도구 · 언어 · 프레임워크 — 소프트웨어 신기술" }, "hw-trend": { kind: "hw", title: "HW Trend", sub: "뇌 임플란트 · BCI · 로봇 · 칩 · 양자컴퓨터 · 전기차 · 배터리 · 우주 — 하드웨어 신기술" } };
+  let trend = { key: "", items: [], next: null };
+  async function drawTrend(key, more) {
+    const T = TREND[key];
+    if (!more) trend = { key, items: [], next: null };
+    const head = `<section class="gn-hero"><h1 class="gn-h1 gn-h1-sec">${T.title}</h1><p class="gn-soft">${T.sub}</p></section>`;
+    if (!more) page.innerHTML = head + `<p class="gn-soft gn-feed">Loading…</p>`;
+    let d;
+    try { d = await api.newsTrend(T.kind, trend.next); } catch (e) { if (alive) page.innerHTML = head + `<p class="gn-soft gn-feed">${esc(e.message)}</p>`; return; }
+    if (!alive || view !== key) return;
+    trend.items.push(...(d.items || [])); trend.next = d.next_before || null;
+    for (const it of d.items || []) items.set(it.id, { ...items.get(it.id), ...it });
+    list = trend.items.map((it) => it.id);
+    const y = $("#gn-scroll").scrollTop;
+    page.innerHTML = head + `<div class="gn-feed">${trend.items.length ? `<ul class="gn-list">${trend.items.map((it) => row(items.get(it.id))).join("")}</ul>` : `<p class="gn-empty">아직 모인 글이 없어요. 새 기사가 들어오면 여기에 쌓여요.</p>`}
+      ${trend.next ? `<button type="button" class="gn-more" data-tmore>Load more</button>` : ""}</div>`;
+    if (more) $("#gn-scroll").scrollTop = y;
+  }
+
   // ---------- AI 토큰 사용량 (Leaderboard 아래) ----------
   async function usageHtml() {
     let u; try { u = await api.newsUsage(30); } catch { return ""; }
@@ -623,11 +643,12 @@ export function mount(root, ctx, r) {
   }
 
   // ---------- 이벤트 ----------
-  const backHash = () => (view === "history" ? "#/news/history" : view === "library" ? "#/news/library/" + libKind : view === "board" ? "#/news/board" : view === "talk" ? "#/news/talk" : view === "world" ? "#/news/world" : view === "co" ? "#/news/co/" + coKey : ed && ed.day !== kstDay() ? "#/news/" + ed.day : "#/news");
+  const backHash = () => (TREND[view] ? "#/news/" + view : view === "history" ? "#/news/history" : view === "library" ? "#/news/library/" + libKind : view === "board" ? "#/news/board" : view === "talk" ? "#/news/talk" : view === "world" ? "#/news/world" : view === "co" ? "#/news/co/" + coKey : ed && ed.day !== kstDay() ? "#/news/" + ed.day : "#/news");
   const back = () => ctx.go(backHash());
   const onClick = (e) => {
     const s = e.target.closest("[data-star]"); if (s) { e.preventDefault(); toggleStar(s.dataset.star); return; }
     if (e.target.closest("[data-hmore]")) { drawHistory(true); return; }
+    if (e.target.closest("[data-tmore]")) { drawTrend(view, true); return; }
     if (e.target.closest("[data-hclear]")) { e.preventDefault(); hist.q = ""; drawHistory(); return; }
     const rd = e.target.closest("[data-read]"); if (rd) { e.preventDefault(); toggleRead(rd.dataset.read); return; }
     if (e.target.closest("[data-close]") || e.target === scrim) { e.preventDefault(); back(); return; }
@@ -662,7 +683,7 @@ export function mount(root, ctx, r) {
       openItem(rr.id); return;
     }
     if (cur) closeSheet();
-    const next = rr.sub === "world" ? "world" : rr.sub === "co" ? "co" : rr.sub === "talk" ? "talk" : rr.sub === "board" ? "board" : rr.sub === "library" ? "library" : rr.sub === "history" ? "history" : "today";
+    const next = rr.sub === "world" ? "world" : rr.sub === "co" ? "co" : rr.sub === "talk" ? "talk" : rr.sub === "board" ? "board" : rr.sub === "library" ? "library" : rr.sub === "history" ? "history" : TREND[rr.sub] ? rr.sub : "today";
     const changed = next !== view;
     if (changed) worldCleanup?.(), (worldCleanup = null);
     setView(next);
@@ -672,6 +693,7 @@ export function mount(root, ctx, r) {
     else if (next === "board") drawBoard();
     else if (next === "library") drawLibrary(rr.id);
     else if (next === "history") { if (changed || !hist.days.length) drawHistory(); }
+    else if (TREND[next]) { if (changed || trend.key !== next) drawTrend(next); }
     else {
       const day = rr.day && DAY_RE.test(rr.day) ? rr.day : kstDay();
       store.set("gn-day", day);
