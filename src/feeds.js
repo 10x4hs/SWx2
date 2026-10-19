@@ -82,6 +82,13 @@ export const SEED = [
   ["FT World", "https://www.ft.com/world?format=rss", "macro", "en", true, "파이낸셜타임스 세계면 (제목·요약만)"],
   ["CNBC World", "https://www.cnbc.com/id/100727362/device/rss/rss.html", "macro", "en", true, "세계 시장 · 경제"],
   ["BBC Business", "https://feeds.bbci.co.uk/news/business/rss.xml", "macro", "en", true, "세계 경제 · 기업"],
+  // 트렌드 (SW · HW 신기술) — 2026-10-19 확인
+  ["Hacker News 150+", "https://hnrss.org/frontpage?points=150", "ai", "en", true, "커뮤니티가 고른 새 SW 도구 · 오픈소스 · 기술 글"],
+  ["IEEE Spectrum", "https://spectrum.ieee.org/feeds/feed.rss", "semi", "en", true, "공학자 학회 매체. 칩 · 로봇 · 에너지 · BCI 같은 HW 신기술"],
+  ["Electrek", "https://electrek.co/feed/", "energy", "en", true, "전기차 · 테슬라 · 배터리 소식"],
+  ["The Robot Report", "https://www.therobotreport.com/feed/", "semi", "en", true, "로봇 · 휴머노이드 산업"],
+  ["MarkTechPost", "https://www.marktechpost.com/feed/", "ai", "en", true, "새 AI 모델 · 논문 · 프레임워크를 빠르게 정리"],
+  ["New Atlas", "https://newatlas.com/index.rss", "semi", "en", true, "신기술 · 기기 · 과학 발견"],
 ];
 
 // 넣지 말 것 — 200 에 유효한 XML 을 주지만 실제로는 멈춘 피드.

@@ -373,10 +373,11 @@ export async function summarize(env, limit = 10, opts = {}) {
   아래 기존 태그 중 **바로 그 이야기**가 있으면 글자 그대로 써. 분야만 비슷하면 묶지 마. 맞는 게 없으면 새 태그.
   기존 태그: ${keys.length ? keys.join(" | ") : "(없음)"}
 - tag_ko: tag 의 한국어 제목 (12자 이내).
+- trend: 이 글이 **새로 나온 기술 그 자체**를 다루면 — "sw"(소프트웨어 신기술: 새 AI 모델 · 구조(JEPA 등) · RAG · 에이전트 · 개발 도구 · 언어 · 프레임워크 · 오픈소스) | "hw"(하드웨어 신기술: 뇌 임플란트 · BCI · 로봇 · 휴머노이드 · 칩 · 양자컴퓨터 · 전기차(테슬라 로드스터 같은 새 차) · 배터리 · 우주 · 웨어러블). 정책 · 투자 · 인사 · 소송만 다루면 "".
 
 ${body}
 
-{"items":[{"i":0,"one":"...","summary":"...","section":"ai","geo":["US"],"tag":"...","tag_ko":"..."}]} 형식으로만 답해. i 는 글 번호.`,
+{"items":[{"i":0,"one":"...","summary":"...","section":"ai","geo":["US"],"tag":"...","tag_ko":"...","trend":""}]} 형식으로만 답해. i 는 글 번호.`,
         () => ({ items: chunk.map((t, n) => /NOANSWER/.test(t.title) ? null : ({ i: n, one: `${t.title}`.slice(0, 55), summary: `${t.title}. 시험용 요약 둘째 줄이에요.`, section: "", geo: guessGeo(`${t.title} ${t.raw || ""}`), tag: fakeTag(`${t.title} ${t.raw || ""}`, t.topic), tag_ko: "" })).filter(Boolean) }), opts.ids ? "summarize-one" : "summarize"
       );
       const outs = Array.isArray(data?.items) ? data.items : [];
@@ -389,8 +390,9 @@ ${body}
         const text = `${t.title} ${t.raw || ""}`.slice(0, 4000);
         let geo = [...new Set((Array.isArray(o.geo) ? o.geo : []).map((c) => String(c).toUpperCase().trim()).map((c) => (c === "EU" ? "BE" : c === "UK" ? "GB" : c)).filter((c) => /^[A-Z]{2}$/.test(c)))].slice(0, 3);
         if (!geo.length) geo = guessGeo(text);
-        await env.DB.prepare("UPDATE news_items SET one_liner = ?, summary = ?, section = ?, geo = ? WHERE id = ?")
-          .bind(one, summary, sectionOf(t.topic, String(o.section || "").toLowerCase().trim()), JSON.stringify(geo), t.id).run();
+        const trend = ["sw", "hw"].includes(String(o.trend || "").toLowerCase()) ? String(o.trend).toLowerCase() : null;
+        await env.DB.prepare("UPDATE news_items SET one_liner = ?, summary = ?, section = ?, geo = ?, trend = ? WHERE id = ?")
+          .bind(one, summary, sectionOf(t.topic, String(o.section || "").toLowerCase().trim()), JSON.stringify(geo), trend, t.id).run();
         await attachThread(env, { id: t.id, text: `${t.title} ${one}` }, o.tag, o.tag_ko);
         const k = normTag(o.tag); if (k && !keys.includes(k)) keys.push(k);
         done += 1;
@@ -907,6 +909,14 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     for (const r of rows) by.get(r.day)?.push(r);
     const out = days.map((day) => ({ day, items: by.get(day) })).filter((d) => d.items.length);
     return json({ days: out, next_before: out.length ? out[out.length - 1].day : null });
+  });
+  // [GET /news/trend/sw|hw?before=<ms>] 트렌드: SW(AI 트렌드) · HW 신기술 글, 최신순 40개씩
+  on("GET", "/news/trend/:kind", async ({ env, q, params }) => {
+    if (!["sw", "hw"].includes(params.kind)) fail(404, "없는 트렌드예요.");
+    const before = Number(q.get("before")) || Date.now() + 864e5;
+    const { results } = await env.DB.prepare(`SELECT ${ED_COLS} FROM news_items i JOIN news_feeds f ON f.id = i.feed_id WHERE i.trend = ? AND i.published_at < ? ORDER BY i.published_at DESC LIMIT 40`).bind(params.kind, before).all();
+    const items = (await decorate(env, results || [])).map(shape);
+    return json({ items, next_before: items.length === 40 ? results[results.length - 1].published_at : null });
   });
   // [GET /news/search?q=..&limit=60] 제목 · 한국어 제목 · 한 줄 요약 · 요약에서 찾기 (최신순)
   on("GET", "/news/search", async ({ env, q }) => {
