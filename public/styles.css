@@ -3041,3 +3041,13 @@ html.rd-dragging, html.rd-dragging * { cursor: crosshair !important; -webkit-use
 .adm-ap small { opacity: .7; font-size: 11px; }
 .adm-ap.ok { opacity: 1; border-color: #1f9d55; background: rgba(31,157,85,.16); color: #7fe0b0; }
 .adm-ap.me { box-shadow: 0 0 0 1px rgba(255,255,255,.25) inset; }
+
+/* Dock — 실제 앱 아이콘 그림 */
+.app-ic.ic-img { padding: 0; background: none; box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 6px 14px -6px rgba(0,0,0,.35); }
+.app-ic.ic-img::after { background: none; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.18); }
+.app-ic.ic-img img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+
+/* 24시간 무료체험 띠 */
+.trial-bar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 9997; display: flex; gap: 10px; align-items: center; max-width: calc(100% - 32px); padding: 7px 16px; border-radius: 999px; background: linear-gradient(135deg, rgba(155,123,255,.92), rgba(70,224,208,.88)); color: #0a0c18; font-size: 13px; box-shadow: 0 10px 30px -10px rgba(110,90,255,.6); }
+.trial-bar b { font-weight: 800; }
+.adm-trial { color: #b9a6ff !important; opacity: 1 !important; }

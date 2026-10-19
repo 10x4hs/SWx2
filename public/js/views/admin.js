@@ -23,11 +23,11 @@ export function mount(root, ctx) {
     const plansBtn = u.state !== "pending" ? `<button type="button" class="btn sm ghost" data-act="plans">일정</button>` : "";
     const acts = u.state === "pending"
       ? `<button type="button" class="btn sm adm-ok" data-act="approve" ${mine ? "disabled" : ""}>${mine ? "승인함" : "승인"}</button><button type="button" class="btn sm adm-no" data-act="reject">거절</button>`
-      : admin ? `${plansBtn}<span class="faint">관리자</span>`
-      : `${plansBtn}${u.state === "active" ? `<button type="button" class="btn sm" data-act="impersonate">들어가기</button>` : ""}<button type="button" class="btn sm ghost" data-act="reset">임시 비밀번호</button><button type="button" class="btn sm ghost" data-act="suspend">${u.state === "suspended" ? "정지 풀기" : "정지"}</button><button type="button" class="btn sm ghost danger" data-act="delete">삭제</button>`;
+      : admin ? `${plansBtn}<button type="button" class="btn sm ghost" data-act="excuse" title="그날은 뉴스 연속 출석이 끊기지 않아요">출석 인정</button><span class="faint">관리자</span>`
+      : `${plansBtn}<button type="button" class="btn sm ghost" data-act="excuse" title="그날은 뉴스 연속 출석이 끊기지 않아요">출석 인정</button>${u.state === "active" ? `<button type="button" class="btn sm" data-act="impersonate">들어가기</button>` : ""}<button type="button" class="btn sm ghost" data-act="reset">임시 비밀번호</button><button type="button" class="btn sm ghost" data-act="suspend">${u.state === "suspended" ? "정지 풀기" : "정지"}</button><button type="button" class="btn sm ghost danger" data-act="delete">삭제</button>`;
     return `<tr data-id="${esc(u.id)}" data-name="${esc(u.username)}" class="st-${u.state}">
       <td><b>${esc(u.display_name || u.username)}</b><small>@${esc(u.username)}${admin ? " · 관리자" : ""}</small></td>
-      <td><span class="adm-state">${STATE[u.state] || u.state}</span>${u.state === "pending" ? `<div class="adm-aps" aria-label="관리자 승인 ${u.approvals.length}/${data.admins.length}">${data.admins.map((a) => { const ok = u.approvals.includes(a), t = u.approval_at?.[a]; return `<span class="adm-ap${ok ? " ok" : ""}${a === ctx.me.username ? " me" : ""}" title="${ok && t ? new Date(t).toLocaleString("ko-KR") : "아직"}"><b>${esc(a.toUpperCase())}</b>${ok ? `✓ 승인${t ? ` <small>${new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</small>` : ""}` : "대기"}</span>`; }).join("")}</div>` : ""}</td>
+      <td><span class="adm-state">${STATE[u.state] || u.state}</span>${u.trial_until > Date.now() ? `<small class="adm-trial">무료 체험 ${Math.max(1, Math.round((u.trial_until - Date.now()) / 3600e3))}시간 남음</small>` : ""}${u.state === "pending" ? `<div class="adm-aps" aria-label="관리자 승인 ${u.approvals.length}/${data.admins.length}">${data.admins.map((a) => { const ok = u.approvals.includes(a), t = u.approval_at?.[a]; return `<span class="adm-ap${ok ? " ok" : ""}${a === ctx.me.username ? " me" : ""}" title="${ok && t ? new Date(t).toLocaleString("ko-KR") : "아직"}"><b>${esc(a.toUpperCase())}</b>${ok ? `✓ 승인${t ? ` <small>${new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</small>` : ""}` : "대기"}</span>`; }).join("")}</div>` : ""}</td>
       <td>${u.teams.length ? u.teams.map(esc).join(", ") : '<span class="faint">혼자</span>'}</td>
       <td class="adm-feats">${admin ? '<span class="faint">전부</span>' : Object.entries(feats.all || {}).map(([k, label]) => { const on = (feats.granted || []).some((g) => g.user_id === u.id && g.feature === k); return `<button type="button" class="adm-chip${on ? " on" : ""}" data-feat="${k}" title="${esc(label)} — 눌러서 ${on ? "닫기" : "열기"}">${esc(FEAT_SHORT[k] || k)}</button>`; }).join("")}</td>
       <td>${day(u.created_at)}</td>
@@ -93,6 +93,12 @@ export function mount(root, ctx) {
     if (off) { try { await api.adminAnnounceOff(off.dataset.annOff); ann = null; drawAnn(); } catch (err) { toast(err.message, "err"); } return; }
     const b = e.target.closest("[data-act]"); if (!b) return;
     if (b.dataset.act === "plans") { const tr = b.closest("tr"); showPlans(tr.dataset.id, tr.dataset.name); return; }
+    if (b.dataset.act === "excuse") {
+      const tr = b.closest("tr"), y = new Date(Date.now() + 9 * 3600e3 - 864e5).toISOString().slice(0, 10);
+      const d = prompt(`@${tr.dataset.name} 뉴스 출석을 인정할 날 (YYYY-MM-DD)`, y); if (!d) return;
+      try { await api.adminNewsExcuse(tr.dataset.id, d.trim()); toast(`@${tr.dataset.name} ${d.trim()} 출석을 인정했어요 · 연속이 이어져요`); } catch (err) { toast(err.message, "err"); }
+      return;
+    }
     const tr = b.closest("tr"), id = tr.dataset.id, name = tr.dataset.name, act = b.dataset.act;
     if (act === "delete" && !confirm(`@${name} 계정과 모든 기록을 지울까요? 되돌릴 수 없어요.`)) return;
     if (act === "reject" && !confirm(`@${name} 가입 신청을 거절할까요?`)) return;

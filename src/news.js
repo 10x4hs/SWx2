@@ -950,11 +950,13 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     const today = day(Date.now());
     const dow = (new Date(Date.now() + KST).getUTCDay() + 6) % 7; // 월=0
     const weekFrom = day(Date.now() - dow * 864e5);
-    const [{ results: users }, { results: prefs }, { results: rows }] = await env.DB.batch([
+    const [{ results: users }, { results: prefs }, { results: rows }, { results: exc }] = await env.DB.batch([
       env.DB.prepare(`SELECT id FROM users WHERE username NOT LIKE 't\\_%' ESCAPE '\\' AND id IN ${PEERS("?")}`).bind(user.id),
       env.DB.prepare("SELECT user_id, quota FROM news_prefs"),
       env.DB.prepare("SELECT user_id, date((read_at + 32400000) / 1000, 'unixepoch') AS d, COUNT(*) AS n FROM news_reads WHERE read = 1 AND read_at IS NOT NULL AND read_at > ? GROUP BY user_id, d").bind(Date.now() - 400 * 864e5),
+      env.DB.prepare("SELECT user_id, day FROM news_excused WHERE day > ?").bind(day(Date.now() - 400 * 864e5)),
     ]);
+    const excused = new Set((exc || []).map((e) => e.user_id + "|" + e.day));
     const quota = new Map((prefs || []).map((p) => [p.user_id, p.quota]));
     const by = new Map();
     for (const r of rows || []) { if (!by.has(r.user_id)) by.set(r.user_id, new Map()); by.get(r.user_id).set(r.d, r.n); }
@@ -962,8 +964,9 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
       const m = by.get(id) || new Map(), q = quota.get(id) || 5;
       let week = 0, total = 0; for (const [d, n] of m) { total += n; if (d >= weekFrom) week += n; }
       // 오늘 아직 몫을 못 채웠으면 어제부터 거꾸로 세요 (하루가 끝나기 전에 연속이 끊겨 보이지 않게)
+      // 관리자가 '출석 인정'한 날은 끊기지 않고 건너뛰어요 (일수에는 더하지 않아요)
       let streak = 0, t = Date.now(); if ((m.get(today) || 0) < q) t -= 864e5;
-      while ((m.get(day(t)) || 0) >= q) { streak++; t -= 864e5; }
+      for (;;) { const d = day(t), ok = (m.get(d) || 0) >= q; if (ok) streak++; else if (!excused.has(id + "|" + d)) break; t -= 864e5; if (streak > 400) break; }
       const best = Math.max(0, ...m.values());
       return { user_id: id, quota: q, today: m.get(today) || 0, week, total, streak, best };
     }).sort((a, b) => b.week - a.week || b.today - a.today || b.total - a.total);
