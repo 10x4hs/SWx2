@@ -3,6 +3,7 @@
 import { api } from "../api.js";
 import { esc, toast } from "../util.js";
 
+const FEAT_SHORT = { brain: "Brain", study: "공부", diary: "일기", ai: "AI", biz: "경영", dev: "개발", pages: "페이지", mcp: "MCP" };
 const STATE = { pending: "승인 대기", active: "활성", suspended: "정지" };
 const ago = (t) => {
   if (!t) return "—";
@@ -13,7 +14,7 @@ const day = (t) => (t ? new Date(t).toLocaleDateString("ko-KR") : "—");
 
 export function mount(root, ctx) {
   if (ctx.me?.role !== "admin" || ctx.me?.impersonated_by) { root.innerHTML = `<div class="adm"><p class="faint">관리자만 볼 수 있어요.</p></div>`; return () => {}; }
-  let data = null, alive = true;
+  let data = null, alive = true, feats = { all: {}, requests: [], granted: [] };
   root.innerHTML = `<div class="adm"><header class="adm-head"><h1>관리자</h1><p class="faint">가입 승인 · 회원 · 팀 · 일정 · 공지</p></header><div class="adm-body"><p class="faint">불러오는 중…</p></div></div>`;
   const body = root.querySelector(".adm-body");
 
@@ -28,6 +29,7 @@ export function mount(root, ctx) {
       <td><b>${esc(u.display_name || u.username)}</b><small>@${esc(u.username)}${admin ? " · 관리자" : ""}</small></td>
       <td><span class="adm-state">${STATE[u.state] || u.state}</span>${u.state === "pending" ? `<small>승인 ${u.approvals.length}/${data.admins.length}${u.approvals.length ? " · " + u.approvals.map(esc).join(", ") : ""}</small>` : ""}</td>
       <td>${u.teams.length ? u.teams.map(esc).join(", ") : '<span class="faint">혼자</span>'}</td>
+      <td class="adm-feats">${admin ? '<span class="faint">전부</span>' : Object.entries(feats.all || {}).map(([k, label]) => { const on = (feats.granted || []).some((g) => g.user_id === u.id && g.feature === k); return `<button type="button" class="adm-chip${on ? " on" : ""}" data-feat="${k}" title="${esc(label)} — 눌러서 ${on ? "닫기" : "열기"}">${esc(FEAT_SHORT[k] || k)}</button>`; }).join("")}</td>
       <td>${day(u.created_at)}</td>
       <td>${ago(u.last_seen_at)}</td>
       <td>${u.must_change_pw ? "임시 (바꿔야 함)" : "설정됨"}<small>${u.pw_changed_at ? "바꾼 날 " + day(u.pw_changed_at) : ""}${u.locked_until > Date.now() ? " · 잠김" : ""}</small></td>
@@ -38,8 +40,9 @@ export function mount(root, ctx) {
     body.innerHTML = `
       <div class="adm-stats">${[["가입자", s.total], ["활성", s.active], ["승인 대기", s.pending], ["정지", s.suspended], ["최근 7일 접속", s.seen_week]].map(([k, v]) => `<div class="adm-stat"><b>${v}</b><span>${k}</span></div>`).join("")}</div>
       <p class="adm-temp" hidden></p>
-      <div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>회원</th><th>상태</th><th>팀</th><th>가입</th><th>최근 접속</th><th>비밀번호</th><th></th></tr></thead>
+      <div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>회원</th><th>상태</th><th>팀</th><th>기능</th><th>가입</th><th>최근 접속</th><th>비밀번호</th><th></th></tr></thead>
       <tbody>${data.users.map(row).join("")}</tbody></table></div>
+      <section class="adm-sec"><h2>기능 사용 신청</h2>${feats.requests.length ? feats.requests.map((q) => `<div class="adm-req" data-req="${esc(q.id)}"><b>${esc(q.display_name || q.username)}</b> <small class="faint">@${esc(q.username)}</small> → <b>${esc(feats.all[q.feature] || q.feature)}</b>${q.note ? ` <small class="faint">"${esc(q.note)}"</small>` : ""} <button type="button" class="btn sm adm-ok" data-dec="approve">승인</button><button type="button" class="btn sm adm-no" data-dec="deny">거절</button></div>`).join("") : '<p class="faint">새 신청 없음</p>'}</section>
       <section class="adm-sec" id="adm-plans" hidden></section>
       <section class="adm-sec"><h2>공지</h2><p class="faint">모든 사람 화면 위에 떠요. 새로 올리면 예전 공지는 내려가요.</p>
         <div class="adm-ann-now"></div>
@@ -79,9 +82,13 @@ export function mount(root, ctx) {
     } catch (err) { toast(err.message, "err"); }
   }
   body.addEventListener("change", (e) => { const i = e.target.closest("[data-plans-from]"); if (i?.value) { const sec = body.querySelector("#adm-plans"); showPlans(sec.dataset.id, sec.dataset.name, i.value); } });
-  const load = () => api.adminUsers().then((d) => { if (!alive) return; data = d; draw(); }).catch((e) => { body.innerHTML = `<p class="faint">${esc(e.message)}</p>`; });
+  const load = () => Promise.all([api.adminUsers(), api.adminFeatureRequests().catch(() => feats)]).then(([d, fr]) => { if (!alive) return; data = d; feats = fr; draw(); }).catch((e) => { body.innerHTML = `<p class="faint">${esc(e.message)}</p>`; });
 
   body.addEventListener("click", async (e) => {
+    const dec = e.target.closest("[data-dec]");
+    if (dec) { try { await api.adminDecideFeature(dec.closest("[data-req]").dataset.req, dec.dataset.dec); toast(dec.dataset.dec === "approve" ? "열어 줬어요." : "거절했어요."); await load(); } catch (err) { toast(err.message, "err"); } return; }
+    const chip = e.target.closest("[data-feat]");
+    if (chip) { try { await api.adminSetFeature(chip.closest("tr").dataset.id, chip.dataset.feat, !chip.classList.contains("on")); await load(); } catch (err) { toast(err.message, "err"); } return; }
     const off = e.target.closest("[data-ann-off]");
     if (off) { try { await api.adminAnnounceOff(off.dataset.annOff); ann = null; drawAnn(); } catch (err) { toast(err.message, "err"); } return; }
     const b = e.target.closest("[data-act]"); if (!b) return;

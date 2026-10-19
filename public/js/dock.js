@@ -7,6 +7,7 @@ import { openMenu } from "./ctxmenu.js";
 import { openRename } from "./customize.js";
 import { sortByOrder } from "./dock-drag.js";
 import { isHidden, hidePage } from "./hidden-pages.js";
+import { isOpen, NAV_FEATURE } from "./features.js";
 
 // ctx · NAV · parseRoute · 지금 보는 화면(lastView)은 app.js 가 갖고 있어서 init 으로 받아요 (app.js 를 import 하면 순환이라서요)
 let ctx, NAV, parseRoute, getLastView;
@@ -25,7 +26,7 @@ export function initDock(deps) {
 const navLive = () => NAV.filter((n) => (!n.until || kstDay() <= n.until) && (!n.when || n.when(ctx.me)));
 
 // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점. data-dock = 순서를 기억하는 이름
-const navItem = (n) => `<a class="rail-btn" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.key === "study" ? studyView.lastHash() : n.hash}" data-nav="${n.key}" data-dock="nav:${n.key}" draggable="false" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
+const navItem = (n) => `<a class="rail-btn${isOpen(ctx, NAV_FEATURE[n.key]) ? "" : " locked"}" href="${n.key === "calendar" ? "#/calendar/" + ymd(today()) : n.key === "study" ? studyView.lastHash() : n.hash}" data-nav="${n.key}" data-dock="nav:${n.key}" draggable="false" aria-label="${n.label}" data-tip="${n.tip}">${appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
 
 // ---------- Dock 배지: 대화방 안 읽은 개수 ----------
 // 로그인해 있으면 60초마다. 대화방이 열려 있을 땐 그 화면이 스스로 폴링하니 여기선 쉬어요.
