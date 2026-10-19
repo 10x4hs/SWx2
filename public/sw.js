@@ -253,6 +253,15 @@ self.addEventListener("push", (event) => {
       for (const x of list) await self.registration.showNotification(`⏰ ${x.title}`, { body: [x.db_title, x.date, x.time].filter(Boolean).join(" · "), icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "remind-" + x.id, data: { url: "/#/notes/" + x.id } });
       if (list.length) return;
     } catch {}
+    // 관리자: 방금 온 가입 신청 (관리자가 아니면 403 이라 건너뛰어요)
+    try {
+      const r = await fetch("/api/admin/pending", { headers: { "x-trio": "1" }, credentials: "include" });
+      const j = r.ok ? await r.json() : null;
+      if (j?.last && Date.now() - j.last.created_at < 120000) {
+        await self.registration.showNotification("가입 신청이 왔어요", { body: `@${j.last.username} · 승인 대기 ${j.n}명`, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "signup", renotify: true, data: { url: "/#/admin" } });
+        return;
+      }
+    } catch {}
     if (wins.some((w) => w.visibilityState === "visible" && w.focused)) { for (const w of wins) w.postMessage({ type: "room-ping" }); return; }
     // 뉴스: 내 메모에 친구가 반박 · 동의를 달았으면 그걸 먼저 알려요 (푸시는 내용 없이 깨우기만 해서 여기서 물어봐요)
     try {
