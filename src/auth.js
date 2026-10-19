@@ -112,7 +112,7 @@ export function registerAuth(on) {
   on("POST", "/auth/signup", async ({ req, env }) => {
     const b = await body(req);
     const username = str(b.username, 20, "아이디").toLowerCase();
-    if (!/^[a-z0-9_]{3,20}$/.test(username)) fail(400, "아이디는 영문 소문자·숫자·_ 로 3~20자예요.");
+    if (!/^[a-z]{3}$/.test(username)) fail(400, "아이디는 영문 3글자예요 (예: hsk). 이름 이니셜로 정해 주세요."); // 가입은 이니셜 3글자만 (스크립트로 만든 계정은 예외)
     if (typeof b.password !== "string" || b.password.length < 8) fail(400, "비밀번호는 8자 이상이어야 해요.");
     if (b.password.length > 200) fail(400, "비밀번호가 너무 길어요.");
     const display = b.display_name ? str(b.display_name, 12, "이름") : username.slice(0, 12);

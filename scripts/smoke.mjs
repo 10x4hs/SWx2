@@ -48,11 +48,14 @@ const tag = Date.now().toString(36).slice(-5);
 const mk = (u, n, pw) => execFileSync("node", ["scripts/add-user.mjs", u, n, pw, "--team=swx2"], { stdio: "ignore" }); // 테스트 사람들은 한 팀 (서로 보기 검사)
 // 로컬 D1 에 직접 묻기 (서버를 거치지 않고 저장된 값 확인)
 const d1 = (sql) => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", sql], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }))[0].results;
-let r = await call("a", "POST", "/auth/signup", { username: "x" + tag, password: "password1", display_name: "x", invite: "trio-2026" });
+const sid = "q" + [...crypto.getRandomValues(new Uint8Array(2))].map((b) => String.fromCharCode(97 + (b % 26))).join(""); // 가입 아이디는 영문 3글자
+let r = await call("a", "POST", "/auth/signup", { username: "x" + tag, password: "password1" });
+ok(r.status === 400, "signup: id must be 3 letters");
+r = await call("a", "POST", "/auth/signup", { username: sid, password: "password1" });
 ok(r.status === 201 && r.data.pending === true, "signup creates a pending account");
-r = await call("x", "POST", "/auth/login", { username: "x" + tag });
+r = await call("x", "POST", "/auth/login", { username: sid });
 ok(r.status === 403 && r.data.account_state === "pending", "pending account can't log in until admins approve");
-d1(`DELETE FROM users WHERE username = 'x${tag}'`);
+d1(`DELETE FROM users WHERE username = '${sid}'`);
 mk("t_a" + tag, "테스트A", "password1"); mk("t_b" + tag, "테스트B", "password2");
 r = await call("x", "POST", "/auth/login", { username: "nobody" + tag }); ok(r.status === 401, "unknown id rejected");
 r = await call("a", "POST", "/auth/login", { username: "t_a" + tag }); ok(r.status === 200, "login a by id only");
