@@ -1,6 +1,6 @@
 // 개발 흐름 — 회의실: 그날의 회의 장면 3개(지난 주 내용과 섞인 문제 포함). 대표로서 하나 고르면 종이 위에 해설이 열려요.
 import { $$, esc, toast } from "../util.js";
-import { moduleDoc, state, doneSet, md, srcList, topbar, C, cApi } from "./data.js";
+import { moduleDoc, state, doneSet, md, srcList, topbar, nextBar, C, cApi } from "./data.js";
 
 export function mountMeeting(host, ctx, modId, dayArg) {
   let alive = true;
@@ -10,8 +10,8 @@ export function mountMeeting(host, ctx, modId, dayArg) {
     if (!alive) return;
     let done = doneSet(st);
     const day = Math.min(5, Math.max(1, Number(dayArg) || 1)), list = doc.problems.filter((p) => p.day === day);
-    host.innerHTML = `${topbar("")}
-      <div class="dv-wrap" style="max-width:1040px;padding-top:40px">
+    host.innerHTML = `${topbar("", "", [{ t: `${doc.no} ${doc.short || doc.title}`, href: `${C.base}/${modId}` }, { t: `회의실 ${day}일째` }])}
+      <div class="dv-wrap bk-page" style="max-width:1040px;padding-top:40px">
         <div class="m acc">회의실 · ${esc(doc.no)} ${esc(doc.title)} · ${day}일째</div>
         <h1 style="margin:12px 0 10px">${C.role}로서 무엇을 고를까요?</h1>
         <p class="kr" style="font-size:16px;line-height:1.75;color:var(--dv-sub);margin:0">${C.sceneOf} 회의 장면이에요. 보기를 고르기 전에 이유를 한 줄 떠올려 보세요. <span class="dim">(섞어 풀기 — 지난 주 내용도 나와요 · Rohrer &amp; Taylor, 2007)</span></p>
@@ -25,7 +25,8 @@ export function mountMeeting(host, ctx, modId, dayArg) {
           <div class="dv-paper" hidden style="margin-top:24px;padding:32px 36px" data-ex></div>
         </section>`).join("")}
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:48px"><span style="display:inline-flex;gap:10px;flex-wrap:wrap"><a class="dv-btn ghost" href="${C.base}/${modId}">이 주로</a><a class="dv-btn ghost" href="${C.base}/ask/${modId}">AI에게 묻기</a></span>${day < 5 ? `<a class="dv-btn ghost" href="${C.base}/${modId}/practice/${day + 1}">${day + 1}일 회의실 →</a>` : ""}</div>
-      </div>`;
+      </div>
+      ${nextBar({ href: `${C.base}/${modId}`, label: "다 풀었으면 모듈로", sub: "모듈에서 다음 할 일을 이어서 해요", back: `<a class="bk-back" href="${C.base}/ask/${modId}">AI에게 묻기</a>` })}`;
     $$("[data-p]", host).forEach((sec) => sec.addEventListener("click", async (e) => {
       const b = e.target.closest(".dv-mopt"); if (!b || sec.dataset.answered) return;
       sec.dataset.answered = "1";

@@ -1,6 +1,7 @@
-// 개발 흐름 — 한 주(모듈) 화면: 큰 번호 · 이번 주 질문 · 두런의 장면 · 5일 계획(카드 4장씩) · 사례 · 회의실 · 강의 · 금요일에 쓸 것
+// 한 모듈 = 책의 한 장(chapter): 표지(번호 · 제목 · 이번 주 질문 · 진도) → 지금 할 일 하나 → 5일 계획(카드 · 회의실) → 이번 주 이야기(접힘)
+//   → 사례 · 자료 → 금요일에 쓸 것 → 앞뒤 모듈. 아래 고정 띠에는 늘 '지금 할 일' 하나만 (nextInModule).
 import { esc } from "../util.js";
-import { index, moduleDoc, state, readSet, doneSet, progressOf, topbar, md, C, cApi } from "./data.js";
+import { index, moduleDoc, state, readSet, doneSet, progressOf, topbar, nextBar, nextInModule, md, C, cApi } from "./data.js";
 
 export function mountWeek(host, ctx, id) {
   let alive = true, day = 0;
@@ -8,49 +9,64 @@ export function mountWeek(host, ctx, id) {
   (async () => {
     const [idx, st] = await Promise.all([index(), state()]);
     const m = idx.modules.find((x) => x.id === id);
-    if (!m) { host.innerHTML = `${topbar("")}<p class="dv-err">없는 주예요. <a href="${C.base}">지도로</a></p>`; return; }
+    if (!m) { host.innerHTML = `${topbar("")}<p class="dv-err">없는 모듈이에요. <a href="${C.base}">지도로</a></p>`; return; }
     const doc = await moduleDoc(id);
     if (!alive) return;
     let read = readSet(st), done = doneSet(st);
     const has = (s, x) => s.has(id + "/" + x);
-    // 처음 열면 아직 안 읽은 카드가 있는 날
-    day = Math.max(0, (m.cards.find((c) => !has(read, c.id))?.day || 1) - 1);
+    day = Math.max(0, (m.cards.find((c) => !has(read, c.id))?.day || 1) - 1); // 처음 열면 아직 안 읽은 카드가 있는 날
     const i = idx.modules.indexOf(m), prev = idx.modules[i - 1], next = idx.modules[i + 1];
     function draw() {
       const p = progressOf(m, { items: [...read].map((k) => ({ module: k.split("/")[0], card: k.split("/")[1] })), done: [...done].map((k) => ({ module: k.split("/")[0], item: k.split("/")[1] })) });
       const cards = doc.cards.filter((c) => c.day === day + 1), probs = doc.problems.filter((q) => q.day === day + 1);
       const dayDone = (d) => doc.cards.filter((c) => c.day === d).every((c) => has(read, c.id));
-      host.innerHTML = `${topbar("")}
-        <section class="dv-wrap" style="padding-top:40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(440px,100%),1fr));gap:36px;align-items:end">
-          <div><div class="dv-week-no">${m.no}</div><h1 style="margin:18px 0 10px">${esc(m.title)}</h1><p class="kr" style="font-size:20px;line-height:1.6;margin:0">이번 주 질문 — <b class="acc">“${esc(m.q)}”</b></p></div>
-          <div class="dv-panel" style="display:flex;flex-direction:column;gap:12px"><div class="m">이번 주 진도</div>
-            <div style="display:flex;gap:28px;flex-wrap:wrap">${[["카드", p.cards, p.nCards], ["사례", p.cases, p.nCases], ["회의실", p.probs, p.nProbs]].map(([l, a, b]) => `<span style="font:600 32px var(--dv-lat)">${a}<span class="m"> / ${b} ${l}</span></span>`).join("")}</div>
-            <div class="m">이번 주 문서 · ${esc(m.doc)}</div>
-            <a class="dv-btn" style="align-self:flex-start;margin-top:4px" href="${C.base}/ask/${id}">AI에게 이번 주 묻기</a></div>
-        </section>
-        <section class="dv-wrap" style="padding-top:48px"><div class="dv-paper" style="max-width:860px">
-          <div class="m">${esc(C.scene(Number(m.no), doc.story.size))}</div>
-          <h2 style="margin:10px 0 14px;font-size:28px">${esc(doc.story.title)}</h2>
-          ${doc.story.body.map((b) => `<p>${md(b)}</p>`).join("")}
-          ${doc.goals?.length ? `<div class="m" style="margin-top:22px">이번 주가 끝나면</div><ul>${doc.goals.map((g) => `<li>${md(g)}</li>`).join("")}</ul>` : ""}
-          <p class="m" style="margin:0">왜 이야기부터? 장면에 붙은 개념은 나중에 꺼내기 쉬워요 (맥락 단서)</p>
-        </div></section>
-        <section class="dv-wrap" style="padding-top:48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(520px,100%),1fr));gap:16px;align-items:start">
-          <div class="dv-panel"><div class="m">5일 계획 · 하루 새 카드 4장 · 회의실 3문제</div>
+      const now = nextInModule(m, doc, read, done, C.base, next);
+      const meter = (l, a, b) => `<div><span>${l}</span><b>${a}<small> / ${b}</small></b><i style="--p:${b ? Math.round((a / b) * 100) : 0}%"></i></div>`;
+      host.innerHTML = `${topbar("", "", [{ t: `${m.no} ${m.title}` }])}
+        <div class="bk bk-page">
+          <header class="bk-cover">
+            <p class="bk-kicker">Chapter <span class="dv-week-no">${m.no}</span> · ${esc(C.name)} · 5일</p>
+            <h1>${esc(m.title)}</h1>
+            <p class="bk-q">이번 주 질문 — “${esc(m.q)}”</p>
+            <div class="bk-meter">${meter("카드", p.cards, p.nCards)}${meter("사례", p.cases, p.nCases)}${meter("회의실", p.probs, p.nProbs)}</div>
+          </header>
+
+          <section class="bk-now dv-panel" aria-labelledby="bk-now-h">
+            <p class="m">지금 할 일</p>
+            <h2 id="bk-now-h">${esc(now.label)}</h2>
+            <p class="bk-now-sub">${esc(now.sub)}</p>
+            <div class="bk-now-acts"><a class="dv-btn ghost" href="${now.href}">시작하기 →</a><a class="dv-btn ghost" href="${C.base}/ask/${id}">AI에게 이번 주 묻기</a></div>
+          </section>
+
+          <section class="dv-panel bk-days" aria-labelledby="bk-days-h">
+            <div class="bk-sec-h"><h2 id="bk-days-h">5일 계획</h2><span class="m">하루 새 카드 · 회의실</span></div>
             <div class="dv-days" role="group" aria-label="날">${[1, 2, 3, 4, 5].map((d) => `<button class="dv-day${d === day + 1 ? " on" : dayDone(d) ? " done" : ""}" data-day="${d - 1}" aria-pressed="${d === day + 1}"><span>${d}일</span><span class="m">${dayDone(d) ? "끝" : ""}</span></button>`).join("")}</div>
-            ${cards.map((c) => `<a class="dv-row" href="${C.base}/${id}/${c.id}"><span class="m acc">${m.no}-${c.id.slice(1)}</span><span style="font-size:16px;line-height:1.5">${esc(c.title)}</span><span class="m">${has(read, c.id) ? "읽음" : "새 카드"}</span></a>`).join("")}
-            <a class="dv-row" href="${C.base}/${id}/practice/${day + 1}"><span class="m acc">회의실</span><span style="font-size:16px;line-height:1.5">${probs.map((q) => esc(q.title)).join(" · ")}</span><span class="m">${probs.filter((q) => has(done, q.id)).length}/${probs.length}</span></a>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:16px">
-            <div class="dv-panel"><div class="m">사례 ${doc.cases.length}</div>${doc.cases.map((k) => `<a class="dv-row" style="grid-template-columns:1fr auto" href="${C.base}/${id}/case/${k.id}"><span>${esc(k.title)}</span><span class="m">${has(done, k.id) ? "끝" : `${k.day || 4}일째`}</span></a>`).join("")}</div>
-            <div class="dv-panel"><div class="m">공식 무료 강의 · 자료</div>${doc.lectures.map((l) => `<div class="dv-row" style="grid-template-columns:1fr auto auto"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title)}${l.min ? ` <span class="dim">· ${l.min}분</span>` : ""}${l.lang ? ` <span class="dim">· ${esc(l.lang)}</span>` : ""}</a><span class="dim kr" style="font-size:13px">${esc(l.what || "")}</span><button class="dv-chip" data-lec="${esc(l.id)}" aria-pressed="${has(done, l.id)}" style="height:36px;padding:0 12px${has(done, l.id) ? ";border-color:var(--dv-acc);color:var(--dv-acc)" : ""}">${has(done, l.id) ? "봤어요" : "본 걸로"}</button></div>`).join("")}</div>
-          </div>
-        </section>
-        ${doc.write ? `<section class="dv-wrap" style="padding-top:48px"><div class="dv-panel"><div class="m acc">${esc(doc.write.title || "금요일에 쓸 것")}</div><p class="kr" style="font-size:16px;line-height:1.75;margin:10px 0 0">${md(doc.write.task)}</p>${doc.write.template?.length ? `<ol class="kr" style="color:var(--dv-ink2);line-height:1.8;margin:10px 0 0;padding-left:22px">${doc.write.template.map((t) => `<li>${md(t)}</li>`).join("")}</ol>` : ""}</div></section>` : ""}
-        <nav class="dv-wrap" style="padding-top:48px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap" aria-label="다른 주">
-          ${prev ? `<a class="dv-btn ghost" href="${C.base}/${prev.id}">← ${prev.no} ${esc(prev.title)}</a>` : "<span></span>"}
-          ${next ? `<a class="dv-btn ghost" href="${C.base}/${next.id}">${next.no} ${esc(next.title)} →</a>` : ""}
-        </nav>`;
+            ${cards.map((c) => `<a class="dv-row" href="${C.base}/${id}/${c.id}"><span class="m acc">${m.no}-${c.id.slice(1)}</span><span class="kr">${esc(c.title)}</span><span class="m ${has(read, c.id) ? "bk-ok" : ""}">${has(read, c.id) ? "읽음 ✓" : "새 카드"}</span></a>`).join("")}
+            ${probs.length ? `<a class="dv-row" href="${C.base}/${id}/practice/${day + 1}"><span class="m acc">회의실</span><span class="kr">${probs.map((q) => esc(q.title)).join(" · ")}</span><span class="m">${probs.filter((q) => has(done, q.id)).length}/${probs.length}</span></a>` : ""}
+          </section>
+
+          <details class="bk-story"${p.cards ? "" : " open"}>
+            <summary><span class="m">${esc(C.scene(Number(m.no), doc.story.size))}</span><span class="bk-story-t">이번 주 이야기 · ${esc(doc.story.title)}</span></summary>
+            <div class="dv-paper"><h2>${esc(doc.story.title)}</h2>
+              ${doc.story.body.map((b) => `<p>${md(b)}</p>`).join("")}
+              ${doc.goals?.length ? `<p class="m">이번 주가 끝나면</p><ul>${doc.goals.map((g) => `<li>${md(g)}</li>`).join("")}</ul>` : ""}
+            </div>
+          </details>
+
+          ${doc.cases.length ? `<section class="bk-sec" aria-labelledby="bk-case-h"><div class="bk-sec-h"><h2 id="bk-case-h">사례 ${doc.cases.length}</h2><span class="m">실제로 있었던 일</span></div>
+            <div class="dv-panel">${doc.cases.map((k) => `<a class="dv-row bk-row2" href="${C.base}/${id}/case/${k.id}"><span class="kr">${esc(k.title)}</span><span class="m ${has(done, k.id) ? "bk-ok" : ""}">${has(done, k.id) ? "끝 ✓" : `${k.day || 4}일째`}</span></a>`).join("")}</div></section>` : ""}
+
+          ${doc.lectures.length ? `<section class="bk-sec" aria-labelledby="bk-lec-h"><div class="bk-sec-h"><h2 id="bk-lec-h">더 보기 · 공식 무료 자료</h2><span class="m">선택</span></div>
+            <ul class="bk-lecs">${doc.lectures.map((l) => `<li><div><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.title)}</a><p class="kr">${esc(l.what || "")}</p><span class="m">${[l.min ? `${l.min}분` : "", l.lang || ""].filter(Boolean).join(" · ")}</span></div><button class="dv-chip" data-lec="${esc(l.id)}" aria-pressed="${has(done, l.id)}">${has(done, l.id) ? "봤어요 ✓" : "본 걸로"}</button></li>`).join("")}</ul></section>` : ""}
+
+          ${doc.write ? `<section class="bk-sec"><div class="dv-panel"><p class="m acc">${esc(doc.write.title || "금요일에 쓸 것")}</p><p class="kr bk-write">${md(doc.write.task)}</p>${doc.write.template?.length ? `<ol class="kr bk-tpl">${doc.write.template.map((t) => `<li>${md(t)}</li>`).join("")}</ol>` : ""}</div></section>` : ""}
+
+          <nav class="bk-pager" aria-label="다른 모듈">
+            ${prev ? `<a href="${C.base}/${prev.id}"><span class="m">이전 장</span>${prev.no} ${esc(prev.title)}</a>` : "<span></span>"}
+            ${next ? `<a href="${C.base}/${next.id}" class="r"><span class="m">다음 장</span>${next.no} ${esc(next.title)}</a>` : ""}
+          </nav>
+        </div>
+        ${nextBar({ href: now.href, label: now.label, sub: now.sub })}`;
       host.querySelectorAll("[data-day]").forEach((b) => b.addEventListener("click", () => { day = Number(b.dataset.day); draw(); }));
       host.querySelectorAll("[data-lec]").forEach((b) => b.addEventListener("click", async () => {
         const lid = b.dataset.lec, on = has(done, lid), l = doc.lectures.find((x) => x.id === lid);
