@@ -87,7 +87,7 @@ function trialBar() {
   bar.className = "trial-bar"; bar.setAttribute("role", "status");
   const paint = () => {
     const ms = until - Date.now();
-    if (ms <= 0) { clearInterval(trialTimer); bar.remove(); loadFeatures(ctx).then(() => { drawDock(); route(true); toast("무료 체험이 끝났어요 · 더 쓰려면 '사용 신청'을 해 주세요"); }); return; }
+    if (ms <= 0) { clearInterval(trialTimer); bar.remove(); loadFeatures(ctx).then(() => { drawDock(); route(true); toast("무료 체험이 끝났어요 · 더 쓰려면 '사용 신청'을 하거나 Message 의 SWx2 관리자에게 물어봐요"); }); return; }
     const h = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
     bar.innerHTML = `<b>무료 체험 중</b><span>${h}시간 ${m}분 남음 · 모든 기능을 써 볼 수 있어요</span>`;
   };
@@ -166,17 +166,17 @@ window.addEventListener("trio:me", (e) => {
 // ---------- shell ----------
 // 검색 | 홈 · 캘린더 | 노트 · 영어 · AI · 대화 | 타이머 · 프로필 (연·월·주 목표는 캘린더 그날 판의 "목표" 칸)
 // 오늘 · 일기 · 기록은 캘린더 안으로(그날 페이지 · 연 잔디), 그래프는 노트 안의 탭으로 들어갔어요.
-// Dock 기본 이름 · 아이콘 — HSK 가 쓰던 이름(2026-10-19)을 모두의 기본으로, 아이콘은 실제 앱 그림 (/assets/dock, 우리끼리 쓰는 화면)
+// Dock 기본 이름 · 아이콘 · 순서 — HSK 가 쓰던 이름 · 순서(2026-10-19)를 모두의 기본으로, 아이콘은 실제 앱 그림 (/assets/dock, 우리끼리 쓰는 화면)
 const NAV = [
   { key: "home", hash: "#/", label: "Home", tip: "Home · 차트 · 우리 셋", img: "/assets/dock/home.png" },
   { key: "calendar", icon: "today", hash: "#/calendar", label: "Plan", tip: "Plan · 캘린더 · 그날 할 일·시간표·일기" }, // 오늘 날짜가 나오는 달력 그대로
-  { key: "diary", hash: "#/diary", label: "Diary", tip: "Diary · 둘이 같이 보기 (공개 · 비공개)", img: "/assets/dock/journal.png", when: (me) => !!me?.diary_circle }, // 일기 모임(HSK · GYK)에게만
   { key: "brain", hash: "#/brain", label: "Obsidian", tip: "Obsidian · Second Brain · 내 노트를 한 나무로", img: "/assets/dock/obsidian.png" },
   { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI", img: "/assets/dock/books.png" },
   { key: "news", hash: "#/news", label: "Newsletter", tip: "Newsletter · 오늘의 뉴스 · AI · HW 트렌드", img: "/assets/dock/substack.png" },
+  { key: "room", hash: "#/room", label: "Message", tip: "Message · 대화 · 창고", badge: "room-badge", img: "/assets/dock/messages.png" },
+  { key: "diary", hash: "#/diary", label: "Diary", tip: "Diary · 일기 · 같은 팀과 공개 · 비공개", img: "/assets/dock/journal.png" }, // 일기 기능이 열린 사람끼리(같은 팀) 공개한 날을 서로 봐요 · 안 열렸으면 자물쇠
   { key: "biz", hash: "#/mba", label: "MBA", tip: "MBA · 경영 마이크로디그리 (24주 · 하루 1~2시간)", img: "/assets/dock/stocks.png" },
   { key: "dev", hash: "#/dev", label: "Code Flow", tip: "Code Flow · SW 공간 (Dev Flow · Vector & Graph)", img: "/assets/dock/vscode.png" },
-  { key: "room", hash: "#/room", label: "Message", tip: "Message · 대화 · 창고", badge: "room-badge", img: "/assets/dock/messages.png" },
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
@@ -327,7 +327,7 @@ initCustomize(ctx);
 const OLD_DAY = /^#\/(?:today|diary|records)(?:\/(\d{4}-\d{2}-\d{2}))?\/?$/;
 function redirectOld() {
   const m = location.hash.match(OLD_DAY);
-  if (m && /^#\/diary/.test(location.hash) && (!ctx.me || ctx.me.diary_circle)) return; // 일기 모임은 #/diary 가 일기 페이지 (로그인 전엔 그대로 두기)
+  if (m && /^#\/diary/.test(location.hash)) return; // #/diary 는 일기 페이지
   if (m) history.replaceState(history.state, "", "#/calendar/" + (m[1] || ymd(today())));
   { const m = location.hash.match(/^#\/plans(?:\/(year|month|week))?/); if (m) history.replaceState(history.state, "", m[1] ? "#/goals/" + m[1] : "#/goals/week"); } // 옛 계획 주소 → 목표 페이지
 }
@@ -346,8 +346,8 @@ function parseRoute() {
   if (a === "planner") return { view: "planner", nav: "ai", scope: b || null };
   if (a === "checklist") return { view: "checklist", nav: "calendar", day: b || null }; // 하루 체크리스트 (홈의 오늘 링에서)
   if (a === "goals") return { view: "goals", nav: "home", scope: b || "week", key: c || null }; // 이번 주 · 이번 달 · 올해 목표 (홈 링에서)
-  if (a === "diary" && ctx.me?.diary_circle) return { view: "diaryRoom", nav: "diary", who: b === "u" ? c || null : null, day: b === "u" ? d || null : b || null }; // 둘이 같이 보는 일기 (#/diary/<날짜> · #/diary/u/<id>/<날짜>)
-  if (a === "calendar" && b === "diary") return ctx.me?.diary_circle ? { view: "diaryRoom", nav: "diary", who: null, day: c || null } : { view: "diary", nav: "calendar", day: c || null }; // 일기 페이지 (일기 모임은 새 페이지로)
+  if (a === "diary") return { view: "diaryRoom", nav: "diary", who: b === "u" ? c || null : null, day: b === "u" ? d || null : b || null }; // 둘이 같이 보는 일기 (#/diary/<날짜> · #/diary/u/<id>/<날짜>)
+  if (a === "calendar" && b === "diary") return { view: "diaryRoom", nav: "diary", who: null, day: c || null }; // 일기 페이지 (일기 모임은 새 페이지로)
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
   if (a === "calendar" && b === "m") return { view: "calendar", nav: "calendar", mode: "month", day: c ? `m/${c}` : null }; // #/calendar/m/2026-10 = 그 달 달력만
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null, who: c === "u" && d ? d : null }; // #/calendar/2026-10-04 = 그날 전체 화면 · /u/<id> = 친구의 그날
@@ -363,6 +363,7 @@ function parseRoute() {
   if (a === "dev") return { view: "dev", nav: "dev", course: "dev", id: b || null, sub: c || null, item: d || null }; // 옛 주소 (#/dev/…) = #/sw/dev/…
   if (a === "mba") return { view: "mba", nav: "biz", id: b || null, sub: c || null, item: d || null }; // 경영 마이크로디그리
   if (a === "news") return { view: "news", nav: "news", sub: ["item", "world", "co", "talk", "board", "library", "history", "ai-trend", "hw-trend"].includes(b) ? b : null, id: c || null, day: /^\d{4}-\d{2}-\d{2}$/.test(b || "") ? b : null }; // #/news · #/news/<day> · #/news/item/<id>
+  if (a === "room" && b === "help") return { view: "room", nav: "room", tab: "chat", help: c || "me" }; // 관리자 문의방 (관리자는 #/room/help/<회원 id>)
   if (a === "room" && b === "team") return { view: "room", nav: "room", tab: "chat", team: c || null }; // 팀 방
   if (a === "room" && b === "dm") return { view: "room", nav: "room", tab: "chat", dm: c || null }; // 1:1 — 상대 user id
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };

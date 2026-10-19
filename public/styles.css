@@ -3051,3 +3051,10 @@ html.rd-dragging, html.rd-dragging * { cursor: crosshair !important; -webkit-use
 .trial-bar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 9997; display: flex; gap: 10px; align-items: center; max-width: calc(100% - 32px); padding: 7px 16px; border-radius: 999px; background: linear-gradient(135deg, rgba(155,123,255,.92), rgba(70,224,208,.88)); color: #0a0c18; font-size: 13px; box-shadow: 0 10px 30px -10px rgba(110,90,255,.6); }
 .trial-bar b { font-weight: 800; }
 .adm-trial { color: #b9a6ff !important; opacity: 1 !important; }
+
+/* 대화방 — 관리자 문의방 */
+.rm-room-av.help { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #9b7bff, #46e0d0); color: #0a0c18; font-size: 13px; font-weight: 800; flex: 0 0 auto; }
+.rm-room .rm-room-n small { font-size: 11px; font-weight: 400; }
+.rm-group { margin: 14px 10px 4px; font-size: 11px; letter-spacing: .06em; opacity: .55; }
+.lock-ask { margin-top: 6px; font-size: 14px; color: var(--ink-2, inherit); text-decoration: underline; text-underline-offset: 3px; opacity: .85; }
+.lock-ask:hover { opacity: 1; }

@@ -1,11 +1,14 @@
 // 일기: 하루 한 편. 기본은 본인만.
-// '일기 모임'(users.diary_circle = 1, 지금은 HSK · GYK)끼리는 공개(shared = 1)한 날의 일기를 서로 읽어요 (쓰기는 늘 자기 일기만).
+// '일기 모임' = 같은 팀에서 일기를 쓸 수 있는 사람들(관리자 · 무료체험 · 일기 기능을 연 사람 · 예전 모임 HSK · GYK)끼리 공개(shared = 1)한 날의 일기를 서로 읽어요 (쓰기는 늘 자기 일기만).
 // 비공개 날은 상대에게 날짜와 비공개 표시만 — 기분 · 글은 서버에서 아예 보내지 않아요. 모임 밖 사람은 모임 API 를 못 써요(403).
 import { fail, json, body, now, uid, DAY_RE, dayParam, yearParam } from "./http.js";
 import { blocksToMd, validateDoc } from "../public/js/blocks/md.js";
 import { PEERS } from "./teams.js";
 
 const NOT_CIRCLE = "일기를 함께 보는 사람만 열 수 있어요.";
+// 일기를 쓸 수 있는 사람 (SQL · 자리표시자 ?now 대신 지금 시각을 숫자로 넣어요)
+const DIARY_OK = (a) => `(${a}.role = 'admin' OR ${a}.diary_circle = 1 OR ${a}.trial_until > ${Date.now()} OR EXISTS (SELECT 1 FROM user_features f WHERE f.user_id = ${a}.id AND f.feature = 'diary'))`;
+const canDiary = (u) => u.role === "admin" || u.diary_circle === 1 || (u.trial_until || 0) > Date.now() || (u.features || []).includes("diary");
 const MAX_BLOCKS = 300000; // 블록 JSON 글자 수
 const IMG_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
 const IMG_MAX = 6 * 1024 * 1024;
@@ -18,12 +21,12 @@ function readBlocks(v) {
   if (text.length > MAX_BLOCKS) fail(400, "일기가 너무 길어요.");
   return { text, md: blocksToMd(doc).trim(), empty: !doc.blocks.some((b) => b.text?.trim() || b.type !== "paragraph" || b.children?.length) };
 }
-// 누구의 일기를 볼지: 나는 늘, 다른 사람은 둘 다 모임이고 같은 팀일 때만
+// 누구의 일기를 볼지: 나는 늘, 다른 사람은 둘 다 일기를 쓸 수 있고 같은 팀일 때만
 async function peer(env, user, id) {
-  if (user.diary_circle !== 1) fail(403, NOT_CIRCLE);
+  if (!canDiary(user)) fail(403, NOT_CIRCLE);
   if (!id || id === user.id) return { id: user.id, self: true };
-  const u = await env.DB.prepare(`SELECT id, diary_circle FROM users WHERE id = ?1 AND id IN ${PEERS("?2")}`).bind(id, user.id).first();
-  if (!u || u.diary_circle !== 1) fail(403, NOT_CIRCLE);
+  const u = await env.DB.prepare(`SELECT u.id FROM users u WHERE u.id = ?1 AND u.id IN ${PEERS("?2")} AND ${DIARY_OK("u")}`).bind(id, user.id).first();
+  if (!u) fail(403, NOT_CIRCLE);
   return { id: u.id, self: false };
 }
 // 남의 비공개 일기는 날짜만
@@ -77,8 +80,8 @@ export function registerDiary(on) {
 
   // ---------- 일기 모임 (서로 보기) ----------
   on("GET", "/diary/circle", async ({ env, user }) => {
-    if (user.diary_circle !== 1) fail(403, NOT_CIRCLE);
-    const { results } = await env.DB.prepare(`SELECT id, username, display_name, color FROM users WHERE diary_circle = 1 AND id IN ${PEERS("?")} ORDER BY username`).bind(user.id).all();
+    if (!canDiary(user)) fail(403, NOT_CIRCLE);
+    const { results } = await env.DB.prepare(`SELECT u.id, u.username, u.display_name, u.color FROM users u WHERE u.id IN ${PEERS("?")} AND ${DIARY_OK("u")} ORDER BY u.username`).bind(user.id).all();
     return json({ members: results });
   });
 

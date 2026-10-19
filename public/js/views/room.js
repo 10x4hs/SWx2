@@ -20,12 +20,15 @@ export function mount(root, ctx, r) {
   const dmId = (other) => "dm:" + [ctx.me.id, other].sort().join(":");
   const others = () => ctx.users.filter((u) => u.id !== ctx.me.id);
   const teams = () => ctx.teams || [];
-  // 팀이 없고 같은 팀 사람도 없으면 방이 없어요 (null)
-  const firstRoom = () => teams()[0]?.room || (others()[0] ? dmId(others()[0].id) : null);
-  const roomOf = (dm, team) => (team && teams().some((t) => t.id === team) ? teams().find((t) => t.id === team).room : dm && others().some((u) => u.id === dm) ? dmId(dm) : firstRoom());
-  let roomId = roomOf(r.dm, r.team);
+  // 관리자 문의방: 회원은 'help:<내 id>' 하나 (HSK · GYK 가 같이 봐요), 관리자는 문의가 온 회원마다 하나
+  const isAdmin = ctx.me?.role === "admin" && !ctx.me?.impersonated_by, myHelp = "help:" + ctx.me.id;
+  let helpRooms = [];
+  // 팀도 같은 팀 사람도 없으면 관리자 문의방부터
+  const firstRoom = () => teams()[0]?.room || (others()[0] ? dmId(others()[0].id) : isAdmin ? null : myHelp);
+  const roomOf = (dm, team, help) => (help ? (isAdmin && help !== "me" ? "help:" + help : myHelp) : team && teams().some((t) => t.id === team) ? teams().find((t) => t.id === team).room : dm && others().some((u) => u.id === dm) ? dmId(dm) : firstRoom());
+  let roomId = roomOf(r.dm, r.team, r.help);
   let aiName = "마피아", chat = null, lib = null, unreadMap = {};
-  if (!r.tab && !r.dm && !r.team) history.replaceState(null, "", "#/room/" + tab);
+  if (!r.tab && !r.dm && !r.team && !r.help) history.replaceState(null, "", "#/room/" + tab);
 
   root.innerHTML = `
     <div class="rm" id="rm">
@@ -53,8 +56,14 @@ export function mount(root, ctx, r) {
       <span class="rm-room-av all">${icon.home(14)}</span><span class="rm-room-n">${esc(t.name)}</span>${badge(Number(unreadMap[t.room]) || 0)}</a>`).join("");
     const dms = others().map((u) => { const id = dmId(u.id); return `<a class="rm-room${roomId === id ? " on" : ""}" href="#/room/dm/${encodeURIComponent(u.id)}" data-room="${esc(id)}" ${roomId === id ? 'aria-current="true"' : ""}>
       ${avatar(u, "sm")}<span class="rm-room-n">${esc(u.display_name)}</span>${badge(Number(unreadMap[id]) || 0)}</a>`; }).join("");
-    roomsEl.innerHTML = all + dms || `<p class="faint rm-none">아직 팀이 없어요. 프로필 메뉴 → <b>팀</b>에서 팀을 만들거나 초대 코드로 들어가요.</p>`;
+    // 관리자 문의: 회원은 맨 위 'SWx2 관리자', 관리자는 문의가 온 회원 목록
+    const help = isAdmin
+      ? (helpRooms.length ? `<p class="rm-group">문의</p>` : "") + helpRooms.map((h) => `<a class="rm-room${roomId === h.room ? " on" : ""}" href="#/room/help/${encodeURIComponent(h.user.id)}" data-room="${esc(h.room)}" ${roomId === h.room ? 'aria-current="true"' : ""}>${avatar(h.user, "sm")}<span class="rm-room-n">${esc(h.user.display_name || h.user.username)} <small class="faint">문의</small></span>${badge(Number(unreadMap[h.room]) || 0)}</a>`).join("")
+      : `<a class="rm-room rm-help${roomId === myHelp ? " on" : ""}" href="#/room/help" data-room="${myHelp}" ${roomId === myHelp ? 'aria-current="true"' : ""}><span class="rm-room-av help" aria-hidden="true">✦</span><span class="rm-room-n">SWx2 관리자 <small class="faint">HSK · GYK</small></span>${badge(Number(unreadMap[myHelp]) || 0)}</a>`;
+    roomsEl.innerHTML = isAdmin ? all + dms + help : help + all + dms;
+    if (!all && !dms && !isAdmin) roomsEl.insertAdjacentHTML("beforeend", `<p class="faint rm-none">팀이 생기면 팀 대화방도 여기에 보여요. 프로필 메뉴 → <b>팀</b>에서 만들거나 초대 코드로 들어가요.</p>`);
   }
+  if (isAdmin) api.roomHelp().then((d) => { helpRooms = d.rooms || []; drawRooms(); }).catch(() => {});
   // rooms: { all: n, "dm:..": n } — GET /room 응답마다 같이 오고, 읽음 처리 뒤(trio:changed room)엔 따로 한 번 받아요
   function takeRooms(r) {
     if (!r) return;
@@ -135,16 +144,16 @@ export function mount(root, ctx, r) {
     if (id === roomId) return;
     roomId = id;
     drawRooms();
-    chat?.setRoom();
+    if (chat) chat.setRoom(); else ensure(); // 처음엔 방이 없었으면(팀 없는 관리자 등) 지금 대화 칸을 만들어요
   }
-  function hashFor(t, rid) { const tm = teams().find((x) => x.room === rid); return t === "library" ? "#/room/library" : !rid ? "#/room/chat" : tm ? "#/room/team/" + encodeURIComponent(tm.id) : "#/room/dm/" + encodeURIComponent(rid.split(":").slice(1).find((x) => x !== ctx.me.id)); }
+  function hashFor(t, rid) { const tm = teams().find((x) => x.room === rid); return t === "library" ? "#/room/library" : !rid ? "#/room/chat" : rid.startsWith("help:") ? (isAdmin ? "#/room/help/" + encodeURIComponent(rid.slice(5)) : "#/room/help") : tm ? "#/room/team/" + encodeURIComponent(tm.id) : "#/room/dm/" + encodeURIComponent(rid.split(":").slice(1).find((x) => x !== ctx.me.id)); }
   function go(t) { if (t !== tab) { tab = t; history.replaceState(null, "", hashFor(t, roomId)); show(); } }
 
   inst = {
     update(nr) {
       const t = tabOf(nr.tab) || tab;
-      if (!nr.tab && !nr.dm && !nr.team) history.replaceState(null, "", hashFor(t, roomId));
-      const rid = nr.dm !== undefined || nr.team ? roomOf(nr.dm, nr.team) : t === "chat" && nr.tab === "chat" ? firstRoom() : roomId;
+      if (!nr.tab && !nr.dm && !nr.team && !nr.help) history.replaceState(null, "", hashFor(t, roomId));
+      const rid = nr.dm !== undefined || nr.team || nr.help ? roomOf(nr.dm, nr.team, nr.help) : t === "chat" && nr.tab === "chat" ? firstRoom() : roomId;
       const sameTab = t === tab;
       tab = t;
       if (!sameTab) show(nr.id || null);
