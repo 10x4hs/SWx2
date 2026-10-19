@@ -1,9 +1,0 @@
-{
-  // 옛 이름(dsm-mafia) 워커 — 이제는 새 주소로 넘겨 주기만 해요. 배포: cd redirect && npx wrangler deploy
-  "name": "dsm-mafia",
-  "main": "worker.js",
-  "compatibility_date": "2026-09-01",
-  "triggers": { "crons": [] },
-  "durable_objects": { "bindings": [{ "name": "ROOM_HUB", "class_name": "RoomHub" }] },
-  "migrations": [{ "tag": "hub-v1", "new_sqlite_classes": ["RoomHub"] }]
-}
