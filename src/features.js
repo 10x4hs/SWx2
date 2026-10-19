@@ -9,7 +9,7 @@ export const FEATURES = {
   diary: "일기",
   ai: "AI",
   biz: "경영 마이크로디그리",
-  dev: "개발 마이크로디그리",
+  dev: "SW (개발 흐름 · Vector & Graph)",
   pages: "내 페이지 (Dock)",
   mcp: "MCP 연결 (AI 에이전트)",
 };
@@ -18,6 +18,7 @@ const MAP = [
   [/^\/(?:notes|graph|search|tags|embed-check)(?:\/|$)/, "brain"],
   [/^\/(?:english|papers|books)(?:\/|$)/, "study"],
   [/^\/diary(?:\/|$)/, "diary"],
+  [/^\/(?:dev|vg)\/(?:state|read|review|day|done|ask)$/, "dev"], // SW 공간의 과정 기록 · 튜터 (내용 파일 /dev/*.json · /vg/*.json 은 정적이라 여기 안 와요)
   [/^\/ai\//, "ai"], [/^\/review\/week\/ai$/, "ai"],
   [/^\/(?:pages|site-meta|proxy-token)(?:\/|$)/, "pages"],
   [/^\/mcp\/tokens/, "mcp"],
