@@ -3,7 +3,7 @@
 import { api } from "../api.js";
 import { esc, toast } from "../util.js";
 
-const FEAT_SHORT = { brain: "Brain", study: "공부", diary: "일기", ai: "AI", biz: "경영", dev: "개발", pages: "페이지", mcp: "MCP" };
+const FEAT_SHORT = { study: "공부", diary: "일기", ai: "AI", biz: "경영", dev: "개발", pages: "페이지", mcp: "MCP" };
 const STATE = { pending: "승인 대기", active: "활성", suspended: "정지" };
 const ago = (t) => {
   if (!t) return "—";

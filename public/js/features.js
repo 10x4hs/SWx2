@@ -5,7 +5,6 @@ import { esc, toast } from "./util.js";
 
 // 화면(view) → 기능
 export function featureOfRoute(r) {
-  if (["brain", "graph", "notes"].includes(r.view)) return "brain";
   if (["ai", "planner"].includes(r.view)) return "ai";
   if (["diary", "diaryRoom"].includes(r.view)) return "diary";
   if (["english", "papers", "books"].includes(r.view) || (r.view === "page" && r.place === "study")) return "study";
@@ -14,7 +13,7 @@ export function featureOfRoute(r) {
   if (r.view === "page") return "pages";
   return null;
 }
-export const NAV_FEATURE = { brain: "brain", study: "study", diary: "diary", biz: "biz", dev: "dev" };
+export const NAV_FEATURE = { study: "study", diary: "diary", biz: "biz", dev: "dev" };
 export const isOpen = (ctx, f) => !f || ctx.me?.role === "admin" || (ctx.features?.open || []).includes(f);
 
 export async function loadFeatures(ctx) {

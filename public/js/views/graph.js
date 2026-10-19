@@ -22,7 +22,7 @@ export function mount(root, ctx) {
     <div class="obs cg" id="obs">
       <canvas id="gc" aria-label="Concept graph of notes"></canvas>
       <header class="cg-top">
-        <a class="cg-back" href="#/brain">‹ Brain</a>
+        <a class="cg-back" href="#/brain">‹ Second Brain</a>
         <h1 class="cg-title">Graph</h1>
         <p class="cg-stat" id="gstat"></p>
       </header>

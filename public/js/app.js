@@ -153,7 +153,7 @@ const NAV = [
   { key: "home", hash: "#/", label: "홈", tip: "홈 · 차트 · 우리 셋" },
   { key: "calendar", icon: "today", hash: "#/calendar", label: "캘린더", tip: "캘린더 · 그날 할 일·시간표·일기" },
   { key: "diary", hash: "#/diary", label: "일기", tip: "일기 · 둘이 같이 보기 (공개 · 비공개)", when: (me) => !!me?.diary_circle }, // 일기 모임(HSK · GYK)에게만
-  { key: "brain", hash: "#/brain", label: "Brain", tip: "Brain · notes + study in one tree" }, // 노트 · 공부 아이콘을 하나로
+  { key: "brain", hash: "#/brain", label: "Second Brain", tip: "Second Brain · 내 노트를 한 나무로" }, // 노트 · 공부 아이콘을 하나로
   { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI" }, // Brain 안에 묻히면 AI 공부책을 못 찾아서 바로 가는 아이콘은 남겨요
   { key: "news", hash: "#/news", label: "News", tip: "News · daily edition" },
   { key: "biz", hash: "#/mba", label: "경영", tip: "경영 · 마이크로디그리 (24주 · 하루 1~2시간)" },

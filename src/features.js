@@ -1,10 +1,9 @@
-// 기능 잠금: 관리자(role = 'admin')는 다 쓰고, 다른 사람은 뉴스 · 대화방(+창고) · 계획(홈 · 캘린더)만 기본으로 써요.
+// 기능 잠금: 관리자(role = 'admin')는 다 쓰고, 다른 사람은 뉴스 · 대화방(+창고) · 계획(홈 · 캘린더) · Second Brain(내 노트)을 기본으로 써요.
 // 나머지 기능은 '사용 신청' → 관리자 한 명이 승인하면 그 기능만 열려요 (user_features). 화면은 public/js/features.js 가 같은 목록으로 자물쇠를 그려요.
 import { fail, json, body, now, uid } from "./http.js";
 import { pushUsers } from "./push.js";
 
 export const FEATURES = {
-  brain: "Brain · 노트",
   study: "공부 (영어 · 논문 · AI 공부책)",
   diary: "일기",
   ai: "AI",
@@ -15,7 +14,6 @@ export const FEATURES = {
 };
 // 서버 주소 → 기능 (없으면 누구나)
 const MAP = [
-  [/^\/(?:notes|graph|search|tags|embed-check)(?:\/|$)/, "brain"],
   [/^\/(?:english|papers|books)(?:\/|$)/, "study"],
   [/^\/diary(?:\/|$)/, "diary"],
   [/^\/ai\//, "ai"], [/^\/review\/week\/ai$/, "ai"],
