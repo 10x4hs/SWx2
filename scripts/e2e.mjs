@@ -773,7 +773,7 @@ try {
     {
       errs = [];
       await go("#/sw", 2500);
-      const sw = await p.evaluate(() => ({ rows: [...document.querySelectorAll(".sw-row")].map((a) => a.getAttribute("href")), field: !!document.querySelector(".sw-canvas"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      const sw = await p.evaluate(() => ({ rows: [...document.querySelectorAll(".sx-row")].map((a) => a.getAttribute("href")), field: !!document.querySelector(".sw-canvas"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await hop("#/dev/security", ".dv-days", 600);
       const old = await p.evaluate(() => !!document.querySelector('a[href="#/sw/dev/ask/security"]'));
       await hop("#/sw/vg", ".sw-row", 1500);

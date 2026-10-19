@@ -25,7 +25,7 @@ const LOOK = {
 };
 
 // ---------- 셰이더
-const PV = `attribute vec4 aA, aB; attribute vec4 seed; uniform float uTime, uMix, uBurst, uSize, uPix, uMouseOn, uScroll; uniform vec3 uMouse, uC1, uC2, uC3; uniform vec3 uMod[8];
+const PV = `attribute vec4 aA, aB; attribute vec4 seed; uniform float uTime, uMix, uBurst, uSize, uPix, uMouseOn, uScroll, uFlow, uWarp, uVelK; uniform vec2 uVel; uniform vec3 uMouse, uC1, uC2, uC3; uniform vec3 uMod[8];
 varying vec3 vC; varying float vA;
 vec3 colOf(float w) { if (w >= 1.5) { int k = int(w - 2.0 + 0.5); vec3 m = uMod[0]; for (int i = 0; i < 8; i++) if (i == k) m = uMod[i]; return m; } return mix(mix(uC1, uC2, seed.z), uC3, step(0.93, seed.x)); }
 void main() {
@@ -36,17 +36,24 @@ void main() {
   p.y = mix(p.y, mod(p.y - uTime * (0.6 + seed.y * 1.4) + 30.0, 16.0) - 6.0, fall);
   float t = uTime * 0.25;
   p += vec3(sin(t * (1.0 + seed.x * 2.0) + p.y * 0.7), cos(t * (1.0 + seed.z * 2.0) + p.x * 0.5), sin(t + seed.w * 9.0)) * 0.08 * (1.0 + 3.0 * (1.0 - step(1.5, aB.w)) * (1.0 - fall));
+  // 유체: 장면 전체가 느린 소용돌이로 흘러요 (값싼 의사 컬 노이즈)
+  vec3 fq = p * 0.18 + seed.xyz * 0.3; float tf = uTime * 0.18;
+  p += vec3(sin(fq.y * 2.1 + tf) + sin(fq.z * 1.7 - tf * 1.3), sin(fq.z * 1.9 + tf * 0.9) + sin(fq.x * 2.3 + tf), sin(fq.x * 1.5 - tf) + sin(fq.y * 1.3 + tf * 1.1)) * uFlow * (0.18 + seed.w * 0.32);
   // 터짐: 모양이 바뀌는 동안 바깥으로 흩어졌다 모여요
   vec3 dir = normalize(seed.xyz - 0.5 + 1e-4);
   p += dir * uBurst * (2.5 + seed.y * 5.0);
   // 커서가 밀어내요
   vec3 d = p - uMouse; float r2 = dot(d.xy, d.xy);
   p.xy += normalize(d.xy + 1e-4) * uMouseOn * 1.3 * exp(-r2 * 0.6);
+  // 커서를 빨리 움직이면: 그 둘레가 소용돌이치고, 움직인 쪽으로 끌려가요
+  p.xy += normalize(vec2(-d.y, d.x) + 1e-4) * uVelK * 1.8 * exp(-r2 * 0.22) + uVel * 0.4 * exp(-r2 * 0.3);
+  // 워프: 스크롤 · 들어가기 때 입자가 카메라 쪽으로 쏟아져요
+  p.z += uWarp * (3.0 + seed.y * 15.0);
   vec4 mv = modelViewMatrix * vec4(p, 1.0); gl_Position = projectionMatrix * mv;
   float bok = step(0.965, seed.w);
   gl_PointSize = uSize * (0.35 + seed.x) * (1.0 + bok * 4.0) * uPix / -mv.z;
   vC = mix(colOf(aA.w), colOf(aB.w), e);
-  vA = (0.35 + 0.65 * seed.y) * (0.65 + 0.35 * sin(uTime * (0.6 + seed.z) + seed.x * 40.0)) * (bok > 0.5 ? 0.18 : 1.0) * (1.0 + uBurst * 0.8); }`;
+  vA = (0.35 + 0.65 * seed.y) * (0.65 + 0.35 * sin(uTime * (0.6 + seed.z) + seed.x * 40.0)) * (bok > 0.5 ? 0.18 : 1.0) * (1.0 + uBurst * 0.8 + uWarp * 0.6); }`;
 const PF = `uniform float uOpacity; varying vec3 vC; varying float vA;
 void main() { vec2 q = gl_PointCoord - 0.5; float d = length(q); if (d > 0.5) discard; float a = smoothstep(0.5, 0.0, d); gl_FragColor = vec4(vC * (1.0 + a), a * a * vA * uOpacity); }`;
 // 크롬: 가짜 스튜디오 환경(띠 조명 · 안개 색)을 반사 + 가장자리 무지개 박막
@@ -121,7 +128,7 @@ export async function createStage(root) {
   const aA = new THREE.BufferAttribute(shapeOf("sphere").slice(), 4), aB = new THREE.BufferAttribute(shapeOf("rain").slice(), 4);
   pg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(N * 3), 3)); pg.setAttribute("aA", aA); pg.setAttribute("aB", aB); pg.setAttribute("seed", new THREE.BufferAttribute(seeds, 4));
   pg.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 60);
-  const pu = { uTime: { value: 0 }, uMix: { value: 1 }, uBurst: { value: 0 }, uSize: { value: phone ? 70 : 85 }, uPix: { value: dpr }, uMouseOn: { value: 0 }, uScroll: { value: 0 }, uOpacity: { value: 1 },
+  const pu = { uTime: { value: 0 }, uMix: { value: 1 }, uBurst: { value: 0 }, uSize: { value: phone ? 70 : 85 }, uPix: { value: dpr }, uMouseOn: { value: 0 }, uScroll: { value: 0 }, uOpacity: { value: 1 }, uFlow: { value: REDUCED ? 0 : 1 }, uWarp: { value: 0 }, uVelK: { value: 0 }, uVel: { value: new THREE.Vector2() },
     uMouse: { value: new THREE.Vector3() }, uC1: { value: col(LOOK.sw.c[0]) }, uC2: { value: col(LOOK.sw.c[1]) }, uC3: { value: col(LOOK.sw.c[2]) }, uMod: { value: mods } };
   const pts = new THREE.Points(pg, new THREE.ShaderMaterial({ uniforms: pu, vertexShader: PV, fragmentShader: PF, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   pts.frustumCulled = false; scene.add(pts);
@@ -245,6 +252,7 @@ export async function createStage(root) {
   const tint = { a: col(LOOK.sw.c[0]), b: col(LOOK.sw.c[1]), c: col(LOOK.sw.c[2]), fog: col(LOOK.sw.fog), fogPos: new THREE.Vector2(...LOOK.sw.fogPos) };
   function look_(k) { const p = LOOK[k] || LOOK.sw; tint.a = col(p.c[0]); tint.b = col(p.c[1]); tint.c = col(p.c[2]); tint.fog = col(p.fog); tint.fogPos.set(...p.fogPos); }
   let raf = 0, last = performance.now(), t = 0, alive = true, visible = true;
+  const fx = { warp: 0, lastScroll: 0, dive: 0, ca: 0, shake: 0, onDive: null };
   function frame(now) {
     now = now || performance.now();
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -261,6 +269,18 @@ export async function createStage(root) {
     mouse.pw.copy(mouse.w); mouse.w.copy(cam.position).addScaledVector(v, -cam.position.z / v.z);
     mouse.vel = L(mouse.vel, mouse.w.distanceTo(mouse.pw) / Math.max(dt, 1e-3), 0.3);
     pu.uMouse.value.copy(mouse.w); pu.uMouseOn.value = REDUCED ? 0 : mouse.on;
+    if (!REDUCED) {
+      const vx = (mouse.w.x - mouse.pw.x) / Math.max(dt, 1e-3), vy = (mouse.w.y - mouse.pw.y) / Math.max(dt, 1e-3);
+      pu.uVel.value.lerp(new THREE.Vector2(Math.max(-6, Math.min(6, vx * 0.15)), Math.max(-6, Math.min(6, vy * 0.15))), 0.2);
+      pu.uVelK.value = L(pu.uVelK.value, mouse.on * Math.min(1, mouse.vel / 9), 0.15);
+      // 스크롤 속도 → 워프, 들어가기(dive) → 크게
+      const sc = pu.uScroll.value, sv = Math.abs(sc - fx.lastScroll) / Math.max(dt, 1e-3); fx.lastScroll = sc;
+      fx.warp = L(fx.warp, Math.min(0.9, sv * 0.35) + fx.dive * 1.4, 0.12);
+      pu.uWarp.value = fx.warp;
+      fx.ca = L(fx.ca, 0, 0.06); fx.shake = L(fx.shake, 0, 0.05);
+      cU.uCA.value = 0.012 + fx.ca * 0.05 + fx.warp * 0.03;
+      if (fx.dive > 0) fx.dive = Math.min(1, fx.dive + dt / 0.9);
+    }
     // 색 · 안개
     pu.uC1.value.lerp(tint.a, k); pu.uC2.value.lerp(tint.b, k); pu.uC3.value.lerp(tint.c, k);
     cU.uFog.value.lerp(tint.fog, k); chU.uFog.value.lerp(tint.fog, k); chU.uTint.value.lerp(tint.a, k); tU.uColor.value.lerp(tint.a, k); cU.uFogPos.value.lerp(tint.fogPos, k * 0.6);
@@ -292,7 +312,13 @@ export async function createStage(root) {
     pts.rotation.y = REDUCED || shapeNow === "rain" ? 0 : (cloud?.grp.rotation.y || 0);
     // 카메라: 커서 쪽으로 살짝 기울고, 고른 무리로 날아가요
     camZ = L(camZ, camZTo, k * 0.6); look.lerp(lookTo, k * 0.6);
-    cam.position.set(look.x + (REDUCED ? 0 : mouse.sx * 1.1), look.y + (REDUCED ? 0 : mouse.sy * 0.6) - pu.uScroll.value * 1.5, camZ); cam.lookAt(look.x, look.y - pu.uScroll.value * 1.5, 0);
+    // 스크롤하면 카메라가 장면 속으로 날아 들어가요 (화면 한 장 = 9만큼) · 들어가기는 로고로 돌진
+    const fly = REDUCED ? 0 : Math.min(1.6, pu.uScroll.value) * 7, dv = REDUCED ? 0 : fx.dive * fx.dive;
+    const sh = REDUCED ? 0 : fx.shake, jx = (Math.sin(t * 47) + Math.sin(t * 31)) * 0.18 * sh, jy = (Math.cos(t * 43) + Math.sin(t * 29)) * 0.14 * sh;
+    const tx = L(look.x, logo.position.x, dv), ty = L(look.y - pu.uScroll.value * 1.2, logo.position.y, dv);
+    cam.position.set(tx + (REDUCED ? 0 : mouse.sx * 1.1) + jx, ty + (REDUCED ? 0 : mouse.sy * 0.6) + jy, Math.max(1.2, camZ - fly - dv * (camZ - 1.5)));
+    cam.lookAt(tx, ty, 0); cam.rotation.z += REDUCED ? 0 : mouse.sx * -0.03 + pu.uScroll.value * 0.05;
+    cU.uExp.value = cur.exp * (1 + dv * 6);
     if (mode === "vg" && !REDUCED && mouse.px >= 0) setHover(pickNear());
     // 그리기: 장면 → 블룸 → 합성
     R.setRenderTarget(rtS); R.render(scene, cam);
@@ -312,7 +338,7 @@ export async function createStage(root) {
   }
   const api = {
     mode(name, o = {}) {
-      mode = name; opts = o; setHover(-1); root.dataset.stage = name;
+      mode = name; opts = o; setHover(-1); root.dataset.stage = name; fx.dive = 0;
       if (name === "vg") { buildCloud(o.modules || []); look_("vg"); toShape("cloud"); target = { logo: 0, op: 0.4, cloud: 1, speed: 1, exp: 1.2, fogK: 0.9, bloom: 1.1 }; focusI = o.focus ?? -1; focusCloud(); }
       else {
         focusI = -1; if (cloud) cloud.cu.uFocus.value = -1; lookTo.set(0, 0, 0); camZTo = phone ? 21 : 18;
@@ -322,6 +348,10 @@ export async function createStage(root) {
       }
       if (REDUCED) { Object.assign(cur, target); look.copy(lookTo); camZ = camZTo; frame(); }
     },
+    // 들어가기: 카메라가 로고로 돌진하며 빛으로 번져요. 0.75초 뒤 resolve (그때 화면을 바꾸면 돼요)
+    dive() { if (REDUCED) return Promise.resolve(); fx.dive = 0.001; fx.ca = 1; return new Promise((ok) => setTimeout(ok, 750)); },
+    // 과정 넘김: 순간 색번짐 + 카메라 흔들림 (모양 바뀜 · 터짐은 mode 가 해요)
+    kick() { if (REDUCED) return; fx.ca = 1; fx.shake = 1; },
     focus(i) { focusI = i; if (mode === "vg") focusCloud(); if (REDUCED) frame(); },
     accent(k) { look_(k); if (REDUCED) frame(); },
     // 시작 연출이 끝날 때: 멀리 흩어진 입자가 한꺼번에 모여요
