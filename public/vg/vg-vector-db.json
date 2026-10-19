@@ -1,0 +1,2036 @@
+{
+ "id": "vg-vector-db",
+ "no": "03",
+ "title": "벡터 데이터베이스",
+ "short": "벡터 DB",
+ "q": "라이브러리(Faiss)와 벡터 DB는 무엇이 다르고, 무엇을 골라야 할까?",
+ "sub": "pgvector · Qdrant · Milvus · Weaviate · Pinecone · Chroma · LanceDB",
+ "doc": "벡터 DB 선택 기록 (ADR-003)",
+ "story": {
+  "title": "“어떤 벡터 DB를 쓸까요?”",
+  "size": 1000000,
+  "body": [
+   "(가상 이야기) 노트 앱 '메모리'의 기억 검색 팀은 지난 장에서 노트 100만 개 검색을 근사 인덱스로 빠르게 만들었어요. 그런데 Faiss 파일 하나로는 노트 수정·삭제, 사용자별 필터, 백업이 다 손으로 해야 하는 일이 됐어요.",
+   "데이터 담당 민재는 Qdrant를, 리드 서윤은 이미 쓰는 Postgres에 pgvector를 붙이자고 해요. 둘 다 운영할 시간은 없다고 하고요.",
+   "신입인 나는 이번 주에 후보를 직접 재 보고, 금요일까지 벡터 DB 선택 기록(ADR-003)을 써야 해요."
+  ]
+ },
+ "goals": [
+  "벡터 DB의 구성(저장·인덱스·메타데이터 필터·CRUD·복제)을 설명할 수 있어요.",
+  "pgvector, Qdrant, Milvus, Weaviate, Pinecone, Chroma, LanceDB가 어디에 맞는지 비교할 수 있어요.",
+  "작은 프로젝트에서 하나를 골라 색인·필터 검색을 해 보고, 숫자로 선택 근거를 적을 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "라이브러리와 DB는 달라요",
+   "lead": "Faiss 같은 라이브러리는 '빨리 찾는 알고리즘'만 줘요. 벡터 DB는 거기에 저장·수정·필터·백업·여러 사용자를 더한 '서비스'예요.",
+   "idea": [
+    "라이브러리는 내 프로그램 메모리 안에서 돌아요. 프로그램이 꺼지면 인덱스를 파일로 따로 저장하고 다시 불러와야 해요.",
+    "벡터 DB는 서버(또는 임베디드 엔진)로 돌면서 노트가 추가·삭제될 때 인덱스를 알아서 고쳐 줘요.",
+    "Pan 등(2023) 서베이는 벡터 DB를 '쿼리 처리 + 저장·인덱스 + 메타데이터 처리'를 함께 하는 시스템으로 정리해요."
+   ],
+   "hear": [
+    "\"Faiss로 프로토타입은 됐는데, 노트 지우면 인덱스 다시 빌드해야 해요.\"",
+    "\"그거 라이브러리예요, DB예요?\""
+   ],
+   "ask": [
+    "노트가 삭제되거나 수정되면 인덱스는 누가 고치나요?",
+    "서버가 죽으면 인덱스는 어디서 복구하나요?"
+   ],
+   "mine": "메모리 앱에서 노트 3,000개일 땐 Faiss 파일 하나로 충분했어요. 하지만 매일 노트가 바뀌니 'DB가 고쳐 주는' 쪽이 필요해져요.",
+   "deep": [
+    "서베이는 벡터 DB 문제를 크게 '점수 계산', '연산자(필터 포함)', '인덱스', '쿼리 최적화'로 나눠요."
+   ],
+   "recall": {
+    "q": "라이브러리와 벡터 DB의 차이 한 줄?",
+    "a": "라이브러리 = 검색 알고리즘, DB = 그 알고리즘 + 저장·수정·필터·복구"
+   },
+   "quiz": [
+    {
+     "q": "노트 삭제 후 인덱스를 자동으로 반영해 주는 건 보통 어느 쪽?",
+     "options": [
+      "Faiss 같은 라이브러리",
+      "벡터 DB",
+      "둘 다 아님"
+     ],
+     "answer": 1,
+     "why": "DB는 CRUD를 관리해요. 라이브러리는 직접 다시 빌드하거나 remove를 불러야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Pan, Wang, Li — Survey of Vector Database Management Systems",
+     "url": "https://arxiv.org/abs/2310.14021",
+     "date": "2023-10-21"
+    }
+   ],
+   "steps": [
+    {
+     "k": "1 · 라이브러리",
+     "t": "메모리 안 인덱스, 직접 저장"
+    },
+    {
+     "k": "2 · DB",
+     "t": "저장·인덱스·필터·복제까지"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "컬렉션 · 포인트 · 페이로드",
+   "lead": "Qdrant 기준으로 컬렉션은 '표', 포인트는 '한 줄', 페이로드는 그 줄에 붙은 메타데이터(JSON)예요.",
+   "idea": [
+    "포인트 = id + 벡터 + 페이로드. 예: id 42, [0.1, 0.3, 0.9], {\"author\":\"서윤\",\"year\":2026}.",
+    "컬렉션을 만들 때 벡터 차원(예: 768)과 거리(코사인·내적·유클리드)를 정해요. 나중에 바꾸기 어려워요.",
+    "DB마다 이름이 달라요: Pinecone은 index/namespace, Milvus는 collection/entity, pgvector는 그냥 테이블과 행이에요."
+   ],
+   "hear": [
+    "\"페이로드에 author 넣어 두면 필터 되잖아요.\"",
+    "\"컬렉션 차원 768로 만들었는데 모델 바꾸면 새로 만들어야 해요.\""
+   ],
+   "ask": [
+    "임베딩 모델을 바꾸면 컬렉션을 새로 만들고 다 다시 넣어야 하나요?",
+    "페이로드에 어떤 필드를 인덱싱할까요?"
+   ],
+   "mine": "메모리 앱 노트 한 개 = 포인트 한 개. 페이로드엔 작성자, 날짜, 폴더를 넣어요.",
+   "deep": [
+    "Qdrant는 한 포인트에 이름 붙은 여러 벡터(named vectors)를 둘 수도 있어요."
+   ],
+   "recall": {
+    "q": "포인트를 이루는 세 가지는?",
+    "a": "id, 벡터, 페이로드(메타데이터)"
+   },
+   "quiz": [
+    {
+     "q": "컬렉션을 만들 때 꼭 정해야 하는 것은?",
+     "options": [
+      "작성자 이름",
+      "벡터 차원과 거리 함수",
+      "노트 개수"
+     ],
+     "answer": 1,
+     "why": "차원과 거리 함수는 인덱스 구조를 정해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Qdrant docs — Quickstart",
+     "url": "https://qdrant.tech/documentation/quickstart/",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "client.create_collection(\"notes\",\n  vectors_config=VectorParams(size=768, distance=Distance.COSINE))\nclient.upsert(\"notes\", points=[PointStruct(\n  id=42, vector=vec, payload={\"author\": \"서윤\", \"year\": 2026})])",
+    "read": "읽는 법: notes라는 컬렉션을 768차원 코사인으로 만들고, id 42 노트를 벡터와 메타데이터(작성자·연도)와 함께 넣어요(Qdrant Python)."
+   }
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "필터는 언제 거나: pre vs post",
+   "lead": "\"서윤이 쓴 노트 중에서\" 같은 조건을 검색 전에 거르면 pre-filter, 검색 후에 거르면 post-filter예요.",
+   "idea": [
+    "post-filter 예: 상위 10개를 찾았는데 서윤 노트가 1개뿐이면 결과가 1개만 남아요.",
+    "pre-filter 예: 서윤 노트 500개만 놓고 찾으면 10개를 다 채우지만, 근사 인덱스(HNSW) 그래프가 끊겨 느리거나 놓칠 수 있어요.",
+    "Qdrant는 필터 조건을 HNSW 탐색 중에 같이 적용하고, 조건이 아주 좁으면 페이로드 인덱스로 바로 거르는 식으로 섞어 써요(문서의 query planning)."
+   ],
+   "hear": [
+    "\"필터 걸었더니 결과가 3개밖에 안 나와요.\"",
+    "\"그거 post-filter라서 그래요.\""
+   ],
+   "ask": [
+    "우리 DB는 필터를 검색 전·중·후 어디서 걸어요?",
+    "필터가 아주 좁을 때(1%)도 결과 수가 보장되나요?"
+   ],
+   "mine": "메모리 앱에서 '이번 주 + 내 노트'처럼 필터가 좁은 질문이 많아요. post-filter면 결과가 비기 쉬워요.",
+   "deep": [
+    "pgvector도 필터+HNSW에서 결과가 모자라는 문제가 있어, README가 반복 스캔(iterative index scans) 옵션과 부분 인덱스를 안내해요."
+   ],
+   "recall": {
+    "q": "post-filter의 대표적인 부작용은?",
+    "a": "상위 k개를 먼저 뽑고 거르니 결과가 k개보다 적게 남아요"
+   },
+   "quiz": [
+    {
+     "q": "상위 10개 중 조건 맞는 게 2개라 결과가 2개. 어떤 방식?",
+     "options": [
+      "pre-filter",
+      "post-filter",
+      "하이브리드 검색"
+     ],
+     "answer": 1,
+     "why": "검색 뒤에 걸렀기 때문이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Qdrant docs — Filtering",
+     "url": "https://qdrant.tech/documentation/concepts/filtering/",
+     "date": "n.d."
+    },
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "upsert와 삭제(톰스톤)",
+   "lead": "upsert는 '있으면 고치고 없으면 넣기'예요. 그래프 인덱스는 바로 지우기 어려워서, 많은 DB가 먼저 '지움 표시(톰스톤)'를 하고 나중에 정리해요.",
+   "idea": [
+    "HNSW에서 점 하나를 진짜로 빼면 이웃 연결이 끊겨요. 그래서 표시만 해 두고 검색 결과에서 숨겨요.",
+    "삭제가 쌓이면 메모리와 속도가 나빠지므로, 백그라운드에서 세그먼트를 합치며(compaction/vacuum) 정리해요.",
+    "Pinecone 서버리스는 쓰기를 로그에 먼저 남기고, 아직 인덱스에 안 들어간 최신 데이터는 별도 'freshness' 인덱스로 몇 초 안에 검색되게 해요."
+   ],
+   "hear": [
+    "\"지운 노트가 검색에 아직 떠요.\"",
+    "\"삭제가 많아서 vacuum 돌려야 해요.\""
+   ],
+   "ask": [
+    "삭제한 노트가 검색에서 사라지기까지 얼마나 걸리나요?",
+    "정리(compaction) 작업은 언제, 얼마나 무겁게 도나요?"
+   ],
+   "mine": "메모리 앱은 사용자가 노트를 자주 고쳐요. 노트 id를 포인트 id로 쓰면 upsert 한 번으로 갱신돼요.",
+   "deep": [
+    "pgvector는 Postgres 행이라 DELETE 후 VACUUM이 정리해요. 인덱스도 Postgres 방식으로 관리돼요."
+   ],
+   "recall": {
+    "q": "톰스톤이란?",
+    "a": "실제로 지우지 않고 '지움' 표시만 해 두는 것"
+   },
+   "quiz": [
+    {
+     "q": "HNSW에서 즉시 물리 삭제가 어려운 이유는?",
+     "options": [
+      "벡터가 암호화돼서",
+      "이웃 연결(그래프)이 끊겨서",
+      "파일이 읽기 전용이라"
+     ],
+     "answer": 1,
+     "why": "그래프 구조라 점을 빼면 길이 끊겨요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Pinecone — Serverless architecture",
+     "url": "https://www.pinecone.io/blog/serverless-architecture/",
+     "date": "2024-01-16"
+    },
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "pgvector: Postgres에 벡터 칸 추가",
+   "lead": "pgvector는 Postgres 확장이에요. 기존 테이블에 vector 칼럼을 붙이고 SQL로 가까운 행을 찾아요.",
+   "idea": [
+    "거리 연산자: <-> 유클리드(L2), <=> 코사인 거리, <#> 음의 내적.",
+    "장점: 노트 본문·권한·벡터가 한 DB, 한 트랜잭션에 있어요. 조인과 WHERE를 그대로 써요.",
+    "인덱스가 없으면 전부 비교(정확 검색), 인덱스를 만들면 근사 검색이에요."
+   ],
+   "hear": [
+    "\"이미 Postgres 쓰니까 pgvector부터 해 보죠.\"",
+    "\"<=>가 코사인 거리예요, 유사도 아니고.\""
+   ],
+   "ask": [
+    "우리 Postgres(관리형)에서 pgvector 확장을 켤 수 있나요? 버전은?",
+    "벡터 차원이 인덱스 한도 안에 들어가나요?"
+   ],
+   "mine": "메모리 앱의 노트 테이블에 embedding vector(768) 칼럼 하나만 추가하면 돼요.",
+   "deep": [
+    "vector 타입 인덱스는 최대 2,000차원까지예요(0.4.0에서 1,024→2,000)."
+   ],
+   "recall": {
+    "q": "pgvector에서 코사인 거리 연산자는?",
+    "a": "<=>"
+   },
+   "quiz": [
+    {
+     "q": "<=> 결과가 작을수록?",
+     "options": [
+      "덜 비슷하다",
+      "더 비슷하다",
+      "상관없다"
+     ],
+     "answer": 1,
+     "why": "거리라서 작을수록 가까워요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    },
+    {
+     "title": "pgvector CHANGELOG",
+     "url": "https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "CREATE EXTENSION vector;\nALTER TABLE notes ADD COLUMN embedding vector(768);\nSELECT id, title FROM notes\nWHERE author = '서윤'\nORDER BY embedding <=> $1\nLIMIT 5;",
+    "read": "읽는 법: 확장을 켜고 노트 테이블에 768차원 칸을 만든 뒤, 서윤이 쓴 노트 중 질문 벡터($1)와 코사인 거리가 가장 가까운 5개를 가져와요."
+   }
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "ivfflat vs hnsw",
+   "lead": "pgvector 인덱스는 두 가지예요. ivfflat은 '구역 나누기', hnsw는 '이웃 그래프'예요.",
+   "idea": [
+    "ivfflat: 데이터를 lists개 구역으로 나누고 probes개 구역만 봐요. 빌드가 빠르고 메모리가 적지만, 데이터가 있어야 구역을 잘 만들어요.",
+    "hnsw: 빌드는 느리고 메모리를 더 쓰지만, 속도·정확도 균형이 좋고 빈 테이블에서도 만들 수 있어요(0.5.0, 2023-08 추가).",
+    "Supabase 자체 벤치(1536차원, 100만 개)에서 hnsw가 ivfflat보다 같은 정확도에서 6배 넘게 빨랐다고 해요."
+   ],
+   "hear": [
+    "\"ef_search 40에서 100으로 올리니 recall 올라갔어요.\"",
+    "\"ivfflat은 데이터 다 넣고 나서 만들어야 해요.\""
+   ],
+   "ask": [
+    "우리 목표 recall@10은 얼마고, 그때 ef_search는?",
+    "인덱스 빌드 동안 메모리(maintenance_work_mem)는 충분한가요?"
+   ],
+   "mine": "메모리 앱은 노트가 계속 늘어나니 처음부터 hnsw가 편해요.",
+   "deep": [
+    "hnsw 기본값은 m=16, ef_construction=64, 검색 시 hnsw.ef_search=40이에요.",
+    "Supabase는 m=32, ef_construction=80으로 같은 0.99 정확도를 ef_search=100에서 얻어 QPS가 35% 늘었다고 보고했어요(벤더 자료)."
+   ],
+   "recall": {
+    "q": "빈 테이블에 먼저 만들어도 되는 인덱스는?",
+    "a": "hnsw (ivfflat은 데이터가 있어야 구역을 잘 나눠요)"
+   },
+   "quiz": [
+    {
+     "q": "빌드가 빠르고 메모리가 적은 쪽은?",
+     "options": [
+      "hnsw",
+      "ivfflat",
+      "둘이 같다"
+     ],
+     "answer": 1,
+     "why": "대신 속도·정확도 균형은 hnsw가 보통 더 좋아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    },
+    {
+     "title": "Supabase — pgvector v0.5.0: Faster semantic search with HNSW indexes",
+     "url": "https://supabase.com/blog/increase-performance-pgvector-hnsw",
+     "date": "2023-09-06"
+    }
+   ],
+   "code": {
+    "text": "CREATE INDEX ON notes USING hnsw (embedding vector_cosine_ops)\n  WITH (m = 16, ef_construction = 64);\nSET hnsw.ef_search = 100;",
+    "read": "읽는 법: 코사인 거리용 hnsw 인덱스를 기본값으로 만들고, 검색할 때 후보를 100개까지 살펴보게 해서 정확도를 올려요."
+   }
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "halfvec · binary 양자화",
+   "lead": "벡터 숫자를 덜 정밀하게 저장하면 메모리가 확 줄어요. pgvector 0.7.0(2024-04)부터 halfvec(16비트)과 bit 인덱싱, binary_quantize가 들어왔어요.",
+   "idea": [
+    "768차원 float32 = 768×4 = 3,072바이트. halfvec = 1,536바이트(절반). binary(1비트) = 96바이트(32분의 1).",
+    "binary는 너무 거칠어서 보통 '이진으로 후보 많이 뽑기 → 원래 벡터로 다시 순위 매기기(re-rank)'로 써요.",
+    "양자화 효과는 모델마다 달라요. 꼭 내 데이터로 recall을 재 봐야 해요."
+   ],
+   "hear": [
+    "\"halfvec로 바꾸니 인덱스가 반으로 줄었어요.\"",
+    "\"binary로 후보 100개 뽑고 원본으로 재정렬해요.\""
+   ],
+   "ask": [
+    "양자화 후 recall@10이 얼마나 떨어졌나요?",
+    "재정렬할 원본 벡터는 어디에 두나요?"
+   ],
+   "mine": "노트 100만 개 × 768차원이면 float32로 약 3.1GB인데, halfvec면 약 1.5GB예요.",
+   "deep": [
+    "0.7.0은 sparsevec 타입도 함께 추가했어요."
+   ],
+   "recall": {
+    "q": "768차원 벡터를 1비트로 바꾸면 몇 바이트?",
+    "a": "96바이트 (768÷8)"
+   },
+   "quiz": [
+    {
+     "q": "halfvec는 float32 대비 크기가?",
+     "options": [
+      "같다",
+      "절반",
+      "4분의 1"
+     ],
+     "answer": 1,
+     "why": "16비트라 절반이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "pgvector CHANGELOG",
+     "url": "https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md",
+     "date": "n.d."
+    },
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "CREATE INDEX ON notes USING hnsw\n  ((binary_quantize(embedding)::bit(768)) bit_hamming_ops);\nSELECT id FROM (\n  SELECT id, embedding FROM notes\n  ORDER BY binary_quantize(embedding)::bit(768) <~> binary_quantize($1) LIMIT 100\n) t ORDER BY embedding <=> $1 LIMIT 10;",
+    "read": "읽는 법: 1비트 벡터로 해밍 거리 인덱스를 만들어 후보 100개를 싸게 뽑고, 그 안에서 원래 벡터의 코사인 거리로 다시 10개를 고르는 2단계예요(README 패턴)."
+   }
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "\"Postgres면 충분한가\"",
+   "lead": "팀이 이미 Postgres를 쓰고 벡터가 수백만 개 이하라면, pgvector가 가장 운영이 쉬운 선택일 때가 많아요.",
+   "idea": [
+    "좋은 점: DB 하나, 백업 하나, 권한 하나. 조인과 트랜잭션이 그대로예요.",
+    "걱정할 점: 벡터 인덱스가 메모리를 많이 먹어 다른 쿼리와 자원을 나눠 써요. 아주 큰 규모·높은 QPS·분산이 필요하면 전용 DB가 유리할 수 있어요.",
+    "정답은 숫자로 정해요: 벡터 수 × 차원, 목표 지연(p95), QPS, 필터 비율."
+   ],
+   "hear": [
+    "\"전용 벡터 DB 붙이면 시스템이 하나 더 늘어요.\"",
+    "\"인덱스가 RAM에 안 들어가서 느려졌어요.\""
+   ],
+   "ask": [
+    "1년 뒤 노트 수와 QPS 예상치는?",
+    "벡터 검색이 주 DB 성능을 깎지 않게 읽기 복제본을 쓸까요?"
+   ],
+   "mine": "메모리 앱 노트 100만 개는 halfvec+hnsw로 Postgres 한 대에 충분히 들어갈 수 있는 규모예요. 먼저 재 보고 정해요.",
+   "deep": [
+    "'충분한가'는 벤치마크가 아니라 우리 데이터와 우리 질의로 판단해요(카드 D5)."
+   ],
+   "recall": {
+    "q": "pgvector를 고를 때 가장 큰 장점은?",
+    "a": "이미 쓰는 Postgres 하나로 데이터·권한·벡터를 같이 관리"
+   },
+   "quiz": [
+    {
+     "q": "전용 벡터 DB를 더 고려할 상황은?",
+     "options": [
+      "노트 3,000개",
+      "수십억 벡터에 분산이 필요할 때",
+      "팀이 Postgres만 안다"
+     ],
+     "answer": 1,
+     "why": "규모가 아주 크면 분산 전용 시스템이 유리할 수 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    },
+    {
+     "title": "Pan, Wang, Li — Survey of Vector Database Management Systems",
+     "url": "https://arxiv.org/abs/2310.14021",
+     "date": "2023-10-21"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "Qdrant: 필터에 강한 Rust 엔진",
+   "lead": "Qdrant는 Rust로 만든 오픈소스 벡터 DB예요. 페이로드 필터를 HNSW 검색과 함께 다루는 데 신경을 많이 썼어요.",
+   "idea": [
+    "REST·gRPC API, 도커 한 줄로 띄울 수 있어요. 관리형 클라우드도 있어요.",
+    "페이로드 필드에 인덱스를 만들면 필터가 빨라지고, 필터를 고려해 HNSW에 추가 연결을 만들어요.",
+    "양자화(scalar·binary·product)도 지원해요."
+   ],
+   "hear": [
+    "\"페이로드 인덱스 안 만들어서 필터가 느렸어요.\"",
+    "\"도커로 6333 포트 띄우면 끝이에요.\""
+   ],
+   "ask": [
+    "필터할 필드에 payload index를 만들었나요?",
+    "단일 노드로 버티다 언제 클러스터로 가나요?"
+   ],
+   "mine": "메모리 앱의 '작성자·폴더·날짜' 필터가 많다면 Qdrant가 후보예요.",
+   "deep": [
+    "Qdrant는 자기 벤치마크 페이지를 공개하지만, 이것도 벤더 자료예요(카드 D5)."
+   ],
+   "recall": {
+    "q": "Qdrant에서 필터를 빠르게 하려면?",
+    "a": "필터 필드에 payload index를 만든다"
+   },
+   "quiz": [
+    {
+     "q": "Qdrant 페이로드는 어떤 형식?",
+     "options": [
+      "JSON",
+      "CSV만",
+      "이미지"
+     ],
+     "answer": 0,
+     "why": "포인트마다 JSON 메타데이터를 붙여요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Qdrant docs — Quickstart",
+     "url": "https://qdrant.tech/documentation/quickstart/",
+     "date": "n.d."
+    },
+    {
+     "title": "Qdrant docs — Filtering",
+     "url": "https://qdrant.tech/documentation/concepts/filtering/",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "docker run -p 6333:6333 qdrant/qdrant",
+    "read": "읽는 법: Qdrant 서버를 도커로 띄우고 6333 포트로 REST API를 열어요."
+   }
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "Milvus: 분산과 GPU",
+   "lead": "Milvus는 처음부터 큰 규모를 노리고 만든 오픈소스 벡터 DB예요. 저장·쿼리·인덱스 노드를 나눠 늘릴 수 있어요.",
+   "idea": [
+    "SIGMOD 2021 논문 'Milvus: A Purpose-Built Vector Data Management System'에서 설계를 소개했어요.",
+    "여러 인덱스(IVF 계열, HNSW, DiskANN 등)와 GPU 인덱스를 지원해요.",
+    "작게는 Milvus Lite(파이썬 내장)부터 쿠버네티스 분산 배포까지 같은 API를 써요."
+   ],
+   "hear": [
+    "\"Milvus는 컴포넌트가 많아서 운영이 무거워요.\"",
+    "\"Lite로 시작해서 나중에 클러스터로 옮기죠.\""
+   ],
+   "ask": [
+    "분산 배포를 운영할 사람이 있나요?",
+    "관리형(Zilliz Cloud)과 직접 운영 비용을 비교했나요?"
+   ],
+   "mine": "메모리 앱 3명 팀에게 분산 Milvus는 지금은 과해요. 수억 개가 되면 다시 봐요.",
+   "deep": [
+    "Zilliz는 Milvus를 만든 회사이고 VectorDBBench도 공개했어요."
+   ],
+   "recall": {
+    "q": "Milvus가 특히 강조하는 점은?",
+    "a": "대규모 분산과 다양한(GPU 포함) 인덱스"
+   },
+   "quiz": [
+    {
+     "q": "Milvus를 파이썬에 내장해 가볍게 쓰는 버전은?",
+     "options": [
+      "Milvus Lite",
+      "Milvus Mini",
+      "Milvus Edge"
+     ],
+     "answer": 0,
+     "why": "공식 문서에 Milvus Lite가 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Wang et al. — Milvus: A Purpose-Built Vector Data Management System (SIGMOD 2021)",
+     "url": "https://dl.acm.org/doi/10.1145/3448016.3457550",
+     "date": "2021"
+    },
+    {
+     "title": "Milvus docs — Overview",
+     "url": "https://milvus.io/docs/overview.md",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "Weaviate: 모듈과 하이브리드",
+   "lead": "Weaviate는 오픈소스 벡터 DB로, 임베딩 모델 연결(모듈)과 키워드+벡터 하이브리드 검색을 기본으로 갖고 있어요.",
+   "idea": [
+    "모듈을 켜면 텍스트를 넣을 때 DB가 대신 임베딩해 줘요.",
+    "하이브리드 검색은 BM25 점수와 벡터 점수를 alpha로 섞어요(04장에서 깊게).",
+    "멀티테넌시 기능으로 테넌트마다 샤드를 나눌 수 있어요."
+   ],
+   "hear": [
+    "\"alpha 0.5로 하이브리드 돌려 봐요.\"",
+    "\"vectorizer 모듈 켜면 임베딩 코드가 필요 없어요.\""
+   ],
+   "ask": [
+    "DB가 임베딩을 대신 만들면, 모델 버전은 어떻게 고정하나요?",
+    "하이브리드 가중치는 어떻게 정하나요?"
+   ],
+   "mine": "메모리 앱에서 코드명 같은 키워드가 중요해지면(04장) 하이브리드 내장이 장점이에요.",
+   "deep": [
+    "DeepLearning.AI의 벡터 DB 단기 강좌를 Weaviate가 함께 만들었어요."
+   ],
+   "recall": {
+    "q": "Weaviate 하이브리드에서 alpha는?",
+    "a": "키워드(BM25)와 벡터 점수의 섞는 비율"
+   },
+   "quiz": [
+    {
+     "q": "Weaviate가 임베딩을 대신 만들어 주는 기능은?",
+     "options": [
+      "모듈(vectorizer)",
+      "트리거",
+      "뷰"
+     ],
+     "answer": 0,
+     "why": "모듈이 모델 API를 불러요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Weaviate docs",
+     "url": "https://weaviate.io/developers/weaviate",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "Pinecone: 관리형 서버리스",
+   "lead": "Pinecone은 직접 서버를 띄우지 않는 관리형 벡터 DB예요. 2024-01-16에 서버리스를 공개 프리뷰로 발표했고, 지금은 AWS·GCP·Azure에서 정식 제공돼요.",
+   "idea": [
+    "서버리스는 읽기·쓰기·저장을 나누고, 원본은 블롭(객체) 스토리지에 둬요.",
+    "pod·샤드·복제본을 고르지 않고 쓴 만큼 내요.",
+    "자주 쓰는 namespace는 캐시돼서(warm) 빠르고, 오랜만에 쓰면(cold) 첫 질의가 느릴 수 있어요."
+   ],
+   "hear": [
+    "\"우리 인프라 담당 없으니 관리형으로 가죠.\"",
+    "\"cold namespace라 첫 질의가 느려요.\""
+   ],
+   "ask": [
+    "월 질의 수와 저장량으로 비용을 계산했나요?",
+    "데이터를 다른 곳으로 옮길 수 있나요(종속)?"
+   ],
+   "mine": "메모리 앱 팀은 3명이라 운영 부담이 작은 게 커요. 대신 비용과 종속을 따져야 해요.",
+   "deep": [
+    "Pinecone 글은 Gong이 서버리스로 옮긴 뒤 비용이 10배 줄었다고 소개해요(벤더가 전한 고객 사례)."
+   ],
+   "recall": {
+    "q": "서버리스 Pinecone의 원본 데이터는 어디?",
+    "a": "블롭(객체) 스토리지"
+   },
+   "quiz": [
+    {
+     "q": "Pinecone 서버리스 발표 시점 상태는?",
+     "options": [
+      "정식(GA)",
+      "공개 프리뷰",
+      "비공개 알파"
+     ],
+     "answer": 1,
+     "why": "2024-01-16 발표 때는 public preview였어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Pinecone — Introducing Pinecone Serverless",
+     "url": "https://www.pinecone.io/blog/serverless/",
+     "date": "2024-01-16"
+    },
+    {
+     "title": "Pinecone — Serverless architecture",
+     "url": "https://www.pinecone.io/blog/serverless-architecture/",
+     "date": "2024-01-16"
+    },
+    {
+     "title": "Pinecone docs",
+     "url": "https://docs.pinecone.io/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "Chroma: 로컬 프로토타입",
+   "lead": "Chroma는 pip 한 줄로 시작하는 오픈소스 임베딩 DB예요. 노트북·로컬 실험에 특히 편해요.",
+   "idea": [
+    "클라이언트만 만들면 메모리 또는 로컬 디렉터리에 저장돼요.",
+    "문서를 넣으면 기본 임베딩 함수로 벡터를 만들어 줘요.",
+    "서버 모드나 클라우드로도 쓸 수 있지만, 큰 운영은 따로 검토해요."
+   ],
+   "hear": [
+    "\"데모는 Chroma로 금방 만들었어요.\"",
+    "\"프로덕션도 이걸로 갈까요?\""
+   ],
+   "ask": [
+    "프로토타입에서 쓴 코드를 다른 DB로 옮기기 쉽나요?",
+    "기본 임베딩 모델이 무엇인지 확인했나요?"
+   ],
+   "mine": "메모리 앱 첫 데모(노트 3,000개)는 Chroma로 하루 만에 띄울 수 있어요.",
+   "deep": [
+    "프로토타입 도구와 운영 도구는 다를 수 있어요. 옮기는 비용을 미리 생각해요."
+   ],
+   "recall": {
+    "q": "Chroma가 특히 좋은 상황은?",
+    "a": "로컬·노트북에서 빠르게 프로토타입"
+   },
+   "quiz": [
+    {
+     "q": "Chroma에 문서 텍스트만 넣으면?",
+     "options": [
+      "에러",
+      "기본 임베딩 함수로 벡터를 만들어 줌",
+      "키워드 검색만 됨"
+     ],
+     "answer": 1,
+     "why": "기본 embedding function이 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Chroma docs",
+     "url": "https://docs.trychroma.com/",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "import chromadb\nc = chromadb.Client().create_collection(\"notes\")\nc.add(ids=[\"n1\"], documents=[\"지난주 회의: 출시일 결정\"])\nprint(c.query(query_texts=[\"출시 언제 정했지?\"], n_results=1))",
+    "read": "읽는 법: 메모리 안 컬렉션을 만들고, 노트 하나를 넣은 뒤 질문과 가장 비슷한 노트 1개를 찾아요."
+   }
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "LanceDB: 파일 같은 임베디드 DB",
+   "lead": "LanceDB는 서버 없이 앱 안에서 돌아가는(임베디드) 벡터 DB예요. 데이터는 Lance라는 열 지향 파일 포맷으로 저장돼요.",
+   "idea": [
+    "SQLite처럼 경로만 주면 열려요. 로컬 디스크나 객체 스토리지에 둘 수 있어요.",
+    "Lance 포맷은 버전 관리와 빠른 임의 접근을 목표로 만든 열 지향 포맷이에요.",
+    "벡터와 원본 데이터(텍스트·이미지 경로)를 한 테이블에 둬요."
+   ],
+   "hear": [
+    "\"서버 띄우기 싫으면 LanceDB 써요.\"",
+    "\"이전 버전 테이블로 돌아갈 수 있어요.\""
+   ],
+   "ask": [
+    "여러 프로세스가 동시에 쓰면 어떻게 되나요?",
+    "객체 스토리지에 둘 때 지연은?"
+   ],
+   "mine": "메모리 앱의 데스크톱 버전은 사용자 노트를 로컬 파일로 두고 LanceDB로 검색할 수 있어요.",
+   "deep": [
+    "Lance는 Parquet와 비교되는 열 지향 포맷으로 소개돼요(GitHub)."
+   ],
+   "recall": {
+    "q": "LanceDB의 저장 포맷 이름은?",
+    "a": "Lance (열 지향 포맷)"
+   },
+   "quiz": [
+    {
+     "q": "LanceDB는 기본적으로?",
+     "options": [
+      "별도 서버 필수",
+      "임베디드(앱 안에서 실행)",
+      "브라우저 전용"
+     ],
+     "answer": 1,
+     "why": "경로만 주면 열리는 임베디드 방식이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "LanceDB docs",
+     "url": "https://lancedb.github.io/lancedb/",
+     "date": "n.d."
+    },
+    {
+     "title": "Lance format (GitHub)",
+     "url": "https://github.com/lancedb/lance",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "import lancedb\ndb = lancedb.connect(\"./memory-db\")\nt = db.create_table(\"notes\", data=[{\"vector\": [0.1, 0.3], \"text\": \"회의\"}])\nt.search([0.1, 0.25]).limit(1).to_list()",
+    "read": "읽는 법: 폴더 하나를 DB로 열고, 2차원 예시 벡터로 노트 테이블을 만든 뒤 가장 가까운 1개를 찾아요."
+   }
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "저장과 연산을 나누는 구조",
+   "lead": "요즘 서버리스 벡터 DB는 원본을 싼 객체 스토리지에 두고, 검색 서버는 필요한 조각만 가져와 캐시해요.",
+   "idea": [
+    "Pinecone 서버리스: 쓰기는 로그와 블롭 스토리지에 기록, 인덱스 빌더가 공간을 구역(centroid)으로 나눠 세그먼트를 만들고, 쿼리 실행기는 필요한 세그먼트만 읽어 캐시해요.",
+    "장점: 저장 비용이 싸고 데이터가 아주 커져도 돼요. 단점: 캐시에 없는 첫 질의(cold)는 느려요.",
+    "LanceDB도 객체 스토리지 위에 파일을 두는 방식이 가능해요."
+   ],
+   "hear": [
+    "\"compute랑 storage를 분리해서 쓸 때만 돈 내요.\"",
+    "\"첫 질의 콜드 스타트가 문제예요.\""
+   ],
+   "ask": [
+    "p95 지연 목표에 콜드 스타트가 포함되나요?",
+    "캐시를 데우는(warm) 방법이 있나요?"
+   ],
+   "mine": "메모리 앱 사용자 대부분은 하루 몇 번만 검색해요. 쓴 만큼 내는 구조가 맞을 수 있지만 첫 검색 지연을 재 봐야 해요.",
+   "deep": [
+    "Pinecone 글은 최신 쓰기를 몇 초 안에 검색되게 하는 freshness 계층을 따로 둔다고 설명해요."
+   ],
+   "recall": {
+    "q": "서버리스 구조의 대표 단점은?",
+    "a": "캐시에 없는 데이터를 처음 읽을 때(cold) 느림"
+   },
+   "quiz": [
+    {
+     "q": "서버리스 벡터 DB에서 원본(source of truth)은 보통?",
+     "options": [
+      "검색 서버 RAM",
+      "객체(블롭) 스토리지",
+      "사용자 브라우저"
+     ],
+     "answer": 1,
+     "why": "Pinecone 서버리스는 블롭 스토리지를 원본으로 둬요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Pinecone — Serverless architecture",
+     "url": "https://www.pinecone.io/blog/serverless-architecture/",
+     "date": "2024-01-16"
+    }
+   ],
+   "steps": [
+    {
+     "k": "1 · 쓰기",
+     "t": "로그 + 블롭 스토리지"
+    },
+    {
+     "k": "2 · 빌드",
+     "t": "구역별 세그먼트"
+    },
+    {
+     "k": "3 · 검색",
+     "t": "필요한 세그먼트만 읽고 캐시"
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "멀티테넌시: 고객별로 나누기",
+   "lead": "여러 사용자(테넌트)의 노트를 한 시스템에 둘 때, 다른 사람 노트가 절대 검색되면 안 돼요.",
+   "idea": [
+    "방법 1: 테넌트마다 컬렉션/인덱스. 격리는 강하지만 수가 많으면 관리가 무거워요.",
+    "방법 2: 한 컬렉션 + tenant_id 필터. 가볍지만 필터를 빼먹으면 사고예요.",
+    "방법 3: DB의 테넌트 기능(Pinecone namespace, Weaviate multi-tenancy, Qdrant 페이로드 기반 파티션)."
+   ],
+   "hear": [
+    "\"tenant_id 필터 하나 빠지면 남의 노트가 떠요.\"",
+    "\"사용자당 namespace 하나씩 줬어요.\""
+   ],
+   "ask": [
+    "필터를 빼먹지 않게 서버 한 곳에서 강제하나요?",
+    "테넌트 하나를 지울 때 깔끔하게 지워지나요?"
+   ],
+   "mine": "메모리 앱은 사용자마다 노트가 따로예요. Pinecone이면 사용자당 namespace, pgvector면 user_id WHERE + 행 보안(RLS)이 후보예요.",
+   "deep": [
+    "Pinecone 문서는 테넌트마다 namespace를 두는 방식을 권해요."
+   ],
+   "recall": {
+    "q": "tenant_id 필터 방식의 가장 큰 위험은?",
+    "a": "필터를 한 번이라도 빼먹으면 다른 사용자 데이터가 보임"
+   },
+   "quiz": [
+    {
+     "q": "Pinecone에서 테넌트를 나누는 기본 단위는?",
+     "options": [
+      "namespace",
+      "database",
+      "column"
+     ],
+     "answer": 0,
+     "why": "namespace가 하드 파티션이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Pinecone docs — Implement multitenancy",
+     "url": "https://docs.pinecone.io/guides/index-data/implement-multitenancy",
+     "date": "n.d."
+    },
+    {
+     "title": "Pinecone — Serverless architecture",
+     "url": "https://www.pinecone.io/blog/serverless-architecture/",
+     "date": "2024-01-16"
+    },
+    {
+     "title": "Weaviate docs",
+     "url": "https://weaviate.io/developers/weaviate",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "비용 추정: N × d × 4바이트",
+   "lead": "원본 벡터 메모리는 '개수 × 차원 × 4바이트(float32)'로 먼저 어림해요.",
+   "idea": [
+    "노트 100만 개 × 768차원 × 4B = 3,072,000,000B ≈ 3.1GB.",
+    "HNSW는 이웃 링크를 따로 저장해서 이보다 더 들어요(대략 점마다 m의 2배 링크).",
+    "halfvec면 원본이 1.5GB, binary면 약 96MB로 줄어요."
+   ],
+   "hear": [
+    "\"1536차원 모델로 바꾸면 메모리 두 배예요.\"",
+    "\"인덱스가 RAM 크기를 넘으면 디스크를 읽어서 느려요.\""
+   ],
+   "ask": [
+    "1년 뒤 벡터 수는? 차원은?",
+    "원본 벡터와 인덱스를 합친 실제 크기를 재 봤나요?"
+   ],
+   "mine": "메모리 앱: 지금 100만 노트 × 768 → 약 3.1GB. 청크를 노트당 5개로 나누면 500만 개, 약 15.4GB가 돼요.",
+   "deep": [
+    "관리형 서비스는 저장량·읽기·쓰기 단위로 요금을 매기니, 그 단위로 다시 계산해요."
+   ],
+   "recall": {
+    "q": "벡터 50만 개 × 1024차원 float32 메모리는?",
+    "a": "500,000×1024×4 = 2,048,000,000B ≈ 2GB"
+   },
+   "quiz": [
+    {
+     "q": "차원을 768→1536으로 바꾸면 원본 메모리는?",
+     "options": [
+      "같다",
+      "2배",
+      "4배"
+     ],
+     "answer": 1,
+     "why": "차원에 정비례해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "n, d = 1_000_000, 768\nprint(n * d * 4 / 1e9, \"GB float32\")\nprint(n * d * 2 / 1e9, \"GB halfvec\")\nprint(n * d / 8 / 1e9, \"GB binary\")",
+    "read": "읽는 법: 100만 개 × 768차원을 4바이트·2바이트·1비트로 저장할 때 크기(약 3.07 · 1.54 · 0.096GB)를 계산해요."
+   }
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "벤치마크 함정",
+   "lead": "벡터 DB 벤치마크는 대부분 그 DB를 만든 회사가 만들어요. 결과는 데이터셋·설정·하드웨어에 따라 뒤집혀요.",
+   "idea": [
+    "같은 recall에서 비교했는지 봐요. recall 0.9와 0.99의 속도는 하늘과 땅 차이예요.",
+    "필터가 있는지, 쓰기를 하면서 읽는지, 동시 접속 수가 몇인지에 따라 순위가 바뀌어요.",
+    "Qdrant benchmarks, VectorDBBench(Zilliz), Supabase 글 모두 벤더 자료예요. 참고만 하고 내 데이터로 재요."
+   ],
+   "hear": [
+    "\"공식 벤치에서 우리가 1등이래요.\"",
+    "\"그거 몇 recall 기준이에요?\""
+   ],
+   "ask": [
+    "같은 recall, 같은 하드웨어로 비교했나요?",
+    "우리 질의(필터 비율)를 넣어 직접 돌려 봤나요?"
+   ],
+   "mine": "메모리 앱 팀은 실제 노트 1만 개 샘플과 실제 질문 100개로 후보 2~3개를 직접 재기로 해요.",
+   "deep": [
+    "Supabase 글도 HNSW가 빌드가 느리고 메모리를 더 쓴다는 단점을 함께 적었어요. 좋은 벤치 글은 단점도 적어요."
+   ],
+   "recall": {
+    "q": "벤치마크를 볼 때 첫 번째로 확인할 것?",
+    "a": "어떤 recall(정확도)에서 잰 속도인지"
+   },
+   "quiz": [
+    {
+     "q": "벤더 벤치마크를 쓰는 올바른 방법은?",
+     "options": [
+      "그대로 믿는다",
+      "무시한다",
+      "참고하고 내 데이터로 다시 잰다"
+     ],
+     "answer": 2,
+     "why": "조건이 다르면 결과가 뒤집혀요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Qdrant — Vector Database Benchmarks",
+     "url": "https://qdrant.tech/benchmarks/",
+     "date": "n.d."
+    },
+    {
+     "title": "VectorDBBench (Zilliz)",
+     "url": "https://github.com/zilliztech/VectorDBBench",
+     "date": "n.d."
+    },
+    {
+     "title": "Supabase — pgvector v0.5.0: Faster semantic search with HNSW indexes",
+     "url": "https://supabase.com/blog/increase-performance-pgvector-hnsw",
+     "date": "2023-09-06"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "백업과 버전",
+   "lead": "벡터는 다시 만들 수 있지만, 비싸요. 백업과 '어떤 모델로 만든 벡터인지' 기록이 필요해요.",
+   "idea": [
+    "백업: pgvector는 Postgres 백업에 포함, 전용 DB는 스냅샷 기능을 따로 써요.",
+    "임베딩 모델을 바꾸면 모든 벡터를 다시 만들어야 해요. 새 컬렉션에 채운 뒤 별칭(alias)을 바꾸는 식으로 무중단 교체해요.",
+    "LanceDB는 테이블 버전을 남겨 이전 버전으로 돌아갈 수 있어요."
+   ],
+   "hear": [
+    "\"모델 바꾸는 동안 검색 끊기면 안 돼요.\"",
+    "\"이 벡터 어느 모델 버전이에요?\""
+   ],
+   "ask": [
+    "벡터마다 모델 이름·버전을 저장하나요?",
+    "전체 재임베딩 비용과 시간은?"
+   ],
+   "mine": "메모리 앱은 페이로드에 embed_model: \"v1\"을 넣고, v2로 바꿀 땐 새 컬렉션을 채운 뒤 바꿔요.",
+   "deep": [
+    "Qdrant 문서에 스냅샷과 컬렉션 별칭(alias) 기능이 있어요."
+   ],
+   "recall": {
+    "q": "임베딩 모델 교체를 무중단으로 하는 흔한 방법은?",
+    "a": "새 컬렉션을 다 채운 뒤 별칭을 새 쪽으로 바꾼다"
+   },
+   "quiz": [
+    {
+     "q": "다른 모델로 만든 벡터를 한 인덱스에 섞으면?",
+     "options": [
+      "괜찮다",
+      "거리 비교가 의미 없어진다",
+      "더 정확해진다"
+     ],
+     "answer": 1,
+     "why": "모델마다 공간이 달라요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Qdrant docs — Quickstart",
+     "url": "https://qdrant.tech/documentation/quickstart/",
+     "date": "n.d."
+    },
+    {
+     "title": "LanceDB docs",
+     "url": "https://lancedb.github.io/lancedb/",
+     "date": "n.d."
+    },
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "선택 의사결정 트리",
+   "lead": "정답 DB는 없어요. 규모·운영 인력·기존 스택·필터 요구 네 가지로 좁혀요.",
+   "idea": [
+    "이미 Postgres + 수백만 개 이하 → pgvector부터.",
+    "운영 인력 없음 + 비용 계산 OK → 관리형(Pinecone 등).",
+    "필터 많고 직접 운영 가능 → Qdrant·Weaviate. 아주 큰 분산 → Milvus. 로컬·임베디드 → Chroma·LanceDB."
+   ],
+   "hear": [
+    "\"요구사항부터 숫자로 적고 고르죠.\"",
+    "\"나중에 바꾸기 쉽게 검색 계층을 감싸 둬요.\""
+   ],
+   "ask": [
+    "나중에 DB를 바꿀 때 바꿔야 하는 코드는 어디까지인가요?",
+    "결정 기록(ADR)에 '다시 볼 조건'을 적었나요?"
+   ],
+   "mine": "메모리 앱 결론 후보: 이미 Postgres를 쓰고 100만 노트라 pgvector + hnsw + halfvec로 시작, 1,000만 넘거나 p95가 목표를 넘으면 다시 검토.",
+   "deep": [
+    "검색 함수를 search(query, filters) 하나로 감싸 두면 DB 교체 비용이 줄어요."
+   ],
+   "recall": {
+    "q": "선택할 때 보는 네 가지?",
+    "a": "규모, 운영 인력, 기존 스택, 필터 요구"
+   },
+   "quiz": [
+    {
+     "q": "Postgres를 쓰는 3인 팀, 노트 100만 개. 첫 후보는?",
+     "options": [
+      "분산 Milvus",
+      "pgvector",
+      "직접 HNSW 구현"
+     ],
+     "answer": 1,
+     "why": "가장 적은 새 시스템으로 시작해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Pan, Wang, Li — Survey of Vector Database Management Systems",
+     "url": "https://arxiv.org/abs/2310.14021",
+     "date": "2023-10-21"
+    },
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ],
+   "steps": [
+    {
+     "k": "1 · 규모",
+     "t": "벡터 수 × 차원 × QPS"
+    },
+    {
+     "k": "2 · 사람",
+     "t": "운영할 사람이 있나"
+    },
+    {
+     "k": "3 · 스택",
+     "t": "이미 쓰는 DB"
+    },
+    {
+     "k": "4 · 필터",
+     "t": "좁은 필터가 많나"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "supabase-pgvector",
+   "day": 2,
+   "title": "Postgres 확장 하나가 어떻게 '벡터 DB 후보'가 됐을까",
+   "when": "2023-08-28",
+   "lead": "pgvector는 원래 Postgres에 벡터 칼럼을 붙이는 작은 확장이었어요. 0.5.0에서 HNSW가 들어오고, Supabase 같은 Postgres 서비스가 이를 바로 제공하면서 '전용 DB 없이도 된다'는 선택지가 생겼어요.",
+   "facts": [
+    {
+     "label": "HNSW 추가",
+     "value": "pgvector 0.5.0 (2023-08-28)",
+     "src": "pgvector CHANGELOG"
+    },
+    {
+     "label": "halfvec·sparsevec·bit 인덱스·binary_quantize",
+     "value": "0.7.0 (2024-04-29)",
+     "src": "pgvector CHANGELOG"
+    },
+    {
+     "label": "Supabase 벤치(100만 개, 1536차원)",
+     "value": "hnsw가 ivfflat보다 같은 정확도에서 6배 넘게 빠름",
+     "src": "Supabase 블로그 2023-09-06 (벤더 자료)"
+    },
+    {
+     "label": "인덱스 차원 한도",
+     "value": "vector 2,000차원",
+     "src": "pgvector CHANGELOG 0.4.0"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2023-01-11",
+     "text": "0.4.0: 인덱스 차원 한도 1,024 → 2,000"
+    },
+    {
+     "t": "2023-08-28",
+     "text": "0.5.0: HNSW 인덱스 추가",
+     "hot": true
+    },
+    {
+     "t": "2023-09-06",
+     "text": "Supabase가 HNSW 벤치 글 공개"
+    },
+    {
+     "t": "2024-04-29",
+     "text": "0.7.0: halfvec·sparsevec, bit 인덱싱, binary_quantize",
+     "hot": true
+    }
+   ],
+   "causes": [
+    {
+     "stage": "제품 · 운영",
+     "title": "새 시스템이 필요 없음",
+     "text": "이미 쓰는 Postgres에 확장만 켜면 돼서 백업·권한·조인을 그대로 써요."
+    },
+    {
+     "stage": "기술 · 인덱스",
+     "title": "HNSW로 속도 격차 축소",
+     "text": "ivfflat만 있을 땐 속도·정확도 균형이 아쉬웠는데, HNSW로 전용 DB와 견줄 만해졌어요."
+    },
+    {
+     "stage": "기술 · 비용",
+     "title": "양자화로 메모리 절감",
+     "text": "halfvec는 절반, binary는 32분의 1 크기라 같은 서버에 더 많이 넣어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "리드 서윤이라면, 노트 100만 개에서 pgvector를 고를 근거를 무엇으로 대나요?",
+     "a": "벤더 벤치가 아니라 우리 노트 샘플로 recall@10과 p95 지연을 재고, 메모리(N×d×바이트)가 서버에 들어가는지 계산해요."
+    },
+    {
+     "q": "Supabase 벤치를 그대로 인용해도 될까요?",
+     "a": "벤더 자료이고 1536차원·특정 하드웨어 조건이에요. '참고' 표시와 함께 쓰고 직접 재야 해요."
+    }
+   ],
+   "after": [
+    "pgvector는 이후에도 버전을 올리며 필터 검색 등 기능을 늘렸어요(README 참고)."
+   ],
+   "sources": [
+    {
+     "title": "pgvector CHANGELOG",
+     "url": "https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md",
+     "date": "n.d."
+    },
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    },
+    {
+     "title": "Supabase — pgvector v0.5.0: Faster semantic search with HNSW indexes",
+     "url": "https://supabase.com/blog/increase-performance-pgvector-hnsw",
+     "date": "2023-09-06"
+    }
+   ],
+   "caveat": "성능 수치는 Supabase 자체 벤치예요. 원래 커리큘럼 메모의 'Pinecone 대비 동급 이상' 주장은 해당 글에서 확인되지 않아 뺐어요."
+  },
+  {
+   "id": "pinecone-serverless",
+   "day": 4,
+   "title": "Pinecone은 왜 서버를 버리고 '서버리스'로 갔을까",
+   "when": "2024-01-16",
+   "lead": "Pinecone은 원래 사용자가 pod(서버 크기)를 골라 쓰는 관리형 DB였어요. 2024년 1월, 저장은 블롭 스토리지에, 연산은 공유 계층에 두는 서버리스를 발표했어요.",
+   "facts": [
+    {
+     "label": "발표",
+     "value": "2024-01-16, 공개 프리뷰 (AWS만, 유료 계정)",
+     "src": "Pinecone 블로그"
+    },
+    {
+     "label": "현재 상태",
+     "value": "AWS·GCP·Azure에서 정식 제공",
+     "src": "Pinecone 블로그 업데이트 문구"
+    },
+    {
+     "label": "고객 사례",
+     "value": "Gong 비용 10배 감소",
+     "src": "Pinecone 아키텍처 글 (벤더가 전한 사례)"
+    },
+    {
+     "label": "벤치 지연",
+     "value": "평균 질의 지연 약 46.9% 감소",
+     "src": "Pinecone 아키텍처 글 (벤더 자료)"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2024-01-16",
+     "text": "서버리스 공개 프리뷰 발표 + 아키텍처 글",
+     "hot": true
+    },
+    {
+     "t": "이후",
+     "text": "정식 제공, GCP·Azure로 확장"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "기술 · 구조",
+     "title": "저장과 연산 분리",
+     "text": "원본은 블롭 스토리지, 쿼리 실행기는 필요한 세그먼트만 읽어 캐시해요."
+    },
+    {
+     "stage": "기술 · 신선도",
+     "title": "freshness 계층",
+     "text": "로그를 따라가며 최신 데이터를 작은 인덱스로 만들어 몇 초 안에 검색되게 해요."
+    },
+    {
+     "stage": "비즈니스 · 가격",
+     "title": "쓴 만큼 내기",
+     "text": "읽기·쓰기·저장을 따로 매겨, pod를 항상 켜 두는 것보다 싸지는 사용자가 많다고 해요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "메모리 앱 사용자 대부분이 하루 몇 번만 검색한다면 서버리스가 유리할까요?",
+     "a": "쓴 만큼 내니 유리할 수 있지만, 캐시가 식은(cold) 사용자의 첫 검색 지연을 재 봐야 해요."
+    },
+    {
+     "q": "'10배 절감'을 우리 계획서에 써도 될까요?",
+     "a": "한 고객의 벤더 소개 사례예요. 우리 질의 수·저장량으로 요금표를 직접 계산해서 써요."
+    }
+   ],
+   "after": [
+    "서버리스·객체 스토리지 구조는 다른 벡터 DB에서도 흔한 방향이 됐어요(LanceDB 등)."
+   ],
+   "sources": [
+    {
+     "title": "Pinecone — Introducing Pinecone Serverless",
+     "url": "https://www.pinecone.io/blog/serverless/",
+     "date": "2024-01-16"
+    },
+    {
+     "title": "Pinecone — Serverless architecture",
+     "url": "https://www.pinecone.io/blog/serverless-architecture/",
+     "date": "2024-01-16"
+    }
+   ],
+   "caveat": "원래 메모의 '최대 50배 비용 절감'은 두 글에서 확인되지 않아 뺐어요. GA 정확한 날짜도 확인하지 못했어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "Faiss 파일이 또 깨졌어요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "노트 지울 때마다 Faiss 인덱스를 새로 빌드해요. 40분 걸려요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "이제 노트가 매일 바뀌어요."
+    }
+   ],
+   "q": "무엇을 제안할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "하루 한 번 밤에 다시 빌드한다",
+     "ok": false,
+     "why": "삭제된 노트가 하루 종일 검색돼요."
+    },
+    {
+     "k": "B",
+     "t": "CRUD를 관리해 주는 벡터 DB(또는 pgvector)로 옮긴다",
+     "ok": true,
+     "why": "수정·삭제를 DB가 반영해요."
+    },
+    {
+     "k": "C",
+     "t": "삭제 기능을 막는다",
+     "ok": false,
+     "why": "사용자 기능을 해치는 해결이에요."
+    }
+   ],
+   "explain": "라이브러리는 알고리즘, DB는 저장·수정까지 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Pan, Wang, Li — Survey of Vector Database Management Systems",
+     "url": "https://arxiv.org/abs/2310.14021",
+     "date": "2023-10-21"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "결과가 2개뿐이에요",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "'내 노트만' 필터 켜면 결과가 2개밖에 안 나와요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "상위 10개 뽑고 나서 걸러요."
+    }
+   ],
+   "q": "원인과 해결은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "post-filter라 그래요. 필터를 검색 중에 거는 DB 기능이나 페이로드 인덱스를 쓴다",
+     "ok": true,
+     "why": "필터를 탐색과 함께 적용해야 k개를 채워요."
+    },
+    {
+     "k": "B",
+     "t": "상위 10개를 3개로 줄인다",
+     "ok": false,
+     "why": "더 줄어요."
+    },
+    {
+     "k": "C",
+     "t": "필터를 없앤다",
+     "ok": false,
+     "why": "남의 노트가 보여요."
+    }
+   ],
+   "explain": "post-filter는 결과 수가 모자라요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Qdrant docs — Filtering",
+     "url": "https://qdrant.tech/documentation/concepts/filtering/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "모델을 바꿨는데 이상해요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "새 임베딩 모델로 바꿨어요. 새 노트만 새 모델로 넣었어요."
+    }
+   ],
+   "q": "무엇이 문제일까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "문제없다",
+     "ok": false,
+     "why": "옛 벡터와 새 벡터는 공간이 달라 비교가 안 돼요."
+    },
+    {
+     "k": "B",
+     "t": "한 컬렉션에 두 모델 벡터가 섞였다. 새 컬렉션에 전부 다시 넣고 바꿔야 한다",
+     "ok": true,
+     "why": "같은 모델로 만든 벡터끼리만 비교해요."
+    },
+    {
+     "k": "C",
+     "t": "차원만 같으면 된다",
+     "ok": false,
+     "why": "차원이 같아도 의미 공간이 달라요."
+    }
+   ],
+   "explain": "모델 교체 = 전체 재임베딩.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Qdrant docs — Quickstart",
+     "url": "https://qdrant.tech/documentation/quickstart/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "pgvector 인덱스 고르기",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "노트는 지금 0개부터 매일 늘어요. 인덱스 뭘로 해요?"
+    }
+   ],
+   "q": "무엇을 고를까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "ivfflat, 지금 바로 생성",
+     "ok": false,
+     "why": "데이터가 없을 때 만든 구역은 나빠요."
+    },
+    {
+     "k": "B",
+     "t": "hnsw",
+     "ok": true,
+     "why": "빈 테이블에서도 만들 수 있고 균형이 좋아요."
+    },
+    {
+     "k": "C",
+     "t": "인덱스 없이 영원히",
+     "ok": false,
+     "why": "100만 개면 매번 전부 비교해요."
+    }
+   ],
+   "explain": "pgvector README 권고.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "recall이 낮아요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "hnsw 붙였더니 정답 노트가 가끔 빠져요. ef_search 기본값 40이에요."
+    }
+   ],
+   "q": "먼저 해 볼 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "ef_search를 100 정도로 올리고 recall과 지연을 다시 잰다",
+     "ok": true,
+     "why": "후보를 더 보면 recall이 올라가요."
+    },
+    {
+     "k": "B",
+     "t": "인덱스를 지운다",
+     "ok": false,
+     "why": "정확하지만 느려요."
+    },
+    {
+     "k": "C",
+     "t": "임베딩 차원을 줄인다",
+     "ok": false,
+     "why": "원인과 무관해요."
+    }
+   ],
+   "explain": "Supabase 글에서도 ef_search를 올려 0.98~0.99를 맞췄어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Supabase — pgvector v0.5.0: Faster semantic search with HNSW indexes",
+     "url": "https://supabase.com/blog/increase-performance-pgvector-hnsw",
+     "date": "2023-09-06"
+    },
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "메모리가 모자라요",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "노트 100만 개 × 768차원인데 서버 RAM이 빠듯해요."
+    }
+   ],
+   "q": "가장 먼저 시험할 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "halfvec로 바꾸고 recall을 잰다",
+     "ok": true,
+     "why": "크기가 절반이 되고 정확도 손실을 직접 확인해요."
+    },
+    {
+     "k": "B",
+     "t": "바로 binary만 쓴다",
+     "ok": false,
+     "why": "재정렬 없이 binary만 쓰면 정확도가 크게 떨어질 수 있어요."
+    },
+    {
+     "k": "C",
+     "t": "노트를 절반 지운다",
+     "ok": false,
+     "why": "말이 안 돼요."
+    }
+   ],
+   "explain": "0.7.0 halfvec는 2바이트라 원본이 약 3.1GB→1.5GB.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "pgvector CHANGELOG",
+     "url": "https://github.com/pgvector/pgvector/blob/master/CHANGELOG.md",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "Qdrant 필터가 느려요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "Qdrant로 옮겼는데 author 필터 걸면 느려요."
+    }
+   ],
+   "q": "무엇을 확인할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "author에 payload index를 만들었는지",
+     "ok": true,
+     "why": "필터 필드 인덱스가 필요해요."
+    },
+    {
+     "k": "B",
+     "t": "도커 버전",
+     "ok": false,
+     "why": "먼저 볼 곳이 아니에요."
+    },
+    {
+     "k": "C",
+     "t": "벡터를 정규화했는지",
+     "ok": false,
+     "why": "필터 속도와 무관해요."
+    }
+   ],
+   "explain": "Qdrant 문서는 필터 필드 인덱싱을 권해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Qdrant docs — Filtering",
+     "url": "https://qdrant.tech/documentation/concepts/filtering/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "운영할 사람이 없어요",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "우리 셋 다 기능 개발로 바빠요. DB 운영은 못 해요."
+    }
+   ],
+   "q": "어떤 방향이 맞을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "분산 Milvus를 쿠버네티스에 직접",
+     "ok": false,
+     "why": "운영 부담이 가장 커요."
+    },
+    {
+     "k": "B",
+     "t": "관리형(또는 이미 쓰는 관리형 Postgres+pgvector)을 쓰고 비용을 계산한다",
+     "ok": true,
+     "why": "운영 인력이 없으면 관리형이 맞아요."
+    },
+    {
+     "k": "C",
+     "t": "직접 HNSW를 구현",
+     "ok": false,
+     "why": "가장 위험해요."
+    }
+   ],
+   "explain": "선택 기준: 운영 인력.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Pinecone — Introducing Pinecone Serverless",
+     "url": "https://www.pinecone.io/blog/serverless/",
+     "date": "2024-01-16"
+    },
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "코사인이냐 내적이냐",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "벡터를 정규화해서 넣었어요. 컬렉션 거리를 뭘로 할까요?"
+    }
+   ],
+   "q": "맞는 말은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "정규화된 벡터면 코사인과 내적 순위가 같다",
+     "ok": true,
+     "why": "길이가 1이면 내적 = 코사인이에요."
+    },
+    {
+     "k": "B",
+     "t": "반드시 유클리드만 된다",
+     "ok": false,
+     "why": "정규화하면 셋 다 순위가 같아요."
+    },
+    {
+     "k": "C",
+     "t": "거리 함수는 아무 의미 없다",
+     "ok": false,
+     "why": "정규화 안 하면 결과가 달라져요."
+    }
+   ],
+   "explain": "01장에서 배운 코사인·내적 관계를 다시 써요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Qdrant docs — Quickstart",
+     "url": "https://qdrant.tech/documentation/quickstart/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "남의 노트가 떴어요",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "테스트 계정에서 다른 사람 노트가 검색됐어요!"
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "새 API에서 user_id 필터를 빼먹었어요."
+    }
+   ],
+   "q": "재발을 막으려면?",
+   "options": [
+    {
+     "k": "A",
+     "t": "개발자에게 조심하라고 한다",
+     "ok": false,
+     "why": "또 빠져요."
+    },
+    {
+     "k": "B",
+     "t": "검색을 한 서버 함수로 모아 테넌트 필터(namespace·RLS)를 강제한다",
+     "ok": true,
+     "why": "빼먹을 수 없게 구조로 막아요."
+    },
+    {
+     "k": "C",
+     "t": "결과를 클라이언트에서 거른다",
+     "ok": false,
+     "why": "데이터가 이미 나갔어요."
+    }
+   ],
+   "explain": "멀티테넌시는 구조로 강제해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Pinecone docs — Implement multitenancy",
+     "url": "https://docs.pinecone.io/guides/index-data/implement-multitenancy",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "데모는 Chroma로",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "금요일 투자자 데모예요. 노트 3,000개로 검색만 보여 주면 돼요."
+    }
+   ],
+   "q": "무엇을 쓸까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "Chroma(로컬)로 빠르게",
+     "ok": true,
+     "why": "작은 데모에 딱 맞아요."
+    },
+    {
+     "k": "B",
+     "t": "분산 Milvus",
+     "ok": false,
+     "why": "과해요."
+    },
+    {
+     "k": "C",
+     "t": "데모를 미룬다",
+     "ok": false,
+     "why": "필요 없어요."
+    }
+   ],
+   "explain": "도구는 단계에 맞게.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Chroma docs",
+     "url": "https://docs.trychroma.com/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "첫 검색이 느려요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "서버리스로 옮겼더니 오랜만에 들어온 사용자 첫 검색이 느려요."
+    }
+   ],
+   "q": "원인은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "cold 상태라 세그먼트를 스토리지에서 처음 읽기 때문",
+     "ok": true,
+     "why": "캐시가 식으면 첫 질의가 느려요."
+    },
+    {
+     "k": "B",
+     "t": "벡터 차원이 바뀜",
+     "ok": false,
+     "why": "무관해요."
+    },
+    {
+     "k": "C",
+     "t": "HNSW ef가 낮음",
+     "ok": false,
+     "why": "설명과 맞지 않아요."
+    }
+   ],
+   "explain": "Pinecone 글: warm namespace는 빠르고 cold는 느려요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Pinecone — Introducing Pinecone Serverless",
+     "url": "https://www.pinecone.io/blog/serverless/",
+     "date": "2024-01-16"
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "벤더 벤치 1등",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "X사 벤치에서 X가 1등이래요. 바로 계약해요."
+    }
+   ],
+   "q": "서윤에게 뭐라고 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "1등이니 계약",
+     "ok": false,
+     "why": "조건이 우리와 달라요."
+    },
+    {
+     "k": "B",
+     "t": "같은 recall·우리 노트 샘플·필터 질의로 후보 2~3개를 직접 잰 뒤 정하자",
+     "ok": true,
+     "why": "내 데이터로 재는 게 기준이에요."
+    },
+    {
+     "k": "C",
+     "t": "벤치는 다 거짓말이니 무시",
+     "ok": false,
+     "why": "참고 가치는 있어요."
+    }
+   ],
+   "explain": "벤더 벤치는 참고만.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "VectorDBBench (Zilliz)",
+     "url": "https://github.com/zilliztech/VectorDBBench",
+     "date": "n.d."
+    },
+    {
+     "title": "Qdrant — Vector Database Benchmarks",
+     "url": "https://qdrant.tech/benchmarks/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "100만 노트, 느려진 검색 다시",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "02장에서 전부 비교(brute-force)라 느렸죠. 이제 pgvector에 뭘 켜죠?"
+    }
+   ],
+   "q": "가장 알맞은 조합은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "인덱스 없이 서버만 키운다",
+     "ok": false,
+     "why": "100만 번 비교는 그대로예요."
+    },
+    {
+     "k": "B",
+     "t": "hnsw 근사 인덱스 + ef_search로 recall 목표 맞추기",
+     "ok": true,
+     "why": "02장의 ANN을 DB 안에서 써요."
+    },
+    {
+     "k": "C",
+     "t": "키워드 검색으로 돌아간다",
+     "ok": false,
+     "why": "01장 문제로 돌아가요."
+    }
+   ],
+   "explain": "02장 ANN 개념을 DB 설정으로 옮겨요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "결정 기록 쓰기",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "이번 주 결론을 ADR로 남겨요. 노트 100만, Postgres 사용 중, 3명."
+    }
+   ],
+   "q": "ADR에 꼭 들어갈 '다시 볼 조건'으로 알맞은 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "없음, 한 번 정하면 끝",
+     "ok": false,
+     "why": "규모가 바뀌면 다시 봐야 해요."
+    },
+    {
+     "k": "B",
+     "t": "벡터 1,000만 개 초과 또는 p95가 목표 초과 시 전용 DB 재검토",
+     "ok": true,
+     "why": "숫자로 된 재검토 조건이에요."
+    },
+    {
+     "k": "C",
+     "t": "새 DB가 나오면 무조건 교체",
+     "ok": false,
+     "why": "근거가 없어요."
+    }
+   ],
+   "explain": "01·02장의 recall·지연 지표로 조건을 적어요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Pan, Wang, Li — Survey of Vector Database Management Systems",
+     "url": "https://arxiv.org/abs/2310.14021",
+     "date": "2023-10-21"
+    },
+    {
+     "title": "pgvector README",
+     "url": "https://github.com/pgvector/pgvector",
+     "date": "n.d."
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "Vector Databases: from Embeddings to Applications (DeepLearning.AI × Weaviate)",
+   "url": "https://www.deeplearning.ai/short-courses/vector-databases-embeddings-applications/",
+   "min": 65,
+   "lang": "en",
+   "what": "임베딩부터 벡터 DB 검색·하이브리드까지 짧은 영상 8개로 따라 해요.",
+   "day": 1
+  },
+  {
+   "id": "l2",
+   "title": "pgvector README",
+   "url": "https://github.com/pgvector/pgvector",
+   "min": 30,
+   "lang": "en",
+   "what": "설치, 거리 연산자, hnsw·ivfflat, halfvec·binary 예제를 직접 따라 쳐요.",
+   "day": 2
+  },
+  {
+   "id": "l3",
+   "title": "Qdrant Quickstart",
+   "url": "https://qdrant.tech/documentation/quickstart/",
+   "min": 30,
+   "lang": "en",
+   "what": "도커로 띄우고 컬렉션·포인트·필터 검색을 해 봐요.",
+   "day": 3
+  },
+  {
+   "id": "l4",
+   "title": "Milvus Overview",
+   "url": "https://milvus.io/docs/overview.md",
+   "min": 20,
+   "lang": "en",
+   "what": "분산 벡터 DB의 구성 요소와 지원 인덱스를 훑어봐요.",
+   "day": 3
+  },
+  {
+   "id": "l5",
+   "title": "LanceDB docs",
+   "url": "https://lancedb.github.io/lancedb/",
+   "min": 20,
+   "lang": "en",
+   "what": "임베디드 DB를 파이썬 몇 줄로 열어 검색해 봐요.",
+   "day": 4
+  },
+  {
+   "id": "l6",
+   "title": "Chroma docs",
+   "url": "https://docs.trychroma.com/",
+   "min": 15,
+   "lang": "en",
+   "what": "로컬 프로토타입을 15분 안에 만들어 봐요.",
+   "day": 4
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "메모리 앱의 벡터 DB 선택 기록(ADR-003)을 1~2쪽으로 써 보세요. 노트 100만 개, Postgres 사용 중, 3명 팀이라는 조건에서 무엇을 고를지 정해요.",
+  "template": [
+   "제목과 상태 (제안 / 승인 / 대체됨)",
+   "배경: 노트 수, 차원, 예상 QPS, 필터 종류, 운영 인력",
+   "메모리 추정: N × d × 바이트 (float32 / halfvec / binary)",
+   "후보 2~3개와 장단점 (pgvector / Qdrant / 관리형)",
+   "직접 잰 결과: 같은 recall@10에서 p95 지연",
+   "결정과 이유",
+   "멀티테넌시와 삭제 처리 방식",
+   "백업·모델 교체(재임베딩) 계획",
+   "다시 볼 조건 (벡터 1,000만 개, p95 목표 초과 등)"
+  ]
+ },
+ "check": [
+  "Story numbers (100만 노트, 3명, ADR-003) are fictional 메모리 앱 values.",
+  "pgvector 0.5.0 HNSW 2023-08-28; 0.7.0 halfvec/sparsevec/bit/binary_quantize 2024-04-29; index limit 2,000 dims since 0.4.0 (CHANGELOG).",
+  "Supabase 6x HNSW vs IVFFlat at 1M x 1536 is a vendor benchmark (2023-09-06).",
+  "Pinecone serverless 2024-01-16 public preview; Gong 10x and 46.9% latency are vendor claims; 50x claim dropped (not found)."
+ ]
+}

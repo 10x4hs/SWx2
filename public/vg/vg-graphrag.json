@@ -1,0 +1,2463 @@
+{
+  "id": "vg-graphrag",
+  "no": "08",
+  "title": "GraphRAG: 벡터와 그래프를 합치기",
+  "short": "GraphRAG",
+  "q": "\"올해 우리 팀 주요 주제는?\" 같은 질문은 어떻게 답하죠?",
+  "sub": "MS GraphRAG · LazyGraphRAG · LightRAG · HippoRAG · Neo4j",
+  "doc": "GraphRAG 도입 결정 기록 (ADR-008)",
+  "story": {
+    "title": "“올해 우리 팀 주요 주제가 뭐였죠?”",
+    "size": 3000,
+    "body": [
+      "(가상 이야기) '메모리' 앱의 노트는 이제 3,000개예요. 리드 서윤이 연말 회고를 준비하며 AI에게 \"올해 우리 팀 주요 주제 5개는?\"이라고 물었는데, 답은 회의 몇 개 얘기만 했어요.",
+      "데이터 담당 민재가 말해요. \"07에서 만든 지식그래프와 커뮤니티가 있잖아요. 그걸 검색에 쓰면 전체 주제를 잡을 수 있을 거예요. 그런데 색인 비용이 걱정이에요.\"",
+      "신입 엔지니어인 나는 이번 주에 GraphRAG를 쓸지, 어떤 방식으로 쓸지 정하고 금요일까지 결정 기록(ADR-008)으로 남겨야 해요."
+    ]
+  },
+  "goals": [
+    "벡터 RAG가 전역·멀티홉 질문에 약한 이유와 GraphRAG(global/local/DRIFT)의 구조를 설명할 수 있어요.",
+    "MS GraphRAG, LazyGraphRAG, LightRAG, HippoRAG의 차이를 비용·갱신·질문 유형으로 비교할 수 있어요.",
+    "Neo4j VectorCypher·Text2Cypher로 벡터+그래프 검색을 만들고, 도입 여부를 질문 유형과 비용으로 판단할 수 있어요."
+  ],
+  "cards": [
+    {
+      "id": "c01",
+      "day": 1,
+      "title": "벡터 RAG가 못 하는 두 가지 질문",
+      "lead": "벡터 RAG는 질문과 비슷한 조각 몇 개(top-k)를 가져와요. 그래서 \"전체를 훑어야 하는 질문\"과 \"여러 번 건너가야 하는 질문\"에 약해요.",
+      "idea": [
+        "전역 질문: \"올해 우리 팀 주요 주제 5개는?\" 정답은 노트 3,000개 전체에 흩어져 있어요. top-k=5 조각만 보면 5개 노트만 보고 답해요.",
+        "멀티홉 질문: \"서윤이 리드한 프로젝트의 회의에 나온 고객은?\" 서윤→프로젝트→회의→고객, 세 번 건너가야 해요. 한 번의 유사도 검색으로는 중간 고리를 놓치기 쉬워요.",
+        "GraphRAG 논문은 전역 질문을 \"쿼리 중심 요약(QFS)\" 문제라고 부르고, 일반 RAG가 이걸 위해 설계되지 않았다고 말해요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 질문 보기",
+          "t": "특정 사실? 전체 요약? 연결 추적?"
+        },
+        {
+          "k": "2 · 특정 사실",
+          "t": "벡터 RAG로 충분"
+        },
+        {
+          "k": "3 · 전체 요약",
+          "t": "커뮤니티 요약이 필요"
+        },
+        {
+          "k": "4 · 연결 추적",
+          "t": "그래프 탐색이 필요"
+        }
+      ],
+      "hear": [
+        "\"top-k를 50으로 올리면 되지 않아요?\"",
+        "\"요약 질문만 오면 답이 이상해져요.\""
+      ],
+      "ask": [
+        "들어오는 질문 중 전역·멀티홉 질문 비율은 얼마인가요?",
+        "top-k를 늘렸을 때 컨텍스트 길이와 비용은?"
+      ],
+      "mine": "'메모리' 앱의 \"지난주 회의 그거\"는 특정 사실 질문이라 벡터로 풀었어요. 하지만 \"올해 주요 주제는?\"은 노트 전체를 봐야 해요.",
+      "deep": [
+        "Microsoft 블로그는 일반 RAG가 \"데이터셋 전체의 주제 top 5\" 질문에 약했다고 보고해요.",
+        "top-k를 크게 올려도 결국 LLM 컨텍스트 창에 다 못 넣어요. 노트 3,000개 × 500토큰 = 150만 토큰이에요."
+      ],
+      "recall": {
+        "q": "벡터 RAG가 약한 질문 두 종류는?",
+        "a": "전역(전체 요약) 질문과 멀티홉(여러 번 건너가는) 질문"
+      },
+      "quiz": [
+        {
+          "q": "\"올해 팀이 가장 많이 다룬 주제는?\"은 어떤 질문인가요?",
+          "options": [
+            "특정 사실 질문",
+            "전역 질문",
+            "오타 질문"
+          ],
+          "answer": 1,
+          "why": "답이 전체 노트에 흩어져 있어서 전체를 훑어야 해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        },
+        {
+          "title": "Microsoft Research — GraphRAG: Unlocking LLM discovery on narrative private data",
+          "url": "https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/",
+          "date": "2024-02-13"
+        }
+      ]
+    },
+    {
+      "id": "c02",
+      "day": 1,
+      "title": "GraphRAG는 무엇인가요",
+      "lead": "GraphRAG는 LLM이 문서에서 엔티티·관계를 뽑아 그래프를 만들고, 그 그래프(와 요약)를 검색에 써서 답을 만드는 RAG예요.",
+      "idea": [
+        "좁게는 Microsoft가 2024년에 낸 방법과 오픈소스(microsoft/graphrag)를 말해요.",
+        "넓게는 \"그래프를 검색 단계에 쓰는 RAG\" 전체를 부르는 말이에요. 서베이 논문(Peng et al. 2024)은 이를 그래프 색인 → 그래프 검색 → 그래프로 보강한 생성 3단계로 정리해요.",
+        "회의에서 GraphRAG라고 하면 어느 쪽인지 먼저 확인해야 해요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 색인",
+          "t": "문서 → 엔티티·관계 그래프"
+        },
+        {
+          "k": "2 · 검색",
+          "t": "질문 → 관련 노드·이웃·커뮤니티"
+        },
+        {
+          "k": "3 · 생성",
+          "t": "가져온 그래프 맥락으로 답"
+        }
+      ],
+      "hear": [
+        "\"우리도 GraphRAG 붙이죠.\"",
+        "\"Neo4j에 벡터 인덱스 붙인 것도 GraphRAG예요?\""
+      ],
+      "ask": [
+        "말하는 GraphRAG가 MS 방식인가요, 그래프+벡터 일반인가요?",
+        "그래프는 누가(LLM? 사람?) 만드나요?"
+      ],
+      "mine": "07에서 만든 사람·프로젝트·회의 그래프가 이미 있어요. 이제 그 그래프를 검색에 쓰면 GraphRAG의 넓은 뜻에 들어가요.",
+      "deep": [
+        "Microsoft 연구 블로그(2024-02)는 \"LLM이 만든 지식그래프로 프롬프트를 보강\"하는 것이라고 설명해요."
+      ],
+      "recall": {
+        "q": "GraphRAG 3단계는?",
+        "a": "그래프 색인 → 그래프 검색 → 그래프로 보강한 생성"
+      },
+      "quiz": [
+        {
+          "q": "다음 중 GraphRAG의 넓은 정의에 가장 가까운 것은?",
+          "options": [
+            "그래프를 검색 단계에 쓰는 RAG",
+            "그래프 DB를 쓰는 모든 앱",
+            "그래프를 그리는 차트 도구"
+          ],
+          "answer": 0,
+          "why": "핵심은 '검색에 그래프를 쓴다'예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Peng et al. — Graph Retrieval-Augmented Generation: A Survey",
+          "url": "https://arxiv.org/abs/2408.08921",
+          "date": "2024-08"
+        },
+        {
+          "title": "Microsoft Research — GraphRAG: Unlocking LLM discovery on narrative private data",
+          "url": "https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/",
+          "date": "2024-02-13"
+        },
+        {
+          "title": "microsoft/graphrag (GitHub)",
+          "url": "https://github.com/microsoft/graphrag",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c03",
+      "day": 1,
+      "title": "그래프 색인 파이프라인 4단계",
+      "lead": "MS GraphRAG 색인은 ① 텍스트를 조각(TextUnit)으로 나누고 ② 엔티티·관계·주장을 뽑고 ③ Leiden으로 계층 군집하고 ④ 커뮤니티마다 아래에서 위로 요약해요.",
+      "idea": [
+        "TextUnit은 분석의 기본 단위예요. 나중에 답의 근거로 거슬러 올라갈 때도 이 단위를 써요.",
+        "②단계는 LLM 호출이라 조각 수만큼 비용이 나요.",
+        "③④ 덕분에 질문 시점에 이미 '주제별 요약'이 준비돼 있어요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 나누기",
+          "t": "노트 → TextUnit"
+        },
+        {
+          "k": "2 · 뽑기",
+          "t": "엔티티·관계·주장 (LLM)"
+        },
+        {
+          "k": "3 · 군집",
+          "t": "Leiden 계층 커뮤니티"
+        },
+        {
+          "k": "4 · 요약",
+          "t": "커뮤니티 보고서, 아래→위"
+        }
+      ],
+      "hear": [
+        "\"색인 돌리는 데만 하루 걸렸어요.\"",
+        "\"청크 크기를 바꾸면 그래프가 달라져요.\""
+      ],
+      "ask": [
+        "어느 단계가 LLM을 부르나요? 몇 번이나요?",
+        "노트가 추가되면 어느 단계부터 다시 돌려야 하나요?"
+      ],
+      "mine": "노트 3,000개를 TextUnit으로 나누면 아마 수천~만 개 조각이 돼요. 그 조각마다 추출 LLM 호출이 한 번 이상 나가요.",
+      "deep": [
+        "공식 문서의 순서: TextUnit 분할 → 엔티티·관계·핵심 주장 추출 → Leiden 계층 군집 → 커뮤니티 요약(bottom-up)."
+      ],
+      "recall": {
+        "q": "색인 4단계는?",
+        "a": "나누기 → 엔티티·관계 추출 → Leiden 군집 → 커뮤니티 요약"
+      },
+      "quiz": [
+        {
+          "q": "커뮤니티 요약은 언제 만들어지나요?",
+          "options": [
+            "질문할 때마다",
+            "색인할 때 미리",
+            "사용자가 손으로"
+          ],
+          "answer": 1,
+          "why": "색인 시점에 미리 만들어 두기 때문에 전역 질문에 빨리 답해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        },
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        }
+      ],
+      "code": {
+        "text": "graphrag init --root ./memory\n# input/ 에 노트 텍스트를 넣고\ngraphrag index --root ./memory\ngraphrag query --root ./memory \\\n  --method global --query \"올해 주요 주제는?\"",
+        "read": "읽는 법: init으로 설정 폴더를 만들고, index로 4단계 색인을 돌리고, query에서 global 방식으로 전체 질문을 해요. 명령 이름은 버전마다 조금 달라서 공식 문서를 확인해요."
+      }
+    },
+    {
+      "id": "c04",
+      "day": 1,
+      "title": "GraphRAG의 진짜 비용은 색인이에요",
+      "lead": "벡터 RAG 색인은 임베딩만 하면 되지만, GraphRAG 색인은 조각마다 LLM이 읽고 엔티티를 뽑고 요약을 써요. 그래서 색인 비용이 크게 늘어요.",
+      "idea": [
+        "Microsoft도 LazyGraphRAG 글에서 LazyGraphRAG 색인 비용이 \"full GraphRAG 비용의 0.1%\"라고 비교했어요. 그만큼 원래 GraphRAG 색인이 비싸다는 뜻이에요.",
+        "작은 예: 조각 10,000개 × 조각당 추출 1번 + 커뮤니티 요약 수백 번 = LLM 호출 1만 번 이상.",
+        "노트가 자주 바뀌면 다시 색인하는 비용도 계속 나와요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 조각 수 세기",
+          "t": "N개"
+        },
+        {
+          "k": "2 · 추출 호출",
+          "t": "약 N번 이상"
+        },
+        {
+          "k": "3 · 요약 호출",
+          "t": "커뮤니티 수만큼"
+        },
+        {
+          "k": "4 · 재색인 주기",
+          "t": "얼마나 자주?"
+        }
+      ],
+      "hear": [
+        "\"PoC는 좋았는데 전체 데이터로 돌리니 청구서가…\"",
+        "\"작은 모델로 추출하면 그래프 품질이 떨어져요.\""
+      ],
+      "ask": [
+        "한 번 색인에 토큰이 몇 개, 돈이 얼마 드나요?",
+        "데이터 변경 주기와 재색인 주기가 맞나요?"
+      ],
+      "mine": "'메모리'는 노트가 매일 들어와요. 매일 전체 재색인은 무리라서, 비용 상한을 먼저 정해야 해요.",
+      "deep": [
+        "비용은 모델·청크 크기·프롬프트에 따라 크게 달라요. 반드시 작은 샘플로 먼저 재 보세요."
+      ],
+      "recall": {
+        "q": "GraphRAG가 벡터 RAG보다 비싼 주된 단계는?",
+        "a": "색인(LLM 엔티티 추출·커뮤니티 요약)"
+      },
+      "quiz": [
+        {
+          "q": "LazyGraphRAG의 색인 비용은 full GraphRAG의 몇 %라고 발표됐나요?",
+          "options": [
+            "0.1%",
+            "10%",
+            "50%"
+          ],
+          "answer": 0,
+          "why": "MS는 벡터 RAG와 같고 full GraphRAG의 0.1%라고 했어요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Microsoft Research — LazyGraphRAG: Setting a new standard for quality and cost",
+          "url": "https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/",
+          "date": "2024-11-25"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c05",
+      "day": 2,
+      "title": "LLM으로 엔티티·관계 뽑기",
+      "lead": "MS GraphRAG는 조각마다 LLM에게 \"여기 나온 엔티티(이름·종류·설명)와 관계(출발·도착·설명)를 뽑아 줘\"라고 시켜요. 핵심 주장(claim)도 따로 뽑을 수 있어요.",
+      "idea": [
+        "같은 엔티티가 여러 조각에 나오면 설명을 모아 하나로 요약해요.",
+        "예: \"서윤이 '봄 프로젝트' 킥오프를 이끌었다\" → (서윤, PERSON) -[이끔]-> (봄 프로젝트, PROJECT).",
+        "07에서 배운 엔티티 추출이 그대로 쓰여요. 이름 표기가 다르면(서윤 / 서윤님) 같은 노드로 합치는 일이 품질을 좌우해요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 조각 읽기",
+          "t": "LLM 프롬프트"
+        },
+        {
+          "k": "2 · 엔티티",
+          "t": "이름·종류·설명"
+        },
+        {
+          "k": "3 · 관계",
+          "t": "출발·도착·설명·강도"
+        },
+        {
+          "k": "4 · 병합",
+          "t": "같은 이름끼리 설명 합치기"
+        }
+      ],
+      "hear": [
+        "\"엔티티 타입을 우리 도메인에 맞게 바꿔야 해요.\"",
+        "\"같은 사람이 노드 3개로 쪼개졌어요.\""
+      ],
+      "ask": [
+        "엔티티 타입 목록은 우리 데이터에 맞나요?",
+        "표기 변형은 어떻게 합치나요?"
+      ],
+      "mine": "'메모리'의 타입은 PERSON, PROJECT, MEETING, CUSTOMER 정도로 좁히면 추출이 안정돼요.",
+      "deep": [
+        "GraphRAG 논문은 엔티티·관계뿐 아니라 claim(주장)도 뽑아 요약에 쓴다고 설명해요."
+      ],
+      "recall": {
+        "q": "엔티티 추출 결과의 기본 두 가지는?",
+        "a": "엔티티(노드)와 관계(엣지)"
+      },
+      "quiz": [
+        {
+          "q": "'서윤'과 '서윤님'이 다른 노드가 되면 어떤 문제가 생기나요?",
+          "options": [
+            "아무 문제 없다",
+            "관계가 쪼개져 연결·요약이 약해진다",
+            "검색이 더 빨라진다"
+          ],
+          "answer": 1,
+          "why": "같은 사람의 연결이 둘로 나뉘어 그래프가 끊겨요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ],
+      "code": {
+        "text": "text = \"서윤이 봄 프로젝트 킥오프를 이끌었다.\"\nout = {\n  \"entities\": [[\"서윤\",\"PERSON\"],[\"봄 프로젝트\",\"PROJECT\"]],\n  \"relations\": [[\"서윤\",\"이끔\",\"봄 프로젝트\"]]\n}",
+        "read": "읽는 법: 한 문장에서 엔티티 2개와 관계 1개가 나왔어요. LLM이 이런 구조를 조각마다 돌려주면, 모아서 그래프를 만들어요."
+      }
+    },
+    {
+      "id": "c06",
+      "day": 2,
+      "title": "Leiden: 그래프를 계층 커뮤니티로 나누기",
+      "lead": "Leiden 알고리즘은 서로 촘촘히 연결된 노드 무리(커뮤니티)를 찾아요. GraphRAG는 이걸 여러 층으로 반복해 큰 주제 → 작은 주제 계층을 만들어요.",
+      "idea": [
+        "커뮤니티 = 안쪽 연결은 많고 바깥 연결은 적은 무리예요. 07에서 본 모듈러리티를 높이는 방향으로 찾아요.",
+        "Leiden은 Louvain을 고친 알고리즘이에요. Louvain은 커뮤니티 안이 끊어진 채로 나올 수 있는데, Leiden은 잘 연결된 커뮤니티를 보장해요.",
+        "작은 예: 노드 100개 → 0층 커뮤니티 4개(큰 주제) → 1층 15개 → 2층 40개."
+      ],
+      "steps": [
+        {
+          "k": "1 · 층 0",
+          "t": "큰 주제 몇 개"
+        },
+        {
+          "k": "2 · 층 1",
+          "t": "중간 주제"
+        },
+        {
+          "k": "3 · 층 2",
+          "t": "세부 주제"
+        },
+        {
+          "k": "4 · 잎",
+          "t": "엔티티"
+        }
+      ],
+      "hear": [
+        "\"커뮤니티 레벨을 C0로 할지 C2로 할지 정해야 해요.\"",
+        "\"Louvain이랑 뭐가 달라요?\""
+      ],
+      "ask": [
+        "몇 번째 층의 커뮤니티로 답할 건가요?",
+        "커뮤니티가 너무 크거나 작지 않나요?"
+      ],
+      "mine": "'메모리' 그래프에서 '채용', '봄 프로젝트', '고객 A 대응' 같은 무리가 층 0의 큰 주제로 나올 수 있어요.",
+      "deep": [
+        "Traag 등은 실험에서 Louvain 커뮤니티의 최대 25%가 잘못 연결되고 최대 16%가 끊어져 있었다고 보고했어요."
+      ],
+      "recall": {
+        "q": "Leiden이 Louvain보다 나은 점은?",
+        "a": "커뮤니티가 잘 연결돼 있음을 보장"
+      },
+      "quiz": [
+        {
+          "q": "GraphRAG에서 Leiden을 쓰는 이유는?",
+          "options": [
+            "벡터를 압축하려고",
+            "그래프를 주제 무리의 계층으로 나누려고",
+            "SQL을 만들려고"
+          ],
+          "answer": 1,
+          "why": "계층 커뮤니티가 전역 요약의 단위가 돼요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Traag et al. — From Louvain to Leiden: guaranteeing well-connected communities",
+          "url": "https://arxiv.org/abs/1810.08473",
+          "date": "2018"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c07",
+      "day": 2,
+      "title": "커뮤니티 요약(커뮤니티 보고서)",
+      "lead": "각 커뮤니티마다 LLM이 \"이 무리는 무엇에 관한 것인지\" 보고서를 써 둬요. 아래 층 요약을 모아 위 층 요약을 만들어요.",
+      "idea": [
+        "보고서에는 제목, 요약, 주요 엔티티·관계, 핵심 주장 등이 들어가요.",
+        "아래→위(bottom-up)로 쓰기 때문에, 상위 요약이 너무 길어지면 하위 요약을 대신 넣어 압축해요.",
+        "이 요약이 전역 질문에 답하는 '미리 만든 재료'예요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 잎 커뮤니티",
+          "t": "엔티티·관계 설명으로 요약"
+        },
+        {
+          "k": "2 · 상위 커뮤니티",
+          "t": "하위 요약을 모아 요약"
+        },
+        {
+          "k": "3 · 저장",
+          "t": "보고서 + 점수"
+        },
+        {
+          "k": "4 · 질문 때",
+          "t": "보고서를 꺼내 씀"
+        }
+      ],
+      "hear": [
+        "\"커뮤니티 보고서가 너무 뻔해요.\"",
+        "\"요약 프롬프트를 도메인에 맞춰야 해요.\""
+      ],
+      "ask": [
+        "보고서에 근거(어느 노트)가 남나요?",
+        "보고서는 언제 다시 쓰나요?"
+      ],
+      "mine": "'봄 프로젝트' 커뮤니티 보고서: \"서윤 리드, 3월 킥오프, 고객 A 요구로 일정 변경, 민재가 데이터 이전 담당.\"",
+      "deep": [
+        "논문은 커뮤니티 요약을 \"그래프 인덱스\"의 핵심 산출물로 설명해요."
+      ],
+      "recall": {
+        "q": "커뮤니티 요약은 어떤 방향으로 쓰나요?",
+        "a": "아래 층에서 위 층으로(bottom-up)"
+      },
+      "quiz": [
+        {
+          "q": "커뮤니티 보고서의 쓰임은?",
+          "options": [
+            "전역 질문의 재료",
+            "벡터 압축",
+            "사용자 로그인"
+          ],
+          "answer": 0,
+          "why": "전역 검색이 이 보고서를 map-reduce로 써요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c08",
+      "day": 2,
+      "title": "Global search = 요약들을 map-reduce",
+      "lead": "Global search는 한 층의 커뮤니티 보고서 전부를 나눠서 LLM에게 부분 답(map)을 만들게 하고, 점수 높은 부분 답만 모아 최종 답(reduce)을 써요.",
+      "idea": [
+        "map: 보고서 묶음마다 \"이 질문에 대한 부분 답 + 도움 점수(0~100)\"를 받아요.",
+        "reduce: 점수 0인 답은 버리고, 높은 순으로 컨텍스트 창이 찰 때까지 넣어 최종 답을 써요.",
+        "논문 평가(팟캐스트 약 100만 토큰, 뉴스 약 170만 토큰)에서 전역 방식은 naive RAG보다 포괄성 72~83%, 다양성 62~82% 승률을 보였어요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 층 고르기",
+          "t": "C0~C3"
+        },
+        {
+          "k": "2 · map",
+          "t": "묶음별 부분 답 + 점수"
+        },
+        {
+          "k": "3 · 거르기",
+          "t": "점수 0 버림"
+        },
+        {
+          "k": "4 · reduce",
+          "t": "상위 답 모아 최종 답"
+        }
+      ],
+      "hear": [
+        "\"global 쿼리 한 번에 LLM 호출이 수십 번 나가요.\"",
+        "\"C0로 하면 싸고, C3로 하면 자세해요.\""
+      ],
+      "ask": [
+        "global 쿼리 1회 비용은?",
+        "어떤 층이 품질·비용 균형이 좋나요?"
+      ],
+      "mine": "\"올해 주요 주제는?\" → 층 0 보고서 12개를 4묶음으로 map → 부분 답 4개 → reduce로 주제 5개.",
+      "deep": [
+        "승률은 LLM 심사자가 두 답을 비교한 결과라서, 심사 편향을 함께 봐야 해요(D5 평가 카드)."
+      ],
+      "recall": {
+        "q": "global search의 두 단계는?",
+        "a": "map(묶음별 부분 답) → reduce(모아서 최종 답)"
+      },
+      "quiz": [
+        {
+          "q": "map 단계에서 각 부분 답에 붙는 것은?",
+          "options": [
+            "도움 점수",
+            "임베딩",
+            "비밀번호"
+          ],
+          "answer": 0,
+          "why": "점수로 쓸모없는 답을 거르고 순서를 정해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ],
+      "code": {
+        "text": "partials = [llm(f\"{q}\\n{chunk}\") for chunk in groups]  # map\ngood = [p for p in partials if p.score > 0]\ngood.sort(key=lambda p: -p.score)\nanswer = llm(q, context=good[:k])                    # reduce",
+        "read": "읽는 법: 보고서 묶음마다 부분 답을 받고(map), 점수가 있는 것만 높은 순으로 골라 마지막에 한 번 더 LLM으로 합쳐요(reduce). 실제 코드가 아니라 흐름을 보인 의사 코드예요."
+      }
+    },
+    {
+      "id": "c09",
+      "day": 3,
+      "title": "Local search: 엔티티에서 출발",
+      "lead": "Local search는 질문과 가까운 엔티티를 벡터로 찾고, 그 이웃 엔티티·관계·원문 조각·커뮤니티 보고서를 모아 답해요. 특정 대상에 대한 질문용이에요.",
+      "idea": [
+        "질문 \"봄 프로젝트에서 민재는 무슨 일을 했어?\" → 엔티티 '봄 프로젝트', '민재'를 먼저 찾아요.",
+        "그다음 연결된 관계, 그 관계가 나온 TextUnit, 속한 커뮤니티 요약을 컨텍스트 예산 안에서 섞어 넣어요.",
+        "즉 벡터는 '입구 찾기', 그래프는 '주변 넓히기'를 맡아요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 입구",
+          "t": "질문 → 비슷한 엔티티(벡터)"
+        },
+        {
+          "k": "2 · 넓히기",
+          "t": "이웃·관계"
+        },
+        {
+          "k": "3 · 근거",
+          "t": "원문 TextUnit"
+        },
+        {
+          "k": "4 · 답",
+          "t": "예산 안에서 섞어 생성"
+        }
+      ],
+      "hear": [
+        "\"local은 사람·프로젝트 이름이 들어간 질문에 써요.\"",
+        "\"global이랑 자동으로 골라 주면 좋겠어요.\""
+      ],
+      "ask": [
+        "질문 유형을 누가·어떻게 보고 local/global을 고르나요?",
+        "컨텍스트 예산을 엔티티·관계·원문에 어떻게 나누나요?"
+      ],
+      "mine": "'메모리'에서 사람 이름이 들어간 질문은 local, \"올해 전체\" 같은 질문은 global로 보내는 라우터를 둘 수 있어요.",
+      "deep": [
+        "공식 문서: Local Search는 특정 엔티티의 이웃과 관련 개념으로 퍼져 나가 답해요."
+      ],
+      "recall": {
+        "q": "local search에서 벡터와 그래프의 역할은?",
+        "a": "벡터 = 입구 엔티티 찾기, 그래프 = 주변으로 넓히기"
+      },
+      "quiz": [
+        {
+          "q": "\"민재가 맡은 프로젝트는?\"에 맞는 모드는?",
+          "options": [
+            "global",
+            "local",
+            "basic만 가능"
+          ],
+          "answer": 1,
+          "why": "특정 엔티티 중심 질문이라 local이 맞아요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        },
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        }
+      ]
+    },
+    {
+      "id": "c10",
+      "day": 3,
+      "title": "DRIFT search: global로 시작해 local로 파고들기",
+      "lead": "DRIFT는 먼저 질문을 커뮤니티 보고서와 비교해 첫 답과 후속 질문을 만들고, 그 후속 질문들을 local search로 다듬어요.",
+      "idea": [
+        "Microsoft가 2024-10-31에 발표했어요.",
+        "발표 당시 다듬기(refinement) 반복은 2회로 설정돼 있었어요. 마지막에 질문·답을 원 질문과의 관련도로 정렬해요.",
+        "local처럼 특정 대상을 보면서도, 커뮤니티 맥락 덕분에 더 넓은 답을 얻는 게 목표예요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 시작",
+          "t": "질문 ↔ 커뮤니티 보고서"
+        },
+        {
+          "k": "2 · 첫 답",
+          "t": "+ 후속 질문"
+        },
+        {
+          "k": "3 · 다듬기",
+          "t": "후속 질문마다 local search"
+        },
+        {
+          "k": "4 · 정리",
+          "t": "관련도로 정렬"
+        }
+      ],
+      "hear": [
+        "\"local로는 너무 좁고 global은 너무 비싸요.\"",
+        "\"DRIFT는 중간쯤이에요.\""
+      ],
+      "ask": [
+        "반복 횟수를 늘리면 비용이 얼마나 늘어나나요?",
+        "후속 질문이 엉뚱하게 퍼지지 않나요?"
+      ],
+      "mine": "\"고객 A 관련해서 올해 무슨 일이 있었지?\" — 고객 A(특정)이지만 여러 프로젝트에 걸친 질문이라 DRIFT에 맞아요.",
+      "deep": [
+        "공식 문서도 DRIFT를 'local + 커뮤니티 정보'로 설명해요."
+      ],
+      "recall": {
+        "q": "DRIFT의 순서는?",
+        "a": "커뮤니티 보고서로 첫 답·후속 질문 → local search로 다듬기"
+      },
+      "quiz": [
+        {
+          "q": "DRIFT가 처음 비교하는 대상은?",
+          "options": [
+            "원문 조각",
+            "커뮤니티 보고서",
+            "사용자 비밀번호"
+          ],
+          "answer": 1,
+          "why": "커뮤니티 보고서로 넓게 시작해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Microsoft Research — Introducing DRIFT Search",
+          "url": "https://www.microsoft.com/en-us/research/blog/introducing-drift-search-combining-global-and-local-search-methods-to-improve-quality-and-efficiency/",
+          "date": "2024-10-31"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c11",
+      "day": 3,
+      "title": "LazyGraphRAG: 요약을 미리 안 만들기",
+      "lead": "LazyGraphRAG는 색인 때 LLM 요약을 미리 만들지 않고, 질문이 왔을 때 필요한 만큼만 LLM을 써요. 그래서 색인 비용이 벡터 RAG와 같아요.",
+      "idea": [
+        "Microsoft 발표(2024-11-25): 색인 비용은 벡터 RAG와 같고 full GraphRAG의 0.1%.",
+        "전역 질문에서 GraphRAG Global Search와 비슷한 품질을 700배 넘게 낮은 쿼리 비용으로 냈다고 해요.",
+        "평가는 AP 뉴스 기사 5,590개, 합성 질문 100개(local 50, global 50)로 했어요. 벤더 자신의 평가라는 점은 기억해요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 색인",
+          "t": "가벼운 처리만 (LLM 요약 없음)"
+        },
+        {
+          "k": "2 · 질문",
+          "t": "관련 부분만 찾기"
+        },
+        {
+          "k": "3 · 예산",
+          "t": "relevance test 100/500/1,500"
+        },
+        {
+          "k": "4 · 답",
+          "t": "필요한 만큼만 LLM"
+        }
+      ],
+      "hear": [
+        "\"색인 비용 때문에 GraphRAG 포기했는데, Lazy면 다시 볼 만해요.\"",
+        "\"쿼리마다 예산을 정할 수 있어요.\""
+      ],
+      "ask": [
+        "색인 비용을 질문 시점으로 옮기면, 질문이 많을 때 총비용은?",
+        "우리 데이터로 다시 재 봤나요?"
+      ],
+      "mine": "노트가 매일 바뀌는 '메모리'는 '미리 요약' 방식보다 '질문 때 요약' 방식이 재색인 부담이 적어요.",
+      "deep": [
+        "relevance test 예산을 100 → 500 → 1,500으로 늘리면 승률이 올랐다고 보고해요."
+      ],
+      "recall": {
+        "q": "LazyGraphRAG가 비용을 줄인 핵심은?",
+        "a": "색인 때 LLM 요약을 미리 만들지 않고 질문 때 필요한 만큼만 함"
+      },
+      "quiz": [
+        {
+          "q": "LazyGraphRAG 발표의 평가 데이터는?",
+          "options": [
+            "AP 뉴스 기사 5,590개",
+            "위키백과 전체",
+            "트윗 10억 개"
+          ],
+          "answer": 0,
+          "why": "MS 블로그에 적힌 값이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Microsoft Research — LazyGraphRAG: Setting a new standard for quality and cost",
+          "url": "https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/",
+          "date": "2024-11-25"
+        }
+      ]
+    },
+    {
+      "id": "c12",
+      "day": 3,
+      "title": "증분 갱신: 노트가 매일 늘어날 때",
+      "lead": "그래프 색인은 새 노트가 들어오면 엔티티·관계를 추가하는 건 쉽지만, 커뮤니티와 요약은 다시 계산해야 할 수 있어요. 이게 운영에서 가장 아픈 부분이에요.",
+      "idea": [
+        "새 노트 → 새 엔티티 추출(그 노트만) → 그래프에 병합: 비교적 쉬워요.",
+        "하지만 Leiden 커뮤니티는 전체 구조로 계산돼서, 노드가 늘면 무리 경계가 바뀌고 요약이 낡아요.",
+        "LightRAG는 \"전체를 다시 만들지 않고 새 데이터를 붙이는 증분 갱신\"을 장점으로 내세워요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 새 노트",
+          "t": "그 노트만 추출"
+        },
+        {
+          "k": "2 · 병합",
+          "t": "기존 노드와 합치기"
+        },
+        {
+          "k": "3 · 군집",
+          "t": "바뀐 부분만? 전체?"
+        },
+        {
+          "k": "4 · 요약",
+          "t": "낡은 보고서 다시 쓰기"
+        }
+      ],
+      "hear": [
+        "\"주말마다 전체 재색인 배치를 돌려요.\"",
+        "\"어제 회의가 요약에 안 나와요.\""
+      ],
+      "ask": [
+        "얼마나 낡은 요약까지 허용하나요?",
+        "증분만으로 버틸 수 있는 기간은?"
+      ],
+      "mine": "'메모리'는 매일 노트 수십 개가 늘어요. 엔티티는 매시간, 커뮤니티 요약은 매주 다시 만드는 식으로 나눌 수 있어요.",
+      "deep": [
+        "벡터 인덱스는 문서 하나를 넣고 빼기 쉬운데, 커뮤니티 요약은 '전체에 대한 요약'이라 본질적으로 갱신이 어려워요."
+      ],
+      "recall": {
+        "q": "그래프 색인에서 갱신이 가장 어려운 부분은?",
+        "a": "전체 구조로 계산하는 커뮤니티와 그 요약"
+      },
+      "quiz": [
+        {
+          "q": "새 노트가 들어올 때 가장 싸게 할 수 있는 일은?",
+          "options": [
+            "그 노트에서만 엔티티를 뽑아 병합",
+            "모든 커뮤니티 요약 다시 쓰기",
+            "임베딩 모델 교체"
+          ],
+          "answer": 0,
+          "why": "추출은 노트 단위라 증분이 쉬워요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Guo et al. — LightRAG: Simple and Fast Retrieval-Augmented Generation",
+          "url": "https://arxiv.org/abs/2410.05779",
+          "date": "2024-10"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c13",
+      "day": 4,
+      "title": "LightRAG: 두 수준 검색",
+      "lead": "LightRAG는 그래프 구조와 벡터를 합쳐, 낮은 수준(구체적 엔티티)과 높은 수준(넓은 주제) 두 가지로 검색해요.",
+      "idea": [
+        "낮은 수준: \"민재\", \"데이터 이전\" 같은 구체 키워드 → 해당 엔티티와 관계.",
+        "높은 수준: \"팀 협업 문제\" 같은 넓은 키워드 → 관련 관계·주제.",
+        "HKU 데이터 지능 연구실(HKUDS)이 2024-10 공개했고, 증분 갱신 알고리즘을 함께 냈어요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 키워드",
+          "t": "질문 → 구체/넓은 키워드"
+        },
+        {
+          "k": "2 · 낮은 수준",
+          "t": "엔티티 검색(벡터)"
+        },
+        {
+          "k": "3 · 높은 수준",
+          "t": "관계·주제 검색"
+        },
+        {
+          "k": "4 · 합치기",
+          "t": "둘을 모아 답"
+        }
+      ],
+      "hear": [
+        "\"MS GraphRAG보다 가볍게 쓸 수 있어요.\"",
+        "\"LightRAG 모드가 local, global, hybrid가 있어요.\""
+      ],
+      "ask": [
+        "논문의 비교는 어떤 데이터·심사 방식이었나요?",
+        "우리 데이터에서 MS GraphRAG와 직접 비교했나요?"
+      ],
+      "mine": "'메모리'에 빠르게 붙여 보는 첫 실험으로 LightRAG가 부담이 적어요.",
+      "deep": [
+        "논문은 검색 정확도와 효율이 기존 방식보다 낫다고 보고하지만, 저자 자신의 평가예요."
+      ],
+      "recall": {
+        "q": "LightRAG의 두 수준은?",
+        "a": "낮은 수준(구체 엔티티)과 높은 수준(넓은 주제)"
+      },
+      "quiz": [
+        {
+          "q": "LightRAG가 내세운 운영상 장점은?",
+          "options": [
+            "증분 갱신",
+            "GPU 불필요 보장",
+            "SQL 자동 생성"
+          ],
+          "answer": 0,
+          "why": "새 데이터를 전체 재구축 없이 붙여요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Guo et al. — LightRAG: Simple and Fast Retrieval-Augmented Generation",
+          "url": "https://arxiv.org/abs/2410.05779",
+          "date": "2024-10"
+        },
+        {
+          "title": "HKUDS/LightRAG (GitHub)",
+          "url": "https://github.com/HKUDS/LightRAG",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "c14",
+      "day": 4,
+      "title": "HippoRAG: 해마처럼 기억 찾기",
+      "lead": "HippoRAG는 뇌의 해마 색인 이론에서 착안해, 지식그래프 + Personalized PageRank(PPR)로 한 번에 멀티홉 검색을 해요.",
+      "idea": [
+        "색인: 문서에서 지식그래프를 만들어요(신피질 = LLM, 해마 = 그래프 색인 비유).",
+        "질문: 질문 속 엔티티를 그래프의 출발점으로 두고 PPR을 돌리면, 여러 단계 떨어진 관련 노드도 점수를 받아요.",
+        "결과(NeurIPS 2024 논문): 멀티홉 QA에서 기존 최고 대비 최대 20% 향상, IRCoT 같은 반복 검색 대비 10~30배 싸고 6~13배 빨랐어요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 색인",
+          "t": "문서 → KG"
+        },
+        {
+          "k": "2 · 씨앗",
+          "t": "질문 엔티티 = 출발 노드"
+        },
+        {
+          "k": "3 · PPR",
+          "t": "씨앗에서 퍼지는 점수"
+        },
+        {
+          "k": "4 · 문서",
+          "t": "점수 높은 노드의 문서"
+        }
+      ],
+      "hear": [
+        "\"반복 검색(IRCoT) 대신 한 번에 멀티홉이 돼요.\"",
+        "\"PPR이 뭐예요?\""
+      ],
+      "ask": [
+        "우리 질문 중 멀티홉 비율은?",
+        "그래프 품질이 나쁘면 PPR 결과는?"
+      ],
+      "mine": "\"서윤이 리드한 프로젝트의 고객\" → 씨앗 '서윤' → PPR이 프로젝트를 거쳐 고객 노드까지 점수를 퍼뜨려요.",
+      "deep": [
+        "'해마 색인 이론'은 해마가 기억 자체가 아니라 기억으로 가는 색인을 갖고 있다는 생각이에요."
+      ],
+      "recall": {
+        "q": "HippoRAG의 핵심 알고리즘은?",
+        "a": "지식그래프 위 Personalized PageRank"
+      },
+      "quiz": [
+        {
+          "q": "HippoRAG가 IRCoT보다 빠른 이유는?",
+          "options": [
+            "한 번의 PPR로 멀티홉을 처리해서",
+            "GPU를 더 써서",
+            "답을 짧게 해서"
+          ],
+          "answer": 0,
+          "why": "반복 검색 대신 단일 단계로 여러 홉을 건너요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Gutiérrez et al. — HippoRAG: Neurobiologically Inspired Long-Term Memory for LLMs",
+          "url": "https://arxiv.org/abs/2405.14831",
+          "date": "2024-05"
+        },
+        {
+          "title": "OSU-NLP-Group/HippoRAG (GitHub)",
+          "url": "https://github.com/OSU-NLP-Group/HippoRAG",
+          "date": "n.d."
+        }
+      ],
+      "code": {
+        "text": "import networkx as nx\nG = nx.Graph([(\"서윤\",\"봄\"),(\"봄\",\"고객A\"),(\"민재\",\"가을\")])\nr = nx.pagerank(G, alpha=0.85, personalization={\"서윤\":1})\nprint(sorted(r.items(), key=lambda x:-x[1]))",
+        "read": "읽는 법: 서윤에서만 다시 시작하는 PageRank예요(15% 확률로 서윤으로 돌아감). 봄·고객A는 점수를 받고, 연결 없는 민재·가을은 0이에요."
+      }
+    },
+    {
+      "id": "c15",
+      "day": 4,
+      "title": "HippoRAG 2: 사실 기억도 놓치지 않기",
+      "lead": "HippoRAG 2(2025, ICML 2025)는 그래프형 RAG가 오히려 단순 사실 질문에서 일반 RAG보다 못하던 문제를 고치려고, 문단(passage)을 그래프에 더 깊이 넣고 LLM을 온라인으로 더 잘 써요.",
+      "idea": [
+        "논문 지적: KG를 붙인 RAG 변형들은 연상·의미 이해는 좋아졌지만, 기본 사실 기억에서는 표준 RAG보다 눈에 띄게 낮았어요.",
+        "HippoRAG 2는 사실·의미 이해·연상 기억 모두에서 표준 RAG를 넘었다고 보고하고, 연상 기억 과제에서 최고 임베딩 모델 대비 7% 향상을 냈어요.",
+        "제목의 '비모수 연속 학습'은 모델 가중치를 바꾸지 않고 새 지식을 계속 쌓는다는 뜻이에요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 문제",
+          "t": "그래프 RAG가 단순 사실에 약함"
+        },
+        {
+          "k": "2 · 처방",
+          "t": "문단 노드 깊게 통합"
+        },
+        {
+          "k": "3 · 처방",
+          "t": "LLM 온라인 활용(필터 등)"
+        },
+        {
+          "k": "4 · 결과",
+          "t": "세 종류 기억 모두 개선"
+        }
+      ],
+      "hear": [
+        "\"그래프 붙이니 단순 질문 정답률이 떨어졌어요.\"",
+        "\"벡터 RAG를 기본값으로 두고 그래프는 보강으로 써야 해요.\""
+      ],
+      "ask": [
+        "그래프 도입 후 단순 사실 질문 정확도도 쟀나요?",
+        "질문 유형별로 따로 점수를 보나요?"
+      ],
+      "mine": "'메모리'는 \"지난주 회의 그거\" 같은 단순 질문이 대부분이에요. 그래프를 붙여도 그 질문이 나빠지면 안 돼요.",
+      "deep": [
+        "Han et al.(2025)도 RAG와 GraphRAG가 과제마다 우열이 달라서 섞어 쓰는 게 낫다고 했어요."
+      ],
+      "recall": {
+        "q": "HippoRAG 2가 고치려던 문제는?",
+        "a": "그래프형 RAG가 단순 사실 질문에서 표준 RAG보다 약한 문제"
+      },
+      "quiz": [
+        {
+          "q": "'비모수 연속 학습'의 뜻은?",
+          "options": [
+            "가중치를 바꾸지 않고 외부 기억에 지식을 계속 쌓기",
+            "모델을 매일 파인튜닝",
+            "데이터를 지우기"
+          ],
+          "answer": 0,
+          "why": "모델 밖 기억(색인)으로 배우는 방식이에요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Gutiérrez et al. — From RAG to Memory: Non-Parametric Continual Learning for LLMs (HippoRAG 2)",
+          "url": "https://arxiv.org/abs/2502.14802",
+          "date": "2025-02"
+        },
+        {
+          "title": "Han et al. — RAG vs. GraphRAG: A Systematic Evaluation and Key Insights",
+          "url": "https://arxiv.org/abs/2502.11371",
+          "date": "2025-02"
+        }
+      ]
+    },
+    {
+      "id": "c16",
+      "day": 4,
+      "title": "지식그래프에 벡터 붙이기",
+      "lead": "그래프 노드에 임베딩을 함께 저장하면, 벡터로 입구 노드를 찾고 그래프로 이웃을 따라가는 '하이브리드' 검색을 한 DB 안에서 할 수 있어요.",
+      "idea": [
+        "Neo4j는 노드 속성에 벡터를 넣고 벡터 인덱스를 만들 수 있어요(03에서 본 벡터 DB 기능이 그래프 DB 안에 있는 셈).",
+        "노드 종류마다 다른 임베딩: 회의 노드는 회의 요약 임베딩, 사람 노드는 소개 임베딩.",
+        "04에서 본 하이브리드(키워드+벡터)도 같이 쓸 수 있어요: 코드명은 전문(full-text) 인덱스, 의미는 벡터 인덱스."
+      ],
+      "steps": [
+        {
+          "k": "1 · 노드",
+          "t": "Meeting {summary, embedding}"
+        },
+        {
+          "k": "2 · 인덱스",
+          "t": "벡터 인덱스 생성"
+        },
+        {
+          "k": "3 · 입구",
+          "t": "벡터 top-k 노드"
+        },
+        {
+          "k": "4 · 확장",
+          "t": "Cypher로 이웃 따라가기"
+        }
+      ],
+      "hear": [
+        "\"벡터 DB 따로, 그래프 DB 따로 두면 동기화가 힘들어요.\"",
+        "\"노드에 임베딩 넣으면 되잖아요.\""
+      ],
+      "ask": [
+        "어느 노드 종류에 임베딩을 넣나요?",
+        "임베딩 모델을 바꾸면 전체 재계산은 어떻게 하나요?"
+      ],
+      "mine": "'메모리'의 Meeting 노드에 요약 임베딩을 넣고, 비슷한 회의를 찾은 뒤 참석자·프로젝트로 넓혀요.",
+      "deep": [
+        "벡터와 그래프를 한 저장소에 두면 동기화 문제는 줄지만, 대규모 벡터 성능은 전용 벡터 DB와 비교해 봐야 해요."
+      ],
+      "recall": {
+        "q": "KG+벡터 하이브리드 검색의 두 역할은?",
+        "a": "벡터 = 입구 노드 찾기, 그래프 = 이웃 따라가기"
+      },
+      "quiz": [
+        {
+          "q": "코드명 'PRJ-42' 검색에 잘 맞는 인덱스는?",
+          "options": [
+            "전문(키워드) 인덱스",
+            "벡터 인덱스만",
+            "인덱스 필요 없음"
+          ],
+          "answer": 0,
+          "why": "04에서 본 것처럼 고유명사·코드명은 키워드 쪽이 강해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Neo4j GraphRAG for Python — RAG 사용자 가이드(Retrievers)",
+          "url": "https://neo4j.com/docs/neo4j-graphrag-python/current/user_guide_rag.html",
+          "date": "n.d."
+        },
+        {
+          "title": "Peng et al. — Graph Retrieval-Augmented Generation: A Survey",
+          "url": "https://arxiv.org/abs/2408.08921",
+          "date": "2024-08"
+        }
+      ],
+      "code": {
+        "text": "CREATE VECTOR INDEX meeting_vec IF NOT EXISTS\nFOR (m:Meeting) ON (m.embedding)\nOPTIONS {indexConfig: {\n  `vector.dimensions`: 1536,\n  `vector.similarity_function`: 'cosine'}}",
+        "read": "읽는 법: Meeting 노드의 embedding 속성(1536차원)에 코사인 벡터 인덱스를 만들어요. 차원 수는 쓰는 임베딩 모델에 맞춰요."
+      }
+    },
+    {
+      "id": "c17",
+      "day": 5,
+      "title": "Neo4j GraphRAG 패키지와 VectorCypherRetriever",
+      "lead": "neo4j-graphrag(파이썬)는 그래프 위 RAG 검색기를 제공해요. VectorCypherRetriever는 벡터 인덱스로 노드를 찾고, 내가 쓴 Cypher로 그 노드 주변을 함께 가져와요.",
+      "idea": [
+        "설치: pip install neo4j-graphrag.",
+        "검색기 종류: VectorRetriever(벡터만), VectorCypherRetriever(벡터 + Cypher 탐색), HybridRetriever(벡터 + 전문 인덱스), Text2CypherRetriever(LLM이 Cypher 생성) 등.",
+        "retrieval_query 안에서 node는 벡터로 찾은 노드, score는 유사도예요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 연결",
+          "t": "driver = Neo4j 접속"
+        },
+        {
+          "k": "2 · 검색기",
+          "t": "index_name + retrieval_query"
+        },
+        {
+          "k": "3 · 검색",
+          "t": "search(query_text, top_k)"
+        },
+        {
+          "k": "4 · 생성",
+          "t": "GraphRAG(retriever, llm)"
+        }
+      ],
+      "hear": [
+        "\"retrieval_query만 잘 쓰면 local search 비슷하게 돼요.\"",
+        "\"top_k 3개 회의 + 참석자를 같이 가져와요.\""
+      ],
+      "ask": [
+        "retrieval_query가 너무 많이 펼쳐져 컨텍스트가 터지지 않나요?",
+        "node·score 외에 어떤 값을 돌려주나요?"
+      ],
+      "mine": "'메모리'에서 질문과 비슷한 회의 3개를 찾고, 각 회의의 참석자 이름을 함께 붙여 LLM에 넘겨요.",
+      "deep": [
+        "공식 RAG 가이드에 VectorCypherRetriever 예제가 있어요(영화 + 배우 이름 함께 가져오기)."
+      ],
+      "recall": {
+        "q": "retrieval_query 안의 node는 무엇인가요?",
+        "a": "벡터 인덱스 검색으로 찾은 노드"
+      },
+      "quiz": [
+        {
+          "q": "벡터로 찾은 회의의 참석자까지 같이 가져오려면?",
+          "options": [
+            "VectorRetriever",
+            "VectorCypherRetriever",
+            "아무 검색기나 같다"
+          ],
+          "answer": 1,
+          "why": "Cypher로 이웃을 따라가는 게 VectorCypher예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Neo4j GraphRAG for Python — RAG 사용자 가이드(Retrievers)",
+          "url": "https://neo4j.com/docs/neo4j-graphrag-python/current/user_guide_rag.html",
+          "date": "n.d."
+        },
+        {
+          "title": "Neo4j GraphRAG for Python — 문서",
+          "url": "https://neo4j.com/docs/neo4j-graphrag-python/current/",
+          "date": "n.d."
+        }
+      ],
+      "code": {
+        "text": "from neo4j_graphrag.retrievers import VectorCypherRetriever\nq = \"\"\"RETURN node.summary AS meeting,\n  collect { MATCH (p:Person)-[:ATTENDED]->(node)\n            RETURN p.name } AS people\"\"\"\nr = VectorCypherRetriever(driver, index_name=\"meeting_vec\",\n      retrieval_query=q, embedder=embedder)\nres = r.search(query_text=\"고객 A 일정 변경\", top_k=3)",
+        "read": "읽는 법: 질문과 비슷한 회의 3개(node)를 벡터로 찾고, Cypher로 그 회의에 참석한 사람 이름을 같이 돌려받아요."
+      }
+    },
+    {
+      "id": "c18",
+      "day": 5,
+      "title": "Text2Cypher: 질문을 쿼리로 바꾸기",
+      "lead": "Text2CypherRetriever는 LLM이 자연어 질문을 Cypher 쿼리로 바꾸고, 그 쿼리를 DB에서 실행해 결과를 가져와요. 개수 세기·필터 같은 정확한 질문에 강해요.",
+      "idea": [
+        "\"서윤이 올해 참석한 회의 수는?\" → MATCH (p:Person {name:'서윤'})-[:ATTENDED]->(m:Meeting) WHERE m.date >= date('2026-01-01') RETURN count(m).",
+        "벡터 검색은 '세기'를 못 하지만 쿼리는 정확히 세요.",
+        "위험: LLM이 틀린 쿼리를 만들 수 있고, 쓰기 쿼리(DELETE)를 만들 수도 있어요. 읽기 전용 계정으로 실행해야 해요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 스키마",
+          "t": "LLM에 노드·관계 종류 알려 주기"
+        },
+        {
+          "k": "2 · 생성",
+          "t": "질문 → Cypher"
+        },
+        {
+          "k": "3 · 실행",
+          "t": "읽기 전용으로"
+        },
+        {
+          "k": "4 · 답",
+          "t": "결과를 문장으로"
+        }
+      ],
+      "hear": [
+        "\"숫자 질문은 Text2Cypher로 보내요.\"",
+        "\"LLM이 없는 관계 이름을 지어냈어요.\""
+      ],
+      "ask": [
+        "DB 계정이 읽기 전용인가요?",
+        "틀린 쿼리를 어떻게 잡아내나요(예시 쿼리, 검증)?"
+      ],
+      "mine": "'메모리'에 \"민재가 이번 달 쓴 노트 수\" 같은 질문이 오면 Text2Cypher가 정확해요.",
+      "deep": [
+        "스키마와 예시 질문-쿼리 쌍을 프롬프트에 넣으면 생성 품질이 좋아져요."
+      ],
+      "recall": {
+        "q": "Text2Cypher가 벡터 검색보다 나은 질문은?",
+        "a": "개수 세기·날짜 필터 같은 정확한 구조 질문"
+      },
+      "quiz": [
+        {
+          "q": "Text2Cypher를 안전하게 쓰는 기본은?",
+          "options": [
+            "관리자 계정으로 실행",
+            "읽기 전용 계정으로 실행",
+            "쿼리를 보지 않고 실행"
+          ],
+          "answer": 1,
+          "why": "LLM이 쓰기 쿼리를 만들 수 있어서예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Neo4j GraphRAG for Python — RAG 사용자 가이드(Retrievers)",
+          "url": "https://neo4j.com/docs/neo4j-graphrag-python/current/user_guide_rag.html",
+          "date": "n.d."
+        }
+      ],
+      "code": {
+        "text": "MATCH (p:Person {name:'서윤'})-[:ATTENDED]->(m:Meeting)\nWHERE m.date >= date('2026-01-01')\nRETURN count(m) AS meetings",
+        "read": "읽는 법: 서윤이 참석한(ATTENDED) 회의 중 2026년 이후 것을 세요. LLM이 질문에서 이 쿼리를 만들어 내는 게 Text2Cypher예요."
+      }
+    },
+    {
+      "id": "c19",
+      "day": 5,
+      "title": "평가: 승률과 LLM 심사자의 편향",
+      "lead": "GraphRAG 논문의 숫자는 대부분 'LLM이 두 답 중 어느 게 나은지 고른 승률'이에요. LLM 심사자에게는 위치·길이·자기 선호 같은 편향이 있어요.",
+      "idea": [
+        "Zheng et al.(2023)은 LLM 심사자의 위치 편향(먼저 나온 답 선호), 장황함 편향(긴 답 선호), 자기 강화 편향을 보고했어요.",
+        "GraphRAG 답은 보통 더 길고 넓어서, '포괄성' 승률이 길이 덕을 볼 수 있어요.",
+        "대응: 답 순서를 바꿔 두 번 심사, 길이 맞추기, 사람 표본 검사, 정답이 있는 질문은 정확도로 따로 재기."
+      ],
+      "steps": [
+        {
+          "k": "1 · 질문셋",
+          "t": "전역·local·사실 섞기"
+        },
+        {
+          "k": "2 · 쌍 비교",
+          "t": "A/B 순서 바꿔 2번"
+        },
+        {
+          "k": "3 · 길이",
+          "t": "비슷하게 맞추기"
+        },
+        {
+          "k": "4 · 사람",
+          "t": "일부는 사람이 확인"
+        }
+      ],
+      "hear": [
+        "\"승률 80%면 무조건 좋은 거죠?\"",
+        "\"심사 모델이 생성 모델이랑 같아요.\""
+      ],
+      "ask": [
+        "답 순서를 바꿔도 결과가 같나요?",
+        "정답 있는 질문셋으로도 재 봤나요?"
+      ],
+      "mine": "'메모리'는 실제 팀 질문 50개를 모아 사람 2명이 몇 개를 같이 채점하는 걸 기준으로 삼아요.",
+      "deep": [
+        "Han et al.(2025)은 체계적으로 비교하면 RAG와 GraphRAG 중 어느 하나가 전부 이기지 않는다고 했어요."
+      ],
+      "recall": {
+        "q": "LLM 심사자의 대표 편향 세 가지는?",
+        "a": "위치 편향, 장황함(길이) 편향, 자기 강화 편향"
+      },
+      "quiz": [
+        {
+          "q": "위치 편향을 줄이는 간단한 방법은?",
+          "options": [
+            "A/B 순서를 바꿔 두 번 심사",
+            "심사를 한 번만",
+            "더 긴 답 쓰기"
+          ],
+          "answer": 0,
+          "why": "두 순서의 결과가 다르면 편향 신호예요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Zheng et al. — Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena",
+          "url": "https://arxiv.org/abs/2306.05685",
+          "date": "2023-06"
+        },
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        },
+        {
+          "title": "Han et al. — RAG vs. GraphRAG: A Systematic Evaluation and Key Insights",
+          "url": "https://arxiv.org/abs/2502.11371",
+          "date": "2025-02"
+        }
+      ]
+    },
+    {
+      "id": "c20",
+      "day": 5,
+      "title": "GraphRAG 도입 판단표",
+      "lead": "GraphRAG는 '질문 유형'과 '색인 비용·갱신 주기'로 정해요. 대부분 벡터(+하이브리드) RAG를 기본값으로 두고, 필요한 질문에만 그래프를 더해요.",
+      "idea": [
+        "전역 질문이 많고 데이터가 자주 안 바뀌면 → MS GraphRAG global이 맞아요.",
+        "전역 질문은 있는데 데이터가 매일 바뀌면 → LazyGraphRAG나 LightRAG처럼 색인이 가벼운 쪽을 실험해요.",
+        "멀티홉이 많으면 → HippoRAG식 PPR이나 VectorCypher 탐색. 정확한 숫자 질문이면 → Text2Cypher. 단순 사실 질문이 대부분이면 → 벡터+하이브리드 RAG로 충분해요."
+      ],
+      "steps": [
+        {
+          "k": "1 · 질문 분류",
+          "t": "50~100개 실제 질문"
+        },
+        {
+          "k": "2 · 비율",
+          "t": "사실/전역/멀티홉/숫자"
+        },
+        {
+          "k": "3 · 비용",
+          "t": "색인 1회·재색인 주기"
+        },
+        {
+          "k": "4 · 작은 실험",
+          "t": "샘플 데이터로 A/B"
+        }
+      ],
+      "hear": [
+        "\"GraphRAG는 유행이니까 일단 다 바꾸죠.\"",
+        "\"질문 라우터를 두고 섞어 써요.\""
+      ],
+      "ask": [
+        "전역 질문이 실제로 전체의 몇 %인가요?",
+        "재색인 비용을 매달 감당할 수 있나요?"
+      ],
+      "mine": "'메모리'의 질문 100개 중 전역 10개, 멀티홉 15개, 나머지는 사실 질문이라면: 기본은 하이브리드 RAG, 전역은 GraphRAG global, 멀티홉은 그래프 탐색으로 라우팅해요.",
+      "deep": [
+        "Han et al.(2025)은 두 방식을 고르거나 합치는 전략이 꾸준히 성능을 올렸다고 보고해요."
+      ],
+      "recall": {
+        "q": "GraphRAG 도입을 정하는 두 축은?",
+        "a": "질문 유형(전역·멀티홉 비율)과 색인 비용·갱신 주기"
+      },
+      "quiz": [
+        {
+          "q": "질문 대부분이 \"지난주 회의 그거\" 같은 단순 사실이라면?",
+          "options": [
+            "전면 GraphRAG 전환",
+            "벡터+하이브리드 RAG 유지, 필요한 질문만 그래프",
+            "검색 기능 제거"
+          ],
+          "answer": 1,
+          "why": "단순 사실은 벡터 RAG가 싸고 잘해요."
+        }
+      ],
+      "sources": [
+        {
+          "title": "Han et al. — RAG vs. GraphRAG: A Systematic Evaluation and Key Insights",
+          "url": "https://arxiv.org/abs/2502.11371",
+          "date": "2025-02"
+        },
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        },
+        {
+          "title": "Microsoft Research — LazyGraphRAG: Setting a new standard for quality and cost",
+          "url": "https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/",
+          "date": "2024-11-25"
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "id": "ms-graphrag",
+      "day": 2,
+      "title": "Microsoft GraphRAG: 전체를 묻는 질문에 답하려고 그래프를 만들다",
+      "when": "2024-04-24",
+      "lead": "Microsoft Research는 \"이 데이터 전체의 주제는?\" 같은 질문에 일반 RAG가 약하다는 걸 보고, LLM으로 엔티티 그래프와 커뮤니티 요약을 미리 만드는 GraphRAG를 냈어요. 대신 색인 비용이 커서, 뒤에 LazyGraphRAG를 따로 냈어요.",
+      "facts": [
+        {
+          "label": "평가 데이터",
+          "value": "팟캐스트 전사 약 100만 토큰, 뉴스 약 170만 토큰",
+          "src": "arXiv 2404.16130"
+        },
+        {
+          "label": "전역 방식 승률(포괄성)",
+          "value": "72~83%(팟캐스트), 72~80%(뉴스)",
+          "src": "arXiv 2404.16130 §3.6"
+        },
+        {
+          "label": "전역 방식 승률(다양성)",
+          "value": "75~82%(팟캐스트), 62~71%(뉴스)",
+          "src": "arXiv 2404.16130 §3.6"
+        },
+        {
+          "label": "LazyGraphRAG 색인 비용",
+          "value": "full GraphRAG의 0.1%",
+          "src": "MS Research 블로그 2024-11-25"
+        }
+      ],
+      "timeline": [
+        {
+          "t": "2024-02-13",
+          "text": "MS Research 블로그로 GraphRAG 소개 (VIINA 뉴스 데이터)"
+        },
+        {
+          "t": "2024-04-24",
+          "text": "논문 'From Local to Global' arXiv 공개",
+          "hot": true
+        },
+        {
+          "t": "2024-07-02",
+          "text": "GitHub 오픈소스 공개 + GraphRAG Accelerator",
+          "hot": true
+        },
+        {
+          "t": "2024-10-31",
+          "text": "DRIFT search 발표"
+        },
+        {
+          "t": "2024-11-25",
+          "text": "LazyGraphRAG 발표: 색인 비용 0.1%, global 쿼리 비용 700배 이상 절감 주장",
+          "hot": true
+        }
+      ],
+      "causes": [
+        {
+          "stage": "질문 유형",
+          "title": "전역 질문",
+          "text": "top-k 조각만 보는 RAG는 데이터 전체의 주제를 요약하지 못했어요."
+        },
+        {
+          "stage": "색인",
+          "title": "미리 만든 요약",
+          "text": "Leiden 계층 커뮤니티마다 요약을 만들어 질문 때 map-reduce로 썼어요."
+        },
+        {
+          "stage": "비용",
+          "title": "색인이 비쌈",
+          "text": "조각마다 LLM 추출·요약이 필요해서, 뒤에 요약을 질문 시점으로 미루는 LazyGraphRAG가 나왔어요."
+        }
+      ],
+      "questions": [
+        {
+          "q": "승률 72~83%를 그대로 믿어도 될까요?",
+          "a": "LLM 심사자 비교라서 길이·위치 편향을 확인해야 해요. 그리고 전역 질문에 한정된 결과예요."
+        },
+        {
+          "q": "'메모리'가 노트 3,000개라면 full GraphRAG를 바로 쓸까요?",
+          "a": "먼저 전역 질문 비율과 색인 비용을 샘플로 재고, 데이터가 자주 바뀌면 Lazy 방식을 함께 비교해요."
+        },
+        {
+          "q": "왜 Microsoft는 1년도 안 돼 Lazy 버전을 냈을까요?",
+          "a": "품질은 좋았지만 색인 비용이 도입의 걸림돌이었기 때문이에요."
+        }
+      ],
+      "after": [
+        "GraphRAG는 global·local·DRIFT·basic 검색 모드를 갖춘 오픈소스로 계속 개발되고 있어요.",
+        "이후 LightRAG, HippoRAG 2 등 더 가벼운·더 정확한 변형이 이어졌어요."
+      ],
+      "sources": [
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        },
+        {
+          "title": "Microsoft Research — GraphRAG: Unlocking LLM discovery on narrative private data",
+          "url": "https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/",
+          "date": "2024-02-13"
+        },
+        {
+          "title": "Microsoft Research — GraphRAG: New tool for complex data discovery now on GitHub",
+          "url": "https://www.microsoft.com/en-us/research/blog/graphrag-new-tool-for-complex-data-discovery-now-on-github/",
+          "date": "2024-07-02"
+        },
+        {
+          "title": "Microsoft Research — Introducing DRIFT Search",
+          "url": "https://www.microsoft.com/en-us/research/blog/introducing-drift-search-combining-global-and-local-search-methods-to-improve-quality-and-efficiency/",
+          "date": "2024-10-31"
+        },
+        {
+          "title": "Microsoft Research — LazyGraphRAG: Setting a new standard for quality and cost",
+          "url": "https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/",
+          "date": "2024-11-25"
+        }
+      ]
+    },
+    {
+      "id": "hipporag",
+      "day": 4,
+      "title": "HippoRAG: 뇌의 해마를 흉내 내 멀티홉을 한 번에",
+      "when": "2024-05",
+      "lead": "오하이오주립대(OSU NLP) 팀은 사람 기억의 해마 색인 이론에서 착안해, 지식그래프와 Personalized PageRank로 여러 번 건너야 하는 질문을 한 번의 검색으로 풀었어요. 1년 뒤 HippoRAG 2로 '그래프 RAG는 단순 사실에 약하다'는 약점까지 손봤어요.",
+      "facts": [
+        {
+          "label": "멀티홉 QA 향상",
+          "value": "기존 최고 대비 최대 20%",
+          "src": "arXiv 2405.14831"
+        },
+        {
+          "label": "IRCoT 대비 비용",
+          "value": "10~30배 저렴",
+          "src": "arXiv 2405.14831"
+        },
+        {
+          "label": "IRCoT 대비 속도",
+          "value": "6~13배 빠름",
+          "src": "arXiv 2405.14831"
+        },
+        {
+          "label": "HippoRAG 2 연상 기억",
+          "value": "최고 임베딩 모델 대비 +7%",
+          "src": "arXiv 2502.14802"
+        }
+      ],
+      "timeline": [
+        {
+          "t": "2024-05",
+          "text": "HippoRAG arXiv 공개 (NeurIPS 2024)",
+          "hot": true
+        },
+        {
+          "t": "2025-02",
+          "text": "HippoRAG 2 'From RAG to Memory' 공개",
+          "hot": true
+        },
+        {
+          "t": "2025",
+          "text": "HippoRAG 2 ICML 2025 발표, GitHub에 코드 공개"
+        }
+      ],
+      "causes": [
+        {
+          "stage": "질문 유형",
+          "title": "멀티홉",
+          "text": "반복 검색(IRCoT)은 정확하지만 LLM을 여러 번 불러 느리고 비쌌어요."
+        },
+        {
+          "stage": "검색",
+          "title": "PPR 한 번",
+          "text": "질문 엔티티를 씨앗으로 PPR을 돌려 여러 홉을 한 번에 점수화했어요."
+        },
+        {
+          "stage": "한계",
+          "title": "단순 사실 약점",
+          "text": "그래프형 RAG들이 기본 사실 기억에서 표준 RAG보다 떨어져서, HippoRAG 2가 문단 통합을 강화했어요."
+        }
+      ],
+      "questions": [
+        {
+          "q": "'메모리'에서 \"서윤이 리드한 프로젝트의 고객\" 질문에 HippoRAG식 접근이 맞을까요?",
+          "a": "멀티홉이라 맞아요. 다만 엔티티 추출과 이름 병합이 잘 돼야 PPR이 제대로 퍼져요."
+        },
+        {
+          "q": "10~30배 싸다는 건 무엇과 비교한 건가요?",
+          "a": "반복 검색 방식(IRCoT)과의 비교예요. 단순 벡터 RAG보다 싸다는 뜻은 아니에요."
+        },
+        {
+          "q": "HippoRAG 2에서 배울 운영 교훈은?",
+          "a": "그래프를 붙인 뒤에도 단순 사실 질문 점수를 따로 재야 해요."
+        }
+      ],
+      "after": [
+        "HippoRAG 2는 '모델 가중치를 바꾸지 않는 연속 학습(비모수 연속 학습)'이라는 틀로 RAG를 기억 시스템으로 보자고 제안했어요."
+      ],
+      "sources": [
+        {
+          "title": "Gutiérrez et al. — HippoRAG: Neurobiologically Inspired Long-Term Memory for LLMs",
+          "url": "https://arxiv.org/abs/2405.14831",
+          "date": "2024-05"
+        },
+        {
+          "title": "Gutiérrez et al. — From RAG to Memory: Non-Parametric Continual Learning for LLMs (HippoRAG 2)",
+          "url": "https://arxiv.org/abs/2502.14802",
+          "date": "2025-02"
+        },
+        {
+          "title": "OSU-NLP-Group/HippoRAG (GitHub)",
+          "url": "https://github.com/OSU-NLP-Group/HippoRAG",
+          "date": "n.d."
+        }
+      ]
+    }
+  ],
+  "problems": [
+    {
+      "id": "p01",
+      "day": 1,
+      "title": "\"올해 주요 주제 5개\"가 엉터리",
+      "scene": [
+        {
+          "name": "서윤",
+          "role": "리드",
+          "text": "대표님이 '올해 우리 팀 주요 주제 5개'를 물었는데, AI 답이 회의 3개 얘기만 해요."
+        },
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "top-k가 5라서 노트 5개만 본 거예요."
+        }
+      ],
+      "q": "무엇이 원인일까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "임베딩 모델이 나빠서",
+          "ok": false,
+          "why": "모델을 바꿔도 5개 조각만 보는 구조는 같아요."
+        },
+        {
+          "k": "B",
+          "t": "전역 질문인데 top-k 조각만 보는 구조라서",
+          "ok": true,
+          "why": "전역 질문은 전체를 훑어야 해요."
+        },
+        {
+          "k": "C",
+          "t": "노트가 너무 적어서",
+          "ok": false,
+          "why": "3,000개는 적지 않아요."
+        }
+      ],
+      "explain": "벡터 RAG는 비슷한 조각 몇 개로 답해서 전역 질문에 약해요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        }
+      ]
+    },
+    {
+      "id": "p02",
+      "day": 1,
+      "title": "top-k를 1,000으로?",
+      "scene": [
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "그럼 top-k를 1,000으로 올리죠."
+        },
+        {
+          "name": "나",
+          "role": "신입 엔지니어",
+          "text": "노트당 500토큰이면…"
+        }
+      ],
+      "q": "어떻게 답할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "좋아요, 바로 올려요",
+          "ok": false,
+          "why": "50만 토큰은 컨텍스트에 안 들어가고 비싸요."
+        },
+        {
+          "k": "B",
+          "t": "컨텍스트 한계와 비용 때문에 안 되니, 요약 계층(커뮤니티 요약) 같은 다른 구조를 검토해요",
+          "ok": true,
+          "why": "전체를 압축한 재료가 필요해요."
+        },
+        {
+          "k": "C",
+          "t": "질문을 막아요",
+          "ok": false,
+          "why": "사용자에게 필요한 질문이에요."
+        }
+      ],
+      "explain": "1,000 × 500 = 50만 토큰이에요. 전역 질문은 미리 만든 요약이 맞아요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "p03",
+      "day": 1,
+      "title": "색인 비용 견적",
+      "scene": [
+        {
+          "name": "서윤",
+          "role": "리드",
+          "text": "GraphRAG를 전체 노트에 돌리면 얼마 들어요?"
+        },
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "감으로 몇만 원?"
+        }
+      ],
+      "q": "먼저 무엇을 할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "전체로 바로 돌려 청구서를 본다",
+          "ok": false,
+          "why": "비용 폭탄 위험이에요."
+        },
+        {
+          "k": "B",
+          "t": "노트 100개 샘플로 색인해 토큰 수를 재고 전체로 늘려 계산한다",
+          "ok": true,
+          "why": "작게 재고 비례로 추정하는 게 안전해요."
+        },
+        {
+          "k": "C",
+          "t": "벡터 RAG 비용과 같다고 본다",
+          "ok": false,
+          "why": "색인에 LLM 호출이 들어가서 훨씬 비싸요."
+        }
+      ],
+      "explain": "GraphRAG 비용의 대부분은 색인의 LLM 호출이에요. 샘플로 재요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Microsoft Research — LazyGraphRAG: Setting a new standard for quality and cost",
+          "url": "https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/",
+          "date": "2024-11-25"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "p04",
+      "day": 2,
+      "title": "같은 사람이 노드 셋",
+      "scene": [
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "그래프 보니 '서윤', '서윤님', '윤 리드'가 다 따로예요."
+        },
+        {
+          "name": "서윤",
+          "role": "리드",
+          "text": "그럼 내 커뮤니티가 셋으로 쪼개졌겠네요."
+        }
+      ],
+      "q": "무엇을 할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "그냥 둔다",
+          "ok": false,
+          "why": "관계가 쪼개져 요약이 약해져요."
+        },
+        {
+          "k": "B",
+          "t": "엔티티 병합(별칭 표·정규화)을 추출 뒤에 넣는다",
+          "ok": true,
+          "why": "07에서 본 엔티티 정리 단계예요."
+        },
+        {
+          "k": "C",
+          "t": "Leiden 대신 Louvain을 쓴다",
+          "ok": false,
+          "why": "군집 알고리즘 문제가 아니에요."
+        }
+      ],
+      "explain": "엔티티 해소(resolution)가 그래프 품질의 시작이에요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        }
+      ]
+    },
+    {
+      "id": "p05",
+      "day": 2,
+      "title": "커뮤니티 층 고르기",
+      "scene": [
+        {
+          "name": "서윤",
+          "role": "리드",
+          "text": "global을 C0로 하면 싸고, C3로 하면 자세하대요."
+        },
+        {
+          "name": "나",
+          "role": "신입 엔지니어",
+          "text": "대표님 질문은 '큰 주제 5개'예요."
+        }
+      ],
+      "q": "어느 층부터 시도할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "가장 위 층(C0)부터, 부족하면 내려간다",
+          "ok": true,
+          "why": "큰 주제 질문엔 상위 요약이 맞고 싸요."
+        },
+        {
+          "k": "B",
+          "t": "가장 아래 층부터",
+          "ok": false,
+          "why": "비싸고 세부만 많아요."
+        },
+        {
+          "k": "C",
+          "t": "층은 상관없다",
+          "ok": false,
+          "why": "품질·비용이 달라요."
+        }
+      ],
+      "explain": "큰 주제 질문은 상위 커뮤니티 요약으로 시작해요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "p06",
+      "day": 2,
+      "title": "map 결과 중 점수 0",
+      "scene": [
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "map 결과 12개 중 7개가 점수 0이에요."
+        },
+        {
+          "name": "나",
+          "role": "신입 엔지니어",
+          "text": "그래도 다 넣어야 하나요?"
+        }
+      ],
+      "q": "reduce에 무엇을 넣을까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "12개 모두",
+          "ok": false,
+          "why": "관련 없는 답이 섞여요."
+        },
+        {
+          "k": "B",
+          "t": "점수 0은 버리고 높은 순으로 컨텍스트가 찰 때까지",
+          "ok": true,
+          "why": "GraphRAG global의 기본 방식이에요."
+        },
+        {
+          "k": "C",
+          "t": "무작위 3개",
+          "ok": false,
+          "why": "근거가 없어요."
+        }
+      ],
+      "explain": "map 점수로 거르고 정렬한 뒤 reduce해요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        }
+      ]
+    },
+    {
+      "id": "p07",
+      "day": 3,
+      "title": "\"민재가 맡은 일\" 질문",
+      "scene": [
+        {
+          "name": "서윤",
+          "role": "리드",
+          "text": "'민재가 봄 프로젝트에서 한 일'은 global로 보내요?"
+        },
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "그건 나 한 사람 얘기인데요."
+        }
+      ],
+      "q": "어느 모드가 맞을까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "global",
+          "ok": false,
+          "why": "전체 요약이라 비싸고 흐려요."
+        },
+        {
+          "k": "B",
+          "t": "local",
+          "ok": true,
+          "why": "특정 엔티티에서 출발해 이웃을 모아요."
+        },
+        {
+          "k": "C",
+          "t": "검색 없이 LLM만",
+          "ok": false,
+          "why": "근거가 없어요."
+        }
+      ],
+      "explain": "특정 엔티티 중심 질문은 local search예요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "p08",
+      "day": 3,
+      "title": "매일 늘어나는 노트",
+      "scene": [
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "노트가 하루 50개씩 늘어요. 전체 재색인은 하루 걸려요."
+        },
+        {
+          "name": "서윤",
+          "role": "리드",
+          "text": "그럼 어떻게 운영하죠?"
+        }
+      ],
+      "q": "무엇을 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "매일 전체 재색인",
+          "ok": false,
+          "why": "비용·시간을 못 버텨요."
+        },
+        {
+          "k": "B",
+          "t": "새 노트만 엔티티 추출·병합하고, 커뮤니티 요약은 주 1회 다시 만든다",
+          "ok": true,
+          "why": "증분 + 주기적 재요약으로 나눠요."
+        },
+        {
+          "k": "C",
+          "t": "색인을 멈춘다",
+          "ok": false,
+          "why": "새 노트를 못 찾아요."
+        }
+      ],
+      "explain": "엔티티는 증분, 커뮤니티 요약은 주기적으로 나누는 게 현실적이에요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Guo et al. — LightRAG: Simple and Fast Retrieval-Augmented Generation",
+          "url": "https://arxiv.org/abs/2410.05779",
+          "date": "2024-10"
+        },
+        {
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "p09",
+      "day": 3,
+      "title": "Lazy 방식 검토",
+      "scene": [
+        {
+          "name": "서윤",
+          "role": "리드",
+          "text": "색인이 비싸서 LazyGraphRAG 얘기가 나왔어요."
+        },
+        {
+          "name": "나",
+          "role": "신입 엔지니어",
+          "text": "MS 발표로는 색인이 0.1%래요."
+        }
+      ],
+      "q": "도입 전에 무엇을 확인할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "발표 숫자만 믿고 전환",
+          "ok": false,
+          "why": "벤더 자체 평가예요."
+        },
+        {
+          "k": "B",
+          "t": "우리 질문셋으로 품질과 '질문당 비용'을 같이 잰다",
+          "ok": true,
+          "why": "색인 비용이 질문 시점으로 옮겨가요."
+        },
+        {
+          "k": "C",
+          "t": "색인만 재 본다",
+          "ok": false,
+          "why": "질문당 비용도 봐야 해요."
+        }
+      ],
+      "explain": "Lazy는 비용을 질문 쪽으로 옮겨요. 질문 수가 많으면 총비용을 다시 계산해요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Microsoft Research — LazyGraphRAG: Setting a new standard for quality and cost",
+          "url": "https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/",
+          "date": "2024-11-25"
+        }
+      ]
+    },
+    {
+      "id": "p10",
+      "day": 4,
+      "title": "서윤의 고객 찾기",
+      "scene": [
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "'서윤이 리드한 프로젝트의 고객'을 벡터로 찾으니 엉뚱해요."
+        },
+        {
+          "name": "나",
+          "role": "신입 엔지니어",
+          "text": "두 홉이에요."
+        }
+      ],
+      "q": "어떤 접근이 맞을까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "top-k만 늘린다",
+          "ok": false,
+          "why": "중간 고리를 못 따라가요."
+        },
+        {
+          "k": "B",
+          "t": "'서윤'을 씨앗으로 그래프를 따라가거나 PPR로 순위를 매긴다",
+          "ok": true,
+          "why": "멀티홉엔 그래프 탐색이 맞아요."
+        },
+        {
+          "k": "C",
+          "t": "키워드 검색만",
+          "ok": false,
+          "why": "관계를 모르면 못 찾아요."
+        }
+      ],
+      "explain": "HippoRAG처럼 씨앗 엔티티에서 그래프로 퍼져요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Gutiérrez et al. — HippoRAG: Neurobiologically Inspired Long-Term Memory for LLMs",
+          "url": "https://arxiv.org/abs/2405.14831",
+          "date": "2024-05"
+        }
+      ]
+    },
+    {
+      "id": "p11",
+      "day": 4,
+      "title": "그래프 붙인 뒤 단순 질문이 나빠짐",
+      "scene": [
+        {
+          "name": "서윤",
+          "role": "리드",
+          "text": "그래프 검색 붙이고 '지난주 회의 그거' 정답률이 떨어졌대요."
+        },
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "전역 질문은 좋아졌는데요."
+        }
+      ],
+      "q": "어떻게 할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "그래프를 다 뺀다",
+          "ok": false,
+          "why": "전역 질문 이득도 사라져요."
+        },
+        {
+          "k": "B",
+          "t": "질문 라우터를 두고 단순 질문은 벡터·하이브리드로 보낸다",
+          "ok": true,
+          "why": "유형별로 맞는 검색을 써요."
+        },
+        {
+          "k": "C",
+          "t": "그냥 둔다",
+          "ok": false,
+          "why": "핵심 질문이 나빠졌어요."
+        }
+      ],
+      "explain": "HippoRAG 2와 Han et al.이 본 문제예요. 섞어 써요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "Gutiérrez et al. — From RAG to Memory: Non-Parametric Continual Learning for LLMs (HippoRAG 2)",
+          "url": "https://arxiv.org/abs/2502.14802",
+          "date": "2025-02"
+        },
+        {
+          "title": "Han et al. — RAG vs. GraphRAG: A Systematic Evaluation and Key Insights",
+          "url": "https://arxiv.org/abs/2502.11371",
+          "date": "2025-02"
+        }
+      ]
+    },
+    {
+      "id": "p12",
+      "day": 4,
+      "title": "코드명 PRJ-42",
+      "scene": [
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "그래프 노드 벡터 검색으로 'PRJ-42'를 찾으니 다른 프로젝트가 나와요."
+        },
+        {
+          "name": "나",
+          "role": "신입 엔지니어",
+          "text": "04에서 본 문제 같아요."
+        }
+      ],
+      "q": "무엇을 더할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "전문(키워드) 인덱스를 함께 쓰는 하이브리드 검색",
+          "ok": true,
+          "why": "코드명은 키워드가 강해요."
+        },
+        {
+          "k": "B",
+          "t": "임베딩 차원을 늘린다",
+          "ok": false,
+          "why": "근본 해결이 아니에요."
+        },
+        {
+          "k": "C",
+          "t": "PRJ-42를 지운다",
+          "ok": false,
+          "why": "데이터 손실이에요."
+        }
+      ],
+      "explain": "04의 하이브리드 검색을 그래프 DB 안에서도 써요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "Neo4j GraphRAG for Python — RAG 사용자 가이드(Retrievers)",
+          "url": "https://neo4j.com/docs/neo4j-graphrag-python/current/user_guide_rag.html",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "p13",
+      "day": 5,
+      "title": "올해 회의 수",
+      "scene": [
+        {
+          "name": "서윤",
+          "role": "리드",
+          "text": "'서윤이 올해 참석한 회의 수'가 매번 다르게 나와요."
+        },
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "벡터로 찾은 조각에서 세니까요."
+        }
+      ],
+      "q": "무엇으로 바꿀까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "top-k를 늘린다",
+          "ok": false,
+          "why": "여전히 대충 세요."
+        },
+        {
+          "k": "B",
+          "t": "Text2Cypher로 count 쿼리를 읽기 전용으로 실행한다",
+          "ok": true,
+          "why": "정확히 세는 질문엔 쿼리가 맞아요."
+        },
+        {
+          "k": "C",
+          "t": "LLM에게 더 신중히 세라고 한다",
+          "ok": false,
+          "why": "근거가 불완전해요."
+        }
+      ],
+      "explain": "숫자 질문은 그래프 쿼리로 정확히 세요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "Neo4j GraphRAG for Python — RAG 사용자 가이드(Retrievers)",
+          "url": "https://neo4j.com/docs/neo4j-graphrag-python/current/user_guide_rag.html",
+          "date": "n.d."
+        }
+      ]
+    },
+    {
+      "id": "p14",
+      "day": 5,
+      "title": "승률 85%의 함정",
+      "scene": [
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "GraphRAG 답이 LLM 심사에서 85% 이겼어요!"
+        },
+        {
+          "name": "나",
+          "role": "신입 엔지니어",
+          "text": "GraphRAG 답이 두 배 길던데요."
+        }
+      ],
+      "q": "보고 전에 무엇을 할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "바로 보고",
+          "ok": false,
+          "why": "편향을 확인 안 했어요."
+        },
+        {
+          "k": "B",
+          "t": "순서를 바꿔 다시 심사하고, 길이를 맞추고, 일부는 사람이 채점한다",
+          "ok": true,
+          "why": "LLM 심사자 편향을 줄여요."
+        },
+        {
+          "k": "C",
+          "t": "심사 모델을 생성 모델과 같게",
+          "ok": false,
+          "why": "자기 선호 편향이 커져요."
+        }
+      ],
+      "explain": "LLM 심사자는 위치·길이·자기 선호 편향이 있어요.",
+      "mixed": false,
+      "sources": [
+        {
+          "title": "Zheng et al. — Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena",
+          "url": "https://arxiv.org/abs/2306.05685",
+          "date": "2023-06"
+        }
+      ]
+    },
+    {
+      "id": "p15",
+      "day": 5,
+      "title": "최종 결정 회의",
+      "scene": [
+        {
+          "name": "서윤",
+          "role": "리드",
+          "text": "질문 100개 분석 결과: 사실 75, 멀티홉 15, 전역 10이에요."
+        },
+        {
+          "name": "민재",
+          "role": "데이터",
+          "text": "노트는 매일 늘어요."
+        }
+      ],
+      "q": "팀 구조를 어떻게 정할까요?",
+      "options": [
+        {
+          "k": "A",
+          "t": "전부 GraphRAG global로",
+          "ok": false,
+          "why": "대부분인 사실 질문이 비싸고 나빠질 수 있어요."
+        },
+        {
+          "k": "B",
+          "t": "기본은 하이브리드 벡터 RAG, 멀티홉은 그래프 탐색, 전역은 GraphRAG(주기적 요약)로 라우팅",
+          "ok": true,
+          "why": "질문 유형과 비용에 맞춰 섞어요."
+        },
+        {
+          "k": "C",
+          "t": "그래프는 포기",
+          "ok": false,
+          "why": "전역·멀티홉 질문을 못 풀어요."
+        }
+      ],
+      "explain": "도입 판단표대로, 유형별 라우팅이 가장 현실적이에요.",
+      "mixed": true,
+      "sources": [
+        {
+          "title": "Han et al. — RAG vs. GraphRAG: A Systematic Evaluation and Key Insights",
+          "url": "https://arxiv.org/abs/2502.11371",
+          "date": "2025-02"
+        },
+        {
+          "title": "Edge et al. — From Local to Global: A Graph RAG Approach to Query-Focused Summarization",
+          "url": "https://arxiv.org/abs/2404.16130",
+          "date": "2024-04-24"
+        }
+      ]
+    }
+  ],
+  "lectures": [
+    {
+      "id": "l1",
+      "title": "Microsoft GraphRAG 공식 문서",
+      "url": "https://microsoft.github.io/graphrag/",
+      "min": 40,
+      "lang": "en",
+      "what": "색인 4단계와 global·local·DRIFT·basic 검색 모드를 공식 설명으로 읽어요.",
+      "day": 2
+    },
+    {
+      "id": "l2",
+      "title": "GraphRAG: Unlocking LLM discovery on narrative private data (MS Research)",
+      "url": "https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/",
+      "min": 15,
+      "lang": "en",
+      "what": "일반 RAG와 GraphRAG 답을 실제 질문으로 비교한 첫 소개 글이에요.",
+      "day": 1
+    },
+    {
+      "id": "l3",
+      "title": "LazyGraphRAG (MS Research 블로그)",
+      "url": "https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/",
+      "min": 15,
+      "lang": "en",
+      "what": "색인 비용을 줄이는 방법과 비용·품질 비교를 읽어요.",
+      "day": 3
+    },
+    {
+      "id": "l4",
+      "title": "Neo4j GraphRAG for Python — RAG 사용자 가이드",
+      "url": "https://neo4j.com/docs/neo4j-graphrag-python/current/user_guide_rag.html",
+      "min": 40,
+      "lang": "en",
+      "what": "VectorCypher·Hybrid·Text2Cypher 검색기 예제를 따라 해 봐요.",
+      "day": 5
+    },
+    {
+      "id": "l5",
+      "title": "Constructing Knowledge Graphs with Neo4j GraphRAG for Python (GraphAcademy)",
+      "url": "https://graphacademy.neo4j.com/courses/genai-graphrag-python/",
+      "min": 120,
+      "lang": "en",
+      "what": "지식그래프 파이프라인부터 검색까지 실습 강좌예요. 시간은 대략이에요.",
+      "day": 5
+    },
+    {
+      "id": "l6",
+      "title": "LightRAG GitHub README",
+      "url": "https://github.com/HKUDS/LightRAG",
+      "min": 20,
+      "lang": "en",
+      "what": "가벼운 그래프 RAG를 직접 설치해 보고 검색 모드를 비교해요.",
+      "day": 4
+    }
+  ],
+  "write": {
+    "title": "금요일에 쓸 것",
+    "task": "'메모리'의 GraphRAG 도입 결정 기록(ADR-008)을 1~2쪽으로 써 보세요. \"올해 주요 주제는?\" 같은 전역 질문을 계기로, 어떤 그래프 RAG를 어디에 쓸지 정해요.",
+    "template": [
+      "제목과 상태 (제안 / 승인 / 대체됨)",
+      "배경: 실패한 질문 예시와 질문 유형 비율(사실·멀티홉·전역·숫자)",
+      "선택지 2~3개와 장단점 (벡터+하이브리드 유지 / MS GraphRAG / LazyGraphRAG·LightRAG / HippoRAG식 PPR)",
+      "색인 비용 추정: 샘플 100개로 잰 토큰 수 × 전체 배수",
+      "갱신 계획: 엔티티 증분 주기, 커뮤니티 요약 재생성 주기",
+      "질문 라우팅 규칙과 Text2Cypher 안전장치(읽기 전용)",
+      "평가 방법: 질문셋, 순서 바꾼 LLM 심사, 사람 표본 채점",
+      "되돌릴 조건과 다시 볼 시점"
+    ]
+  },
+  "check": [
+    "Story numbers (노트 3,000개, 질문 100개 비율, 하루 50개) are fictional '메모리' team values.",
+    "GraphRAG win rates from arXiv 2404.16130 §3.6: comprehensiveness 72–83% / 72–80%, diversity 75–82% / 62–71%.",
+    "LazyGraphRAG 0.1% indexing, >700x lower global query cost, 5,590 AP articles — MS blog 2024-11-25 (vendor claim).",
+    "HippoRAG: up to 20%, 10–30x cheaper, 6–13x faster vs IRCoT; HippoRAG 2: +7% associative.",
+    "Leiden paper: Louvain up to 25% badly connected, up to 16% disconnected."
+  ]
+}

@@ -1,0 +1,2401 @@
+{
+ "id": "vg-graph-model",
+ "no": "06",
+ "title": "그래프 데이터 모델 · 그래프 DB · 질의 언어",
+ "short": "그래프 모델",
+ "q": "\"관계\"가 주인공인 데이터는 표 대신 어떻게 저장하고 물어볼까?",
+ "sub": "LPG · RDF · Cypher · GQL · SPARQL",
+ "doc": "메모리 그래프 스키마 설계서 v1",
+ "story": {
+  "title": "“민재랑 같이 회의한 사람, 그 사람들이 맡은 프로젝트는?”",
+  "size": 3000,
+  "body": [
+   "(가상 이야기) 기억 검색 팀은 05장에서 RAG가 엉뚱한 근거를 쓰는 걸 봤어요. 원인 중 하나는 '누가 지금 무엇을 맡았는지' 같은 관계를 글 비슷함으로만 찾았기 때문이에요.",
+   "리드 서윤이 말해요. \"노트 3000개에 나오는 사람·프로젝트·회의를 관계로 묶어 보죠.\" 데이터 담당 민재는 SQL로 짜 보다가 JOIN이 6개가 됐어요.",
+   "신입인 나는 이번 주에 정해야 해요. 표로 계속 갈까, 그래프로 모델링할까. LPG일까 RDF일까. 금요일까지 '메모리 그래프 스키마 설계서 v1'을 써야 해요."
+  ]
+ },
+ "goals": [
+  "속성 그래프(LPG)와 RDF 트리플의 차이를 메모리 앱 예로 설명할 수 있어요.",
+  "Cypher/GQL과 SPARQL로 패턴·경로·집계 질의를 쓸 수 있어요.",
+  "Neo4j, Neptune, Memgraph 등 그래프 DB를 운영·표준·벤치마크 기준으로 고르고, 쓰지 말아야 할 때도 판단할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "노드 · 엣지 · 속성",
+   "lead": "그래프는 점(노드)과 선(엣지)으로 데이터를 그려요. 둘 다 이름표(라벨/타입)와 속성(키-값)을 가질 수 있어요.",
+   "idea": [
+    "노드 = 사람, 프로젝트, 회의처럼 '것'이에요. 엣지 = '서윤이 회의에 참석했다'처럼 둘 사이의 관계예요.",
+    "엣지에는 방향이 있어요. (서윤)-[:참석]->(회의A) 는 서윤에서 회의로 가요.",
+    "속성은 노드나 엣지에 붙는 값이에요. 회의A {날짜:'10-14'}, 참석 {역할:'발표'}처럼요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 노드",
+     "t": "사람 3명, 프로젝트 1개, 회의 2개 = 노드 6개"
+    },
+    {
+     "k": "2 · 엣지",
+     "t": "참석·담당 관계 = 엣지 7개"
+    },
+    {
+     "k": "3 · 속성",
+     "t": "이름, 날짜, 역할 같은 값"
+    },
+    {
+     "k": "4 · 질문",
+     "t": "'민재와 같이 회의한 사람?' = 선 따라가기"
+    }
+   ],
+   "hear": [
+    "\"이건 노드로 둘까요, 속성으로 둘까요?\"",
+    "\"엣지에 가중치 붙여 두면 나중에 랭킹에 써요.\""
+   ],
+   "ask": [
+    "관계 자체에 속성(날짜·역할)이 필요한가요?",
+    "방향이 의미가 있나요, 양방향으로 읽나요?"
+   ],
+   "mine": "메모리 앱에서는 노트·사람·프로젝트·회의가 노드, '언급함', '참석함', '속함'이 엣지예요.",
+   "deep": [
+    "Neo4j 문서는 속성 그래프를 노드, 관계, 라벨, 속성으로 설명해요. 관계는 항상 타입 하나와 방향을 가져요."
+   ],
+   "recall": {
+    "q": "그래프의 두 기본 재료는?",
+    "a": "노드(것)와 엣지(관계), 그리고 둘에 붙는 속성"
+   },
+   "quiz": [
+    {
+     "q": "'서윤이 회의A에 발표자로 참석'에서 '발표자'는 어디에 두면 자연스러울까요?",
+     "options": [
+      "서윤 노드의 속성",
+      "참석 엣지의 속성",
+      "회의A 노드의 라벨"
+     ],
+     "answer": 1,
+     "why": "그 회의에서만의 역할이라 관계에 붙는 게 맞아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "관계형 JOIN의 한계",
+   "lead": "표에서 관계를 따라가려면 JOIN을 해요. 한두 번은 괜찮지만 '친구의 친구의 친구'처럼 깊어지면 JOIN이 쌓이고 쿼리가 길고 느려져요.",
+   "idea": [
+    "관계형 DB에서 '같이 회의한 사람'은 people–attend–meetings–attend–people로 JOIN 3번이에요.",
+    "한 단계 더 가면 JOIN이 또 늘어나요. 몇 단계인지 모르면(가변 길이) SQL은 재귀 CTE가 필요해요.",
+    "그래프 DB는 '선 따라가기'를 기본 연산으로 둬서 이런 질문을 짧게 써요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 표",
+     "t": "attend(person_id, meeting_id)"
+    },
+    {
+     "k": "2 · 1홉",
+     "t": "내가 참석한 회의"
+    },
+    {
+     "k": "3 · 2홉",
+     "t": "그 회의의 다른 참석자"
+    },
+    {
+     "k": "4 · n홉",
+     "t": "재귀 CTE 또는 그래프 질의"
+    }
+   ],
+   "hear": [
+    "\"이 쿼리 JOIN이 6개라 플랜이 이상해요.\"",
+    "\"WITH RECURSIVE 로 몇 단계까지 돌리죠?\""
+   ],
+   "ask": [
+    "질문이 보통 몇 홉까지 가나요?",
+    "관계가 자주 바뀌나요, 표 구조로 충분한가요?"
+   ],
+   "mine": "지금 메모리 앱은 SQLite 표예요. 2홉까지는 SQL로 충분하고, 그 이상이 잦으면 그래프 모델을 고려해요.",
+   "deep": [
+    "SQL도 WITH RECURSIVE로 경로를 따라갈 수 있어요. 그래프 DB가 '유일한 방법'은 아니에요."
+   ],
+   "recall": {
+    "q": "관계형에서 깊은 관계 질문이 어려운 이유는?",
+    "a": "단계마다 JOIN이 늘고, 단계 수를 모르면 재귀 쿼리가 필요해서"
+   },
+   "quiz": [
+    {
+     "q": "'같이 회의한 사람'을 표로 찾으면 attend 표를 몇 번 쓰나요?",
+     "options": [
+      "1번",
+      "2번",
+      "4번"
+     ],
+     "answer": 1,
+     "why": "나→회의, 회의→다른 사람으로 attend를 두 번 거쳐요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Francis et al., Cypher: An Evolving Query Language for Property Graphs (SIGMOD 2018)",
+     "url": "https://dl.acm.org/doi/10.1145/3183713.3190657",
+     "date": "2018"
+    },
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    }
+   ],
+   "code": {
+    "text": "SELECT DISTINCT b.person_id\nFROM attend a JOIN attend b\n  ON a.meeting_id = b.meeting_id\nWHERE a.person_id = '민재'\n  AND b.person_id <> '민재';",
+    "read": "attend 표를 두 번(a, b) 불러 같은 회의로 묶어요. 한 단계 더 가려면 JOIN을 또 붙여야 해요."
+   }
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "속성 그래프(LPG)",
+   "lead": "라벨 붙은 속성 그래프(Labeled Property Graph)는 노드에 라벨, 엣지에 타입, 둘 다에 속성을 붙이는 모델이에요. Neo4j, Memgraph가 이 방식이에요.",
+   "idea": [
+    "노드: (:Person {name:'서윤'}) — 라벨 Person, 속성 name.",
+    "엣지: -[:ATTENDED {role:'발표'}]-> — 타입 ATTENDED, 속성 role.",
+    "스키마가 느슨해서 새 라벨·속성을 바로 추가할 수 있어요. 대신 일관성은 팀 약속으로 지켜요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 라벨",
+     "t": "Person, Project, Meeting, Note"
+    },
+    {
+     "k": "2 · 타입",
+     "t": "ATTENDED, OWNS, MENTIONS"
+    },
+    {
+     "k": "3 · 속성",
+     "t": "name, date, role"
+    },
+    {
+     "k": "4 · 제약",
+     "t": "Person.name 유일 같은 제약 추가"
+    }
+   ],
+   "hear": [
+    "\"라벨 이름은 단수 PascalCase, 관계는 대문자 스네이크로 맞춰요.\"",
+    "\"제약 조건 없이 MERGE 하면 중복 생겨요.\""
+   ],
+   "ask": [
+    "라벨·관계 이름 규칙을 정했나요?",
+    "유일성 제약은 어디에 거나요?"
+   ],
+   "mine": "메모리 앱 스키마 초안: (:Note)-[:MENTIONS]->(:Person), (:Person)-[:ATTENDED]->(:Meeting), (:Meeting)-[:ABOUT]->(:Project).",
+   "deep": [
+    "Cypher 논문(SIGMOD 2018)은 Cypher를 속성 그래프용 선언적 질의 언어로 소개해요."
+   ],
+   "recall": {
+    "q": "LPG에서 엣지가 꼭 갖는 두 가지는?",
+    "a": "타입 하나와 방향"
+   },
+   "quiz": [
+    {
+     "q": "LPG에서 노드에 붙는 분류 이름은?",
+     "options": [
+      "타입",
+      "라벨",
+      "트리플"
+     ],
+     "answer": 1,
+     "why": "노드는 라벨, 관계는 타입이라고 불러요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    },
+    {
+     "title": "Francis et al., Cypher: An Evolving Query Language for Property Graphs (SIGMOD 2018)",
+     "url": "https://dl.acm.org/doi/10.1145/3183713.3190657",
+     "date": "2018"
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "RDF 트리플",
+   "lead": "RDF는 모든 사실을 '주어-술어-목적어' 세 칸(트리플)으로 적어요. 사실이 3개면 줄도 3개예요.",
+   "idea": [
+    "예: <서윤> <참석했다> <회의A> . 한 줄이 엣지 하나예요.",
+    "속성도 트리플이에요: <회의A> <날짜> \"2026-10-14\" .",
+    "트리플을 모아 두면 그 자체가 그래프가 돼요. W3C 표준이라 서로 다른 시스템이 데이터를 합치기 쉬워요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 주어",
+     "t": "무엇에 대한 사실인가 (IRI)"
+    },
+    {
+     "k": "2 · 술어",
+     "t": "어떤 관계인가 (IRI)"
+    },
+    {
+     "k": "3 · 목적어",
+     "t": "IRI 또는 값(리터럴)"
+    },
+    {
+     "k": "4 · 그래프",
+     "t": "트리플의 집합"
+    }
+   ],
+   "hear": [
+    "\"그건 트리플 스토어에 넣으면 돼요.\"",
+    "\"리터럴이에요, IRI예요?\""
+   ],
+   "ask": [
+    "외부 데이터(위키데이터 등)와 합칠 일이 있나요?",
+    "관계에 속성이 필요하면 어떻게 표현하죠?"
+   ],
+   "mine": "메모리 앱 사실 '민재가 노트 N12를 썼다'는 <민재> <wrote> <N12> 한 줄이에요.",
+   "deep": [
+    "RDF 1.1 Concepts는 RDF 그래프를 '트리플의 집합'으로 정의해요.",
+    "관계에 속성을 붙이려면 RDF-star 같은 확장이나 관계를 노드로 바꾸는 방법을 써요."
+   ],
+   "recall": {
+    "q": "RDF 트리플의 세 칸은?",
+    "a": "주어 · 술어 · 목적어"
+   },
+   "quiz": [
+    {
+     "q": "'회의A의 날짜는 10-14'를 트리플로 쓰면 목적어는?",
+     "options": [
+      "회의A",
+      "날짜",
+      "\"10-14\""
+     ],
+     "answer": 2,
+     "why": "값 자체가 목적어(리터럴)예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    }
+   ],
+   "code": {
+    "text": "@prefix ex: <https://memory.app/> .\nex:seoyoon ex:attended ex:meetingA .\nex:meetingA ex:date \"2026-10-14\" .\nex:minjae  ex:wrote    ex:note12 .",
+    "read": "한 줄이 트리플 하나예요. ex: 는 긴 주소를 줄여 쓰는 접두사예요."
+   }
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "IRI와 온톨로지(RDFS/OWL)",
+   "lead": "RDF는 이름을 전 세계에서 하나뿐인 주소(IRI)로 써요. 그 이름들 사이의 규칙(사람은 행위자다 등)을 적은 것이 온톨로지예요.",
+   "idea": [
+    "'서윤'이라는 글자는 겹칠 수 있지만 https://memory.app/person/seoyoon 은 하나예요.",
+    "RDFS로 '클래스'와 '하위 클래스'를, OWL로 '같은 것(sameAs)' 같은 더 강한 규칙을 적어요.",
+    "규칙이 있으면 추론기가 숨은 사실을 끌어낼 수 있어요. 예: 엔지니어 ⊂ 사람 이면 서윤도 사람."
+   ],
+   "steps": [
+    {
+     "k": "1 · IRI",
+     "t": "겹치지 않는 이름"
+    },
+    {
+     "k": "2 · 클래스",
+     "t": "Person, Meeting"
+    },
+    {
+     "k": "3 · 계층",
+     "t": "Engineer subClassOf Person"
+    },
+    {
+     "k": "4 · 추론",
+     "t": "적지 않은 사실을 계산"
+    }
+   ],
+   "hear": [
+    "\"schema.org 어휘 재사용하죠.\"",
+    "\"OWL 추론은 무거워서 꺼 뒀어요.\""
+   ],
+   "ask": [
+    "새 어휘를 만들기 전에 기존 어휘가 있나요?",
+    "추론이 꼭 필요한가요?"
+   ],
+   "mine": "메모리 앱은 팀 내부용이라 무거운 온톨로지 대신 라벨 몇 개와 작은 규칙표로 시작해요.",
+   "deep": [
+    "RDF 1.1 Concepts는 노드 이름으로 IRI, 리터럴, 빈 노드를 정의해요."
+   ],
+   "recall": {
+    "q": "온톨로지는 무엇을 적은 것인가요?",
+    "a": "개념(클래스)과 그 사이 관계·규칙"
+   },
+   "quiz": [
+    {
+     "q": "'Engineer subClassOf Person'과 '서윤 a Engineer'가 있으면 추론되는 것은?",
+     "options": [
+      "서윤 a Person",
+      "Person a Engineer",
+      "아무것도 없음"
+     ],
+     "answer": 0,
+     "why": "하위 클래스의 구성원은 상위 클래스의 구성원이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "LPG vs RDF 한눈에",
+   "lead": "둘 다 그래프지만 출발점이 달라요. LPG는 '앱 개발자가 빠르게 질의', RDF는 '서로 다른 데이터를 표준 이름으로 합치기'에 강해요.",
+   "idea": [
+    "관계 속성: LPG는 엣지에 바로, RDF는 확장(RDF-star)이나 우회가 필요해요.",
+    "이름: LPG는 DB 안의 내부 ID, RDF는 전역 IRI예요.",
+    "질의: LPG는 Cypher/GQL, RDF는 SPARQL. 표준: GQL(ISO), RDF·SPARQL(W3C)."
+   ],
+   "steps": [
+    {
+     "k": "1 · 데이터 출처",
+     "t": "우리 앱만? → LPG 쪽"
+    },
+    {
+     "k": "2 · 외부 연결",
+     "t": "공공·위키데이터와 합치기 → RDF 쪽"
+    },
+    {
+     "k": "3 · 관계 속성",
+     "t": "많음 → LPG가 편함"
+    },
+    {
+     "k": "4 · 팀 경험",
+     "t": "SQL 경험이면 Cypher가 익숙"
+    }
+   ],
+   "hear": [
+    "\"우리는 링크드 데이터 할 거 아니잖아요.\"",
+    "\"트리플이 10억 개 넘으면 스토어 고르기가 달라요.\""
+   ],
+   "ask": [
+    "외부 지식과 합칠 계획이 있나요?",
+    "질의 언어를 팀이 배울 시간은?"
+   ],
+   "mine": "메모리 앱은 팀 내부 노트라서 LPG로 시작하고, 필요하면 나중에 RDF로 내보내요.",
+   "deep": [
+    "Deutsch et al.은 GQL과 SQL/PGQ가 같은 그래프 패턴 문법을 공유한다고 설명해요."
+   ],
+   "recall": {
+    "q": "관계에 속성을 바로 붙이기 쉬운 모델은?",
+    "a": "LPG(속성 그래프)"
+   },
+   "quiz": [
+    {
+     "q": "여러 기관 데이터를 표준 이름으로 합치는 게 핵심이면?",
+     "options": [
+      "LPG",
+      "RDF",
+      "둘 다 상관없음"
+     ],
+     "answer": 1,
+     "why": "전역 IRI와 W3C 표준이 합치기에 유리해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    },
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "스키마 설계: 관계를 노드로?",
+   "lead": "관계에 참여자가 셋 이상이거나 관계 자체에 할 말이 많으면, 그 관계를 노드로 바꿔요(중간 노드).",
+   "idea": [
+    "'서윤이 회의A에서 프로젝트X를 결정했다'는 셋이 얽혀 있어요. 엣지 하나로는 못 그려요.",
+    "(:Decision) 노드를 만들고 서윤·회의A·프로젝트X에 각각 선을 이어요.",
+    "반대로 값이 그냥 숫자·글자면 노드 대신 속성으로 둬요. 모두 노드로 만들면 그래프가 쓸데없이 커져요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 값인가",
+     "t": "이름·날짜 → 속성"
+    },
+    {
+     "k": "2 · 둘 사이인가",
+     "t": "엣지"
+    },
+    {
+     "k": "3 · 셋 이상인가",
+     "t": "중간 노드"
+    },
+    {
+     "k": "4 · 다시 물어볼 대상인가",
+     "t": "노드로 승격"
+    }
+   ],
+   "hear": [
+    "\"이거 하이퍼엣지라서 노드로 빼야 해요.\"",
+    "\"태그를 노드로 만들면 같은 태그 노트 찾기가 쉬워요.\""
+   ],
+   "ask": [
+    "이 값으로 다른 것들을 자주 찾나요?",
+    "관계에 참여자가 몇 개인가요?"
+   ],
+   "mine": "메모리 앱의 '결정 사항'은 회의·사람·프로젝트가 같이 걸리니 (:Decision) 노드로 둬요.",
+   "deep": [
+    "Neo4j 모델링 가이드는 질문(유스케이스)에서 출발해 모델을 정하라고 해요."
+   ],
+   "recall": {
+    "q": "관계를 노드로 바꿀 때 신호는?",
+    "a": "참여자가 셋 이상이거나 관계 자체를 다시 찾을 때"
+   },
+   "quiz": [
+    {
+     "q": "노트의 '작성일'은 무엇으로 두는 게 보통인가요?",
+     "options": [
+      "노드",
+      "엣지",
+      "속성"
+     ],
+     "answer": 2,
+     "why": "단순 값이라 속성이 맞아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "인덱스 없는 인접성",
+   "lead": "네이티브 그래프 DB는 노드가 이웃 목록을 직접 가리켜요. 그래서 '이웃 찾기' 비용이 전체 데이터 크기보다 내 이웃 수에 달려요.",
+   "idea": [
+    "표에서 이웃 찾기는 보통 인덱스 검색이에요. 데이터가 커지면 조금씩 느려져요(로그 크기).",
+    "인덱스 없는 인접성(index-free adjacency)은 노드에서 엣지로 포인터를 따라가요.",
+    "대신 '모든 회의 중 10월 것' 같은 전체 검색은 여전히 인덱스가 필요해요. 시작점 찾기 = 인덱스, 따라가기 = 포인터."
+   ],
+   "steps": [
+    {
+     "k": "1 · 시작점",
+     "t": "인덱스로 '민재' 찾기"
+    },
+    {
+     "k": "2 · 이웃",
+     "t": "포인터로 참석 회의 3개"
+    },
+    {
+     "k": "3 · 다음 이웃",
+     "t": "그 회의 참석자들"
+    },
+    {
+     "k": "4 · 비용",
+     "t": "만난 엣지 수만큼"
+    }
+   ],
+   "hear": [
+    "\"시작 노드는 인덱스 타고, 그 다음은 트래버설이에요.\"",
+    "\"슈퍼노드 하나가 엣지 백만 개라 터졌어요.\""
+   ],
+   "ask": [
+    "시작점을 찾을 인덱스가 있나요?",
+    "엣지가 아주 많은 '슈퍼노드'가 있나요?"
+   ],
+   "mine": "메모리 앱에서 '전체 공지' 노트는 모든 사람과 연결된 슈퍼노드가 될 수 있어요. 따라갈 때 제외해요.",
+   "deep": [
+    "모든 그래프 DB가 이 방식으로 저장하는 건 아니에요. 제품마다 저장 방식이 달라서 벤치마크로 확인해요."
+   ],
+   "recall": {
+    "q": "그래프 DB에서 시작점과 따라가기에 각각 쓰는 것은?",
+    "a": "시작점 = 인덱스, 따라가기 = 엣지 포인터"
+   },
+   "quiz": [
+    {
+     "q": "엣지 백만 개가 붙은 노드를 뭐라고 부르나요?",
+     "options": [
+      "루트 노드",
+      "슈퍼노드",
+      "리프 노드"
+     ],
+     "answer": 1,
+     "why": "따라가기 비용이 폭발하는 대표 원인이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Documentation",
+     "url": "https://neo4j.com/docs/",
+     "date": "n.d."
+    },
+    {
+     "title": "LDBC Social Network Benchmark",
+     "url": "https://ldbcouncil.org/benchmarks/snb/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "Cypher MATCH 패턴",
+   "lead": "Cypher는 그림 그리듯 써요. (노드)-[관계]->(노드) 모양을 적으면 DB가 그 모양을 데이터에서 찾아요.",
+   "idea": [
+    "괄호 () 는 노드, 대괄호 [] 는 관계, 화살표는 방향이에요.",
+    "변수(p, m)를 붙이면 찾은 것을 RETURN으로 돌려받아요.",
+    "WHERE로 조건을 걸어요. SQL을 알면 SELECT 순서만 바뀐 느낌이에요."
+   ],
+   "steps": [
+    {
+     "k": "1 · MATCH",
+     "t": "찾을 모양"
+    },
+    {
+     "k": "2 · WHERE",
+     "t": "조건"
+    },
+    {
+     "k": "3 · RETURN",
+     "t": "돌려받을 것"
+    },
+    {
+     "k": "4 · LIMIT",
+     "t": "개수 제한"
+    }
+   ],
+   "hear": [
+    "\"패턴 먼저 그려 보고 쿼리 짜요.\"",
+    "\"PROFILE 붙여서 플랜 봐요.\""
+   ],
+   "ask": [
+    "시작 노드에 인덱스가 있나요?",
+    "방향을 빼도 되는 패턴인가요?"
+   ],
+   "mine": "'민재와 같이 회의한 사람'이 카드 2의 SQL보다 짧아져요.",
+   "deep": [
+    "Cypher 매뉴얼은 패턴을 Cypher의 핵심으로 설명하고 PROFILE/EXPLAIN으로 실행 계획을 보여 줘요."
+   ],
+   "recall": {
+    "q": "Cypher에서 () 와 [] 의 뜻은?",
+    "a": "() = 노드, [] = 관계"
+   },
+   "quiz": [
+    {
+     "q": "(a)-[:ATTENDED]->(m)<-[:ATTENDED]-(b) 가 찾는 것은?",
+     "options": [
+      "a가 b를 참석시킴",
+      "a와 b가 같은 회의 m에 참석",
+      "a가 m을 만듦"
+     ],
+     "answer": 1,
+     "why": "두 화살표가 같은 회의 m으로 모여요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    },
+    {
+     "title": "Francis et al., Cypher: An Evolving Query Language for Property Graphs (SIGMOD 2018)",
+     "url": "https://dl.acm.org/doi/10.1145/3183713.3190657",
+     "date": "2018"
+    }
+   ],
+   "code": {
+    "text": "MATCH (a:Person {name:'민재'})-[:ATTENDED]->(m:Meeting)\n      <-[:ATTENDED]-(b:Person)\nWHERE a <> b\nRETURN DISTINCT b.name;",
+    "read": "민재가 참석한 회의 m에 같이 참석한 다른 사람 b의 이름을 중복 없이 돌려줘요."
+   }
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "경로와 가변 길이",
+   "lead": "몇 단계인지 모를 때는 *1..3 처럼 길이 범위를 적어요. 최단 경로도 한 줄로 물어요.",
+   "idea": [
+    "-[:KNOWS*1..3]-> = 1~3단계 안에 닿는 모든 곳.",
+    "shortestPath((a)-[*]-(b)) = 둘 사이 가장 짧은 길.",
+    "범위를 안 쓰면(*) 그래프가 클 때 폭발해요. 상한을 꼭 둬요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 1홉",
+     "t": "직접 연결"
+    },
+    {
+     "k": "2 · 2홉",
+     "t": "이웃의 이웃"
+    },
+    {
+     "k": "3 · 범위",
+     "t": "*1..3"
+    },
+    {
+     "k": "4 · 최단",
+     "t": "shortestPath"
+    }
+   ],
+   "hear": [
+    "\"무한 홉은 금지, 상한 3으로 둬요.\"",
+    "\"경로 길이로 점수 매겨요.\""
+   ],
+   "ask": [
+    "최대 몇 홉이 의미 있나요?",
+    "경로가 여러 개면 무엇을 돌려주나요?"
+   ],
+   "mine": "'서윤 노트에서 프로젝트X까지 어떻게 이어지나'를 최단 경로로 보여 주면 '왜 이 노트가 관련 있나' 설명이 돼요.",
+   "deep": [
+    "GQL과 SQL/PGQ도 가변 길이 경로 패턴을 지원해요(Deutsch et al.)."
+   ],
+   "recall": {
+    "q": "가변 길이 경로에 상한을 두는 이유는?",
+    "a": "그래프가 크면 경로 수가 폭발해서"
+   },
+   "quiz": [
+    {
+     "q": "1~2단계 안의 프로젝트를 찾는 관계 패턴은?",
+     "options": [
+      "-[*]->",
+      "-[*1..2]->",
+      "-[*0]->"
+     ],
+     "answer": 1,
+     "why": "범위 1..2가 1홉과 2홉이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    },
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    }
+   ],
+   "code": {
+    "text": "MATCH p = shortestPath(\n  (n:Note {id:'N12'})-[*..4]-(x:Project {name:'X'}))\nRETURN [v IN nodes(p) | coalesce(v.name, v.id)];",
+    "read": "노트 N12에서 프로젝트 X까지 4단계 이내 최단 경로를 찾고, 거친 노드 이름을 순서대로 돌려줘요."
+   }
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "집계와 WITH",
+   "lead": "WITH는 중간 결과를 다음 단계로 넘기는 파이프예요. count(), collect()로 묶고 그 결과로 다시 걸러요.",
+   "idea": [
+    "count(m) = 개수, collect(m.title) = 목록으로 모으기.",
+    "WITH p, count(m) AS n WHERE n > 2 처럼 집계 뒤에 조건을 걸어요(SQL의 HAVING).",
+    "그룹 기준은 집계 아닌 열이 자동으로 돼요."
+   ],
+   "steps": [
+    {
+     "k": "1 · MATCH",
+     "t": "사람-회의"
+    },
+    {
+     "k": "2 · WITH",
+     "t": "사람별 회의 수"
+    },
+    {
+     "k": "3 · WHERE",
+     "t": "3개 이상만"
+    },
+    {
+     "k": "4 · ORDER BY",
+     "t": "많은 순"
+    }
+   ],
+   "hear": [
+    "\"WITH로 끊어서 카디널리티 줄여요.\"",
+    "\"collect 한 다음 UNWIND 해요.\""
+   ],
+   "ask": [
+    "중간 결과가 몇 줄인지 확인했나요?",
+    "정렬 기준이 분명한가요?"
+   ],
+   "mine": "'이번 달 회의 3번 이상 나온 사람'을 뽑아 팀 핵심 인물 후보로 써요.",
+   "deep": [
+    "Cypher 매뉴얼의 집계 함수: count, sum, avg, collect 등."
+   ],
+   "recall": {
+    "q": "Cypher에서 SQL HAVING 역할을 하는 것은?",
+    "a": "WITH ... WHERE"
+   },
+   "quiz": [
+    {
+     "q": "사람 3명이 회의를 각각 4,2,5번 갔어요. n>2 필터 후 남는 사람 수는?",
+     "options": [
+      "1",
+      "2",
+      "3"
+     ],
+     "answer": 1,
+     "why": "4와 5, 두 명이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "MATCH (p:Person)-[:ATTENDED]->(m:Meeting)\nWITH p, count(m) AS n\nWHERE n > 2\nRETURN p.name, n ORDER BY n DESC;",
+    "read": "사람별 회의 수를 세고(WITH), 3번 이상만 남겨 많은 순으로 보여 줘요."
+   }
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "MERGE와 쓰기",
+   "lead": "CREATE는 무조건 새로 만들고, MERGE는 '있으면 찾고 없으면 만들기'예요. 중복을 막으려면 MERGE와 유일 제약을 같이 써요.",
+   "idea": [
+    "같은 노트를 두 번 불러오면 CREATE는 서윤 노드가 2개 생겨요.",
+    "MERGE (p:Person {name:'서윤'}) 은 한 개만 남겨요.",
+    "ON CREATE SET / ON MATCH SET 으로 처음과 다시 볼 때 다른 값을 넣어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 제약",
+     "t": "Person.name 유일"
+    },
+    {
+     "k": "2 · MERGE 노드",
+     "t": "사람·회의"
+    },
+    {
+     "k": "3 · MERGE 관계",
+     "t": "참석"
+    },
+    {
+     "k": "4 · SET",
+     "t": "속성 갱신"
+    }
+   ],
+   "hear": [
+    "\"MERGE를 긴 패턴 통째로 하면 중복 생겨요. 노드 먼저 MERGE.\"",
+    "\"배치는 UNWIND로 천 건씩 넣어요.\""
+   ],
+   "ask": [
+    "재실행해도 결과가 같나요(멱등)?",
+    "유일 제약이 걸려 있나요?"
+   ],
+   "mine": "메모리 앱 노트를 밤마다 다시 읽어 그래프에 넣을 때 MERGE를 써야 사람 노드가 안 늘어나요.",
+   "deep": [
+    "Cypher 매뉴얼: MERGE는 전체 패턴이 없으면 패턴 전체를 만들기 때문에, 노드를 먼저 MERGE하고 관계를 MERGE하는 것이 안전해요."
+   ],
+   "recall": {
+    "q": "MERGE와 CREATE의 차이는?",
+    "a": "MERGE는 있으면 재사용, CREATE는 항상 새로 만듦"
+   },
+   "quiz": [
+    {
+     "q": "같은 import를 두 번 돌려도 노드 수가 그대로이려면?",
+     "options": [
+      "CREATE",
+      "MERGE + 유일 제약",
+      "DELETE 후 CREATE만"
+     ],
+     "answer": 1,
+     "why": "멱등하게 만드는 기본 방법이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "CREATE CONSTRAINT person_name IF NOT EXISTS\n  FOR (p:Person) REQUIRE p.name IS UNIQUE;\nMERGE (p:Person {name:'서윤'})\nMERGE (m:Meeting {id:'M7'})\nMERGE (p)-[:ATTENDED]->(m);",
+    "read": "이름 유일 제약을 걸고, 사람·회의를 먼저 MERGE한 뒤 관계를 MERGE해요. 몇 번 돌려도 하나씩만 남아요."
+   }
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "GQL = ISO/IEC 39075:2024",
+   "lead": "GQL은 2024년 4월 ISO가 출판한 속성 그래프 질의 언어 표준이에요. Neo4j는 'SQL 이후 첫 새 ISO 데이터베이스 언어'라고 소개해요.",
+   "idea": [
+    "ISO/IEC 39075:2024, 1판, 2024-04 출판이에요(IEC 웹스토어 기준 2024-04-12).",
+    "Cypher가 GQL의 주요 입력이었어요. 그래서 MATCH 패턴 모양이 아주 비슷해요.",
+    "표준이 있으면 DB를 바꿔도 질의를 덜 고쳐요. 다만 제품마다 지원 범위는 달라요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 1987",
+     "t": "SQL ISO 표준"
+    },
+    {
+     "k": "2 · 2018",
+     "t": "Cypher 논문(SIGMOD)"
+    },
+    {
+     "k": "3 · 2023",
+     "t": "SQL/PGQ (SQL:2023)"
+    },
+    {
+     "k": "4 · 2024-04",
+     "t": "GQL 출판"
+    }
+   ],
+   "hear": [
+    "\"GQL 호환이라는데 어디까지 지원하는지 봐야 해요.\"",
+    "\"Cypher 쓰면 GQL로 가는 길이 짧아요.\""
+   ],
+   "ask": [
+    "이 DB는 GQL 기능 중 무엇을 지원하나요?",
+    "벤더 전용 문법을 얼마나 쓰고 있나요?"
+   ],
+   "mine": "메모리 앱 쿼리를 표준에 가까운 MATCH 패턴으로만 쓰면 나중에 DB를 바꾸기 쉬워요.",
+   "deep": [
+    "Neo4j 블로그(2024-04-17)는 GQL을 '1987년 이후 첫 새 ISO 데이터베이스 언어'이자 SQL의 동료 언어로 소개해요."
+   ],
+   "recall": {
+    "q": "GQL 표준 번호와 출판 시기는?",
+    "a": "ISO/IEC 39075:2024, 2024년 4월"
+   },
+   "quiz": [
+    {
+     "q": "GQL에 가장 큰 영향을 준 기존 언어로 Neo4j가 꼽은 것은?",
+     "options": [
+      "SPARQL",
+      "Cypher",
+      "Gremlin"
+     ],
+     "answer": 1,
+     "why": "Neo4j는 Cypher가 GQL의 주요 입력이었다고 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "ISO/IEC 39075:2024 Information technology — Database languages — GQL",
+     "url": "https://www.iso.org/standard/76120.html",
+     "date": "2024-04"
+    },
+    {
+     "title": "Neo4j — GQL: The ISO Standard for Graphs Has Arrived",
+     "url": "https://neo4j.com/blog/cypher-and-gql/gql-international-standard/",
+     "date": "2024-04-17"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "SQL/PGQ (SQL:2023)",
+   "lead": "SQL/PGQ는 SQL 표준 안에 그래프 패턴 질의를 넣은 부분이에요. 이미 있는 표를 '그래프 뷰'로 보고 MATCH로 물어요.",
+   "idea": [
+    "표를 옮기지 않아요. CREATE PROPERTY GRAPH로 '이 표는 노드, 이 표는 엣지'를 선언해요.",
+    "SELECT 안에서 GRAPH_TABLE(... MATCH ...)로 패턴을 써요.",
+    "GQL과 패턴 문법을 공유해요. 둘을 같이 설계한 사람들이 논문으로 정리했어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 표",
+     "t": "people, meetings, attend"
+    },
+    {
+     "k": "2 · 그래프 선언",
+     "t": "CREATE PROPERTY GRAPH"
+    },
+    {
+     "k": "3 · 질의",
+     "t": "GRAPH_TABLE + MATCH"
+    },
+    {
+     "k": "4 · 결과",
+     "t": "다시 표"
+    }
+   ],
+   "hear": [
+    "\"그래프 DB 따로 안 두고 PGQ로 되나 봐요.\"",
+    "\"우리 DB 버전이 PGQ 지원해요?\""
+   ],
+   "ask": [
+    "지금 DB가 SQL/PGQ를 지원하나요?",
+    "데이터를 옮기는 비용이 큰가요?"
+   ],
+   "mine": "메모리 앱이 SQL DB에 있으니, 지원되는 엔진이면 데이터를 옮기지 않고 그래프 질의를 시험해 볼 수 있어요.",
+   "deep": [
+    "Deutsch et al. 'Graph Pattern Matching in GQL and SQL/PGQ'는 두 언어 공통 패턴 문법을 설명해요."
+   ],
+   "recall": {
+    "q": "SQL/PGQ의 장점 한 가지는?",
+    "a": "표를 옮기지 않고 그래프 패턴으로 질의"
+   },
+   "quiz": [
+    {
+     "q": "SQL/PGQ에서 패턴을 쓰는 곳은?",
+     "options": [
+      "GRAPH_TABLE 안의 MATCH",
+      "CREATE INDEX",
+      "트리거"
+     ],
+     "answer": 0,
+     "why": "SELECT FROM GRAPH_TABLE(g MATCH ...) 모양이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "SPARQL SELECT와 필터",
+   "lead": "SPARQL은 RDF용 질의 언어예요. 트리플 모양에 ?변수를 넣어 빈칸을 채우는 방식이에요.",
+   "idea": [
+    "?p ex:attended ?m . = '누가 어떤 회의에 참석했나'의 빈칸 두 개.",
+    "FILTER로 조건, OPTIONAL로 없어도 되는 정보, ORDER BY/LIMIT도 있어요.",
+    "여러 줄 패턴은 같은 변수로 자연스럽게 JOIN돼요."
+   ],
+   "steps": [
+    {
+     "k": "1 · PREFIX",
+     "t": "주소 줄임"
+    },
+    {
+     "k": "2 · SELECT",
+     "t": "돌려받을 변수"
+    },
+    {
+     "k": "3 · WHERE",
+     "t": "트리플 패턴"
+    },
+    {
+     "k": "4 · FILTER",
+     "t": "조건"
+    }
+   ],
+   "hear": [
+    "\"OPTIONAL 빼먹어서 결과가 비었어요.\"",
+    "\"엔드포인트 타임아웃 걸려요, LIMIT 넣어요.\""
+   ],
+   "ask": [
+    "없을 수도 있는 속성은 OPTIONAL로 감쌌나요?",
+    "공개 엔드포인트의 시간 제한은?"
+   ],
+   "mine": "메모리 앱 데이터를 RDF로 내보내면 같은 질문을 SPARQL로도 물을 수 있어요.",
+   "deep": [
+    "SPARQL 1.1 Query는 2013-03-21 W3C 권고안이에요."
+   ],
+   "recall": {
+    "q": "SPARQL에서 빈칸(변수)은 어떻게 쓰나요?",
+    "a": "?이름 형태 (?p, ?m)"
+   },
+   "quiz": [
+    {
+     "q": "두 패턴이 같은 ?m을 쓰면 무슨 일이 생기나요?",
+     "options": [
+      "오류",
+      "같은 값으로 묶임(JOIN)",
+      "무시됨"
+     ],
+     "answer": 1,
+     "why": "같은 변수는 같은 값이어야 해서 JOIN이 돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C SPARQL 1.1 Query Language",
+     "url": "https://www.w3.org/TR/sparql11-query/",
+     "date": "2013-03-21"
+    }
+   ],
+   "code": {
+    "text": "PREFIX ex: <https://memory.app/>\nSELECT ?name WHERE {\n  ?p ex:attended ?m .\n  ?m ex:date ?d .\n  ?p ex:name ?name .\n  FILTER (?d >= \"2026-10-01\")\n}",
+    "read": "10월 이후 회의에 참석한 사람 이름을 찾아요. ?m, ?p가 줄마다 같은 값으로 이어져요."
+   }
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "Wikidata로 SPARQL 실습",
+   "lead": "위키데이터는 누구나 쓰는 공개 지식그래프예요. query.wikidata.org에서 바로 SPARQL을 돌려 볼 수 있어요.",
+   "idea": [
+    "항목은 Q번호, 속성은 P번호예요. 예: P31 = instance of(무엇의 한 예).",
+    "wdt: 접두사는 '바로 그 값' 관계예요. 예: ?x wdt:P31 wd:Q5 . = ?x는 사람.",
+    "SERVICE wikibase:label 로 Q번호 대신 이름을 보여 줘요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 열기",
+     "t": "query.wikidata.org"
+    },
+    {
+     "k": "2 · 예제",
+     "t": "Examples 메뉴"
+    },
+    {
+     "k": "3 · 고치기",
+     "t": "Q·P 번호 바꾸기"
+    },
+    {
+     "k": "4 · LIMIT",
+     "t": "10개로 시작"
+    }
+   ],
+   "hear": [
+    "\"Q번호 모르면 위키데이터에서 검색해요.\"",
+    "\"결과 많으면 타임아웃, LIMIT 먼저.\""
+   ],
+   "ask": [
+    "찾는 개념의 Q번호가 맞나요?",
+    "레이블 언어를 ko로 했나요?"
+   ],
+   "mine": "실습: 메모리 앱 대신 위키데이터에서 '한국 출신 컴퓨터 과학자' 같은 질문을 쳐 보고 결과를 노트로 남겨요.",
+   "deep": [
+    "Wikidata SPARQL tutorial은 P31, wdt:, 라벨 서비스를 단계별로 설명해요."
+   ],
+   "recall": {
+    "q": "위키데이터에서 P31의 뜻은?",
+    "a": "instance of (~의 한 예)"
+   },
+   "quiz": [
+    {
+     "q": "wd:Q5 는 무엇인가요?",
+     "options": [
+      "사람(human)",
+      "나라",
+      "도시"
+     ],
+     "answer": 0,
+     "why": "튜토리얼의 대표 예가 ?x wdt:P31 wd:Q5 예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Wikidata:SPARQL tutorial",
+     "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_tutorial",
+     "date": "n.d."
+    },
+    {
+     "title": "Wikidata — WDQS graph split",
+     "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/WDQS_graph_split",
+     "date": "2025"
+    }
+   ],
+   "code": {
+    "text": "SELECT ?item ?itemLabel WHERE {\n  ?item wdt:P31 wd:Q146 .\n  SERVICE wikibase:label {\n    bd:serviceParam wikibase:language \"ko,en\" . }\n} LIMIT 10",
+    "read": "P31(instance of) 값이 Q146(집고양이)인 항목 10개를 한국어(없으면 영어) 이름과 함께 보여 줘요."
+   }
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "Neo4j",
+   "lead": "Neo4j는 가장 널리 쓰이는 속성 그래프 DB 중 하나예요. Cypher를 만든 곳이고, 문서·강의(GraphAcademy)가 많아요.",
+   "idea": [
+    "Cypher, 제약/인덱스, 트랜잭션을 갖춘 범용 그래프 DB예요.",
+    "벡터 인덱스도 있어서 '벡터로 찾고 그래프로 넓히기'를 한 DB에서 할 수 있어요(08장 GraphRAG).",
+    "GraphAcademy에서 무료 기초 과정을 들을 수 있어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 설치",
+     "t": "Docker 또는 클라우드"
+    },
+    {
+     "k": "2 · 모델",
+     "t": "라벨·관계 정하기"
+    },
+    {
+     "k": "3 · 적재",
+     "t": "MERGE / LOAD CSV"
+    },
+    {
+     "k": "4 · 질의",
+     "t": "Cypher + PROFILE"
+    }
+   ],
+   "hear": [
+    "\"Aura로 띄우면 운영 부담 줄어요.\"",
+    "\"벡터 인덱스도 Neo4j에 같이 둬요.\""
+   ],
+   "ask": [
+    "라이선스(Community/Enterprise) 조건은?",
+    "백업·복제는 어떻게?"
+   ],
+   "mine": "메모리 앱 프로토타입은 Docker로 Neo4j를 띄우고 노트 3000개로 시험해요.",
+   "deep": [
+    "Neo4j 문서에 Cypher 매뉴얼, 운영 매뉴얼, 벡터 인덱스 문서가 있어요."
+   ],
+   "recall": {
+    "q": "Neo4j가 쓰는 질의 언어는?",
+    "a": "Cypher (GQL에 맞춰 가는 중)"
+   },
+   "quiz": [
+    {
+     "q": "Neo4j에서 무료 기초 강의를 듣는 곳은?",
+     "options": [
+      "GraphAcademy",
+      "Kaggle",
+      "LeetCode"
+     ],
+     "answer": 0,
+     "why": "graphacademy.neo4j.com 이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Documentation",
+     "url": "https://neo4j.com/docs/",
+     "date": "n.d."
+    },
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "Neptune · Memgraph · 그 밖의 선택지",
+   "lead": "그래프 DB는 Neo4j만 있는 게 아니에요. 운영 방식(관리형/메모리/임베디드)과 모델(LPG/RDF)로 골라요.",
+   "idea": [
+    "Amazon Neptune: AWS 관리형. 속성 그래프(openCypher, Gremlin)와 RDF(SPARQL)를 모두 지원해요.",
+    "Memgraph: 메모리 중심 그래프 DB, Cypher 호환이에요. 실시간 처리에 많이 써요.",
+    "임베디드(앱 안에 들어가는) 그래프 DB도 있어요. 다만 프로젝트가 멈추는 경우도 있으니 유지 상태를 꼭 봐요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 모델",
+     "t": "LPG? RDF? 둘 다?"
+    },
+    {
+     "k": "2 · 운영",
+     "t": "관리형 vs 직접"
+    },
+    {
+     "k": "3 · 규모",
+     "t": "메모리에 다 들어가나"
+    },
+    {
+     "k": "4 · 생태계",
+     "t": "언어·드라이버·유지 상태"
+    }
+   ],
+   "hear": [
+    "\"이미 AWS면 Neptune이 편하죠.\"",
+    "\"마지막 릴리스가 언제예요?\""
+   ],
+   "ask": [
+    "프로젝트가 활발히 유지되나요?",
+    "질의 언어가 표준(GQL/openCypher)에 가까운가요?"
+   ],
+   "mine": "메모리 앱은 작으니 처음엔 운영 쉬운 쪽, 커지면 벤치마크로 다시 골라요.",
+   "deep": [
+    "Neptune 사용자 가이드는 Gremlin, openCypher, SPARQL 지원을 설명해요."
+   ],
+   "recall": {
+    "q": "Neptune이 지원하는 두 그래프 모델은?",
+    "a": "속성 그래프와 RDF"
+   },
+   "quiz": [
+    {
+     "q": "DB를 고를 때 꼭 볼 것이 아닌 것은?",
+     "options": [
+      "유지 상태",
+      "질의 언어 표준 호환",
+      "로고 색"
+     ],
+     "answer": 2,
+     "why": "나머지 둘은 장기 비용과 직결돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Amazon Neptune User Guide — What is Neptune?",
+     "url": "https://docs.aws.amazon.com/neptune/latest/userguide/intro.html",
+     "date": "n.d."
+    },
+    {
+     "title": "Memgraph docs",
+     "url": "https://memgraph.com/docs",
+     "date": "n.d."
+    },
+    {
+     "title": "openCypher",
+     "url": "https://opencypher.org/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "LDBC 벤치마크",
+   "lead": "그래프 DB 성능은 회사 자랑 숫자 대신 공정한 벤치마크로 비교해요. LDBC SNB(소셜 네트워크 벤치마크)가 대표예요.",
+   "idea": [
+    "LDBC는 그래프 벤치마크를 만드는 비영리 단체예요.",
+    "SNB는 가상의 소셜 네트워크 데이터로 짧은 조회(Interactive)와 무거운 분석(BI) 작업을 나눠 재요.",
+    "감사(audit)를 거친 결과만 공식 결과예요. 블로그 숫자와 구분해요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 데이터",
+     "t": "가상의 SNS 생성기"
+    },
+    {
+     "k": "2 · 작업",
+     "t": "Interactive / BI"
+    },
+    {
+     "k": "3 · 규모",
+     "t": "Scale Factor"
+    },
+    {
+     "k": "4 · 결과",
+     "t": "감사받은 공식 결과"
+    }
+   ],
+   "hear": [
+    "\"그 숫자 LDBC 감사받은 거예요?\"",
+    "\"우리 질의 패턴이랑 비슷한 워크로드 봐요.\""
+   ],
+   "ask": [
+    "벤치마크가 우리 질문 모양과 비슷한가요?",
+    "같은 하드웨어 조건인가요?"
+   ],
+   "mine": "메모리 앱은 자체 질문 20개를 모아 작은 벤치마크로 두 DB를 직접 비교해요.",
+   "deep": [
+    "LDBC SNB 페이지에 Interactive와 BI 워크로드 설명과 감사 결과가 있어요."
+   ],
+   "recall": {
+    "q": "그래프 DB 성능을 공정하게 비교하는 벤치마크는?",
+    "a": "LDBC SNB"
+   },
+   "quiz": [
+    {
+     "q": "벤더 블로그의 '100배 빠름' 숫자를 볼 때 먼저 물을 것은?",
+     "options": [
+      "감사·조건이 같은가",
+      "로고가 예쁜가",
+      "창업 연도"
+     ],
+     "answer": 0,
+     "why": "조건이 다르면 비교가 안 돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "LDBC Social Network Benchmark",
+     "url": "https://ldbcouncil.org/benchmarks/snb/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "그래프 DB를 쓰지 말아야 할 때",
+   "lead": "관계가 있다고 다 그래프 DB가 필요한 건 아니에요. 질문이 1~2홉이고 집계·리포트 위주면 SQL이 더 싸요.",
+   "idea": [
+    "표 집계(월별 합계, 그룹별 평균)는 관계형/분석 DB가 강해요.",
+    "DB를 하나 더 두면 동기화·백업·권한이 두 배가 돼요.",
+    "먼저 SQL 재귀 CTE나 SQL/PGQ로 시험하고, 깊은 경로 질문이 많고 느릴 때 옮겨요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 질문 목록",
+     "t": "실제 질문 20개 적기"
+    },
+    {
+     "k": "2 · 홉 수",
+     "t": "대부분 1~2홉?"
+    },
+    {
+     "k": "3 · 시험",
+     "t": "SQL로 먼저"
+    },
+    {
+     "k": "4 · 결정",
+     "t": "느리고 깊으면 그래프"
+    }
+   ],
+   "hear": [
+    "\"그래프가 멋있어서 쓰자는 건 아니죠?\"",
+    "\"동기화 파이프라인은 누가 운영해요?\""
+   ],
+   "ask": [
+    "깊은 관계 질문이 실제로 얼마나 자주 나오나요?",
+    "DB 하나 더 운영할 사람이 있나요?"
+   ],
+   "mine": "메모리 앱의 '노트 수 통계'는 SQL로, '사람-프로젝트 연결 탐색'만 그래프로 시도해요.",
+   "deep": [
+    "SQL도 WITH RECURSIVE와 SQL/PGQ로 상당한 그래프 질의를 할 수 있어요."
+   ],
+   "recall": {
+    "q": "그래프 DB 도입 전에 먼저 할 일은?",
+    "a": "실제 질문을 모아 홉 수를 보고 SQL로 시험하기"
+   },
+   "quiz": [
+    {
+     "q": "다음 중 그래프 DB가 덜 필요한 질문은?",
+     "options": [
+      "월별 노트 수 합계",
+      "5단계 안에 이어진 사람",
+      "두 사람 사이 최단 경로"
+     ],
+     "answer": 0,
+     "why": "단순 집계는 SQL이 더 잘해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    },
+    {
+     "title": "LDBC Social Network Benchmark",
+     "url": "https://ldbcouncil.org/benchmarks/snb/",
+     "date": "n.d."
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "iso-gql-2024",
+   "day": 4,
+   "title": "SQL 이후 37년 만에, ISO가 그래프 질의 언어를 표준으로 만들다",
+   "when": "2024-04",
+   "lead": "2024년 4월 ISO/IEC 39075:2024 GQL이 출판됐어요. 여러 회사가 제각각 쓰던 그래프 질의 문법이 하나의 국제 표준을 갖게 됐어요.",
+   "facts": [
+    {
+     "label": "표준 번호",
+     "value": "ISO/IEC 39075:2024 (1판)",
+     "src": "ISO · IEC 웹스토어"
+    },
+    {
+     "label": "출판일",
+     "value": "2024-04-12 (IEC 웹스토어 기준)",
+     "src": "IEC 웹스토어"
+    },
+    {
+     "label": "분량",
+     "value": "610쪽",
+     "src": "IEC 웹스토어"
+    },
+    {
+     "label": "Neo4j 표현",
+     "value": "1987년 이후 첫 새 ISO 데이터베이스 언어",
+     "src": "Neo4j 블로그 2024-04-17"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "1987",
+     "text": "SQL이 ISO 표준이 됨"
+    },
+    {
+     "t": "2018",
+     "text": "Cypher 논문 SIGMOD 발표"
+    },
+    {
+     "t": "2021-12",
+     "text": "GQL·SQL/PGQ 공통 패턴 문법 논문 공개(arXiv)"
+    },
+    {
+     "t": "2023",
+     "text": "SQL:2023에 SQL/PGQ 포함"
+    },
+    {
+     "t": "2024-04",
+     "text": "ISO/IEC 39075:2024 GQL 출판",
+     "hot": true
+    }
+   ],
+   "causes": [
+    {
+     "stage": "생태계",
+     "title": "언어가 제각각",
+     "text": "Cypher, Gremlin, 벤더 언어가 따로 있어 DB를 바꾸면 질의를 다시 써야 했어요."
+    },
+    {
+     "stage": "표준",
+     "title": "Cypher가 주요 입력",
+     "text": "Neo4j는 Cypher가 GQL의 주요 입력이었고 Cypher를 표준에 맞춰 간다고 밝혔어요."
+    },
+    {
+     "stage": "설계",
+     "title": "SQL과 패턴 공유",
+     "text": "GQL과 SQL/PGQ는 같은 그래프 패턴 문법을 공유해요(Deutsch et al.)."
+    }
+   ],
+   "questions": [
+    {
+     "q": "메모리 팀이 지금 그래프 DB를 고른다면, GQL 표준은 어떤 의미인가요?",
+     "a": "표준 MATCH 패턴 위주로 쓰면 나중에 DB를 바꿀 때 질의 수정을 줄일 수 있어요. 제품별 지원 범위는 직접 확인해야 해요."
+    },
+    {
+     "q": "이미 SQL DB가 있다면 무엇을 먼저 시험할까요?",
+     "a": "SQL/PGQ 지원 여부를 보고, 지원하면 데이터를 옮기지 않고 그래프 패턴을 시험해 봐요."
+    },
+    {
+     "q": "표준이 나왔다고 바로 모든 DB가 같아지나요?",
+     "a": "아니에요. 표준은 610쪽이고 구현은 단계적이에요. 벤더 전용 문법을 쓰는 부분을 목록으로 관리해요."
+    }
+   ],
+   "after": [
+    "Neo4j 등 벤더가 GQL 호환을 단계적으로 늘려 가고 있어요.",
+    "2026년 정오표(Cor 1:2026)가 나왔다는 표준 기관 목록이 있어요."
+   ],
+   "sources": [
+    {
+     "title": "ISO/IEC 39075:2024 Information technology — Database languages — GQL",
+     "url": "https://www.iso.org/standard/76120.html",
+     "date": "2024-04"
+    },
+    {
+     "title": "Neo4j — GQL: The ISO Standard for Graphs Has Arrived",
+     "url": "https://neo4j.com/blog/cypher-and-gql/gql-international-standard/",
+     "date": "2024-04-17"
+    },
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    },
+    {
+     "title": "IEC Webstore — ISO/IEC 39075:2024",
+     "url": "https://webstore.iec.ch/publication/94107",
+     "date": "2024-04-12"
+    }
+   ],
+   "caveat": "출판일은 기관마다 2024-04-11/12로 하루 차이가 나요."
+  },
+  {
+   "id": "wdqs-split-2025",
+   "day": 5,
+   "title": "160억 트리플을 버티지 못한 위키데이터, 그래프를 둘로 나누다",
+   "when": "2025-05-09",
+   "lead": "위키데이터 쿼리 서비스(WDQS)는 Blazegraph 위에서 돌아가요. 그래프가 너무 커져 한 인스턴스로 버티기 어려워지자, 2025년 5월 학술 논문 항목을 별도 그래프로 떼어 냈어요.",
+   "facts": [
+    {
+     "label": "트리플 수",
+     "value": "160억 개 이상",
+     "src": "WDQS graph split 페이지"
+    },
+    {
+     "label": "증가 속도",
+     "value": "연 약 10억 트리플",
+     "src": "WDQS graph split 페이지"
+    },
+    {
+     "label": "분리 시행",
+     "value": "2025-05-09",
+     "src": "WDQS graph split 페이지"
+    },
+    {
+     "label": "전체 그래프 임시 서비스",
+     "value": "2025-12까지",
+     "src": "WDQS graph split 페이지"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "이전",
+     "text": "한 그래프·한 엔드포인트(query.wikidata.org)로 모든 SPARQL 처리"
+    },
+    {
+     "t": "증상",
+     "text": "재적재가 느려지고, 안정성 문제, 타임아웃이 길고 잦아짐",
+     "hot": true
+    },
+    {
+     "t": "2025-05-09",
+     "text": "학술 논문 항목을 query-scholarly.wikidata.org 로 분리",
+     "hot": true
+    },
+    {
+     "t": "2025-12",
+     "text": "전체 그래프 임시 서비스(query-legacy-full) 종료 예정"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "규모",
+     "title": "그래프 성장",
+     "text": "160억 트리플 이상, 매년 약 10억씩 늘어요."
+    },
+    {
+     "stage": "백엔드",
+     "title": "단일 인스턴스 한계",
+     "text": "Blazegraph 한 인스턴스가 편집 반영과 질의 부하를 같이 감당하기 어려웠어요."
+    },
+    {
+     "stage": "설계",
+     "title": "분할 기준",
+     "text": "P31=scholarly article(Q13442814) 등 학술 항목만 떼어 냈어요. 두 그래프가 다 필요하면 SPARQL 연합(federation)을 써요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "메모리 앱 그래프가 커져 느려지면, 위키데이터처럼 나눌 기준은?",
+     "a": "자주 같이 묻지 않는 큰 덩어리(예: 오래된 보관 노트)를 떼어 내요. 같이 묻는 일이 드물수록 나누는 비용이 작아요."
+    },
+    {
+     "q": "나눈 뒤 생기는 비용은?",
+     "a": "두 그래프를 함께 묻는 질의는 연합 질의가 되어 느리고 복잡해져요. 사용자 쿼리도 고쳐야 해요."
+    },
+    {
+     "q": "처음부터 무엇을 지켜봤어야 할까요?",
+     "a": "데이터 증가 속도, 재적재 시간, 타임아웃 비율을 지표로 두고 한계 전에 계획해요."
+    }
+   ],
+   "after": [
+    "main 그래프와 scholarly 그래프 두 엔드포인트로 운영해요.",
+    "두 그래프에 걸친 질의는 SPARQL federation으로 써요."
+   ],
+   "sources": [
+    {
+     "title": "Wikidata — WDQS graph split",
+     "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/WDQS_graph_split",
+     "date": "2025"
+    },
+    {
+     "title": "Wikidata:SPARQL tutorial",
+     "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_tutorial",
+     "date": "n.d."
+    },
+    {
+     "title": "Wikidata Query Service",
+     "url": "https://query.wikidata.org/",
+     "date": "n.d."
+    }
+   ],
+   "caveat": "위키데이터 전체 항목 수 등 이 페이지 밖 숫자는 넣지 않았어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "월요일, '같이 회의한 사람' 찾기",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "'민재랑 같이 회의한 사람'을 화면에 보여 주고 싶어요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "SQL로 짜니 JOIN이 계속 늘어요."
+    }
+   ],
+   "q": "첫 단계로 무엇을 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "바로 그래프 DB를 새로 도입한다",
+     "ok": false,
+     "why": "실제 질문 홉 수를 보기 전에 운영 부담부터 늘어요."
+    },
+    {
+     "k": "B",
+     "t": "실제 질문을 모아 몇 홉인지 보고, 2홉은 SQL로 먼저 만들어 본다",
+     "ok": true,
+     "why": "1~2홉은 SQL로 충분할 수 있어요. 데이터로 판단해요."
+    },
+    {
+     "k": "C",
+     "t": "관계 데이터는 저장하지 않는다",
+     "ok": false,
+     "why": "기능 자체를 포기하는 거예요."
+    }
+   ],
+   "explain": "그래프 DB는 깊은 관계 질문이 잦을 때 이득이 커요. 먼저 질문을 세요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "월요일 오후, 발표자 정보",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "'서윤이 회의A에서 발표'의 발표자 정보는 어디 둘까요?"
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "사람 노드에 '발표자' 속성 붙이면 되지 않아요?"
+    }
+   ],
+   "q": "어디에 둘까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "사람 노드 속성 role='발표'",
+     "ok": false,
+     "why": "회의마다 역할이 달라서 덮어써져요."
+    },
+    {
+     "k": "B",
+     "t": "참석 엣지의 속성 role='발표'",
+     "ok": true,
+     "why": "그 회의에서만의 역할이라 관계에 붙어요."
+    },
+    {
+     "k": "C",
+     "t": "회의 노드 라벨 :발표",
+     "ok": false,
+     "why": "누가 발표했는지 잃어요."
+    }
+   ],
+   "explain": "LPG는 관계에 속성을 바로 붙일 수 있어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "화요일, RDF로 갈까",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "표준이 좋다던데 RDF로 다 바꿀까요?"
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "외부 데이터랑 합칠 계획은 없어요."
+    }
+   ],
+   "q": "메모리 앱 첫 모델은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "RDF + OWL 추론으로 시작",
+     "ok": false,
+     "why": "내부 데이터만이면 이점보다 학습 비용이 커요."
+    },
+    {
+     "k": "B",
+     "t": "LPG로 시작하고 필요하면 RDF로 내보낸다",
+     "ok": true,
+     "why": "내부 앱·관계 속성 위주라 LPG가 편해요."
+    },
+    {
+     "k": "C",
+     "t": "모델 없이 JSON에 다 넣는다",
+     "ok": false,
+     "why": "관계 질의가 어려워져요."
+    }
+   ],
+   "explain": "외부 연결이 핵심이면 RDF, 앱 내부 탐색이면 LPG가 보통 편해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    },
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "수요일, 결정 사항 모델링",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "'회의A에서 서윤이 프로젝트X를 보류로 결정'을 그래프에 넣어요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "엣지 하나로는 셋을 못 묶어요."
+    }
+   ],
+   "q": "어떻게 모델링할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "(:Decision) 노드를 만들고 사람·회의·프로젝트에 잇는다",
+     "ok": true,
+     "why": "참여자가 셋이면 중간 노드가 맞아요."
+    },
+    {
+     "k": "B",
+     "t": "프로젝트 노드 속성에 문장을 통째로 저장",
+     "ok": false,
+     "why": "누가·어디서를 찾을 수 없어요."
+    },
+    {
+     "k": "C",
+     "t": "엣지 3개를 아무렇게나 잇는다",
+     "ok": false,
+     "why": "어느 결정끼리 묶이는지 잃어요."
+    }
+   ],
+   "explain": "관계를 다시 찾을 대상이면 노드로 승격해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "목요일, '전체 공지' 노트",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "'전체 공지' 노트 하나가 모든 사람과 연결돼서 탐색이 느려요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "2홉 질의가 전부 이 노드를 지나가요."
+    }
+   ],
+   "q": "무엇을 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "탐색할 때 이런 슈퍼노드는 제외하거나 관계 타입을 따로 둔다",
+     "ok": true,
+     "why": "슈퍼노드가 경로 폭발의 대표 원인이에요."
+    },
+    {
+     "k": "B",
+     "t": "서버 메모리만 늘린다",
+     "ok": false,
+     "why": "원인은 그대로예요."
+    },
+    {
+     "k": "C",
+     "t": "홉 상한을 없앤다",
+     "ok": false,
+     "why": "더 느려져요."
+    }
+   ],
+   "explain": "인접성 탐색 비용은 지나는 엣지 수에 달려요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Neo4j Documentation",
+     "url": "https://neo4j.com/docs/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "금요일, 키워드가 빠지는 문제 다시",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "04장에서 'Project Falcon' 같은 코드명이 의미 검색에서 빠졌죠."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "그래프에 :Project {name:'Falcon'} 노드를 두면 어때요?"
+    }
+   ],
+   "q": "어떻게 합칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "코드명은 그래프 노드로 정확히 찾고, 연결된 노트를 하이브리드 검색 후보에 더한다",
+     "ok": true,
+     "why": "정확 일치(그래프/키워드)와 의미 검색을 합치는 04장 아이디어예요."
+    },
+    {
+     "k": "B",
+     "t": "임베딩 차원을 늘려서 해결한다",
+     "ok": false,
+     "why": "고유명사 문제는 차원 수로 해결되지 않아요."
+    },
+    {
+     "k": "C",
+     "t": "그래프만 쓰고 벡터 검색을 끈다",
+     "ok": false,
+     "why": "'지난주 그거' 같은 의미 질문을 다시 놓쳐요."
+    }
+   ],
+   "explain": "정확 일치 신호와 의미 신호를 같이 쓰는 게 하이브리드의 핵심이에요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "월요일, 중복 사람 노드",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "밤마다 import 돌리니까 '서윤' 노드가 5개예요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "CREATE로 넣고 있었네요."
+    }
+   ],
+   "q": "무엇을 고칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "유일 제약 + 노드 먼저 MERGE, 그다음 관계 MERGE",
+     "ok": true,
+     "why": "멱등하게 만드는 기본 방법이에요."
+    },
+    {
+     "k": "B",
+     "t": "매일 DB를 지우고 다시 넣는다",
+     "ok": false,
+     "why": "동작은 하지만 커지면 느리고 위험해요."
+    },
+    {
+     "k": "C",
+     "t": "중복은 화면에서 숨긴다",
+     "ok": false,
+     "why": "질의 결과가 계속 틀려요."
+    }
+   ],
+   "explain": "MERGE는 있으면 재사용해요. 긴 패턴을 통째로 MERGE하면 중복이 생길 수 있어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "화요일, 무한 경로",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "-[*]- 로 '연결된 모든 것'을 찾았더니 쿼리가 안 끝나요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "노트가 1만 개뿐인데요?"
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "홉 상한(*1..3)을 두고 관계 타입을 지정한다",
+     "ok": true,
+     "why": "경로 수는 홉마다 곱으로 늘어요."
+    },
+    {
+     "k": "B",
+     "t": "타임아웃을 10배로 늘린다",
+     "ok": false,
+     "why": "폭발은 그대로예요."
+    },
+    {
+     "k": "C",
+     "t": "방향을 없앤다",
+     "ok": false,
+     "why": "경로가 더 많아져요."
+    }
+   ],
+   "explain": "가변 길이 경로는 항상 상한을 둬요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "수요일, 핵심 인물 뽑기",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "이번 달 회의에 3번 이상 나온 사람을 보여 줘요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "WHERE를 count 앞에 써서 에러가 나요."
+    }
+   ],
+   "q": "어떻게 쓸까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "WITH p, count(m) AS n WHERE n > 2",
+     "ok": true,
+     "why": "집계를 WITH로 넘긴 뒤 걸러요(HAVING 역할)."
+    },
+    {
+     "k": "B",
+     "t": "WHERE count(m) > 2 를 MATCH 바로 뒤에",
+     "ok": false,
+     "why": "집계 전이라 쓸 수 없어요."
+    },
+    {
+     "k": "C",
+     "t": "모두 RETURN 하고 앱에서 세기",
+     "ok": false,
+     "why": "데이터가 커지면 낭비예요."
+    }
+   ],
+   "explain": "WITH는 중간 결과 파이프예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "목요일, 표준 질문",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "벤더 전용 문법을 많이 쓰면 나중에 못 옮겨요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "GQL이 표준이 됐다던데요."
+    }
+   ],
+   "q": "팀 규칙은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "표준 MATCH 패턴 위주로 쓰고, 벤더 전용 기능은 목록으로 관리",
+     "ok": true,
+     "why": "GQL(ISO/IEC 39075:2024) 덕분에 이식성을 계획할 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "표준이 나왔으니 어떤 DB든 그대로 옮겨진다",
+     "ok": false,
+     "why": "제품별 지원 범위가 달라요."
+    },
+    {
+     "k": "C",
+     "t": "표준은 무시한다",
+     "ok": false,
+     "why": "나중의 이전 비용을 키워요."
+    }
+   ],
+   "explain": "표준은 길잡이고, 실제 지원은 제품마다 확인해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "ISO/IEC 39075:2024 Information technology — Database languages — GQL",
+     "url": "https://www.iso.org/standard/76120.html",
+     "date": "2024-04"
+    },
+    {
+     "title": "Neo4j — GQL: The ISO Standard for Graphs Has Arrived",
+     "url": "https://neo4j.com/blog/cypher-and-gql/gql-international-standard/",
+     "date": "2024-04-17"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "금요일, 데이터 옮기기 싫어요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "노트는 이미 SQL DB에 있어요. 그래프 DB로 복사하면 동기화가 걱정이에요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "그래프 질의만 해 보고 싶어요."
+    }
+   ],
+   "q": "먼저 무엇을 시험할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "우리 DB의 SQL/PGQ 또는 재귀 CTE로 그래프 질문을 시험",
+     "ok": true,
+     "why": "옮기지 않고 시험하는 가장 싼 길이에요."
+    },
+    {
+     "k": "B",
+     "t": "바로 두 DB 동기화 파이프라인을 만든다",
+     "ok": false,
+     "why": "필요가 확인되기 전 비용이에요."
+    },
+    {
+     "k": "C",
+     "t": "CSV로 매번 손으로 옮긴다",
+     "ok": false,
+     "why": "틀리기 쉬워요."
+    }
+   ],
+   "explain": "SQL/PGQ는 표를 그래프 뷰로 보고 MATCH해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "주말 숙제, 근거가 엉뚱한 RAG",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "05장 RAG가 '프로젝트X 담당자'를 물으면 옛 담당자 노트를 근거로 써요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "벡터 유사도는 높은데 최신이 아니에요."
+    }
+   ],
+   "q": "그래프로 무엇을 보탤까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "(:Person)-[:OWNS {since}]->(:Project) 관계로 현재 담당자를 확인하고, 그 사람 노트를 근거 후보로 올린다",
+     "ok": true,
+     "why": "관계·시간 사실은 그래프가 정확히 답해요."
+    },
+    {
+     "k": "B",
+     "t": "top-k를 늘린다",
+     "ok": false,
+     "why": "옛 노트가 더 많이 들어올 수 있어요."
+    },
+    {
+     "k": "C",
+     "t": "프롬프트에 '최신 것만'이라고 쓴다",
+     "ok": false,
+     "why": "근거 자체를 고치지 못해요."
+    }
+   ],
+   "explain": "벡터는 비슷한 글을, 그래프는 정확한 관계를 찾아요. 08장 GraphRAG로 이어져요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "월요일, DB 고르기",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "회사 인프라는 다 AWS예요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "다른 후보는 마지막 릴리스가 1년 전이에요."
+    }
+   ],
+   "q": "어떻게 고를까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "유지 상태·운영 방식·질의 언어 호환을 보고, 우리 질문 20개로 직접 벤치마크",
+     "ok": true,
+     "why": "공정 비교와 장기 비용을 함께 봐요."
+    },
+    {
+     "k": "B",
+     "t": "벤더 블로그 속도 숫자로 고른다",
+     "ok": false,
+     "why": "조건이 다를 수 있어요."
+    },
+    {
+     "k": "C",
+     "t": "가장 별이 많은 GitHub 프로젝트",
+     "ok": false,
+     "why": "유지 상태와 맞음을 보장하지 않아요."
+    }
+   ],
+   "explain": "LDBC처럼 조건을 맞춘 비교와 실제 질문이 기준이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "LDBC Social Network Benchmark",
+     "url": "https://ldbcouncil.org/benchmarks/snb/",
+     "date": "n.d."
+    },
+    {
+     "title": "Amazon Neptune User Guide — What is Neptune?",
+     "url": "https://docs.aws.amazon.com/neptune/latest/userguide/intro.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "수요일, 벡터와 그래프를 한 곳에",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "03장에서 벡터DB를 따로 골랐는데, 그래프 DB까지 생기면 저장소가 셋이에요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "운영할 사람이 저 하나예요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "벡터 인덱스를 지원하는 그래프 DB나 기존 DB 하나로 합칠 수 있는지 먼저 시험",
+     "ok": true,
+     "why": "저장소 수가 운영 비용을 결정해요."
+    },
+    {
+     "k": "B",
+     "t": "무조건 최고 성능 제품 셋을 각각 쓴다",
+     "ok": false,
+     "why": "3명 팀에 운영 부담이 커요."
+    },
+    {
+     "k": "C",
+     "t": "벡터 검색을 포기한다",
+     "ok": false,
+     "why": "의미 검색 문제가 다시 생겨요."
+    }
+   ],
+   "explain": "03장의 '운영 부담' 기준과 06장의 모델 선택을 같이 봐요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Neo4j Documentation",
+     "url": "https://neo4j.com/docs/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "금요일, 노트 100만 개",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "노트가 100만 개가 되면 그래프도 커져요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "02장처럼 미리 지표를 봐야겠어요."
+    }
+   ],
+   "q": "무엇을 지표로 둘까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "데이터 증가 속도, 적재 시간, 질의 타임아웃 비율",
+     "ok": true,
+     "why": "위키데이터도 이런 증상 끝에 그래프를 나눴어요."
+    },
+    {
+     "k": "B",
+     "t": "노드 색깔 수",
+     "ok": false,
+     "why": "성능과 무관해요."
+    },
+    {
+     "k": "C",
+     "t": "아무것도 보지 않고 느려지면 대응",
+     "ok": false,
+     "why": "한계 직전엔 선택지가 줄어요."
+    }
+   ],
+   "explain": "02장의 '크기에 따른 비용' 감각을 그래프에도 적용해요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Wikidata — WDQS graph split",
+     "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/WDQS_graph_split",
+     "date": "2025"
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "Neo4j GraphAcademy (Neo4j Fundamentals · Cypher Fundamentals)",
+   "url": "https://graphacademy.neo4j.com/",
+   "min": 60,
+   "lang": "en",
+   "what": "노드·관계 모델과 MATCH·MERGE를 실습 환경에서 직접 쳐 봐요.",
+   "day": 3
+  },
+  {
+   "id": "l2",
+   "title": "W3C SPARQL 1.1 Query Language",
+   "url": "https://www.w3.org/TR/sparql11-query/",
+   "min": 60,
+   "lang": "en",
+   "what": "앞 장의 예제 위주로 SELECT·FILTER·OPTIONAL을 읽어요.",
+   "day": 4
+  },
+  {
+   "id": "l3",
+   "title": "Wikidata SPARQL tutorial",
+   "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_tutorial",
+   "min": 45,
+   "lang": "en",
+   "what": "공개 지식그래프에 실제 SPARQL을 돌려 봐요.",
+   "day": 4
+  },
+  {
+   "id": "l4",
+   "title": "Neo4j Cypher Manual — Introduction",
+   "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+   "min": 30,
+   "lang": "en",
+   "what": "패턴, 경로, 집계 문법을 공식 문서로 확인해요.",
+   "day": 3
+  },
+  {
+   "id": "l5",
+   "title": "openCypher",
+   "url": "https://opencypher.org/",
+   "min": 20,
+   "lang": "en",
+   "what": "Cypher가 여러 DB와 GQL로 퍼진 배경을 봐요.",
+   "day": 5
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "메모리 그래프 스키마 설계서 v1을 1~2쪽으로 써 보세요. 노트 3000개의 사람·프로젝트·회의 관계를 어떻게 저장하고 물을지 정해요.",
+  "template": [
+   "상태 (제안 / 승인)",
+   "배경: 05장 RAG 근거 문제와 '같이 회의한 사람' 같은 질문 목록",
+   "모델 선택: LPG vs RDF와 이유",
+   "노드 라벨·관계 타입·속성 표 (Decision 같은 중간 노드 포함)",
+   "대표 질의 3개 (Cypher 또는 SQL/PGQ)와 홉 상한",
+   "적재 방식: MERGE + 유일 제약, 슈퍼노드 처리",
+   "DB 선택지 2~3개와 직접 벤치마크 계획",
+   "다시 볼 조건: 노트 100만 개, 타임아웃 비율 등"
+  ]
+ },
+ "check": [
+  "Story numbers (3000 notes, JOIN 6) are fictional 기억 검색 팀 values.",
+  "GQL: ISO/IEC 39075:2024, 2024-04-12 per IEC webstore (SCC lists 04-11), 610 pages; Neo4j blog calls it first new ISO database language since 1987.",
+  "WDQS: Blazegraph >16B triples, ~1B/year growth, split effective 2025-05-09, legacy full graph until 2025-12 — from the WDQS graph split page.",
+  "Dropped: Wikidata item count (unverified), Kùzu docs (site unreachable)."
+ ]
+}
