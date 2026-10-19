@@ -291,9 +291,10 @@ self.addEventListener("push", (event) => {
     try { const r = await fetch("/api/room/unread", { headers: { "x-trio": "1" }, credentials: "include" }); if (r.ok) { const j = await r.json(); n = j.total ?? j.unread ?? 0; last = j.last || null; } } catch {}
     if (!n) return;
     // 1:1 방도 포함한 전체 안 읽음. 나를 @로 부르면 제목이 "○○님이 불렀어요"
-    const title = last?.mention ? `${last.who}님이 불렀어요` : last ? `${last.who}${last.dm ? " · 1:1" : " · 우리 셋"}` : "SWx2 대화방";
+    const title = last?.mention ? `${last.who}님이 불렀어요` : last ? `${last.who}${last.help ? " · 관리자 문의" : last.dm ? " · 1:1" : " · 우리 셋"}` : "SWx2 대화방";
     const body = last ? `${last.body}${n > 1 ? `  (안 읽은 메시지 ${n}개)` : ""}` : `새 메시지 ${n}개`;
-    const url = last?.room?.startsWith("dm:") ? "/#/room/chat" : "/#/room/chat";
+    // 문의방: 회원은 #/room/help, 관리자는 그 회원의 문의방으로 (서버가 준 방 이름 help:<회원 id>)
+    const url = last?.help ? (last.forAdmin ? "/#/room/help/" + last.room.slice(5) : "/#/room/help") : "/#/room/chat";
     await self.registration.showNotification(title, { body, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "room", renotify: true, requireInteraction: !!last?.mention, data: { url } });
   })());
 });

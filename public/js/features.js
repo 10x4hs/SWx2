@@ -26,7 +26,8 @@ export function mountLocked(host, ctx, f) {
     const pending = (ctx.features?.pending || []).includes(f);
     host.innerHTML = `<div class="lock-view"><div class="lock-ic" aria-hidden="true">🔒</div><h1>${esc(name)}</h1>
       <p class="faint">이 기능은 잠겨 있어요. 사용 신청을 하면 관리자가 확인하고 열어 줘요.</p>
-      ${pending ? `<p class="lock-wait">신청했어요 · 관리자 승인을 기다리는 중</p>` : `<textarea class="input lock-note" maxlength="200" rows="2" placeholder="쓰려는 이유 (선택)"></textarea><button type="button" class="btn lock-go">사용 신청</button>`}</div>`;
+      ${pending ? `<p class="lock-wait">신청했어요 · 관리자 승인을 기다리는 중</p>` : `<textarea class="input lock-note" maxlength="200" rows="2" placeholder="쓰려는 이유 (선택)"></textarea><button type="button" class="btn lock-go">사용 신청</button>`}
+      <a class="lock-ask" href="#/room/help">관리자에게 물어보기 →</a></div>`;
     host.querySelector(".lock-go")?.addEventListener("click", async (e) => {
       e.target.disabled = true;
       try {

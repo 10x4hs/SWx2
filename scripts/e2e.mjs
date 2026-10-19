@@ -1016,6 +1016,8 @@ try {
       // 일기 모임은 이 검사 동안만 (켜 둔 채 다음 차례로 가면 독 아이콘이 하나 늘어 폰의 ⑧ Dock 순서 검사가 '대화'를 못 잡아요)
       const circle = (v) => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `UPDATE users SET diary_circle = ${v} WHERE username IN ('${user}', '${friend}')`], { stdio: "ignore" });
       circle(1);
+      // 2026-10-19 부터 '일기 모임' = 같은 팀에서 일기 기능을 연 사람들. 모임 밖 검사용 outsider 는 일기 기능만 닫아요
+      execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM user_features WHERE feature = 'diary' AND user_id = (SELECT id FROM users WHERE username = '${outsider}')`], { stdio: "ignore" });
       // 이 차례 앞에서 서비스 워커가 받아 둔 /api/me(모임 전)를 비우고 열어요 — 운영에선 배포 때 VERSION 이 바뀌어 API 캐시가 저절로 비워져요
       await p.evaluate(() => new Promise((res) => { const sw = navigator.serviceWorker?.controller; if (!sw) return res(); const ch = new MessageChannel(); ch.port1.onmessage = () => res(); sw.postMessage({ type: "clear-api" }, [ch.port2]); setTimeout(res, 1500); }));
       const day = await p.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
@@ -1046,12 +1048,12 @@ try {
         await fc.request.put(BASE + "/api/diary", { headers: H, data: { day, body: "친구의 공개 일기", mood: 4, shared: false } });
         await p.reload(); await sleep(2500);
         const r2 = await p.evaluate(() => ({ lock: !!document.querySelector(".dr-lock"), body: !!document.querySelector(".dr-body") }));
-        // 모임 밖: 모임 · 남의 일기 403, 독 아이콘 없고 #/diary 는 예전처럼 캘린더로
+        // 모임 밖(일기 기능이 없는 사람): 모임 · 남의 일기 403, 독 아이콘은 자물쇠 · #/diary 는 '사용 신청' 화면
         const s1 = (await oc.request.get(BASE + "/api/diary/circle", { headers: H })).status(), s2 = await of(oc, myId, day), s3 = await of(ctx, (await (await oc.request.get(BASE + "/api/me", { headers: H })).json()).user.id, day);
         const op = await oc.newPage(); await op.goto(BASE + "/#/diary"); await sleep(2500);
-        const ov = await op.evaluate(() => ({ dock: !!document.querySelector('[data-nav="diary"]'), hash: location.hash }));
-        ok(r1 === "친구의 공개 일기" && r2.lock && !r2.body && s1 === 403 && s2 === 403 && s3 === 403 && !ov.dock && ov.hash.startsWith("#/calendar/") && !errs.length,
-          `${tv} · 친구 탭 읽기 ${r1 === "친구의 공개 일기"} · 비공개 후 자물쇠 ${r2.lock && !r2.body} · 모임 밖 403 ${[s1, s2, s3].join("/")} · 아이콘 없음 ${!ov.dock} (${ov.hash})${errs.length ? " — " + errs[0] : ""}`);
+        const ov = await op.evaluate(() => ({ locked: !!document.querySelector('[data-nav="diary"].locked'), lockView: !!document.querySelector(".lock-view"), hash: location.hash }));
+        ok(r1 === "친구의 공개 일기" && r2.lock && !r2.body && s1 === 403 && s2 === 403 && s3 === 403 && ov.locked && ov.lockView && !errs.length,
+          `${tv} · 친구 탭 읽기 ${r1 === "친구의 공개 일기"} · 비공개 후 자물쇠 ${r2.lock && !r2.body} · 모임 밖 403 ${[s1, s2, s3].join("/")} · 아이콘 자물쇠 ${ov.locked} · 사용 신청 화면 ${ov.lockView} (${ov.hash})${errs.length ? " — " + errs[0] : ""}`);
         await fc.close(); await oc.close();
       }
       circle(0);

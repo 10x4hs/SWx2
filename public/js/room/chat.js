@@ -13,6 +13,7 @@ const NEAR = 120;                 // 바닥에서 이만큼 안쪽이면 "바닥
 // env: { ctx, getAiName(), onAiName(name), toLibrary(url), viewItem(id), getRoom(), onRoomInfo(r) }
 // 방은 'all'(우리 셋) 또는 'dm:<id>:<id>'. setRoom() 으로 바꾸면 목록을 비우고 새로 받아요.
 export function mountChat(el, env) {
+  const people = {}; // 문의방 사람 이름 (서버가 GET /room 에 같이 줘요)
   const { ctx } = env;
   const S = { msgs: new Map(), since: null, unreadFrom: null, aiErr: null, busy: false, pendingRead: false, timer: null, alive: true };
 
@@ -78,8 +79,9 @@ export function mountChat(el, env) {
     const cont = !!prev && prev.kind !== "system" && prev.user_id === m.user_id && (prev.kind === "ai") === (m.kind === "ai")
       && dayKey(prev.created_at) === dayKey(m.created_at) && m.created_at - prev.created_at < GROUP_GAP;
     const ai = m.kind === "ai";
-    const who = ai ? aiName() : (ctx.user(m.user_id)?.display_name || "나간 사람");
-    const av = ai ? `<span class="rm-ai-av" aria-hidden="true">${icon.spark(14)}</span>` : avatar(ctx.user(m.user_id), "sm");
+    const u = ctx.user(m.user_id) || people[m.user_id] || null; // 문의방은 팀이 다른 사람(관리자 · 회원)도 있어서 서버가 준 이름으로
+    const who = ai ? aiName() : (u?.display_name || u?.username || "나간 사람");
+    const av = ai ? `<span class="rm-ai-av" aria-hidden="true">${icon.spark(14)}</span>` : avatar(u, "sm");
     const url = !ai && m.kind === "text" ? firstUrl(m.body) : null;
     let body;
     if (ai) body = `<div class="rm-bubble md rm-md">${renderMarkdown(m.body)}</div>`;
@@ -139,6 +141,7 @@ export function mountChat(el, env) {
 
   // ---------- 폴링 ----------
   function merge(r, { first = false } = {}) {
+    if (r.people) Object.assign(people, r.people);
     const incoming = r.messages || [];
     if (r.ai_name) env.onAiName(r.ai_name);
     env.onRoomInfo?.(r);

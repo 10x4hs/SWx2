@@ -253,6 +253,7 @@ export const api = {
   deleteRoomMessage: (id, room) => request("DELETE", "/room/" + encodeURIComponent(id) + "?" + qs({ room })),
   readRoom: (at, room) => request("PUT", "/room/read", { at, room }),
   roomUnread: () => request("GET", "/room/unread"),
+  roomHelp: () => request("GET", "/room/help"),
   roomSettings: (b) => request("PUT", "/room/settings", b),
   libraryPreview: (b) => request("POST", "/library/preview", b),
   library: (kind, q) => request("GET", "/library?" + qs({ kind, q })),
