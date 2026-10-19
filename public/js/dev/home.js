@@ -2,7 +2,7 @@
 import { esc } from "../util.js";
 import { index, state, minutes, setMinutes, MINUTES, split, steps, cardsPerDay, nextCards, position, progressOf, loopProgress, metrics, kday, WHY, topbar, C, cApi } from "./data.js";
 import { mountLoop } from "./loop3d.js";
-import { swipe } from "./sw.js";
+import { swipe, tickText } from "./sw.js";
 
 const COLORS = ["#FFE14D", "rgba(255,225,77,.55)", "#EEEFF1", "rgba(238,239,241,.5)", "rgba(238,239,241,.26)"];
 
@@ -87,7 +87,7 @@ export function mountHome(host, ctx) {
           ${idx.modules.map((m, i) => `<button class="dv-st ${stateOf(i, pos)}" data-st="${i}" aria-label="${m.no} ${esc(m.title)} 열기"><b>${m.no}</b><span>${esc(m.short)}</span></button>`).join("")}
           <div class="dv-legend m"><span><i class="dv-dot" style="background:var(--dv-acc)"></i>끝냄</span><span><i class="dv-dot" style="box-shadow:inset 0 0 0 2px #fff"></i>지금</span><span><i class="dv-dot" style="box-shadow:inset 0 0 0 1.5px #777"></i>아직</span><span>마우스를 대면 흩어져요 · 끌어서 둘러보기</span></div>
         </div>
-        <div class="sw-car"><button class="sw-arrow" id="sw-prev" aria-label="이전 주">&lt;&lt;</button><span class="sw-car-t m" id="sw-car-t">${cur.no} · ${esc(cur.short)}</span><button class="sw-arrow" id="sw-next" aria-label="다음 주">&gt;&gt;</button></div>
+        <div class="sw-tick-abs"><div class="sw-tick"><button class="sw-arrow" id="sw-prev" aria-label="이전 주">&lt;&lt;</button><div class="sw-tick-win"><span class="sw-tick-run"><span id="sw-car-t"></span><span class="sw-tick-dup" aria-hidden="true"></span></span></div><button class="sw-arrow" id="sw-next" aria-label="다음 주">&gt;&gt;</button></div></div>
       </section>
 
       ${todaySec()}
@@ -131,11 +131,12 @@ export function mountHome(host, ctx) {
       pick = ((pick < 0 ? pos.i : pick) + d + n) % n;
       host.querySelector("#dv-hud").innerHTML = hud(pos); loop?.highlight(pick);
       host.querySelectorAll("[data-st]").forEach((b) => b.classList.toggle("on", Number(b.dataset.st) === pick));
-      host.querySelector("#sw-car-t").textContent = `${idx.modules[pick].no} · ${idx.modules[pick].short}`;
+      tickText(host, `${idx.modules[pick].no} · ${idx.modules[pick].short}`, idx.modules[pick].q);
     };
     host.querySelector("#sw-prev").addEventListener("click", () => step(-1));
     host.querySelector("#sw-next").addEventListener("click", () => step(1));
     if (!onKey) { onKey = (e) => { if (e.target.closest?.("input,textarea,[contenteditable]")) return; if (e.key === "ArrowRight") step(1); else if (e.key === "ArrowLeft") step(-1); }; document.addEventListener("keydown", onKey); }
+    tickText(host, `${cur.no} · ${cur.short}`, cur.q);
     swipe(host.querySelector(".dv-hero"), step);
     ctx.scene?.mode("dev");
   }
