@@ -15,9 +15,8 @@ export function mountSw(host, ctx) {
   const pad = (n) => String(n + 1).padStart(2, "0");
   host.innerHTML = `<section class="sw-full" id="sw-full" aria-roledescription="carousel" aria-label="과정">
       <header class="sw-bar"><span class="sw-mark m">SWx2 / Software</span>
-        <nav class="sw-pill" aria-label="과정">${LIST.map(({ c }, k) => `${k ? "<i aria-hidden=\"true\"></i>" : ""}<a href="${c.base}">${esc(c.name)}</a>`).join("")}</nav></header>
+        <div class="sw-right"><nav class="sw-pill" aria-label="과정">${LIST.map(({ c }, k) => `${k ? "<i aria-hidden=\"true\"></i>" : ""}<a href="${c.base}">${esc(c.name)}</a>`).join("")}</nav><div class="sw-tick"><button class="sw-arrow" id="sw-prev" aria-label="이전 과정">&lt;&lt;</button><div class="sw-tick-win"><span class="sw-tick-run"><span id="sw-car-t"></span><span class="sw-tick-dup" aria-hidden="true"></span></span></div><button class="sw-arrow" id="sw-next" aria-label="다음 과정">&gt;&gt;</button></div></div></header>
       <div class="sw-cap" id="sw-cap" aria-live="polite"></div>
-      <div class="sw-car"><button class="sw-arrow" id="sw-prev" aria-label="이전 과정">&lt;&lt;</button><span class="sw-car-t m" id="sw-car-t"></span><button class="sw-arrow" id="sw-next" aria-label="다음 과정">&gt;&gt;</button></div>
       <span class="sw-hint m" aria-hidden="true">scroll</span>
     </section>
     <section class="sw-in sw-list" aria-label="과정 목록">${LIST.map(({ c, sub }, k) => `
@@ -29,7 +28,7 @@ export function mountSw(host, ctx) {
       <h1 class="sw-h">${big(c.name)}</h1>
       <p class="sw-lead kr">${esc(line)}</p>
       <div class="sw-acts"><a class="dv-btn" href="${c.base}">열기 →</a><span class="m">${prog[c.key] || ""}</span></div>`;
-    host.querySelector("#sw-car-t").textContent = `${pad(i)} · ${c.name}`;
+    tickText(host, `${pad(i)} · ${c.name}`, `${c.name.toUpperCase()} — ${line.split(".")[0]}`);
     host.dataset.course = accent;
     ctx.scene?.mode("sw", { accent });
   }
@@ -51,6 +50,12 @@ export function mountSw(host, ctx) {
     }).catch(() => {});
   }
   return () => { alive = false; document.removeEventListener("keydown", onKey); };
+}
+
+// 티커: 앞 글자(번호 · 이름)는 #sw-car-t 에, 뒤로 흐르는 설명은 같은 줄에 이어 붙여 두 번 (끊김 없이 돌게)
+export function tickText(host, head, tail = "") {
+  const a = host.querySelector("#sw-car-t"), b = host.querySelector(".sw-tick-dup"), run = `${head}${tail ? "   ·   " + tail : ""}   ·   `;
+  if (a) a.textContent = run; if (b) b.textContent = run;
 }
 
 // 큰 제목 두 줄: "Vector & Graph" → Vector / & Graph, "Dev Flow" → Dev / Flow

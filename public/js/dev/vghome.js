@@ -3,7 +3,7 @@
 import { esc } from "../util.js";
 import { index, state, minutes, setMinutes, MINUTES, cardsPerDay, nextCards, position, progressOf, metrics, kday, topbar, C } from "./data.js";
 import { MOD_COLORS } from "./stage.js";
-import { swipe, big } from "./sw.js";
+import { swipe, big, tickText } from "./sw.js";
 
 export function mountVgHome(host, ctx) {
   let alive = true, idx = null, st = null, mins = minutes(), sel = -1, onKey = null;
@@ -33,7 +33,7 @@ export function mountVgHome(host, ctx) {
   function setSel(i) {
     sel = i;
     host.querySelector("#sw-cap").innerHTML = cap();
-    host.querySelector("#sw-car-t").textContent = label();
+    tickText(host, label(), sel < 0 ? "EMBEDDING SPACE — 160 CARDS — HOVER A POINT" : idx.modules[sel].sub);
     ctx.scene?.focus(sel);
   }
 
@@ -41,10 +41,9 @@ export function mountVgHome(host, ctx) {
     const M = metrics(idx, st, mins), N = cardsPerDay(mins), fresh = nextCards(idx, st, N), due = (st.due || []).length, pos = position(idx, st);
     host.innerHTML = `<section class="sw-full" id="sw-full" aria-roledescription="carousel" aria-label="모듈">
         <header class="sw-bar"><a class="sw-mark m" href="#/sw">SW / ${esc(C.name)}</a>
-          <nav class="sw-pill" aria-label="${esc(C.brand)} 메뉴"><a href="${C.base}/today">오늘</a><i aria-hidden="true"></i><a href="${C.base}/ask">AI 질문</a><i aria-hidden="true"></i><a href="#/sw">과정</a></nav></header>
+          <div class="sw-right"><nav class="sw-pill" aria-label="${esc(C.brand)} 메뉴"><a href="${C.base}/today">오늘</a><i aria-hidden="true"></i><a href="${C.base}/ask">AI 질문</a><i aria-hidden="true"></i><a href="#/sw">과정</a></nav><div class="sw-tick"><button class="sw-arrow" id="sw-prev" aria-label="이전 모듈">&lt;&lt;</button><div class="sw-tick-win"><span class="sw-tick-run"><span id="sw-car-t"></span><span class="sw-tick-dup" aria-hidden="true"></span></span></div><button class="sw-arrow" id="sw-next" aria-label="다음 모듈">&gt;&gt;</button></div></div></header>
         <div class="sw-cap" id="sw-cap" aria-live="polite"></div>
         <div class="sw-tip" id="sw-tip" role="status" hidden></div>
-        <div class="sw-car"><button class="sw-arrow" id="sw-prev" aria-label="이전 모듈">&lt;&lt;</button><span class="sw-car-t m" id="sw-car-t"></span><button class="sw-arrow" id="sw-next" aria-label="다음 모듈">&gt;&gt;</button></div>
         <span class="sw-hint m" aria-hidden="true">scroll</span>
       </section>
       <section class="dv-wrap dv-sec">

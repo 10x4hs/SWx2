@@ -14,6 +14,7 @@ import { mountDocs } from "../dev/docs.js";
 import { mountAsk } from "../dev/ask.js";
 import { COURSES, setCourse } from "../dev/data.js";
 import { createStage } from "../dev/stage.js";
+import { playIntro } from "../dev/intro.js";
 
 let inst = null;
 export function update(r) { inst?.update(r); }
@@ -37,6 +38,9 @@ export function mount(root, ctx, r) {
     accent: (k) => stage?.accent(k),
     ready,
   };
+
+  // 세션 첫 방문: HUD 조준경 → 끝나면 흩어진 입자가 모여요
+  const stopIntro = playIntro(root, () => ready.then((s) => s?.reveal()));
 
   function show(course, id, sub, item) {
     const key = `${course || ""}/${id || ""}/${sub || ""}/${item || ""}`;
@@ -67,5 +71,5 @@ export function mount(root, ctx, r) {
   const go = (x) => show(x.course || null, x.id || null, x.sub || null, x.item || null);
   inst = { update: go };
   go(r);
-  return () => { alive = false; stop?.(); stage?.destroy(); ro.disconnect(); inst = null; };
+  return () => { alive = false; stopIntro(); stop?.(); stage?.destroy(); ro.disconnect(); inst = null; };
 }
