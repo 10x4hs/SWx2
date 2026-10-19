@@ -5,6 +5,7 @@ import { fail, json, now, uid, body } from "./http.js";
 import { startSession, sessionId, hashPassword } from "./auth.js";
 
 // 대신 들어간 세션에서는 관리자 기능을 못 써요 (회원 화면만)
+const DEMO_IDS = ["dmo"]; // 확인이 끝나면 빼요
 const needAdmin = (user) => { if (user.role !== "admin" || user.imp_by) fail(403, "관리자만 쓸 수 있어요."); };
 const target = async (env, id) => (await env.DB.prepare("SELECT id, username, role, state FROM users WHERE id = ?").bind(id).first()) || fail(404, "없는 회원이에요.");
 const notAdmin = (u) => { if (u.role === "admin") fail(400, "관리자 계정에는 할 수 없어요."); };
@@ -34,6 +35,12 @@ export function registerAdmin(on) {
     return json({ users, admins: ad.results.map((a) => a.username), stats });
   });
 
+  // 알림용: 내가 아직 승인 안 한 가입 신청 (개수 + 가장 최근 것)
+  on("GET", "/admin/pending", async ({ env, user }) => {
+    needAdmin(user);
+    const { results } = await env.DB.prepare("SELECT u.username, u.created_at FROM users u WHERE u.state = 'pending' AND NOT EXISTS (SELECT 1 FROM signup_approvals a WHERE a.user_id = u.id AND a.admin_id = ?) ORDER BY u.created_at DESC").bind(user.id).all();
+    return json({ n: results.length, last: results[0] || null });
+  });
   // 팀 전체: 이름 · 팀장 · 팀원 · 초대 코드
   on("GET", "/admin/teams", async ({ env, user }) => {
     needAdmin(user);
@@ -82,9 +89,10 @@ export function registerAdmin(on) {
     const u = await target(env, params.id);
     if (u.state !== "pending") fail(400, "승인을 기다리는 회원이 아니에요.");
     await env.DB.prepare("INSERT OR IGNORE INTO signup_approvals (user_id, admin_id, at) VALUES (?, ?, ?)").bind(u.id, user.id, now()).run();
+    // 데모 아이디(DEMO_IDS)는 관리자 한 명 승인으로 바로 — 가입 흐름 확인용
     const r = await env.DB.prepare(
-      "UPDATE users SET state = 'active' WHERE id = ?1 AND state = 'pending' AND NOT EXISTS (SELECT 1 FROM users a WHERE a.role = 'admin' AND NOT EXISTS (SELECT 1 FROM signup_approvals s WHERE s.user_id = ?1 AND s.admin_id = a.id))"
-    ).bind(u.id).run();
+      "UPDATE users SET state = 'active' WHERE id = ?1 AND state = 'pending' AND (?2 OR NOT EXISTS (SELECT 1 FROM users a WHERE a.role = 'admin' AND NOT EXISTS (SELECT 1 FROM signup_approvals s WHERE s.user_id = ?1 AND s.admin_id = a.id)))"
+    ).bind(u.id, DEMO_IDS.includes(u.username) ? 1 : 0).run();
     return json({ ok: true, active: (r.meta.changes || 0) > 0 });
   });
   // 거절: 승인 대기 계정을 지워요

@@ -5,6 +5,7 @@ import { hex, sha256, b64url } from "./lib/crypto.js";
 import { HttpError, fail, json, body, now, uid, str } from "./http.js";
 import { match } from "./router.js";
 import { PEERS } from "./teams.js";
+import { pushUsers } from "./push.js";
 
 const COLORS = ["#E8552B", "#4C6FFF", "#14A38B"]; // Golden Gate orange, bay blue, cypress green
 const SESSION_DAYS = 30;
@@ -109,7 +110,7 @@ function readList(v) { try { const a = JSON.parse(v || "[]"); return Array.isArr
 export function registerAuth(on) {
   // ---------- auth ----------
   // 가입 신청: 누구나. 만들어진 계정은 '승인 대기' — 관리자 모두(HSK · GYK)가 승인해야 로그인돼요 (src/admin.js)
-  on("POST", "/auth/signup", async ({ req, env }) => {
+  on("POST", "/auth/signup", async ({ req, env, ec }) => {
     const b = await body(req);
     const username = str(b.username, 20, "아이디").toLowerCase();
     if (!/^[a-z]{3}$/.test(username)) fail(400, "아이디는 영문 3글자예요 (예: hsk). 이름 이니셜로 정해 주세요."); // 가입은 이니셜 3글자만 (스크립트로 만든 계정은 예외)
@@ -123,6 +124,9 @@ export function registerAuth(on) {
     const t = now();
     await env.DB.prepare("INSERT INTO users (id, username, display_name, color, pw_hash, pw_salt, created_at, state, pw_changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)")
       .bind(uid(), username, display, COLORS[n % COLORS.length], hash, salt, t, t).run();
+    // 관리자들에게 "가입 신청이 왔어요" 푸시 (내용은 서비스 워커가 /admin/pending 에서 읽어요)
+    const admins = (await env.DB.prepare("SELECT id FROM users WHERE role = 'admin' AND state = 'active'").all()).results.map((r) => r.id);
+    pushUsers(env, ec, admins, { room: "signup" });
     return json({ pending: true, message: STATE_MSG.pending }, 201);
   }, { auth: false });
 
