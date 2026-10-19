@@ -19,9 +19,9 @@ const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 export const MOD_COLORS = ["#7FDBFF", "#8CF5C4", "#C9F27B", "#FFD36B", "#FF9E7A", "#F58BD0", "#B79CFF", "#8FA8FF"];
 // 과정마다: 입자 색 셋 · 안개 빛 색 · 안개 위치(화면 비율) · 입자 모양
 const LOOK = {
-  vg: { c: ["#6FE3FF", "#9BB8FF", "#E8FBFF"], fog: "#1E8C9C", fogPos: [0.0, 0.95], shape: "cloud" },
-  dev: { c: ["#FFD34D", "#9BE07A", "#FFF3C4"], fog: "#8A6A12", fogPos: [1.0, 0.95], shape: "loop" },
-  sw: { c: ["#C8E86B", "#5FD6C0", "#FFFFFF"], fog: "#1F7F86", fogPos: [0.0, 0.95], shape: "rain" },
+  vg: { c: ["#8FAE4A", "#4E8A7E", "#CFE3A0"], fog: "#14606A", fogPos: [0.0, 1.0], shape: "cloud" },
+  dev: { c: ["#A6A23F", "#6F7A2E", "#DCD98E"], fog: "#3E4A1E", fogPos: [1.0, 1.0], shape: "loop" },
+  sw: { c: ["#9AAE3E", "#5F7A2C", "#D6E28A"], fog: "#145A60", fogPos: [0.0, 1.0], shape: "rain" },
 };
 
 // ---------- 셰이더
@@ -38,7 +38,7 @@ void main() {
   p += vec3(sin(t * (1.0 + seed.x * 2.0) + p.y * 0.7), cos(t * (1.0 + seed.z * 2.0) + p.x * 0.5), sin(t + seed.w * 9.0)) * 0.08 * (1.0 + 3.0 * (1.0 - step(1.5, aB.w)) * (1.0 - fall));
   // 유체: 장면 전체가 느린 소용돌이로 흘러요 (값싼 의사 컬 노이즈)
   vec3 fq = p * 0.18 + seed.xyz * 0.3; float tf = uTime * 0.18;
-  p += vec3(sin(fq.y * 2.1 + tf) + sin(fq.z * 1.7 - tf * 1.3), sin(fq.z * 1.9 + tf * 0.9) + sin(fq.x * 2.3 + tf), sin(fq.x * 1.5 - tf) + sin(fq.y * 1.3 + tf * 1.1)) * uFlow * (0.18 + seed.w * 0.32);
+  p += vec3(sin(fq.y * 2.1 + tf) + sin(fq.z * 1.7 - tf * 1.3), sin(fq.z * 1.9 + tf * 0.9) + sin(fq.x * 2.3 + tf), sin(fq.x * 1.5 - tf) + sin(fq.y * 1.3 + tf * 1.1)) * uFlow * (0.08 + seed.w * 0.14);
   // 터짐: 모양이 바뀌는 동안 바깥으로 흩어졌다 모여요
   vec3 dir = normalize(seed.xyz - 0.5 + 1e-4);
   p += dir * uBurst * (2.5 + seed.y * 5.0);
@@ -46,11 +46,11 @@ void main() {
   vec3 d = p - uMouse; float r2 = dot(d.xy, d.xy);
   p.xy += normalize(d.xy + 1e-4) * uMouseOn * 1.3 * exp(-r2 * 0.6);
   // 커서를 빨리 움직이면: 그 둘레가 소용돌이치고, 움직인 쪽으로 끌려가요
-  p.xy += normalize(vec2(-d.y, d.x) + 1e-4) * uVelK * 1.8 * exp(-r2 * 0.22) + uVel * 0.4 * exp(-r2 * 0.3);
+  p.xy += normalize(vec2(-d.y, d.x) + 1e-4) * uVelK * 0.7 * exp(-r2 * 0.25) + uVel * 0.15 * exp(-r2 * 0.3);
   // 워프: 스크롤 · 들어가기 때 입자가 카메라 쪽으로 쏟아져요
   p.z += uWarp * (3.0 + seed.y * 15.0);
   vec4 mv = modelViewMatrix * vec4(p, 1.0); gl_Position = projectionMatrix * mv;
-  float bok = step(0.965, seed.w);
+  float bok = step(0.985, seed.w);
   gl_PointSize = uSize * (0.35 + seed.x) * (1.0 + bok * 4.0) * uPix / -mv.z;
   vC = mix(colOf(aA.w), colOf(aB.w), e);
   vA = (0.35 + 0.65 * seed.y) * (0.65 + 0.35 * sin(uTime * (0.6 + seed.z) + seed.x * 40.0)) * (bok > 0.5 ? 0.18 : 1.0) * (1.0 + uBurst * 0.8 + uWarp * 0.6); }`;
@@ -64,7 +64,8 @@ vec3 env(vec3 r) { vec3 c = mix(vec3(0.015, 0.02, 0.03), vec3(0.32, 0.4, 0.45), 
   c += uFog * 2.2 * smoothstep(0.1, 1.0, -r.x * 0.8 + r.y * 0.3); c += uTint * 0.6 * smoothstep(0.4, 1.0, r.x); return c; }
 void main() { vec3 n = normalize(vN), v = normalize(vV), r = reflect(-v, n); float f = pow(1.0 - abs(dot(n, v)), 2.5);
   vec3 iri = 0.5 + 0.5 * cos(6.2831 * (f * 1.6 + vec3(0.0, 0.33, 0.67) + uTime * 0.04));
-  vec3 c = env(r) * (0.45 + 0.55 * f) + iri * f * 1.1; gl_FragColor = vec4(c, uOpacity); }`;
+  vec3 c = env(r) * (0.45 + 0.55 * f) + iri * f * 0.6;
+  c += vec3(0.15, 0.85, 0.95) * pow(f, 2.2) * (0.7 + 0.5 * smoothstep(-0.2, 0.6, -n.y)) * 1.6; gl_FragColor = vec4(c, uOpacity); }`;
 const CV = `attribute float aSize, aGroup, aIdx; attribute vec3 aColor; uniform float uPix, uFocus, uTime, uHover; varying vec3 vC; varying float vA;
 void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
   float on = uFocus < 0.0 || abs(aGroup - uFocus) < 0.5 ? 1.0 : 0.18, hv = abs(aIdx - uHover) < 0.5 ? 1.9 : 1.0;
@@ -104,14 +105,15 @@ export async function createStage(root) {
   const mods = MOD_COLORS.map(col);
 
   // ---------- 모양 만들기 (점 N 개, xyz + w: 0 그냥 · 1 비 줄기 · 2.. 모듈 색)
-  const N = phone ? 7000 : 15000;
+  const N = phone ? 2600 : 5200; // 적게 — 듬성듬성한 먼지
   let sd = 3; const rnd = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   const gauss = () => { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
   const SPREAD = phone ? 0.55 : 1;
   const centers = Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2 - Math.PI / 2; return new THREE.Vector3(Math.cos(a) * (phone ? 3.4 : 5.4) + (phone ? 0 : 2.8), Math.sin(a) * (phone ? 3.3 : 4.1) + (phone ? 3.2 : 0.2), Math.sin(a * 2) * 1.8); });
   const SHAPES = {
     rain() { const a = new Float32Array(N * 4); for (let i = 0; i < N; i++) { const k = rnd(); let x, y, z, w = 0;
-      if (k < 0.55) { x = (rnd() - 0.5) * 34 * SPREAD; y = -6 + Math.abs(gauss()) * 1.1; z = (rnd() - 0.5) * 14 - 2; } // 바닥 먼지
+      if (k < 0.5) { y = 0.5 - Math.pow(rnd(), 0.7) * 7.5; const wd = 0.5 + (0.5 - y) * 0.55; x = gauss() * wd * SPREAD + 0.1; z = gauss() * wd * 0.7; } // 로고 아래로 퍼지는 먼지 원뿔
+      else if (k < 0.65) { x = (rnd() - 0.5) * 34 * SPREAD; y = -6 + Math.abs(gauss()) * 1.1; z = (rnd() - 0.5) * 14 - 2; } // 바닥 먼지
       else if (k < 0.8) { x = gauss() * 0.9 + (rnd() < 0.5 ? -0.4 : 0.6); y = rnd() * 16 - 6; z = gauss() * 0.8; w = 1; } // 로고 둘레로 떨어지는 줄기
       else { x = (rnd() - 0.5) * 30 * SPREAD; y = (rnd() - 0.5) * 18; z = (rnd() - 0.5) * 16 - 3; } // 공기 중
       a.set([x, y, z, w], i * 4); } return a; },
@@ -128,7 +130,7 @@ export async function createStage(root) {
   const aA = new THREE.BufferAttribute(shapeOf("sphere").slice(), 4), aB = new THREE.BufferAttribute(shapeOf("rain").slice(), 4);
   pg.setAttribute("position", new THREE.BufferAttribute(new Float32Array(N * 3), 3)); pg.setAttribute("aA", aA); pg.setAttribute("aB", aB); pg.setAttribute("seed", new THREE.BufferAttribute(seeds, 4));
   pg.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 60);
-  const pu = { uTime: { value: 0 }, uMix: { value: 1 }, uBurst: { value: 0 }, uSize: { value: phone ? 70 : 85 }, uPix: { value: dpr }, uMouseOn: { value: 0 }, uScroll: { value: 0 }, uOpacity: { value: 1 }, uFlow: { value: REDUCED ? 0 : 1 }, uWarp: { value: 0 }, uVelK: { value: 0 }, uVel: { value: new THREE.Vector2() },
+  const pu = { uTime: { value: 0 }, uMix: { value: 1 }, uBurst: { value: 0 }, uSize: { value: phone ? 58 : 66 }, uPix: { value: dpr }, uMouseOn: { value: 0 }, uScroll: { value: 0 }, uOpacity: { value: 1 }, uFlow: { value: REDUCED ? 0 : 1 }, uWarp: { value: 0 }, uVelK: { value: 0 }, uVel: { value: new THREE.Vector2() },
     uMouse: { value: new THREE.Vector3() }, uC1: { value: col(LOOK.sw.c[0]) }, uC2: { value: col(LOOK.sw.c[1]) }, uC3: { value: col(LOOK.sw.c[2]) }, uMod: { value: mods } };
   const pts = new THREE.Points(pg, new THREE.ShaderMaterial({ uniforms: pu, vertexShader: PV, fragmentShader: PF, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   pts.frustumCulled = false; scene.add(pts);
@@ -198,7 +200,7 @@ export async function createStage(root) {
   let rtS = mk(2, 2), rtA = mk(2, 2), rtB = mk(2, 2);
   const mBright = new THREE.ShaderMaterial({ uniforms: { t: { value: null } }, vertexShader: QV, fragmentShader: BRIGHT });
   const mBlur = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, uDir: { value: new THREE.Vector2() } }, vertexShader: QV, fragmentShader: BLUR });
-  const cU = { tScene: { value: null }, tBloom: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uFogPos: { value: new THREE.Vector2(...LOOK.sw.fogPos) }, uTime: { value: 0 }, uBloom: { value: 1.25 }, uCA: { value: 0.012 }, uGrain: { value: 0.045 }, uExp: { value: 1.25 }, uFogK: { value: 1 }, uFog: { value: col(LOOK.sw.fog) } };
+  const cU = { tScene: { value: null }, tBloom: { value: null }, uRes: { value: new THREE.Vector2(1, 1) }, uFogPos: { value: new THREE.Vector2(...LOOK.sw.fogPos) }, uTime: { value: 0 }, uBloom: { value: 1.25 }, uCA: { value: 0.012 }, uGrain: { value: 0.03 }, uExp: { value: 1.25 }, uFogK: { value: 1 }, uFog: { value: col(LOOK.sw.fog) } };
   const mComp = new THREE.ShaderMaterial({ uniforms: cU, vertexShader: QV, fragmentShader: COMP });
   const pass = (mat, target) => { quad.material = mat; R.setRenderTarget(target); R.render(post, ortho); };
 
@@ -247,7 +249,7 @@ export async function createStage(root) {
   canvas.addEventListener("pointerdown", onDown); canvas.addEventListener("click", onClick);
 
   // ---------- 상태 · 그리기
-  let target = { logo: 1, op: 1, cloud: 0, speed: 1, exp: 1.25, fogK: 1, bloom: 1.25 }, cur = { ...target, logo: 0 };
+  let target = { logo: 1, op: 1, cloud: 0, speed: 0.6, exp: 1.1, fogK: 0.8, bloom: 0.8 }, cur = { ...target, logo: 0 };
   const look = new THREE.Vector3(), lookTo = new THREE.Vector3(); let camZ = 18, camZTo = 18;
   const tint = { a: col(LOOK.sw.c[0]), b: col(LOOK.sw.c[1]), c: col(LOOK.sw.c[2]), fog: col(LOOK.sw.fog), fogPos: new THREE.Vector2(...LOOK.sw.fogPos) };
   function look_(k) { const p = LOOK[k] || LOOK.sw; tint.a = col(p.c[0]); tint.b = col(p.c[1]); tint.c = col(p.c[2]); tint.fog = col(p.fog); tint.fogPos.set(...p.fogPos); }
@@ -275,10 +277,10 @@ export async function createStage(root) {
       pu.uVelK.value = L(pu.uVelK.value, mouse.on * Math.min(1, mouse.vel / 9), 0.15);
       // 스크롤 속도 → 워프, 들어가기(dive) → 크게
       const sc = pu.uScroll.value, sv = Math.abs(sc - fx.lastScroll) / Math.max(dt, 1e-3); fx.lastScroll = sc;
-      fx.warp = L(fx.warp, Math.min(0.9, sv * 0.35) + fx.dive * 1.4, 0.12);
+      fx.warp = L(fx.warp, Math.min(0.12, sv * 0.08) + fx.dive * 0.35, 0.08);
       pu.uWarp.value = fx.warp;
       fx.ca = L(fx.ca, 0, 0.06); fx.shake = L(fx.shake, 0, 0.05);
-      cU.uCA.value = 0.012 + fx.ca * 0.05 + fx.warp * 0.03;
+      cU.uCA.value = 0.004 + fx.ca * 0.008;
       if (fx.dive > 0) fx.dive = Math.min(1, fx.dive + dt / 0.9);
     }
     // 색 · 안개
@@ -313,12 +315,12 @@ export async function createStage(root) {
     // 카메라: 커서 쪽으로 살짝 기울고, 고른 무리로 날아가요
     camZ = L(camZ, camZTo, k * 0.6); look.lerp(lookTo, k * 0.6);
     // 스크롤하면 카메라가 장면 속으로 날아 들어가요 (화면 한 장 = 9만큼) · 들어가기는 로고로 돌진
-    const fly = REDUCED ? 0 : Math.min(1.6, pu.uScroll.value) * 7, dv = REDUCED ? 0 : fx.dive * fx.dive;
-    const sh = REDUCED ? 0 : fx.shake, jx = (Math.sin(t * 47) + Math.sin(t * 31)) * 0.18 * sh, jy = (Math.cos(t * 43) + Math.sin(t * 29)) * 0.14 * sh;
+    const fly = REDUCED ? 0 : Math.min(1.6, pu.uScroll.value) * 3.5, dv = REDUCED ? 0 : fx.dive * fx.dive;
+    const sh = REDUCED ? 0 : fx.shake * 0.25, jx = (Math.sin(t * 47) + Math.sin(t * 31)) * 0.18 * sh, jy = (Math.cos(t * 43) + Math.sin(t * 29)) * 0.14 * sh;
     const tx = L(look.x, logo.position.x, dv), ty = L(look.y - pu.uScroll.value * 1.2, logo.position.y, dv);
     cam.position.set(tx + (REDUCED ? 0 : mouse.sx * 1.1) + jx, ty + (REDUCED ? 0 : mouse.sy * 0.6) + jy, Math.max(1.2, camZ - fly - dv * (camZ - 1.5)));
     cam.lookAt(tx, ty, 0); cam.rotation.z += REDUCED ? 0 : mouse.sx * -0.03 + pu.uScroll.value * 0.05;
-    cU.uExp.value = cur.exp * (1 + dv * 6);
+    cU.uExp.value = cur.exp * (1 - dv * 0.92);
     if (mode === "vg" && !REDUCED && mouse.px >= 0) setHover(pickNear());
     // 그리기: 장면 → 블룸 → 합성
     R.setRenderTarget(rtS); R.render(scene, cam);
@@ -342,7 +344,7 @@ export async function createStage(root) {
       if (name === "vg") { buildCloud(o.modules || []); look_("vg"); toShape("cloud"); target = { logo: 0, op: 0.4, cloud: 1, speed: 1, exp: 1.2, fogK: 0.9, bloom: 1.1 }; focusI = o.focus ?? -1; focusCloud(); }
       else {
         focusI = -1; if (cloud) cloud.cu.uFocus.value = -1; lookTo.set(0, 0, 0); camZTo = phone ? 21 : 18;
-        if (name === "sw") { const k = o.accent || "sw"; look_(k); toShape(k === "vg" ? "cloudS" : k === "dev" ? "loop" : "rain"); target = { logo: 1, op: 1, cloud: 0, speed: 1, exp: 1.25, fogK: 1, bloom: 1.25 }; }
+        if (name === "sw") { const k = o.accent || "sw"; look_(k); toShape("rain", false); target = { logo: 1, op: 1, cloud: 0, speed: 0.6, exp: 1.1, fogK: 0.8, bloom: 0.8 }; }
         else if (name === "dev") { look_("dev"); toShape("rain"); target = { logo: 0, op: 0.55, cloud: 0, speed: 0.8, exp: 1.1, fogK: 0.8, bloom: 1 }; }
         else { look_(o.accent || "sw"); toShape("rain", false); target = { logo: 0, op: 0.4, cloud: 0, speed: 0.4, exp: 0.8, fogK: 0.7, bloom: 0.8 }; }
       }
