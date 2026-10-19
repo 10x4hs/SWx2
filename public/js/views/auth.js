@@ -41,7 +41,7 @@ export function mountAuth(root, { onDone }) {
     step = signup ? "s-user" : "user";
     who.hidden = true;
     input.type = "text"; input.name = "username"; input.autocomplete = "username";
-    input.placeholder = signup ? "새 아이디 (영문 소문자 · 숫자 · _)" : "아이디"; label.textContent = "아이디";
+    input.placeholder = signup ? "새 아이디 (영문 3글자 · 예: hsk)" : "아이디"; label.textContent = "아이디";
     input.value = username; setHas(); input.focus();
   };
   const toPass = (again = false) => {
@@ -64,7 +64,7 @@ export function mountAuth(root, { onDone }) {
     const v = input.value.trim();
     if (signup) {
       if (step === "s-user") {
-        if (!/^[a-z0-9_]{3,20}$/.test(v.toLowerCase())) return shake("아이디는 영문 소문자·숫자·_ 로 3~20자예요.");
+        if (!/^[a-z]{3}$/.test(v.toLowerCase())) return shake("아이디는 영문 3글자예요 (예: hsk).");
         username = v.toLowerCase(); return toPass();
       }
       if (step === "s-pass") { if (input.value.length < 8) return shake("비밀번호는 8자 이상이어야 해요."); pw1 = input.value; return toPass(true); }
