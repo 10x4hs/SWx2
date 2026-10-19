@@ -190,11 +190,12 @@ export const api = {
   mbaReview: (results) => request("PUT", "/mba/review", { results }),
   mbaDay: (minutes, plan) => request("PUT", "/mba/day", { minutes, ...(plan != null ? { plan } : {}) }),
   mbaDone: (module, item, kind, score, total, done = true) => request("PUT", "/mba/done", { module, item, kind, score, total, ...(done ? {} : { done: false }) }),
-  devState: () => request("GET", "/dev/state"),
-  devRead: (module, card, correct, total) => request("PUT", "/dev/read", { module, card, correct, total }),
-  devReview: (results) => request("PUT", "/dev/review", { results }),
-  devDay: (minutes, plan) => request("PUT", "/dev/day", { minutes, ...(plan != null ? { plan } : {}) }),
-  devDone: (module, item, kind, score, total, done = true) => request("PUT", "/dev/done", { module, item, kind, score, total, ...(done ? {} : { done: false }) }),
+  // SW 공간의 과정(dev · vg) — 경로만 다르고 모양은 같아요
+  courseState: (k) => request("GET", `/${k}/state`),
+  courseRead: (k, module, card, correct, total) => request("PUT", `/${k}/read`, { module, card, correct, total }),
+  courseReview: (k, results) => request("PUT", `/${k}/review`, { results }),
+  courseDay: (k, minutes, plan) => request("PUT", `/${k}/day`, { minutes, ...(plan != null ? { plan } : {}) }),
+  courseDone: (k, module, item, kind, score, total, done = true) => request("PUT", `/${k}/done`, { module, item, kind, score, total, ...(done ? {} : { done: false }) }),
   bookTask: (task, done) => request("PUT", "/books/task", { task, done }),
   paperCheck: (paper, step, done) => request("PUT", "/papers/check", { paper, step, done }),
   paperNote: (paper, text) => request("PUT", "/papers/note", { paper, text }),
@@ -311,9 +312,9 @@ export function streamBookAsk(book, chapter, messages, onEvent, signal, level) {
 export function streamMbaAsk(module, card, messages, onEvent, signal, level, context) {
   return streamAsk("/api/mba/ask", { module, card, messages, ...(level ? { level } : {}), ...(context ? { context } : {}) }, onEvent, signal);
 }
-// 개발 흐름 마이크로디그리 튜터 — /dev/ask (경영 튜터와 같은 모양)
-export function streamDevAsk(module, card, messages, onEvent, signal, level, context) {
-  return streamAsk("/api/dev/ask", { module, card, messages, ...(level ? { level } : {}), ...(context ? { context } : {}) }, onEvent, signal);
+// SW 공간 과정 튜터 — /<k>/ask (경영 튜터와 같은 모양)
+export function streamCourseAsk(k, module, card, messages, onEvent, signal, level, context) {
+  return streamAsk(`/api/${k}/ask`, { module, card, messages, ...(level ? { level } : {}), ...(context ? { context } : {}) }, onEvent, signal);
 }
 export function streamPaperAsk(paper, messages, onEvent, signal, level) {
   return streamAsk("/api/papers/ask", { paper, messages, ...(level ? { level } : {}) }, onEvent, signal);

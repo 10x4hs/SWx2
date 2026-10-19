@@ -1,0 +1,2150 @@
+{
+  "version": 1,
+  "note": "node scripts/dev-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.",
+  "modules": [
+    {
+      "id": "vg-embeddings",
+      "no": "01",
+      "title": "임베딩과 유사도",
+      "short": "임베딩",
+      "q": "글을 숫자로 바꾸면 왜 뜻이 비슷한 걸 찾을 수 있어요?",
+      "sub": "벡터 · 코사인 · 정규화 · MTEB",
+      "doc": "임베딩 모델 선택 메모 (검색팀 #01)",
+      "goals": [
+        "임베딩이 무엇이고 dense · sparse · multi-vector · 멀티모달 모델의 차이를 설명할 수 있어요.",
+        "내적 · 코사인 · L2 거리를 작은 숫자로 직접 계산하고, 정규화하면 왜 코사인 = 내적인지 말할 수 있어요.",
+        "MTEB와 우리 데이터 평가로 모델을 고르고, 차원 · 양자화 · 재색인 비용을 숫자로 판단할 수 있어요."
+      ],
+      "story": {
+        "title": "“지난주 회의 그거 어디 갔어요?”",
+        "size": 3000
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "벡터는 숫자 줄이에요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "원-핫은 뜻을 모르고, 분산 표현은 알아요",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "word2vec: 주변 단어가 뜻을 알려줘요",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "문장 임베딩(SBERT): 문장 하나 = 벡터 하나",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "내적: 같은 칸끼리 곱해서 더하기",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "코사인 유사도: 방향만 비교해요",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "L2(유클리드) 거리: 끝점 사이의 직선 거리",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "정규화하면 코사인 = 내적",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "차원의 저주: 고차원에서는 다 비슷하게 멀어요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "dense vs sparse(SPLADE)",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "multi-vector(ColBERT): 토큰마다 벡터",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "멀티모달 임베딩(CLIP): 그림과 글을 같은 공간에",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "Matryoshka 임베딩: 앞부분만 잘라 써도 돼요",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "양자화 임베딩: float32 → int8 → 1비트",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "비대칭 검색: 질문과 문서는 모양이 달라요",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "다국어·한국어 모델 고르기",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "MTEB 리더보드 읽는 법",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "BEIR: 처음 보는 분야에서도 잘하나?",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "임베딩 비용·지연 계산",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "모델을 바꾸면 전부 다시 임베딩해야 해요",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "mteb-bench",
+          "title": "\"최고의 임베딩 모델\"은 왜 없을까 — MTEB에서 MMTEB까지",
+          "day": 5
+        },
+        {
+          "id": "openai-emb3",
+          "title": "3,072차원 모델을 256차원으로 줄여도 이전 모델을 이긴 이유 — OpenAI text-embedding-3",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "\"지난주 회의 그거\"가 안 나와요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "노트마다? 검색할 때마다?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "모델 고르기 첫 회의",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "점수가 거꾸로 나와요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "dot이냐 cosine이냐",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "직접 계산해 보기",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "코드명 'PX-7'이 안 잡혀요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "ColBERT 써 볼까요?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "화이트보드 사진도 검색되나요?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "저장 공간이 12GB래요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "잘랐더니 점수가 이상해요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "e5로 바꿨는데 더 나빠졌어요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "리더보드 1등으로 가요?",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "재색인 비용 보고",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "새 모델과 옛 벡터가 섞였어요",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "3Blue1Brown — Transformers, the tech behind LLMs (Deep Learning Ch.5)",
+          "url": "https://www.youtube.com/watch?v=wjZofJX0v4M",
+          "min": 27,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Google ML Crash Course — Embeddings",
+          "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+          "min": 45,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Sentence-Transformers Quickstart",
+          "url": "https://sbert.net/docs/quickstart.html",
+          "min": 30,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Pinecone Learn — What are Vector Embeddings",
+          "url": "https://www.pinecone.io/learn/vector-embeddings/",
+          "min": 15,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Hugging Face — Binary and Scalar Embedding Quantization",
+          "url": "https://huggingface.co/blog/embedding-quantization",
+          "min": 20,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l6",
+          "title": "Hugging Face — MTEB 블로그",
+          "url": "https://huggingface.co/blog/mteb",
+          "min": 15,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "vg-ann-index",
+      "no": "02",
+      "title": "근사 최근접 이웃(ANN) 인덱스",
+      "short": "ANN 인덱스",
+      "q": "벡터 100만 개 중 가장 가까운 10개를 어떻게 빨리 찾을까요?",
+      "sub": "Flat · IVF · HNSW · PQ · DiskANN",
+      "doc": "검색 인덱스 결정 기록 (ADR-02)",
+      "goals": [
+        "Flat·IVF·HNSW·PQ·DiskANN이 후보를 줄이거나 벡터를 줄이는 방법을 그림으로 설명할 수 있어요.",
+        "recall@k, QPS·지연, 메모리를 재고 ANN-Benchmarks 그래프를 읽을 수 있어요.",
+        "데이터 규모와 메모리 예산에 맞춰 인덱스와 파라미터(lists, probes, M, ef_search)를 고를 수 있어요."
+      ],
+      "story": {
+        "title": "“검색이 2초나 걸려요”",
+        "size": 1000000
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "정확 검색(Flat)은 전부 다 재 봐요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "\"근사\"는 정답을 조금 양보하고 속도를 사요",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "recall@k = 진짜 정답 k개 중 몇 개 찾았나",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "인덱스는 세 축으로 고르세요: 정확도·속도·메모리",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "IVF: k-means로 칸을 나누고 몇 칸만 봐요",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "nlist와 nprobe: 칸 수와 열어 볼 칸 수",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "LSH: 비슷하면 같은 통에 떨어지게 해요",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "트리 계열: Annoy는 공간을 계속 반으로 잘라요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "작은 세상 그래프: 친구의 친구를 따라가요",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "HNSW: 고속도로 층에서 골목 층으로 내려가요",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "M과 efConstruction: 그래프를 얼마나 촘촘히 만들까",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "efSearch: 검색 때 돌리는 정확도 다이얼",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "곱 양자화(PQ): 벡터를 조각내 번호로 바꿔요",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "IVF-PQ: 칸 나누기 + 압축을 같이 써요",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "스칼라·이진 양자화: 숫자를 더 짧게 써요",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "재정렬(rescoring): 거칠게 뽑고 정확히 다시 매겨요",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "DiskANN: RAM에는 압축본, SSD에는 그래프와 원본",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "필터 검색은 생각보다 어려워요",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "ANN-Benchmarks 그래프 읽는 법",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "인덱스 선택 체크리스트",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "spotify-voyager",
+          "title": "10년 쓴 Annoy를, Spotify는 왜 바꿨을까",
+          "day": 2
+        },
+        {
+          "id": "diskann-2019",
+          "title": "RAM 64GB로 벡터 10억 개를 어떻게 검색했을까",
+          "day": 5
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 검색이 2초 걸려요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "recall 0.99라던데요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "목표 숫자가 없어요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "probes가 1이었어요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "Annoy를 쓰자는데요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "\"그 회의\"는 키워드가 아니에요",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p07",
+          "title": "HNSW로 가요, 파라미터는?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "LIMIT 100인데 40개",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "인덱스 빌드가 너무 오래 걸려요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "RAM이 모자라요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "이진 양자화로 10개만",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "하이브리드 전에 압축?",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "내 노트만 검색해야 해요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "벤치마크 1등을 고르자",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p15",
+          "title": "금요일, 최종 결정",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Faiss: The Missing Manual (Pinecone)",
+          "url": "https://www.pinecone.io/learn/series/faiss/",
+          "min": 120,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Faiss wiki — Guidelines to choose an index",
+          "url": "https://github.com/facebookresearch/faiss/wiki/Guidelines-to-choose-an-index",
+          "min": 20,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "HNSW (Pinecone)",
+          "url": "https://www.pinecone.io/learn/series/faiss/hnsw/",
+          "min": 30,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "ANN-Benchmarks",
+          "url": "https://ann-benchmarks.com/",
+          "min": 20,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Weaviate docs — Vector indexing",
+          "url": "https://docs.weaviate.io/weaviate/concepts/vector-index",
+          "min": 20,
+          "day": 4,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "vg-vector-db",
+      "no": "03",
+      "title": "벡터 데이터베이스",
+      "short": "벡터 DB",
+      "q": "라이브러리(Faiss)와 벡터 DB는 무엇이 다르고, 무엇을 골라야 할까?",
+      "sub": "pgvector · Qdrant · Milvus · Weaviate · Pinecone · Chroma · LanceDB",
+      "doc": "벡터 DB 선택 기록 (ADR-003)",
+      "goals": [
+        "벡터 DB의 구성(저장·인덱스·메타데이터 필터·CRUD·복제)을 설명할 수 있어요.",
+        "pgvector, Qdrant, Milvus, Weaviate, Pinecone, Chroma, LanceDB가 어디에 맞는지 비교할 수 있어요.",
+        "작은 프로젝트에서 하나를 골라 색인·필터 검색을 해 보고, 숫자로 선택 근거를 적을 수 있어요."
+      ],
+      "story": {
+        "title": "“어떤 벡터 DB를 쓸까요?”",
+        "size": 1000000
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "라이브러리와 DB는 달라요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "컬렉션 · 포인트 · 페이로드",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "필터는 언제 거나: pre vs post",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "upsert와 삭제(톰스톤)",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "pgvector: Postgres에 벡터 칸 추가",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "ivfflat vs hnsw",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "halfvec · binary 양자화",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "\"Postgres면 충분한가\"",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Qdrant: 필터에 강한 Rust 엔진",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "Milvus: 분산과 GPU",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "Weaviate: 모듈과 하이브리드",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "Pinecone: 관리형 서버리스",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "Chroma: 로컬 프로토타입",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "LanceDB: 파일 같은 임베디드 DB",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "저장과 연산을 나누는 구조",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "멀티테넌시: 고객별로 나누기",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "비용 추정: N × d × 4바이트",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "벤치마크 함정",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "백업과 버전",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "선택 의사결정 트리",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "supabase-pgvector",
+          "title": "Postgres 확장 하나가 어떻게 '벡터 DB 후보'가 됐을까",
+          "day": 2
+        },
+        {
+          "id": "pinecone-serverless",
+          "title": "Pinecone은 왜 서버를 버리고 '서버리스'로 갔을까",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "Faiss 파일이 또 깨졌어요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "결과가 2개뿐이에요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "모델을 바꿨는데 이상해요",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "pgvector 인덱스 고르기",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "recall이 낮아요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "메모리가 모자라요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "Qdrant 필터가 느려요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "운영할 사람이 없어요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "코사인이냐 내적이냐",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "남의 노트가 떴어요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "데모는 Chroma로",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "첫 검색이 느려요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "벤더 벤치 1등",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "100만 노트, 느려진 검색 다시",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p15",
+          "title": "결정 기록 쓰기",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Vector Databases: from Embeddings to Applications (DeepLearning.AI × Weaviate)",
+          "url": "https://www.deeplearning.ai/short-courses/vector-databases-embeddings-applications/",
+          "min": 65,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "pgvector README",
+          "url": "https://github.com/pgvector/pgvector",
+          "min": 30,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Qdrant Quickstart",
+          "url": "https://qdrant.tech/documentation/quickstart/",
+          "min": 30,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Milvus Overview",
+          "url": "https://milvus.io/docs/overview.md",
+          "min": 20,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "LanceDB docs",
+          "url": "https://lancedb.github.io/lancedb/",
+          "min": 20,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l6",
+          "title": "Chroma docs",
+          "url": "https://docs.trychroma.com/",
+          "min": 15,
+          "day": 4,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "vg-hybrid-search",
+      "no": "04",
+      "title": "하이브리드 검색과 재순위",
+      "short": "하이브리드",
+      "q": "키워드 검색과 의미 검색, 둘을 섞으면 왜 더 잘 찾을까?",
+      "sub": "BM25 · RRF · cross-encoder · nDCG",
+      "doc": "검색 품질 실험 기록 (EXP-04)",
+      "goals": [
+        "BM25의 원리를 알고, 의미 검색이 놓치는 곳(고유명사·코드·숫자)을 예로 설명할 수 있어요.",
+        "RRF와 가중 합으로 두 검색 결과를 합치고, 손으로 점수를 계산할 수 있어요.",
+        "재순위의 효과와 비용을 nDCG@10·recall@k·p95 지연으로 재고 결정할 수 있어요."
+      ],
+      "story": {
+        "title": "“'오로라'로 검색했는데 오로라가 안 나와요”",
+        "size": 1000000
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "역색인: 단어에서 노트로 가는 지도",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "TF-IDF: 흔한 단어는 덜, 드문 단어는 더",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "BM25: 키워드 검색의 표준 점수",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "한국어는 띄어쓰기로 자르면 안 돼요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "의미 검색이 틀리는 곳",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "학습된 sparse: SPLADE와 BGE-M3",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "하이브리드 검색은 두 줄 서기를 합치는 일",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "점수는 바로 더할 수 없어요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "RRF: 순위만 보고 합치기",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "가중 선형 결합: α로 섞기",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "min-max 정규화",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "DB마다 하이브리드는 다르게 생겼어요",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "bi-encoder와 cross-encoder",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "재순위 파이프라인: 넓게 뽑고 좁게 고르기",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "ColBERT: 단어끼리 늦게 만나기",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "LLM 재순위",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "nDCG@10: 맨 위가 맞는지 재기",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "recall@k와 MRR",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "BEIR로 실험하기",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "지연 예산: 몇 ms를 어디에 쓸까",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "beir-2021",
+          "title": "최신 신경망 검색기가 왜 BM25를 못 이겼을까: BEIR",
+          "day": 5
+        },
+        {
+          "id": "anthropic-cr-2024",
+          "title": "청크에 맥락 한 줄 붙였더니 검색 실패가 49% 줄었다: Contextual Retrieval",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "\"오로라\"가 안 나와요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "\"회의\"로는 안 좁혀져요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "\"오로라를\" 검색 실패",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "점수를 그냥 더했어요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "코사인부터 다시",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p06",
+          "title": "SPLADE를 넣자는 제안",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "RRF 손계산",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "α를 정하자",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "Postgres로 하이브리드",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "리랭커를 전체에?",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "02장 인덱스와 엮기",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p12",
+          "title": "ColBERT 도입 회의",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "nDCG가 올랐어요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "리더보드 1등 모델",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p15",
+          "title": "AI 답변이 근거를 놓쳐요",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Getting Started with Hybrid Search (Pinecone)",
+          "url": "https://www.pinecone.io/learn/hybrid-search-intro/",
+          "min": 20,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Reciprocal rank fusion (Elastic 문서)",
+          "url": "https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reciprocal-rank-fusion",
+          "min": 10,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Hybrid search (Weaviate 문서)",
+          "url": "https://weaviate.io/developers/weaviate/search/hybrid",
+          "min": 15,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Retrieve & Re-Rank (Sentence-Transformers)",
+          "url": "https://www.sbert.net/examples/applications/retrieve_rerank/README.html",
+          "min": 20,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Introducing Contextual Retrieval (Anthropic)",
+          "url": "https://www.anthropic.com/news/contextual-retrieval",
+          "min": 20,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "vg-rag",
+      "no": "05",
+      "title": "RAG 파이프라인 · 청킹 · 평가",
+      "short": "RAG",
+      "q": "AI 답변이 왜 엉뚱한 노트를 근거로 쓸까요?",
+      "sub": "청킹 · 쿼리 재작성 · 인용 · 골든셋 · RAGAS",
+      "doc": "RAG 평가 리포트 v1",
+      "goals": [
+        "수집 → 청킹 → 임베딩 → 검색 → 생성 5단계를 설명하고, 틀린 답이 어느 단계 고장인지 나눌 수 있어요.",
+        "고정·재귀·문서 구조·의미·late chunking과 쿼리 재작성·HyDE·small-to-big을 상황에 맞게 고를 수 있어요.",
+        "골든셋을 만들고 recall@k·MRR·충실도로 변경 전후를 비교할 수 있어요."
+      ],
+      "story": {
+        "title": "“AI가 작년 회의록을 보고 답했어요”",
+        "size": 1000000
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "RAG는 '찾아 보고 답하기'예요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "파이프라인 5단계",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "RAG냐, 파인튜닝이냐",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "긴 컨텍스트면 RAG가 필요 없을까",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "고정 길이 + 오버랩",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "재귀 분할",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "문서 구조를 따르는 청킹",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "의미 청킹과 late chunking",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "쿼리 재작성",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "HyDE: 가짜 답으로 찾기",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "멀티 쿼리",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "작은 조각으로 찾고, 큰 조각으로 읽기",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "근거를 넣고 인용하게 하기",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "중간에 둔 근거는 잊혀요",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "근거가 없을 때 처리",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "에이전트형 RAG",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "골든셋 만들기",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "검색 지표: recall@k와 MRR",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "생성 지표: 충실도와 답변 관련성",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "LLM 채점관의 함정",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "linkedin-kg-rag",
+          "title": "LinkedIn은 과거 티켓을 왜 그래프로 바꿨을까",
+          "day": 4
+        },
+        {
+          "id": "lost-in-the-middle",
+          "title": "근거를 많이 넣었더니 왜 답이 나빠졌을까",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 엉뚱한 근거",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "파인튜닝 제안",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "그냥 다 넣으면?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "잘린 출시일",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "깨진 표",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "차원과 비용",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p07",
+          "title": "\"그거 언제였지?\"",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "코드명 질문",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p09",
+          "title": "맥락이 모자란 조각",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "top-k 20 제안",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "없는 규정",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "권한 밖 근거",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "좋아진 거 맞아요?",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "recall 높고 충실도 낮음",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "judge 점수 상승",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Building and Evaluating Advanced RAG (DeepLearning.AI)",
+          "url": "https://www.deeplearning.ai/short-courses/building-evaluating-advanced-rag/",
+          "min": 60,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "LangChain Docs — RAG",
+          "url": "https://python.langchain.com/docs/tutorials/rag/",
+          "min": 40,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "LlamaIndex — Introduction to RAG",
+          "url": "https://docs.llamaindex.ai/en/stable/understanding/rag/",
+          "min": 30,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Ragas 공식 문서",
+          "url": "https://docs.ragas.io/",
+          "min": 30,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "vg-graph-model",
+      "no": "06",
+      "title": "그래프 데이터 모델 · 그래프 DB · 질의 언어",
+      "short": "그래프 모델",
+      "q": "\"관계\"가 주인공인 데이터는 표 대신 어떻게 저장하고 물어볼까?",
+      "sub": "LPG · RDF · Cypher · GQL · SPARQL",
+      "doc": "메모리 그래프 스키마 설계서 v1",
+      "goals": [
+        "속성 그래프(LPG)와 RDF 트리플의 차이를 메모리 앱 예로 설명할 수 있어요.",
+        "Cypher/GQL과 SPARQL로 패턴·경로·집계 질의를 쓸 수 있어요.",
+        "Neo4j, Neptune, Memgraph 등 그래프 DB를 운영·표준·벤치마크 기준으로 고르고, 쓰지 말아야 할 때도 판단할 수 있어요."
+      ],
+      "story": {
+        "title": "“민재랑 같이 회의한 사람, 그 사람들이 맡은 프로젝트는?”",
+        "size": 3000
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "노드 · 엣지 · 속성",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "관계형 JOIN의 한계",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "속성 그래프(LPG)",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "RDF 트리플",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "IRI와 온톨로지(RDFS/OWL)",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "LPG vs RDF 한눈에",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "스키마 설계: 관계를 노드로?",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "인덱스 없는 인접성",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Cypher MATCH 패턴",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "경로와 가변 길이",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "집계와 WITH",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "MERGE와 쓰기",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "GQL = ISO/IEC 39075:2024",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "SQL/PGQ (SQL:2023)",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "SPARQL SELECT와 필터",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "Wikidata로 SPARQL 실습",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "Neo4j",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "Neptune · Memgraph · 그 밖의 선택지",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "LDBC 벤치마크",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "그래프 DB를 쓰지 말아야 할 때",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "iso-gql-2024",
+          "title": "SQL 이후 37년 만에, ISO가 그래프 질의 언어를 표준으로 만들다",
+          "day": 4
+        },
+        {
+          "id": "wdqs-split-2025",
+          "title": "160억 트리플을 버티지 못한 위키데이터, 그래프를 둘로 나누다",
+          "day": 5
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, '같이 회의한 사람' 찾기",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "월요일 오후, 발표자 정보",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "화요일, RDF로 갈까",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "수요일, 결정 사항 모델링",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "목요일, '전체 공지' 노트",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "금요일, 키워드가 빠지는 문제 다시",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p07",
+          "title": "월요일, 중복 사람 노드",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "화요일, 무한 경로",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "수요일, 핵심 인물 뽑기",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "목요일, 표준 질문",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "금요일, 데이터 옮기기 싫어요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "주말 숙제, 근거가 엉뚱한 RAG",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "월요일, DB 고르기",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "수요일, 벡터와 그래프를 한 곳에",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p15",
+          "title": "금요일, 노트 100만 개",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Neo4j GraphAcademy (Neo4j Fundamentals · Cypher Fundamentals)",
+          "url": "https://graphacademy.neo4j.com/",
+          "min": 60,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "W3C SPARQL 1.1 Query Language",
+          "url": "https://www.w3.org/TR/sparql11-query/",
+          "min": 60,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Wikidata SPARQL tutorial",
+          "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_tutorial",
+          "min": 45,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Neo4j Cypher Manual — Introduction",
+          "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+          "min": 30,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "openCypher",
+          "url": "https://opencypher.org/",
+          "min": 20,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "vg-kg-algo",
+      "no": "07",
+      "title": "지식그래프 · 그래프 알고리즘 · GNN",
+      "short": "KG·알고리즘",
+      "q": "노트에서 관계를 뽑아 그래프로 만들면 뭘 계산할 수 있어요?",
+      "sub": "엔티티 추출 · PageRank · Leiden · node2vec · GCN",
+      "doc": "메모리 지식그래프 설계서 (KG-v1)",
+      "goals": [
+        "LLM 구조화 출력으로 엔티티·관계를 뽑고, 엔티티 해소와 출처 저장까지 설계할 수 있어요.",
+        "PageRank·betweenness·Louvain/Leiden·최단경로를 언제 쓰는지 고를 수 있어요.",
+        "node2vec·GCN·GraphSAGE가 '이웃 정보를 모은다'는 걸 작은 숫자로 설명할 수 있어요."
+      ],
+      "story": {
+        "title": "“누가 Orion을 맡았는지는 왜 안 나와요?”",
+        "size": 3000
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "지식그래프는 '사실'을 점과 선으로 저장해요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "NER은 이름을, 관계 추출은 이름 사이 선을 찾아요",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "LLM에게 JSON 틀을 주고 뽑게 해요",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "'민재', '김민재', 'MJ'는 한 사람이에요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "스키마를 고정할까, 자유롭게 뽑을까",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "모든 엣지에 '어느 노트에서 왔나'를 붙여요",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "연결이 많은 노드, 길목에 있는 노드",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "PageRank: 중요한 이웃이 가리키면 나도 중요해요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "모듈러리티: 끼리끼리 얼마나 잘 뭉쳤나",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "Louvain: 옮겨 보고, 묶어서, 다시",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "Leiden: 커뮤니티가 끊어지지 않게 보장해요",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "최단경로: BFS는 칸 수, Dijkstra는 무게",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "랜덤 워크: 그래프를 문장처럼 걷기",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "DeepWalk·node2vec: 노드를 벡터로",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "메시지 패싱: 이웃 이야기를 모아 나를 갱신",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "GCN 한 층을 손으로 계산해요",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "GraphSAGE: 처음 보는 노드도 벡터를 만들어요",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "링크 예측: 아직 없는 선을 맞혀요",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "TransE: 머리 + 관계 ≈ 꼬리",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "NetworkX로 연습, Neo4j GDS로 실전",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "pinsage-2018",
+          "title": "Pinterest는 30억 노드 그래프에 어떻게 GCN을 돌렸을까",
+          "day": 4
+        },
+        {
+          "id": "leiden-2019",
+          "title": "Louvain은 왜 '끊어진 커뮤니티'를 만들었을까",
+          "day": 3
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "\"누가 Orion을 맡았지?\"",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "민재가 셋",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "JSON이 자꾸 깨져요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "관계 이름 400개",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "지운 노트의 유령",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "홈에 띄울 핵심 노트",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "민재 휴가",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "주제 묶음이 이상해요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "이 회의와 그 프로젝트의 사이",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "그래프냐 벡터냐 (복습)",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p11",
+          "title": "사람 추천 기능",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p12",
+          "title": "매일 새 노트 500개",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "'연결 추천' 품질 재기",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p14",
+          "title": "라벨 30개로 분류",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "도구 고르기",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Stanford CS224W: Machine Learning with Graphs (강의 영상)",
+          "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rPLKxIpqhjhPgdQy7imNkDn",
+          "min": 80,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Distill — A Gentle Introduction to Graph Neural Networks",
+          "url": "https://distill.pub/2021/gnn-intro/",
+          "min": 40,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "DeepLearning.AI — Knowledge Graphs for RAG",
+          "url": "https://www.deeplearning.ai/short-courses/knowledge-graphs-rag/",
+          "min": 60,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Neo4j Graph Data Science 문서",
+          "url": "https://neo4j.com/docs/graph-data-science/current/",
+          "min": 30,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "PyTorch Geometric — Introduction by Example",
+          "url": "https://pytorch-geometric.readthedocs.io/en/latest/get_started/introduction.html",
+          "min": 40,
+          "day": 4,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "vg-graphrag",
+      "no": "08",
+      "title": "GraphRAG: 벡터와 그래프를 합치기",
+      "short": "GraphRAG",
+      "q": "\"올해 우리 팀 주요 주제는?\" 같은 질문은 어떻게 답하죠?",
+      "sub": "MS GraphRAG · LazyGraphRAG · LightRAG · HippoRAG · Neo4j",
+      "doc": "GraphRAG 도입 결정 기록 (ADR-008)",
+      "goals": [
+        "벡터 RAG가 전역·멀티홉 질문에 약한 이유와 GraphRAG(global/local/DRIFT)의 구조를 설명할 수 있어요.",
+        "MS GraphRAG, LazyGraphRAG, LightRAG, HippoRAG의 차이를 비용·갱신·질문 유형으로 비교할 수 있어요.",
+        "Neo4j VectorCypher·Text2Cypher로 벡터+그래프 검색을 만들고, 도입 여부를 질문 유형과 비용으로 판단할 수 있어요."
+      ],
+      "story": {
+        "title": "“올해 우리 팀 주요 주제가 뭐였죠?”",
+        "size": 3000
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "벡터 RAG가 못 하는 두 가지 질문",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "GraphRAG는 무엇인가요",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "그래프 색인 파이프라인 4단계",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "GraphRAG의 진짜 비용은 색인이에요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "LLM으로 엔티티·관계 뽑기",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "Leiden: 그래프를 계층 커뮤니티로 나누기",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "커뮤니티 요약(커뮤니티 보고서)",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "Global search = 요약들을 map-reduce",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Local search: 엔티티에서 출발",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "DRIFT search: global로 시작해 local로 파고들기",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "LazyGraphRAG: 요약을 미리 안 만들기",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "증분 갱신: 노트가 매일 늘어날 때",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "LightRAG: 두 수준 검색",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "HippoRAG: 해마처럼 기억 찾기",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "HippoRAG 2: 사실 기억도 놓치지 않기",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "지식그래프에 벡터 붙이기",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "Neo4j GraphRAG 패키지와 VectorCypherRetriever",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "Text2Cypher: 질문을 쿼리로 바꾸기",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "평가: 승률과 LLM 심사자의 편향",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "GraphRAG 도입 판단표",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "ms-graphrag",
+          "title": "Microsoft GraphRAG: 전체를 묻는 질문에 답하려고 그래프를 만들다",
+          "day": 2
+        },
+        {
+          "id": "hipporag",
+          "title": "HippoRAG: 뇌의 해마를 흉내 내 멀티홉을 한 번에",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "\"올해 주요 주제 5개\"가 엉터리",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "top-k를 1,000으로?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "색인 비용 견적",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "같은 사람이 노드 셋",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p05",
+          "title": "커뮤니티 층 고르기",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "map 결과 중 점수 0",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "\"민재가 맡은 일\" 질문",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "매일 늘어나는 노트",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "Lazy 방식 검토",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "서윤의 고객 찾기",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "그래프 붙인 뒤 단순 질문이 나빠짐",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p12",
+          "title": "코드명 PRJ-42",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "올해 회의 수",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p14",
+          "title": "승률 85%의 함정",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "최종 결정 회의",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Microsoft GraphRAG 공식 문서",
+          "url": "https://microsoft.github.io/graphrag/",
+          "min": 40,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "GraphRAG: Unlocking LLM discovery on narrative private data (MS Research)",
+          "url": "https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/",
+          "min": 15,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "LazyGraphRAG (MS Research 블로그)",
+          "url": "https://www.microsoft.com/en-us/research/blog/lazygraphrag-setting-a-new-standard-for-quality-and-cost/",
+          "min": 15,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Neo4j GraphRAG for Python — RAG 사용자 가이드",
+          "url": "https://neo4j.com/docs/neo4j-graphrag-python/current/user_guide_rag.html",
+          "min": 40,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Constructing Knowledge Graphs with Neo4j GraphRAG for Python (GraphAcademy)",
+          "url": "https://graphacademy.neo4j.com/courses/genai-graphrag-python/",
+          "min": 120,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l6",
+          "title": "LightRAG GitHub README",
+          "url": "https://github.com/HKUDS/LightRAG",
+          "min": 20,
+          "day": 4,
+          "lang": "en"
+        }
+      ]
+    }
+  ]
+}

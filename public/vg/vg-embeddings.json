@@ -1,0 +1,1984 @@
+{
+ "id": "vg-embeddings",
+ "no": "01",
+ "title": "임베딩과 유사도",
+ "short": "임베딩",
+ "q": "글을 숫자로 바꾸면 왜 뜻이 비슷한 걸 찾을 수 있어요?",
+ "sub": "벡터 · 코사인 · 정규화 · MTEB",
+ "doc": "임베딩 모델 선택 메모 (검색팀 #01)",
+ "story": {
+  "title": "“지난주 회의 그거 어디 갔어요?”",
+  "size": 3000,
+  "body": [
+   "(가상 이야기) 나는 노트 앱 '메모리'를 만드는 3명짜리 '기억 검색 팀'에 막 들어온 신입 엔지니어예요. 리드는 서윤, 데이터 담당은 민재예요.",
+   "첫 주에 들어온 사용자 문의: \"지난주 회의 그거\"를 검색했는데 아무것도 안 나와요. 그 노트 제목은 '수요일 미팅 메모'였어요. 키워드 검색은 '회의'와 '미팅'이 다른 단어라 못 찾았어요.",
+   "서윤이 말해요. \"노트 3,000개를 임베딩해서 뜻으로 찾게 해 봐요. 어떤 모델을 쓸지, 몇 차원으로 저장할지, 비용이 얼마인지 금요일까지 메모로 정리해 줘요.\""
+  ]
+ },
+ "goals": [
+  "임베딩이 무엇이고 dense · sparse · multi-vector · 멀티모달 모델의 차이를 설명할 수 있어요.",
+  "내적 · 코사인 · L2 거리를 작은 숫자로 직접 계산하고, 정규화하면 왜 코사인 = 내적인지 말할 수 있어요.",
+  "MTEB와 우리 데이터 평가로 모델을 고르고, 차원 · 양자화 · 재색인 비용을 숫자로 판단할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "벡터는 숫자 줄이에요",
+   "lead": "벡터는 [0.2, 0.9, 0.1]처럼 순서가 있는 숫자 줄이에요. 숫자 하나가 '방향' 하나를 맡아요.",
+   "idea": [
+    "3개 숫자면 3차원, 1,536개 숫자면 1,536차원 벡터예요. 머릿속으로 그릴 수 없을 뿐, 계산 방법은 3차원과 같아요.",
+    "임베딩(embedding)은 글·그림을 이런 숫자 줄로 바꾼 결과예요. 뜻이 비슷한 글은 비슷한 숫자 줄이 되도록 모델이 학습돼 있어요.",
+    "그래서 '뜻이 비슷한가?'라는 질문이 '두 숫자 줄이 가까운가?'라는 계산 문제로 바뀌어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 글",
+     "t": "\"지난주 회의록\""
+    },
+    {
+     "k": "2 · 모델",
+     "t": "임베딩 모델에 넣기"
+    },
+    {
+     "k": "3 · 벡터",
+     "t": "[0.12, -0.40, …] 숫자 줄"
+    },
+    {
+     "k": "4 · 비교",
+     "t": "다른 노트 벡터와 거리 계산"
+    }
+   ],
+   "hear": [
+    "\"그 노트들 다 임베딩 떠 놨어요?\"",
+    "\"벡터 차원이 몇이에요? 1536이요, 3072요?\""
+   ],
+   "ask": [
+    "우리가 쓰는 임베딩 모델은 몇 차원 벡터를 내나요?",
+    "노트 하나가 벡터 하나인가요, 문단마다 하나인가요?"
+   ],
+   "mine": "내 노트 앱의 노트 3,000개를 하나씩 모델에 넣으면 벡터 3,000개가 생겨요. 검색어도 같은 모델로 벡터로 바꿔 비교해요.",
+   "deep": [
+    "OpenAI 문서 기준 text-embedding-3-small은 기본 1,536차원, -large는 3,072차원이에요."
+   ],
+   "recall": {
+    "q": "임베딩을 한 문장으로?",
+    "a": "글·그림을 뜻이 비슷하면 가까워지도록 만든 숫자 줄(벡터)로 바꾼 것"
+   },
+   "quiz": [
+    {
+     "q": "[0.1, 0.5, 0.3, 0.8]은 몇 차원 벡터인가요?",
+     "options": [
+      "1차원",
+      "4차원",
+      "8차원"
+     ],
+     "answer": 1,
+     "why": "숫자가 4개라서 4차원이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Google ML Crash Course — Embeddings",
+     "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+     "date": "n.d."
+    },
+    {
+     "title": "OpenAI API docs — Embeddings guide",
+     "url": "https://developers.openai.com/api/docs/guides/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "원-핫은 뜻을 모르고, 분산 표현은 알아요",
+   "lead": "단어마다 칸 하나만 1로 켜는 원-핫 벡터는 '고양이'와 '강아지'가 얼마나 비슷한지 몰라요. 분산 표현은 여러 칸에 뜻을 나눠 담아서 알아요.",
+   "idea": [
+    "단어가 5만 개면 원-핫은 5만 차원이고, 1이 딱 한 칸이에요. 어떤 두 단어든 겹치는 칸이 없어서 유사도가 늘 0이에요.",
+    "분산 표현(dense)은 300차원 정도에 모든 칸이 조금씩 값을 가져요. '고양이'와 '강아지'는 '동물', '애완' 쪽 칸이 둘 다 커서 가까워요.",
+    "키워드 검색이 '회의'와 '미팅'을 다른 단어로 보는 것도 원-핫과 같은 한계예요."
+   ],
+   "hear": [
+    "\"키워드는 정확히 같은 단어만 잡잖아요. 동의어는 못 잡아요.\""
+   ],
+   "ask": [
+    "우리 검색이 '미팅'으로 '회의' 노트를 찾나요?"
+   ],
+   "mine": "메모리 앱에서 '지난주 회의 그거'로 검색하면 '미팅 메모'라는 제목의 노트는 키워드 검색에 안 걸려요. 분산 표현이 필요한 이유예요.",
+   "recall": {
+    "q": "원-핫 벡터끼리 유사도가 늘 0인 이유는?",
+    "a": "서로 다른 단어는 1이 켜진 칸이 겹치지 않아서"
+   },
+   "quiz": [
+    {
+     "q": "원-핫으로 단어 1만 개를 표현하면 벡터 하나에 1이 몇 개인가요?",
+     "options": [
+      "1개",
+      "100개",
+      "1만 개"
+     ],
+     "answer": 0,
+     "why": "원-핫은 자기 칸 하나만 1이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Google ML Crash Course — Embeddings",
+     "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+     "date": "n.d."
+    },
+    {
+     "title": "Pinecone Learn — What are Vector Embeddings",
+     "url": "https://www.pinecone.io/learn/vector-embeddings/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "word2vec: 주변 단어가 뜻을 알려줘요",
+   "lead": "word2vec은 '어떤 단어 주변에 어떤 단어가 오나'를 맞히는 연습으로 단어 벡터를 배워요.",
+   "idea": [
+    "'커피를 ___ 마셨다'의 빈칸에 '따뜻하게', '차갑게'가 오듯, 비슷한 자리에 오는 단어는 비슷한 벡터가 돼요.",
+    "Mikolov 등(2013)은 16억 단어 데이터에서 하루도 안 걸려 좋은 단어 벡터를 배울 수 있다고 보고했어요.",
+    "유명한 예: 벡터(왕) − 벡터(남자) + 벡터(여자) ≈ 벡터(여왕). 뜻의 차이가 방향으로 저장돼요."
+   ],
+   "hear": [
+    "\"단어 임베딩은 문맥을 안 봐서, '배'가 과일인지 배인지 구분 못 해요.\""
+   ],
+   "ask": [
+    "단어 하나에 벡터 하나면, 뜻이 여러 개인 단어는 어떻게 하죠?"
+   ],
+   "mine": "word2vec은 단어 단위라 노트 전체를 비교하기엔 부족해요. 다음 카드의 문장 임베딩으로 가요.",
+   "deep": [
+    "word2vec의 두 구조는 CBOW(주변→가운데)와 Skip-gram(가운데→주변)이에요."
+   ],
+   "recall": {
+    "q": "word2vec이 배우는 연습 문제는?",
+    "a": "주변 단어로 가운데 단어를(또는 그 반대를) 맞히기"
+   },
+   "quiz": [
+    {
+     "q": "word2vec의 약점은?",
+     "options": [
+      "단어마다 벡터가 하나라 문맥 따라 뜻이 바뀌는 걸 못 담는다",
+      "벡터가 원-핫보다 크다",
+      "숫자가 아닌 글자를 쓴다"
+     ],
+     "answer": 0,
+     "why": "정적 임베딩이라 '배'의 뜻을 문맥으로 구분 못 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Mikolov et al. — Efficient Estimation of Word Representations in Vector Space (word2vec)",
+     "url": "https://arxiv.org/abs/1301.3781",
+     "date": "2013-01-16"
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "문장 임베딩(SBERT): 문장 하나 = 벡터 하나",
+   "lead": "Sentence-BERT는 문장 전체를 벡터 하나로 만들어, 미리 계산해 두고 코사인으로 바로 비교하게 해요.",
+   "idea": [
+    "BERT로 문장 1만 개 중 가장 비슷한 쌍을 찾으려면 두 문장을 같이 넣어야 해서 약 5천만 번 계산, 약 65시간이 걸려요.",
+    "SBERT는 문장마다 벡터를 한 번만 만들고 비교는 코사인으로 해서, 같은 일을 약 5초로 줄였어요(논문 초록 기준).",
+    "핵심: 노트 벡터는 저장할 때 한 번 만들고, 검색할 때는 질문 벡터 하나만 새로 만들어요."
+   ],
+   "code": {
+    "text": "from sentence_transformers import SentenceTransformer\nm = SentenceTransformer(\"all-MiniLM-L6-v2\")\nv = m.encode([\"지난주 회의 메모\", \"주간 미팅 노트\", \"점심 메뉴\"])\nprint(m.similarity(v, v))",
+    "read": "읽는 법: 모델을 불러서 문장 3개를 벡터로 바꾸고(encode), 서로의 유사도 표를 출력해요. 앞의 두 문장 점수가 세 번째보다 높게 나와야 정상이에요. (이 영어 모델은 한국어에 약해서 실제로는 다국어 모델을 써요.)"
+   },
+   "hear": [
+    "\"노트 저장할 때 임베딩 미리 떠 두고, 질문만 실시간으로 떠요.\""
+   ],
+   "ask": [
+    "노트가 수정되면 벡터도 다시 만드나요?"
+   ],
+   "mine": "노트 3,000개 벡터는 밤에 한 번 만들고, 사용자가 검색할 때는 검색어 한 줄만 임베딩해요.",
+   "recall": {
+    "q": "SBERT가 65시간을 5초로 줄인 핵심은?",
+    "a": "문장마다 벡터를 미리 한 번 만들고 비교는 코사인으로만 하기"
+   },
+   "quiz": [
+    {
+     "q": "검색할 때마다 새로 임베딩해야 하는 건?",
+     "options": [
+      "모든 노트",
+      "질문(검색어)",
+      "아무것도 없음"
+     ],
+     "answer": 1,
+     "why": "노트 벡터는 저장해 두고 질문만 새로 만들어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Reimers & Gurevych — Sentence-BERT",
+     "url": "https://arxiv.org/abs/1908.10084",
+     "date": "2019-08-27"
+    },
+    {
+     "title": "Sentence-Transformers Quickstart",
+     "url": "https://sbert.net/docs/quickstart.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "내적: 같은 칸끼리 곱해서 더하기",
+   "lead": "두 벡터의 내적은 같은 자리 숫자끼리 곱한 뒤 모두 더한 값이에요.",
+   "idea": [
+    "a=[1,2,3], b=[4,5,6]이면 a·b = 1×4 + 2×5 + 3×6 = 4+10+18 = 32예요.",
+    "두 벡터가 같은 쪽을 가리킬수록, 그리고 길수록 내적이 커져요.",
+    "길이에 영향을 받으므로, 긴 글이 벡터가 길게 나오는 모델이면 내적만으로는 '긴 글 편애'가 생길 수 있어요."
+   ],
+   "code": {
+    "text": "import numpy as np\na = np.array([1, 2, 3]); b = np.array([4, 5, 6])\nprint(a @ b)   # 32",
+    "read": "읽는 법: @는 내적 기호예요. 1×4+2×5+3×6 = 32."
+   },
+   "hear": [
+    "\"인덱스 metric을 dot으로 할까요, cosine으로 할까요?\""
+   ],
+   "ask": [
+    "우리 모델 벡터는 길이가 1로 정규화돼 나오나요?"
+   ],
+   "mine": "검색어 벡터와 노트 3,000개 벡터의 내적을 전부 계산해 큰 순서로 정렬하면 가장 간단한 의미 검색이 돼요.",
+   "recall": {
+    "q": "[1,0,2]·[3,1,1]은?",
+    "a": "1×3+0×1+2×1 = 5"
+   },
+   "quiz": [
+    {
+     "q": "[2,1]·[1,3]은?",
+     "options": [
+      "5",
+      "6",
+      "7"
+     ],
+     "answer": 0,
+     "why": "2×1 + 1×3 = 5예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Google ML Crash Course — Embeddings",
+     "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "코사인 유사도: 방향만 비교해요",
+   "lead": "코사인 유사도는 내적을 두 벡터 길이로 나눈 값이에요. 길이는 빼고 '방향이 얼마나 같은가'만 봐요.",
+   "idea": [
+    "cos = (a·b) / (|a|×|b|). 값은 −1~1이고 1이면 같은 방향, 0이면 직각(관계 없음)이에요.",
+    "a=[1,2,3], b=[4,5,6]: a·b=32, |a|=√14≈3.742, |b|=√77≈8.775, cos = 32/32.83 ≈ 0.975. 거의 같은 방향이에요.",
+    "a=[1,0], b=[0,1]이면 내적 0, 코사인 0이에요."
+   ],
+   "code": {
+    "text": "import numpy as np\na = np.array([1, 2, 3]); b = np.array([4, 5, 6])\ncos = a @ b / (np.linalg.norm(a) * np.linalg.norm(b))\nprint(round(cos, 3))   # 0.975",
+    "read": "읽는 법: norm은 벡터 길이예요. 내적을 두 길이의 곱으로 나누면 코사인이에요."
+   },
+   "hear": [
+    "\"유사도 0.82 이상만 보여 주자\"",
+    "\"코사인 점수는 모델마다 분포가 달라서 임계값을 옮겨 쓰면 안 돼요.\""
+   ],
+   "ask": [
+    "유사도 임계값은 어떤 데이터로 정했나요?"
+   ],
+   "mine": "검색 결과에 점수를 붙일 때 코사인을 쓰면 짧은 메모와 긴 회의록을 공평하게 비교해요.",
+   "recall": {
+    "q": "코사인 유사도가 0이면?",
+    "a": "두 벡터가 직각, 즉 방향이 전혀 겹치지 않음"
+   },
+   "quiz": [
+    {
+     "q": "[3,4]와 [6,8]의 코사인 유사도는?",
+     "options": [
+      "0.5",
+      "1",
+      "2"
+     ],
+     "answer": 1,
+     "why": "[6,8]은 [3,4]를 2배 늘린 것뿐이라 방향이 같아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Google ML Crash Course — Embeddings",
+     "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+     "date": "n.d."
+    },
+    {
+     "title": "Sentence-Transformers Quickstart",
+     "url": "https://sbert.net/docs/quickstart.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "L2(유클리드) 거리: 끝점 사이의 직선 거리",
+   "lead": "L2 거리는 두 벡터 끝점 사이의 직선 거리예요. 작을수록 가까워요.",
+   "idea": [
+    "a=[1,2,3], b=[4,5,6]이면 차이 [3,3,3], 거리 = √(9+9+9) = √27 ≈ 5.196이에요.",
+    "코사인·내적은 '클수록 비슷', L2는 '작을수록 비슷'이에요. 정렬 방향을 헷갈리면 가장 엉뚱한 결과가 맨 위에 와요.",
+    "[3,4]와 [6,8]은 코사인 1이지만 L2 거리는 5예요. 길이 차이까지 보는 거리예요."
+   ],
+   "hear": [
+    "\"L2로 인덱스 만들었으면 score가 아니라 distance예요. 오름차순으로 봐야 해요.\""
+   ],
+   "ask": [
+    "벡터DB가 돌려주는 숫자가 유사도인가요, 거리인가요?"
+   ],
+   "mine": "메모리 앱에서 결과 정렬이 이상하면 먼저 '점수 큰 순인가, 거리 작은 순인가'부터 확인해요.",
+   "recall": {
+    "q": "[0,0]과 [3,4]의 L2 거리는?",
+    "a": "√(9+16) = 5"
+   },
+   "quiz": [
+    {
+     "q": "L2 거리 기준으로 가장 비슷한 노트는?",
+     "options": [
+      "거리가 가장 큰 노트",
+      "거리가 가장 작은 노트",
+      "거리가 1인 노트"
+     ],
+     "answer": 1,
+     "why": "거리는 작을수록 가까워요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Google ML Crash Course — Embeddings",
+     "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "정규화하면 코사인 = 내적",
+   "lead": "벡터를 길이 1로 맞추면(정규화) 코사인과 내적이 같은 값이 되고, L2 순위도 같아져요.",
+   "idea": [
+    "정규화 = 각 숫자를 벡터 길이로 나누기. [3,4]의 길이는 5라서 정규화하면 [0.6, 0.8]이에요.",
+    "길이가 1이면 분모 |a|×|b| = 1이라 코사인이 그냥 내적이에요. 나눗셈이 없어져 더 빨라요.",
+    "OpenAI 문서는 자사 임베딩이 길이 1로 정규화돼 있어 내적으로 코사인을 구할 수 있고, 코사인과 유클리드 거리 순위가 같다고 설명해요."
+   ],
+   "code": {
+    "text": "import numpy as np\nv = np.array([3.0, 4.0])\nu = v / np.linalg.norm(v)\nprint(u)   # [0.6 0.8]",
+    "read": "읽는 법: 벡터를 자기 길이(5)로 나눠 길이 1짜리로 만들어요."
+   },
+   "hear": [
+    "\"normalize 켜고 dot product로 가요. 코사인이랑 결과 같아요.\""
+   ],
+   "ask": [
+    "벡터를 잘라 쓰거나 평균 내면, 다시 정규화했나요?"
+   ],
+   "mine": "노트 벡터를 저장할 때 정규화해 두면, 검색 때 내적만 계산하면 돼요.",
+   "deep": [
+    "길이 1 벡터에서는 |a−b|² = 2 − 2(a·b)라서 L2 거리가 작을수록 내적이 커요. 순위가 같은 이유예요."
+   ],
+   "recall": {
+    "q": "[0,5]를 정규화하면?",
+    "a": "[0, 1]"
+   },
+   "quiz": [
+    {
+     "q": "두 벡터가 모두 길이 1이고 내적이 0.9면 코사인은?",
+     "options": [
+      "0.9",
+      "0.45",
+      "1.8"
+     ],
+     "answer": 0,
+     "why": "길이가 1이면 코사인 = 내적이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "OpenAI API docs — Embeddings guide",
+     "url": "https://developers.openai.com/api/docs/guides/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "차원의 저주: 고차원에서는 다 비슷하게 멀어요",
+   "lead": "차원이 아주 높아지면 아무 두 점의 거리가 비슷비슷해져서 '가장 가까운 것'을 고르기가 어려워져요.",
+   "idea": [
+    "무작위 점을 2차원에 뿌리면 가까운 점과 먼 점의 차이가 커요. 1,000차원에서는 그 차이가 상대적으로 작아져요.",
+    "그래서 임베딩 모델은 '뜻'이 소수의 방향에 몰리도록 학습돼요. 무작위 숫자 1,536개와는 달라요.",
+    "실무 의미: 차원이 크다고 늘 좋은 게 아니고, 저장·계산 비용이 차원에 비례해 늘어요."
+   ],
+   "hear": [
+    "\"차원 두 배면 메모리도 두 배예요.\""
+   ],
+   "ask": [
+    "3,072차원이 1,536차원보다 우리 데이터에서 실제로 나은지 재 봤나요?"
+   ],
+   "mine": "노트 100만 개 × 1,536차원 × 4바이트(float32) ≈ 6.1GB예요. 3,072차원이면 약 12.3GB예요.",
+   "recall": {
+    "q": "차원을 두 배로 하면 float32 저장 공간은?",
+    "a": "두 배"
+   },
+   "quiz": [
+    {
+     "q": "1,000개 노트 × 1,024차원 × 4바이트는 약 얼마인가요?",
+     "options": [
+      "약 4MB",
+      "약 4GB",
+      "약 40KB"
+     ],
+     "answer": 0,
+     "why": "1,000 × 1,024 × 4 = 4,096,000바이트 ≈ 4MB예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Google ML Crash Course — Embeddings",
+     "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "dense vs sparse(SPLADE)",
+   "lead": "dense 벡터는 모든 칸에 값이 있고, sparse 벡터는 단어 수만큼 칸이 많지만 대부분 0이에요.",
+   "idea": [
+    "BM25 같은 키워드 검색도 sparse예요. 단어가 정확히 맞으면 강하지만 동의어에 약해요.",
+    "SPLADE는 모델이 단어 가중치를 배우고 관련 단어로 '확장'해 주는 sparse 방식이에요. 정확한 단어 일치와 역색인의 효율을 유지해요.",
+    "dense는 뜻에 강하고, sparse는 고유명사·코드명 같은 정확한 단어에 강해요. 둘을 섞는 하이브리드 검색은 04장에서 다뤄요."
+   ],
+   "hear": [
+    "\"코드명 'PX-7'은 dense로는 안 잡혀요. sparse 같이 써야 해요.\""
+   ],
+   "ask": [
+    "우리 사용자 검색어 중 고유명사·코드명 비율은 얼마나 되나요?"
+   ],
+   "mine": "'오로라 프로젝트' 같은 코드명은 키워드(sparse)로, '지난주 회의 그거'는 dense로 찾는 게 맞아요.",
+   "recall": {
+    "q": "sparse 벡터의 특징은?",
+    "a": "칸(단어)은 아주 많지만 대부분 0이고, 정확한 단어 일치에 강함"
+   },
+   "quiz": [
+    {
+     "q": "고유명사 'PX-7'을 찾는 데 더 믿을 만한 쪽은?",
+     "options": [
+      "dense만",
+      "sparse(키워드) 포함",
+      "둘 다 못 찾음"
+     ],
+     "answer": 1,
+     "why": "정확한 문자열은 sparse가 강해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Formal et al. — SPLADE",
+     "url": "https://arxiv.org/abs/2107.05720",
+     "date": "2021-07-12"
+    },
+    {
+     "title": "Thakur et al. — BEIR: zero-shot IR benchmark",
+     "url": "https://arxiv.org/abs/2104.08663",
+     "date": "2021-04-17"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "multi-vector(ColBERT): 토큰마다 벡터",
+   "lead": "ColBERT는 문서를 벡터 하나로 줄이지 않고, 토큰마다 벡터를 남겨 두었다가 질문 토큰과 하나씩 맞춰 봐요(late interaction).",
+   "idea": [
+    "질문 토큰마다 문서 토큰 중 가장 비슷한 것의 점수를 고르고, 그 점수를 모두 더해요(MaxSim).",
+    "문서 표현은 미리 계산해 두니 빠르면서도, 단어 수준의 세밀한 일치를 살려요.",
+    "대가: 문서 하나에 벡터가 수백 개라 저장 공간이 훨씬 커요."
+   ],
+   "hear": [
+    "\"ColBERT는 정확도 좋은데 인덱스가 몇 배로 커져요.\""
+   ],
+   "ask": [
+    "저장 공간이 몇 배 늘어도 감당할 만큼 정확도가 오르나요?"
+   ],
+   "mine": "노트 3,000개라면 multi-vector도 감당되지만, 100만 개면 저장 비용부터 계산해야 해요.",
+   "recall": {
+    "q": "ColBERT의 late interaction이란?",
+    "a": "질문과 문서를 따로 인코딩하고, 마지막에 토큰 벡터끼리 가볍게 비교하는 것"
+   },
+   "quiz": [
+    {
+     "q": "ColBERT의 가장 큰 비용은?",
+     "options": [
+      "토큰마다 벡터를 저장해 인덱스가 큼",
+      "키워드를 못 씀",
+      "GPU가 필요 없음"
+     ],
+     "answer": 0,
+     "why": "문서당 벡터가 많아 저장 공간이 커요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Khattab & Zaharia — ColBERT",
+     "url": "https://arxiv.org/abs/2004.12832",
+     "date": "2020-04-27"
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "멀티모달 임베딩(CLIP): 그림과 글을 같은 공간에",
+   "lead": "CLIP은 그림과 설명 글을 같은 벡터 공간에 넣어서, 글로 그림을 찾을 수 있게 해요.",
+   "idea": [
+    "인터넷에서 모은 (그림, 글) 4억 쌍으로 '이 그림에 맞는 글은 어느 것?'을 맞히게 학습했어요.",
+    "결과: 'whiteboard with diagram'이라는 글 벡터와 화이트보드 사진 벡터가 가까워져요.",
+    "추가 학습 없이 ImageNet에서 ResNet-50과 비슷한 정확도를 냈다고 보고했어요(제로샷)."
+   ],
+   "hear": [
+    "\"사진 첨부도 CLIP으로 임베딩하면 글로 검색돼요.\""
+   ],
+   "ask": [
+    "글 모델과 그림 모델이 같은 공간을 쓰나요? 다른 모델끼리는 비교가 안 돼요."
+   ],
+   "mine": "회의 때 찍은 화이트보드 사진을 '아키텍처 그림'으로 검색하게 만들 수 있어요.",
+   "recall": {
+    "q": "CLIP으로 글로 그림을 찾을 수 있는 이유는?",
+    "a": "그림과 글을 같은 벡터 공간에 학습시켜서"
+   },
+   "quiz": [
+    {
+     "q": "CLIP 학습 데이터 규모는?",
+     "options": [
+      "약 4억 쌍",
+      "약 4만 쌍",
+      "약 400쌍"
+     ],
+     "answer": 0,
+     "why": "논문 초록 기준 4억 개 (이미지, 텍스트) 쌍이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Radford et al. — CLIP: Learning Transferable Visual Models From Natural Language Supervision",
+     "url": "https://arxiv.org/abs/2103.00020",
+     "date": "2021-02-26"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "Matryoshka 임베딩: 앞부분만 잘라 써도 돼요",
+   "lead": "Matryoshka 학습을 한 모델은 벡터 앞쪽 일부만 잘라 써도 뜻이 꽤 남아요. 러시아 인형처럼 큰 벡터 안에 작은 벡터가 들어 있어요.",
+   "idea": [
+    "MRL 논문은 같은 정확도에서 임베딩 크기를 최대 14배 줄였다고 보고했어요(ImageNet-1K 분류).",
+    "OpenAI text-embedding-3는 dimensions 파라미터로 차원을 줄일 수 있고, -large를 256차원으로 줄여도 ada-002(1,536차원)보다 MTEB 점수가 높다고 문서에 적혀 있어요.",
+    "직접 잘랐다면 반드시 다시 정규화해야 해요."
+   ],
+   "code": {
+    "text": "v = model_embed(\"회의록\")      # 3072차원\nshort = v[:256]\nshort = short / np.linalg.norm(short)",
+    "read": "읽는 법: 앞 256칸만 남기고, 길이를 다시 1로 맞춰요. 정규화를 빼면 코사인=내적이 깨져요."
+   },
+   "hear": [
+    "\"일단 256으로 잘라서 넣고, 정확도 모자라면 1024로 올리죠.\""
+   ],
+   "ask": [
+    "이 모델이 Matryoshka로 학습된 건가요? 아니면 자르면 성능이 크게 떨어져요."
+   ],
+   "mine": "노트 100만 개를 3,072차원 대신 256차원으로 저장하면 공간이 12분의 1이에요.",
+   "recall": {
+    "q": "Matryoshka 벡터를 잘라 쓸 때 꼭 할 일은?",
+    "a": "다시 정규화하기"
+   },
+   "quiz": [
+    {
+     "q": "아무 모델이나 앞 256차원만 잘라도 될까요?",
+     "options": [
+      "된다",
+      "Matryoshka로 학습된 모델이어야 안전하다",
+      "차원은 못 줄인다"
+     ],
+     "answer": 1,
+     "why": "MRL 학습 모델이어야 앞부분에 정보가 몰려 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Kusupati et al. — Matryoshka Representation Learning",
+     "url": "https://arxiv.org/abs/2205.13147",
+     "date": "2022-05-26"
+    },
+    {
+     "title": "OpenAI API docs — Embeddings guide",
+     "url": "https://developers.openai.com/api/docs/guides/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "양자화 임베딩: float32 → int8 → 1비트",
+   "lead": "벡터 숫자 하나를 4바이트 대신 1바이트(int8)나 1비트(binary)로 줄이면 저장 공간이 4배, 32배 줄어요.",
+   "idea": [
+    "int8 스칼라 양자화 = 4배 작게, binary 양자화 = 32배 작게(Hugging Face 블로그).",
+    "binary는 0보다 크면 1, 아니면 0. 비교는 해밍 거리(다른 비트 수)로 아주 빨라요.",
+    "같은 글은 binary에 원본 벡터로 다시 점수 매기기(rescoring)를 더하면 검색 성능을 최대 약 96% 유지했다고 보고해요. rescoring 없이는 약 92.5%예요."
+   ],
+   "code": {
+    "text": "import numpy as np\nv = np.array([0.3, -0.1, 0.7, -0.5])\nbits = (v > 0).astype(np.uint8)   # [1 0 1 0]",
+    "read": "읽는 법: 양수면 1, 아니면 0. 숫자 4개(16바이트)가 4비트가 돼요."
+   },
+   "hear": [
+    "\"binary로 1차 후보 뽑고 float로 rerank 해요.\""
+   ],
+   "ask": [
+    "양자화 후 우리 평가셋에서 recall이 얼마나 떨어지나요?"
+   ],
+   "mine": "노트 100만 개 × 1,024차원: float32 약 4.1GB → int8 약 1GB → binary 약 128MB예요.",
+   "recall": {
+    "q": "binary 양자화는 몇 배 작아지나요?",
+    "a": "32배 (32비트 → 1비트)"
+   },
+   "quiz": [
+    {
+     "q": "int8 양자화는 float32보다 몇 배 작나요?",
+     "options": [
+      "2배",
+      "4배",
+      "32배"
+     ],
+     "answer": 1,
+     "why": "4바이트 → 1바이트예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Hugging Face blog — Binary and Scalar Embedding Quantization",
+     "url": "https://huggingface.co/blog/embedding-quantization",
+     "date": "2024-03-22"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "비대칭 검색: 질문과 문서는 모양이 달라요",
+   "lead": "검색어는 짧은 질문, 노트는 긴 글이에요. 그래서 어떤 모델은 'query: '와 'passage: '처럼 앞에 붙이는 말(프리픽스)로 둘을 구분해요.",
+   "idea": [
+    "multilingual-e5 모델 카드는 모든 입력 앞에 'query: ' 또는 'passage: '를 붙이라고 해요. 영어가 아니어도요.",
+    "프리픽스를 빼먹으면 에러는 안 나지만 검색 품질이 조용히 떨어져요. 가장 흔한 실수예요.",
+    "모델마다 규칙이 달라요(프리픽스, instruction 문장, 없음). 모델 카드를 꼭 읽어요."
+   ],
+   "code": {
+    "text": "docs = [\"passage: 지난주 수요일 미팅에서 출시일을 11월로…\"]\nquery = \"query: 지난주 회의에서 정한 출시일\"\nd = m.encode(docs, normalize_embeddings=True)\nqv = m.encode([query], normalize_embeddings=True)",
+    "read": "읽는 법: 노트에는 passage:, 검색어에는 query:를 붙여 임베딩하고, 둘 다 정규화해요."
+   },
+   "hear": [
+    "\"e5 쓰면서 query 프리픽스 빼먹었네요. 그래서 점수가 낮았어요.\""
+   ],
+   "ask": [
+    "이 모델은 질문과 문서에 프리픽스가 필요한가요?"
+   ],
+   "mine": "메모리 앱에서 노트 저장 경로와 검색 경로가 다른 함수라면, 둘 다 올바른 프리픽스를 붙이는지 확인해요.",
+   "recall": {
+    "q": "e5에서 노트에 붙이는 프리픽스는?",
+    "a": "passage: "
+   },
+   "quiz": [
+    {
+     "q": "프리픽스를 빼먹으면?",
+     "options": [
+      "바로 에러가 난다",
+      "조용히 검색 품질이 떨어진다",
+      "속도만 느려진다"
+     ],
+     "answer": 1,
+     "why": "에러 없이 품질만 떨어져서 찾기 어려워요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "intfloat/multilingual-e5-large 모델 카드",
+     "url": "https://huggingface.co/intfloat/multilingual-e5-large",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "다국어·한국어 모델 고르기",
+   "lead": "한국어 노트에는 한국어를 학습한 다국어 모델을 써야 해요. 영어 전용 모델은 한국어 문장을 잘 구분하지 못해요.",
+   "idea": [
+    "BGE-M3는 100개 넘는 언어, 최대 8,192 토큰 입력, dense·sparse·multi-vector 세 방식을 한 모델로 지원해요(논문 초록).",
+    "MMTEB 논문에서는 공개 모델 중 multilingual-e5-large-instruct(파라미터 5.6억 개)가 가장 좋았다고 보고했어요.",
+    "순위는 계속 바뀌어요. 리더보드에서 한국어(kor) 태스크로 걸러 보고, 내 데이터로 다시 재요."
+   ],
+   "hear": [
+    "\"한국어 섞인 노트면 bge-m3나 e5 계열부터 봐요.\""
+   ],
+   "ask": [
+    "리더보드 점수가 한국어 태스크 기준인가요, 영어 평균인가요?"
+   ],
+   "mine": "메모리 앱 노트는 한국어에 영어 용어가 섞여 있어요. 그래서 다국어 모델이 기본 후보예요.",
+   "recall": {
+    "q": "BGE-M3가 한 모델로 지원하는 세 가지 검색 방식은?",
+    "a": "dense, sparse, multi-vector"
+   },
+   "quiz": [
+    {
+     "q": "한국어 노트 검색 모델을 고를 때 먼저 볼 것은?",
+     "options": [
+      "영어 MTEB 평균 1위",
+      "한국어 태스크 점수와 내 데이터 평가",
+      "가장 큰 차원"
+     ],
+     "answer": 1,
+     "why": "영어 평균은 한국어 성능을 보장하지 않아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Chen et al. — M3-Embedding (BGE-M3)",
+     "url": "https://arxiv.org/abs/2402.03216",
+     "date": "2024-02-05"
+    },
+    {
+     "title": "BAAI/bge-m3 모델 카드",
+     "url": "https://huggingface.co/BAAI/bge-m3",
+     "date": "n.d."
+    },
+    {
+     "title": "Enevoldsen et al. — MMTEB: Massive Multilingual Text Embedding Benchmark",
+     "url": "https://arxiv.org/abs/2502.13595",
+     "date": "2025-02-19"
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "MTEB 리더보드 읽는 법",
+   "lead": "MTEB는 임베딩 모델을 여러 종류 태스크로 한꺼번에 재는 시험이에요. 평균 1등보다 '내가 할 일' 칸의 점수를 봐요.",
+   "idea": [
+    "원 논문: 8개 태스크 유형, 58개 데이터셋, 112개 언어, 33개 모델을 쟀어요.",
+    "검색 앱이면 Retrieval 칸이 중요하고, 노트 묶기면 Clustering 칸이 중요해요.",
+    "점수 말고 모델 크기·차원·최대 토큰·라이선스도 같은 줄에 있어요. 이것들이 비용을 정해요."
+   ],
+   "steps": [
+    {
+     "k": "1",
+     "t": "언어·태스크 필터 (kor, Retrieval)"
+    },
+    {
+     "k": "2",
+     "t": "후보 3개 고르기 (점수 + 크기)"
+    },
+    {
+     "k": "3",
+     "t": "내 노트 50개 질문으로 직접 평가"
+    },
+    {
+     "k": "4",
+     "t": "비용·지연까지 보고 결정"
+    }
+   ],
+   "hear": [
+    "\"리더보드 1등 모델이 우리 데이터에선 3등이었어요.\""
+   ],
+   "ask": [
+    "이 모델이 평가 데이터로 학습되지 않았는지(오염) 확인했나요?"
+   ],
+   "mine": "메모리 앱은 '검색'이 주 업무라 Retrieval 점수와 한국어 필터부터 봐요.",
+   "recall": {
+    "q": "MTEB 원 논문의 핵심 결론은?",
+    "a": "모든 태스크에서 1등인 임베딩 방법은 없다"
+   },
+   "quiz": [
+    {
+     "q": "검색 앱을 만들 때 가장 먼저 볼 MTEB 칸은?",
+     "options": [
+      "Retrieval",
+      "Classification",
+      "Summarization"
+     ],
+     "answer": 0,
+     "why": "검색 품질은 Retrieval 태스크가 재요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Muennighoff et al. — MTEB: Massive Text Embedding Benchmark",
+     "url": "https://arxiv.org/abs/2210.07316",
+     "date": "2022-10-13"
+    },
+    {
+     "title": "MTEB Leaderboard (Hugging Face Space)",
+     "url": "https://huggingface.co/spaces/mteb/leaderboard",
+     "date": "n.d."
+    },
+    {
+     "title": "Hugging Face blog — MTEB: Massive Text Embedding Benchmark",
+     "url": "https://huggingface.co/blog/mteb",
+     "date": "2022-10-19"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "BEIR: 처음 보는 분야에서도 잘하나?",
+   "lead": "BEIR는 검색 모델을 학습 때 보지 못한 분야 18개 데이터셋으로 시험해요(제로샷).",
+   "idea": [
+    "BEIR 논문 결론: BM25(키워드)가 튼튼한 기준선이에요. 재정렬(re-ranking)과 late interaction이 평균 최고였지만 비용이 커요.",
+    "dense 검색은 효율적이지만 새 분야에서는 BM25보다 못한 경우가 많았어요(2021년 기준).",
+    "교훈: 의미 검색을 붙여도 키워드 검색을 버리지 말고 비교 기준으로 남겨 둬요."
+   ],
+   "hear": [
+    "\"BM25 대비 몇 % 올랐어요? 그게 첫 질문이에요.\""
+   ],
+   "ask": [
+    "새 모델을 BM25와 같은 평가셋에서 비교했나요?"
+   ],
+   "mine": "메모리 앱의 기존 키워드 검색이 바로 BM25 기준선이에요. 의미 검색은 이걸 이겨야 들어가요.",
+   "recall": {
+    "q": "BEIR에서 '튼튼한 기준선'으로 확인된 방법은?",
+    "a": "BM25"
+   },
+   "quiz": [
+    {
+     "q": "BEIR가 시험하는 능력은?",
+     "options": [
+      "학습한 분야의 성능",
+      "처음 보는 분야로의 일반화(제로샷)",
+      "번역 품질"
+     ],
+     "answer": 1,
+     "why": "out-of-distribution 일반화를 재요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Thakur et al. — BEIR: zero-shot IR benchmark",
+     "url": "https://arxiv.org/abs/2104.08663",
+     "date": "2021-04-17"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "임베딩 비용·지연 계산",
+   "lead": "임베딩 비용은 '토큰 수 × 단가', 저장 비용은 '개수 × 차원 × 바이트'로 미리 계산할 수 있어요.",
+   "idea": [
+    "OpenAI 문서 기준 1달러로 약 800토큰짜리 페이지를 3-small은 62,500쪽, 3-large는 9,615쪽 임베딩해요.",
+    "노트 3,000개 × 평균 500토큰 = 150만 토큰. 3-small이면 1달러(약 5,000만 토큰)에 한참 못 미쳐요.",
+    "지연: API는 네트워크 왕복이 들고, 로컬 모델은 GPU/CPU 시간이 들어요. 검색어 임베딩은 사용자가 기다리는 시간이에요."
+   ],
+   "hear": [
+    "\"전체 재임베딩 한 번에 얼마 나와요?\"",
+    "\"검색어 임베딩 p95가 300ms 넘으면 체감돼요.\""
+   ],
+   "ask": [
+    "전체 재색인 비용과 시간을 숫자로 뽑아 봤나요?"
+   ],
+   "mine": "노트 100만 개 × 500토큰 = 5억 토큰이면 3-small 기준 약 10달러, 3-large 기준 약 65달러예요(문서의 쪽당 비율로 계산).",
+   "recall": {
+    "q": "임베딩 API 비용 공식은?",
+    "a": "총 토큰 수 × 토큰당 단가"
+   },
+   "quiz": [
+    {
+     "q": "3-small로 800토큰 페이지 125,000쪽을 임베딩하면 대략?",
+     "options": [
+      "약 2달러",
+      "약 20달러",
+      "약 0.2달러"
+     ],
+     "answer": 0,
+     "why": "1달러에 62,500쪽이니 125,000쪽은 약 2달러예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "OpenAI API docs — Embeddings guide",
+     "url": "https://developers.openai.com/api/docs/guides/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "모델을 바꾸면 전부 다시 임베딩해야 해요",
+   "lead": "모델이 다르면 벡터 공간이 달라서, 옛 벡터와 새 벡터는 비교할 수 없어요. 모델 교체 = 전체 재색인이에요.",
+   "idea": [
+    "A 모델의 [0.1, 0.5…]와 B 모델의 [0.1, 0.5…]는 같은 숫자여도 뜻이 달라요. 차원이 같아도 섞으면 안 돼요.",
+    "안전한 교체: 새 인덱스를 옆에 만들고(이중 쓰기) → 평가 → 트래픽 전환 → 옛 인덱스 삭제.",
+    "벡터 옆에 모델 이름·버전을 같이 저장해 두면, 섞였는지 바로 확인할 수 있어요."
+   ],
+   "code": {
+    "text": "INSERT INTO note_vec(note_id, model, dim, vec)\nVALUES (42, 'bge-m3@2024-02', 1024, :v);",
+    "read": "읽는 법: 벡터마다 어떤 모델·차원으로 만들었는지 같이 적어요. 검색할 때 model이 같은 것끼리만 비교해요."
+   },
+   "hear": [
+    "\"모델 바꾸는 건 마이그레이션이에요. 롤백 계획 있어요?\""
+   ],
+   "ask": [
+    "재색인하는 동안 검색은 옛 인덱스로 계속 되나요?"
+   ],
+   "mine": "메모리 앱 노트 테이블에 model 칼럼을 두면, 나중에 모델을 바꿀 때 어디까지 바뀌었는지 셀 수 있어요.",
+   "recall": {
+    "q": "임베딩 모델을 바꾸면 반드시 할 일은?",
+    "a": "모든 문서를 새 모델로 다시 임베딩(재색인)"
+   },
+   "quiz": [
+    {
+     "q": "옛 모델 벡터와 새 모델 벡터를 한 인덱스에 섞으면?",
+     "options": [
+      "차원만 같으면 괜찮다",
+      "점수가 의미 없어진다",
+      "더 정확해진다"
+     ],
+     "answer": 1,
+     "why": "벡터 공간이 달라 비교가 성립하지 않아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "OpenAI API docs — Embeddings guide",
+     "url": "https://developers.openai.com/api/docs/guides/embeddings",
+     "date": "n.d."
+    },
+    {
+     "title": "Pinecone Learn — What are Vector Embeddings",
+     "url": "https://www.pinecone.io/learn/vector-embeddings/",
+     "date": "n.d."
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "mteb-bench",
+   "day": 5,
+   "title": "\"최고의 임베딩 모델\"은 왜 없을까 — MTEB에서 MMTEB까지",
+   "when": "2022-10-13",
+   "lead": "2022년 Hugging Face 연구진이 임베딩 모델을 한 시험지로 비교하는 MTEB를 내놨어요. 결론은 의외로 '모든 태스크에서 1등인 방법은 없다'였어요. 2025년에는 다국어로 크게 넓힌 MMTEB가 나왔어요.",
+   "facts": [
+    {
+     "label": "MTEB 규모",
+     "value": "8개 태스크 유형 · 58개 데이터셋 · 112개 언어",
+     "src": "arXiv 2210.07316"
+    },
+    {
+     "label": "MTEB에서 잰 모델",
+     "value": "33개",
+     "src": "arXiv 2210.07316"
+    },
+    {
+     "label": "MMTEB 규모",
+     "value": "500개 이상 태스크 · 250개 이상 언어",
+     "src": "arXiv 2502.13595"
+    },
+    {
+     "label": "MMTEB 공개 모델 최고",
+     "value": "multilingual-e5-large-instruct (5.6억 파라미터)",
+     "src": "arXiv 2502.13595"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2021-04",
+     "text": "BEIR 발표: 검색 18개 데이터셋 제로샷 평가, BM25가 튼튼한 기준선"
+    },
+    {
+     "t": "2022-10-13",
+     "text": "MTEB 논문 공개: '모든 태스크를 지배하는 방법은 없다'",
+     "hot": true
+    },
+    {
+     "t": "2022-10",
+     "text": "Hugging Face에 MTEB 리더보드 공개"
+    },
+    {
+     "t": "2025-02-19",
+     "text": "MMTEB 공개: 500+ 태스크, 250+ 언어로 확장",
+     "hot": true
+    },
+    {
+     "t": "2025-11-13",
+     "text": "MMTEB 논문 v4 개정"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "평가 · 태스크",
+     "title": "태스크마다 잘하는 게 달라요",
+     "text": "검색에 강한 모델이 분류·군집에서도 1등이라는 보장이 없어요."
+    },
+    {
+     "stage": "평가 · 언어",
+     "title": "영어 편중",
+     "text": "초기 평가는 영어 중심이라 한국어 같은 언어 성능을 따로 봐야 했어요. MMTEB가 이 빈칸을 넓혔어요."
+    },
+    {
+     "stage": "모델 · 크기",
+     "title": "큰 모델이 늘 답은 아님",
+     "text": "MMTEB에서 수십억 파라미터 LLM 기반 모델이 일부에서 최고였지만, 공개 모델 최고는 5.6억 파라미터 모델이었어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "리드라면? 민재가 '리더보드 평균 1등 모델로 가죠'라고 할 때 무엇을 물을까요?",
+     "a": "우리 일은 한국어 검색이니 한국어·Retrieval 점수를 보고, 우리 노트 질문 몇십 개로 후보 2~3개를 직접 비교하자고 해요."
+    },
+    {
+     "q": "모델 크기가 10배인 후보가 점수 1점 높다면?",
+     "a": "검색어 임베딩 지연과 비용(서버·API)까지 같이 놓고 비교해요. 1점이 사용자에게 보이는 차이인지 내 평가셋으로 확인해요."
+    }
+   ],
+   "after": [
+    "리더보드는 계속 갱신돼요. 이 카드의 숫자는 논문 기준이고, 현재 순위는 리더보드에서 직접 봐요."
+   ],
+   "sources": [
+    {
+     "title": "Muennighoff et al. — MTEB: Massive Text Embedding Benchmark",
+     "url": "https://arxiv.org/abs/2210.07316",
+     "date": "2022-10-13"
+    },
+    {
+     "title": "Enevoldsen et al. — MMTEB: Massive Multilingual Text Embedding Benchmark",
+     "url": "https://arxiv.org/abs/2502.13595",
+     "date": "2025-02-19"
+    },
+    {
+     "title": "MTEB Leaderboard (Hugging Face Space)",
+     "url": "https://huggingface.co/spaces/mteb/leaderboard",
+     "date": "n.d."
+    },
+    {
+     "title": "Hugging Face blog — MTEB: Massive Text Embedding Benchmark",
+     "url": "https://huggingface.co/blog/mteb",
+     "date": "2022-10-19"
+    },
+    {
+     "title": "Thakur et al. — BEIR: zero-shot IR benchmark",
+     "url": "https://arxiv.org/abs/2104.08663",
+     "date": "2021-04-17"
+    }
+   ],
+   "caveat": "리더보드 순위는 날마다 바뀌어서 특정 모델의 현재 순위는 적지 않았어요."
+  },
+  {
+   "id": "openai-emb3",
+   "day": 4,
+   "title": "3,072차원 모델을 256차원으로 줄여도 이전 모델을 이긴 이유 — OpenAI text-embedding-3",
+   "when": "2024-01-25",
+   "lead": "2024년 1월 OpenAI가 text-embedding-3-small과 -large를 내놨어요. 눈에 띈 건 점수보다 'dimensions' 파라미터였어요. 벡터를 잘라 써도 성능이 크게 남는 Matryoshka 방식이었어요.",
+   "facts": [
+    {
+     "label": "기본 차원",
+     "value": "3-small 1,536 · 3-large 3,072",
+     "src": "OpenAI 문서"
+    },
+    {
+     "label": "MTEB 평균",
+     "value": "ada-002 61.0 → 3-small 62.3 → 3-large 64.6",
+     "src": "Pinecone (OpenAI 발표 인용)"
+    },
+    {
+     "label": "MIRACL(다국어) 평균",
+     "value": "ada-002 31.4 → 3-small 44.0 → 3-large 54.9",
+     "src": "Pinecone (OpenAI 발표 인용)"
+    },
+    {
+     "label": "1달러당 쪽수(800토큰/쪽)",
+     "value": "3-small 62,500 · 3-large 9,615",
+     "src": "OpenAI 문서"
+    },
+    {
+     "label": "최대 입력",
+     "value": "8,192 토큰",
+     "src": "OpenAI 문서"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2022-05",
+     "text": "Matryoshka Representation Learning 논문 공개"
+    },
+    {
+     "t": "2022-12",
+     "text": "text-embedding-ada-002 (1,536차원) 출시"
+    },
+    {
+     "t": "2024-01-25",
+     "text": "text-embedding-3-small/-large와 dimensions 파라미터 발표",
+     "hot": true
+    },
+    {
+     "t": "2024-01",
+     "text": "OpenAI가 차원 축소가 MRL 방식임을 확인 (Pinecone 글)"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "모델 · 학습",
+     "title": "앞쪽에 중요한 정보",
+     "text": "MRL 학습으로 벡터 앞부분에 핵심 정보가 몰려 있어, 잘라도 뜻이 남아요."
+    },
+    {
+     "stage": "비용 · 저장",
+     "title": "차원 = 돈",
+     "text": "3-large를 256차원으로 쓰면 ada-002(1,536차원)보다 벡터가 6배 작으면서 MTEB 점수는 더 높았어요(OpenAI 문서)."
+    },
+    {
+     "stage": "운영 · 정규화",
+     "title": "직접 자르면 재정규화",
+     "text": "API의 dimensions 대신 직접 잘랐다면 다시 길이 1로 맞춰야 해요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "노트 100만 개를 3-large 3,072차원 그대로 저장할까, 256차원으로 줄일까?",
+     "a": "float32 기준 약 12.3GB vs 약 1GB예요. 내 평가셋에서 256·1,024·3,072를 비교해 점수 차가 작으면 작은 쪽을 골라요."
+    },
+    {
+     "q": "ada-002 벡터 위에 3-small 벡터를 이어 붙여 저장해도 될까요?",
+     "a": "안 돼요. 모델이 다르면 공간이 달라서 전체를 다시 임베딩해야 해요."
+    }
+   ],
+   "after": [
+    "dimensions 같은 차원 줄이기는 이후 여러 오픈 모델에도 퍼졌어요(예: sentence-transformers의 Matryoshka 학습 지원)."
+   ],
+   "sources": [
+    {
+     "title": "OpenAI API docs — Embeddings guide",
+     "url": "https://developers.openai.com/api/docs/guides/embeddings",
+     "date": "n.d."
+    },
+    {
+     "title": "Pinecone Learn — OpenAI's Text Embeddings v3",
+     "url": "https://www.pinecone.io/learn/openai-embeddings-v3/",
+     "date": "2024-01-25"
+    },
+    {
+     "title": "Kusupati et al. — Matryoshka Representation Learning",
+     "url": "https://arxiv.org/abs/2205.13147",
+     "date": "2022-05-26"
+    }
+   ],
+   "caveat": "OpenAI 발표 원문(openai.com)은 접속이 막혀 직접 확인하지 못했어요. MTEB/MIRACL 숫자는 발표를 인용한 Pinecone 글로, 차원·쪽당 비용은 OpenAI 공식 문서로 확인했어요. ada-002 대비 가격 인하 배수는 1차 출처로 확인하지 못해 뺐어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "\"지난주 회의 그거\"가 안 나와요",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "사용자 문의예요. '지난주 회의 그거'를 쳤는데 0건이래요. 노트 제목은 '수요일 미팅 메모'였어요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "키워드 검색이라 '회의'랑 '미팅'이 달라서 그래요."
+    }
+   ],
+   "q": "무엇부터 제안할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "동의어 사전에 '회의=미팅'을 추가하고 끝낸다",
+     "ok": false,
+     "why": "이번 단어는 고쳐도 다음 동의어에서 또 막혀요."
+    },
+    {
+     "k": "B",
+     "t": "노트를 임베딩해서 뜻으로 찾는 의미 검색을 시험해 본다",
+     "ok": true,
+     "why": "원-핫처럼 단어만 보는 한계를 벡터가 풀어 줘요."
+    },
+    {
+     "k": "C",
+     "t": "사용자에게 정확한 제목으로 검색하라고 안내한다",
+     "ok": false,
+     "why": "사용자가 기억 못 하는 게 문제의 핵심이에요."
+    }
+   ],
+   "explain": "키워드 검색은 단어가 똑같아야 해요. 임베딩은 뜻이 가까운 글을 가까운 벡터로 만들어서 '회의'와 '미팅'을 함께 찾아요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Google ML Crash Course — Embeddings",
+     "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "노트마다? 검색할 때마다?",
+   "scene": [
+    {
+     "name": "나",
+     "role": "신입 엔지니어",
+     "text": "검색할 때마다 노트 3,000개를 다 임베딩하면 되죠?"
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "그럼 검색 한 번에 몇 초나 걸릴까요?"
+    }
+   ],
+   "q": "어떻게 설계할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "검색 때마다 전체 노트를 임베딩한다",
+     "ok": false,
+     "why": "매번 3,000번 모델을 돌려 느리고 비싸요."
+    },
+    {
+     "k": "B",
+     "t": "노트는 저장·수정 때 한 번 임베딩해 두고, 검색어만 새로 임베딩한다",
+     "ok": true,
+     "why": "SBERT가 65시간을 5초로 줄인 방식과 같아요."
+    },
+    {
+     "k": "C",
+     "t": "노트 제목만 임베딩한다",
+     "ok": false,
+     "why": "본문의 뜻을 버리게 돼요."
+    }
+   ],
+   "explain": "문서 벡터는 미리 계산하고, 질문 벡터 하나만 새로 만든 뒤 코사인으로 비교해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Reimers & Gurevych — Sentence-BERT",
+     "url": "https://arxiv.org/abs/1908.10084",
+     "date": "2019-08-27"
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "모델 고르기 첫 회의",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "영어 문서로 유명한 all-MiniLM 모델 써 보죠. 작고 빨라요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "우리 노트는 90%가 한국어예요."
+    }
+   ],
+   "q": "어떤 기준을 먼저 세울까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "작고 빠르니 일단 그 모델로 간다",
+     "ok": false,
+     "why": "영어 전용 모델은 한국어 문장 구분이 약해요."
+    },
+    {
+     "k": "B",
+     "t": "한국어를 학습한 다국어 모델 후보를 고르고 우리 노트로 비교한다",
+     "ok": true,
+     "why": "언어가 맞아야 의미 검색이 의미가 있어요."
+    },
+    {
+     "k": "C",
+     "t": "가장 차원이 큰 모델을 고른다",
+     "ok": false,
+     "why": "차원이 크다고 한국어를 잘하는 건 아니에요."
+    }
+   ],
+   "explain": "BGE-M3·multilingual-e5 같은 다국어 모델이 한국어 노트의 기본 후보예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Chen et al. — M3-Embedding (BGE-M3)",
+     "url": "https://arxiv.org/abs/2402.03216",
+     "date": "2024-02-05"
+    },
+    {
+     "title": "intfloat/multilingual-e5-large 모델 카드",
+     "url": "https://huggingface.co/intfloat/multilingual-e5-large",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "점수가 거꾸로 나와요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "결과 맨 위에 점심 메뉴 노트가 와요. 점수는 12.4예요."
+    },
+    {
+     "name": "나",
+     "role": "신입 엔지니어",
+     "text": "인덱스는 L2로 만들었어요."
+    }
+   ],
+   "q": "원인은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "모델이 잘못됐다",
+     "ok": false,
+     "why": "모델 탓을 하기 전에 정렬 방향부터 봐야 해요."
+    },
+    {
+     "k": "B",
+     "t": "L2는 거리라서 작을수록 가까운데, 큰 순서로 정렬했다",
+     "ok": true,
+     "why": "거리와 유사도를 헷갈린 전형적인 실수예요."
+    },
+    {
+     "k": "C",
+     "t": "노트가 너무 많다",
+     "ok": false,
+     "why": "개수와 정렬 방향은 상관없어요."
+    }
+   ],
+   "explain": "코사인·내적은 클수록, L2 거리는 작을수록 비슷해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Google ML Crash Course — Embeddings",
+     "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "dot이냐 cosine이냐",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "벡터DB 설정에 metric을 고르래요. dot, cosine, l2."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "우리 모델은 벡터를 정규화해서 내보내요."
+    }
+   ],
+   "q": "무엇을 고를까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "정규화돼 있으니 dot을 쓴다. cosine과 순위가 같고 계산이 가볍다",
+     "ok": true,
+     "why": "길이 1이면 코사인 = 내적이에요."
+    },
+    {
+     "k": "B",
+     "t": "l2만 정확하다",
+     "ok": false,
+     "why": "정규화된 벡터에서는 세 가지 순위가 같아요."
+    },
+    {
+     "k": "C",
+     "t": "아무거나 골라도 정규화 여부와 상관없다",
+     "ok": false,
+     "why": "정규화가 안 됐으면 dot과 cosine 결과가 달라요."
+    }
+   ],
+   "explain": "OpenAI 문서도 정규화된 임베딩은 내적으로 코사인을 구할 수 있고 유클리드 순위도 같다고 설명해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "OpenAI API docs — Embeddings guide",
+     "url": "https://developers.openai.com/api/docs/guides/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "직접 계산해 보기",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "검색어 벡터 q=[1,0,1], 노트 A=[1,1,1], B=[0,1,0]. 어느 쪽이 위에 와야 할까요?"
+    }
+   ],
+   "q": "코사인 기준 답은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "A (약 0.82)",
+     "ok": true,
+     "why": "q·A=2, |q|=√2, |A|=√3, 2/√6 ≈ 0.816이에요."
+    },
+    {
+     "k": "B",
+     "t": "B (1.0)",
+     "ok": false,
+     "why": "q·B=0이라 코사인은 0이에요."
+    },
+    {
+     "k": "C",
+     "t": "둘이 같다",
+     "ok": false,
+     "why": "A는 0.82, B는 0이에요."
+    }
+   ],
+   "explain": "q와 B는 겹치는 칸이 없어 코사인 0, A는 약 0.82예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Google ML Crash Course — Embeddings",
+     "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "코드명 'PX-7'이 안 잡혀요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "의미 검색으로 바꿨더니 'PX-7 회의'를 치면 엉뚱한 일반 회의가 나와요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "키워드 검색일 땐 잘 나왔대요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "키워드 검색을 다시 켜서 의미 검색과 함께 쓰는 방향을 검토한다",
+     "ok": true,
+     "why": "정확한 문자열에는 sparse가 강해요."
+    },
+    {
+     "k": "B",
+     "t": "더 큰 dense 모델로 바꾼다",
+     "ok": false,
+     "why": "코드명은 모델이 본 적 없는 토큰이라 크기로 잘 안 풀려요."
+    },
+    {
+     "k": "C",
+     "t": "사용자에게 코드명 대신 설명을 쓰라고 한다",
+     "ok": false,
+     "why": "사용자 습관을 바꾸라는 건 해결이 아니에요."
+    }
+   ],
+   "explain": "dense는 뜻, sparse는 정확한 단어에 강해요. BEIR에서도 BM25가 튼튼한 기준선이었어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Formal et al. — SPLADE",
+     "url": "https://arxiv.org/abs/2107.05720",
+     "date": "2021-07-12"
+    },
+    {
+     "title": "Thakur et al. — BEIR: zero-shot IR benchmark",
+     "url": "https://arxiv.org/abs/2104.08663",
+     "date": "2021-04-17"
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "ColBERT 써 볼까요?",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "ColBERT가 정확도가 좋대요. 바로 바꿀까요?"
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "노트는 지금 3,000개인데 내년엔 100만 개가 목표예요."
+    }
+   ],
+   "q": "무엇을 먼저 확인할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "정확도가 좋으니 바로 바꾼다",
+     "ok": false,
+     "why": "토큰마다 벡터라 저장 공간이 크게 늘어요."
+    },
+    {
+     "k": "B",
+     "t": "100만 개 기준 저장 공간·비용과 정확도 향상을 같이 재 본다",
+     "ok": true,
+     "why": "multi-vector의 대가는 인덱스 크기예요."
+    },
+    {
+     "k": "C",
+     "t": "ColBERT는 한국어를 못 하니 안 쓴다",
+     "ok": false,
+     "why": "근거 없는 단정이에요."
+    }
+   ],
+   "explain": "late interaction은 정확하지만 문서당 벡터가 많아요. 규모가 커지면 비용부터 계산해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Khattab & Zaharia — ColBERT",
+     "url": "https://arxiv.org/abs/2004.12832",
+     "date": "2020-04-27"
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "화이트보드 사진도 검색되나요?",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "사용자들이 회의 화이트보드 사진을 많이 붙여요. '아키텍처 그림'으로 찾고 싶대요."
+    }
+   ],
+   "q": "어떤 방식이 맞을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "사진 파일 이름으로 키워드 검색",
+     "ok": false,
+     "why": "파일 이름은 보통 IMG_1234예요."
+    },
+    {
+     "k": "B",
+     "t": "CLIP 같은 멀티모달 모델로 사진과 글을 같은 공간에 임베딩",
+     "ok": true,
+     "why": "글로 그림을 찾을 수 있어요."
+    },
+    {
+     "k": "C",
+     "t": "사진을 글 임베딩 모델에 그대로 넣는다",
+     "ok": false,
+     "why": "글 모델은 이미지를 입력으로 받지 못해요."
+    }
+   ],
+   "explain": "CLIP은 4억 개 (이미지, 글) 쌍으로 같은 공간을 학습했어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Radford et al. — CLIP: Learning Transferable Visual Models From Natural Language Supervision",
+     "url": "https://arxiv.org/abs/2103.00020",
+     "date": "2021-02-26"
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "저장 공간이 12GB래요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "3-large 3,072차원으로 노트 100만 개면 float32로 약 12GB예요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "서버 메모리가 4GB예요."
+    }
+   ],
+   "q": "가장 먼저 시도할 방법은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "서버를 3배로 키운다",
+     "ok": false,
+     "why": "가장 비싼 선택지예요."
+    },
+    {
+     "k": "B",
+     "t": "Matryoshka 차원 축소(예: 256·1,024)와 양자화를 평가셋으로 비교한다",
+     "ok": true,
+     "why": "정확도 손실을 재면서 공간을 크게 줄일 수 있어요."
+    },
+    {
+     "k": "C",
+     "t": "노트를 절반 지운다",
+     "ok": false,
+     "why": "사용자 데이터를 버리는 건 해결이 아니에요."
+    }
+   ],
+   "explain": "3-large는 256차원으로 줄여도 ada-002보다 MTEB가 높았고, int8은 4배·binary는 32배 줄여요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "OpenAI API docs — Embeddings guide",
+     "url": "https://developers.openai.com/api/docs/guides/embeddings",
+     "date": "n.d."
+    },
+    {
+     "title": "Hugging Face blog — Binary and Scalar Embedding Quantization",
+     "url": "https://huggingface.co/blog/embedding-quantization",
+     "date": "2024-03-22"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "잘랐더니 점수가 이상해요",
+   "scene": [
+    {
+     "name": "나",
+     "role": "신입 엔지니어",
+     "text": "벡터를 앞 256칸만 잘라 저장했어요. 근데 dot 점수가 0.3~0.5로 낮아졌어요."
+    }
+   ],
+   "q": "무엇을 빼먹었을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "자른 뒤 다시 정규화하기",
+     "ok": true,
+     "why": "길이가 1보다 작아져 내적 값이 줄었어요."
+    },
+    {
+     "k": "B",
+     "t": "모델을 바꾸기",
+     "ok": false,
+     "why": "모델 문제가 아니에요."
+    },
+    {
+     "k": "C",
+     "t": "차원을 다시 늘리기",
+     "ok": false,
+     "why": "원인은 정규화예요."
+    }
+   ],
+   "explain": "직접 자른 벡터는 길이가 1이 아니라서 다시 정규화해야 코사인 = 내적이 성립해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "OpenAI API docs — Embeddings guide",
+     "url": "https://developers.openai.com/api/docs/guides/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "e5로 바꿨는데 더 나빠졌어요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "multilingual-e5로 바꿨는데 이전 모델보다 점수가 낮아요."
+    },
+    {
+     "name": "나",
+     "role": "신입 엔지니어",
+     "text": "노트도 검색어도 그냥 원문 그대로 넣었어요."
+    }
+   ],
+   "q": "가장 의심할 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "e5는 한국어를 못 한다",
+     "ok": false,
+     "why": "다국어 모델이에요."
+    },
+    {
+     "k": "B",
+     "t": "'query: '·'passage: ' 프리픽스를 빼먹었다",
+     "ok": true,
+     "why": "모델 카드가 모든 입력에 붙이라고 해요."
+    },
+    {
+     "k": "C",
+     "t": "GPU가 느리다",
+     "ok": false,
+     "why": "속도와 점수는 다른 문제예요."
+    }
+   ],
+   "explain": "비대칭 검색 모델은 프리픽스가 없으면 에러 없이 품질만 떨어져요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "intfloat/multilingual-e5-large 모델 카드",
+     "url": "https://huggingface.co/intfloat/multilingual-e5-large",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "리더보드 1등으로 가요?",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "MTEB 평균 1등 모델이 있어요. 70억 파라미터예요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "검색어 응답은 200ms 안이어야 해요."
+    }
+   ],
+   "q": "어떻게 결정할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "평균 1등이니 바로 쓴다",
+     "ok": false,
+     "why": "평균은 우리 태스크·언어·지연 조건을 반영하지 않아요."
+    },
+    {
+     "k": "B",
+     "t": "한국어·Retrieval 필터로 후보 3개를 고르고, 우리 노트 질문으로 품질과 지연을 같이 잰다",
+     "ok": true,
+     "why": "MTEB 결론처럼 모든 데 1등인 모델은 없어요."
+    },
+    {
+     "k": "C",
+     "t": "가장 작은 모델을 쓴다",
+     "ok": false,
+     "why": "품질을 안 재고 크기만 보면 안 돼요."
+    }
+   ],
+   "explain": "리더보드는 후보를 줄이는 도구고, 결정은 우리 데이터 평가로 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Muennighoff et al. — MTEB: Massive Text Embedding Benchmark",
+     "url": "https://arxiv.org/abs/2210.07316",
+     "date": "2022-10-13"
+    },
+    {
+     "title": "MTEB Leaderboard (Hugging Face Space)",
+     "url": "https://huggingface.co/spaces/mteb/leaderboard",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "재색인 비용 보고",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "모델을 바꾸면 노트 100만 개를 다시 임베딩해야 하죠? 비용 얼마예요?"
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "노트 평균 500토큰이에요."
+    }
+   ],
+   "q": "3-small 기준 대략 얼마로 보고할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "약 10달러",
+     "ok": true,
+     "why": "5억 토큰 ÷ (62,500쪽 × 800토큰 = 1달러당 5,000만 토큰) = 약 10달러예요."
+    },
+    {
+     "k": "B",
+     "t": "약 1,000달러",
+     "ok": false,
+     "why": "자릿수가 두 개 틀렸어요."
+    },
+    {
+     "k": "C",
+     "t": "공짜",
+     "ok": false,
+     "why": "API는 토큰마다 비용이 있어요."
+    }
+   ],
+   "explain": "OpenAI 문서의 '1달러당 62,500쪽(800토큰/쪽)'으로 계산하면 5억 토큰은 약 10달러예요. 시간·속도 제한도 같이 봐요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "OpenAI API docs — Embeddings guide",
+     "url": "https://developers.openai.com/api/docs/guides/embeddings",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "새 모델과 옛 벡터가 섞였어요",
+   "scene": [
+    {
+     "name": "나",
+     "role": "신입 엔지니어",
+     "text": "새 모델로 바꾼 뒤 새 노트만 새 모델로 임베딩했어요. 옛 노트는 그대로예요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "옛 노트가 검색에 거의 안 나온대요."
+    }
+   ],
+   "q": "어떻게 고칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "옛 노트도 새 모델로 다시 임베딩하고, 벡터마다 model 칼럼을 둔다",
+     "ok": true,
+     "why": "공간이 다른 벡터는 비교할 수 없어요."
+    },
+    {
+     "k": "B",
+     "t": "옛 노트 점수에 1.2를 곱한다",
+     "ok": false,
+     "why": "공간이 달라 보정으로 해결되지 않아요."
+    },
+    {
+     "k": "C",
+     "t": "옛 노트는 키워드 검색으로만 찾게 한다",
+     "ok": false,
+     "why": "임시방편이고 사용자 경험이 갈라져요."
+    }
+   ],
+   "explain": "모델 교체는 전체 재색인이에요. model·dim을 함께 저장하면 섞임을 바로 발견해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Pinecone Learn — What are Vector Embeddings",
+     "url": "https://www.pinecone.io/learn/vector-embeddings/",
+     "date": "n.d."
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "3Blue1Brown — Transformers, the tech behind LLMs (Deep Learning Ch.5)",
+   "url": "https://www.youtube.com/watch?v=wjZofJX0v4M",
+   "min": 27,
+   "lang": "en",
+   "what": "단어가 고차원 벡터가 되고, 방향이 뜻을 담는 모습을 그림으로 봐요(임베딩 파트).",
+   "day": 1
+  },
+  {
+   "id": "l2",
+   "title": "Google ML Crash Course — Embeddings",
+   "url": "https://developers.google.com/machine-learning/crash-course/embeddings",
+   "min": 45,
+   "lang": "en",
+   "what": "원-핫에서 임베딩으로 가는 이유와 거리 계산을 연습해요.",
+   "day": 1
+  },
+  {
+   "id": "l3",
+   "title": "Sentence-Transformers Quickstart",
+   "url": "https://sbert.net/docs/quickstart.html",
+   "min": 30,
+   "lang": "en",
+   "what": "문장을 벡터로 만들고 유사도를 계산하는 코드를 직접 돌려 봐요.",
+   "day": 2
+  },
+  {
+   "id": "l4",
+   "title": "Pinecone Learn — What are Vector Embeddings",
+   "url": "https://www.pinecone.io/learn/vector-embeddings/",
+   "min": 15,
+   "lang": "en",
+   "what": "임베딩이 검색·추천에 어떻게 쓰이는지 한 번에 훑어요.",
+   "day": 3
+  },
+  {
+   "id": "l5",
+   "title": "Hugging Face — Binary and Scalar Embedding Quantization",
+   "url": "https://huggingface.co/blog/embedding-quantization",
+   "min": 20,
+   "lang": "en",
+   "what": "int8·binary 양자화로 저장 공간을 4배·32배 줄이는 방법과 rescoring을 봐요.",
+   "day": 4
+  },
+  {
+   "id": "l6",
+   "title": "Hugging Face — MTEB 블로그",
+   "url": "https://huggingface.co/blog/mteb",
+   "min": 15,
+   "lang": "en",
+   "what": "MTEB 리더보드의 태스크 구성과 읽는 법을 익혀요.",
+   "day": 5
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "'메모리' 앱의 임베딩 모델 선택 메모(검색팀 #01)를 1쪽으로 써 보세요. 노트 3,000개(내년 목표 100만 개)를 뜻으로 찾기 위해 어떤 모델·차원·유사도를 쓸지 정해요.",
+  "template": [
+   "문제: '지난주 회의 그거'가 키워드 검색에 안 걸린 사례",
+   "후보 모델 2~3개 (다국어 · 한국어 Retrieval 점수 · 크기 · 최대 토큰)",
+   "평가 방법: 우리 노트 질문 30~50개, BM25 기준선과 비교",
+   "유사도와 정규화: cosine / dot / l2 중 무엇을, 왜",
+   "차원과 저장 공간: 3,000개와 100만 개 기준 계산 (Matryoshka · 양자화 포함)",
+   "비용: 전체 임베딩 · 재색인 비용과 검색어 지연",
+   "프리픽스 등 모델 카드 규칙",
+   "모델 교체 계획: model 칼럼, 이중 인덱스, 롤백"
+  ]
+ },
+ "check": [
+  "Story numbers (3,000 notes, 1,000,000 target, 500 tokens/note, 4GB server, 200ms) are fictional 메모리 values.",
+  "MTEB 8 task types / 58 datasets / 112 languages / 33 models verified on arXiv 2210.07316 abstract; MMTEB 500+ tasks / 250+ languages and multilingual-e5-large-instruct (560M) verified on arXiv 2502.13595.",
+  "text-embedding-3 dims 1536/3072, 8192 tokens, 62,500 / 9,615 pages per dollar, 256-dim large beats ada-002 verified on OpenAI docs; MTEB 61.0/62.3/64.6 and MIRACL 31.4/44.0/54.9 from Pinecone citing OpenAI.",
+  "SBERT 65h→~5s, BEIR 18 datasets, CLIP 400M pairs, MRL up to 14x, HF quantization 4x/32x and ~96%/~92.5% verified from primary abstracts/blog.",
+  "Dropped: ada-002 price and '5x cheaper' claim (openai.com announcement returned 403)."
+ ]
+}

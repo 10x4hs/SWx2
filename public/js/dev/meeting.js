@@ -1,7 +1,6 @@
 // 개발 흐름 — 회의실: 그날의 회의 장면 3개(지난 주 내용과 섞인 문제 포함). 대표로서 하나 고르면 종이 위에 해설이 열려요.
 import { $$, esc, toast } from "../util.js";
-import { api } from "../api.js";
-import { moduleDoc, state, doneSet, md, srcList, topbar } from "./data.js";
+import { moduleDoc, state, doneSet, md, srcList, topbar, C, cApi } from "./data.js";
 
 export function mountMeeting(host, ctx, modId, dayArg) {
   let alive = true;
@@ -14,9 +13,9 @@ export function mountMeeting(host, ctx, modId, dayArg) {
     host.innerHTML = `${topbar("")}
       <div class="dv-wrap" style="max-width:1040px;padding-top:40px">
         <div class="m acc">회의실 · ${esc(doc.no)} ${esc(doc.title)} · ${day}일째</div>
-        <h1 style="margin:12px 0 10px">대표로서 무엇을 정할까요?</h1>
-        <p class="kr" style="font-size:16px;line-height:1.75;color:var(--dv-sub);margin:0">두런의 회의 장면이에요. 보기를 고르기 전에 이유를 한 줄 떠올려 보세요. <span class="dim">(섞어 풀기 — 지난 주 내용도 나와요 · Rohrer &amp; Taylor, 2007)</span></p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px" role="group" aria-label="날">${[1, 2, 3, 4, 5].map((d) => `<a class="dv-chip${d === day ? " on" : ""}" style="display:inline-flex;align-items:center;text-decoration:none" href="#/dev/${modId}/practice/${d}"${d === day ? ' aria-current="page"' : ""}>${d}일</a>`).join("")}</div>
+        <h1 style="margin:12px 0 10px">${C.role}로서 무엇을 고를까요?</h1>
+        <p class="kr" style="font-size:16px;line-height:1.75;color:var(--dv-sub);margin:0">${C.sceneOf} 회의 장면이에요. 보기를 고르기 전에 이유를 한 줄 떠올려 보세요. <span class="dim">(섞어 풀기 — 지난 주 내용도 나와요 · Rohrer &amp; Taylor, 2007)</span></p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px" role="group" aria-label="날">${[1, 2, 3, 4, 5].map((d) => `<a class="dv-chip${d === day ? " on" : ""}" style="display:inline-flex;align-items:center;text-decoration:none" href="${C.base}/${modId}/practice/${d}"${d === day ? ' aria-current="page"' : ""}>${d}일</a>`).join("")}</div>
         ${list.map((p) => `<section class="dv-sec" style="padding-top:48px" data-p="${esc(p.id)}">
           <div class="m">${esc(p.id.toUpperCase())}${p.mixed ? " · 지난 주와 섞임" : ""}${done.has(modId + "/" + p.id) ? " · 풀었음" : ""}</div>
           <h2 style="margin:8px 0 12px">${esc(p.title)}</h2>
@@ -25,7 +24,7 @@ export function mountMeeting(host, ctx, modId, dayArg) {
           <div style="display:flex;flex-direction:column;gap:10px">${p.options.map((o, i) => `<button class="dv-mopt" data-o="${i}"><span class="m" style="font-size:14px;color:var(--dv-ink)">${esc(o.k || "ABCD"[i])}</span><span>${md(o.t)}</span></button>`).join("")}</div>
           <div class="dv-paper" hidden style="margin-top:24px;padding:32px 36px" data-ex></div>
         </section>`).join("")}
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:48px"><span style="display:inline-flex;gap:10px;flex-wrap:wrap"><a class="dv-btn ghost" href="#/dev/${modId}">이 주로</a><a class="dv-btn ghost" href="#/dev/ask/${modId}">AI에게 묻기</a></span>${day < 5 ? `<a class="dv-btn ghost" href="#/dev/${modId}/practice/${day + 1}">${day + 1}일 회의실 →</a>` : ""}</div>
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:48px"><span style="display:inline-flex;gap:10px;flex-wrap:wrap"><a class="dv-btn ghost" href="${C.base}/${modId}">이 주로</a><a class="dv-btn ghost" href="${C.base}/ask/${modId}">AI에게 묻기</a></span>${day < 5 ? `<a class="dv-btn ghost" href="${C.base}/${modId}/practice/${day + 1}">${day + 1}일 회의실 →</a>` : ""}</div>
       </div>`;
     $$("[data-p]", host).forEach((sec) => sec.addEventListener("click", async (e) => {
       const b = e.target.closest(".dv-mopt"); if (!b || sec.dataset.answered) return;
@@ -38,7 +37,7 @@ export function mountMeeting(host, ctx, modId, dayArg) {
         ${p.options.filter((x, j) => j !== i).map((x) => `<p style="font-size:15px"><b>${esc(x.k)}</b> ${md(x.why)}</p>`).join("")}
         <p>${md(p.explain)}</p>
         ${p.sources?.length ? `<p class="dv-src" style="margin:12px 0 0">출처 · ${srcList(p.sources)}</p>` : ""}`;
-      try { const s = await api.devDone(modId, p.id, "problem", ok ? 1 : 0, 1); done = doneSet(s); } catch (x) { toast(x.message || "기록하지 못했어요.", "err"); }
+      try { const s = await cApi.done(modId, p.id, "problem", ok ? 1 : 0, 1); done = doneSet(s); } catch (x) { toast(x.message || "기록하지 못했어요.", "err"); }
     }));
   })().catch(() => { if (alive) host.innerHTML = `${topbar("")}<p class="dv-err">불러오지 못했어요.</p>`; });
   return () => { alive = false; };

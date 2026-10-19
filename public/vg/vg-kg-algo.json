@@ -1,0 +1,2286 @@
+{
+ "id": "vg-kg-algo",
+ "no": "07",
+ "title": "지식그래프 · 그래프 알고리즘 · GNN",
+ "short": "KG·알고리즘",
+ "q": "노트에서 관계를 뽑아 그래프로 만들면 뭘 계산할 수 있어요?",
+ "sub": "엔티티 추출 · PageRank · Leiden · node2vec · GCN",
+ "doc": "메모리 지식그래프 설계서 (KG-v1)",
+ "story": {
+  "title": "“누가 Orion을 맡았는지는 왜 안 나와요?”",
+  "size": 3000,
+  "body": [
+   "(가상 이야기) '메모리' 팀은 06장에서 사람·프로젝트·회의를 그래프로 그려 봤어요. 그런데 그건 손으로 만든 작은 그림이었어요. 실제 노트는 3,000개이고, 관계는 글 속에 숨어 있어요.",
+   "리드 서윤이 말해요. \"벡터 검색은 '비슷한 글'은 잘 찾는데, 'Orion 담당자'나 '올해 우리 팀 주제 묶음'은 못 찾아요.\" 데이터 담당 민재는 LLM으로 노트에서 엔티티와 관계를 뽑아 보자고 해요. 첫 시험에서 '민재' 노드가 세 개 나왔어요.",
+   "신입인 나는 이번 주에 정해야 해요. 무엇을 어떻게 뽑을지, 같은 사람을 어떻게 합칠지, 그리고 그래프에서 무엇을 계산할지(중요 노트, 주제 묶음, 경로). 금요일까지 지식그래프 설계서(KG-v1)로 남겨요."
+  ]
+ },
+ "goals": [
+  "LLM 구조화 출력으로 엔티티·관계를 뽑고, 엔티티 해소와 출처 저장까지 설계할 수 있어요.",
+  "PageRank·betweenness·Louvain/Leiden·최단경로를 언제 쓰는지 고를 수 있어요.",
+  "node2vec·GCN·GraphSAGE가 '이웃 정보를 모은다'는 걸 작은 숫자로 설명할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "지식그래프는 '사실'을 점과 선으로 저장해요",
+   "lead": "지식그래프(KG)는 \"민재 —담당→ 검색 프로젝트\" 같은 사실을 (주어, 관계, 목적어) 세 칸짜리 묶음으로 모아 둔 그래프예요.",
+   "idea": [
+    "노드(점)는 사람·프로젝트·회의 같은 '것', 엣지(선)는 '담당한다', '참석했다' 같은 관계예요.",
+    "세 칸 묶음을 트리플(triple)이라고 불러요. 노트 10개에서 트리플 30개가 나오면, 그 30개가 곧 작은 지식그래프예요.",
+    "06장에서 우리가 손으로 그린 그래프를, 이번 장에서는 노트 글에서 자동으로 뽑아 만들어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 글",
+     "t": "\"서윤이 월요일 회의에서 검색 개편을 맡겼다\""
+    },
+    {
+     "k": "2 · 뽑기",
+     "t": "(서윤, 맡겼다, 검색 개편), (검색 개편, 논의된 곳, 월요일 회의)"
+    },
+    {
+     "k": "3 · 쌓기",
+     "t": "같은 이름은 같은 노드로 이어 붙임"
+    },
+    {
+     "k": "4 · 묻기",
+     "t": "\"검색 개편과 연결된 사람은?\""
+    }
+   ],
+   "hear": [
+    "\"그건 벡터로 말고 KG로 풀자, 관계 질문이잖아.\"",
+    "\"트리플 몇 개 나왔어요?\""
+   ],
+   "ask": [
+    "우리가 답하려는 질문이 '비슷한 글 찾기'인가요, '누가 무엇과 연결됐나'인가요?",
+    "노드 종류(사람·프로젝트·회의)를 몇 개로 정할까요?"
+   ],
+   "mine": "내 노트 앱에서는 노트마다 등장한 사람·프로젝트를 노드로, '같은 노트에 나옴'과 '담당' 같은 관계를 엣지로 두면 돼요.",
+   "deep": [
+    "Hogan 등의 서베이는 지식그래프를 \"실세계 지식을 그래프로 모아 전달하려는 것\"으로 넓게 정의하고, 노드=엔티티, 엣지=관계로 설명해요."
+   ],
+   "recall": {
+    "q": "트리플의 세 칸은?",
+    "a": "주어(head) · 관계(relation) · 목적어(tail)"
+   },
+   "quiz": [
+    {
+     "q": "\"민재 —담당→ 검색\"에서 엣지는?",
+     "options": [
+      "민재",
+      "담당",
+      "검색"
+     ],
+     "answer": 1,
+     "why": "관계가 엣지예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Hogan et al. — Knowledge Graphs (survey)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "NER은 이름을, 관계 추출은 이름 사이 선을 찾아요",
+   "lead": "개체명 인식(NER)은 글에서 사람·조직·날짜 같은 이름을 찾고, 관계 추출(RE)은 그 이름들 사이에 어떤 관계가 있는지 찾아요.",
+   "idea": [
+    "\"민재가 Orion 프로젝트 회의를 금요일로 옮겼다\" → NER: 민재(사람), Orion(프로젝트), 금요일(날짜).",
+    "RE: (민재, 일정변경, Orion 회의), (Orion 회의, 날짜, 금요일).",
+    "예전에는 둘을 따로 학습한 모델로 했지만, 요즘은 LLM 한 번 호출로 둘 다 뽑는 경우가 많아요."
+   ],
+   "steps": [
+    {
+     "k": "1 · NER",
+     "t": "이름에 밑줄 + 종류 붙이기"
+    },
+    {
+     "k": "2 · RE",
+     "t": "두 이름 사이 관계 고르기"
+    },
+    {
+     "k": "3 · 트리플",
+     "t": "(주어, 관계, 목적어)로 저장"
+    }
+   ],
+   "hear": [
+    "\"NER은 되는데 관계가 너무 엉성해요.\"",
+    "\"Orion을 사람으로 잡았어요.\""
+   ],
+   "ask": [
+    "우리 노트에 꼭 필요한 엔티티 종류는 무엇인가요?",
+    "관계 이름 목록을 미리 정해 두나요?"
+   ],
+   "mine": "내 노트 1,000개에 NER만 돌려도 '자주 나오는 사람·프로젝트' 목록이 생겨요.",
+   "deep": [
+    "Pan 등의 로드맵은 LLM을 KG 구축(엔티티·관계 추출)에 쓰는 흐름을 'LLM-augmented KG'로 정리해요."
+   ],
+   "recall": {
+    "q": "NER과 RE의 차이는?",
+    "a": "NER = 이름 찾기, RE = 이름 사이 관계 찾기"
+   },
+   "quiz": [
+    {
+     "q": "\"금요일\"을 날짜로 표시하는 일은?",
+     "options": [
+      "NER",
+      "관계 추출",
+      "엔티티 해소"
+     ],
+     "answer": 0,
+     "why": "이름에 종류를 붙이는 일이 NER이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Pan et al. — Unifying LLMs and Knowledge Graphs: A Roadmap",
+     "url": "https://arxiv.org/abs/2306.08302",
+     "date": "2023"
+    },
+    {
+     "title": "Hogan et al. — Knowledge Graphs (survey)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020"
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "LLM에게 JSON 틀을 주고 뽑게 해요",
+   "lead": "LLM에게 \"이 스키마에 맞는 JSON으로만 답해\"라고 틀을 주면, 엔티티와 관계를 프로그램이 바로 읽을 수 있는 형태로 받아요.",
+   "idea": [
+    "자유 문장으로 받으면 파싱이 깨져요. JSON 스키마(구조화 출력)를 강제하면 키 빠짐이 줄어요.",
+    "OpenAI의 Structured Outputs는 응답이 주어진 JSON Schema를 따르도록 해 줘요. 다른 모델도 비슷한 기능이 있어요.",
+    "그래도 내용(누가 무엇을 했는지)이 맞는지는 별개예요. 형식이 맞는다고 사실이 맞는 건 아니에요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 스키마",
+     "t": "entities[], relations[] 정의"
+    },
+    {
+     "k": "2 · 호출",
+     "t": "노트 한 개 + 스키마"
+    },
+    {
+     "k": "3 · 검사",
+     "t": "없는 엔티티를 가리키는 관계는 버림"
+    }
+   ],
+   "hear": [
+    "\"스키마 강제했더니 파싱 에러는 0인데 관계가 틀려요.\"",
+    "\"청크 크기를 줄이니 더 많이 뽑혀요.\""
+   ],
+   "ask": [
+    "형식 검증과 내용 검증을 따로 하나요?",
+    "노트를 얼마나 잘라서(청크) 넣나요?"
+   ],
+   "mine": "내 앱은 노트 저장 때 LLM에 한 번 보내 엔티티 JSON을 받아 두면 돼요.",
+   "deep": [
+    "GraphRAG 기본 파이프라인도 텍스트 조각마다 LLM으로 엔티티·관계를 뽑고 설명을 붙여요."
+   ],
+   "recall": {
+    "q": "구조화 출력이 보장하는 것과 못 하는 것은?",
+    "a": "형식(JSON 스키마)은 보장, 사실 정확성은 보장 못 함"
+   },
+   "quiz": [
+    {
+     "q": "스키마를 강제하면 사라지는 문제는?",
+     "options": [
+      "관계가 틀리는 문제",
+      "JSON 파싱 실패",
+      "엔티티 중복"
+     ],
+     "answer": 1,
+     "why": "형식 문제만 줄어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "OpenAI — Structured Outputs guide",
+     "url": "https://platform.openai.com/docs/guides/structured-outputs",
+     "date": "n.d."
+    },
+    {
+     "title": "Microsoft GraphRAG — Default dataflow",
+     "url": "https://microsoft.github.io/graphrag/index/default_dataflow/",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "schema = {\"entities\": [{\"name\": str, \"type\": \"PERSON|PROJECT|MEETING\"}],\n          \"relations\": [{\"src\": str, \"rel\": str, \"dst\": str}]}\nout = llm(note_text, response_schema=schema)\nfor r in out[\"relations\"]:\n    graph.add_edge(r[\"src\"], r[\"dst\"], rel=r[\"rel\"])",
+    "read": "읽는 법: 틀(schema)을 주고 LLM이 채운 관계를 하나씩 그래프 엣지로 넣어요. llm(...)은 쓰는 모델의 API로 바꿔 끼우는 자리예요."
+   }
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "'민재', '김민재', 'MJ'는 한 사람이에요",
+   "lead": "엔티티 해소(entity resolution)는 이름이 다르게 적힌 같은 대상을 하나의 노드로 합치는 일이에요.",
+   "idea": [
+    "이걸 안 하면 '민재' 노드 3개가 생기고, 민재의 연결이 3조각으로 나뉘어 중요도가 실제보다 작게 나와요.",
+    "방법: 소문자·공백 정리 → 별칭 표 → 이름 임베딩 코사인 유사도 → 애매하면 LLM이나 사람이 확인.",
+    "합치기는 쉽고 되돌리기는 어려워요. 동명이인(다른 팀 김민재)을 잘못 합치면 그래프가 거짓말을 해요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 정규화",
+     "t": "\"MJ \" → \"mj\""
+    },
+    {
+     "k": "2 · 후보",
+     "t": "이름 유사도 0.9 이상 묶기"
+    },
+    {
+     "k": "3 · 확인",
+     "t": "같은 팀·같은 회의에 나오나 봄"
+    },
+    {
+     "k": "4 · 병합",
+     "t": "별칭은 노드 속성으로 남김"
+    }
+   ],
+   "hear": [
+    "\"민재가 셋이에요.\"",
+    "\"자동 병합 임계값 너무 낮췄어요.\""
+   ],
+   "ask": [
+    "잘못 합친 걸 되돌릴 수 있게 원래 이름을 남기나요?",
+    "동명이인은 무엇으로 구분하나요?"
+   ],
+   "mine": "내 앱에서는 사람 노드에 aliases 목록을 두고, 새 이름이 오면 먼저 별칭 표에서 찾아요.",
+   "deep": [
+    "KG 서베이는 같은 실체를 가리키는 노드를 찾는 일을 entity resolution/linking으로 따로 다뤄요."
+   ],
+   "recall": {
+    "q": "엔티티 해소를 안 하면 생기는 일은?",
+    "a": "같은 사람이 여러 노드로 쪼개져 연결·중요도가 왜곡돼요"
+   },
+   "quiz": [
+    {
+     "q": "병합에서 더 위험한 실수는?",
+     "options": [
+      "같은 사람을 못 합침",
+      "다른 사람을 합쳐 버림",
+      "둘 다 똑같음"
+     ],
+     "answer": 1,
+     "why": "잘못 합치면 틀린 관계가 생기고 되돌리기 어려워요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Hogan et al. — Knowledge Graphs (survey)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020"
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "스키마를 고정할까, 자유롭게 뽑을까",
+   "lead": "관계 이름을 미리 정해 두면(고정) 깔끔하지만 놓치는 게 생기고, 자유롭게 뽑으면 많이 잡지만 '담당', '맡음', '책임' 같은 중복 관계가 쏟아져요.",
+   "idea": [
+    "고정 스키마 예: PERSON, PROJECT, MEETING 3종 + OWNS, ATTENDED, MENTIONS 3종.",
+    "자유 추출은 탐색 초기에 좋아요. 쌓인 관계 이름을 세서 상위 10개를 스키마로 굳히는 방법이 흔해요.",
+    "질문이 정해져 있으면 고정, 무엇을 물을지 모르면 자유로 시작해요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 자유로 1주",
+     "t": "관계 이름 빈도 세기"
+    },
+    {
+     "k": "2 · 정리",
+     "t": "비슷한 이름 합치기"
+    },
+    {
+     "k": "3 · 고정",
+     "t": "상위 관계만 허용"
+    }
+   ],
+   "hear": [
+    "\"관계 종류가 400개예요.\"",
+    "\"OWNS랑 RESPONSIBLE_FOR 합치죠.\""
+   ],
+   "ask": [
+    "우리가 자주 하는 질문 5개에 필요한 관계는 무엇인가요?"
+   ],
+   "mine": "내 앱은 사람·프로젝트·회의 3종과 관계 4종만 허용하고, 나머지는 '기타'로 받아요.",
+   "deep": [
+    "Pan 등은 LLM 기반 KG 구축에서 스키마 정의와 정규화를 주요 과제로 꼽아요."
+   ],
+   "recall": {
+    "q": "자유 추출의 단점은?",
+    "a": "같은 뜻의 관계 이름이 여러 개 생겨 질의가 어려워져요"
+   },
+   "quiz": [
+    {
+     "q": "물을 질문이 정해져 있을 때 맞는 쪽은?",
+     "options": [
+      "고정 스키마",
+      "자유 추출"
+     ],
+     "answer": 0,
+     "why": "필요한 관계만 정확히 뽑는 게 나아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Pan et al. — Unifying LLMs and Knowledge Graphs: A Roadmap",
+     "url": "https://arxiv.org/abs/2306.08302",
+     "date": "2023"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "모든 엣지에 '어느 노트에서 왔나'를 붙여요",
+   "lead": "출처(provenance)는 각 트리플이 어떤 노트의 어느 문장에서 나왔는지 기록한 것이에요. 그래야 틀린 사실을 추적하고 지울 수 있어요.",
+   "idea": [
+    "엣지 속성에 note_id, 문장 위치, 추출 시각, 모델 이름을 넣어요.",
+    "노트가 지워지면 그 노트에서 나온 엣지도 지워야 해요. 출처가 없으면 못 지워요.",
+    "05장 RAG처럼, 그래프 답변도 \"이 근거 노트\"를 보여 줘야 믿을 수 있어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 추출",
+     "t": "관계 + note_id 함께 저장"
+    },
+    {
+     "k": "2 · 답변",
+     "t": "엣지의 노트를 근거로 표시"
+    },
+    {
+     "k": "3 · 삭제",
+     "t": "노트 삭제 시 엣지도 정리"
+    }
+   ],
+   "hear": [
+    "\"이 관계 어디서 나온 거예요?\"",
+    "\"노트 지웠는데 그래프엔 남아 있어요.\""
+   ],
+   "ask": [
+    "엣지마다 근거 노트를 클릭해 볼 수 있나요?",
+    "모델을 바꾸면 예전 추출을 다시 돌리나요?"
+   ],
+   "mine": "내 앱 그래프 엣지에 source_note를 두면, 엣지를 누를 때 원문 노트가 열려요.",
+   "deep": [
+    "GraphRAG 파이프라인도 추출한 엔티티·관계를 원래 텍스트 조각(text unit)과 연결해 둬요."
+   ],
+   "recall": {
+    "q": "provenance를 저장하는 이유 두 가지는?",
+    "a": "근거 보여 주기, 노트 삭제·수정 시 엣지 정리"
+   },
+   "quiz": [
+    {
+     "q": "노트가 삭제됐을 때 출처가 있으면?",
+     "options": [
+      "그 노트 엣지만 정확히 지울 수 있다",
+      "그래프 전체를 다시 만들어야 한다"
+     ],
+     "answer": 0,
+     "why": "출처가 곧 삭제 열쇠예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Microsoft GraphRAG — Default dataflow",
+     "url": "https://microsoft.github.io/graphrag/index/default_dataflow/",
+     "date": "n.d."
+    },
+    {
+     "title": "Hogan et al. — Knowledge Graphs (survey)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020"
+    }
+   ],
+   "code": {
+    "text": "MATCH (a)-[r]->(b)\nWHERE r.source_note = 'note_812'\nDELETE r",
+    "read": "읽는 법: (Cypher) note_812에서 나온 관계만 찾아서 지워요."
+   }
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "연결이 많은 노드, 길목에 있는 노드",
+   "lead": "중심성은 '누가 중요한가'를 숫자로 재는 방법이에요. degree는 연결 수, betweenness는 다른 노드들 사이 최단경로에 얼마나 자주 끼는지예요.",
+   "idea": [
+    "예: 팀 5명 A–B, A–C, A–D, D–E. A의 degree는 3이에요.",
+    "B에서 E로 가려면 B–A–D–E. A와 D가 길목이라 betweenness가 높아요. E는 0이에요.",
+    "degree가 낮아도 betweenness가 높은 사람은 두 팀을 잇는 '다리'예요. 그 사람이 빠지면 정보가 끊겨요."
+   ],
+   "steps": [
+    {
+     "k": "1 · degree",
+     "t": "이웃 수 세기"
+    },
+    {
+     "k": "2 · betweenness",
+     "t": "모든 쌍의 최단경로 중 몇 개를 지나나"
+    },
+    {
+     "k": "3 · 해석",
+     "t": "허브 vs 다리"
+    }
+   ],
+   "hear": [
+    "\"민재가 betweenness 1등이에요. 휴가 가면 큰일이네.\""
+   ],
+   "ask": [
+    "우리는 '많이 연결된 사람'을 찾나요, '다리 역할'을 찾나요?"
+   ],
+   "mine": "내 노트 그래프에서 betweenness가 높은 노트는 두 주제를 잇는 노트예요.",
+   "deep": [
+    "CS224W 초반 강의가 degree·betweenness·closeness 중심성을 비교해요."
+   ],
+   "recall": {
+    "q": "betweenness가 높은 노드의 뜻은?",
+    "a": "여러 노드 쌍 사이의 길목(다리)에 있어요"
+   },
+   "quiz": [
+    {
+     "q": "A–B, A–C, A–D, D–E에서 E의 betweenness는?",
+     "options": [
+      "0",
+      "1",
+      "3"
+     ],
+     "answer": 0,
+     "why": "E는 끝에 있어 누구의 경로에도 끼지 않아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Stanford CS224W",
+     "url": "https://web.stanford.edu/class/cs224w/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "PageRank: 중요한 이웃이 가리키면 나도 중요해요",
+   "lead": "PageRank는 \"링크를 따라 무작위로 걷는 사람이 오래 머무는 곳\"을 중요하다고 봐요. 연결 수뿐 아니라 누가 나를 가리키는지가 중요해요.",
+   "idea": [
+    "무작위 산책자는 확률 d로 링크를 따라가고, 1−d로 아무 노드로 순간이동해요. Brin & Page 논문은 d를 보통 0.85로 둔다고 썼어요.",
+    "작은 예: A→B, B→C, C→A, D→C. 세 번 나눠 주기를 반복하면 C 점수가 가장 커요(두 곳이 가리킴).",
+    "노트 그래프에서는 '많이 인용되는 핵심 노트' 찾기에 써요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 시작",
+     "t": "모든 노드 1/N"
+    },
+    {
+     "k": "2 · 나누기",
+     "t": "내 점수를 나가는 링크 수로 나눠 전달"
+    },
+    {
+     "k": "3 · 섞기",
+     "t": "0.85 × 받은 점수 + 0.15/N"
+    },
+    {
+     "k": "4 · 반복",
+     "t": "값이 안 바뀔 때까지"
+    }
+   ],
+   "hear": [
+    "\"PageRank 상위 20개 노트를 홈에 띄우죠.\"",
+    "\"damping 0.85 기본값 그대로예요.\""
+   ],
+   "ask": [
+    "엣지 방향이 의미가 있나요(인용 vs 같이 나옴)?",
+    "오래된 노트가 유리해지는 건 괜찮나요?"
+   ],
+   "mine": "내 앱의 [[링크]]로 PageRank를 돌리면 '허브 노트' 순위가 나와요.",
+   "deep": [
+    "NetworkX pagerank의 기본 alpha(=d)도 0.85예요."
+   ],
+   "recall": {
+    "q": "PageRank의 1−d 부분은 무엇을 뜻하나요?",
+    "a": "무작위 노드로 순간이동하는 확률"
+   },
+   "quiz": [
+    {
+     "q": "PageRank가 degree와 다른 점은?",
+     "options": [
+      "연결 수만 셈",
+      "가리키는 노드의 중요도도 반영",
+      "방향을 무시"
+     ],
+     "answer": 1,
+     "why": "중요한 노드가 가리키면 더 많이 받아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Brin & Page — The Anatomy of a Large-Scale Hypertextual Web Search Engine",
+     "url": "http://infolab.stanford.edu/pub/papers/google.pdf",
+     "date": "1998"
+    },
+    {
+     "title": "NetworkX — pagerank",
+     "url": "https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.link_analysis.pagerank_alg.pagerank.html",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "import networkx as nx\nG = nx.DiGraph([('A','B'),('B','C'),('C','A'),('D','C')])\nprint(nx.pagerank(G, alpha=0.85))",
+    "read": "읽는 법: 방향 그래프 4개 노드에 PageRank를 돌려요. C가 가장 높게 나와요."
+   }
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "모듈러리티: 끼리끼리 얼마나 잘 뭉쳤나",
+   "lead": "모듈러리티(Q)는 커뮤니티 안쪽 엣지가 '무작위로 이었을 때 기대값'보다 얼마나 많은지 재는 점수예요. 클수록 뭉침이 뚜렷해요.",
+   "idea": [
+    "Q = (안쪽 엣지 비율) − (무작위 기대 비율). 보통 −0.5에서 1 사이예요.",
+    "예: 삼각형 두 개(엣지 3+3)를 다리 1개로 이은 그래프는 두 삼각형으로 나누면 Q가 약 0.36이에요.",
+    "모든 걸 한 덩어리로 두면 Q=0이에요. 그래서 'Q를 크게 하는 나누기'를 찾는 게 커뮤니티 탐지예요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 나누기 후보",
+     "t": ""
+    },
+    {
+     "k": "2 · 안쪽 엣지 비율 계산",
+     "t": ""
+    },
+    {
+     "k": "3 · 무작위 기대값 빼기",
+     "t": ""
+    }
+   ],
+   "hear": [
+    "\"모듈러리티 0.7이면 꽤 잘 나뉜 거예요.\""
+   ],
+   "ask": [
+    "Q가 높다는 게 사람이 보기에도 의미 있는 묶음인가요?"
+   ],
+   "mine": "내 노트 그래프를 Q가 큰 쪽으로 나누면 '주제 묶음'이 자동으로 생겨요.",
+   "deep": [
+    "Louvain·Leiden 모두 모듈러리티(또는 비슷한 품질 함수)를 키우는 방향으로 움직여요."
+   ],
+   "recall": {
+    "q": "모든 노드를 한 커뮤니티에 넣으면 Q는?",
+    "a": "0"
+   },
+   "quiz": [
+    {
+     "q": "Q가 크다는 뜻은?",
+     "options": [
+      "안쪽 연결이 기대보다 많다",
+      "노드가 많다",
+      "엣지가 많다"
+     ],
+     "answer": 0,
+     "why": "무작위 대비 뭉침이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Blondel et al. — Fast unfolding of communities in large networks (Louvain)",
+     "url": "https://arxiv.org/abs/0803.0476",
+     "date": "2008"
+    },
+    {
+     "title": "Traag, Waltman, van Eck — From Louvain to Leiden",
+     "url": "https://arxiv.org/abs/1810.08473",
+     "date": "2019"
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "Louvain: 옮겨 보고, 묶어서, 다시",
+   "lead": "Louvain은 각 노드를 이웃 커뮤니티로 옮겨 Q가 오르면 옮기고, 다 끝나면 커뮤니티를 한 점으로 묶어 같은 일을 반복하는 방법이에요.",
+   "idea": [
+    "1단계: 노드 하나씩, 이웃 커뮤니티로 옮겼을 때 Q가 가장 많이 오르는 곳으로 이동.",
+    "2단계: 커뮤니티 하나를 새 노드 하나로 접기. 그 위에서 1단계 반복.",
+    "빠르고 단순해서 2008년 이후 널리 쓰였어요. 층마다 결과가 나와 '큰 주제 → 작은 주제' 계층도 얻어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 지역 이동",
+     "t": "Q 오르면 옮김"
+    },
+    {
+     "k": "2 · 접기",
+     "t": "커뮤니티 = 새 노드"
+    },
+    {
+     "k": "3 · 반복",
+     "t": "더 안 오를 때까지"
+    }
+   ],
+   "hear": [
+    "\"Louvain 돌렸더니 커뮤니티 12개 나왔어요.\""
+   ],
+   "ask": [
+    "돌릴 때마다 결과가 조금씩 다른데 시드를 고정했나요?"
+   ],
+   "mine": "내 앱에서 Louvain 1층은 세부 주제, 2층은 큰 주제 묶음으로 보여 줄 수 있어요.",
+   "deep": [
+    "Blondel 등(2008)이 제안한 방법이라 이름이 루뱅(벨기에 대학)에서 왔어요."
+   ],
+   "recall": {
+    "q": "Louvain의 두 단계는?",
+    "a": "노드 지역 이동 → 커뮤니티를 노드로 접기"
+   },
+   "quiz": [
+    {
+     "q": "Louvain 결과에서 계층이 생기는 이유는?",
+     "options": [
+      "접기를 반복해서",
+      "무작위라서"
+     ],
+     "answer": 0,
+     "why": "층마다 한 번 접어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Blondel et al. — Fast unfolding of communities in large networks (Louvain)",
+     "url": "https://arxiv.org/abs/0803.0476",
+     "date": "2008"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "Leiden: 커뮤니티가 끊어지지 않게 보장해요",
+   "lead": "Leiden은 Louvain에 '다듬기(refinement)' 단계를 더해, 한 커뮤니티 안이 실제로 서로 연결되도록 보장하는 알고리즘이에요.",
+   "idea": [
+    "Traag 등(2019)은 실험에서 Louvain 커뮤니티의 최대 25%가 엉성하게 연결되고 최대 16%는 아예 끊어져 있음을 보였어요.",
+    "Leiden은 연결된 커뮤니티를 보장하고, 논문 실험에서 Louvain보다 빨랐어요.",
+    "Microsoft GraphRAG는 계층형 Leiden으로 엔티티 커뮤니티를 만들어요(08장에서 써요)."
+   ],
+   "steps": [
+    {
+     "k": "1 · 지역 이동",
+     "t": "Louvain과 비슷"
+    },
+    {
+     "k": "2 · 다듬기",
+     "t": "커뮤니티 안을 연결된 조각으로 나눔"
+    },
+    {
+     "k": "3 · 접기",
+     "t": "다듬은 조각 기준으로 접기"
+    }
+   ],
+   "hear": [
+    "\"Louvain 말고 Leiden 쓰세요, 끊긴 커뮤니티 나와요.\""
+   ],
+   "ask": [
+    "우리 그래프에서 끊어진 커뮤니티가 있는지 확인해 봤나요?"
+   ],
+   "mine": "내 앱의 주제 묶음은 Leiden으로 만들면 '서로 상관없는 노트 둘이 한 묶음'인 경우가 줄어요.",
+   "deep": [
+    "Neo4j GDS에도 Leiden 알고리즘이 들어 있어요."
+   ],
+   "recall": {
+    "q": "Leiden이 Louvain보다 나은 핵심 한 가지는?",
+    "a": "커뮤니티가 연결돼 있음을 보장"
+   },
+   "quiz": [
+    {
+     "q": "Louvain에서 최대 몇 %가 아예 끊어진 커뮤니티였나요(논문 실험)?",
+     "options": [
+      "1%",
+      "16%",
+      "50%"
+     ],
+     "answer": 1,
+     "why": "최대 25% 엉성, 최대 16% 단절이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Traag, Waltman, van Eck — From Louvain to Leiden",
+     "url": "https://arxiv.org/abs/1810.08473",
+     "date": "2019"
+    },
+    {
+     "title": "Scientific Reports — From Louvain to Leiden",
+     "url": "https://www.nature.com/articles/s41598-019-41695-z",
+     "date": "2019"
+    },
+    {
+     "title": "Microsoft GraphRAG — Default dataflow",
+     "url": "https://microsoft.github.io/graphrag/index/default_dataflow/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "최단경로: BFS는 칸 수, Dijkstra는 무게",
+   "lead": "두 노드 사이 가장 짧은 길을 찾을 때, 엣지 무게가 없으면 BFS(너비 우선), 무게가 있으면 Dijkstra를 써요.",
+   "idea": [
+    "BFS: 시작점에서 1칸, 2칸… 순서로 퍼져요. \"나 → 서윤 → 민재\"면 거리 2.",
+    "Dijkstra: 아직 확정 안 된 노드 중 가장 가까운 것을 확정하며 넓혀요. 무게는 음수면 안 돼요.",
+    "노트 앱 예: \"이 회의와 저 프로젝트는 어떻게 이어져 있나?\" → 경로를 보여 주면 설명이 돼요."
+   ],
+   "steps": [
+    {
+     "k": "1 · BFS",
+     "t": "큐로 한 칸씩"
+    },
+    {
+     "k": "2 · Dijkstra",
+     "t": "우선순위 큐로 가까운 것부터"
+    },
+    {
+     "k": "3 · 경로 복원",
+     "t": "이전 노드 따라 거꾸로"
+    }
+   ],
+   "hear": [
+    "\"두 노드 사이 경로를 근거로 보여 주자.\""
+   ],
+   "ask": [
+    "엣지 무게를 '거리'로 둘까요, '친밀도'로 둘까요(친밀도면 뒤집어야 해요)?"
+   ],
+   "mine": "내 앱에서 \"A와 B는 어떻게 연결돼?\"에 최단경로를 그려 보여 줄 수 있어요.",
+   "deep": [
+    "Neo4j GDS에 Dijkstra·A*·Yen's k-shortest 경로 알고리즘이 있어요."
+   ],
+   "recall": {
+    "q": "무게 있는 그래프에서 BFS가 틀릴 수 있는 이유는?",
+    "a": "칸 수만 세고 무게를 무시해서요"
+   },
+   "quiz": [
+    {
+     "q": "엣지 무게가 모두 1이면?",
+     "options": [
+      "BFS로 충분",
+      "Dijkstra만 가능"
+     ],
+     "answer": 0,
+     "why": "무게가 같으면 칸 수가 곧 거리예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Graph Data Science manual",
+     "url": "https://neo4j.com/docs/graph-data-science/current/",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "MATCH p = shortestPath(\n  (a:Meeting {id:'m12'})-[*..5]-(b:Project {name:'Orion'}))\nRETURN p",
+    "read": "읽는 법: (Cypher) 회의 m12에서 Orion 프로젝트까지 5칸 이내의 가장 짧은 길을 찾아요."
+   }
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "랜덤 워크: 그래프를 문장처럼 걷기",
+   "lead": "랜덤 워크는 노드에서 이웃을 무작위로 골라 계속 걸어가는 것이에요. 걸은 순서 \"A, C, D, C, B…\"가 마치 문장처럼 쓰여요.",
+   "idea": [
+    "자주 함께 걸리는 노드끼리는 가까운 사이예요. 01장의 word2vec이 '같이 나오는 단어'를 배운 것과 같은 생각이에요.",
+    "PageRank도 랜덤 워크로 볼 수 있어요(오래 머무는 곳 = 중요).",
+    "길이 10짜리 워크를 노드마다 10번 걸면, 노드 1,000개면 문장 1만 개가 생겨요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 시작 노드",
+     "t": ""
+    },
+    {
+     "k": "2 · 이웃 하나 무작위 선택",
+     "t": ""
+    },
+    {
+     "k": "3 · 길이 L까지 반복",
+     "t": ""
+    }
+   ],
+   "hear": [
+    "\"워크 길이 80, 노드당 10번으로 돌렸어요.\""
+   ],
+   "ask": [
+    "워크가 허브 노드에 몰리지 않나요?"
+   ],
+   "mine": "내 노트 링크 위를 무작위로 걸어 보면 '같이 읽히는 노트' 묶음이 보여요.",
+   "deep": [
+    "DeepWalk(2014)가 랜덤 워크 + word2vec(skip-gram) 조합을 처음 널리 알렸어요."
+   ],
+   "recall": {
+    "q": "랜덤 워크가 단어 임베딩과 이어지는 이유는?",
+    "a": "워크 순서를 문장처럼 보고 같이 나오는 노드를 가깝게 배우니까요"
+   },
+   "quiz": [
+    {
+     "q": "랜덤 워크로 바로 계산되는 점수는?",
+     "options": [
+      "PageRank",
+      "코사인 유사도"
+     ],
+     "answer": 0,
+     "why": "오래 머무는 확률이 PageRank예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Perozzi et al. — DeepWalk",
+     "url": "https://arxiv.org/abs/1403.6652",
+     "date": "2014"
+    },
+    {
+     "title": "Brin & Page — The Anatomy of a Large-Scale Hypertextual Web Search Engine",
+     "url": "http://infolab.stanford.edu/pub/papers/google.pdf",
+     "date": "1998"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "DeepWalk·node2vec: 노드를 벡터로",
+   "lead": "DeepWalk와 node2vec은 랜덤 워크 문장을 word2vec에 넣어 노드마다 벡터를 만들어요. 그러면 01~02장의 벡터 검색을 노드에 그대로 쓸 수 있어요.",
+   "idea": [
+    "DeepWalk는 균일한 랜덤 워크, node2vec은 p·q 두 값으로 '근처를 맴돌기(BFS 느낌)'와 '멀리 나가기(DFS 느낌)'를 조절해요.",
+    "p는 되돌아갈지, q는 멀리 갈지를 정해요. q가 작으면 멀리 퍼지는 걸음이 많아요.",
+    "노드 벡터끼리 코사인 유사도를 재면 '비슷한 역할의 사람' 찾기가 돼요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 워크",
+     "t": "노드당 여러 번"
+    },
+    {
+     "k": "2 · skip-gram",
+     "t": "창 안 노드 맞히기"
+    },
+    {
+     "k": "3 · 벡터",
+     "t": "노드 = 128차원 등"
+    }
+   ],
+   "hear": [
+    "\"node2vec 벡터를 pgvector에 넣었어요.\""
+   ],
+   "ask": [
+    "그래프가 바뀌면(새 노트) 벡터를 다시 학습해야 하는 거 알죠?"
+   ],
+   "mine": "내 앱 사람 노드에 node2vec 벡터를 붙이면 \"민재와 비슷하게 일하는 사람\"을 찾을 수 있어요.",
+   "deep": [
+    "node2vec(2016)은 p, q로 BFS/DFS 사이를 오가는 편향 랜덤 워크를 제안했어요.",
+    "DeepWalk·node2vec은 학습 때 본 노드만 벡터가 있어요(transductive)."
+   ],
+   "recall": {
+    "q": "node2vec이 DeepWalk와 다른 점은?",
+    "a": "p·q로 걷는 방식을 조절해요"
+   },
+   "quiz": [
+    {
+     "q": "새 노드가 생기면 DeepWalk 벡터는?",
+     "options": [
+      "자동으로 생긴다",
+      "다시 학습해야 한다"
+     ],
+     "answer": 1,
+     "why": "학습 때 본 노드만 벡터가 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Perozzi et al. — DeepWalk",
+     "url": "https://arxiv.org/abs/1403.6652",
+     "date": "2014"
+    },
+    {
+     "title": "Grover & Leskovec — node2vec",
+     "url": "https://arxiv.org/abs/1607.00653",
+     "date": "2016"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "메시지 패싱: 이웃 이야기를 모아 나를 갱신",
+   "lead": "그래프 신경망(GNN)의 핵심은 메시지 패싱이에요. 각 노드가 이웃의 벡터를 모아(합·평균) 자기 벡터를 새로 만드는 일을 몇 번 반복해요.",
+   "idea": [
+    "1층을 지나면 1칸 이웃, 2층이면 2칸 이웃의 정보까지 섞여요.",
+    "예: 나=[1,0], 이웃 A=[0,1], B=[1,1]. 셋의 평균 = [0.67, 0.67]. 여기에 가중치를 곱하고 활성화 함수를 거치면 새 나예요.",
+    "node2vec과 달리, 노드의 특징(노트 임베딩 등)을 입력으로 쓸 수 있어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 메시지",
+     "t": "이웃 벡터 보냄"
+    },
+    {
+     "k": "2 · 모으기",
+     "t": "합·평균·최대"
+    },
+    {
+     "k": "3 · 갱신",
+     "t": "W·모은값 → 활성화"
+    }
+   ],
+   "hear": [
+    "\"2층 GNN이면 친구의 친구까지 봐요.\"",
+    "\"층을 너무 쌓으니 다 비슷해졌어요(over-smoothing).\""
+   ],
+   "ask": [
+    "몇 칸 이웃까지 봐야 하는 문제인가요?"
+   ],
+   "mine": "내 앱에서 노트 임베딩(01장)을 노드 특징으로 넣으면, 링크된 노트 내용까지 섞인 벡터가 돼요.",
+   "deep": [
+    "Distill의 GNN 소개 글이 메시지 패싱을 그림으로 잘 보여 줘요."
+   ],
+   "recall": {
+    "q": "GNN 2층은 몇 칸 이웃까지 보나요?",
+    "a": "2칸"
+   },
+   "quiz": [
+    {
+     "q": "[1,0], [0,1], [1,1] 평균은?",
+     "options": [
+      "[0.67, 0.67]",
+      "[1, 1]",
+      "[2, 2]"
+     ],
+     "answer": 0,
+     "why": "(1+0+1)/3, (0+1+1)/3이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Distill — A Gentle Introduction to Graph Neural Networks",
+     "url": "https://distill.pub/2021/gnn-intro/",
+     "date": "2021"
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "GCN 한 층을 손으로 계산해요",
+   "lead": "GCN 한 층은 '나 + 이웃' 벡터를 연결 수로 정규화해 평균 내고, 가중치 W를 곱한 뒤 ReLU를 씌우는 거예요.",
+   "idea": [
+    "Kipf & Welling 식: H' = σ(D̂^−½ Â D̂^−½ H W), Â = A + I(자기 자신 포함).",
+    "작은 예: 노드 2개가 연결, h1=[2], h2=[4], 둘 다 degree(자기 포함) 2. 정규화 평균 = (2+4)/2 = 3. W=[0.5]면 1.5, ReLU 후 1.5.",
+    "즉 '이웃 평균 → 선형변환 → 비선형'이 한 층이에요."
+   ],
+   "steps": [
+    {
+     "k": "1 · Â=A+I",
+     "t": "자기 고리 추가"
+    },
+    {
+     "k": "2 · 정규화",
+     "t": "degree로 나누기"
+    },
+    {
+     "k": "3 · ×W",
+     "t": "학습되는 가중치"
+    },
+    {
+     "k": "4 · ReLU",
+     "t": "음수는 0"
+    }
+   ],
+   "hear": [
+    "\"GCN 2층, 히든 16으로 시작하죠.\""
+   ],
+   "ask": [
+    "노드 특징이 있나요, 없나요? 없으면 node2vec이 나을 수도 있어요."
+   ],
+   "mine": "내 앱에서 '이 노트는 어느 프로젝트?' 분류를 몇 개 라벨만으로 GCN에 맡길 수 있어요(반지도 학습).",
+   "deep": [
+    "GCN 논문 제목이 'Semi-Supervised Classification'인 이유: 일부 노드 라벨만으로 나머지를 맞혀요."
+   ],
+   "recall": {
+    "q": "Â = A + I 에서 I를 더하는 이유는?",
+    "a": "자기 자신의 특징도 섞으려고"
+   },
+   "quiz": [
+    {
+     "q": "h1=2, h2=4, 연결됨, W=0.5면 결과는?",
+     "options": [
+      "1.5",
+      "3",
+      "6"
+     ],
+     "answer": 0,
+     "why": "평균 3 × 0.5 = 1.5, ReLU 그대로예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Kipf & Welling — Semi-Supervised Classification with GCNs",
+     "url": "https://arxiv.org/abs/1609.02907",
+     "date": "2016"
+    },
+    {
+     "title": "PyTorch Geometric — Introduction by example",
+     "url": "https://pytorch-geometric.readthedocs.io/en/latest/get_started/introduction.html",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "import torch\nA = torch.tensor([[1.,1.],[1.,1.]])   # A + I\nD = A.sum(1).rsqrt().diag()\nH = torch.tensor([[2.],[4.]]); W = torch.tensor([[0.5]])\nprint(torch.relu(D @ A @ D @ H @ W))   # [[1.5],[1.5]]",
+    "read": "읽는 법: 자기 고리를 넣은 인접행렬을 degree로 대칭 정규화하고, 특징 H와 가중치 W를 곱한 뒤 ReLU를 씌워요."
+   }
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "GraphSAGE: 처음 보는 노드도 벡터를 만들어요",
+   "lead": "GraphSAGE는 노드마다 벡터를 외우는 대신 '이웃을 뽑아 모으는 함수'를 배워요. 그래서 새 노트가 생겨도 바로 벡터를 만들 수 있어요(귀납적).",
+   "idea": [
+    "이웃을 전부 쓰지 않고 정해진 수(예: 10개)만 샘플링해 계산량을 묶어 둬요.",
+    "모으기 함수: 평균, LSTM, 풀링 등.",
+    "Pinterest PinSage가 이 아이디어를 수십억 노드로 키웠어요(사례 A)."
+   ],
+   "steps": [
+    {
+     "k": "1 · 이웃 샘플",
+     "t": "k개만"
+    },
+    {
+     "k": "2 · 모으기",
+     "t": "평균 등"
+    },
+    {
+     "k": "3 · 이어붙이기",
+     "t": "[나; 이웃모음] × W"
+    }
+   ],
+   "hear": [
+    "\"매일 새 노트가 수천 개라 transductive는 못 써요.\""
+   ],
+   "ask": [
+    "새 노드가 얼마나 자주 생기나요?"
+   ],
+   "mine": "내 앱은 노트가 계속 늘어나니, 다시 학습하지 않고 새 노트 벡터를 만드는 GraphSAGE 방식이 맞아요.",
+   "deep": [
+    "GraphSAGE(2017) 논문 제목이 'Inductive Representation Learning on Large Graphs'예요."
+   ],
+   "recall": {
+    "q": "inductive가 뜻하는 것은?",
+    "a": "학습 때 못 본 노드에도 벡터를 만들 수 있음"
+   },
+   "quiz": [
+    {
+     "q": "GraphSAGE가 이웃을 샘플링하는 이유는?",
+     "options": [
+      "계산량을 일정하게",
+      "정확도를 낮추려고"
+     ],
+     "answer": 0,
+     "why": "허브 노드의 이웃 수만 개를 다 보지 않으려고요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Hamilton et al. — Inductive Representation Learning on Large Graphs (GraphSAGE)",
+     "url": "https://arxiv.org/abs/1706.02216",
+     "date": "2017"
+    },
+    {
+     "title": "Ying et al. — Graph Convolutional Neural Networks for Web-Scale Recommender Systems (PinSage)",
+     "url": "https://arxiv.org/abs/1806.01973",
+     "date": "2018"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "링크 예측: 아직 없는 선을 맞혀요",
+   "lead": "링크 예측은 \"이 두 노드 사이에 선이 생길까?\"를 점수로 내는 일이에요. 추천과 '빠진 관계 채우기'에 써요.",
+   "idea": [
+    "간단한 점수: 공통 이웃 수. 나와 민재가 같은 회의 3개에 참석했다면 연결 가능성이 커요.",
+    "벡터 점수: 두 노드 벡터의 내적·코사인(node2vec, GNN 벡터).",
+    "평가: 엣지 10%를 숨기고, 숨긴 엣지를 얼마나 맞히는지 봐요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 엣지 일부 숨기기",
+     "t": ""
+    },
+    {
+     "k": "2 · 점수 매기기",
+     "t": "공통 이웃 / 벡터 내적"
+    },
+    {
+     "k": "3 · 맞힌 비율 평가",
+     "t": ""
+    }
+   ],
+   "hear": [
+    "\"공통 이웃만으로도 베이스라인이 꽤 높아요.\""
+   ],
+   "ask": [
+    "평가할 때 미래 엣지(시간)를 섞어 쓰지 않았나요?"
+   ],
+   "mine": "내 앱에서 \"이 노트와 연결하면 좋을 노트\" 추천이 바로 링크 예측이에요.",
+   "deep": [
+    "PinSage는 학습 목표를 '연관 핀 쌍 맞히기'로 둬서 사실상 링크 예측 방식으로 학습했어요."
+   ],
+   "recall": {
+    "q": "가장 간단한 링크 예측 점수는?",
+    "a": "공통 이웃 수"
+   },
+   "quiz": [
+    {
+     "q": "링크 예측 평가 방법은?",
+     "options": [
+      "엣지를 일부 숨기고 맞히기",
+      "노드 수 세기"
+     ],
+     "answer": 0,
+     "why": "숨긴 걸 맞히는지 봐요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Ying et al. — Graph Convolutional Neural Networks for Web-Scale Recommender Systems (PinSage)",
+     "url": "https://arxiv.org/abs/1806.01973",
+     "date": "2018"
+    },
+    {
+     "title": "Stanford CS224W",
+     "url": "https://web.stanford.edu/class/cs224w/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "TransE: 머리 + 관계 ≈ 꼬리",
+   "lead": "TransE는 트리플 (h, r, t)에서 벡터로 h + r ≈ t가 되도록 배우는 KG 임베딩이에요. 관계가 '이동 화살표'가 돼요.",
+   "idea": [
+    "예(2차원): 민재=[1,0], 담당=[0,1]이면 검색프로젝트≈[1,1]이 되도록 학습해요.",
+    "점수 = ‖h + r − t‖. 작을수록 그럴듯한 사실이에요.",
+    "가짜 트리플(꼬리를 무작위로 바꾼 것)은 점수가 커지게 함께 학습해요. 1:N 관계(한 사람이 여러 프로젝트)는 약점이에요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 진짜 트리플",
+     "t": "거리 작게"
+    },
+    {
+     "k": "2 · 가짜 트리플",
+     "t": "거리 크게"
+    },
+    {
+     "k": "3 · 질의",
+     "t": "h + r 근처의 t 찾기"
+    }
+   ],
+   "hear": [
+    "\"KG 완성은 TransE로 베이스라인부터 하죠.\""
+   ],
+   "ask": [
+    "관계가 1:N, N:N 이 많은가요? TransE가 약한 곳이에요."
+   ],
+   "mine": "내 앱에서 (나, 참석, ?) 질문에 h+r 근처 회의 노드를 찾아 '아마 참석했을 회의'를 제안할 수 있어요.",
+   "deep": [
+    "TransE는 Bordes 등이 NeurIPS 2013에 낸 논문이에요."
+   ],
+   "recall": {
+    "q": "TransE에서 그럴듯한 트리플의 조건은?",
+    "a": "h + r 이 t 에 가깝다"
+   },
+   "quiz": [
+    {
+     "q": "민재=[1,0], 담당=[0,1]일 때 가장 그럴듯한 꼬리는?",
+     "options": [
+      "[1,1]",
+      "[0,0]",
+      "[−1,1]"
+     ],
+     "answer": 0,
+     "why": "[1,0]+[0,1] = [1,1]이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Bordes et al. — Translating Embeddings for Modeling Multi-relational Data (TransE)",
+     "url": "https://papers.nips.cc/paper/2013/hash/1cecc7a77928ca8133fa24680a88d2f9-Abstract.html",
+     "date": "2013"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "NetworkX로 연습, Neo4j GDS로 실전",
+   "lead": "작은 그래프(노드 수만 개 이하)는 파이썬 NetworkX로 바로 실험하고, 데이터가 DB에 있고 크면 Neo4j Graph Data Science(GDS)에서 돌려요.",
+   "idea": [
+    "NetworkX: pagerank, betweenness_centrality, shortest_path, louvain_communities가 한 줄씩이에요.",
+    "Neo4j GDS: 그래프를 메모리에 투영(project)한 뒤 gds.pageRank, gds.leiden 등을 실행하고 결과를 노드 속성에 써요(write).",
+    "순서: 노트북에서 NetworkX로 확인 → 맞으면 GDS로 옮기기."
+   ],
+   "steps": [
+    {
+     "k": "1 · 투영",
+     "t": "gds.graph.project"
+    },
+    {
+     "k": "2 · 실행",
+     "t": "gds.leiden.write"
+    },
+    {
+     "k": "3 · 조회",
+     "t": "속성으로 정렬"
+    }
+   ],
+   "hear": [
+    "\"GDS에 그래프 프로젝션 다시 만들어야 해요, 엣지 바뀌었어요.\""
+   ],
+   "ask": [
+    "노드 몇 개인가요? 수만 개 이하면 NetworkX로 충분하지 않나요?"
+   ],
+   "mine": "내 앱은 노트 3,000개 규모라 NetworkX로 밤마다 커뮤니티를 계산해 저장해도 충분해요.",
+   "deep": [
+    "Neo4j GDS 문서에 PageRank, Leiden, Louvain, 경로 찾기, node2vec, GraphSAGE가 함께 있어요."
+   ],
+   "recall": {
+    "q": "GDS에서 알고리즘 전에 하는 일은?",
+    "a": "그래프를 메모리에 투영(project)"
+   },
+   "quiz": [
+    {
+     "q": "노드 5,000개 실험에 먼저 쓸 도구는?",
+     "options": [
+      "NetworkX",
+      "분산 GPU 클러스터"
+     ],
+     "answer": 0,
+     "why": "작으면 가볍게 시작해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Graph Data Science manual",
+     "url": "https://neo4j.com/docs/graph-data-science/current/",
+     "date": "n.d."
+    },
+    {
+     "title": "Neo4j GDS — Leiden",
+     "url": "https://neo4j.com/docs/graph-data-science/current/algorithms/leiden/",
+     "date": "n.d."
+    },
+    {
+     "title": "NetworkX — pagerank",
+     "url": "https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.link_analysis.pagerank_alg.pagerank.html",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "text": "import networkx as nx\nG = nx.karate_club_graph()\nparts = nx.community.louvain_communities(G, seed=42)\nprint(len(parts), nx.community.modularity(G, parts))",
+    "read": "읽는 법: 34명짜리 가라데 클럽 그래프를 Louvain으로 나누고, 묶음 개수와 모듈러리티 Q를 출력해요."
+   }
+  }
+ ],
+ "cases": [
+  {
+   "id": "pinsage-2018",
+   "day": 4,
+   "title": "Pinterest는 30억 노드 그래프에 어떻게 GCN을 돌렸을까",
+   "when": "2018-06",
+   "lead": "GCN은 그래프 전체 행렬을 곱하는 방식이라 큰 그래프에 쓰기 어려웠어요. Pinterest와 Stanford 팀은 PinSage로 핀·보드 약 30억 노드, 약 180억 엣지 그래프에 그래프 신경망을 적용했어요.",
+   "facts": [
+    {
+     "label": "노드",
+     "value": "약 30억 (핀·보드)",
+     "src": "PinSage 논문"
+    },
+    {
+     "label": "엣지",
+     "value": "약 180억",
+     "src": "PinSage 논문"
+    },
+    {
+     "label": "학습 예시",
+     "value": "75억 개",
+     "src": "PinSage 논문"
+    },
+    {
+     "label": "발표",
+     "value": "KDD 2018",
+     "src": "arXiv 1806.01973"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2016-09",
+     "text": "Kipf & Welling GCN 공개 (작은 그래프 반지도 분류)"
+    },
+    {
+     "t": "2017-06",
+     "text": "GraphSAGE: 이웃 샘플링 + 귀납적 학습"
+    },
+    {
+     "t": "2018-06",
+     "text": "PinSage 논문 공개, Pinterest에서 개발·배포",
+     "hot": true
+    }
+   ],
+   "causes": [
+    {
+     "stage": "규모",
+     "title": "전체 그래프를 한 번에 못 씀",
+     "text": "그래프 라플라시안 전체를 다루는 대신, 노드 주변만 잘라 계산하는 국소 합성곱을 썼어요."
+    },
+    {
+     "stage": "샘플링",
+     "title": "랜덤 워크로 중요한 이웃 고르기",
+     "text": "단순히 붙어 있는 이웃이 아니라, 랜덤 워크에서 자주 방문되는 이웃을 골라 가중 평균했어요."
+    },
+    {
+     "stage": "학습",
+     "title": "점점 어려운 음성 예시",
+     "text": "학습이 진행될수록 더 헷갈리는 가짜 쌍을 넣는 curriculum 방식을 썼어요."
+    },
+    {
+     "stage": "배포",
+     "title": "MapReduce로 벡터 만들기",
+     "text": "학습된 모델로 모든 노드 벡터를 분산 계산해 반복 계산을 줄였어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "우리 '메모리' 앱이 PinSage에서 가져올 한 가지는?",
+     "a": "노드마다 벡터를 외우지 말고(GraphSAGE 계열) 이웃을 샘플링해 계산량을 묶어 두는 것. 노트가 계속 느는 앱에 맞아요."
+    },
+    {
+     "q": "노트 3,000개에도 PinSage급 시스템이 필요할까요?",
+     "a": "아니요. 규모가 작으면 NetworkX + node2vec이나 작은 GCN으로 충분해요. 규모가 기술을 정해요."
+    }
+   ],
+   "after": [
+    "논문은 오프라인 지표, 사용자 연구, A/B 테스트에서 비교 방법보다 더 좋은 추천을 냈다고 보고해요."
+   ],
+   "sources": [
+    {
+     "title": "Ying et al. — Graph Convolutional Neural Networks for Web-Scale Recommender Systems (PinSage)",
+     "url": "https://arxiv.org/abs/1806.01973",
+     "date": "2018"
+    },
+    {
+     "title": "Hamilton et al. — Inductive Representation Learning on Large Graphs (GraphSAGE)",
+     "url": "https://arxiv.org/abs/1706.02216",
+     "date": "2017"
+    },
+    {
+     "title": "Kipf & Welling — Semi-Supervised Classification with GCNs",
+     "url": "https://arxiv.org/abs/1609.02907",
+     "date": "2016"
+    }
+   ],
+   "caveat": "A/B 테스트의 구체적 향상 수치는 초록에서 확인하지 못해 넣지 않았어요."
+  },
+  {
+   "id": "leiden-2019",
+   "day": 3,
+   "title": "Louvain은 왜 '끊어진 커뮤니티'를 만들었을까",
+   "when": "2019",
+   "lead": "10년 넘게 표준처럼 쓰인 Louvain에 숨은 결함이 있었어요. Traag·Waltman·van Eck는 Louvain 커뮤니티 일부가 안에서 끊어져 있다는 걸 보이고, 이를 고친 Leiden을 냈어요.",
+   "facts": [
+    {
+     "label": "엉성하게 연결된 커뮤니티",
+     "value": "최대 25%",
+     "src": "Traag 등 2019"
+    },
+    {
+     "label": "완전히 끊어진 커뮤니티",
+     "value": "최대 16%",
+     "src": "Traag 등 2019"
+    },
+    {
+     "label": "속도",
+     "value": "실험에서 Leiden이 Louvain보다 빠름",
+     "src": "Traag 등 2019"
+    },
+    {
+     "label": "게재",
+     "value": "Scientific Reports (2019)",
+     "src": "Nature"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2008",
+     "text": "Blondel 등 Louvain 공개"
+    },
+    {
+     "t": "2018-10",
+     "text": "Leiden 논문 arXiv 공개",
+     "hot": true
+    },
+    {
+     "t": "2019",
+     "text": "Scientific Reports 게재"
+    },
+    {
+     "t": "2024",
+     "text": "Microsoft GraphRAG가 계층형 Leiden으로 엔티티 커뮤니티 생성"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "알고리즘",
+     "title": "다리 노드가 떠나면",
+     "text": "커뮤니티를 이어 주던 노드가 다른 커뮤니티로 옮겨도 남은 부분을 다시 검사하지 않아, 안이 끊긴 채로 남을 수 있었어요."
+    },
+    {
+     "stage": "반복",
+     "title": "계속 돌려도 안 고쳐짐",
+     "text": "논문은 Louvain을 반복 실행해도 문제가 사라지지 않고 오히려 심해질 수 있다고 보였어요."
+    },
+    {
+     "stage": "해결",
+     "title": "다듬기 단계",
+     "text": "Leiden은 접기 전에 각 커뮤니티를 연결된 조각으로 다듬어 연결성을 보장해요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "끊어진 커뮤니티가 GraphRAG 요약에서 왜 문제일까요?",
+     "a": "서로 상관없는 노트들이 한 주제로 묶여 요약되면, 'AI가 지어낸 주제'처럼 보이는 엉뚱한 요약이 나와요."
+    },
+    {
+     "q": "이미 Louvain으로 만든 주제 묶음이 있다면?",
+     "a": "각 커뮤니티가 연결돼 있는지 검사하고, Leiden으로 다시 돌려 비교해 보세요."
+    }
+   ],
+   "after": [
+    "Neo4j GDS 등 주요 그래프 도구에 Leiden이 기본 알고리즘으로 들어갔어요."
+   ],
+   "sources": [
+    {
+     "title": "Traag, Waltman, van Eck — From Louvain to Leiden",
+     "url": "https://arxiv.org/abs/1810.08473",
+     "date": "2019"
+    },
+    {
+     "title": "Scientific Reports — From Louvain to Leiden",
+     "url": "https://www.nature.com/articles/s41598-019-41695-z",
+     "date": "2019"
+    },
+    {
+     "title": "Blondel et al. — Fast unfolding of communities in large networks (Louvain)",
+     "url": "https://arxiv.org/abs/0803.0476",
+     "date": "2008"
+    },
+    {
+     "title": "Microsoft GraphRAG — Default dataflow",
+     "url": "https://microsoft.github.io/graphrag/index/default_dataflow/",
+     "date": "n.d."
+    },
+    {
+     "title": "Neo4j GDS — Leiden",
+     "url": "https://neo4j.com/docs/graph-data-science/current/algorithms/leiden/",
+     "date": "n.d."
+    }
+   ],
+   "caveat": "25%·16%는 논문 실험의 '최대' 값이며 모든 그래프에서의 평균이 아니에요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "\"누가 Orion을 맡았지?\"",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "벡터 검색으론 'Orion 담당자'가 안 나와요. 비슷한 글만 나와요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "노트 3,000개에서 사람·프로젝트를 뽑아 그래프로 만들어 볼까요?"
+    }
+   ],
+   "q": "첫 단계로 무엇을 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "노트에서 (사람, 담당, 프로젝트) 트리플을 뽑아 그래프로 쌓는다",
+     "ok": true,
+     "why": "관계 질문에는 관계를 저장해야 해요."
+    },
+    {
+     "k": "B",
+     "t": "임베딩 모델을 더 큰 걸로 바꾼다",
+     "ok": false,
+     "why": "비슷함은 관계를 말해 주지 않아요."
+    },
+    {
+     "k": "C",
+     "t": "검색 결과를 50개로 늘린다",
+     "ok": false,
+     "why": "찾는 게 아니라 연결이 필요해요."
+    }
+   ],
+   "explain": "'누가 무엇을'은 관계 질문이라 지식그래프가 맞아요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Hogan et al. — Knowledge Graphs (survey)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "민재가 셋",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "그래프에 '민재', '김민재', 'MJ' 노드가 따로 있어요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "그냥 이름 유사도 0.6 넘으면 다 합쳐요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "0.6 기준으로 자동 병합한다",
+     "ok": false,
+     "why": "너무 낮으면 다른 사람(민지·민준)도 합쳐져요."
+    },
+    {
+     "k": "B",
+     "t": "별칭 표 + 높은 유사도 후보만 묶고, 애매한 건 확인한 뒤 원래 이름을 남긴다",
+     "ok": true,
+     "why": "잘못된 병합을 막고 되돌릴 수 있어요."
+    },
+    {
+     "k": "C",
+     "t": "그대로 둔다",
+     "ok": false,
+     "why": "연결이 쪼개져 중요도가 틀려요."
+    }
+   ],
+   "explain": "엔티티 해소는 보수적으로, 되돌릴 수 있게 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Hogan et al. — Knowledge Graphs (survey)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020"
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "JSON이 자꾸 깨져요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "LLM 추출 결과 중 7%가 JSON 파싱 실패예요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "정규식으로 고쳐 볼까요?"
+    }
+   ],
+   "q": "무엇을 바꿀까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "정규식으로 깨진 JSON을 고친다",
+     "ok": false,
+     "why": "끝없이 예외가 생겨요."
+    },
+    {
+     "k": "B",
+     "t": "JSON 스키마를 강제하는 구조화 출력을 쓰고, 내용은 따로 샘플 검수한다",
+     "ok": true,
+     "why": "형식은 스키마로, 사실은 검수로 나눠요."
+    },
+    {
+     "k": "C",
+     "t": "프롬프트에 '꼭 JSON으로'를 대문자로 쓴다",
+     "ok": false,
+     "why": "보장이 없어요."
+    }
+   ],
+   "explain": "구조화 출력은 형식을 보장하지만 사실까지는 아니에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "OpenAI — Structured Outputs guide",
+     "url": "https://platform.openai.com/docs/guides/structured-outputs",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "관계 이름 400개",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "자유 추출했더니 관계 종류가 400개예요. 담당, 맡음, 책임자…"
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "질문은 주로 '누가 담당', '누가 참석'이에요."
+    }
+   ],
+   "q": "다음 단계는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "빈도 상위 관계를 묶어 소수의 고정 스키마로 다시 추출한다",
+     "ok": true,
+     "why": "질문이 정해졌으니 스키마를 굳혀요."
+    },
+    {
+     "k": "B",
+     "t": "400개 그대로 질의한다",
+     "ok": false,
+     "why": "같은 뜻이 흩어져 답이 빠져요."
+    },
+    {
+     "k": "C",
+     "t": "관계를 지우고 노드만 쓴다",
+     "ok": false,
+     "why": "관계 질문을 못 풀어요."
+    }
+   ],
+   "explain": "탐색은 자유, 운영은 고정 스키마로요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Pan et al. — Unifying LLMs and Knowledge Graphs: A Roadmap",
+     "url": "https://arxiv.org/abs/2306.08302",
+     "date": "2023"
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "지운 노트의 유령",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "사용자가 노트를 지웠는데 그래프 답변에 그 내용이 나와요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "엣지에 출처를 안 남겼어요."
+    }
+   ],
+   "q": "어떻게 고칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "모든 엣지에 source_note를 저장하고 삭제 시 함께 지운다",
+     "ok": true,
+     "why": "출처가 삭제 열쇠예요."
+    },
+    {
+     "k": "B",
+     "t": "매달 그래프를 처음부터 다시 만든다",
+     "ok": false,
+     "why": "한 달 동안 지운 내용이 남아요."
+    },
+    {
+     "k": "C",
+     "t": "답변에 '오래된 정보일 수 있음'을 붙인다",
+     "ok": false,
+     "why": "문제를 숨길 뿐이에요."
+    }
+   ],
+   "explain": "provenance 없이는 삭제·근거 표시가 안 돼요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Microsoft GraphRAG — Default dataflow",
+     "url": "https://microsoft.github.io/graphrag/index/default_dataflow/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "홈에 띄울 핵심 노트",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "홈에 '핵심 노트 10개'를 띄우고 싶어요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "링크 수로 정렬하면 스팸성 목차 노트가 1등이에요."
+    }
+   ],
+   "q": "무엇으로 순위를 매길까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "PageRank (중요한 노트가 가리키는 노트가 높게)",
+     "ok": true,
+     "why": "가리키는 쪽의 중요도까지 반영해요."
+    },
+    {
+     "k": "B",
+     "t": "글자 수",
+     "ok": false,
+     "why": "길이는 중요도가 아니에요."
+    },
+    {
+     "k": "C",
+     "t": "나가는 링크 수",
+     "ok": false,
+     "why": "목차 노트가 또 1등이 돼요."
+    }
+   ],
+   "explain": "PageRank는 '누가 가리키나'를 봐요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Brin & Page — The Anatomy of a Large-Scale Hypertextual Web Search Engine",
+     "url": "http://infolab.stanford.edu/pub/papers/google.pdf",
+     "date": "1998"
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 2,
+   "title": "민재 휴가",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "민재가 2주 휴가예요. 누가 빠지면 팀 정보가 끊기는지 알고 싶어요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "degree 1등은 서윤이에요."
+    }
+   ],
+   "q": "어떤 지표를 볼까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "degree",
+     "ok": false,
+     "why": "연결 수는 허브를 보여 줘요."
+    },
+    {
+     "k": "B",
+     "t": "betweenness",
+     "ok": true,
+     "why": "길목·다리 역할을 보여 줘요."
+    },
+    {
+     "k": "C",
+     "t": "노드 생성일",
+     "ok": false,
+     "why": "관계가 아니에요."
+    }
+   ],
+   "explain": "끊김 위험은 다리 노드, 즉 betweenness예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Stanford CS224W",
+     "url": "https://web.stanford.edu/class/cs224w/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "주제 묶음이 이상해요",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "Louvain으로 노트를 묶었는데 한 묶음 안 노트끼리 아무 연결이 없어요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "시드만 바꿔서 다시 돌려 볼까요?"
+    }
+   ],
+   "q": "무엇을 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "시드를 바꿔 여러 번 돌린다",
+     "ok": false,
+     "why": "반복해도 끊김이 남을 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "Leiden으로 바꿔 연결된 커뮤니티를 보장받는다",
+     "ok": true,
+     "why": "Leiden이 이 문제를 고치려고 나왔어요."
+    },
+    {
+     "k": "C",
+     "t": "커뮤니티 수를 1개로 줄인다",
+     "ok": false,
+     "why": "의미가 없어져요."
+    }
+   ],
+   "explain": "Traag 등은 Louvain에서 최대 16%가 끊어진 커뮤니티임을 보였어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Traag, Waltman, van Eck — From Louvain to Leiden",
+     "url": "https://arxiv.org/abs/1810.08473",
+     "date": "2019"
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "이 회의와 그 프로젝트의 사이",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "'이 회의가 Orion이랑 무슨 상관이야?'라는 질문이 많아요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "엣지 무게는 없어요."
+    }
+   ],
+   "q": "어떻게 답을 보여 줄까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "BFS 최단경로를 찾아 경로(회의→사람→프로젝트)를 근거로 보여 준다",
+     "ok": true,
+     "why": "무게가 없으면 BFS로 충분해요."
+    },
+    {
+     "k": "B",
+     "t": "두 노드 임베딩 코사인 값만 보여 준다",
+     "ok": false,
+     "why": "숫자만으로는 설명이 안 돼요."
+    },
+    {
+     "k": "C",
+     "t": "Dijkstra에 음수 무게를 넣는다",
+     "ok": false,
+     "why": "Dijkstra는 음수 무게를 못 다뤄요."
+    }
+   ],
+   "explain": "경로가 곧 설명이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Neo4j Graph Data Science manual",
+     "url": "https://neo4j.com/docs/graph-data-science/current/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 3,
+   "title": "그래프냐 벡터냐 (복습)",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "'지난주 회의 그거' 같은 질문은 어디로 보내요?"
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "그래프로 다 바꾸면 안 될까요?"
+    }
+   ],
+   "q": "어떻게 나눌까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "전부 그래프로 옮긴다",
+     "ok": false,
+     "why": "의미가 비슷한 글 찾기는 그래프가 약해요."
+    },
+    {
+     "k": "B",
+     "t": "의미 찾기는 벡터(01~02장), 관계·경로 질문은 그래프로 보내고 둘을 합친다",
+     "ok": true,
+     "why": "강점이 달라서 같이 써요."
+    },
+    {
+     "k": "C",
+     "t": "전부 키워드로 돌아간다",
+     "ok": false,
+     "why": "01장의 문제로 돌아가요."
+    }
+   ],
+   "explain": "벡터는 '비슷함', 그래프는 '연결'을 잘해요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Hogan et al. — Knowledge Graphs (survey)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "사람 추천 기능",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "'민재와 비슷하게 일하는 사람' 추천이 필요해요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "사람 노드에 벡터가 있으면 좋겠는데요."
+    }
+   ],
+   "q": "어떻게 만들까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "node2vec으로 사람 노드 벡터를 만들고, 03장 벡터 DB에서 코사인 top-k를 찾는다",
+     "ok": true,
+     "why": "그래프 구조를 벡터로 바꿔 기존 검색을 재사용해요."
+    },
+    {
+     "k": "B",
+     "t": "사람 이름 문자열을 임베딩한다",
+     "ok": false,
+     "why": "이름은 일하는 방식을 말해 주지 않아요."
+    },
+    {
+     "k": "C",
+     "t": "degree가 같은 사람을 고른다",
+     "ok": false,
+     "why": "너무 거칠어요."
+    }
+   ],
+   "explain": "노드 임베딩 + 벡터 검색 조합이에요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Grover & Leskovec — node2vec",
+     "url": "https://arxiv.org/abs/1607.00653",
+     "date": "2016"
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "매일 새 노트 500개",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "node2vec은 새 노트가 생길 때마다 다시 학습해야 해요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "매일 500개씩 늘어요."
+    }
+   ],
+   "q": "무엇으로 바꿀까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "매시간 node2vec 전체 재학습",
+     "ok": false,
+     "why": "비용이 커지고 늦어요."
+    },
+    {
+     "k": "B",
+     "t": "GraphSAGE처럼 이웃을 모으는 함수를 배우는 귀납적 GNN",
+     "ok": true,
+     "why": "새 노드도 바로 벡터가 나와요."
+    },
+    {
+     "k": "C",
+     "t": "새 노트는 벡터 없이 둔다",
+     "ok": false,
+     "why": "새 노트가 검색에서 빠져요."
+    }
+   ],
+   "explain": "inductive 방식이 계속 자라는 그래프에 맞아요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Hamilton et al. — Inductive Representation Learning on Large Graphs (GraphSAGE)",
+     "url": "https://arxiv.org/abs/1706.02216",
+     "date": "2017"
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "'연결 추천' 품질 재기",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "'이 노트와 연결하면 좋을 노트' 추천이 좋은지 어떻게 알죠?"
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "감으로는 괜찮아 보여요."
+    }
+   ],
+   "q": "평가 방법은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "기존 링크 10%를 숨기고 맞히는 비율을 잰다 (04장처럼 정답 세트로 재기)",
+     "ok": true,
+     "why": "링크 예측의 표준 평가예요."
+    },
+    {
+     "k": "B",
+     "t": "팀원 감으로 판단",
+     "ok": false,
+     "why": "재현이 안 돼요."
+    },
+    {
+     "k": "C",
+     "t": "추천 개수를 센다",
+     "ok": false,
+     "why": "품질이 아니에요."
+    }
+   ],
+   "explain": "숨긴 엣지 맞히기 + recall@k처럼 숫자로 봐요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Stanford CS224W",
+     "url": "https://web.stanford.edu/class/cs224w/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "라벨 30개로 분류",
+   "scene": [
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "노트 3,000개 중 30개만 프로젝트 라벨이 있어요."
+    },
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "나머지도 프로젝트를 붙이고 싶어요."
+    }
+   ],
+   "q": "어떤 방법이 맞을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "노트 임베딩을 특징으로 넣은 GCN 반지도 분류",
+     "ok": true,
+     "why": "링크된 노트 정보까지 섞어 적은 라벨로 맞혀요."
+    },
+    {
+     "k": "B",
+     "t": "라벨 3,000개가 모일 때까지 기다린다",
+     "ok": false,
+     "why": "느려요."
+    },
+    {
+     "k": "C",
+     "t": "PageRank 순서대로 라벨 배정",
+     "ok": false,
+     "why": "중요도는 분류가 아니에요."
+    }
+   ],
+   "explain": "GCN 논문이 바로 반지도 노드 분류예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Kipf & Welling — Semi-Supervised Classification with GCNs",
+     "url": "https://arxiv.org/abs/1609.02907",
+     "date": "2016"
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "도구 고르기",
+   "scene": [
+    {
+     "name": "서윤",
+     "role": "리드",
+     "text": "그래프 알고리즘 돌릴 환경을 정하죠. 노트는 지금 3,000개예요."
+    },
+    {
+     "name": "민재",
+     "role": "데이터",
+     "text": "분산 그래프 엔진을 깔아 볼까요?"
+    }
+   ],
+   "q": "무엇으로 시작할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "분산 그래프 클러스터",
+     "ok": false,
+     "why": "지금 규모에 비해 과해요."
+    },
+    {
+     "k": "B",
+     "t": "NetworkX로 밤마다 계산해 결과를 저장하고, 커지면 Neo4j GDS로 옮긴다",
+     "ok": true,
+     "why": "작게 시작해 규모에 맞춰 옮겨요."
+    },
+    {
+     "k": "C",
+     "t": "직접 PageRank를 C로 구현",
+     "ok": false,
+     "why": "이미 검증된 도구가 있어요."
+    }
+   ],
+   "explain": "03장에서 배운 대로, 규모가 도구를 정해요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Neo4j Graph Data Science manual",
+     "url": "https://neo4j.com/docs/graph-data-science/current/",
+     "date": "n.d."
+    },
+    {
+     "title": "NetworkX — pagerank",
+     "url": "https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.link_analysis.pagerank_alg.pagerank.html",
+     "date": "n.d."
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "Stanford CS224W: Machine Learning with Graphs (강의 영상)",
+   "url": "https://www.youtube.com/playlist?list=PLoROMvodv4rPLKxIpqhjhPgdQy7imNkDn",
+   "min": 80,
+   "lang": "en",
+   "what": "중심성·PageRank·node2vec·GNN을 한 강의 묶음으로 배워요(강의당 약 80분, 골라 보기).",
+   "day": 2
+  },
+  {
+   "id": "l2",
+   "title": "Distill — A Gentle Introduction to Graph Neural Networks",
+   "url": "https://distill.pub/2021/gnn-intro/",
+   "min": 40,
+   "lang": "en",
+   "what": "메시지 패싱을 움직이는 그림으로 이해해요.",
+   "day": 4
+  },
+  {
+   "id": "l3",
+   "title": "DeepLearning.AI — Knowledge Graphs for RAG",
+   "url": "https://www.deeplearning.ai/short-courses/knowledge-graphs-rag/",
+   "min": 60,
+   "lang": "en",
+   "what": "Neo4j와 Cypher로 텍스트에서 지식그래프를 만들어 RAG에 붙여 봐요.",
+   "day": 1
+  },
+  {
+   "id": "l4",
+   "title": "Neo4j Graph Data Science 문서",
+   "url": "https://neo4j.com/docs/graph-data-science/current/",
+   "min": 30,
+   "lang": "en",
+   "what": "PageRank·Leiden·경로 알고리즘을 DB에서 돌리는 법을 봐요.",
+   "day": 5
+  },
+  {
+   "id": "l5",
+   "title": "PyTorch Geometric — Introduction by Example",
+   "url": "https://pytorch-geometric.readthedocs.io/en/latest/get_started/introduction.html",
+   "min": 40,
+   "lang": "en",
+   "what": "GCN을 코드 몇 줄로 직접 학습해 봐요.",
+   "day": 4
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "'메모리' 앱의 지식그래프 설계서(KG-v1)를 1~2쪽으로 써 보세요. 노트 3,000개에서 무엇을 뽑고, 무엇을 계산해 어디에 보여 줄지 정해요.",
+  "template": [
+   "목표 질문 5개 (예: 'Orion 담당자는?', '올해 주제 묶음은?')",
+   "스키마: 노드 종류와 관계 종류 (고정 목록)",
+   "추출 방법: LLM 구조화 출력, 청크 크기, 검수 샘플 수",
+   "엔티티 해소 규칙: 별칭 표, 유사도 기준, 되돌리기",
+   "출처(provenance) 저장과 노트 삭제 시 처리",
+   "알고리즘: PageRank(핵심 노트), Leiden(주제 묶음), 최단경로(설명)",
+   "노드 임베딩 계획: node2vec vs GraphSAGE, 갱신 주기",
+   "도구와 규모 기준: NetworkX → Neo4j GDS로 옮길 시점"
+  ]
+ },
+ "check": [
+  "Story numbers (노트 3,000개, 7%, 400개, 500개/일, 라벨 30개) are fictional 메모리 team values.",
+  "PinSage: ~3B nodes, ~18B edges, 7.5B training examples per arXiv 1806.01973 abstract; A/B uplift numbers not stated there, omitted.",
+  "Leiden: up to 25% badly connected, up to 16% disconnected (Louvain), Leiden faster — arXiv 1810.08473 abstract.",
+  "GraphRAG uses Hierarchical Leiden — microsoft.github.io/graphrag default dataflow.",
+  "PageRank d=0.85 from Brin & Page 1998; NetworkX default alpha 0.85."
+ ]
+}

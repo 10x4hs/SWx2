@@ -1,4 +1,4 @@
-// 마이크로디그리 두 과정 — 경영 (#/mba · public/mba · mba_*) 과 개발 흐름 (#/dev · public/dev · dev_*). 내용은 정적 파일, 여기선 사람별 기록만 다뤄요.
+// 마이크로디그리 과정 — 경영 (#/mba · public/mba · mba_*) · SW 공간의 개발 흐름 (#/sw/dev · public/dev · dev_*) · Vector & Graph (#/sw/vg · public/vg · vg_*). 내용은 정적 파일, 여기선 사람별 기록만 다뤄요.
 // 아래 경로는 /mba 기준이고, 개발 과정은 같은 모양으로 /dev 아래에 있어요.
 //   GET  /mba/state      읽은 카드 · 복습 단계 · 오늘 복습할 카드 · 끝낸 케이스 · 문제 · 강의 · 최근 24주(168일) 하루 기록
 //   PUT  /mba/read       카드를 다 읽음 (stage 1 · 1일 뒤 복습) — 다시 읽어도 단계는 그대로
@@ -33,10 +33,12 @@ async function index(env, url, dir) {
 const COURSES = {
   mba: { dir: "/mba", t: { reads: "mba_reads", days: "mba_days", done: "mba_done" }, name: "경영 마이크로디그리", who: "MBA 대학원에 가는 대신 하루 1~2시간씩 경영을 스스로 배우는 한국 학생", tail: "" },
   dev: { dir: "/dev", t: { reads: "dev_reads", days: "dev_days", done: "dev_done" }, name: "개발 흐름 마이크로디그리", who: "코드를 짜는 법이 아니라 회사에서 개발 프로젝트가 흘러가는 방식을 배우는, 개발팀을 이끌 대표가 되려는 한국 학생", tail: " 코드는 꼭 필요할 때만 몇 줄, 읽는 법과 함께 보여 줘. 가상 회사 '두런' 이야기를 예로 써도 좋아." },
+  vg: { dir: "/vg", t: { reads: "vg_reads", days: "vg_days", done: "vg_done" }, name: "Vector & Graph 과정", who: "임베딩 · 벡터 검색 · 벡터DB · 지식그래프 · GraphRAG 를 처음부터 실무까지 배우는 한국 학생(엔지니어)", tail: " 코드는 파이썬이나 SQL · Cypher 몇 줄로, 읽는 법과 함께 보여 줘. 숫자 예시는 작은 벡터로 직접 계산해 보여 줘." },
 };
 
 export function registerMba(on, deps) { registerCourse(on, deps, "mba"); }
 export function registerDev(on, deps) { registerCourse(on, deps, "dev"); }
+export function registerVg(on, deps) { registerCourse(on, deps, "vg"); }
 
 function registerCourse(on, { json, body, fail, now }, key) {
   const C = COURSES[key], T = C.t, P = "/" + key;
@@ -131,7 +133,7 @@ function registerCourse(on, { json, body, fail, now }, key) {
   on("POST", P + "/ask", async ({ req, env, url, q, ec }) => {
     const b = await body(req);
     // 개발 과정의 'AI 질문' 탭: card = "week" 이면 카드 하나가 아니라 그 주 전체(두런 장면 · 목표 · 카드 · 사례)를 보고 답해요
-    const week = key === "dev" && b.card === "week";
+    const week = key !== "mba" && b.card === "week";
     const { module, card } = week ? await placeModule(env, url, b) : await place(env, url, b, ["cards", "cases"]);
     const msgs = Array.isArray(b.messages) ? b.messages.slice(-MAX_TURNS) : [];
     const clean = msgs.filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
@@ -143,8 +145,8 @@ function registerCourse(on, { json, body, fail, now }, key) {
     const deep = b.level === "deep";
     const rules = `규칙: 쉬운 한국어 해요체, 짧은 문단. ${deep ? "지금은 '깊게' 모드예요 — 원어 용어 · 공식 · 교과서 이름을 써도 돼요. 정확하게, 근거가 있으면 출처를 말해요." : "지금은 '쉽게' 모드예요 — 일상 비유 먼저, 처음 쓰는 용어는 그 자리에서 한 줄로 풀어요."} 숫자를 쓸 때는 계산을 한 줄로 보여 줘. 자료에 없는 통계 · 법 조문 · 세율은 지어내지 말고 "확인이 필요해요"라고 해. 법 · 세금 · 노무는 전문가(변호사 · 세무사 · 노무사) 확인이 필요하다고 덧붙여. 답 끝에 학생이 스스로 떠올려 볼 질문 하나를 '한번 생각해 볼까요?' 로 붙여.`;
     const sys = (week ? `너는 "${C.name}"의 튜터야. 학생은 ${C.who}이야.${C.tail} 지금 공부하는 주: 《${doc.no} ${doc.title}》 · 이번 주 질문 "${doc.q}".
-${rules} 학생이 이 주 내용을 물으면 아래 자료를 근거로 답하고, 어느 카드에 더 자세히 있는지 카드 제목으로 알려 줘. 학생이 '내가 대표라면' 같은 판단을 물으면 바로 정답을 주기보다 선택지와 기준을 먼저 보여 주고 학생 생각을 물어 줘.
-[두런 장면 · 가상 회사] ${(doc.story?.body || []).join(" ")}
+${rules} 학생이 이 주 내용을 물으면 아래 자료를 근거로 답하고, 어느 카드에 더 자세히 있는지 카드 제목으로 알려 줘. 학생이 '내가 대표(엔지니어)라면' 같은 판단을 물으면 바로 정답을 주기보다 선택지와 기준을 먼저 보여 주고 학생 생각을 물어 줘.
+[이번 주 장면 · 가상 이야기] ${(doc.story?.body || []).join(" ")}
 [이번 주 목표] ${(doc.goals || []).join(" / ")}
 [카드] ${(doc.cards || []).map((x) => `${x.id} ${x.title} — ${x.lead || ""}`).join(" / ")}
 [사례] ${(doc.cases || []).map((x) => x.title).join(" / ")}

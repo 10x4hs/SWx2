@@ -1,6 +1,6 @@
 // 개발 흐름 홈 — 3D 흐름 고리(12주 정거장) · 지금 정거장 · 오늘 · 학습 설계 · 현황판 · 두런의 12장면 · 12모듈
 import { esc } from "../util.js";
-import { index, state, minutes, setMinutes, MINUTES, split, steps, cardsPerDay, nextCards, position, progressOf, loopProgress, metrics, kday, WHY, topbar } from "./data.js";
+import { index, state, minutes, setMinutes, MINUTES, split, steps, cardsPerDay, nextCards, position, progressOf, loopProgress, metrics, kday, WHY, topbar, C, cApi } from "./data.js";
 import { mountLoop } from "./loop3d.js";
 
 const COLORS = ["#FFE14D", "rgba(255,225,77,.55)", "#EEEFF1", "rgba(238,239,241,.5)", "rgba(238,239,241,.26)"];
@@ -23,7 +23,7 @@ export function mountHome(host, ctx) {
       <div style="display:flex;align-items:baseline;gap:14px;margin-top:14px"><span class="dv-hud-no">${m.no}</span><h3 style="font-size:22px">${esc(m.title)}</h3></div>
       <p class="kr" style="font-size:16px;line-height:1.6;margin:12px 0 0">“${esc(m.q)}”</p>
       <dl class="dv-kv"><dt>이번 주 문서</dt><dd>${esc(m.doc)}</dd><dt>배우는 것</dt><dd>${esc(m.sub)}</dd><dt>진도</dt><dd>카드 ${p.cards}/${p.nCards} · 사례 ${p.cases}/${p.nCases} · 회의실 ${p.probs}/${p.nProbs}</dd></dl>
-      <a class="dv-btn ghost" style="margin-top:16px" href="#/dev/${m.id}">이 주 열기</a>`;
+      <a class="dv-btn ghost" style="margin-top:16px" href="${C.base}/${m.id}">이 주 열기</a>`;
   }
 
   // 오늘 · 현황판: 하루 시간을 바꾸면 이 두 칸만 다시 그려요 (3D 고리는 그대로 둬요)
@@ -38,8 +38,8 @@ export function mountHome(host, ctx) {
             <ol class="dv-plan">${plan.map((p, i) => `<li><span class="m" style="padding-top:3px">0${i + 1}</span><div><h3>${esc(p.name)}</h3><p>${esc(p.why)} <span class="dim">(${esc(p.src)})</span></p></div><span style="justify-self:end;font:600 16px var(--dv-lat)">${S[i]}분</span></li>`).join("")}</ol>
           </div>
           <div class="dv-panel" style="display:flex;flex-direction:column;gap:14px"><div class="m">오늘 볼 카드</div>
-            <div>${fresh.length ? fresh.map((x) => `<a class="dv-row" href="#/dev/${x.module.id}/${x.card.id}"><span class="m acc">${x.module.no}-${x.card.id.slice(1)}</span><span style="font-size:16px;line-height:1.5">${esc(x.card.title)}</span><span class="m">새 카드</span></a>`).join("") : `<p class="kr dim">카드를 모두 읽었어요. 마지막 과제로 가요.</p>`}</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="dv-btn" href="#/dev/today">${mins}분 시작</a><a class="dv-btn ghost" href="#/dev/ask">AI에게 묻기</a></div></div>
+            <div>${fresh.length ? fresh.map((x) => `<a class="dv-row" href="${C.base}/${x.module.id}/${x.card.id}"><span class="m acc">${x.module.no}-${x.card.id.slice(1)}</span><span style="font-size:16px;line-height:1.5">${esc(x.card.title)}</span><span class="m">새 카드</span></a>`).join("") : `<p class="kr dim">카드를 모두 읽었어요. 마지막 과제로 가요.</p>`}</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="dv-btn" href="${C.base}/today">${mins}분 시작</a><a class="dv-btn ghost" href="${C.base}/ask">AI에게 묻기</a></div></div>
         </div>
       </section>`;
   }
@@ -77,7 +77,7 @@ export function mountHome(host, ctx) {
           <div class="dv-disp">Dev flow</div>
           <h1 style="margin-top:14px">software</h1>
           <p class="dv-sub">코드는 짜지 않아요. 아이디어가 문서가 되고, 화면과 서버가 되고, 고객에게 닿고, 고장 나고, 다시 좋아지는 흐름을 12주 동안 따라가요.</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:26px"><a class="dv-btn" id="dv-cta" href="#/dev/today">오늘 공부 · ${mins}분</a><a class="dv-btn ghost" href="#/dev/${cur.id}">${cur.no}주차 이어서</a></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:26px"><a class="dv-btn" id="dv-cta" href="${C.base}/today">오늘 공부 · ${mins}분</a><a class="dv-btn ghost" href="${C.base}/${cur.id}">${cur.no}주차 이어서</a></div>
           <div class="dv-hud" id="dv-hud">${hud(pos)}</div>
         </div></div>
         <div class="dv-stage">
@@ -99,12 +99,12 @@ export function mountHome(host, ctx) {
 
       <section class="dv-wrap dv-sec" aria-labelledby="dv-story-h">
         <div class="dv-sec-h"><div><div class="m">가상 회사 · 두런</div><h2 id="dv-story-h">3명에서 50명까지, 한 회사의 12장면</h2><p>회의 · 강의 녹음을 AI가 요약하고 할 일을 뽑아 주는 스타트업이에요. 주마다 이 회사가 겪는 일을 먼저 읽고, 그 일을 풀어 주는 카드를 공부해요.</p></div></div>
-        <div class="dv-story">${idx.modules.map((m, i) => `<a class="dv-panel dv-ev${i === pos.i ? " now" : ""}" href="#/dev/${m.id}"><div style="display:flex;justify-content:space-between"><span class="m acc">W${m.no}</span><span class="m">직원 ${m.story.size}명</span></div><h3>${esc(m.story.title)}</h3><p>${esc(m.q)}</p><span class="dv-tag" style="align-self:flex-start;margin-top:auto">${esc(m.doc)}</span></a>`).join("")}</div>
+        <div class="dv-story">${idx.modules.map((m, i) => `<a class="dv-panel dv-ev${i === pos.i ? " now" : ""}" href="${C.base}/${m.id}"><div style="display:flex;justify-content:space-between"><span class="m acc">W${m.no}</span><span class="m">직원 ${m.story.size}명</span></div><h3>${esc(m.story.title)}</h3><p>${esc(m.q)}</p><span class="dv-tag" style="align-self:flex-start;margin-top:auto">${esc(m.doc)}</span></a>`).join("")}</div>
       </section>
 
       <section class="dv-wrap dv-sec" aria-labelledby="dv-mods-h">
         <div class="dv-sec-h"><div><div class="m">12개 모듈 · 주마다 질문 하나</div><h2 id="dv-mods-h">대표가 회의에서 듣게 될 12가지 질문</h2></div></div>
-        <div class="dv-mods">${idx.modules.map((m, i) => { const s = stateOf(i, pos), p = progressOf(m, st); return `<a class="dv-mod" data-mod="${i}" href="#/dev/${m.id}"><span class="m acc" style="font-size:13px">${m.no}</span><span class="kr" style="font-weight:600;font-size:18px">${esc(m.title)}</span><span class="q">“${esc(m.q)}”</span><span class="kr" style="font-size:14px;color:var(--dv-ink2)">${esc(m.doc)}</span><span class="m" style="justify-self:end${s !== "next" ? ";color:var(--dv-acc)" : ""}">${s === "done" ? "끝" : s === "now" ? `진행 ${Math.round(p.ratio * 100)}%` : "아직"}</span></a>`; }).join("")}</div>
+        <div class="dv-mods">${idx.modules.map((m, i) => { const s = stateOf(i, pos), p = progressOf(m, st); return `<a class="dv-mod" data-mod="${i}" href="${C.base}/${m.id}"><span class="m acc" style="font-size:13px">${m.no}</span><span class="kr" style="font-weight:600;font-size:18px">${esc(m.title)}</span><span class="q">“${esc(m.q)}”</span><span class="kr" style="font-size:14px;color:var(--dv-ink2)">${esc(m.doc)}</span><span class="m" style="justify-self:end${s !== "next" ? ";color:var(--dv-acc)" : ""}">${s === "done" ? "끝" : s === "now" ? `진행 ${Math.round(p.ratio * 100)}%` : "아직"}</span></a>`; }).join("")}</div>
       </section>
 
       <footer class="dv-wrap dv-sec dv-grid">
@@ -120,7 +120,7 @@ export function mountHome(host, ctx) {
       b.addEventListener("focus", () => { setHover(i); loop?.highlight(i); });
       b.addEventListener("mouseleave", () => { setHover(-1); loop?.highlight(-1); });
       b.addEventListener("blur", () => { setHover(-1); loop?.highlight(-1); });
-      b.addEventListener("click", () => { location.hash = "#/dev/" + idx.modules[i].id; }); // 이름표를 누르면 바로 그 주로
+      b.addEventListener("click", () => { location.hash = C.base + "/" + idx.modules[i].id; }); // 이름표를 누르면 바로 그 주로
     });
     host.querySelectorAll("[data-mod]").forEach((r) => { const i = Number(r.dataset.mod); r.addEventListener("mouseenter", () => { setHover(i); loop?.highlight(i); }); r.addEventListener("mouseleave", () => { setHover(-1); loop?.highlight(-1); }); });
     mount3d(pos, setHover);
@@ -135,7 +135,7 @@ export function mountHome(host, ctx) {
       stations: idx.modules.map((m, i) => ({ no: m.no, state: stateOf(i, pos) })),
       progress: loopProgress(idx, st),
       labels: [...host.querySelectorAll("[data-st]")], lobes: [...host.querySelectorAll("[data-lobe]")],
-      onHover: (i) => setHover(i), onPick: (i) => { location.hash = "#/dev/" + idx.modules[i].id; },
+      onHover: (i) => setHover(i), onPick: (i) => { location.hash = C.base + "/" + idx.modules[i].id; },
       onLost: () => { if (!alive || lostTries >= 3) return; lostTries++; loop?.destroy(); loop = null; mount3d(pos, setHover); },
     }).then((l) => { if (!alive || !canvas.isConnected) { l?.destroy(); return; } loop = l; if (!l) host.querySelectorAll("[data-st],[data-lobe]").forEach((e) => (e.style.display = "none")); });
   }

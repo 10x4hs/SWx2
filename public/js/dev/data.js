@@ -11,10 +11,28 @@ export function getJSON(path) {
   }
   return cache.get(path);
 }
-export const index = () => getJSON("/dev/index.json");
-export const moduleDoc = (id) => getJSON(`/dev/${id}.json`);
-export const docsDoc = () => getJSON("/dev/docs.json");
-export function state() { return api.devState().catch(() => ({ today: "", items: [], due: [], days: [], done: [] })); }
+// 과정 — SW 공간(#/sw) 안에서 같은 엔진으로 여러 과정을 열어요. 한 번에 하나만 열려 있어서 지금 과정을 여기 둬요.
+//   key: 서버 경로(/api/<key>/…) · base: 화면 주소 · dir: 내용 파일 폴더
+export const COURSES = {
+  dev: { key: "dev", base: "#/sw/dev", dir: "/dev", name: "Dev Flow", brand: "개발 흐름", tutor: "개발 흐름 마이크로디그리", docs: true, role: "대표",
+    scene: (no, size) => `두런 · ${no}장면 · 직원 ${size}명 · 가상 회사`, sceneOf: "두런의",
+    quickWeek: ["이번 주 질문에 대표 입장에서 답해 줘", "두런 장면에서 내가 대표라면 무엇을 정해야 해?", "이번 주 카드로 퀴즈 3개 내 줘", "개발자가 회의에서 이 말을 하면 뭐라고 되물어야 해?"],
+    quickCard: ["쉬운 비유로 다시 설명해 줘", "회사에서는 실제로 어떻게 해?", "대표로서 뭘 결정해야 해?"], ph: "예: PRD랑 요구사항정의서 중 뭘 먼저 써요?" },
+  vg: { key: "vg", base: "#/sw/vg", dir: "/vg", name: "Vector & Graph", brand: "Vector & Graph", tutor: "Vector & Graph 과정", docs: false, role: "엔지니어",
+    scene: (no) => `기억 검색 팀 · ${no}장면 · 가상 이야기`, sceneOf: "기억 검색 팀의",
+    quickWeek: ["이번 주 질문에 엔지니어 입장에서 답해 줘", "이번 장면에서 내가 엔지니어라면 무엇을 고를까?", "이번 주 카드로 퀴즈 3개 내 줘", "이 개념을 파이썬 10줄로 보여 줘"],
+    quickCard: ["쉬운 비유로 다시 설명해 줘", "실제 서비스에서는 어떻게 써?", "숫자 예시로 계산해 줘"], ph: "예: HNSW 는 왜 빠른데 정확도가 조금 떨어져요?" },
+};
+export let C = COURSES.dev;
+export function setCourse(k) { C = COURSES[k] || COURSES.dev; }
+export const index = () => getJSON(`${C.dir}/index.json`);
+export const moduleDoc = (id) => getJSON(`${C.dir}/${id}.json`);
+export const docsDoc = () => getJSON(`${C.dir}/docs.json`);
+export const cApi = {
+  state: () => api.courseState(C.key), read: (...a) => api.courseRead(C.key, ...a), review: (r) => api.courseReview(C.key, r),
+  day: (...a) => api.courseDay(C.key, ...a), done: (...a) => api.courseDone(C.key, ...a),
+};
+export function state() { return cApi.state().catch(() => ({ today: "", items: [], due: [], days: [], done: [] })); }
 
 // 하루 시간 (이 기기에만 기억) — 하루 30 · 45 · 60분, 기본 45분. 경영 과정과 같이 해도 무리가 덜한 양이에요.
 const KEY = "dv-minutes";
@@ -98,8 +116,8 @@ export function meter(cap) {
   let t = Date.now(), rest = 0;
   return () => { const ms = Math.min(cap * 60000, Date.now() - t) + rest; t = Date.now(); const n = Math.floor(ms / 60000); rest = ms - n * 60000; return n; };
 }
-export const NAV = [["", "지도"], ["today", "오늘"], ["docs", "문서"], ["ask", "AI 질문"]];
+const NAV = [["", "지도"], ["today", "오늘"], ["docs", "문서"], ["ask", "AI 질문"]];
 export function topbar(active, extra = "") {
-  return `<header class="dv-top"><a class="dv-brand" href="#/dev" aria-label="개발 흐름 홈"><svg width="26" height="14" viewBox="0 0 26 14" aria-hidden="true"><path d="M13 7C9 1 3 1 3 7s6 6 10 0 10-6 10 0-6 6-10 0Z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>개발 흐름</span></a>
-    <nav class="dv-nav" aria-label="개발 흐름 메뉴">${NAV.map(([k, l]) => `<a href="#/dev${k ? "/" + k : ""}"${active === k ? ' aria-current="page"' : ""}>${l}</a>`).join("")}${extra}</nav></header>`;
+  return `<header class="dv-top"><a class="dv-brand dv-sw" href="#/sw" aria-label="SW 공간">SW</a><a class="dv-brand" href="${C.base}" aria-label="${esc(C.brand)} 홈"><svg width="26" height="14" viewBox="0 0 26 14" aria-hidden="true"><path d="M13 7C9 1 3 1 3 7s6 6 10 0 10-6 10 0-6 6-10 0Z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>${esc(C.brand)}</span></a>
+    <nav class="dv-nav" aria-label="${esc(C.brand)} 메뉴">${NAV.filter(([k]) => k !== "docs" || C.docs).map(([k, l]) => `<a href="${C.base}${k ? "/" + k : ""}"${active === k ? ' aria-current="page"' : ""}>${l}</a>`).join("")}${extra}</nav></header>`;
 }
