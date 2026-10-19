@@ -21,12 +21,29 @@ export function mountAuth(root, { onDone }) {
           <button class="pill-go" type="submit" aria-label="다음">${arrow}</button>
         </div>
         <p class="gate-msg" id="gate-msg" role="alert"></p>
+        <div class="gate-status" id="gate-status" hidden aria-live="polite"></div>
       </form>
       <p class="gate-foot"><span id="gate-note">함께 쓰는 공부 공간</span> · <button type="button" class="gate-switch" id="gate-switch">가입 신청</button></p>
     </div>`;
 
   const gate = $("#gate", root), form = $("#gate-form", root), input = $("#gate-input", root);
-  const pill = $("#pill", root), who = $("#pill-who", root), msg = $("#gate-msg", root), label = $("#gate-label", root);
+  const pill = $("#pill", root), who = $("#pill-who", root), msg = $("#gate-msg", root), label = $("#gate-label", root), status = $("#gate-status", root);
+  // 가입 승인 현황: 관리자마다 승인했는지 + [다시 확인] (비밀번호는 이 화면에서만 잠깐 들고 있어요)
+  let again = null;
+  const showStatus = (name, list = [], creds = null) => {
+    const done = list.filter((a) => a.approved).length;
+    again = creds;
+    status.hidden = false; msg.textContent = "";
+    status.innerHTML = `<p class="gs-h">@${esc(name)} · 가입 승인 기다리는 중</p>
+      <ul class="gs-list">${list.map((a) => `<li class="${a.approved ? "ok" : ""}"><b>${esc(a.admin.toUpperCase())}</b><span>${a.approved ? "✓ 승인했어요" : "아직 확인 전"}</span></li>`).join("")}</ul>
+      <p class="gs-note">${done} / ${list.length} 승인 · 모두 승인하면 바로 들어올 수 있어요</p>
+      ${creds ? `<button type="button" class="gs-again" id="gs-again">다시 확인</button>` : ""}`;
+    status.querySelector("#gs-again")?.addEventListener("click", async (e) => {
+      const b = e.currentTarget; b.disabled = true; b.textContent = "확인 중…";
+      try { const { user } = await api.login(again.u, again.p); again = null; status.hidden = true; gate.classList.add("leaving"); setTimeout(() => { document.body.classList.remove("at-gate"); onDone(user); }, 650); }
+      catch (ex) { if (ex.data?.account_state === "pending") showStatus(again.u, ex.data.approvals, again); else { status.hidden = true; shake(ex.message); } }
+    });
+  };
   const setHas = () => pill.classList.toggle("has", input.value.length > 0);
 
   const sw = $("#gate-switch", root), note = $("#gate-note", root);
@@ -72,7 +89,7 @@ export function mountAuth(root, { onDone }) {
       pill.classList.add("busy");
       try {
         const r = await api.signup({ username, password: pw1 });
-        pill.classList.remove("busy"); setMode(false); msg.textContent = r.message || "가입 신청을 받았어요.";
+        pill.classList.remove("busy"); setMode(false); showStatus(username, r.approvals || [], { u: username, p: pw1 });
       } catch (ex) { pill.classList.remove("busy"); toUser(); shake(ex.message); }
       return;
     }
@@ -89,6 +106,7 @@ export function mountAuth(root, { onDone }) {
     } catch (ex) {
       pill.classList.remove("busy");
       if (step === "user" && ex.data?.need_password) return toPass();
+      if (ex.data?.account_state === "pending") { const p = step === "pass" ? input.value : undefined; input.value = ""; setHas(); return showStatus(username, ex.data.approvals || [], { u: username, p }); }
       if (step === "pass") { input.value = ""; setHas(); }
       shake(ex.message);
     }

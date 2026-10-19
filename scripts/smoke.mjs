@@ -54,7 +54,7 @@ ok(r.status === 400, "signup: id must be 3 letters");
 r = await call("a", "POST", "/auth/signup", { username: sid, password: "password1" });
 ok(r.status === 201 && r.data.pending === true, "signup creates a pending account");
 r = await call("x", "POST", "/auth/login", { username: sid });
-ok(r.status === 403 && r.data.account_state === "pending", "pending account can't log in until admins approve");
+ok(r.status === 403 && r.data.account_state === "pending" && Array.isArray(r.data.approvals) && r.data.approvals.every((x) => x.approved === false), "pending account can't log in until admins approve · sees each admin's approval (none yet)");
 d1(`DELETE FROM users WHERE username = '${sid}'`);
 mk("t_a" + tag, "테스트A", "password1"); mk("t_b" + tag, "테스트B", "password2");
 r = await call("x", "POST", "/auth/login", { username: "nobody" + tag }); ok(r.status === 401, "unknown id rejected");

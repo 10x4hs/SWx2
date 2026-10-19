@@ -74,7 +74,16 @@ export async function startSession(req, env, userId, impBy = null) {
 export const sessionId = async (req) => { const t = sessionToken(req); return t ? sha256(t) : null; };
 // 승인 대기 · 정지된 계정은 들어올 수 없어요
 const STATE_MSG = { pending: "가입 승인을 기다리는 중이에요. 관리자 두 사람(HSK · GYK)이 모두 승인하면 들어올 수 있어요.", suspended: "정지된 계정이에요. 관리자에게 문의해 주세요." };
-const checkState = (u) => { if (u.state && u.state !== "active") fail(403, STATE_MSG[u.state] || "들어올 수 없는 계정이에요.", { account_state: u.state }); };
+// 가입 승인 현황: 관리자마다 승인했는지 (승인 대기 본인 · 관리자 화면이 같이 써요)
+export async function approvalStatus(env, userId) {
+  const { results } = await env.DB.prepare("SELECT a.username AS admin, s.at FROM users a LEFT JOIN signup_approvals s ON s.admin_id = a.id AND s.user_id = ? WHERE a.role = 'admin' AND a.state = 'active' ORDER BY a.username").bind(userId).all();
+  return results.map((r) => ({ admin: r.admin, approved: !!r.at, at: r.at || null }));
+}
+// 들어올 수 없는 계정이면 403. 승인 대기면 누가 승인했는지도 같이 (비밀번호를 맞힌 뒤에만 불러요)
+const checkState = async (env, u) => {
+  if (!u.state || u.state === "active") return;
+  fail(403, STATE_MSG[u.state] || "들어올 수 없는 계정이에요.", { account_state: u.state, ...(u.state === "pending" ? { approvals: await approvalStatus(env, u.id) } : {}) });
+};
 // 비밀번호를 꼭 바꿔야 하는지. 아이디만으로 들어가는 로컬(PASSWORDLESS=1)에서는 묻지 않아요.
 // 단, 요청에 "x-trio-strict: 1" 이 있으면 로컬에서도 배포본처럼 검사해요 (smoke 테스트용 — 더 엄격해지기만 하고 풀어 주는 일은 없어요)
 const pwStrict = (req, env) => env.PASSWORDLESS !== "1" || req.headers.get("x-trio-strict") === "1";
@@ -122,12 +131,13 @@ export function registerAuth(on) {
     if (await env.DB.prepare("SELECT 1 FROM users WHERE username = ?").bind(username).first()) fail(409, "이미 있는 아이디예요.");
     const { hash, salt } = await hashPassword(b.password);
     const t = now();
+    const newId = uid();
     await env.DB.prepare("INSERT INTO users (id, username, display_name, color, pw_hash, pw_salt, created_at, state, pw_changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)")
-      .bind(uid(), username, display, COLORS[n % COLORS.length], hash, salt, t, t).run();
+      .bind(newId, username, display, COLORS[n % COLORS.length], hash, salt, t, t).run();
     // 관리자들에게 "가입 신청이 왔어요" 푸시 (내용은 서비스 워커가 /admin/pending 에서 읽어요)
     const admins = (await env.DB.prepare("SELECT id FROM users WHERE role = 'admin' AND state = 'active'").all()).results.map((r) => r.id);
     pushUsers(env, ec, admins, { room: "signup" });
-    return json({ pending: true, message: STATE_MSG.pending }, 201);
+    return json({ pending: true, message: STATE_MSG.pending, approvals: await approvalStatus(env, newId) }, 201);
   }, { auth: false });
 
   on("POST", "/auth/login", async ({ req, env }) => {
@@ -137,7 +147,7 @@ export function registerAuth(on) {
     // 아이디만으로 들어가기 (PASSWORDLESS=1): 세 사람만 쓰는 공간이라 비밀번호를 묻지 않아요
     if (env.PASSWORDLESS === "1") {
       if (!u) fail(401, "없는 아이디예요.");
-      checkState(u);
+      await checkState(env, u);
       return json({ user: publicUser({ ...u, must_change_pw: mustChange(req, env, u) }) }, 200, { "set-cookie": await startSession(req, env, u.id) });
     }
     if (!b.password) return json({ error: "비밀번호를 입력해 주세요.", need_password: true }, 401);
@@ -149,7 +159,7 @@ export function registerAuth(on) {
       await bumpFail(env, u);
       fail(401, wrong);
     }
-    checkState(u);
+    await checkState(env, u);
     await env.DB.batch([
       env.DB.prepare("UPDATE users SET fail_count = 0, locked_until = 0 WHERE id = ?").bind(u.id),
       env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now()),
