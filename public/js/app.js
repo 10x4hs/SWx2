@@ -32,7 +32,7 @@ import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js";
 import * as roomView from "./views/room.js";
 import * as newsView from "./views/news.js"; // 뉴스 Signal Map (#/news · #/news/item/<id> · #/news/thread/<id>)
 import * as mbaView from "./views/mba.js"; // 경영 마이크로디그리 (#/mba · #/mba/today · #/mba/company · #/mba/words · #/mba/<모듈>/<카드>)
-import * as devView from "./views/dev.js"; // 개발 흐름 마이크로디그리 (#/dev · #/dev/today · #/dev/docs · #/dev/<모듈>/<카드> · case · practice)
+import * as devView from "./views/dev.js"; // SW 공간 (#/sw 과정 목록 · #/sw/<과정>/… 개발 흐름 · Vector & Graph — today · docs · <모듈>/<카드> · case · practice)
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
 import { startLive, stopLive } from "./live.js";
@@ -157,7 +157,7 @@ const NAV = [
   { key: "study", hash: "#/english", label: "Study", tip: "Study · 영어 · 논문 · AI" }, // Brain 안에 묻히면 AI 공부책을 못 찾아서 바로 가는 아이콘은 남겨요
   { key: "news", hash: "#/news", label: "News", tip: "News · daily edition" },
   { key: "biz", hash: "#/mba", label: "경영", tip: "경영 · 마이크로디그리 (24주 · 하루 1~2시간)" },
-  { key: "dev", hash: "#/dev", label: "개발", tip: "개발 흐름 · 마이크로디그리 (12주 · 하루 30~60분)" },
+  { key: "dev", hash: "#/sw", label: "SW", tip: "SW · Dev Flow · Vector & Graph" },
   { key: "room", hash: "#/room", label: "대화", tip: "대화 · 셋이 같이 · 창고", badge: "room-badge" },
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -316,7 +316,7 @@ function redirectOld() {
 function parseRoute() {
   redirectOld();
   const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
-  const [a, b, c, d] = parts;
+  const [a, b, c, d, e] = parts;
   if (a === "u") return { view: "home", nav: "home" }; // 서로는 차트만: 다른 사람의 하루 페이지는 없어요
   if (a === "brain" && b === "graph") return { view: "graph", nav: "brain" }; // 개념 그래프 (노트를 내용으로 묶은 8~20개 무리)
   if (a === "brain") return { view: "brain", nav: "brain", id: b || null };

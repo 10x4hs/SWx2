@@ -1,13 +1,18 @@
-// 개발 흐름 마이크로디그리 모듈 목록 만들기
-//   node scripts/dev-index.mjs          public/dev/index.json 을 새로 써요 (모듈 파일의 소개 · 카드 · 사례 · 문제 · 강의 목록)
-//   node scripts/dev-index.mjs --check  모듈 파일 규칙 검사 + 목록이 낡았으면 실패 (npm test 가 불러요)
+// SW 공간 과정의 모듈 목록 만들기 — 과정: dev(개발 흐름, 기본) · vg(Vector & Graph)
+//   node scripts/dev-index.mjs [vg]          public/<과정>/index.json 을 새로 써요 (모듈 파일의 소개 · 카드 · 사례 · 문제 · 강의 목록)
+//   node scripts/dev-index.mjs [vg] --check  모듈 파일 규칙 검사 + 목록이 낡았으면 실패 (npm test 가 불러요)
 // 규칙: 모듈마다 카드 20장(하루 4장 × 5일) · 사례 2 · 회의실 문제 15 (보기 중 정답 하나) · 강의 3~6 (https) · 출처가 붙은 카드
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "dev");
-export const ORDER = ["company", "mvp", "requirements", "ux", "architecture", "data", "security", "planning", "repo", "release", "ops", "lead"];
+const ARGS = process.argv.slice(2), COURSE = ARGS.includes("vg") ? "vg" : "dev", CHECK = ARGS.includes("--check");
+const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "public", COURSE);
+const ORDERS = {
+  dev: ["company", "mvp", "requirements", "ux", "architecture", "data", "security", "planning", "repo", "release", "ops", "lead"],
+  vg: ["vg-embeddings", "vg-ann-index", "vg-vector-db", "vg-hybrid-search", "vg-rag", "vg-graph-model", "vg-kg-algo", "vg-graphrag"],
+};
+export const ORDER = ORDERS[COURSE];
 const ID = /^[a-z0-9][a-z0-9-]{0,40}$/;
 
 const problems = [];
@@ -54,10 +59,10 @@ const modules = ORDER.map((id, i) => {
 });
 const out = JSON.stringify({ version: 1, note: "node scripts/dev-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.", modules }, null, 2) + "\n";
 const file = join(DIR, "index.json"), sum = (k) => modules.reduce((n, m) => n + m[k].length, 0);
-const line = `dev 모듈 ${modules.length}개 · 카드 ${sum("cards")}장 · 사례 ${sum("cases")} · 문제 ${sum("problems")} · 강의 ${sum("lectures")}`;
-if (process.argv[2] === "--check") {
-  if (problems.length) { console.error("개발 흐름 모듈 파일 문제:\n  " + problems.join("\n  ")); process.exit(1); }
-  if (!existsSync(file) || readFileSync(file, "utf8") !== out) { console.error("public/dev/index.json 이 낡았어요 → node scripts/dev-index.mjs"); process.exit(1); }
+const line = `${COURSE} 모듈 ${modules.length}개 · 카드 ${sum("cards")}장 · 사례 ${sum("cases")} · 문제 ${sum("problems")} · 강의 ${sum("lectures")}`;
+if (CHECK) {
+  if (problems.length) { console.error(`${COURSE} 모듈 파일 문제:`+"\n  " + problems.join("\n  ")); process.exit(1); }
+  if (!existsSync(file) || readFileSync(file, "utf8") !== out) { console.error(`public/${COURSE}/index.json 이 낡았어요 → node scripts/dev-index.mjs${COURSE === "dev" ? "" : " " + COURSE}`); process.exit(1); }
   console.log(line);
 } else {
   if (problems.length) console.warn("주의:\n  " + problems.join("\n  "));
