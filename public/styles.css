@@ -2092,6 +2092,15 @@ a.btn { text-decoration: none; }
 /* v16.7: 홈 AI 챗봇 (오늘 줄 아래) */
 .hud-ai { position: absolute; z-index: 6; display: grid; gap: 8px; padding: 12px; border-radius: 18px; background: var(--lg-fill); border: 1px solid var(--lg-edge); box-shadow: var(--lg-top), var(--lg-lift); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 .hud-ai[hidden] { display: none; }
+.hud-ai { transform-origin: 0 0; will-change: transform; }
+/* 맥 창의 노란 버튼: 누르면 접혀요 (올리면 − 표시) */
+.hud-ai-yel { width: 12px; height: 12px; padding: 0; border-radius: 50%; border: .5px solid rgba(0,0,0,.25); background: #febc2e; display: grid; place-items: center; cursor: pointer; flex: none; }
+.hud-ai-yel::before { content: ""; width: 6px; height: 1.5px; border-radius: 1px; background: rgba(90,50,0,.75); opacity: 0; transition: opacity .12s; }
+.hud-ai-yel:hover::before, .hud-ai-yel:focus-visible::before { opacity: 1; }
+/* 접힌 모양: 작은 구슬 하나 */
+.hud-ai-min { position: absolute; z-index: 6; width: 40px; height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: var(--lg-fill); border: 1px solid var(--lg-edge); box-shadow: var(--lg-top), var(--lg-lift); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); transition: transform .15s; }
+.hud-ai-min:hover { transform: scale(1.08); }
+.hud-ai-min[hidden] { display: none; }
 .hud-ai-h { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .hud-ai-h .faint { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hud-ai .aic { margin: 0; }

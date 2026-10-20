@@ -107,7 +107,8 @@ export function mount(root, ctx) {
           <button type="button" class="pg-mini" data-page-next>›</button>
         </nav>
         <div class="stage-rows" id="rows"></div>
-        <div class="hud-ai" id="hud-ai" hidden aria-label="AI 챗봇"><div class="hud-ai-h"><span class="orb mini" aria-hidden="true"><span class="orb-glass"></span></span><b>AI 챗봇</b><span class="faint">묻거나 시키기</span></div><div id="hud-ai-box"></div></div>
+        <div class="hud-ai" id="hud-ai" hidden aria-label="AI 챗봇"><div class="hud-ai-h"><button type="button" class="hud-ai-yel" id="hud-ai-yel" aria-label="AI 챗봇 접기" title="접기"></button><span class="orb mini" aria-hidden="true"><span class="orb-glass"></span></span><b>AI 챗봇</b><span class="faint">묻거나 시키기</span></div><div id="hud-ai-box"></div></div>
+        <button type="button" class="hud-ai-min" id="hud-ai-min" hidden aria-label="AI 챗봇 펼치기" title="AI 챗봇 펼치기"><span class="orb mini" aria-hidden="true"><span class="orb-glass"></span></span></button>
         <section class="guide glass" id="guide" hidden aria-label="시작하기"></section>
         <div class="hud-bc" id="focus-line"></div>
         <div class="hud-br">
@@ -189,10 +190,30 @@ export function mount(root, ctx) {
   // 홈 AI 챗봇: 넓은 화면 · 전체 쪽 · 내 현황일 때 "오늘" 줄 바로 아래(오른쪽 숫자 열)에 붙어요
   const hudAi = $("#hud-ai", root);
   const stopAi = mountCommand($("#hud-ai-box", root), { day: () => ymd(today()) }); // 계획이 바뀌면 trio:changed 로 홈이 알아서 다시 그려요
+  // 접기: 맥의 노란 버튼(최소화)처럼 지니 모션으로 작은 구슬 속으로 빨려 들어가요 · 구슬을 누르면 다시 펼쳐져요 (이 브라우저가 기억)
+  const aiMin = $("#hud-ai-min", root), AI_KEY = "home-ai-min";
+  let aiFolded = (() => { try { return localStorage.getItem(AI_KEY) === "1"; } catch { return false; } })();
+  const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const GENIE = [
+    { transform: "none", opacity: 1, filter: "blur(0)", clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)" },
+    { transform: "scale(.82, .96) skewX(-6deg)", opacity: 1, offset: .35, clipPath: "polygon(0 0, 100% 0, 62% 100%, 0 100%)" },
+    { transform: "scale(.28, .62) skewX(-14deg)", opacity: .85, offset: .7, clipPath: "polygon(0 0, 60% 0, 18% 100%, 0 100%)" },
+    { transform: "scale(.04, .1)", opacity: 0, filter: "blur(2px)", clipPath: "polygon(0 0, 20% 0, 4% 100%, 0 100%)" },
+  ];
+  async function foldAi(on) {
+    aiFolded = on; try { localStorage.setItem(AI_KEY, on ? "1" : "0"); } catch {}
+    if (hudAi.dataset.show !== "1") return;
+    const o = { duration: still() ? 1 : 460, easing: "cubic-bezier(.5, 0, .2, 1)" };
+    if (on) { await hudAi.animate(GENIE, o).finished.catch(() => {}); hudAi.hidden = true; aiMin.hidden = false; aiMin.animate([{ transform: "scale(.4)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], { duration: still() ? 1 : 220, easing: "ease-out" }); aiMin.focus(); }
+    else { aiMin.hidden = true; hudAi.hidden = false; await hudAi.animate(GENIE.map((f) => (f.offset == null ? f : { ...f, offset: 1 - f.offset })).reverse(), o).finished.catch(() => {}); hudAi.querySelector("input, textarea")?.focus(); }
+  }
+  $("#hud-ai-yel", root).addEventListener("click", () => foldAi(true));
+  aiMin.addEventListener("click", () => foldAi(false));
   function placeAi(slide) {
     const svg = slide?.querySelector(":scope > svg.rh.wide");
     const show = !!svg && pageKey() === "all" && S.wide && mine();
-    hudAi.hidden = !show; if (!show) return;
+    hudAi.dataset.show = show ? "1" : "0";
+    hudAi.hidden = !show || aiFolded; aiMin.hidden = !show || !aiFolded; if (!show) return;
     const vb = svg.viewBox.baseVal, r = svg.getBoundingClientRect(), host = hudAi.offsetParent?.getBoundingClientRect() || { left: 0, top: 0 };
     const k = Math.min(r.width / vb.width, r.height / vb.height), ox = r.left + (r.width - vb.width * k) / 2, oy = r.top + (r.height - vb.height * k) / 2;
     const x0 = 2 * 260 + 64; // ringhud.js 의 숫자 열 시작점
@@ -200,6 +221,7 @@ export function mount(root, ctx) {
     const rowsEnd = svg.querySelectorAll(".rh-row").length > 4 ? 16 + 4 * 46 + 60 : 196; // 마지막 줄 아래
     hudAi.style.top = oy + rowsEnd * k - host.top + "px";
     hudAi.style.width = Math.max(300, (vb.width - x0 + 18) * k) + "px";
+    aiMin.style.left = hudAi.style.left; aiMin.style.top = hudAi.style.top;
   }
   function fitArrows(slide) {
     placeAi(slide);
