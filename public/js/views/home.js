@@ -51,11 +51,16 @@ const shiftDay = (d, n) => new Date(Date.parse(d + "T00:00:00Z") + n * 864e5).to
 const REL = { "-2": "그저께", "-1": "어제", 0: "오늘", 1: "내일", 2: "모레" };
 const relOf = (d, today) => { const n = Math.round((Date.parse(d) - Date.parse(today)) / 864e5); return REL[n] || (n > 0 ? `${n}일 뒤` : `${-n}일 전`); };
 const dayName = (d) => { const t = new Date(d + "T00:00:00"); return `${t.getMonth() + 1}월 ${t.getDate()}일 ${"일월화수목금토"[t.getDay()]}`; };
-// 시각이 있는 할 일 → 24시간 시계 위 제자리의 조각
-const toBlocks = (list) => list.filter((p) => /^\d\d:\d\d$/.test(p.start || "")).map((p) => {
+// 시각이 있는 할 일 → 24시간 시계 위 제자리의 조각. 자정을 넘는 계획은 그날 24:00 까지, 남은 만큼은 다음 날 00:00 부터 이어진 조각으로 (prev = 전날 계획)
+const timedOf = (list) => list.filter((p) => /^\d\d:\d\d$/.test(p.start || ""));
+const toBlocks = (list, prev = []) => [...timedOf(list).map((p) => {
   const [h, m] = p.start.split(":").map(Number), a0 = (h * 60 + m) / 1440;
   return { a0, a1: Math.min(1, a0 + (p.mins || 30) / 1440), done: !!p.done, title: p.text || "비공개", time: p.start, id: p.id, priority: p.priority || "", cat: catOf(p.text), mins: p.mins || 30, missed: !!p.missed, focus: p.focus_mins || 0 };
-}).sort((a, b) => a.a0 - b.a0);
+}), ...timedOf(prev).map((p) => {
+  const [h, m] = p.start.split(":").map(Number), over = h * 60 + m + (p.mins || 30) - 1440;
+  // 이어진 조각: 점수 · 개수에는 안 세요 (cont) · 누르면 id 로 원래 계획이 열려요
+  return over > 0 ? { a0: 0, a1: Math.min(1, over / 1440), done: !!p.done, title: `${p.text || "비공개"} (어제 ${p.start}부터)`, time: "00:00", id: p.id, priority: p.priority || "", cat: catOf(p.text), mins: 0, missed: !!p.missed, focus: 0, cont: true } : null;
+}).filter(Boolean)].sort((a, b) => a.a0 - b.a0);
 const COLOR = { all: "var(--r-week)", check: "var(--p-max)", month: "var(--r-month)", week: "var(--r-week)", day: "var(--r-day)", team: "var(--m0)" };
 // 서버 시각은 ms · 초 · ISO 어느 쪽이 와도 ms 로
 const ms = (v) => (v == null ? null : typeof v === "string" ? Date.parse(v) : v < 1e12 ? v * 1000 : v);
@@ -230,14 +235,15 @@ export function mount(root, ctx) {
   const inRange = (d) => !!S.range && d >= S.range[0] && d <= S.range[1];
   // 그날 계획: 처음에 불러온 범위(이번 달 · 이번 주 · 내일)면 바로, 아니면 따로 불러와 기억해요 (null = 아직 불러오는 중)
   function plansOn(d) {
-    if (inRange(d)) return { plans: (S.plans || []).filter((p) => p.period === "D:" + d), closed: !!S.closed };
+    const pd = shiftDay(d, -1); // 전날 계획도 같이 — 자정을 넘어 이어지는 조각
+    if (inRange(d) && inRange(pd)) return { plans: (S.plans || []).filter((p) => p.period === "D:" + d), prev: (S.plans || []).filter((p) => p.period === "D:" + pd), closed: !!S.closed };
     return S.dayCache[S.who + "|" + d] || null;
   }
   async function fetchDay(d, force = false) {
     const who = S.who, key = who + "|" + d;
     if ((!force && S.dayCache[key]) || S.dayFetching === key) return;
     S.dayFetching = key;
-    try { const res = await api.plans(["D:" + d], who); S.dayCache[key] = { plans: res.plans || [], closed: !!res.closed }; }
+    try { const pd = "D:" + shiftDay(d, -1), res = await api.plans(["D:" + d, pd], who), all = res.plans || []; S.dayCache[key] = { plans: all.filter((p) => p.period !== pd), prev: all.filter((p) => p.period === pd), closed: !!res.closed }; }
     catch (e) { if (!S.dayCache[key]) S.dayCache[key] = { plans: [], closed: false }; toast(e.message, "err"); }
     finally { if (S.dayFetching === key) S.dayFetching = null; }
     if (alive && S.who === who && S.day === d && pageKey() === "day") draw(false);
@@ -247,12 +253,12 @@ export function mount(root, ctx) {
     const d = S.day, rel = relOf(d, todayStr), [, mm, dd] = d.split("-").map(Number);
     const nav = { label: dayName(d), short: `${mm}/${dd} ${dayName(d).slice(-1)}`, today: d === todayStr }; // 상대 날짜(내일 · 어제)는 가운데 설명에
     if (d === todayStr) return { ...S.data.day, rel, nav };
-    const got = plansOn(d), list = got?.plans || [], u = ctx.user(S.who) || ctx.me;
-    const base = { color: "var(--r-day)", blocks: toBlocks(list), mine: mine(), drag: mine() && canDrag(), rel, nav, hand: false, now: nowTime(), time: d < todayStr ? 1 : 0, pastTip: `${dayName(d)} · 지난 날` };
+    const got = plansOn(d), list = got?.plans || [], prev = got?.prev || [], u = ctx.user(S.who) || ctx.me;
+    const base = { color: "var(--r-day)", blocks: toBlocks(list, prev), mine: mine(), drag: mine() && canDrag(), rel, nav, hand: false, now: nowTime(), time: d < todayStr ? 1 : 0, pastTip: `${dayName(d)} · 지난 날` };
     if (!got) return { ...base, center: { big: "…", cap: rel, sub: "불러오는 중" } };
     if (got.closed) return { ...base, center: { big: "–", cap: rel, sub: "계획을 공개하지 않았어요" } };
     if (d > todayStr) {
-      const timed = base.blocks, total = timed.reduce((n, b) => n + b.mins, 0);
+      const timed = base.blocks.filter((b) => !b.cont), total = timed.reduce((n, b) => n + b.mins, 0);
       return { ...base, center: { big: timed.length ? String(timed.length) : "–", cap: `${rel} 계획`, sub: timed.length ? `합계 ${hm(total)}` : "아직 비어 있어요" } };
     }
     const sc = dayScore(list, u.day_goal);
@@ -271,7 +277,7 @@ export function mount(root, ctx) {
       const u = ctx.user(S.who) || ctx.me;
       const now = new Date(), dayPassed = (now.getHours() * 60 + now.getMinutes()) / 1440;
       // 한 번에: 올해·이번 달·이번 주 목표 + 이번 달·이번 주 날짜 범위 (예전엔 20개씩 나눠 3번 불렀어요)
-      const dayList = [...monthDays, ...weekDays, addDays(t, 1)].map((d) => ymd(d)).sort(); // 내일도 같이 (Day 쪽 › 를 누르면 바로)
+      const dayList = [...monthDays, ...weekDays, addDays(t, -1), addDays(t, 1)].map((d) => ymd(d)).sort(); // 어제(자정을 넘어 이어지는 계획) · 내일도 같이 (Day 쪽 › 를 누르면 바로)
       const res = await api.plans([K.year, K.month, K.week], u.id, `${dayList[0]}..${dayList[dayList.length - 1]}`), plans = res.plans || [];
       const of = (key) => plans.filter((p) => p.period === key).sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0) || (a.sort ?? 0) - (b.sort ?? 0));
       const year = of(K.year), month = of(K.month), week = of(K.week), day = of(K.day);
@@ -283,13 +289,13 @@ export function mount(root, ctx) {
       const done = (list) => list.filter((p) => p.done).length;
       const period = (list, key, dLeft) => ({ segs: segs(list), value: list.length ? done(list) / list.length : 0, total: list.length, time: elapsed(key), detail: `D-${dLeft}` + (list.length ? ` · ${done(list)}/${list.length} 이룸` : "") });
       // 오늘: 시각이 있는 할 일은 24시간 시계 위 제자리에
-      const blocks = toBlocks(day);
+      const blocks = toBlocks(day, plans.filter((p) => p.period === "D:" + ymd(addDays(t, -1)))), own = blocks.filter((b) => !b.cont);
       const val = {
         year: period(year, K.year, left),
         month: period(month, K.month, daysLeft(K.month)),
         week: period(week, K.week, daysLeft(K.week)),
         // 오늘 = 하루 계획표(시간 있는 일정)만 · 체크리스트는 따로
-        day: { blocks, value: blocks.length ? blocks.filter((b) => b.done).length / blocks.length : 0, total: blocks.length, time: dayPassed, detail: blocks.length ? `계획 ${blocks.filter((b) => b.done).length}/${blocks.length} 끝냄` : "" },
+        day: { blocks, value: own.length ? own.filter((b) => b.done).length / own.length : 0, total: own.length, time: dayPassed, detail: own.length ? `계획 ${own.filter((b) => b.done).length}/${own.length} 끝냄` : "" },
       };
       // 체크리스트 링 (가장 안쪽): 오늘 할 일마다 칸, 색 = 우선순위
       const ckItems = day.filter((p) => !p.start); // 체크리스트 = 시간 없는 할 일 (시간 있는 건 하루 계획표)
