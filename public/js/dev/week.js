@@ -25,7 +25,7 @@ export function mountWeek(host, ctx, id) {
       host.innerHTML = `${topbar("", "", [{ t: `${m.no} ${m.title}` }])}
         <div class="bk bk-page">
           <header class="bk-cover">
-            <p class="bk-kicker">Chapter <span class="dv-week-no">${m.no}</span> · ${esc(C.name)} · 5일</p>
+            <p class="bk-kicker"><span class="dv-week-no">${m.no}</span>장 · ${esc(C.name)} · 5일</p>
             <h1>${esc(m.title)}</h1>
             <p class="bk-q">이번 주 질문 — “${esc(m.q)}”</p>
             <div class="bk-meter">${meter("카드", p.cards, p.nCards)}${meter("사례", p.cases, p.nCases)}${meter("회의실", p.probs, p.nProbs)}</div>

@@ -49,6 +49,31 @@ import { applyView, remindAt, isDue } from "../public/js/blocks/dbview.js";
   ok(blocked.every(([m, p]) => B(m, p, false)) && open.every(([m, p]) => !B(m, p, false)) && B("GET", "/diary?day=2026-09-28", true) && B("POST", "/plans", true) && !B("GET", "/plans?periods=D:2026-09-28", true), "page bridge: diary friends · dot-segment paths blocked, normal paths open");
   void T;
 }
+// SW 과정 설명 그림 목록 (public/figs/map.json): 자리마다 있는 카드 · 있는 문단 · 있는 그림 파일 · 확인한 영상. 카드 순서는 index.json 과 모듈 파일이 같아야 '그림 N-M' 번호가 화면과 튜터에서 같아요
+{
+  const { readFileSync, existsSync } = await import("node:fs");
+  const J = (p) => JSON.parse(readFileSync(new URL("../public" + p, import.meta.url)));
+  const map = J("/figs/map.json"), bad = [];
+  for (const [k, list] of Object.entries(map.place)) {
+    const [course, mod, card] = k.split("/");
+    let doc = null; try { doc = J(`/${course}/${mod}.json`); } catch {}
+    const c = doc?.cards?.find((x) => x.id === card);
+    if (!c) { bad.push(k + " 없는 카드"); continue; }
+    for (const p of list) {
+      if (p.fig && (!map.figs[p.fig] || !existsSync(new URL(`../public/js/figs/f-${p.fig}.js`, import.meta.url)))) bad.push(k + " 그림 " + p.fig);
+      if (p.video && !map.videos[p.video]) bad.push(k + " 영상 " + p.video);
+      if (!p.fig && !p.video) bad.push(k + " 빈 자리");
+      const a = p.after ?? "end";
+      if (!(Number.isInteger(a) ? a >= 0 && a < c.idea.length : ["lead", "steps", "code", "end"].includes(a)) || (a === "steps" && !c.steps?.length) || (a === "code" && !c.code)) bad.push(k + " after " + a);
+    }
+  }
+  for (const course of ["vg", "dev"]) for (const m of J(`/${course}/index.json`).modules) { const doc = J(`/${course}/${m.id}.json`); if (doc.cards.map((c) => c.id).join() !== m.cards.map((c) => c.id).join()) bad.push(`${course}/${m.id} 카드 순서`); }
+  const vids = Object.values(map.videos);
+  ok(!bad.length && vids.every((v) => /^[\w-]{11}$/.test(v.id) && v.title && v.channel && ["ko", "en"].includes(v.lang)), `figs: map.json 자리 ${Object.keys(map.place).length}곳 · 그림 ${Object.keys(map.figs).length}개 · 영상 ${vids.length}개가 카드 · 파일과 맞아요${bad.length ? " — " + bad.slice(0, 4).join(" · ") : ""}`);
+  const { figsOfModule } = await import("../src/mba.js");
+  const ann = figsOfModule(map, "vg", J("/vg/vg-ann-index.json"), "c12").find((f) => f.id === "hnsw");
+  ok(ann?.here && /^2-\d+$/.test(ann.no), `figs: 튜터 프롬프트의 그림 번호 — 이 카드에 있는 그림은 이 카드 번호 (${ann?.no})`);
+}
 const tag = Date.now().toString(36).slice(-5);
 const mk = (u, n, pw) => execFileSync("node", ["scripts/add-user.mjs", u, n, pw, "--team=swx2", "--features=all"], { stdio: "ignore" }); // 테스트 사람들은 한 팀 (서로 보기 검사)
 // 로컬 D1 에 직접 묻기 (서버를 거치지 않고 저장된 값 확인)
