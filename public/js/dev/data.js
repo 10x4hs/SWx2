@@ -17,11 +17,11 @@ export const COURSES = {
   dev: { key: "dev", base: "#/sw/dev", dir: "/dev", name: "Dev Flow", brand: "개발 흐름", tutor: "개발 흐름 마이크로디그리", docs: true, role: "대표",
     scene: (no, size) => `두런 · ${no}장면 · 직원 ${size}명 · 가상 회사`, sceneOf: "두런의",
     quickWeek: ["이번 주 질문에 대표 입장에서 답해 줘", "두런 장면에서 내가 대표라면 무엇을 정해야 해?", "이번 주 카드로 퀴즈 3개 내 줘", "개발자가 회의에서 이 말을 하면 뭐라고 되물어야 해?"],
-    quickCard: ["쉬운 비유로 다시 설명해 줘", "회사에서는 실제로 어떻게 해?", "대표로서 뭘 결정해야 해?"], ph: "예: PRD랑 요구사항정의서 중 뭘 먼저 써요?" },
+    quickCard: ["쉬운 비유로 다시 설명해 줘", "그림으로 보여 줘", "회사에서는 실제로 어떻게 해?", "대표로서 뭘 결정해야 해?"], ph: "예: PRD랑 요구사항정의서 중 뭘 먼저 써요?" },
   vg: { key: "vg", base: "#/sw/vg", dir: "/vg", name: "Vector & Graph", brand: "Vector & Graph", tutor: "Vector & Graph 과정", docs: false, role: "엔지니어",
     scene: (no) => `기억 검색 팀 · ${no}장면 · 가상 이야기`, sceneOf: "기억 검색 팀의",
     quickWeek: ["이번 주 질문에 엔지니어 입장에서 답해 줘", "이번 장면에서 내가 엔지니어라면 무엇을 고를까?", "이번 주 카드로 퀴즈 3개 내 줘", "이 개념을 파이썬 10줄로 보여 줘"],
-    quickCard: ["쉬운 비유로 다시 설명해 줘", "실제 서비스에서는 어떻게 써?", "숫자 예시로 계산해 줘"], ph: "예: HNSW 는 왜 빠른데 정확도가 조금 떨어져요?" },
+    quickCard: ["쉬운 비유로 다시 설명해 줘", "그림으로 보여 줘", "실제 서비스에서는 어떻게 써?", "숫자 예시로 계산해 줘"], ph: "예: HNSW 는 왜 빠른데 정확도가 조금 떨어져요?" },
 };
 export let C = COURSES.dev;
 export function setCourse(k) { C = COURSES[k] || COURSES.dev; }
@@ -33,6 +33,11 @@ export const cApi = {
   day: (...a) => api.courseDay(C.key, ...a), done: (...a) => api.courseDone(C.key, ...a),
 };
 export function state() { return cApi.state().catch(() => ({ today: "", items: [], due: [], days: [], done: [] })); }
+
+// 종이 · 밤 (이 기기에만 기억) — 기본은 종이
+const THEME = "sw-theme";
+export function theme() { try { return localStorage.getItem(THEME) === "night" ? "night" : "paper"; } catch { return "paper"; } }
+export function setTheme(t) { try { localStorage.setItem(THEME, t === "night" ? "night" : "paper"); } catch {} }
 
 // 하루 시간 (이 기기에만 기억) — 하루 30 · 45 · 60분, 기본 45분. 경영 과정과 같이 해도 무리가 덜한 양이에요.
 const KEY = "dv-minutes";
@@ -61,7 +66,7 @@ export const WHY = [
   ["간격을 두고 복습", "몰아서 보기보다 1 · 3 · 7 · 21 · 60일로 나눠 보면 오래 기억해요. 잊을 즈음 다시 꺼내는 게 핵심이에요.", "Cepeda 외, 2006 · 2008"],
   ["섞어 풀기", "회의실 문제는 지난 주 내용과 섞여 나와요. 무엇을 쓸지 고르는 연습이 실제 회의와 같아요.", "Rohrer & Taylor, 2007"],
   ["예시 먼저, 그다음 내 것", "처음엔 두런의 완성된 문서를 읽고, 익숙해지면 내 서비스로 직접 써요. 초보에게 부담이 적어요.", "Sweller & Cooper, 1985"],
-  ["글과 그림을 함께", "흐름은 멈춰 있는 2D 그림 하나와 짧은 글로 같이 보여 줘요. 장식 그림은 넣지 않아요.", "Mayer, 멀티미디어 학습"],
+  ["어려운 곳은 그림으로", "글로만 어려운 곳에는 한 단계씩 넘기는 그림 · 직접 끌어 보는 그림 · 돌려 보는 3D · 짧은 영상을 글 바로 옆에 둬요. 넘기는 속도는 내가 정하고, 장식 그림은 넣지 않아요.", "Mayer, 멀티미디어 학습 (분할 · 근접 · 일관성 원리)"],
   ["이야기로 엮기", "모든 카드가 가상 회사 두런의 한 장면에 붙어 있어요. 맥락이 있는 기억은 꺼내기 쉬워요.", "정교화 · 맥락 단서 (Dunlosky 외, 2013)"],
 ];
 
@@ -116,16 +121,19 @@ export function meter(cap) {
   let t = Date.now(), rest = 0;
   return () => { const ms = Math.min(cap * 60000, Date.now() - t) + rest; t = Date.now(); const n = Math.floor(ms / 60000); rest = ms - n * 60000; return n; };
 }
-const NAV = [["", "지도"], ["today", "오늘"], ["docs", "문서"], ["ask", "AI 질문"]];
-// 책처럼 — 위 띠: SWX2 / 과정 / 지금 쪽(crumbs) + 오른쪽 메뉴. 아래 띠(nextBar): 지금 할 일 하나만 크게
+const NAV = [["", "목차"], ["today", "오늘"], ["docs", "문서"], ["ask", "AI 질문"]];
+// [밤] 버튼 — 누르면 종이 ↔ 밤 (views/dev.js 가 받아요)
+export const nightBtn = () => `<button type="button" class="dv-night" data-night aria-pressed="${theme() === "night"}" title="밤에는 어둡게 · 다시 누르면 종이"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 10.2A5.8 5.8 0 0 1 5.8 2.5a5.8 5.8 0 1 0 7.7 7.7Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>밤</span></button>`;
+// 책처럼 — 위 띠: SW 과정 › 과정 › 지금 쪽(crumbs) + 오른쪽 메뉴 · [밤]. 아래 띠(nextBar): 지금 할 일 하나만 크게
 export function topbar(active, extra = "", crumbs = []) {
-  return `<header class="dv-top sw-ui"><nav class="dv-crumbs" aria-label="지금 위치"><a class="dv-brand dv-sw" href="#/sw">SWX2</a><span aria-hidden="true">/</span><a class="dv-brand" href="${C.base}">${esc(C.name)}</a>${crumbs.map((c) => `<span aria-hidden="true">/</span>${c.href ? `<a href="${c.href}">${esc(c.t)}</a>` : `<b aria-current="page">${esc(c.t)}</b>`}`).join("")}</nav>
-    <nav class="dv-nav" aria-label="${esc(C.brand)} 메뉴">${NAV.filter(([k]) => k !== "docs" || C.docs).map(([k, l]) => `<a href="${C.base}${k ? "/" + k : ""}"${active === k ? ' aria-current="page"' : ""}>${l}</a>`).join("")}${extra}</nav></header>`;
+  if (active === "" && crumbs.length) active = null; // 장 · 카드 · 사례 같은 안쪽 쪽에서는 '목차'를 켜지 않아요
+  return `<header class="dv-top"><nav class="dv-crumbs" aria-label="지금 위치"><a class="dv-home" href="#/sw">SW 과정</a><span aria-hidden="true">›</span><a class="dv-brand" href="${C.base}">${esc(C.name)}</a>${crumbs.map((c) => `<span aria-hidden="true">›</span>${c.href ? `<a href="${c.href}">${esc(c.t)}</a>` : `<b aria-current="page">${esc(c.t)}</b>`}`).join("")}</nav>
+    <nav class="dv-nav" aria-label="${esc(C.brand)} 메뉴">${NAV.filter(([k]) => k !== "docs" || C.docs).map(([k, l]) => `<a href="${C.base}${k ? "/" + k : ""}"${active === k ? ' aria-current="page"' : ""}>${l}</a>`).join("")}${extra}${nightBtn()}</nav></header>`;
 }
 // 아래 고정 띠: 다음 할 일 하나 (href 면 링크, id 면 버튼) · back = 왼쪽 작은 링크(이전 등)
 export function nextBar({ href = "", id = "", label, sub = "", back = "" }) {
   const inner = `<span class="bk-go-t">${esc(label)}</span>${sub ? `<small class="bk-go-s">${esc(sub)}</small>` : ""}<i aria-hidden="true">→</i>`;
-  return `<div class="bk-next sw-ui" role="region" aria-label="다음 할 일"><div class="bk-next-in">${back || "<span></span>"}${id ? `<button type="button" class="bk-go" id="${id}">${inner}</button>` : `<a class="bk-go" href="${href}">${inner}</a>`}</div></div>`;
+  return `<div class="bk-next" role="region" aria-label="다음 할 일"><div class="bk-next-in">${back || "<span></span>"}${id ? `<button type="button" class="bk-go" id="${id}">${inner}</button>` : `<a class="bk-go" href="${href}">${inner}</a>`}</div></div>`;
 }
 // 한 모듈 안에서 지금 할 일 하나: 안 읽은 카드 → 그날 회의실 → 사례 → 다음 모듈
 export function nextInModule(m, doc, read, done, base, nextM) {

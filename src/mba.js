@@ -30,6 +30,32 @@ async function index(env, url, dir) {
   return j || { modules: [] };
 }
 
+// 설명 그림 목록 (public/figs/map.json) — SW 과정 튜터가 답 안에 [[그림:id]] 로 학생 화면에 그림을 띄울 수 있게. 번호는 클라이언트(figs/catalog.js)와 같아요
+let figMap = null, figAt = 0;
+async function figMapOf(env, url) {
+  if (figMap && Date.now() - figAt < 60e3) return figMap;
+  const j = await asset(env, url, "/figs/map.json").catch(() => null);
+  if (j) { figMap = j; figAt = Date.now(); }
+  return j || { figs: {}, place: {} };
+}
+// 한 모듈의 그림 (카드 순서대로 "그림 <장>-<n>") — 같은 그림이 여러 카드에 있으면 한 번만 (이 카드에 있으면 이 카드의 번호, 아니면 처음 번호)
+export function figsOfModule(map, key, doc, cardId) {
+  const out = new Map(); let k = 0;
+  // 같은 그림이 여러 자리면: 이 카드의 자리 > 옵션 없는 기본 자리 > 처음 자리 (클라이언트 figs/catalog.js figRefs 와 같은 규칙)
+  const rank = (cid, p) => (cid === cardId ? 0 : Object.keys(p.opts || {}).length ? 2 : 1);
+  for (const c of doc?.cards || []) for (const p of map.place?.[`${key}/${doc.id}/${c.id}`] || []) {
+    const f = p.fig && map.figs?.[p.fig]; if (!f) continue;
+    const no = `${Number(doc.no)}-${++k}`, r = rank(c.id, p), cur = out.get(p.fig);
+    if (!cur || r < cur.r) out.set(p.fig, { id: p.fig, no, title: f.title, about: f.about, here: r === 0, r });
+  }
+  return [...out.values()].map(({ r, ...x }) => x);
+}
+function figPrompt(list) {
+  if (!list.length) return "";
+  return `[설명 그림 — 학생 화면에 띄울 수 있어요] ${list.map((f) => `그림 ${f.no} [[그림:${f.id}]] ${f.title}${f.here ? " (이 카드에 있음)" : ""} — ${f.about}`).join(" / ")}
+그림이 이해에 도움이 되면(학생이 '그림으로', '보여 줘', '어떻게 생겼어'라고 하거나 공간 · 순서 · 흐름을 물을 때) 답 중간에 [[그림:<id>]] 를 한 줄로 따로 써. 그 자리에 그 그림이 떠. 한 답에 그림은 1개(많아야 2개). 그림을 띄우면 몇 단계에서 무엇을 보면 되는지 한 줄로 알려 줘. 목록에 없는 그림 id 는 쓰지 마.`;
+}
+
 const COURSES = {
   mba: { dir: "/mba", t: { reads: "mba_reads", days: "mba_days", done: "mba_done" }, name: "경영 마이크로디그리", who: "MBA 대학원에 가는 대신 하루 1~2시간씩 경영을 스스로 배우는 한국 학생", tail: "" },
   dev: { dir: "/dev", t: { reads: "dev_reads", days: "dev_days", done: "dev_done" }, name: "개발 흐름 마이크로디그리", who: "코드를 짜는 법이 아니라 회사에서 개발 프로젝트가 흘러가는 방식을 배우는, 개발팀을 이끌 대표가 되려는 한국 학생", tail: " 코드는 꼭 필요할 때만 몇 줄, 읽는 법과 함께 보여 줘. 가상 회사 '두런' 이야기를 예로 써도 좋아." },
@@ -142,6 +168,7 @@ function registerCourse(on, { json, body, fail, now }, key) {
     const doc = await asset(env, url, `${C.dir}/${module}.json`), c = week ? null : doc?.cards?.find((x) => x.id === card), cs = week || c ? null : doc?.cases?.find((x) => x.id === card);
     if (week ? !doc : !c && !cs) fail(404, "카드를 찾지 못했어요.");
     const context = typeof b.context === "string" ? b.context.trim().slice(0, cs ? 2000 : 600) : "";
+    const figLine = key !== "mba" && !cs ? figPrompt(figsOfModule(await figMapOf(env, url), key, doc, week ? null : card)) : "";
     const deep = b.level === "deep";
     const rules = `규칙: 쉬운 한국어 해요체, 짧은 문단. ${deep ? "지금은 '깊게' 모드예요 — 원어 용어 · 공식 · 교과서 이름을 써도 돼요. 정확하게, 근거가 있으면 출처를 말해요." : "지금은 '쉽게' 모드예요 — 일상 비유 먼저, 처음 쓰는 용어는 그 자리에서 한 줄로 풀어요."} 숫자를 쓸 때는 계산을 한 줄로 보여 줘. 자료에 없는 통계 · 법 조문 · 세율은 지어내지 말고 "확인이 필요해요"라고 해. 법 · 세금 · 노무는 전문가(변호사 · 세무사 · 노무사) 확인이 필요하다고 덧붙여. 답 끝에 학생이 스스로 떠올려 볼 질문 하나를 '한번 생각해 볼까요?' 로 붙여.`;
     const sys = (week ? `너는 "${C.name}"의 튜터야. 학생은 ${C.who}이야.${C.tail} 지금 공부하는 주: 《${doc.no} ${doc.title}》 · 이번 주 질문 "${doc.q}".
@@ -150,6 +177,7 @@ ${rules} 학생이 이 주 내용을 물으면 아래 자료를 근거로 답하
 [이번 주 목표] ${(doc.goals || []).join(" / ")}
 [카드] ${(doc.cards || []).map((x) => `${x.id} ${x.title} — ${x.lead || ""}`).join(" / ")}
 [사례] ${(doc.cases || []).map((x) => x.title).join(" / ")}
+${figLine}
 ${context ? `[학생 화면의 지금 값] ${context}` : ""}` : cs ? `너는 "${C.name}"의 케이스 토론 코치야. 학생은 ${C.who}이야.${C.tail} 지금 푸는 케이스: 《${doc.title}》 ${cs.title}.
 ${rules} 케이스 질문에는 답을 바로 주지 말고, 학생이 먼저 생각을 말하게 묻고 힌트를 한 단계씩 줘. 학생이 자기 답을 말하면 근거 · 계산 · 빠진 관점을 짚어 줘.
 [상황] ${(cs.story || []).join(" ")}
@@ -163,6 +191,7 @@ ${c.example ? `[숫자 예시] ${c.example}` : ""}
 ${c.deep?.length ? `[더 자세히] ${c.deep.join(" ")}` : ""}
 ${c.words?.length ? `[낱말] ${c.words.map((w) => `${w.term}${w.en ? `(${w.en})` : ""}=${w.easy}`).join(" · ")}` : ""}
 ${c.recall ? `[떠올리기] ${c.recall.q} → ${c.recall.a}` : ""}
+${figLine}
 ${context ? `[학생 화면의 지금 값] ${context}` : ""}`).replace(/\*\*/g, "");
     if (q.get("stream") === "0") {
       try { const r = await aiText(env, sys, clean); return json({ text: r.text, used: r.used }); }

@@ -14,6 +14,7 @@
 //   ⑪-b 노트 우클릭 — 목록 · Brain 점 · Brain 목록에서 (폰은 길게 누르기, 키보드 Shift+F10): 이름 바꾸기(다른 노트 [[링크]] 도) · 새 하위 노트(Edit) · 옮기기 · 지우기 Undo / 5초 뒤 · 화면을 떠나면 바로 (2026-10-15)
 //   ⑫ 뉴스 — 하루 한 호 (가독성 · 한국어) · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13)
 //   ⑬ 경영 마이크로디그리 — 모듈 지도 · 현황판 · 하루 60/90/120분 · 2주 계획 · 카드(정적 이익 지도 · 더 자세히 · 퀴즈 · AI 튜터) · 케이스(내 답 먼저) · 연습문제 채점 · 오늘 · 회사 세우기 세금 계산 · 용어 찾기 (2026-10-14)
+//   ⑬-3 SW 과정 — 종이 교과서(책 두 권 · 목차 · 3D 없음) · 카드 속 설명 그림(단계 · 끌기 · 영상) · 밤 · 튜터 크기 · 그림 모아 보기 · Dock 으로 돌아오면 보던 카드 · 스크롤 그대로 (2026-10-20)
 //   ⑭ 홈 오늘 링 끌기 — 마우스를 대면 선 · 끌면 +분 · 놓으면 이름 칸(Enter 저장 · Esc 취소) · 거꾸로 · 겹침 · 그냥 누르면 원래대로 · 전체 쪽 오늘 링 · 친구 차트 · 터치는 그대로 (2026-10-15)
 //   ⑮ 하루 계획표 짧은 일정 — 맞닿은 일정은 위아래로(5분 휴식 + 바로 뒤 시험) · 붙어 있으면 그 칸만 30px 로 늘어남 · 진짜 겹침은 나란히 · 늘어난 칸의 빈 칸 시각 · 끌기 시각 (2026-10-15)
 //   ⑯ 홈 Day 쪽 ‹ 날짜 › — › 내일(바늘 없음 · 오늘로) · 내일에 끌어 넣기 → 그 날짜 · 새로 열어도 고른 날 · 지난 기억은 오늘 · ‹ 어제 점수 · 링 누르면 그날 계획표 (2026-10-15)
@@ -719,14 +720,14 @@ try {
     // ---------- ⑬-2 개발 흐름 마이크로디그리 — 3D 흐름 지도 · 현황판 · 한 주 · 카드 · 사례 · 회의실 · 오늘 · 문서 지도 (2026-10-15) ----------
     {
       errs = [];
-      await go("#/sw/dev", 3500);
-      // 과정 홈: 3D 세계의 모듈 유리 패널 12장 + 지금 모듈 카드 + 아래 과정 정보(하루 순서 · 학습 설계 · 모듈 목록 · 하루 시간)
-      const dh = await p.evaluate(() => ({ dock: !!document.querySelector('[data-nav="dev"]'), card: (document.querySelector("#cs-card .cs-title")?.textContent || "").length > 1, today: /오늘 할 일/.test(document.querySelector("#cs-card .cs-btn")?.textContent || ""),
-        panels: document.querySelector(".sw-canvas")?.__panels?.() ?? -1, plan: document.querySelectorAll(".dv-plan li").length, why: document.querySelectorAll(".dv-why .dv-panel").length, mods: document.querySelectorAll(".dv-mod").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await go("#/sw/dev", 2500);
+      // 과정 목차(종이 교과서, 2026-10-20): 오늘 할 일 하나 + 목차 12장(지금 장 하나 표시) + 하루 순서 · 학습 설계 · 하루 시간 — 3D 캔버스 없음
+      const dh = await p.evaluate(() => ({ dock: !!document.querySelector('[data-nav="dev"]'), today: /오늘/.test(document.querySelector(".toc-today .dv-btn")?.textContent || ""), now: document.querySelectorAll(".toc-list .dv-mod.now").length, canvas: document.querySelectorAll(".host-dev canvas").length,
+        plan: document.querySelectorAll(".dv-plan li").length, why: document.querySelectorAll(".dv-why .dv-panel").length, mods: document.querySelectorAll(".toc-list .dv-mod").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await p.click('.dv [data-min="60"]').catch(() => {}); await sleep(250);
       const d60 = await p.evaluate(() => /60분/.test(document.querySelector("#dv-today-h")?.textContent || "") && document.querySelector('[data-min="60"]')?.getAttribute("aria-pressed") === "true");
       await p.click('.dv [data-min="45"]').catch(() => {});
-      ok(dh.dock && dh.card && dh.today && (dh.panels === 12 || dh.panels === -1) && dh.plan === 5 && dh.why === 6 && dh.mods === 12 && d60 && !dh.over && !errs.length, `${tv} · 개발 홈 — 독 ${dh.dock} · 모듈 카드 ${dh.card} · 오늘 할 일 ${dh.today} · 3D 패널 ${dh.panels} · 순서 ${dh.plan} · 학습 설계 ${dh.why} · 모듈 ${dh.mods} · 60분 ${d60} · 가로 넘침 ${dh.over}${errs.length ? " — " + errs[0] : ""}`);
+      ok(dh.dock && dh.today && dh.now === 1 && dh.canvas === 0 && dh.plan === 5 && dh.why === 6 && dh.mods === 12 && d60 && !dh.over && !errs.length, `${tv} · 개발 목차 — 독 ${dh.dock} · 오늘 할 일 ${dh.today} · 지금 장 ${dh.now} · 3D 캔버스 ${dh.canvas} · 순서 ${dh.plan} · 학습 설계 ${dh.why} · 장 ${dh.mods} · 60분 ${d60} · 가로 넘침 ${dh.over}${errs.length ? " — " + errs[0] : ""}`);
       const di = await (await ctx.request.get(BASE + "/dev/index.json")).json(), sm = di.modules.find((m) => m.id === "security");
       const sd = await (await ctx.request.get(BASE + "/dev/security.json")).json();
       errs = [];
@@ -770,22 +771,79 @@ try {
       await ctx.request.fetch(BASE + "/api/dev/done", { method: "PUT", headers: H, data: { module: "security", item: sd.problems.find((x) => x.day === pd).id, kind: "problem", done: false } }).catch(() => {});
     }
 
-    // ---------- ⑬-3 SW 공간 — 과정 목록 · 옛 #/dev 주소 · Vector & Graph 홈 · 한 주 · 카드 (2026-10-19) ----------
+    // ---------- ⑬-3 SW 과정 — 책 두 권 · 옛 #/dev 주소 · VG 목차 · 카드 속 설명 그림(단계 · 끌기 · 영상) · 밤 · 튜터 크기 · 그림 모아 보기 · Dock 으로 돌아오면 보던 곳 그대로 (2026-10-20) ----------
     {
       errs = [];
-      await go("#/sw", 2500);
-      const sw = await p.evaluate(() => ({ rows: [...document.querySelectorAll(".sx-row")].map((a) => a.getAttribute("href")), field: !!document.querySelector(".sw-canvas"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      await go("#/sw", 2200);
+      const sw = await p.evaluate(() => ({ books: [...document.querySelectorAll(".sw-book .sw-cover")].map((a) => a.getAttribute("href")), canvas: document.querySelectorAll(".host-dev canvas").length, theme: document.querySelector(".dv")?.dataset.swTheme, over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await hop("#/dev/security", ".dv-days", 600);
       const old = await p.evaluate(() => !!document.querySelector('a[href="#/sw/dev/ask/security"]'));
-      await hop("#/sw/vg", "#cs-card .cs-title", 1500);
-      await p.click("#sw-next").catch(() => {}); await sleep(1800);
-      const car = await p.evaluate(() => document.querySelector("#sw-car-t")?.textContent || "");
-      const vg = await p.evaluate(() => ({ mods: document.querySelectorAll(".dv-mod").length, nav: document.querySelectorAll(".dv-nav a").length, panels: document.querySelector(".sw-canvas")?.__panels?.() ?? -1, acc: getComputedStyle(document.querySelector(".dv")).getPropertyValue("--dv-acc").trim(), over: document.documentElement.scrollWidth > innerWidth + 1 }));
-      await hop("#/sw/vg/vg-embeddings", ".dv-days", 600);
-      await hop("#/sw/vg/vg-embeddings/c01", "#dv-read h1", 700);
-      const vc = await p.evaluate(() => ({ h: document.querySelector("#dv-read h1")?.textContent || "", over: document.documentElement.scrollWidth > innerWidth + 1 }));
-      ok(sw.rows.includes("#/sw/vg") && sw.rows.includes("#/sw/dev") && sw.field && !sw.over && old && vg.mods === 8 && vg.nav === 3 && (vg.panels === 8 || vg.panels === -1) && /a9e8ff/i.test(vg.acc) && !vg.over && /^02 · /.test(car) && vc.h && !vc.over && !errs.length,
-        `${tv} · SW 공간 — 과정 ${sw.rows.length} · 옛 주소 ${old} · VG 모듈 ${vg.mods} · 패널 ${vg.panels} · 메뉴 ${vg.nav} · 넘기기 "${car}" · 카드 "${vc.h.slice(0, 20)}"${errs.length ? " — " + errs[0] : ""}`);
+      await hop("#/sw/vg", ".toc-list .dv-mod", 600);
+      const vg = await p.evaluate(() => ({ mods: document.querySelectorAll(".toc-list .dv-mod").length, nav: document.querySelectorAll(".dv-nav a").length, figs: !!document.querySelector('.toc-figlink[href="#/sw/vg/figs"]'), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(sw.books.join() === "#/sw/vg,#/sw/dev" && sw.canvas === 0 && sw.theme === "paper" && !sw.over && old && vg.mods === 8 && vg.nav === 3 && vg.figs && !vg.over && !errs.length,
+        `${tv} · SW 과정 — 책 ${sw.books.length} · 3D 캔버스 ${sw.canvas} · 바탕 ${sw.theme} · 옛 주소 ${old} · VG 장 ${vg.mods} · 메뉴 ${vg.nav} · 그림 모아 보기 ${vg.figs}${errs.length ? " — " + errs[0] : ""}`);
+
+      // 카드 속 설명 그림 — '그림 1-n' · 다음 단계면 설명이 바뀌고 · B 끝점을 끌면 계산이 바뀌고 · 영상은 그 자리에서
+      errs = [];
+      await hop("#/sw/vg/vg-embeddings/c06", "#dv-read .fig-slot", 700);
+      await p.locator("#dv-read .fig-slot").first().scrollIntoViewIfNeeded(); await p.waitForSelector("#dv-read .fig .fig-cap-t", { timeout: 8000 }).catch(() => {}); await sleep(600);
+      const figNow = () => p.evaluate(() => ({ no: (document.querySelector("#dv-read .fig-no")?.textContent || "").trim(), cap: document.querySelector("#dv-read .fig-cap-t")?.textContent || "", step: document.querySelector("#dv-read .fig-step")?.textContent || "", read: document.querySelector("#dv-read .fig-read")?.textContent || "" }));
+      const f0 = await figNow();
+      await p.click("#dv-read .fig [data-next]"); await sleep(1100);
+      const f1 = await figNow();
+      const hb = await p.locator("#dv-read .fig svg circle[role=slider]").nth(1).boundingBox();
+      if (hb) { await p.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await p.mouse.down(); await p.mouse.move(hb.x - 50, hb.y + 40, { steps: 8 }); await p.mouse.up(); await sleep(300); }
+      const f2 = await figNow();
+      await p.click("#dv-read .fig .fig-vbtn"); await sleep(600);
+      const vid = await p.evaluate(() => document.querySelector("#dv-read .fig .fig-vbox iframe")?.getAttribute("src") || "");
+      const mine = errs.filter((e) => !/youtube|ytimg|googlevideo|doubleclick|google|ERR_BLOCKED|Permissions-Policy|third-party/i.test(e));
+      ok(/^그림 1-\d+$/.test(f0.no) && f0.step === "1 / 6" && f1.step === "2 / 6" && f1.cap && f1.cap !== f0.cap && /cos θ/.test(f0.read) && f2.read !== f1.read && /youtube-nocookie\.com\/embed\//.test(vid) && !mine.length,
+        `${tv} · 카드 속 그림 — ${f0.no} · 단계 ${f0.step} → ${f1.step} · 끌면 계산 바뀜 ${f2.read !== f1.read} · 영상 ${!!vid}${mine.length ? " — " + mine[0] : ""}`);
+
+      // 밤 — 누르면 차분한 어둠, 새로 고침해도 그대로, 다시 누르면 종이
+      errs = [];
+      await p.click(".dv-top [data-night]"); await sleep(300);
+      const n1 = await p.evaluate(() => ({ t: document.querySelector(".dv")?.dataset.swTheme, ls: localStorage.getItem("sw-theme"), pressed: document.querySelector(".dv-top [data-night]")?.getAttribute("aria-pressed"), bg: getComputedStyle(document.querySelector(".main")).backgroundColor }));
+      await p.reload(); await p.waitForSelector("#dv-read h1", { timeout: 8000 }).catch(() => {}); await sleep(900);
+      const n2 = await p.evaluate(() => document.querySelector(".dv")?.dataset.swTheme);
+      await p.click(".dv-top [data-night]"); await sleep(300);
+      const n3 = await p.evaluate(() => ({ t: document.querySelector(".dv")?.dataset.swTheme, bg: getComputedStyle(document.querySelector(".main")).backgroundColor }));
+      ok(n1.t === "night" && n1.ls === "night" && n1.pressed === "true" && n1.bg === "rgb(22, 23, 25)" && n2 === "night" && n3.t === "paper" && n3.bg === "rgb(243, 240, 232)" && !errs.length,
+        `${tv} · 밤 — 누르면 ${n1.t} (${n1.bg}) · 새로 고침 ${n2} · 다시 누르면 ${n3.t} (${n3.bg})${errs.length ? " — " + errs[0] : ""}`);
+
+      // AI 튜터 크기 — 작게 · 보통 · 크게 (컴퓨터는 너비, 폰은 높이) · 접기 · 고른 크기 기억
+      errs = [];
+      await p.evaluate(() => localStorage.removeItem("sw-ai-size"));
+      await p.click("#bk-ai-open"); await sleep(400);
+      const box = () => p.evaluate(() => { const r = document.querySelector("#bk-ai").getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; });
+      const t0 = await box(); await p.click('#bk-ai [data-sz="l"]'); await sleep(300);
+      const t1 = await box(); await p.click('#bk-ai [data-sz="s"]'); await sleep(300);
+      const t2 = await box();
+      const k = tv === "폰" ? "h" : "w", grows = t1[k] > t0[k] && t2[k] < t0[k];
+      await p.click("#bk-ai-x"); await sleep(200);
+      const kept = await p.evaluate(() => document.querySelector("#bk-ai").hidden && JSON.parse(localStorage.getItem("sw-ai-size") || "{}").k === "s");
+      ok(grows && kept && !errs.length, `${tv} · 튜터 크기 — 보통 ${t0[k]} → 크게 ${t1[k]} → 작게 ${t2[k]} · 접기 · 기억 ${kept}${errs.length ? " — " + errs[0] : ""}`);
+
+      // 그림 모아 보기 — 장 순서대로, 그림마다 그 카드로 가는 길
+      errs = [];
+      await hop("#/sw/vg/figs", ".figs .fig-slot", 600);
+      await p.waitForSelector(".figs .fig .fig-cap-t", { timeout: 8000 }).catch(() => {}); await sleep(400);
+      const gl = await p.evaluate(() => ({ slots: document.querySelectorAll(".figs .fig-slot").length, mods: document.querySelectorAll(".figs-mod").length, first: (document.querySelector(".figs .fig-no")?.textContent || "").trim(), go: document.querySelector(".figs-go a")?.getAttribute("href") || "", over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(gl.slots >= 2 && gl.mods >= 1 && /^그림 1-\d+$/.test(gl.first) && /^#\/sw\/vg\/vg-embeddings\/c\d+$/.test(gl.go) && !gl.over && !errs.length, `${tv} · 그림 모아 보기 — 그림 ${gl.slots} · 장 ${gl.mods} · 첫 그림 ${gl.first} · 카드로 ${gl.go}${errs.length ? " — " + errs[0] : ""}`);
+
+      // 보던 곳 그대로 — 카드를 읽다 Plan 에 갔다가 Code Flow 를 누르면 그 카드 · 그 스크롤로, 한 번 더 누르면 과정 목차로
+      errs = [];
+      await hop("#/sw/vg/vg-embeddings/c06", "#dv-read h1", 900);
+      await p.evaluate(() => document.querySelector("#main").scrollTo(0, 700)); await sleep(500);
+      await p.click('a.rail-btn[data-nav="calendar"]'); await sleep(1300);
+      const away = await p.evaluate(() => location.hash);
+      await p.click('a.rail-btn[data-nav="dev"]'); await sleep(2000);
+      const back = await p.evaluate(() => ({ hash: location.hash, top: Math.round(document.querySelector("#main").scrollTop) }));
+      await p.click('a.rail-btn[data-nav="dev"]'); await sleep(900);
+      const up = await p.evaluate(() => location.hash);
+      ok(/^#\/calendar\//.test(away) && back.hash === "#/sw/vg/vg-embeddings/c06" && Math.abs(back.top - 700) < 40 && up === "#/sw/vg" && !errs.length,
+        `${tv} · 보던 곳 그대로 — Plan(${away}) 갔다 Code Flow → ${back.hash} · 스크롤 ${back.top} · 한 번 더 누르면 ${up}${errs.length ? " — " + errs[0] : ""}`);
+      await p.evaluate(() => { localStorage.removeItem("trio-dock-last"); localStorage.removeItem("sw-ai-size"); localStorage.setItem("sw-theme", "paper"); });
     }
 
     // ---------- ⑭ 영상 노트 한 화면 — 맨 위 인용에 YouTube 영상이 있으면 왼쪽 영상 · 목차 · 접힌 스크립트, 오른쪽 정리 (2026-10-14) ----------

@@ -32,9 +32,10 @@ export function mountChat(root, id, article, decorate = null, opts = {}) {
   try { chat = JSON.parse(sessionStorage.getItem(KEY) || "[]"); } catch {}
   const panels = $$("[data-ppc]", root).sort((a, b) => (b.dataset.ppc === "mini") - (a.dataset.ppc === "mini")); // 옆 칸 먼저
   const save = () => { try { sessionStorage.setItem(KEY, JSON.stringify(chat.slice(-24))); } catch {} };
+  const post = opts.post || ((h) => h); // 그린 HTML 을 한 번 더 손볼 때 (SW 과정: [[그림:id]] → 그림 칩)
 
   function paint(streamingIdx = -1) {
-    const html = chat.map((m, i) => `<div class="ppc-msg ${m.role} ${i === streamingIdx ? "live" : ""}">${m.role === "assistant" ? `<span class="ppc-av">${icon.spark(11)}</span><div class="ppc-bub md">${m.content ? renderMarkdown(m.content) : `<span class="ppc-dots"><i></i><i></i><i></i></span>`}</div>` : `<div class="ppc-bub">${esc(m.content)}</div>`}</div>`).join("");
+    const html = chat.map((m, i) => `<div class="ppc-msg ${m.role} ${i === streamingIdx ? "live" : ""}">${m.role === "assistant" ? `<span class="ppc-av">${icon.spark(11)}</span><div class="ppc-bub md">${m.content ? post(renderMarkdown(m.content)) : `<span class="ppc-dots"><i></i><i></i><i></i></span>`}</div>` : `<div class="ppc-bub">${esc(m.content)}</div>`}</div>`).join("");
     panels.forEach((p) => {
       const log = $("[data-ppc-log]", p);
       const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
@@ -85,7 +86,7 @@ export function mountChat(root, id, article, decorate = null, opts = {}) {
         const log = $("[data-ppc-log]", p), last = log.querySelector(".ppc-msg.live .ppc-bub");
         if (!last) return paint(ai);
         const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-        last.innerHTML = renderMarkdown(text) + `<span class="ppc-caret"></span>`;
+        last.innerHTML = post(renderMarkdown(text)) + `<span class="ppc-caret"></span>`;
         if (stick) log.scrollTop = log.scrollHeight;
       });
     });

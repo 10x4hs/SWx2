@@ -38,6 +38,7 @@ import { scrambleIn } from "./fx.js";
 import { startLive, stopLive } from "./live.js";
 import { openPassword, initPassword } from "./password.js";
 import { initDock, refreshUnread, loadDockPages, drawDock, pageMenu } from "./dock.js";
+import { enter as enterRoute, navHref, watchScroll, restoreTop } from "./dock-memory.js"; // Dock 앱마다 보던 곳 그대로
 import { openPalette, initPalette } from "./palette.js";
 import { timer, renderTimer, initTimer } from "./focus-timer.js";
 
@@ -177,7 +178,7 @@ const NAV = [
   { key: "room", hash: "#/room", label: "Message", badge: "room-badge", img: "/assets/dock/messages.png" }, // 대화 · 창고 · 관리자 문의방
   { key: "diary", hash: "#/diary", label: "Diary", img: "/assets/dock/journal.png" }, // 일기 친구(초대 · 수락)끼리 공개한 날을 서로 봐요 · 일기 기능이 안 열렸으면 자물쇠
   { key: "biz", hash: "#/mba", label: "MBA", img: "/assets/dock/stocks.png" }, // 경영 마이크로디그리 (24주 · 하루 1~2시간)
-  { key: "dev", hash: "#/dev", label: "Code Flow", img: "/assets/dock/vscode.png" }, // SW 공간 (Dev Flow · Vector & Graph)
+  { key: "dev", hash: "#/sw", label: "Code Flow", img: "/assets/dock/vscode.png" }, // SW 과정 (Vector & Graph · Dev Flow) — 첫 화면은 과정 두 권
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
@@ -200,6 +201,7 @@ function renderShell() {
       <main class="main glass" id="main" tabindex="-1"></main>
     </div>`;
   $("#open-palette").addEventListener("click", openPalette);
+  watchScroll($("#main")); // 스크롤을 기록에 적어 둬요 (뒤로 가기 · Dock 으로 돌아올 때)
   $("#timer-btn").addEventListener("click", () => {
     const pop = $("#timer"), open = pop.hidden;
     pop.hidden = !open; $("#timer-btn").setAttribute("aria-expanded", String(open));
@@ -378,6 +380,10 @@ function route(redraw = false) {
   navStart(); routedAt = performance.now();
   if (!redraw) redrawn = false;
   const r = parseRoute();
+  // 떠나는 화면은 기억, 돌아온 화면이면 그 스크롤로 (내용이 그려진 뒤에) · Dock 아이콘 주소도 지금 화면에 맞게
+  const top = enterRoute(r.nav, location.hash, $("#main"));
+  if (top) requestAnimationFrame(() => restoreTop($("#main"), top));
+  $$("a.rail-btn[data-nav]").forEach((a) => { const n = NAV.find((x) => x.key === a.dataset.nav); if (n) a.setAttribute("href", navHref(n, ymd(today()))); });
   // 잠긴 기능: 화면 대신 '사용 신청'
   const lockF = featureOfRoute(r);
   if (!isOpen(ctx, lockF)) {
