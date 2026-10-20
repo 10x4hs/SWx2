@@ -1,4 +1,4 @@
-// 기능 잠금 (화면): 관리자 말고는 뉴스 · 대화방 · 계획만 기본. 잠긴 기능은 독에 자물쇠, 들어가면 '사용 신청' 화면.
+// 기능 잠금 (화면): 관리자 말고는 일기 · 대화방 · 계획 · 노트만 기본. 잠긴 기능은 독에 자물쇠, 들어가면 '사용 신청' 화면.
 // 서버 쪽 같은 목록은 src/features.js — 화면을 숨겨도 서버가 한 번 더 막아요.
 import { api } from "./api.js";
 import { esc, toast } from "./util.js";
@@ -6,14 +6,14 @@ import { esc, toast } from "./util.js";
 // 화면(view) → 기능
 export function featureOfRoute(r) {
   if (["ai", "planner"].includes(r.view)) return "ai";
-  if (["diary", "diaryRoom"].includes(r.view)) return "diary";
+  if (r.view === "news") return "news";
   if (["english", "papers", "books"].includes(r.view) || (r.view === "page" && r.place === "study")) return "study";
   if (r.view === "mba") return "biz";
   if (r.view === "dev") return "dev";
   if (r.view === "page") return "pages";
   return null;
 }
-export const NAV_FEATURE = { study: "study", diary: "diary", biz: "biz", dev: "dev" };
+export const NAV_FEATURE = { study: "study", news: "news", biz: "biz", dev: "dev" };
 export const isOpen = (ctx, f) => !f || ctx.me?.role === "admin" || (ctx.features?.open || []).includes(f);
 
 export async function loadFeatures(ctx) {
@@ -39,4 +39,14 @@ export function mountLocked(host, ctx, f) {
   };
   draw();
   return () => {};
+}
+
+// 관리자 '시간 추가' (관리자 화면 · 문의방이 같이 써요): 범위(전체 Dock · 기능 하나) + 24시간 · 3일 · 7일
+const TIME_OPTS = [[24, "+24시간"], [72, "+3일"], [168, "+7일"]];
+export const timeForm = (all) => `<div class="adm-time" role="group" aria-label="사용 시간 추가"><span class="faint">시간 추가</span><select class="input adm-time-scope" aria-label="범위"><option value="all">전체 Dock</option>${Object.entries(all || {}).map(([k, l]) => `<option value="${esc(k)}">${esc(l)}</option>`).join("")}</select>${TIME_OPTS.map(([h, l]) => `<button type="button" class="btn sm" data-hours="${h}">${l}</button>`).join("")}</div>`;
+export async function addTime(btn, userId) {
+  const scope = btn.closest(".adm-time").querySelector(".adm-time-scope").value;
+  btn.disabled = true;
+  try { const r = await api.adminAddTime(userId, scope, Number(btn.dataset.hours)); toast(r.permanent ? r.message : "늘렸어요 · 문의방으로 알려 줬어요"); return r; }
+  catch (e) { toast(e.message, "err"); return null; } finally { btn.disabled = false; }
 }

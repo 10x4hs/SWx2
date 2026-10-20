@@ -51,6 +51,7 @@ export const api = {
   adminFeatureRequests: () => request("GET", "/admin/feature-requests"),
   adminDecideFeature: (id, act) => request("POST", `/admin/feature-requests/${id}/${act}`),
   adminSetFeature: (uid, f, on) => request(on ? "PUT" : "DELETE", `/admin/users/${uid}/features/${f}`),
+  adminAddTime: (uid, scope, hours) => request("POST", `/admin/users/${uid}/time`, { scope, hours }),
   teams: () => request("GET", "/teams"),
   createTeam: (name) => request("POST", "/teams", { name }),
   joinTeam: (code) => request("POST", "/teams/join", { code }),

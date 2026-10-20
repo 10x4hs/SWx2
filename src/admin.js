@@ -4,10 +4,9 @@ import { b64url } from "./lib/crypto.js";
 import { fail, json, now, uid, body } from "./http.js";
 import { startSession, sessionId, hashPassword } from "./auth.js";
 import { pushUsers } from "./push.js";
-import { TRIAL_MS } from "./features.js";
+import { TRIAL_MS, DEMO_IDS, kst, tellUser } from "./features.js";
 
 // 대신 들어간 세션에서는 관리자 기능을 못 써요 (회원 화면만)
-const DEMO_IDS = ["dmo"]; // 확인이 끝나면 빼요
 const needAdmin = (user) => { if (user.role !== "admin" || user.imp_by) fail(403, "관리자만 쓸 수 있어요."); };
 const target = async (env, id) => (await env.DB.prepare("SELECT id, username, role, state FROM users WHERE id = ?").bind(id).first()) || fail(404, "없는 회원이에요.");
 const notAdmin = (u) => { if (u.role === "admin") fail(400, "관리자 계정에는 할 수 없어요."); };
@@ -16,7 +15,7 @@ export function registerAdmin(on) {
   on("GET", "/admin/users", async ({ env, user }) => {
     needAdmin(user);
     const [us, ap, ad, tres] = await env.DB.batch([
-      env.DB.prepare("SELECT id, username, display_name, color, role, state, created_at, last_seen_at, pw_changed_at, must_change_pw, locked_until, trial_until FROM users ORDER BY state = 'pending' DESC, created_at"),
+      env.DB.prepare("SELECT id, username, display_name, color, role, state, created_at, last_seen_at, pw_changed_at, must_change_pw, locked_until, trial_until, (SELECT r.username FROM users r WHERE r.id = users.referred_by) AS referrer FROM users ORDER BY state = 'pending' DESC, created_at"),
       env.DB.prepare("SELECT a.user_id, u.username, a.at FROM signup_approvals a JOIN users u ON u.id = a.admin_id"),
       env.DB.prepare("SELECT id, username FROM users WHERE role = 'admin' ORDER BY username"),
       env.DB.prepare("SELECT m.user_id, t.name FROM team_members m JOIN teams t ON t.id = m.team_id ORDER BY m.joined_at"),
@@ -114,6 +113,15 @@ export function registerAdmin(on) {
       "UPDATE users SET state = 'active', trial_until = ?3 WHERE id = ?1 AND state = 'pending' AND (?2 OR NOT EXISTS (SELECT 1 FROM users a WHERE a.role = 'admin' AND NOT EXISTS (SELECT 1 FROM signup_approvals s WHERE s.user_id = ?1 AND s.admin_id = a.id)))"
     ).bind(u.id, DEMO_IDS.includes(u.username) ? 1 : 0, now() + TRIAL_MS).run(); // 열리는 순간부터 24시간 무료체험
     const active = (r.meta.changes || 0) > 0;
+    // 추천한 친구가 있으면: 그 친구의 전체 체험을 24시간 늘리고 문의방으로 알려요
+    if (active) {
+      const f = await env.DB.prepare("SELECT r.id, r.trial_until, n.display_name, n.username FROM users n JOIN users r ON r.id = n.referred_by WHERE n.id = ? AND r.state = 'active'").bind(u.id).first();
+      if (f) {
+        const until = Math.max(now(), f.trial_until || 0) + 24 * 3600e3;
+        await env.DB.prepare("UPDATE users SET trial_until = ? WHERE id = ?").bind(until, f.id).run();
+        await tellUser(env, ec, f.id, `${f.display_name}(@${f.username}) 님이 SWx2 에 가입했어요 · 고마워요! 모든 Dock 체험 24시간이 추가됐어요 (~${kst(until)})`);
+      }
+    }
     // 아직 남았으면 다른 관리자에게 "내 승인만 남았어요" 알림
     if (!active) { const others = (await env.DB.prepare("SELECT id FROM users WHERE role = 'admin' AND state = 'active' AND id != ?").bind(user.id).all()).results.map((x) => x.id); pushUsers(env, ec, others, { room: "approve" }); }
     return json({ ok: true, active });

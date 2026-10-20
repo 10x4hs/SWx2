@@ -95,6 +95,13 @@ function trialBar() {
   paint(); trialTimer = setInterval(paint, 30e3);
   document.body.append(bar);
 }
+// 관리자가 시간을 늘려 주거나 기능을 열어 주면: 화면으로 돌아올 때 다시 읽어서 Dock 자물쇠 · 체험 띠를 새로 고침 없이 바꿔요
+async function refreshFeatures() {
+  const before = JSON.stringify(ctx.features);
+  await loadFeatures(ctx);
+  if (JSON.stringify(ctx.features) === before) return;
+  drawDock(); trialBar(); route(true);
+}
 function annBar() {
   api.announcement().then(({ announcement: a }) => {
     document.querySelector(".ann-bar")?.remove();
@@ -140,7 +147,7 @@ async function enter(user) {
   startLive(); // 실시간 대화 신호
   if (!enter.statusTimer) { // 친구들 상태: 1분마다 · 앱으로 돌아올 때 새로 받아요
     enter.statusTimer = setInterval(syncStatuses, 60_000);
-    document.addEventListener("visibilitychange", () => { if (!document.hidden) syncStatuses(); });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) { syncStatuses(); refreshFeatures(); } });
   }
 }
 async function syncStatuses() {
@@ -176,7 +183,7 @@ const NAV = [
   { key: "study", hash: "#/english", label: "Study", img: "/assets/dock/books.png" }, // 영어 · 논문 · AI
   { key: "news", hash: "#/news", label: "Newsletter", img: "/assets/dock/substack.png" }, // 오늘의 뉴스 · AI · HW 트렌드
   { key: "room", hash: "#/room", label: "Message", badge: "room-badge", img: "/assets/dock/messages.png" }, // 대화 · 창고 · 관리자 문의방
-  { key: "diary", hash: "#/diary", label: "Diary", img: "/assets/dock/journal.png" }, // 일기 친구(초대 · 수락)끼리 공개한 날을 서로 봐요 · 일기 기능이 안 열렸으면 자물쇠
+  { key: "diary", hash: "#/diary", label: "Diary", img: "/assets/dock/journal.png" }, // 누구나 · 일기 친구(초대 · 수락)끼리 공개한 날을 서로 봐요
   { key: "biz", hash: "#/mba", label: "MBA", img: "/assets/dock/stocks.png" }, // 경영 마이크로디그리 (24주 · 하루 1~2시간)
   { key: "dev", hash: "#/sw", label: "Code Flow", img: "/assets/dock/vscode.png" }, // SW 과정 (Vector & Graph · Dev Flow) — 첫 화면은 과정 두 권
 ];
