@@ -52,6 +52,8 @@
 .nb-handle:hover { background: var(--hover); }
 @media (hover: none) { .nb-handle { opacity: .35; left: -20px; } }
 .nb-text { flex: 1; min-width: 0; outline: none; white-space: pre-wrap; word-break: break-word; padding: 3px 2px; min-height: 1.6em; }
+/* 쓰는 중 마크다운 기호(** ` ~~)는 숨겨요 — 글자는 남아 있어서 저장은 마크다운 그대로 */
+.nb-mk { font-size: 0; letter-spacing: 0; }
 .nb-text:empty::before { content: attr(data-ph); color: var(--ink-3); opacity: 0; pointer-events: none; }
 .nb-text:focus:empty::before, .nb-paragraph:only-child .nb-text:empty::before { opacity: .55; }
 .nb-doc.ro .nb-text:empty::before { content: none; }
