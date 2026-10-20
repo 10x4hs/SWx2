@@ -27,20 +27,21 @@ export function initDock(deps) {
 const navLive = () => NAV.filter((n) => (!n.until || kstDay() <= n.until) && (!n.when || n.when(ctx.me)));
 
 // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점. data-dock = 순서를 기억하는 이름
-const navItem = (n) => `<a class="rail-btn${isOpen(ctx, NAV_FEATURE[n.key]) ? "" : " locked"}" href="${navHref(n, ymd(today()))}" data-nav="${n.key}" data-dock="nav:${n.key}" draggable="false" aria-label="${n.label}" data-tip="${n.label}">${n.img ? `<span class="app-ic ic-img ic-${n.key}"><img src="${n.img}" alt="" draggable="false" decoding="async"></span>` : appIcon(n.icon || n.key)}${isOpen(ctx, NAV_FEATURE[n.key]) ? "" : `<span class="lock-badge" aria-label="잠김"><svg width="9" height="10" viewBox="0 0 9 10" aria-hidden="true"><rect x="0.5" y="4.2" width="8" height="5.3" rx="1.4" fill="currentColor"/><path d="M2.3 4.4V3a2.2 2.2 0 0 1 4.4 0v1.4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></span>`}${n.badge ? `<span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
+const navItem = (n) => `<a class="rail-btn${isOpen(ctx, NAV_FEATURE[n.key]) ? "" : " locked"}" href="${navHref(n, ymd(today()))}" data-nav="${n.key}" data-dock="nav:${n.key}" draggable="false" aria-label="${n.label}" data-tip="${n.label}">${n.img ? `<span class="app-ic ic-img ic-${n.key}"><img src="${n.img}" alt="" draggable="false" decoding="async"></span>` : appIcon(n.icon || n.key)}${isOpen(ctx, NAV_FEATURE[n.key]) ? "" : `<span class="lock-badge" aria-label="잠김"><svg width="9" height="10" viewBox="0 0 9 10" aria-hidden="true"><rect x="0.5" y="4.2" width="8" height="5.3" rx="1.4" fill="currentColor"/><path d="M2.3 4.4V3a2.2 2.2 0 0 1 4.4 0v1.4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></span>`}${n.badge ? `<span class="dock-ping" aria-hidden="true"></span><span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
 
 // ---------- Dock 배지: 대화방 안 읽은 개수 ----------
 // 로그인해 있으면 60초마다. 대화방이 열려 있을 땐 그 화면이 스스로 폴링하니 여기선 쉬어요.
 export async function refreshUnread() {
   const el = $("#room-badge");
   if (!ctx.me || !el) return;
-  if (getLastView() === "room") { el.hidden = true; return; }
+  if (getLastView() === "room") { el.hidden = true; ping(false); return; }
   try {
     const r = await api.roomUnread();
     const n = Number(r.total ?? r.unread) || 0; // 우리 셋 + 1:1 전부 합친 수
     el.textContent = n > 9 ? "9+" : String(n);
     el.hidden = n === 0;
     unreadText = n ? el.textContent : "";
+    ping(n > 0);
   } catch {}
 }
 
@@ -62,7 +63,15 @@ export function drawDock() {
   const entries = [...navLive().map((n) => ({ key: "nav:" + n.key, html: navItem(n) })), ...dockPages.filter((p) => p.place !== "study" && !isHidden(p)).map((p) => ({ key: "page:" + p.id, html: pageItem(p) }))];
   el.innerHTML = sortByOrder(entries, ctx.me.dock_order).map((x) => x.html).join("");
   $$("[data-nav]", el).forEach((a) => { if (a.dataset.nav === cur.nav) a.setAttribute("aria-current", "page"); });
-  const b = $("#room-badge"); if (b && unreadText) { b.textContent = unreadText; b.hidden = false; }
+  const b = $("#room-badge"); if (b && unreadText) { b.textContent = unreadText; b.hidden = false; ping(true); }
+}
+// 새 메시지 표시: Message 아이콘 왼쪽에 주황 막대 (처음 켜질 때 한 번 반짝)
+let pingOn = false; // 다시 그릴 때는 반짝이지 않게 (꺼져 있다가 켜질 때만)
+function ping(on) {
+  const a = $("#room-badge")?.closest(".rail-btn"); if (!a) return;
+  a.classList.toggle("has-unread", on);
+  if (on && !pingOn) { a.classList.add("ping-new"); setTimeout(() => a.classList.remove("ping-new"), 1600); }
+  pingOn = on;
 }
 export async function pageMenu(e, id) {
   const p = dockPages.find((x) => x.id === id); if (!p) return;
