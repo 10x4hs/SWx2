@@ -1,5 +1,5 @@
 // 일기: 하루 한 편. 기본은 본인만.
-// '일기 친구' = 아이디로 초대하고 상대가 수락한 두 사람(diary_links). 둘 다 일기를 쓸 수 있을 때(관리자 · 무료체험 · 일기 기능 · 예전 모임)
+// '일기 친구' = 아이디로 초대하고 상대가 수락한 두 사람(diary_links). 일기는 누구나 써요 (잠금 기능이 아니에요)
 // 공개(shared = 1)한 날의 일기를 서로 읽어요 — 팀이 같아도 초대 · 수락이 없으면 못 봐요 (쓰기는 늘 자기 일기만).
 // 비공개 날은 상대에게 날짜와 비공개 표시만 — 기분 · 글은 서버에서 아예 보내지 않아요. 모임 밖 사람은 모임 API 를 못 써요(403).
 import { fail, json, body, now, uid, DAY_RE, dayParam, yearParam } from "./http.js";
@@ -8,9 +8,9 @@ import { pushUsers } from "./push.js";
 
 const NOT_CIRCLE = "일기를 함께 보는 사람만 열 수 있어요.";
 const MAX_WAIT = 20; // 수락을 기다리는 보낸 초대는 20개까지
-// 일기를 쓸 수 있는 사람 (SQL · 자리표시자 ?now 대신 지금 시각을 숫자로 넣어요)
-const DIARY_OK = (a) => `(${a}.role = 'admin' OR ${a}.diary_circle = 1 OR ${a}.trial_until > ${Date.now()} OR EXISTS (SELECT 1 FROM user_features f WHERE f.user_id = ${a}.id AND f.feature = 'diary'))`;
-const canDiary = (u) => u.role === "admin" || u.diary_circle === 1 || (u.trial_until || 0) > Date.now() || (u.features || []).includes("diary");
+// 일기를 쓸 수 있는 사람: 누구나
+const DIARY_OK = () => "1"; // 일기는 누구나 (예전엔 잠금 기능)
+const canDiary = () => true;
 const MAX_BLOCKS = 300000; // 블록 JSON 글자 수
 const IMG_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
 const IMG_MAX = 6 * 1024 * 1024;

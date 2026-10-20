@@ -3063,6 +3063,10 @@ body:has(.ann-bar) .trial-bar { top: auto; bottom: max(16px, env(safe-area-inset
 .adm-ap small { opacity: .7; font-size: 11px; }
 .adm-ap.ok { opacity: 1; border-color: #1f9d55; background: rgba(31,157,85,.16); color: #7fe0b0; }
 .adm-ap.me { box-shadow: 0 0 0 1px rgba(255,255,255,.25) inset; }
+/* 시간 추가: 범위 + 버튼 (관리자 화면 · 문의방 머리) */
+.adm-time { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.adm-time .adm-time-scope { width: auto; min-width: 0; max-width: 220px; padding: 4px 8px; font-size: 13px; }
+.rm-head-r .adm-time { margin-right: 10px; }
 
 /* Dock — 실제 앱 아이콘 그림 */
 .app-ic.ic-img { padding: 0; background: none; box-shadow: 0 1px 2px rgba(0,0,0,.25), 0 6px 14px -6px rgba(0,0,0,.35); }

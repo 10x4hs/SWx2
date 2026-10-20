@@ -7,6 +7,7 @@ import { icon } from "../icons.js";
 import { mountChat } from "../room/chat.js";
 import { mountLibrary } from "../room/library.js";
 import { store, avatar } from "../room/shared.js";
+import { timeForm, addTime } from "../features.js";
 
 const TAB_KEY = "trio-room-tab";
 const TABS = [{ key: "chat", label: "대화" }, { key: "library", label: "창고" }];
@@ -80,7 +81,8 @@ export function mount(root, ctx, r) {
   function drawAi(editing = false) {
     if (tab !== "chat") { aiEl.innerHTML = ""; return; }
     if (!editing) {
-      aiEl.innerHTML = `<span class="rm-ai-name">AI 이름: <b>${esc(aiName)}</b></span><button type="button" class="icon-btn sm" id="rm-ai-edit" aria-label="AI 이름 바꾸기" title="AI 이름 바꾸기 (방 모두에 같아요)">${icon.edit(14)}</button>`;
+      // 관리자가 문의방을 보면: 그 회원 사용 시간 늘리기 (+24시간 · +3일 · +7일)
+      aiEl.innerHTML = (isAdmin && roomId?.startsWith("help:") ? timeForm(ctx.features?.all) : "") + `<span class="rm-ai-name">AI 이름: <b>${esc(aiName)}</b></span><button type="button" class="icon-btn sm" id="rm-ai-edit" aria-label="AI 이름 바꾸기" title="AI 이름 바꾸기 (방 모두에 같아요)">${icon.edit(14)}</button>`;
       $("#rm-ai-edit", aiEl).addEventListener("click", () => drawAi(true));
       return;
     }
@@ -140,10 +142,11 @@ export function mount(root, ctx, r) {
     drawAi(false);
     if (tab === "library") { if (hadLib) lib.refresh(); if (focusId) lib.focusItem(focusId); } // 이미 있던 창고는 새로 받고(다른 사람이 넣은 것), 그 뒤 하이라이트
   }
+  aiEl.addEventListener("click", (e) => { const hb = e.target.closest("[data-hours]"); if (hb && roomId?.startsWith("help:")) addTime(hb, roomId.slice(5)); });
   function setRoom(id) {
     if (id === roomId) return;
     roomId = id;
-    drawRooms();
+    drawRooms(); drawAi(false);
     if (chat) chat.setRoom(); else ensure(); // 처음엔 방이 없었으면(팀 없는 관리자 등) 지금 대화 칸을 만들어요
   }
   function hashFor(t, rid) { const tm = teams().find((x) => x.room === rid); return t === "library" ? "#/room/library" : !rid ? "#/room/chat" : rid.startsWith("help:") ? (isAdmin ? "#/room/help/" + encodeURIComponent(rid.slice(5)) : "#/room/help") : tm ? "#/room/team/" + encodeURIComponent(tm.id) : "#/room/dm/" + encodeURIComponent(rid.split(":").slice(1).find((x) => x !== ctx.me.id)); }
