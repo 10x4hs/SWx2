@@ -3167,3 +3167,10 @@ button.adm-stat:hover { border-color: rgba(127,127,127,.35); }
 
 /* 새 버전 알림: 한 줄 알약 (어디에 붙어도 늘어나지 않게) */
 .toast.upd .btn { margin: 0; padding: 4px 12px; min-height: 0; border-radius: 999px; }
+
+/* 새 버전 표시: 프로필 버튼 오른쪽 위 주황 점 (업데이트 기록에 안 본 글이 있어도 같은 점) */
+.me-dot { display: none; }
+.me-btn.has-new .me-dot, body.app-upd .me-btn .me-dot { display: block; position: absolute; z-index: 2; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: #ff8a00; box-shadow: 0 0 0 2px var(--bg, #111); pointer-events: none; }
+.me-upd { display: none !important; }
+body.app-upd .me-upd { display: flex !important; align-items: center; gap: 8px; color: #ff9a2e; font-weight: 600; }
+.me-upd-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff8a00; flex: none; }

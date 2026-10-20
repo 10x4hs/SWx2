@@ -239,8 +239,9 @@ function renderMeRow() {
   // 내 프로필 → 작은 메뉴 (테마 · 로그아웃)
   el.innerHTML = `
     <button class="rail-btn me-btn" type="button" id="me-btn" aria-haspopup="menu" aria-expanded="false" aria-label="내 메뉴 · ${esc(ctx.me.display_name)}" data-tip="${esc(ctx.me.display_name)} · 설정">
-      ${avatar(ctx.me, "")}</button>
+      ${avatar(ctx.me, "")}<span class="me-dot" aria-hidden="true"></span></button>
     <div class="me-menu glass" id="me-menu" role="menu" hidden>
+      <button type="button" role="menuitem" class="me-upd" id="me-upd"><span class="me-upd-dot" aria-hidden="true"></span>새 버전이 있어요 · 새로 고침</button>
       <button type="button" role="menuitem" class="me-head" id="me-head" title="프로필 바꾸기">${avatar(ctx.me, "")}<span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small>${ctx.me.bio ? `<small class="me-bio">${esc(ctx.me.bio)}</small>` : ""}</span><span class="me-edit" aria-hidden="true">${icon.edit(14)}</span></button>
       <div class="me-open"><span class="me-st-h">day plans</span><span class="st-row"><button type="button" class="st-chip" data-open="1" aria-pressed="${ctx.me.plans_open !== false}" title="친구들이 내 하루 계획표를 볼 수 있어요">open</button><button type="button" class="st-chip" data-open="0" aria-pressed="${ctx.me.plans_open === false}" title="내 계획표는 나만 봐요">not open</button></span></div>
       <div class="me-st"><span class="me-st-h">status${ctx.me.status ? ` <b>${esc(statusText(ctx.me.status))}</b>` : ""}</span>${statusPicker(ctx.me.status)}</div>
@@ -276,6 +277,7 @@ function renderMeRow() {
   // 마지막으로 본 뒤 생긴 업데이트 수 → 메뉴에 숫자 · 프로필 버튼에 점
   const updBadge = () => updatesView.unseenCount().then((n) => { const b = $("#upd-badge"); if (b) { b.hidden = !n; b.textContent = n; } btn.classList.toggle("has-new", n > 0); });
   updBadge(); window.addEventListener("trio:updates-seen", updBadge);
+  $("#me-upd").addEventListener("click", () => location.reload());
   $("#mcp-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openMcpPanel(ctx); });
   const prof = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openProfile(ctx); };
   $("#me-head").addEventListener("click", prof); $("#prof-btn").addEventListener("click", prof);

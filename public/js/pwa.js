@@ -179,4 +179,6 @@ function showUpdate() {
   el.innerHTML = `<span>새 버전이 있어요</span><button type="button" class="btn sm accent">새로 고침</button>`;
   el.querySelector("button").addEventListener("click", () => location.reload());
   host.appendChild(el);
+  // 알림을 놓쳐도 알 수 있게: 프로필 버튼에 주황 점 + 메뉴 맨 위에 '새 버전 · 새로 고침'
+  document.body.classList.add("app-upd");
 }
