@@ -15,41 +15,62 @@ const day = (t) => (t ? new Date(t).toLocaleDateString("ko-KR") : "—");
 export function mount(root, ctx) {
   if (ctx.me?.role !== "admin" || ctx.me?.impersonated_by) { root.innerHTML = `<div class="adm"><p class="faint">관리자만 볼 수 있어요.</p></div>`; return () => {}; }
   let data = null, alive = true, feats = { all: {}, requests: [], granted: [] };
-  root.innerHTML = `<div class="adm"><header class="adm-head"><h1>관리자</h1><p class="faint">가입 승인 · 회원 · 팀 · 일정 · 공지</p></header><div class="adm-body"><p class="faint">불러오는 중…</p></div></div>`;
+  root.innerHTML = `<div class="adm"><header class="adm-head"><h1>관리자</h1><p class="faint">회원 승인 · 기능 · 공지 · 팀</p></header><div class="adm-body"><p class="faint">불러오는 중…</p></div></div>`;
   const body = root.querySelector(".adm-body");
 
+  let tab = "users", filter = "all", q = "", open = "";
+  const MENU = (u) => `<details class="adm-more"><summary class="btn sm ghost" aria-label="@${esc(u.username)} 더 보기" title="더 보기">⋯</summary><div class="adm-menu">
+      ${u.state !== "pending" ? `<button type="button" data-act="plans">일정 보기</button>` : ""}
+      <button type="button" data-act="excuse" title="그날은 뉴스 연속 출석이 끊기지 않아요">출석 인정</button>
+      ${u.role !== "admin" ? `<button type="button" data-act="reset">임시 비밀번호</button><button type="button" data-act="suspend">${u.state === "suspended" ? "정지 풀기" : "정지"}</button><hr><button type="button" class="danger" data-act="delete">삭제</button>` : ""}</div></details>`;
   const row = (u) => {
     const mine = u.approvals.includes(ctx.me.username), admin = u.role === "admin";
-    const plansBtn = u.state !== "pending" ? `<button type="button" class="btn sm ghost" data-act="plans">일정</button>` : "";
-    const acts = u.state === "pending"
+    const keys = Object.keys(feats.all || {}), on = keys.filter((k) => (feats.granted || []).some((g) => g.user_id === u.id && g.feature === k));
+    const main = u.state === "pending"
       ? `<button type="button" class="btn sm adm-ok" data-act="approve" ${mine ? "disabled" : ""}>${mine ? "승인함" : "승인"}</button><button type="button" class="btn sm adm-no" data-act="reject">거절</button>`
-      : admin ? `${plansBtn}<button type="button" class="btn sm ghost" data-act="excuse" title="그날은 뉴스 연속 출석이 끊기지 않아요">출석 인정</button><span class="faint">관리자</span>`
-      : `${plansBtn}<button type="button" class="btn sm ghost" data-act="excuse" title="그날은 뉴스 연속 출석이 끊기지 않아요">출석 인정</button>${u.state === "active" ? `<button type="button" class="btn sm" data-act="impersonate">들어가기</button>` : ""}<button type="button" class="btn sm ghost" data-act="reset">임시 비밀번호</button><button type="button" class="btn sm ghost" data-act="suspend">${u.state === "suspended" ? "정지 풀기" : "정지"}</button><button type="button" class="btn sm ghost danger" data-act="delete">삭제</button>`;
-    return `<tr data-id="${esc(u.id)}" data-name="${esc(u.username)}" class="st-${u.state}">
-      <td><b>${esc(u.display_name || u.username)}</b><small>@${esc(u.username)}${admin ? " · 관리자" : ""}</small></td>
-      <td><span class="adm-state">${STATE[u.state] || u.state}</span>${u.trial_until > Date.now() ? `<small class="adm-trial">무료 체험 ${Math.max(1, Math.round((u.trial_until - Date.now()) / 3600e3))}시간 남음</small>` : ""}${u.state === "pending" ? `<div class="adm-aps" aria-label="관리자 승인 ${u.approvals.length}/${data.admins.length}">${data.admins.map((a) => { const ok = u.approvals.includes(a), t = u.approval_at?.[a]; return `<span class="adm-ap${ok ? " ok" : ""}${a === ctx.me.username ? " me" : ""}" title="${ok && t ? new Date(t).toLocaleString("ko-KR") : "아직"}"><b>${esc(a.toUpperCase())}</b>${ok ? `✓ 승인${t ? ` <small>${new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</small>` : ""}` : "대기"}</span>`; }).join("")}</div>` : ""}</td>
-      <td>${u.teams.length ? u.teams.map(esc).join(", ") : '<span class="faint">혼자</span>'}</td>
-      <td class="adm-feats">${admin ? '<span class="faint">전부</span>' : Object.entries(feats.all || {}).map(([k, label]) => { const on = (feats.granted || []).some((g) => g.user_id === u.id && g.feature === k); return `<button type="button" class="adm-chip${on ? " on" : ""}" data-feat="${k}" title="${esc(label)} — 눌러서 ${on ? "닫기" : "열기"}">${esc(FEAT_SHORT[k] || k)}</button>`; }).join("")}</td>
-      <td>${day(u.created_at)}</td>
-      <td>${ago(u.last_seen_at)}</td>
-      <td>${u.must_change_pw ? "임시 (바꿔야 함)" : "설정됨"}<small>${u.pw_changed_at ? "바꾼 날 " + day(u.pw_changed_at) : ""}${u.locked_until > Date.now() ? " · 잠김" : ""}</small></td>
-      <td><div class="adm-acts">${acts}</div></td></tr>`;
+      : !admin && u.state === "active" ? `<button type="button" class="btn sm adm-go" data-act="impersonate">들어가기</button>` : "";
+    const trial = u.trial_until > Date.now() ? `<span class="adm-badge trial">체험 ${Math.max(1, Math.round((u.trial_until - Date.now()) / 3600e3))}시간</span>` : "";
+    const aps = u.state === "pending" ? `<div class="adm-aps" aria-label="관리자 승인 ${u.approvals.length}/${data.admins.length}">${data.admins.map((a) => { const ok = u.approvals.includes(a), t = u.approval_at?.[a]; return `<span class="adm-ap${ok ? " ok" : ""}${a === ctx.me.username ? " me" : ""}" title="${ok && t ? new Date(t).toLocaleString("ko-KR") : "아직"}"><b>${esc(a.toUpperCase())}</b>${ok ? "✓ 승인" : "대기"}</span>`; }).join("")}</div>` : "";
+    const chips = admin ? '<span class="faint">관리자는 전부 열려 있어요</span>' : keys.map((k) => `<button type="button" class="adm-chip${on.includes(k) ? " on" : ""}" data-feat="${k}" aria-pressed="${on.includes(k)}" title="${esc(feats.all[k])} — 눌러서 ${on.includes(k) ? "닫기" : "열기"}">${on.includes(k) ? "✓ " : ""}${esc(FEAT_SHORT[k] || k)}</button>`).join("");
+    const pw = u.must_change_pw ? `<span class="adm-badge warn" title="다음 로그인 때 바꿔야 해요">임시 비밀번호</span>` : "";
+    const lock = u.locked_until > Date.now() ? `<span class="adm-badge bad">잠김</span>` : "";
+    const isOpen = open === u.id;
+    return `<tr data-id="${esc(u.id)}" data-name="${esc(u.username)}" class="adm-row st-${u.state}${isOpen ? " open" : ""}">
+      <td class="adm-who"><b>${esc(u.display_name || u.username)}</b><small>@${esc(u.username)}${admin ? " · 관리자" : ""}</small></td>
+      <td><div class="adm-badges"><span class="adm-badge st">${STATE[u.state] || u.state}</span>${trial}${pw}${lock}</div>${aps}</td>
+      <td class="adm-col-team">${u.teams.length ? u.teams.map(esc).join(", ") : '<span class="faint">혼자</span>'}</td>
+      <td><button type="button" class="adm-feat-sum" data-toggle aria-expanded="${isOpen}">${admin ? "전부" : `${on.length}/${keys.length}`} <span aria-hidden="true">${isOpen ? "▴" : "▾"}</span></button></td>
+      <td class="adm-col-seen"><span title="가입 ${day(u.created_at)}">${ago(u.last_seen_at)}</span><small>가입 ${day(u.created_at)}</small></td>
+      <td><div class="adm-acts">${main}${MENU(u)}</div></td></tr>
+      ${isOpen ? `<tr class="adm-detail" data-id="${esc(u.id)}" data-name="${esc(u.username)}"><td colspan="6"><div class="adm-detail-in"><div><h3>기능 열기 · 닫기</h3><div class="adm-feats">${chips}</div></div><div class="adm-detail-meta"><span>비밀번호 ${u.must_change_pw ? "임시 (바꿔야 함)" : "설정됨"}${u.pw_changed_at ? " · 바꾼 날 " + day(u.pw_changed_at) : ""}</span><span>가입 ${day(u.created_at)}</span></div></div></td></tr>` : ""}`;
+  };
+  const shown = () => data.users.filter((u) => (filter === "all" || u.state === filter) && (!q || `${u.username} ${u.display_name || ""}`.toLowerCase().includes(q)));
+  const drawRows = () => {
+    const tb = body.querySelector(".adm-table tbody"); if (!tb) return;
+    const list = shown();
+    tb.innerHTML = list.length ? list.map(row).join("") : `<tr><td colspan="6" class="faint adm-empty">맞는 회원이 없어요.</td></tr>`;
+    body.querySelectorAll("[data-filter]").forEach((b) => b.setAttribute("aria-selected", b.dataset.filter === filter));
   };
   const draw = () => {
-    const s = data.stats;
+    const s = data.stats, n = feats.requests.length;
+    const TABS = [["users", "회원", s.pending], ["reqs", "기능 신청", n], ["ann", "공지", 0], ["teams", "팀", 0]];
     body.innerHTML = `
-      <div class="adm-stats">${[["가입자", s.total], ["활성", s.active], ["승인 대기", s.pending], ["정지", s.suspended], ["최근 7일 접속", s.seen_week]].map(([k, v]) => `<div class="adm-stat"><b>${v}</b><span>${k}</span></div>`).join("")}</div>
-      <p class="adm-temp" hidden></p>
-      <div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>회원</th><th>상태</th><th>팀</th><th>기능</th><th>가입</th><th>최근 접속</th><th>비밀번호</th><th></th></tr></thead>
-      <tbody>${data.users.map(row).join("")}</tbody></table></div>
-      <section class="adm-sec"><h2>기능 사용 신청</h2>${feats.requests.length ? feats.requests.map((q) => `<div class="adm-req" data-req="${esc(q.id)}"><b>${esc(q.display_name || q.username)}</b> <small class="faint">@${esc(q.username)}</small> → <b>${esc(feats.all[q.feature] || q.feature)}</b>${q.note ? ` <small class="faint">"${esc(q.note)}"</small>` : ""} <button type="button" class="btn sm adm-ok" data-dec="approve">승인</button><button type="button" class="btn sm adm-no" data-dec="deny">거절</button></div>`).join("") : '<p class="faint">새 신청 없음</p>'}</section>
-      <section class="adm-sec" id="adm-plans" hidden></section>
-      <section class="adm-sec"><h2>공지</h2><p class="faint">모든 사람 화면 위에 떠요. 새로 올리면 예전 공지는 내려가요.</p>
+      <nav class="adm-tabs" role="tablist">${TABS.map(([k, l, c]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}${c ? ` <span class="adm-count">${c}</span>` : ""}</button>`).join("")}</nav>
+      <section class="adm-pane" data-pane="users" ${tab === "users" ? "" : "hidden"}>
+        <div class="adm-stats">${[["all", "가입자", s.total], ["active", "활성", s.active], ["pending", "승인 대기", s.pending], ["suspended", "정지", s.suspended]].map(([k, l, v]) => `<button type="button" class="adm-stat k-${k}" data-filter="${k}" aria-selected="${filter === k}"><b>${v}</b><span>${l}</span></button>`).join("")}<div class="adm-stat k-week"><b>${s.seen_week}</b><span>최근 7일 접속</span></div></div>
+        <p class="adm-temp" hidden></p>
+        <div class="adm-tools"><input class="input adm-search" type="search" placeholder="이름 · 아이디 찾기" value="${esc(q)}" aria-label="회원 찾기"></div>
+        <div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>회원</th><th>상태</th><th class="adm-col-team">팀</th><th>기능</th><th class="adm-col-seen">최근 접속</th><th></th></tr></thead><tbody></tbody></table></div>
+        <section class="adm-sec" id="adm-plans" hidden></section>
+      </section>
+      <section class="adm-pane" data-pane="reqs" ${tab === "reqs" ? "" : "hidden"}>${n ? feats.requests.map((r) => `<div class="adm-req" data-req="${esc(r.id)}"><div><b>${esc(r.display_name || r.username)}</b> <small class="faint">@${esc(r.username)}</small> → <span class="adm-badge">${esc(feats.all[r.feature] || r.feature)}</span>${r.note ? `<p class="adm-req-note">"${esc(r.note)}"</p>` : ""}</div><div class="adm-acts"><button type="button" class="btn sm adm-ok" data-dec="approve">승인</button><button type="button" class="btn sm adm-no" data-dec="deny">거절</button></div></div>`).join("") : '<p class="faint">새 신청 없음</p>'}</section>
+      <section class="adm-pane" data-pane="ann" ${tab === "ann" ? "" : "hidden"}><p class="faint">모든 사람 화면 맨 위에 빨간 띠로 떠요. 새로 올리면 예전 공지는 내려가요.</p>
         <div class="adm-ann-now"></div>
         <form class="adm-ann"><input class="input" maxlength="300" placeholder="공지 내용 (300자까지)" required><button class="btn sm">올리기</button></form></section>
-      <section class="adm-sec"><h2>팀</h2><div class="adm-teams"><p class="faint">불러오는 중…</p></div></section>`;
-    drawAnn(); loadTeams();
+      <section class="adm-pane" data-pane="teams" ${tab === "teams" ? "" : "hidden"}><div class="adm-teams"><p class="faint">불러오는 중…</p></div></section>`;
+    drawRows(); drawAnn(); loadTeams();
   };
+  body.addEventListener("input", (e) => { if (e.target.matches(".adm-search")) { q = e.target.value.trim().toLowerCase(); drawRows(); } });
   // 공지
   let ann = null;
   const drawAnn = () => { const el = body.querySelector(".adm-ann-now"); if (el) el.innerHTML = ann ? `<p class="adm-ann-cur">지금 공지: <b>${esc(ann.body)}</b> <button type="button" class="btn sm ghost" data-ann-off="${esc(ann.id)}">내리기</button></p>` : `<p class="faint">지금 공지 없음</p>`; };
@@ -85,6 +106,13 @@ export function mount(root, ctx) {
   const load = () => Promise.all([api.adminUsers(), api.adminFeatureRequests().catch(() => feats)]).then(([d, fr]) => { if (!alive) return; data = d; feats = fr; draw(); }).catch((e) => { body.innerHTML = `<p class="faint">${esc(e.message)}</p>`; });
 
   body.addEventListener("click", async (e) => {
+    const t = e.target.closest("[data-tab]");
+    if (t) { tab = t.dataset.tab; body.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", x === t)); body.querySelectorAll("[data-pane]").forEach((p) => { p.hidden = p.dataset.pane !== tab; }); return; }
+    const f = e.target.closest("[data-filter]");
+    if (f) { filter = f.dataset.filter; drawRows(); return; }
+    const tg = e.target.closest("[data-toggle]");
+    if (tg) { const id = tg.closest("tr").dataset.id; open = open === id ? "" : id; drawRows(); return; }
+    if (e.target.closest(".adm-menu [data-act]")) e.target.closest("details")?.removeAttribute("open");
     const dec = e.target.closest("[data-dec]");
     if (dec) { try { await api.adminDecideFeature(dec.closest("[data-req]").dataset.req, dec.dataset.dec); toast(dec.dataset.dec === "approve" ? "열어 줬어요." : "거절했어요."); await load(); } catch (err) { toast(err.message, "err"); } return; }
     const chip = e.target.closest("[data-feat]");
@@ -113,6 +141,7 @@ export function mount(root, ctx) {
         const { temp_password } = await api.adminResetPassword(id);
         await load();
         const p = body.querySelector(".adm-temp");
+        p.scrollIntoView({ block: "center" });
         p.hidden = false;
         p.innerHTML = `@${esc(name)} 임시 비밀번호: <code>${esc(temp_password)}</code> — 지금만 보여요. 다음 로그인 때 새 비밀번호로 바꾸게 돼요.`;
         return;
