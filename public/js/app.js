@@ -101,8 +101,8 @@ function annBar() {
     let hid = ""; try { hid = localStorage.getItem("trio-ann-hidden") || ""; } catch {}
     if (!a || a.id === hid) return;
     const bar = document.createElement("div");
-    bar.className = "ann-bar";
-    bar.innerHTML = `<span>📢 ${esc(a.body)}</span><button type="button" class="icon-btn sm" aria-label="공지 닫기">✕</button>`;
+    bar.className = "ann-bar"; bar.setAttribute("role", "alert");
+    bar.innerHTML = `<span>📢 ${esc(a.body)}</span><button type="button" class="ann-x" aria-label="공지 닫기" title="닫기">✕</button>`;
     bar.querySelector("button").addEventListener("click", () => { try { localStorage.setItem("trio-ann-hidden", a.id); } catch {} bar.remove(); });
     document.body.append(bar);
   }).catch(() => {});
