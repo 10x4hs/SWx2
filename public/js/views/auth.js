@@ -68,6 +68,12 @@ export function mountAuth(root, { onDone }) {
     input.placeholder = signup ? (again ? "비밀번호 한 번 더" : "비밀번호 (8자 이상)") : "비밀번호"; label.textContent = "비밀번호";
     input.value = ""; setHas(); input.focus();
   };
+  const toRef = () => {
+    step = "s-ref"; who.hidden = false; who.textContent = username;
+    input.type = "text"; input.name = "referrer"; input.autocomplete = "off";
+    input.placeholder = "친구 아이디 (선택 · 없으면 그냥 →)"; label.textContent = "친구 아이디 (선택)";
+    input.value = ""; setHas(); input.focus();
+  };
   const shake = (text) => {
     msg.textContent = text;
     pill.classList.remove("shake"); void pill.offsetWidth; pill.classList.add("shake");
@@ -85,12 +91,15 @@ export function mountAuth(root, { onDone }) {
         username = v.toLowerCase(); return toPass();
       }
       if (step === "s-pass") { if (input.value.length < 8) return shake("비밀번호는 8자 이상이어야 해요."); pw1 = input.value; return toPass(true); }
-      if (input.value !== pw1) { toPass(); return shake("두 비밀번호가 달라요. 다시 입력해 주세요."); }
+      if (step === "s-pass2") { if (input.value !== pw1) { toPass(); return shake("두 비밀번호가 달라요. 다시 입력해 주세요."); } return toRef(); }
+      // 마지막: 추천한 친구 아이디 (선택) — 비워 두고 → 를 누르면 그냥 가입 신청
+      const ref = v.toLowerCase();
+      if (ref && !/^[a-z]{3}$/.test(ref)) return shake("친구 아이디는 영문 3글자예요. 없으면 비워 두세요.");
       pill.classList.add("busy");
       try {
-        const r = await api.signup({ username, password: pw1 });
+        const r = await api.signup({ username, password: pw1, ...(ref ? { referrer: ref } : {}) });
         pill.classList.remove("busy"); setMode(false); showStatus(username, r.approvals || [], { u: username, p: pw1 });
-      } catch (ex) { pill.classList.remove("busy"); toUser(); shake(ex.message); }
+      } catch (ex) { pill.classList.remove("busy"); if (/친구/.test(ex.message)) toRef(); else toUser(); shake(ex.message); }
       return;
     }
     if (step === "user") {

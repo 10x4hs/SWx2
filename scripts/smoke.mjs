@@ -94,10 +94,63 @@ r = await call("a", "GET", "/me"); ok(r.status === 200 && r.data.user.display_na
 // 기능 잠금: 열린 기능이 없는 사람은 경영 · SW 과정 API 도 403 (Dock 자물쇠와 같게), 계획은 그대로
 execFileSync("node", ["scripts/add-user.mjs", "t_l" + tag, "잠긴사람", "password1", "--team=swx2"], { stdio: "ignore" });
 await call("l", "POST", "/auth/login", { username: "t_l" + tag });
-for (const [p, f] of [["/mba/state", "biz"], ["/dev/state", "dev"], ["/vg/state", "dev"]]) { r = await call("l", "GET", p); ok(r.status === 403 && r.data.locked === f, `locked: ${p} → 403 (${f})`); }
+for (const [p, f] of [["/mba/state", "biz"], ["/dev/state", "dev"], ["/vg/state", "dev"], ["/news/map", "news"]]) { r = await call("l", "GET", p); ok(r.status === 403 && r.data.locked === f, `locked: ${p} → 403 (${f})`); }
 r = await call("l", "PUT", "/mba/read", { module: "accounting", card: "profit-vs-revenue" }); ok(r.status === 403, "locked: mba write → 403");
 r = await call("l", "GET", "/plans?periods=D:2026-09-28"); ok(r.status === 200, "locked: plans stay open");
+r = await call("l", "GET", "/diary?day=2026-09-28"); ok(r.status === 200, "free: diary is open to everyone (not a locked feature)");
 d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
+// 관리자 두 사람: 기능 신청은 둘 다 승인해야 열림 · 시간 추가 · 추천 보너스 (로컬 진짜 관리자는 잠깐 member 로 내렸다가 되돌려요)
+{
+  const r3 = () => [...crypto.getRandomValues(new Uint8Array(3))].map((b) => String.fromCharCode(97 + (b % 26))).join("");
+  const idOf = (u) => d1(`SELECT id FROM users WHERE username = '${u}'`)[0]?.id;
+  const admins0 = d1("SELECT id FROM users WHERE role = 'admin'").map((x) => x.id);
+  const H = "t_h" + tag, G = "t_g" + tag, R = "t_r" + tag, REF = r3(), NEW = r3();
+  mk(H, "관리H", "password1"); mk(G, "관리G", "password1"); mk(REF, "추천인", "password1");
+  execFileSync("node", ["scripts/add-user.mjs", R, "신청자", "password1", "--team=swx2"], { stdio: "ignore" });
+  d1(`UPDATE users SET role = 'admin' WHERE username IN ('${H}', '${G}')`);
+  if (admins0.length) d1(`UPDATE users SET role = 'member' WHERE id IN (${admins0.map((i) => `'${i}'`).join(",")})`);
+  try {
+    for (const [k, u] of [["h", H], ["g", G], ["r", R]]) await call(k, "POST", "/auth/login", { username: u, password: "password1" });
+    const rid = idOf(R), refId = idOf(REF);
+    await call("r", "POST", "/features/request", { feature: "biz" });
+    const req = (await call("h", "GET", "/admin/feature-requests")).data.requests.find((x) => x.user_id === rid && x.feature === "biz");
+    r = await call("h", "POST", `/admin/feature-requests/${req.id}/approve`); ok(r.status === 200 && r.data.granted === false, "feature request: one admin approval is not enough");
+    r = await call("r", "GET", "/mba/state"); ok(r.status === 403, "feature request: still locked after one admin");
+    r = await call("g", "GET", "/admin/feature-requests"); ok(r.data.requests.find((x) => x.id === req.id)?.approvals.includes(H) && r.data.admins.length === 2, "feature request: list shows per-admin approvals");
+    r = await call("g", "POST", `/admin/feature-requests/${req.id}/approve`); ok(r.data.granted === true, "feature request: second admin approval grants");
+    r = await call("r", "GET", "/mba/state"); ok(r.status === 200, "feature request: open after both admins");
+    await call("r", "POST", "/features/request", { feature: "ai" });
+    const req2 = (await call("h", "GET", "/admin/feature-requests")).data.requests.find((x) => x.user_id === rid && x.feature === "ai");
+    await call("h", "POST", `/admin/feature-requests/${req2.id}/approve`);
+    r = await call("g", "POST", `/admin/feature-requests/${req2.id}/deny`); ok(r.status === 200 && d1(`SELECT status FROM feature_requests WHERE id = '${req2.id}'`)[0].status === "denied", "feature request: any admin can deny");
+    // 시간 추가
+    r = await call("h", "POST", `/admin/users/${rid}/time`, { scope: "dev", hours: 24 }); ok(r.status === 200 && Math.abs(r.data.until - Date.now() - 24 * 3600e3) < 120e3, "time: feature +24h");
+    r = await call("r", "GET", "/dev/state"); ok(r.status === 200, "time: timed feature opens");
+    r = await call("h", "POST", `/admin/users/${rid}/time`, { scope: "dev", hours: 72 }); ok(Math.abs(r.data.until - Date.now() - 96 * 3600e3) < 120e3, "time: extends from current expiry (24h + 3d)");
+    ok(/개발 흐름.*사용 시간을 3일 늘려 줬어요 · \d+\/\d+ \d\d:\d\d까지/.test(d1(`SELECT body FROM room_messages WHERE room = 'help:${rid}' AND user_id IS NULL ORDER BY created_at DESC LIMIT 1`)[0]?.body || ""), "time: system message in user's help room");
+    r = await call("h", "POST", `/admin/users/${rid}/time`, { scope: "biz", hours: 24 }); ok(r.data.permanent === true, "time: permanent grant is a no-op");
+    r = await call("h", "POST", `/admin/users/${rid}/time`, { scope: "dev", hours: 5 }); ok(r.status === 400, "time: only 24 · 72 · 168 hours");
+    d1(`UPDATE user_features SET expires_at = ${Date.now() - 1000} WHERE user_id = '${rid}' AND feature = 'dev'`);
+    r = await call("r", "GET", "/dev/state"); ok(r.status === 403, "time: expired grant locks again");
+    r = await call("h", "POST", `/admin/users/${rid}/time`, { scope: "all", hours: 168 }); ok(Math.abs(r.data.until - Date.now() - 168 * 3600e3) < 120e3, "time: all = trial +7d");
+    r = await call("r", "GET", "/features"); ok(r.data.trial_until === d1(`SELECT trial_until FROM users WHERE id = '${rid}'`)[0].trial_until && r.data.open.includes("news"), "time: trial opens every feature");
+    // 추천
+    r = await call("x", "POST", "/auth/signup", { username: NEW, password: "password1", referrer: NEW }); ok(r.status === 400, "referral: not yourself");
+    r = await call("x", "POST", "/auth/signup", { username: NEW, password: "password1", referrer: "t_h" }); ok(r.status === 400, "referral: unknown id rejected");
+    r = await call("x", "POST", "/auth/signup", { username: NEW, password: "password1", referrer: REF }); ok(r.status === 201, "referral: signup with friend id");
+    const nid = idOf(NEW);
+    ok(d1(`SELECT referred_by FROM users WHERE id = '${nid}'`)[0].referred_by === refId, "referral: referred_by stored (D1)");
+    await call("h", "POST", `/admin/users/${nid}/approve`);
+    ok(!d1(`SELECT trial_until FROM users WHERE id = '${refId}'`)[0].trial_until, "referral: no bonus until both admins approve");
+    r = await call("g", "POST", `/admin/users/${nid}/approve`); ok(r.data.active === true, "referral: account active after both admins");
+    ok(Math.abs(d1(`SELECT trial_until FROM users WHERE id = '${refId}'`)[0].trial_until - Date.now() - 24 * 3600e3) < 120e3, "referral: referrer trial +24h");
+    ok(/님이 SWx2 에 가입했어요 · 고마워요! 모든 Dock 체험 24시간이 추가됐어요/.test(d1(`SELECT body FROM room_messages WHERE room = 'help:${refId}' ORDER BY created_at DESC LIMIT 1`)[0]?.body || ""), "referral: thank-you message in referrer's help room");
+    r = await call("h", "GET", "/admin/users"); ok(r.data.users.find((u) => u.id === nid)?.referrer === REF, "referral: admin list shows referrer");
+  } finally {
+    if (admins0.length) d1(`UPDATE users SET role = 'admin' WHERE id IN (${admins0.map((i) => `'${i}'`).join(",")})`);
+    d1(`DELETE FROM users WHERE username IN ('${H}', '${G}', '${R}', '${REF}', '${NEW}')`);
+  }
+}
 r = await call("x", "GET", "/me"); ok(r.status === 401, "anon rejected");
 r = await fetch(BASE + "/api/plans", { method: "POST", headers: { cookie: jar.a, "content-type": "application/json" }, body: "{}" });
 ok(r.status === 403, "csrf header required");

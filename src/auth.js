@@ -100,7 +100,7 @@ export async function requireUser(req, env) {
   const token = sessionToken(req);
   if (!token) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.hidden_pages, u.graph_prefs, u.diary_circle, u.role, u.state, u.last_seen_at, u.trial_until, s.imp_by, (SELECT group_concat(feature) FROM user_features f WHERE f.user_id = u.id) AS feature_list, (SELECT username FROM users a WHERE a.id = s.imp_by) AS imp_name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?"
+    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.hidden_pages, u.graph_prefs, u.diary_circle, u.role, u.state, u.last_seen_at, u.trial_until, s.imp_by, (SELECT group_concat(feature) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > ?2)) AS feature_list, (SELECT username FROM users a WHERE a.id = s.imp_by) AS imp_name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?1 AND s.expires_at > ?2"
   ).bind(await sha256(token), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
   if (row.state !== "active") fail(401, STATE_MSG[row.state] || "들어올 수 없는 계정이에요.");
@@ -129,11 +129,15 @@ export function registerAuth(on) {
     const { n, waiting } = await env.DB.prepare("SELECT COUNT(*) AS n, SUM(state = 'pending') AS waiting FROM users").first();
     if ((waiting || 0) >= Number(env.MAX_PENDING || 30)) fail(429, "가입 신청이 밀려 있어요. 잠시 뒤에 다시 해 주세요.");
     if (await env.DB.prepare("SELECT 1 FROM users WHERE username = ?").bind(username).first()) fail(409, "이미 있는 아이디예요.");
+    // 추천한 친구 (선택): 지금 쓰고 있는 회원 아이디만 · 나 자신은 안 돼요 — 계정이 열리면 그 친구에게 체험 24시간 (src/admin.js)
+    const ref = String(b.referrer || "").trim().toLowerCase();
+    if (ref && (!/^[a-z]{3}$/.test(ref) || ref === username)) fail(400, "친구 아이디는 다른 사람의 영문 3글자 아이디예요.");
+    const refId = ref ? (await env.DB.prepare("SELECT id FROM users WHERE username = ? AND state = 'active'").bind(ref).first())?.id || fail(400, "그 친구 아이디를 찾지 못했어요.") : null;
     const { hash, salt } = await hashPassword(b.password);
     const t = now();
     const newId = uid();
-    await env.DB.prepare("INSERT INTO users (id, username, display_name, color, pw_hash, pw_salt, created_at, state, pw_changed_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)")
-      .bind(newId, username, display, COLORS[n % COLORS.length], hash, salt, t, t).run();
+    await env.DB.prepare("INSERT INTO users (id, username, display_name, color, pw_hash, pw_salt, created_at, state, pw_changed_at, referred_by) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)")
+      .bind(newId, username, display, COLORS[n % COLORS.length], hash, salt, t, t, refId).run();
     // 관리자들에게 "가입 신청이 왔어요" 푸시 (내용은 서비스 워커가 /admin/pending 에서 읽어요)
     const admins = (await env.DB.prepare("SELECT id FROM users WHERE role = 'admin' AND state = 'active'").all()).results.map((r) => r.id);
     pushUsers(env, ec, admins, { room: "signup" });

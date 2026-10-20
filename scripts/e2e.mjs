@@ -20,7 +20,7 @@
 //   ⑯ 홈 Day 쪽 ‹ 날짜 › — › 내일(바늘 없음 · 오늘로) · 내일에 끌어 넣기 → 그 날짜 · 새로 열어도 고른 날 · 지난 기억은 오늘 · ‹ 어제 점수 · 링 누르면 그날 계획표 (2026-10-15)
 //   ⑰ 계획 복사 · 붙여넣기 — 마우스 올리고 ⌘C · 붙일 시각에 ⌘V(우선순위까지) · ⌘Z 되돌리기 · Shift+클릭 여러 개(간격 그대로) · 다른 앱의 "07:00–07:30 이름" 줄 · 그냥 글은 무시 · 홈 시계 링 시각 (2026-10-16)
 //   ⑱ 일기 친구 — 친구 없으면 탭 하나 · 같은 팀도 403 · 아이디로 초대 → 친구 화면의 초대 띠에서 수락 → 탭 둘 · 새 일기 기본 공개 → 친구가 읽음 · 비공개면 자물쇠만(글은 서버에서도 안 와요)
-//      · 지난 일기 비공개 · 친구 탭 읽기 · 일기 기능 없는 사람은 403 · 아이콘 자물쇠 · 끊기 → 다시 403 (2026-10-19)
+//      · 지난 일기 비공개 · 친구 탭 읽기 · 친구 아닌 사람은 403 · 일기는 누구나(자물쇠 없음, 2026-10-21) · 끊기 → 다시 403 (2026-10-19)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -1130,12 +1130,12 @@ try {
         await fc.request.put(BASE + "/api/diary", { headers: H, data: { day, body: "친구의 공개 일기", mood: 4, shared: false } });
         await p.reload(); await sleep(2500);
         const r2 = await p.evaluate(() => ({ lock: !!document.querySelector(".dr-lock"), body: !!document.querySelector(".dr-body") }));
-        // 모임 밖(일기 기능이 없는 사람): 모임 · 남의 일기 403, 독 아이콘은 자물쇠 · #/diary 는 '사용 신청' 화면
+        // 일기 친구가 아닌 사람: 일기는 누구나라 내 모임 목록은 200 · 서로의 일기는 403, 독 아이콘에 자물쇠 없음 · #/diary 는 그냥 일기 화면
         const s1 = (await oc.request.get(BASE + "/api/diary/circle", { headers: H })).status(), s2 = await of(oc, myId, day), s3 = await of(ctx, (await (await oc.request.get(BASE + "/api/me", { headers: H })).json()).user.id, day);
         const op = await oc.newPage(); await op.goto(BASE + "/#/diary"); await sleep(2500);
         const ov = await op.evaluate(() => ({ locked: !!document.querySelector('[data-nav="diary"].locked'), lockView: !!document.querySelector(".lock-view"), hash: location.hash }));
-        ok(r1 === "친구의 공개 일기" && r2.lock && !r2.body && s1 === 403 && s2 === 403 && s3 === 403 && ov.locked && ov.lockView && !errs.length,
-          `${tv} · 친구 탭 읽기 ${r1 === "친구의 공개 일기"} · 비공개 후 자물쇠 ${r2.lock && !r2.body} · 모임 밖 403 ${[s1, s2, s3].join("/")} · 아이콘 자물쇠 ${ov.locked} · 사용 신청 화면 ${ov.lockView} (${ov.hash})${errs.length ? " — " + errs[0] : ""}`);
+        ok(r1 === "친구의 공개 일기" && r2.lock && !r2.body && s1 === 200 && s2 === 403 && s3 === 403 && !ov.locked && !ov.lockView && !errs.length,
+          `${tv} · 친구 탭 읽기 ${r1 === "친구의 공개 일기"} · 비공개 후 자물쇠 ${r2.lock && !r2.body} · 친구 아님 200/403/403 ${[s1, s2, s3].join("/")} · 자물쇠 없음 ${!ov.locked} · 일기 화면 ${!ov.lockView} (${ov.hash})${errs.length ? " — " + errs[0] : ""}`);
         // 끊기 → 탭 하나로 · 친구도 다시 403 · 초대도 아이디가 없으면 404
         await go("#/diary", 2000);
         p.once("dialog", (d) => d.accept());
