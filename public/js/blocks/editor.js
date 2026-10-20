@@ -57,13 +57,40 @@ function caretOffset(el) {
 function setCaret(el, off) {
   el.focus();
   const s = getSelection(), r = document.createRange();
-  let left = Math.max(0, off), node = null;
+  let left = Math.max(0, off), node = null, prev = null;
+  const inMk = (n) => !!n?.parentNode?.closest?.(".nb-mk");
   const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-  while (w.nextNode()) { const n = w.currentNode; if (left <= n.length) { node = n; break; } left -= n.length; }
+  // 숨긴 ** 기호 안에는 커서를 두지 않아요 (거기 치면 글자가 안 보여요)
+  while (w.nextNode()) {
+    const n = w.currentNode;
+    if (left > n.length) { left -= n.length; prev = n; continue; }
+    if (!inMk(n) || (left > 0 && left < n.length)) { node = n; break; }
+    if (left === 0 && prev && !inMk(prev)) { node = prev; left = prev.length; break; }
+    left = Math.max(0, left - n.length); prev = n;
+  }
+  if (!node && el.querySelector(".nb-mk")) { node = document.createTextNode("\u200B"); el.appendChild(node); left = 1; }
   if (node) r.setStart(node, left); else { r.selectNodeContents(el); r.collapse(false); }
   r.collapse(true); s.removeAllRanges(); s.addRange(r);
 }
-const readText = (el) => { let t = el.innerText.replace(/​/g, ""); if (t.endsWith("\n") && !el.textContent.endsWith("\n")) t = t.slice(0, -1); return t; };
+// 쓰는 중에도 마크다운이 바로 보여요(노션처럼): **굵게** *기울임* `코드` ~~취소선~~ — 기호는 숨기고 글자는 그대로 남겨서 저장은 마크다운 그대로
+const MKS = ["**", "*", "`", "~~"], TAGS = ["strong", "em", "code", "s"];
+function liveHtml(t) {
+  const codes = [];
+  let h = String(t || "").replace(/`([^`\n]+)`/g, (_, a) => { codes.push(a); return "\uE010" + (codes.length - 1) + "\uE011"; });
+  h = h.replace(/\*\*(?=\S)([^*\n]*?\S)\*\*/g, "\uE000$1\uE001")
+    .replace(/~~(?=\S)([^~\n]*?\S)~~/g, "\uE006$1\uE007")
+    .replace(/(^|[^*\\])\*(?=[^\s*])([^*\n]*?[^\s*\\])\*(?!\*)/g, "$1\uE002$2\uE003");
+  const mk = (i) => `<span class="nb-mk">${esc(MKS[i])}</span>`;
+  return esc(h).replace(/[\uE000-\uE007]/g, (c) => { const k = c.charCodeAt(0) - 0xE000, i = k >> 1; return k & 1 ? `</${TAGS[i]}>${mk(i)}` : `${mk(i)}<${TAGS[i]}>`; })
+    .replace(/\uE010(\d+)\uE011/g, (_, i) => `${mk(2)}<code>${esc(codes[+i])}</code>${mk(2)}`);
+}
+function paintLive(el, text, off) {
+  const html = liveHtml(text);
+  if (el.innerHTML === html) return;
+  if (!el.childElementCount && html === esc(text)) return; // 꾸밀 게 없으면 손대지 않아요 (커서 · 되돌리기 그대로)
+  el.innerHTML = html; setCaret(el, off);
+}
+const readText = (el) => { if (el.querySelector(".nb-mk") && !el.querySelector("br, div")) return el.textContent.replace(/\u200B/g, ""); let t = el.innerText.replace(/​/g, ""); if (t.endsWith("\n") && !el.textContent.endsWith("\n")) t = t.slice(0, -1); return t; };
 
 const COLS = ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"];
 const swatches = () => `<div class="nb-sw" role="group" aria-label="Text color">${COLS.map((c) => `<button type="button" data-col="${c}" data-kind="text" class="c-${c}" title="${c}">A</button>`).join("")}<button type="button" data-col="default" title="Default">A</button></div>`
@@ -275,7 +302,7 @@ export function createBlockEditor(host, opts) {
     if (el.classList?.contains("nb-text") && !el.classList.contains("nb-code")) {
       const b = blockOf(el);
       // plain text stays as is (caret stays where you clicked); marked-up text switches to raw markdown with the caret at the end
-      if (b && el.dataset.raw !== "1") { el.dataset.raw = "1"; if (el.childElementCount || el.textContent !== b.text) { el.textContent = b.text; setCaret(el, b.text.length); } }
+      if (b && el.dataset.raw !== "1") { el.dataset.raw = "1"; if (el.childElementCount || el.textContent !== b.text) { if (el.classList.contains("nb-comment")) el.textContent = b.text; else el.innerHTML = liveHtml(b.text); setCaret(el, b.text.length); } }
     }
     if (el.tagName === "TD" && !ro) { const b = blockOf(el); el.textContent = b.props.rows[+el.dataset.r]?.[+el.dataset.c] || ""; }
   });
@@ -361,9 +388,19 @@ export function createBlockEditor(host, opts) {
     if (!el.classList.contains("nb-text")) return;
     b.text = readText(el);
     if (b.type === "paragraph" && !el.classList.contains("nb-code") && shortcut(b, el)) return;
+    // 한글 조합 중(compositionstart~end)에는 바꾸지 않고, 조합이 끝나면 compositionend 에서 그려요
+    if (!e.isComposing && !composing && !el.classList.contains("nb-code") && !el.classList.contains("nb-comment")) paintLive(el, b.text, caretOffset(el));
     changed();
     slashCheck(b, el);
     linkCheck(b, el);
+  });
+  let composing = false;
+  root.addEventListener("compositionstart", () => { composing = true; });
+  root.addEventListener("compositionend", (e) => {
+    composing = false;
+    const el = e.target; if (!el.classList?.contains("nb-text") || el.classList.contains("nb-code") || el.classList.contains("nb-comment")) return;
+    const b = blockOf(el); if (!b) return;
+    setTimeout(() => { if (document.activeElement === el) { b.text = readText(el); paintLive(el, b.text, caretOffset(el)); } }, 0);
   });
   root.addEventListener("keydown", (e) => {
     if (e.target.closest?.(".db-host")) return;
