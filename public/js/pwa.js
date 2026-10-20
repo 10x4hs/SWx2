@@ -176,7 +176,7 @@ function showUpdate() {
   const host = document.getElementById("toasts") || document.body;
   const el = document.createElement("div");
   el.className = "toast upd"; el.setAttribute("role", "status");
-  el.innerHTML = `새 버전이 있어요. <button type="button" class="btn sm accent" style="margin-left:8px">새로 고침</button>`;
+  el.innerHTML = `<span>새 버전이 있어요</span><button type="button" class="btn sm accent">새로 고침</button>`;
   el.querySelector("button").addEventListener("click", () => location.reload());
   host.appendChild(el);
 }

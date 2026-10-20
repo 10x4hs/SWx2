@@ -252,7 +252,7 @@ kbd { font: 500 10.5px/1 var(--mono); color: var(--ink-3); border: 1px solid var
 .auth { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 440px); align-items: center; gap: 40px; padding: 40px clamp(16px, 6vw, 80px); }
 
 /* ---------- toasts ---------- */
-#toasts { position: fixed; right: 20px; bottom: 20px; z-index: 80; display: grid; gap: 8px; }
+#toasts { position: fixed; right: 20px; bottom: 20px; z-index: 80; display: grid; gap: 8px; grid-auto-rows: max-content; justify-items: end; align-content: end; }
 .toast { padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 500; transition: opacity .3s, transform .3s var(--ease); }
 .toast.err { background: var(--err); }
 .toast.out { opacity: 0; transform: translateY(6px); }
@@ -1794,7 +1794,7 @@ a.btn { text-decoration: none; }
 /* 그래프: 고른 점 띠 · 선 팝오버 */
 
 /* v14.2: 그래프 — 유리 구슬 · 빈 곳 클릭 새 노트 · 새 버전 띠 */
-.toast.upd { display: flex; align-items: center; background: var(--glass-3); color: var(--ink); border: 1px solid var(--line-2); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.toast.upd { display: inline-flex; align-items: center; gap: 10px; width: max-content; height: auto; min-height: 0; padding: 6px 6px 6px 14px; border-radius: 999px; white-space: nowrap; background: var(--glass-3); color: var(--ink); border: 1px solid var(--line-2); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 
 /* ---------- v15: AI 모델 고르기 · 웹 검색 · 도구 칩 · 계획 AI(유리) ---------- */
 .ai-pick { display: flex; gap: 6px; align-items: center; }
@@ -3164,3 +3164,6 @@ button.adm-stat:hover { border-color: rgba(127,127,127,.35); }
   .adm-detail { display: block; } .adm-detail > td { display: block; }
   .adm-stats { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* 새 버전 알림: 한 줄 알약 (어디에 붙어도 늘어나지 않게) */
+.toast.upd .btn { margin: 0; padding: 4px 12px; min-height: 0; border-radius: 999px; }
