@@ -781,6 +781,25 @@ r = await call("b", "POST", "/room", { body: "그룹에도 하나" }); ok(r.stat
 const grp1 = r.data.message;
 r = await call("b", "POST", "/room/ai", { message_id: dm1.id }); ok(r.status === 400, "room: dm retry rule same (non-mention 400)");
 
+// 대화방 사진 · 영상: 파일 그대로 올리기 → kind image, 방 밖 사람은 403, 형식 검사, 지우면 파일도
+{
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  const up = (who, room, buf, type, caption = "") => fetch(BASE + "/api/room/media?" + new URLSearchParams({ room, caption }), { method: "POST", headers: { "content-type": type, "x-trio": "1", cookie: jar[who] || "" }, body: buf }).then(async (x) => ({ status: x.status, data: await x.json().catch(() => null) }));
+  const get = (who, key, h = {}) => fetch(BASE + "/api/room/media/" + encodeURIComponent(key), { headers: { cookie: jar[who] || "", ...h } });
+  r = await up("a", dm, png, "image/png", "사진 하나");
+  ok(r.status === 201 && r.data.message.kind === "image" && r.data.message.body === "사진 하나" && /^room-.+\.png$/.test(r.data.message.ref_id), "room media: png → image message");
+  const im = r.data?.message || {};
+  let f = await get("b", im.ref_id); ok(f.status === 200 && f.headers.get("content-type") === "image/png" && /private/.test(f.headers.get("cache-control") || "") && (await f.arrayBuffer()).byteLength === png.length, "room media: peer gets file (private)");
+  f = await get("b", im.ref_id, { range: "bytes=0-3" }); ok(f.status === 206 && f.headers.get("content-range") === `bytes 0-3/${png.length}` && (await f.arrayBuffer()).byteLength === 4, "room media: range 206");
+  f = await get("d", im.ref_id); ok(f.status === 403, "room media: outsider 403");
+  r = await call("b", "GET", "/room?room=" + dm); ok(r.data.messages.some((m) => m.id === im.id && m.kind === "image") && r.data.unread >= 1, "room media: b sees image message, unread counts");
+  r = await up("a", dm, Buffer.from("hello"), "text/plain"); ok(r.status === 400, "room media: wrong type 400");
+  r = await up("a", dm, Buffer.from("not a png at all"), "image/png"); ok(r.status === 400, "room media: fake png (magic bytes) 400");
+  r = await up("d", dm, png, "image/png"); ok(r.status === 403, "room media: outsider cannot upload");
+  r = await call("a", "DELETE", "/room/" + im.id); ok(r.status === 200, "room media: delete");
+  f = await get("a", im.ref_id); ok(f.status === 404, "room media: file gone after delete");
+}
+
 // 창고
 r = await call("a", "POST", "/library/preview", {}); ok(r.status === 400, "library: preview needs url or title");
 r = await call("a", "POST", "/library/preview", { url: "http://127.0.0.1:1/" }); ok(r.status === 400, "library: preview blocks private host");
