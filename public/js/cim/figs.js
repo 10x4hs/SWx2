@@ -1,4 +1,4 @@
-// CIM 설명 그림 — 정적 SVG(장식 없음), 계기판처럼: 가는 격자 · 고정폭 숫자 · 단계 버튼 · 슬라이더 · 읽기 줄.
+// CIM 설명 그림 — 정적 SVG(장식 없음), 금융 앱처럼: 둥근 틀 · 굵은 숫자 · 단계 버튼 · 슬라이더 · 읽기 줄.
 // 그림 9개 + 부동산 계산기. 사용자가 ‹ › / 슬라이더로 직접 바꿔요 (저절로 움직이지 않아요).
 const NS = "http://www.w3.org/2000/svg";
 const f2 = (v, d = 2) => Number(v).toFixed(d);
@@ -76,7 +76,7 @@ FIG.bond = {
         if (st.step >= 2) s += `<path class="acc2 dash" d="${P.path(xs.map((x) => { const dy = (x - st.y) / 100; return [x, p0 * (1 - MD * dy + 0.5 * C * dy * dy)]; }))}"/>`;
         const y1 = st.y + st.d, dy = st.d / 100;
         s += `<line class="grid dash" x1="${P.sx(y1)}" x2="${P.sx(y1)}" y1="${P.pad.t}" y2="${P.H - P.pad.b}"/>`;
-        s += `<circle class="dot" cx="${P.sx(st.y)}" cy="${P.sy(p0)}" r="5"/><circle cx="${P.sx(y1)}" cy="${P.sy(price(y1 / 100))}" r="4" fill="var(--cim-ink)"/>`;
+        s += `<circle class="dot" cx="${P.sx(st.y)}" cy="${P.sy(p0)}" r="5"/><circle cx="${P.sx(y1)}" cy="${P.sy(price(y1 / 100))}" r="4" fill="var(--c-ink)"/>`;
         const real = (price(y1 / 100) / p0 - 1) * 100, dur = -MD * dy * 100, cvx = (-MD * dy + 0.5 * C * dy * dy) * 100;
         return { svg: svg(P, s), read: `가격 ${won(p0)}원 · 수정듀레이션 ${f2(MD)} · 볼록성 ${f2(C, 1)}<br>금리 ${st.d > 0 ? "+" : ""}${st.d}%p → 실제 ${f2(real)}% · 듀레이션만 ${f2(dur)}% · 듀레이션+볼록성 ${f2(cvx)}%` };
       }
@@ -100,12 +100,12 @@ FIG.port = {
         s += `<path class="main" d="${P.path(pts)}"/>`;
         const mv = pts.reduce((a, b) => (b[0] < a[0] ? b : a));
         s += `<circle class="dot" cx="${P.sx(A.s)}" cy="${P.sy(A.m)}" r="4"/><text x="${P.sx(A.s) + 6}" y="${P.sy(A.m) + 4}">A</text><circle class="dot" cx="${P.sx(B.s)}" cy="${P.sy(B.m)}" r="4"/><text x="${P.sx(B.s) + 6}" y="${P.sy(B.m) + 4}">B</text>`;
-        s += `<circle cx="${P.sx(mv[0])}" cy="${P.sy(mv[1])}" r="4" fill="var(--cim-ink)"/><text x="${P.sx(mv[0]) - 6}" y="${P.sy(mv[1]) + 16}" text-anchor="end">최소분산</text>`;
+        s += `<circle cx="${P.sx(mv[0])}" cy="${P.sy(mv[1])}" r="4" fill="var(--c-ink)"/><text x="${P.sx(mv[0]) - 6}" y="${P.sy(mv[1]) + 16}" text-anchor="end">최소분산</text>`;
         let read = `최소분산 조합: B 비중 ${Math.round(mv[2] * 100)}% · σ ${f2(mv[0], 1)}% · 수익 ${f2(mv[1], 1)}%`;
         if (st.step >= 2) {
           const m = pts.filter((p) => p[0] > 0.01).reduce((a, b) => ((b[1] - rf) / b[0] > (a[1] - rf) / a[0] ? b : a));
           const sl = (m[1] - rf) / m[0];
-          s += `<path class="acc" d="${P.path([[0, rf], [26, rf + sl * 26]])}"/><circle cx="${P.sx(0)}" cy="${P.sy(rf)}" r="4" fill="var(--cim-acc)"/><circle class="dotbad" cx="${P.sx(m[0])}" cy="${P.sy(m[1])}" r="5"/><text x="${P.sx(m[0]) + 7}" y="${P.sy(m[1]) - 6}">M</text>`;
+          s += `<path class="acc" d="${P.path([[0, rf], [26, rf + sl * 26]])}"/><circle cx="${P.sx(0)}" cy="${P.sy(rf)}" r="4" fill="var(--c-blue)"/><circle class="dotbad" cx="${P.sx(m[0])}" cy="${P.sy(m[1])}" r="5"/><text x="${P.sx(m[0]) + 7}" y="${P.sy(m[1]) - 6}">M</text>`;
           read += `<br>CML 기울기(샤프비율) ${f2(sl)} · M: B 비중 ${Math.round(m[2] * 100)}%`;
         }
         return { svg: svg(P, s), read };
@@ -125,7 +125,7 @@ FIG.sml = {
         const P = plot(560, 280, [0, 2], [0, 16]);
         const req = (b) => st.rf + b * (st.rm - st.rf);
         let s = axes(P, "베타 β", "수익률 %", [0, 0.5, 1, 1.5, 2], [0, 4, 8, 12, 16]);
-        s += `<path class="main" d="${P.path([[0, st.rf], [2, req(2)]])}"/><circle cx="${P.sx(1)}" cy="${P.sy(st.rm)}" r="3" fill="var(--cim-ink)"/><text x="${P.sx(1) + 6}" y="${P.sy(st.rm) + 14}">M (β=1)</text>`;
+        s += `<path class="main" d="${P.path([[0, st.rf], [2, req(2)]])}"/><circle cx="${P.sx(1)}" cy="${P.sy(st.rm)}" r="3" fill="var(--c-ink)"/><text x="${P.sx(1) + 6}" y="${P.sy(st.rm) + 14}">M (β=1)</text>`;
         const rows = S.map((p) => { const r = req(p.b), a = p.e - r, cls = Math.abs(a) < 0.05 ? "" : a > 0 ? "dotok" : "dotbad"; s += `<line class="grid" x1="${P.sx(p.b)}" x2="${P.sx(p.b)}" y1="${P.sy(r)}" y2="${P.sy(p.e)}" stroke-width="2"/><circle class="${cls || "dot"}" cx="${P.sx(p.b)}" cy="${P.sy(p.e)}" r="5"/><text x="${P.sx(p.b) + 7}" y="${P.sy(p.e) - 6}">${p.n}</text>`; return `${p.n}: β ${p.b} · 요구 ${f2(r, 1)}% · 예상 ${p.e}% → <b>${Math.abs(a) < 0.05 ? "적정" : a > 0 ? "과소평가(매수)" : "과대평가(매도)"}</b> (α ${a > 0 ? "+" : ""}${f2(a, 1)}%p)`; });
         return { svg: svg(P, s), read: rows.join("<br>") };
       }
@@ -207,7 +207,7 @@ FIG.var = {
         const xs = range(-12, 12, 200), cut = -z * sd;
         let s = axes(P, "수익률 %", "", [-12, -8, -4, 0, 4, 8, 12], []);
         const tail = xs.filter((x) => x <= cut); tail.push(cut);
-        s += `<path fill="var(--cim-bad)" opacity=".3" d="${P.path([[-12, 0], ...tail.map((x) => [x, pdf(x)]), [cut, 0]])}Z"/>`;
+        s += `<path fill="var(--c-red)" opacity=".3" d="${P.path([[-12, 0], ...tail.map((x) => [x, pdf(x)]), [cut, 0]])}Z"/>`;
         s += `<path class="main" d="${P.path(xs.map((x) => [x, pdf(x)]))}"/><line class="acc2" x1="${P.sx(cut)}" x2="${P.sx(cut)}" y1="${P.sy(0)}" y2="${P.sy(pdf(cut)) - 20}"/><text x="${P.sx(cut) - 4}" y="${P.sy(pdf(cut)) - 24}" text-anchor="end">−${f2(z * sd, 2)}%</text>`;
         return { svg: svg(P, s), read: `VaR = z ${z} × σ 1% × √${st.t} (${f2(Math.sqrt(st.t), 2)}) × 10억 = <b>${won(z * 0.01 * Math.sqrt(st.t) * 1e9 / 1e4)}만원</b>` };
       }
@@ -240,7 +240,7 @@ FIG.basis = {
 FIG.twr = {
   t: "시간가중 vs 금액가중 수익률 타임라인", ch: "s3c8",
   mount(el) {
-    const box = (x, y, w, h, t, sub, cls) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="var(--cim-s1)" stroke="var(--cim-${cls || "line2"})" stroke-width="1.5"/><text x="${x + w / 2}" y="${y + 20}" text-anchor="middle" style="font-size:13px;fill:var(--cim-ink)">${t}</text><text x="${x + w / 2}" y="${y + 38}" text-anchor="middle">${sub}</text>`;
+    const box = (x, y, w, h, t, sub, cls) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="var(--c-card)" stroke="var(--c-${cls || "line"})" stroke-width="1.5"/><text x="${x + w / 2}" y="${y + 20}" text-anchor="middle" style="font-size:13px;fill:var(--c-ink)">${t}</text><text x="${x + w / 2}" y="${y + 38}" text-anchor="middle">${sub}</text>`;
     frame(el, {
       steps: ["<b>1년차</b> 100 을 넣었더니 +50% → 150.",
         "<b>추가 입금</b> 성적이 좋아 보여서 투자자가 150 을 더 넣어요 → 300. 이 결정은 운용자가 아니라 투자자의 것이에요.",
@@ -270,7 +270,7 @@ FIG.ddm = {
       draw(st) {
         const g = st.roe * st.b / 100, D1 = 1000 * (1 - st.b / 100), ok = g < st.k;
         const P0 = ok ? D1 / ((st.k - g) / 100) : NaN;
-        const box = (x, t, v) => `<rect x="${x}" y="30" width="100" height="56" rx="6" fill="var(--cim-s1)" stroke="var(--cim-line2)"/><text x="${x + 50}" y="52" text-anchor="middle">${t}</text><text x="${x + 50}" y="74" text-anchor="middle" style="font-size:14px;fill:var(--cim-ink);font-weight:700">${v}</text>`;
+        const box = (x, t, v) => `<rect x="${x}" y="30" width="100" height="56" rx="10" fill="var(--c-card)" stroke="var(--c-line)"/><text x="${x + 50}" y="52" text-anchor="middle">${t}</text><text x="${x + 50}" y="74" text-anchor="middle" style="font-size:14px;fill:var(--c-ink);font-weight:700">${v}</text>`;
         const ar = (x) => `<path class="acc" d="M${x} 58 L${x + 14} 58"/>`;
         const s = box(4, "g = ROE×b", f2(g, 1) + "%") + ar(106) + box(122, "D₁ = EPS×(1−b)", won(D1) + "원") + ar(224) + box(240, "P₀ = D₁÷(k−g)", ok ? won(P0) + "원" : "계산 불가") + ar(342) + box(358, "PER = P₀÷EPS", ok ? f2(P0 / 1000, 1) + "배" : "—") + box(460, "b = 0 일 때", won(1000 / (st.k / 100)) + "원");
         return { svg: `<svg class="cf-svg" viewBox="0 0 564 110" role="img">${s}</svg>`, read: ok ? (st.roe > st.k ? "ROE > k → 이익을 남겨 재투자할수록 주가가 올라가요." : st.roe < st.k ? "ROE < k → 재투자가 오히려 가치를 깎아요 (b = 0 일 때보다 낮음)." : "ROE = k → 유보율과 상관없이 주가가 같아요.") : "g ≥ k 라서 모형을 쓸 수 없어요." };
