@@ -42,11 +42,11 @@ export function mountLocked(host, ctx, f) {
 }
 
 // 관리자 '시간 추가' (관리자 화면 · 문의방이 같이 써요): 범위(전체 Dock · 기능 하나) + 24시간 · 3일 · 7일
-const TIME_OPTS = [[24, "+24시간"], [72, "+3일"], [168, "+7일"]];
-export const timeForm = (all) => `<div class="adm-time" role="group" aria-label="사용 시간 추가"><span class="faint">시간 추가</span><select class="input adm-time-scope" aria-label="범위"><option value="all">전체 Dock</option>${Object.entries(all || {}).map(([k, l]) => `<option value="${esc(k)}">${esc(l)}</option>`).join("")}</select>${TIME_OPTS.map(([h, l]) => `<button type="button" class="btn sm" data-hours="${h}">${l}</button>`).join("")}</div>`;
+const TIME_OPTS = [[24, "+24시간"], [72, "+3일"], [168, "+7일"], [-24, "−24시간"], [-72, "−3일"], [-168, "−7일"]]; // 빼기 = 잘못 늘렸을 때
+export const timeForm = (all) => `<div class="adm-time" role="group" aria-label="사용 시간 추가"><span class="faint">시간 추가</span><select class="input adm-time-scope" aria-label="범위"><option value="all">전체 Dock</option>${Object.entries(all || {}).map(([k, l]) => `<option value="${esc(k)}">${esc(l)}</option>`).join("")}</select>${TIME_OPTS.map(([h, l]) => `<button type="button" class="btn sm${h < 0 ? " ghost" : ""}" data-hours="${h}"${h < 0 ? ` title="잘못 늘렸을 때 빼요"` : ""}>${l}</button>`).join("")}</div>`;
 export async function addTime(btn, userId) {
   const scope = btn.closest(".adm-time").querySelector(".adm-time-scope").value;
   btn.disabled = true;
-  try { const r = await api.adminAddTime(userId, scope, Number(btn.dataset.hours)); toast(r.permanent ? r.message : "늘렸어요 · 문의방으로 알려 줬어요"); return r; }
+  try { const r = await api.adminAddTime(userId, scope, Number(btn.dataset.hours)); toast(r.permanent || r.none ? r.message : (Number(btn.dataset.hours) < 0 ? "줄였어요" : "늘렸어요") + " · 문의방으로 알려 줬어요"); return r; }
   catch (e) { toast(e.message, "err"); return null; } finally { btn.disabled = false; }
 }
