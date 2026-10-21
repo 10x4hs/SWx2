@@ -59,12 +59,15 @@ function figPrompt(list) {
 const COURSES = {
   mba: { dir: "/mba", t: { reads: "mba_reads", days: "mba_days", done: "mba_done" }, name: "경영 마이크로디그리", who: "MBA 대학원에 가는 대신 하루 1~2시간씩 경영을 스스로 배우는 한국 학생", tail: "" },
   dev: { dir: "/dev", t: { reads: "dev_reads", days: "dev_days", done: "dev_done" }, name: "개발 흐름 마이크로디그리", who: "코드를 짜는 법이 아니라 회사에서 개발 프로젝트가 흘러가는 방식을 배우는, 개발팀을 이끌 대표가 되려는 한국 학생", tail: " 코드는 꼭 필요할 때만 몇 줄, 읽는 법과 함께 보여 줘. 가상 회사 '두런' 이야기를 예로 써도 좋아." },
+  onto: { dir: "/onto", t: { reads: "onto_reads", days: "onto_days", done: "onto_done" }, name: "온톨로지 과정", who: "온톨로지를 원리(논리 · RDF/OWL · 그래프)부터 설계 방법, AI 시대에 왜 뜨는지, 세계 동향까지 깊게 배우는 한국 학생(엔지니어 · 기획자)", tail: " 예시는 병원 · 회사 · 일상 중 그 개념에 가장 잘 맞는 것으로 골라. 코드는 Turtle · SPARQL · Cypher 몇 줄로, 읽는 법과 함께 보여 줘." },
+  aip: { dir: "/aip", t: { reads: "aip_reads", days: "aip_days", done: "aip_done" }, name: "Palantir AIP 과정", who: "Palantir 의 Foundry 온톨로지와 AIP(LLM 이 온톨로지 위에서 일하는 방식)를 원리부터 사례 · 한계까지 깊게 배우는 한국 학생(엔지니어 · 기획자)", tail: " Palantir 공식 문서의 용어(Object type · Link type · Action type · Function · AIP Logic 등)를 그대로 쓰고, 확실하지 않은 내부 동작은 추측이라고 말해 줘." },
   vg: { dir: "/vg", t: { reads: "vg_reads", days: "vg_days", done: "vg_done" }, name: "Vector & Graph 과정", who: "임베딩 · 벡터 검색 · 벡터DB · 지식그래프 · GraphRAG 를 처음부터 실무까지 배우는 한국 학생(엔지니어)", tail: " 코드는 파이썬이나 SQL · Cypher 몇 줄로, 읽는 법과 함께 보여 줘. 숫자 예시는 작은 벡터로 직접 계산해 보여 줘." },
 };
 
 export function registerMba(on, deps) { registerCourse(on, deps, "mba"); }
 export function registerDev(on, deps) { registerCourse(on, deps, "dev"); }
 export function registerVg(on, deps) { registerCourse(on, deps, "vg"); }
+export function registerOnto(on, deps) { registerCourse(on, deps, "onto"); registerCourse(on, deps, "aip"); } // 온톨로지 · Palantir AIP
 
 function registerCourse(on, { json, body, fail, now }, key) {
   const C = COURSES[key], T = C.t, P = "/" + key;

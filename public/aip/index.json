@@ -1,0 +1,2142 @@
+{
+  "version": 1,
+  "note": "node scripts/dev-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.",
+  "modules": [
+    {
+      "id": "aip-palantir",
+      "no": "01",
+      "title": "팔란티어는 어떤 회사인가",
+      "short": "팔란티어",
+      "q": "정보기관용 소프트웨어 회사가 어떻게 'AI 운영 플랫폼'의 대표 주자가 됐고, 우리는 이 회사를 어떻게 봐야 할까?",
+      "sub": "2003 창업 · Gotham · Foundry · Apollo · AIP · 부트캠프 · 재무 · S&P 500",
+      "doc": "AIP 도입 검토 1차 보고서: 벤더 프로필",
+      "goals": [
+        "팔란티어의 역사(2003 창업 → 정부 → 상업 → AIP)와 네 제품(Gotham·Foundry·Apollo·AIP)의 역할을 한 문장씩 설명할 수 있어요.",
+        "공식 공시(10-K, 실적 발표)에서 매출·이익·부문 숫자를 직접 찾아 읽고, TCV·Rule of 40·가이던스 같은 지표의 뜻과 한계를 말할 수 있어요.",
+        "시장이 팔란티어에 열광하는 이유와 의심하는 이유를 나란히 놓고, 도입 기업 입장의 벤더 리스크를 정리할 수 있어요."
+      ],
+      "story": {
+        "title": "“팔란티어가 뭐 하는 회사인지, 한 장으로 정리해 와요.”",
+        "size": 40
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "한 줄로 말하면: 데이터·결정·운영을 잇는 소프트웨어",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "2003년, 정보기관용 소프트웨어로 시작",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "정부에서 상업으로: 같은 문제, 다른 고객",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "고객이 적고 크다: 집중도 읽기",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "Gotham: 정부·국방용 플랫폼",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "Foundry: 온톨로지를 가진 데이터 운영 플랫폼",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "Apollo: 어디서든 배포하고 업데이트하기",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "AIP: LLM을 온톨로지 위에 얹다 (2023)",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "오랜 숙제: 길고 비싼 영업",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "AIP 부트캠프: 며칠 만에 '우리 데이터로' 보여 주기",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "문턱 낮추기: Developer Tier",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "미국 상업 부문이 왜 주목받나",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "매출 흐름: 2018년 6억 달러 → 2025년 45억 달러",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "적자 회사에서 흑자 회사로 (2023)",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "2026년 2분기: 매출 +93%, 미국 상업 +149%",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "지표 읽기: TCV · Rule of 40 · 가이던스",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "상장과 지수: 직상장 2020 → S&P 500 2024 → Nasdaq",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "왜 시장이 열광하나",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "왜 시장이 의심하나",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "도입 담당자의 눈: 벤더 프로필 체크리스트",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "bootcamp-us-commercial",
+          "title": "부트캠프 이후, 미국 상업 매출이 3년 만에 몇 배가 되다",
+          "day": 3
+        },
+        {
+          "id": "loss-to-sp500",
+          "title": "17년 적자 회사가 S&P 500에 들어가기까지",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "첫 회의: 어디서 사실을 찾나",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "하린의 질문",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "회사를 한 문장으로",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "제품 표 정리",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "AI부터 하자는 말",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "설치 위치",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "부트캠프 초대",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "부트캠프 다음 날",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "계약 전 기술 검증",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "숫자 하나 고르기",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "'+93%'의 해석",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "조정 이익 표",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "임원의 확신",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "평판 질문",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "금요일 결론",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Palantir AIP 공식 소개 페이지",
+          "url": "https://www.palantir.com/platforms/aip/",
+          "min": 15,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Palantir Foundry 공식 소개 페이지",
+          "url": "https://www.palantir.com/platforms/foundry/",
+          "min": 15,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Palantir 10-K FY2024 — Item 1 Business",
+          "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165525000022/pltr-20241231.htm",
+          "min": 40,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Palantir Q2 2026 실적 발표 원문 (SEC 8-K)",
+          "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165526000039/a2026q2ex991pressrelease.htm",
+          "min": 20,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Palantir Investor Relations",
+          "url": "https://investors.palantir.com/",
+          "min": 15,
+          "day": 4,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "aip-objects",
+      "no": "02",
+      "title": "온톨로지의 명사: 객체 · 속성 · 링크",
+      "short": "객체 모델",
+      "q": "흩어진 표를 '항공기', '작업지시' 같은 현실의 것으로 바꾸려면 무엇을 어떻게 정의해야 할까?",
+      "sub": "Object type · Property · Primary key · Title key · Link type · Interface · Object set · 시맨틱 vs 키네틱",
+      "doc": "정비 지연 시범: 객체 모델 설계서 v1",
+      "goals": [
+        "Object type · object · property · primary key · title key · link type · interface · object set을 항공 정비 예로 설명하고, Palantir 문서 정의와 맞춰 말할 수 있어요.",
+        "데이터셋(표)이 객체 타입을 '뒷받침(backing)'하는 구조와 링크의 카디널리티(외래 키 vs 조인 데이터셋)를 설계할 수 있어요.",
+        "시맨틱(명사)과 키네틱(동사)의 구분, 디지털 트윈 비유의 한계, OWL 같은 고전 온톨로지와의 차이를 설명할 수 있어요."
+      ],
+      "story": {
+        "title": "“HL8001이 세 시스템에서 세 가지 이름이에요.”",
+        "size": 3
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "온톨로지 = 조직의 '운영 레이어'",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "표 ↔ 객체 대응표",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "Object type과 object",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "시맨틱과 키네틱: 명사와 동사",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "Property와 기본 타입",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "Primary key: 객체의 주민번호",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "Title key: 사람이 부르는 이름",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "Shared property: 같은 뜻은 한 번만 정의",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Link type: 객체 사이의 관계",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "카디널리티: 1:1, 다:1, 다:다",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "Object set: 객체의 묶음",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "Interface: 모양이 같은 객체를 한 번에",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "Backing datasource: 데이터셋이 객체를 받친다",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "객체 저장소: OSv1(Phonograph) → OSv2",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "Ontology Manager: 설계하는 곳",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "흔한 설계 실수 다섯 가지",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "디지털 트윈 비유와 그 한계",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "고전 온톨로지(OWL)와 무엇이 다른가",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "AI는 객체 모델을 어떻게 쓰나 (미리보기)",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "설계서 한 장으로 묶기",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "airbus-skywise",
+          "title": "Airbus Skywise: 항공기를 '데이터의 중심 객체'로 놓다",
+          "day": 3
+        },
+        {
+          "id": "osv1-to-osv2",
+          "title": "Phonograph에서 OSv2로: 객체 저장소를 통째로 바꾸다",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "표부터 올릴까",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "결항은 무엇인가",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "명사와 동사",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "항공기 키 정하기",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "화면에 뜨는 이름",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "격납고 코드가 세 가지",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "정비사 배정 저장",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "1:1이라고 했는데",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "엔진도 정비 대상",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "같은 비행기가 두 대",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "현장 이상 보고",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "일괄 마감",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "화면이 현실과 달라요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "추론기는 어디에",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p15",
+          "title": "설계서 검토",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Palantir Docs — Ontology overview",
+          "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+          "min": 10,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Palantir Docs — Core concepts",
+          "url": "https://www.palantir.com/docs/foundry/ontology/core-concepts/",
+          "min": 15,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Palantir Docs — Properties overview (키 타입 표)",
+          "url": "https://www.palantir.com/docs/foundry/object-link-types/properties-overview/",
+          "min": 15,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Palantir Docs — Create a link type",
+          "url": "https://www.palantir.com/docs/foundry/object-link-types/create-link-type/",
+          "min": 15,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Palantir Docs — Interface overview",
+          "url": "https://www.palantir.com/docs/foundry/interfaces/interface-overview/",
+          "min": 10,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l6",
+          "title": "Palantir Docs — Object backend overview (OSv2)",
+          "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+          "min": 15,
+          "day": 4,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "aip-actions",
+      "no": "03",
+      "title": "온톨로지의 동사: 액션 · 함수 · 감사",
+      "short": "액션과 함수",
+      "q": "온톨로지가 '보여 주기'를 넘어 현장의 결정을 안전하게 '적어 넣으려면' 무엇을 모델링해야 할까?",
+      "sub": "Action type · Rules · Submission criteria · Side effects · Webhooks · Functions · Action log",
+      "doc": "정비 결정 액션 설계서 v1",
+      "goals": [
+        "Action type의 parameters·rules·submission criteria·side effects를 정비 업무 예로 설계할 수 있어요.",
+        "writeback 웹훅과 side effect 웹훅, 액션의 ACID 경계를 설명하고 외부 연동 방식을 고를 수 있어요.",
+        "Function-backed action, Action log, Undo/revert, 권한의 한계를 알고 감사 가능한 설계를 할 수 있어요."
+      ],
+      "story": {
+        "title": "“버튼 하나 눌렀을 때, 누가 무엇을 바꿀 수 있죠?”",
+        "size": 80
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "명사만 있으면 왜 부족할까",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "Action과 Action type",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "파라미터: 사람에게 무엇을 물을까",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "규칙(Rules): 파라미터를 편집으로 바꾸기",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "링크를 바꾸는 두 가지 길",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "값은 어디서 오나: 파라미터·정적 값·현재 사용자/시간",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "Submission criteria: 언제 제출할 수 있나",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "NOT 조건의 함정과 사용자 속성",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Side effects ① 알림",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "Side effects ② 웹훅: writeback vs side effect",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "액션은 트랜잭션이다 (ACID와 그 경계)",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "Writeback: 편집은 어디에 저장되나",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "Functions: 객체 위에서 도는 코드",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "Function-backed action",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "TypeScript v2로 편집 함수 읽기",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "한계 숫자로 설계하기",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "Action log · Edit history · Action metrics",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "Undo와 revert: 되돌리기는 좁은 문",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "권한: 읽기 통제는 쓰기까지 따라가지 않는다",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "왜 '행동까지 모델링'이 핵심인가",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "airbus-a350-skywise",
+          "title": "에어버스 A350: 공장의 결정을 한 데이터 모델에 모으다",
+          "day": 2
+        },
+        {
+          "id": "united-skywise-mro",
+          "title": "United Airlines: 정비 데이터를 제조사 플랫폼과 잇다",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 마감을 엑셀로?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "상태값 두 번 클릭",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "항공기 번호 오타",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "외래 키 링크",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p05",
+          "title": "마감자 칸",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "협력사 제외 조건",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "MRO 재고가 원본",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "롤백됐나요?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "테스트 편집 청소",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "규칙으로 안 되는 계산",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "함수만 돌렸는데",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "3만 건 버튼",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "감사 질문",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "토스트를 닫았어요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "AI에게 무엇을 줄까",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Palantir Docs — Action types (Overview → Rules → Submission criteria)",
+          "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+          "min": 40,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Palantir Learning — Introduction to Actions (APPDEV 07)",
+          "url": "https://www.palantir.com/docs/foundry/learning-application-appdev-07/01/",
+          "min": 60,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Palantir Docs — Webhooks (writeback vs side effect)",
+          "url": "https://www.palantir.com/docs/foundry/action-types/webhooks/",
+          "min": 20,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Palantir Docs — TypeScript v2 Ontology edits",
+          "url": "https://www.palantir.com/docs/foundry/functions/typescript-v2-ontology-edits/",
+          "min": 30,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Palantir Docs — Action log",
+          "url": "https://www.palantir.com/docs/foundry/action-types/action-log/",
+          "min": 20,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "aip-data",
+      "no": "04",
+      "title": "데이터에서 객체로: 연결 · 파이프라인 · 인덱싱 · 권한",
+      "short": "데이터에서 객체로",
+      "q": "흩어진 원천 데이터가 어떻게 믿을 수 있는 객체가 되고, 그 길에서 품질과 권한은 어떻게 지켜질까?",
+      "sub": "Data Connection · Virtual tables · Datasets · Branching · Pipeline Builder · Data expectations · Funnel · OSv2 · Markings · Restricted views",
+      "doc": "데이터 연결·품질·권한 설계서 v1",
+      "goals": [
+        "Source·worker·virtual table·dataset 트랜잭션·브랜치로 원천에서 객체까지의 경로를 설계할 수 있어요.",
+        "Pipeline Builder와 data expectations·health checks·lineage로 품질을 지키는 방법을 설명할 수 있어요.",
+        "Funnel·OSv2 인덱싱 구조와 markings·restricted views의 경계를 알고 권한을 설계할 수 있어요."
+      ],
+      "story": {
+        "title": "“AI가 틀린 게 아니라, 데이터가 어제 거였어요.”",
+        "size": 3
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "데이터에서 객체까지 한 장 지도",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "Source · Credential · Worker",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "Foundry worker vs Agent worker",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "Virtual table: 옮기지 않고 쓰기",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "Dataset: 파일 묶음 + 스키마 + 버전",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "트랜잭션 4종: SNAPSHOT · APPEND · UPDATE · DELETE",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "브랜치: 데이터도 Git처럼",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "Pipeline Builder: 코드 안 쓰는 사람과 함께",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Pipeline Builder vs Code Repositories",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "Data expectations: 나쁜 데이터를 문 앞에서",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "Health checks: 제때, 제대로 돌고 있나",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "Lineage: 이 숫자는 어디서 왔나",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "온톨로지 백엔드: OMS · 객체 DB · OSS · Funnel",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "Funnel batch pipeline 4단계",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "OSv2와 OSv1(Phonograph)",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "스트리밍과 object set의 시간",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "Markings: 데이터를 따라다니는 의무 통제",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "Restricted views: 행 단위 통제와 그 경계",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "권한 두 층: 온톨로지 자원과 객체 데이터",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "데이터 품질이 곧 AIP 품질",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "nhs-fdp",
+          "title": "NHS 연합 데이터 플랫폼(FDP): 데이터 연결과 권한 논쟁",
+          "day": 5
+        },
+        {
+          "id": "skywise-data",
+          "title": "Skywise: 여러 항공사 데이터를 한 플랫폼에",
+          "day": 1
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "사내망 MRO 연결",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "웨어하우스 데이터",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "비밀번호 공유",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "비행 로그 적재",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "운영 데이터셋 직접 수정",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "도구 선택",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "같은 항공기가 두 대",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "조용한 실패",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "컬럼 이름 변경",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "빌드는 끝났는데",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "PK를 바꾸자고요?",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p12",
+          "title": "실시간 위치 + 액션",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "Owner인데 못 봐요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "RV만 믿어도 될까",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "AI 답이 틀렸어요",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Palantir Docs — Data Connection · Core concepts",
+          "url": "https://www.palantir.com/docs/foundry/data-connection/core-concepts/",
+          "min": 25,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Palantir Docs — Datasets (transactions) · Branching",
+          "url": "https://www.palantir.com/docs/foundry/data-integration/datasets/",
+          "min": 30,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Palantir Docs — Pipeline Builder · Data expectations",
+          "url": "https://www.palantir.com/docs/foundry/pipeline-builder/dataexpectations-overview/",
+          "min": 20,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Palantir Docs — Ontology architecture (OSv2, Funnel)",
+          "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+          "min": 30,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Palantir Docs — Markings · Restricted views",
+          "url": "https://www.palantir.com/docs/foundry/security/markings/",
+          "min": 30,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "aip-apps",
+      "no": "05",
+      "title": "온톨로지 위의 앱 — Workshop · Explorer · Quiver · Vertex · OSDK · Automate",
+      "short": "온톨로지 앱",
+      "q": "객체와 액션이 생겼으면, 현장 사람은 매일 어떤 화면에서 '보고 → 결정하고 → 기록'할까?",
+      "sub": "Workshop · Object Explorer · Quiver · Map · Vertex · OSDK · Automate · Scenarios",
+      "doc": "정비 파일럿 앱 구성안 v1",
+      "goals": [
+        "Workshop의 레이아웃·위젯·변수·이벤트와 Action writeback으로 운영 앱 한 화면을 설계할 수 있어요.",
+        "Object Explorer, Quiver, Contour, Map, Vertex 중 질문에 맞는 도구를 고르고 이유를 말할 수 있어요.",
+        "OSDK·Ontology MCP·Automate·Ontology scenarios의 쓰임과 보안·실행 보장(읽기 시점 통제, at-least-once, 사람 검토)을 설명할 수 있어요."
+      ],
+      "story": {
+        "title": "“반장님이 엑셀을 버리게 만들 화면 하나”",
+        "size": 42
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "운영 앱 vs 대시보드",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "Workshop의 세 원칙",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "레이아웃 · 위젯 · 변수 · 이벤트",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "자주 쓰는 앱 패턴: Inbox와 COP",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "Workshop에서 Action 쓰기 (writeback)",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "Functions on objects · Derived properties",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "Object Explorer: 코딩 없이 객체 찾기",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "Object View: 객체 한 개의 집",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Quiver: 객체·시계열 분석",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "Contour와 Quiver, 무엇이 다른가",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "Map: 위치와 시간으로 보기",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "Vertex: 원인과 결과의 그래프",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "OSDK: 온톨로지를 내 코드로",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "OSDK 보안: 토큰 범위 + 사용자 권한",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "Developer Console과 Ontology MCP",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "Automate: 조건이 맞으면 저절로",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "효과 · 대체 효과 · 재시도",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "바로 적용 vs 사람 검토로 보류",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "시나리오: 진짜 데이터를 건드리지 않는 '만약에'",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "어떤 앱을 언제: 고르는 지도",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "skywise-airbus",
+          "title": "에어버스 Skywise: 항공사들이 같이 쓰는 데이터 플랫폼",
+          "day": 2
+        },
+        {
+          "id": "nhs-fdp",
+          "title": "NHS 연합 데이터 플랫폼(FDP): 병원마다 같은 운영 앱",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 첫 앱은 무엇으로?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "위젯 두 개가 따로 놀아요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "검증을 어디에?",
+          "day": 1,
+          "mixed": true
+        },
+        {
+          "id": "p04",
+          "title": "느려진 화면",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p05",
+          "title": "일단 찾아보고 싶어요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "어떤 분석 도구?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "지도에 격납고가 바다에 떠요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "연쇄 영향을 보여 달래요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "만약에를 진짜 데이터로?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "태블릿 앱이 필요해요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "읽기 권한이면 다 막아 주나요?",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p12",
+          "title": "사내 챗봇에 열어 달래요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "AOG 알림 자동화",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "작업지시가 두 장 생겼어요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "출고 가능 판정 자동화",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Workshop — Getting started (Palantir Docs)",
+          "url": "https://www.palantir.com/docs/foundry/workshop/getting-started/",
+          "min": 30,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Workshop 개요 (Palantir 한국어 문서)",
+          "url": "https://www.palantir.com/docs/kr/foundry/workshop/overview/",
+          "min": 15,
+          "day": 1,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "TypeScript OSDK (Palantir Docs)",
+          "url": "https://www.palantir.com/docs/foundry/ontology-sdk/typescript-osdk/",
+          "min": 40,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Automate — Getting started (Palantir Docs)",
+          "url": "https://www.palantir.com/docs/foundry/automate/getting-started/",
+          "min": 25,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "AIP Developer Tier — build.palantir.com",
+          "url": "https://build.palantir.com/",
+          "min": 60,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "aip-llm",
+      "no": "06",
+      "title": "AIP: LLM이 온톨로지 위에서 일하는 방식",
+      "short": "AIP와 LLM",
+      "q": "LLM이 '말'만 하지 않고 회사의 객체를 읽고 Action을 제안하게 하려면, 무엇을 열어 주고 무엇을 막아야 할까?",
+      "sub": "AIP Logic · AIP Chatbot Studio · AIP Assist · AIP Threads · AIP Evals · k-LLM · 사람 승인 · 권한",
+      "doc": "정비 AI 도우미 설계·통제안 v1",
+      "goals": [
+        "AIP Logic(블록·도구·Action 연결)과 AIP Chatbot Studio(검색 맥락·도구·애플리케이션 상태)를 업무에 맞게 고르고 설계할 수 있어요.",
+        "LLM 도구 호출이 사용자 권한 안에서 실행되는 구조와, 읽기 시점 통제의 한계·마킹 정책을 설명할 수 있어요.",
+        "AIP Evals로 출시 기준을 세우고, 위험에 비례한 사람 승인(확인 후 실행, 제안 보류)을 설계할 수 있어요."
+      ],
+      "story": {
+        "title": "“LLM이 결함을 분류하고, 반장님은 승인만?”",
+        "size": 50
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "AIP 한 장 지도",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "프롬프트만 vs 온톨로지 그라운딩",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "k-LLM: 모델은 갈아 끼우는 부품",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "외부 모델에 우리 데이터가 남을까?",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "AIP Logic: LLM으로 만드는 함수",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "블록: Logic 함수의 레고",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "Use LLM 블록: 프롬프트 · 도구 · 출력",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "도구: LLM은 '요청'만 하고 실행은 플랫폼이",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Logic이 온톨로지를 고치는 법",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "스테이징: 바로 쓰지 않고 쌓아 두기",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "AIP Chatbot Studio: 대화형 챗봇 만들기",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "검색 맥락: 매 메시지마다 무엇을 붙이나",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "챗봇 도구 여섯 가지",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "도구 호출 모드: prompted vs native",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "애플리케이션 상태: 화면과 챗봇 잇기",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "AIP Assist와 AIP Threads",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "AIP Evals: LLM은 시험해야 믿어요",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "Evals 실전: 분산 · 모델 비교 · 회귀",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "보안: 권한은 상속, 그러나 읽을 때까지만",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "사람 승인 설계와 닫힌 고리",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "aip-launch-2023",
+          "title": "2023년 4월 AIP 데모: '사람이 루프에 있다'는 말의 무게",
+          "day": 1
+        },
+        {
+          "id": "lowes-aip-2024",
+          "title": "Lowe's: AI 경험 없던 상태에서 상담원 1,000명이 쓰는 AIP까지",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "챗GPT에 매뉴얼 넣으면 되잖아요?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "모델은 무엇으로?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "우리 정비 기록으로 학습하나요?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "챗봇이냐 함수냐",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "LLM에게 계산을?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "왜 저장이 안 돼요?",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p07",
+          "title": "밤새 500건이 바뀌었어요",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p08",
+          "title": "매뉴얼을 통째로?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "작업지시를 챗봇이 바로?",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "기번 없는 질문",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "챗봇이 화면을 몰라요",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p12",
+          "title": "Assist가 우리 데이터를?",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "프롬프트 고쳤더니",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "평균 92%면 출시?",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "권한 상속이면 끝?",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "AIP Logic — Getting started (Palantir Docs)",
+          "url": "https://www.palantir.com/docs/foundry/logic/getting-started/",
+          "min": 30,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "AIP Logic 개요 (Palantir 한국어 문서)",
+          "url": "https://www.palantir.com/docs/kr/foundry/logic/overview/",
+          "min": 15,
+          "day": 2,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "AIP Chatbot Studio — Getting started (Palantir Docs)",
+          "url": "https://www.palantir.com/docs/foundry/chatbot-studio/getting-started/",
+          "min": 30,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "AIP Evals — Getting started (Palantir Docs)",
+          "url": "https://www.palantir.com/docs/foundry/aip-evals/getting-started/",
+          "min": 25,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "AIPNow — Palantir AIP 사용 사례 모음",
+          "url": "https://www.palantir.com/aipnow/",
+          "min": 20,
+          "day": 1,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "aip-cases",
+      "no": "07",
+      "title": "실제 사례: 무엇을 객체로, 무엇을 액션으로 했나",
+      "short": "실제 사례",
+      "q": "다른 조직은 팔란티어로 실제로 무엇을 객체로 만들고, 어떤 결정을 액션으로 바꿨을까?",
+      "sub": "NHS FDP · Tampa General · Airbus Skywise · HD현대 · US Army",
+      "doc": "누리 AIP 사례 분석 보고서 v1",
+      "goals": [
+        "실제 사례를 '데이터 → 객체 → 액션 → 결과 지표' 틀로 분해해서 설명할 수 있어요.",
+        "회사·고객이 발표한 숫자와 독립 검증된 숫자를 구별하고, 기준선(baseline)을 물을 수 있어요.",
+        "남의 사례에서 우리 조직(항공 정비)에 옮길 것과 옮기면 안 되는 것을 고를 수 있어요."
+      ],
+      "story": {
+        "title": "“다른 데는 진짜 효과 봤대요? 숫자 말고 구조로 보여 줘요.”",
+        "size": 4
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "사례를 읽는 틀: 데이터 → 객체 → 액션 → 지표",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "회사 발표 숫자 읽는 법",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "부트캠프식 도입: 며칠 안에 실제 데이터로",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "모든 사례에 숨은 공통 패턴: 운영 루프",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "NHS FDP: 영국 공공의료의 연합 데이터 플랫폼",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "FDP를 객체와 액션으로 분해해 보기 (추정 분석)",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "PET: 가명화 층을 따로 둔 이유",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "Tampa General: 병상 흐름과 패혈증",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Airbus Skywise: 항공 데이터 플랫폼의 출발",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "Skywise의 확장: 항공사 70곳 이상과 예측 정비",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "항공 정비를 객체와 액션으로 (추정 분석)",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "HD현대: 조선소에서 그룹 전체로",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "US Army 엔터프라이즈 계약: 75개 계약을 하나로",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "국방 데이터의 객체와 액션 (추정 분석)",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "엔터프라이즈 계약이 말해 주는 것",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "공공 사례의 그림자: NHS의 반발",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "무엇을 객체로, 무엇을 액션으로: 고르는 기준",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "결과 지표 설계: 기준선부터 재기",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "작게 시작해서 넓히기",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "사례 보고서 쓰는 법: 같은 틀, 다른 결론",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "nhs-fdp",
+          "title": "NHS England 연합 데이터 플랫폼(FDP): 공공의료에 온톨로지를 깔다",
+          "day": 2
+        },
+        {
+          "id": "airbus-skywise",
+          "title": "Airbus Skywise: 제조사가 만든 항공 데이터 플랫폼",
+          "day": 3
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 사례 숫자 정리",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "사례 분석 틀 정하기",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "부트캠프 제안",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "NHS 구조에서 배울 점",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "Tampa General 숫자 비교",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "가명화 층",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "Skywise와의 관계",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "부품 객체 키",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p09",
+          "title": "예측 정비 지표",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "100억 달러 해석",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "도구 통합 제안",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "준비태세 객체",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "첫 액션 고르기",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p14",
+          "title": "현장 반발",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "보고서 결론",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Palantir Impact Studies (고객 사례 모음)",
+          "url": "https://www.palantir.com/impact/",
+          "min": 30,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Palantir AIPCon (고객 발표 영상 모음)",
+          "url": "https://www.palantir.com/aipcon/",
+          "min": 45,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "NHS England — Federated Data Platform 공식 페이지",
+          "url": "https://www.england.nhs.uk/digitaltechnology/nhs-federated-data-platform/",
+          "min": 20,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Airbus — Skywise 출시 보도자료(2017)",
+          "url": "https://www.airbus.com/en/newsroom/press-releases/2017-06-airbus-launches-skywise-aviations-open-data-platform",
+          "min": 10,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Palantir YouTube 채널",
+          "url": "https://www.youtube.com/@palantirtech",
+          "min": 30,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "aip-critique",
+      "no": "08",
+      "title": "한계 · 비판 · 대안: 언제 팔란티어가 맞고 언제 아닌가",
+      "short": "한계와 대안",
+      "q": "팔란티어를 계속 갈지, 다른 플랫폼이나 직접 만들기로 갈지 무엇으로 판단할까?",
+      "sub": "락인 · 비용 · 윤리 · Fabric IQ · Snowflake · Databricks · 오픈 스택",
+      "doc": "누리 AIP 본 도입 결정 메모",
+      "goals": [
+        "팔란티어 도입의 락인·비용·윤리 리스크를 구체적인 계약·설계 질문으로 바꿀 수 있어요.",
+        "Microsoft Fabric IQ, Snowflake semantic views, Databricks metric views, 오픈 스택이 각각 무엇을 대신하고 무엇을 못 대신하는지 설명할 수 있어요.",
+        "우리 조직 조건에서 '팔란티어가 맞는 경우와 아닌 경우'를 기준표로 판단할 수 있어요."
+      ],
+      "story": {
+        "title": "“파일럿은 잘 됐어요. 그럼 5년 계약해도 돼요?”",
+        "size": 5
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "락인의 정체: 데이터가 아니라 '뜻과 행동'이 갇혀요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "출구 전략: 들어갈 때 나갈 문을 만든다",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "비용 구조: 라이선스보다 큰 것",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "빠른 성공의 대가: 공급사 의존",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "NHS 논쟁: 의사들은 왜 반대했나",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "2026년 BMA 지침: 사용 제한 권고",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "통제권 설계: 누가 데이터의 주인인가",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "신뢰는 기능이 아니라 과정",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "Microsoft Fabric IQ 온톨로지: 가장 직접적인 경쟁자",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "Snowflake semantic views와 OSI",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "Databricks metric views",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "비교의 핵심: 명사는 다들 하고, 동사는 차이가 커요",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "직접 만든다면: 오픈 스택의 모양",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "액션 층을 직접 짜 보기",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "권한과 감사: 직접 만들기의 가장 어려운 부분",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "TCO 비교 사고법: 사기 vs 만들기",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "팔란티어가 맞는 경우",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "팔란티어가 맞지 않는 경우",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "세계 동향: 온톨로지가 표준 기능이 되는 중",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "결정 메모 쓰는 법: 공정한 비교",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "army-ea-2025",
+          "title": "미 육군 엔터프라이즈 계약: 75개 계약을 하나로 묶은 결정의 양면",
+          "day": 1
+        },
+        {
+          "id": "fabric-iq-2025",
+          "title": "Microsoft Fabric IQ 온톨로지: '온톨로지'가 범용 데이터 플랫폼 기능이 되다",
+          "day": 3
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 락인 질문",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "계약서 부록",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "비용 질문",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "BMA 사례 공유",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "용도별 권한",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p06",
+          "title": "관리자 권한",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "Fabric 제안",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "분석 vs 운영",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "지표 정의 위치",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "오픈 스택 제안",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "에이전트 API",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p12",
+          "title": "검색 인덱스 권한",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "적합도 판단",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "혼합안",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "금요일, 결정 메모",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Microsoft Learn — What is Ontology (Preview)? (Fabric IQ)",
+          "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+          "min": 20,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Snowflake Docs — Overview of semantic views",
+          "url": "https://docs.snowflake.com/en/user-guide/views-semantic/overview",
+          "min": 15,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Palantir Docs — Ontology SDK overview",
+          "url": "https://www.palantir.com/docs/foundry/ontology-sdk/overview/",
+          "min": 15,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "BMA — ARM 2025 resolution on health information management and IT",
+          "url": "https://www.bma.org.uk/bma-media-centre/arm-2025-bma-passes-resolution-on-health-information-management-and-information-technology",
+          "min": 10,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Palantir Docs — Action types overview",
+          "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+          "min": 15,
+          "day": 4,
+          "lang": "en"
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-// SW 공간 과정의 모듈 목록 만들기 — 과정: dev(개발 흐름, 기본) · vg(Vector & Graph)
+// SW 공간 과정의 모듈 목록 만들기 — 과정: dev(개발 흐름, 기본) · vg(Vector & Graph) · onto(온톨로지) · aip(Palantir AIP)
 //   node scripts/dev-index.mjs [vg]          public/<과정>/index.json 을 새로 써요 (모듈 파일의 소개 · 카드 · 사례 · 문제 · 강의 목록)
 //   node scripts/dev-index.mjs [vg] --check  모듈 파일 규칙 검사 + 목록이 낡았으면 실패 (npm test 가 불러요)
 // 규칙: 모듈마다 카드 20장(하루 4장 × 5일) · 사례 2 · 회의실 문제 15 (보기 중 정답 하나) · 강의 3~6 (https) · 출처가 붙은 카드
@@ -6,11 +6,13 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ARGS = process.argv.slice(2), COURSE = ARGS.includes("vg") ? "vg" : "dev", CHECK = ARGS.includes("--check");
+const ARGS = process.argv.slice(2), COURSE = ["vg", "onto", "aip"].find((k) => ARGS.includes(k)) || "dev", CHECK = ARGS.includes("--check");
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "public", COURSE);
 const ORDERS = {
   dev: ["company", "mvp", "requirements", "ux", "architecture", "data", "security", "planning", "repo", "release", "ops", "lead"],
   vg: ["vg-embeddings", "vg-ann-index", "vg-vector-db", "vg-hybrid-search", "vg-rag", "vg-graph-model", "vg-kg-algo", "vg-graphrag"],
+  onto: ["onto-what", "onto-logic", "onto-rdf", "onto-graphs", "onto-build", "onto-standards", "onto-ai", "onto-world"],
+  aip: ["aip-palantir", "aip-objects", "aip-actions", "aip-data", "aip-apps", "aip-llm", "aip-cases", "aip-critique"],
 };
 export const ORDER = ORDERS[COURSE];
 const ID = /^[a-z0-9][a-z0-9-]{0,40}$/;

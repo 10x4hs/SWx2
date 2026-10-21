@@ -1,0 +1,2094 @@
+{
+ "id": "onto-build",
+ "no": "05",
+ "title": "온톨로지 설계 실전 — 질문에서 릴리스까지",
+ "short": "설계 실전",
+ "q": "병원 데이터의 '뜻'을 담는 온톨로지는 어떤 순서로, 어떤 실수를 피하며 만들까?",
+ "sub": "역량 질문 · METHONTOLOGY · NeOn · ODP · 재사용 · Protégé · 버전 · 거버넌스 · SSSOM · R2RML",
+ "doc": "한빛병원 온톨로지 요구사항 명세서(ORSD) v0.1",
+ "story": {
+  "title": "“그래서, 무엇부터 만들죠?”",
+  "size": 15,
+  "body": [
+   "(가상 이야기) 한빛병원 데이터팀은 04장에서 그래프와 지식그래프를 배웠어요. 이제 진짜로 만들 차례예요.",
+   "지수 팀장이 말해요. \"이번 달에 검사 결과부터 온톨로지 v0.1을 내요.\" 소라는 바로 Protégé를 열려고 하고, 현우는 '병동에서 매일 듣는 질문 15개'를 메모로 가져왔어요.",
+   "회의 중에 문제가 쏟아져요. '중환자'는 클래스일까? 병원 검사 코드 1,200개는 표준 코드와 어떻게 잇지? 이름을 바꾸면 옛 데이터는?",
+   "새로 온 온톨로지 설계자인 나는 금요일까지 '온톨로지 요구사항 명세서(ORSD) v0.1'을 써야 해요. 질문에서 시작해 릴리스까지의 길을 정하는 문서예요."
+  ]
+ },
+ "goals": [
+  "역량 질문(CQ)으로 범위를 정하고, CQ를 SPARQL 테스트로 바꿀 수 있어요.",
+  "클래스/인스턴스, is-a/부분/역할, n항 관계 같은 설계 결정을 근거를 들어 내릴 수 있어요.",
+  "재사용·명명·버전·거버넌스·매핑(SSSOM, R2RML)을 포함한 릴리스 흐름을 설계할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "역량 질문(CQ): 온톨로지의 요구사항",
+   "lead": "온톨로지는 '무엇을 대답해야 하나'라는 질문 목록에서 시작해요. 이 목록이 역량 질문(Competency Questions)이에요.",
+   "idea": [
+    "Grüninger와 Fox는 1995년에 온톨로지를 만들기 전에 그것이 답해야 할 질문을 자연어로 먼저 적자고 했어요. 예: '지난 7일 동안 칼륨 수치가 높았던 입원 환자는?'",
+    "CQ는 범위를 정해 줘요. 질문에 안 나오는 개념은 일단 만들지 않아도 돼요. 반대로 질문에 나오는데 모델에 없으면 빠진 거예요.",
+    "왜 통하냐면, '좋은 온톨로지'라는 막연한 목표를 '이 질문에 답할 수 있나?'라는 검사 가능한 목표로 바꿔 주기 때문이에요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 모으기",
+     "t": "현장 사람에게 실제로 묻고 싶은 질문 30~50개 받기"
+    },
+    {
+     "k": "2 · 다듬기",
+     "t": "중복을 합치고, 모호한 말(최근·높은)을 숫자로 바꾸기"
+    },
+    {
+     "k": "3 · 뽑기",
+     "t": "질문 속 명사 → 클래스 후보, 동사 → 관계 후보"
+    },
+    {
+     "k": "4 · 우선순위",
+     "t": "꼭 필요한 것(Must)부터 표시"
+    }
+   ],
+   "hear": [
+    "\"그 개념, 어떤 질문에 쓰여요?\"",
+    "\"CQ에 없으면 이번 버전에선 빼죠.\""
+   ],
+   "ask": [
+    "이 질문의 답을 지금은 누가, 어떻게 구하고 있나요?",
+    "'최근'은 며칠인가요? '높다'의 기준값은요?"
+   ],
+   "mine": "한빛병원에서는 현우가 병동에서 듣는 질문(투약 누락, 이상 검사 결과, 알레르기 충돌)을 CQ로 먼저 모아요.",
+   "deep": [
+    "Grüninger & Fox(1995)는 TOVE(토론토 가상 기업) 프로젝트에서 CQ를 형식화된 질의로 바꿔 온톨로지를 평가하는 방법을 제안했어요.",
+    "Noy & McGuinness(2001) 'Ontology Development 101'도 첫 단계로 도메인·범위를 정하고 CQ를 적으라고 권해요."
+   ],
+   "recall": {
+    "q": "CQ는 온톨로지 개발에서 어떤 역할을 하나요?",
+    "a": "요구사항이자 범위이자, 나중에는 테스트가 돼요."
+   },
+   "quiz": [
+    {
+     "q": "CQ 목록에 없는 개념이 회의에서 나왔어요. 가장 알맞은 대응은?",
+     "options": [
+      "일단 다 모델에 넣는다",
+      "그 개념이 필요한 질문이 있는지 확인하고, 없으면 미룬다",
+      "회의를 끝낸다"
+     ],
+     "answer": 1,
+     "why": "CQ가 범위를 정해요. 질문이 생기면 그때 넣어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Grüninger & Fox, Methodology for the Design and Evaluation of Ontologies (IJCAI-95 workshop)",
+     "url": "https://www.researchgate.net/publication/2288533_Methodology_for_the_Design_and_Evaluation_of_Ontologies",
+     "date": "1995"
+    },
+    {
+     "title": "Noy & McGuinness, Ontology Development 101 (Stanford)",
+     "url": "https://protege.stanford.edu/publications/ontology_development/ontology101.pdf",
+     "date": "2001"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "CQ를 테스트로 바꾸기",
+   "lead": "좋은 CQ는 결국 SPARQL 같은 질의가 되고, 기대 답을 가진 자동 테스트가 돼요.",
+   "idea": [
+    "CQ '페니실린 알레르기 환자에게 처방된 베타락탐 계열 약은?'은 질의 하나로 바꿀 수 있어요. 작은 예시 데이터에 기대 답(환자 2명)을 정해 두면 테스트가 돼요.",
+    "모델을 바꿀 때마다 이 테스트를 돌리면, 예전에 답하던 질문을 실수로 못 하게 된 걸 바로 알 수 있어요. 소프트웨어의 회귀 테스트와 같아요.",
+    "한계도 있어요. CQ 테스트는 '있어야 할 답'을 확인할 뿐, 모델이 현실을 잘 나눴는지까지 보장하진 않아요. 사람 검토가 같이 필요해요."
+   ],
+   "code": {
+    "lang": "sparql",
+    "text": "SELECT ?patient ?drug WHERE {\n  ?patient :hasAllergy :PenicillinAllergy .\n  ?rx :forPatient ?patient ; :drug ?drug .\n  ?drug a/rdfs:subClassOf* :BetaLactam .\n}",
+    "read": "알레르기가 페니실린인 환자에게, 베타락탐(하위 계열 포함)에 속하는 약 처방이 있는지 찾아요. subClassOf* 는 계층을 끝까지 따라가요."
+   },
+   "hear": [
+    "\"CQ 12번 테스트가 깨졌어요. 어제 클래스 이름 바꾼 거 때문이에요.\""
+   ],
+   "ask": [
+    "이 CQ의 기대 답을 누가 확인해 주나요?",
+    "테스트용 예시 데이터는 실제 환자 정보 없이 만들 수 있나요?"
+   ],
+   "mine": "소라는 CQ 20개를 SPARQL로 바꿔 CI에서 돌리기로 해요. 예시 데이터는 가상 환자로만 만들어요.",
+   "deep": [
+    "XD(eXtreme Design) 같은 패턴 기반 방법은 CQ를 단위 테스트처럼 쓰는 걸 핵심 습관으로 삼아요(Presutti 등).",
+    "SHACL은 '데이터가 규칙을 지키나'를, CQ 질의는 '필요한 답이 나오나'를 봐요. 둘은 서로 다른 검사예요."
+   ],
+   "recall": {
+    "q": "CQ 테스트가 잡아 주는 대표적 실수는?",
+    "a": "모델을 바꾸다 예전에 답하던 질문을 못 하게 된 것(회귀)"
+   },
+   "quiz": [
+    {
+     "q": "CQ 테스트가 모두 통과했어요. 확실히 말할 수 있는 건?",
+     "options": [
+      "모델이 현실을 완벽히 반영한다",
+      "정한 질문들에 기대 답을 낸다",
+      "데이터 품질 문제가 없다"
+     ],
+     "answer": 1,
+     "why": "테스트는 정한 질문만 확인해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Grüninger & Fox, Methodology for the Design and Evaluation of Ontologies (IJCAI-95 workshop)",
+     "url": "https://www.researchgate.net/publication/2288533_Methodology_for_the_Design_and_Evaluation_of_Ontologies",
+     "date": "1995"
+    },
+    {
+     "title": "W3C, Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "METHONTOLOGY: 단계로 나눈 설계",
+   "lead": "METHONTOLOGY(1997)는 온톨로지 만들기를 명세 → 개념화 → 구현 → 평가 같은 단계로 나눈 초기 공학 방법이에요.",
+   "idea": [
+    "마드리드 공대(UPM)의 Fernández-López, Gómez-Pérez, Juristo가 1997년에 냈어요. 목표는 '장인의 감'에 기대던 온톨로지 만들기를 공학으로 바꾸는 거였어요.",
+    "핵심은 개념화 단계에서 바로 코드를 쓰지 않고 용어집, 분류 트리, 관계 표 같은 중간 표를 먼저 만드는 거예요. 현장 전문가가 읽고 고칠 수 있게요.",
+    "단점도 있어요. 단계가 무겁고 폭포수처럼 느껴질 수 있어요. 요즘은 짧게 반복하는 방식과 섞어서 써요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 명세",
+     "t": "목적, 사용자, 범위, CQ"
+    },
+    {
+     "k": "2 · 지식 획득",
+     "t": "문서·전문가 인터뷰"
+    },
+    {
+     "k": "3 · 개념화",
+     "t": "용어집, 분류 트리, 관계 표"
+    },
+    {
+     "k": "4 · 통합·구현",
+     "t": "기존 온톨로지 재사용, OWL로 쓰기"
+    },
+    {
+     "k": "5 · 평가·문서화",
+     "t": "검증하고 설명서 남기기"
+    }
+   ],
+   "hear": [
+    "\"용어집부터 같이 보죠. OWL은 그다음이에요.\""
+   ],
+   "ask": [
+    "개념화 표를 현장 전문가가 검토할 시간이 잡혀 있나요?"
+   ],
+   "mine": "현우와 함께 '투약' 관련 용어집 표(용어, 정의, 동의어, 예시)를 먼저 만들어요.",
+   "deep": [
+    "METHONTOLOGY는 소프트웨어 개발 공정 표준 IEEE 1074를 참고해 관리·개발·지원 활동을 나눴어요(Fernández-López et al., 1997)."
+   ],
+   "recall": {
+    "q": "METHONTOLOGY 개념화 단계에서 만드는 중간 결과물 예시는?",
+    "a": "용어집, 분류 트리, 관계 표"
+   },
+   "quiz": [
+    {
+     "q": "개념화 단계에 표를 먼저 만드는 가장 큰 이유는?",
+     "options": [
+      "OWL 파일이 작아져서",
+      "현장 전문가가 읽고 고칠 수 있어서",
+      "추론기가 빨라져서"
+     ],
+     "answer": 1,
+     "why": "전문가 검토가 쉬워야 의미 오류를 일찍 잡아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Fernández-López, Gómez-Pérez, Juristo, METHONTOLOGY: From Ontological Art Towards Ontological Engineering (AAAI Spring Symposium)",
+     "url": "https://oa.upm.es/5484/",
+     "date": "1997"
+    },
+    {
+     "title": "Noy & McGuinness, Ontology Development 101 (Stanford)",
+     "url": "https://protege.stanford.edu/publications/ontology_development/ontology101.pdf",
+     "date": "2001"
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "NeOn: 재사용을 전제로 한 방법",
+   "lead": "NeOn 방법론은 '처음부터 만들기'보다 기존 온톨로지·용어집·DB 스키마를 재사용하는 길을 9가지 시나리오로 정리했어요.",
+   "idea": [
+    "NeOn은 EU 연구 프로젝트(2006~2010)에서 나왔어요. 온톨로지가 혼자가 아니라 서로 연결된 '네트워크'로 산다는 전제에서 출발해요.",
+    "시나리오 예: 처음부터 만들기, 비온톨로지 자원(용어집·DB 스키마) 재가공, 기존 온톨로지 그대로 재사용, 일부만 떼어 재사용, 정렬·병합 등이에요.",
+    "시작 문서는 ORSD(온톨로지 요구사항 명세서)예요. 목적·범위·사용자·CQ를 한 문서에 적어요. 이게 이번 장의 결과물 문서와 같은 역할이에요."
+   ],
+   "hear": [
+    "\"이건 SNOMED에 이미 있으니 만들지 말고 가져오죠.\"",
+    "\"ORSD에 사용자 범위부터 적어 주세요.\""
+   ],
+   "ask": [
+    "우리 도메인에 이미 표준 용어나 온톨로지가 있나요?",
+    "재사용하면 라이선스는 괜찮나요?"
+   ],
+   "mine": "한빛병원은 진단·검사·약 용어를 직접 만들지 않고, 표준(06장)을 가져오고 병원 고유 개념만 새로 만들기로 해요.",
+   "deep": [
+    "NeOn은 ORSD를 CQ 기반으로 작성하도록 권해요(Suárez-Figueroa et al., 2012).",
+    "다른 방법론: On-To-Knowledge, DILIGENT, eXtreme Design, LOT(Linked Open Terms) 등이 있어요."
+   ],
+   "recall": {
+    "q": "NeOn의 가장 큰 특징은?",
+    "a": "재사용·재가공을 여러 시나리오로 정리한 것"
+   },
+   "quiz": [
+    {
+     "q": "병원 DB 테이블 정의서를 온톨로지 재료로 쓰는 것은 NeOn에서 어떤 시나리오에 가깝나요?",
+     "options": [
+      "비온톨로지 자원 재가공",
+      "처음부터 만들기",
+      "온톨로지 병합"
+     ],
+     "answer": 0,
+     "why": "DB 스키마·용어집은 비온톨로지 자원이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Suárez-Figueroa et al., The NeOn Methodology for Ontology Engineering (Ontology Engineering in a Networked World, Springer)",
+     "url": "https://link.springer.com/chapter/10.1007/978-3-642-24794-1_2",
+     "date": "2012"
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "클래스냐 인스턴스냐",
+   "lead": "'아목시실린'은 클래스일까 개체일까? 답은 '무엇을 세고 싶은가'에 달렸어요.",
+   "idea": [
+    "클래스는 여러 개체를 묶는 종류예요. 인스턴스는 세상에 하나뿐인 그것이에요. '아목시실린 500mg 캡슐'이라는 약 제품은 종류이고, 지금 약제실 선반의 로트 A123은 개체예요.",
+    "판단 질문: '이것의 예시를 여러 개 들 수 있나?' 들 수 있으면 클래스예요. 그리고 '우리 CQ가 개별 로트까지 따지나?'도 봐요.",
+    "흔한 실수는 같은 것을 클래스와 인스턴스로 섞어 쓰는 거예요. 그러면 추론 결과가 이상해지고 질의가 꼬여요."
+   ],
+   "hear": [
+    "\"이걸 인스턴스로 두면 하위 종류를 못 만들어요.\""
+   ],
+   "ask": [
+    "이 개념의 예시를 여러 개 들 수 있나요?",
+    "개별 단위(로트·병상)까지 추적해야 하나요?"
+   ],
+   "mine": "약은 '약 제품'을 클래스로, '조제된 한 봉지'를 개체로 둬요. 병동은 개체(7A병동)로 둬요.",
+   "deep": [
+    "Noy & McGuinness(2001)는 '개념의 가장 구체적인 수준이 개체'이며, 그 판단은 응용의 목적에 달렸다고 설명해요.",
+    "OWL 2는 같은 IRI를 클래스와 개체로 동시에 쓰는 'punning'을 허용하지만, 의미상 둘은 별개로 취급돼요(OWL 2 New Features)."
+   ],
+   "recall": {
+    "q": "클래스/인스턴스를 가르는 첫 질문은?",
+    "a": "예시를 여러 개 들 수 있나? (그리고 CQ가 어디까지 세나?)"
+   },
+   "quiz": [
+    {
+     "q": "'7A병동'은 보통 무엇으로 두나요?",
+     "options": [
+      "클래스",
+      "인스턴스",
+      "속성"
+     ],
+     "answer": 1,
+     "why": "병원에 하나뿐인 그 병동이에요. '병동'이 클래스예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Noy & McGuinness, Ontology Development 101 (Stanford)",
+     "url": "https://protege.stanford.edu/publications/ontology_development/ontology101.pdf",
+     "date": "2001"
+    },
+    {
+     "title": "W3C, OWL 2 Web Ontology Language Document Overview (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-overview/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "is-a 남용: 부분·역할·상태는 하위 클래스가 아니에요",
+   "lead": "subClassOf는 'A는 모두 B다'일 때만 써요. '부분이다', '역할이다', '상태다'를 is-a로 쓰면 추론이 틀려요.",
+   "idea": [
+    "'간호사 subClassOf 사람'은 맞을까요? 간호사는 사람이 맡는 역할이에요. 퇴직하면 간호사가 아니지만 여전히 사람이죠. 그래서 역할은 관계로 두는 편이 안전해요.",
+    "'좌심실 subClassOf 심장'은 틀려요. 좌심실은 심장의 부분이지 심장의 한 종류가 아니에요. partOf 관계를 써야 해요.",
+    "'입원 중인 환자'도 상태예요. 상태는 시간이 지나면 바뀌어요. 클래스로 굳히면 '어제의 사실'과 '오늘의 사실'을 구분할 수 없어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 모두?",
+     "t": "'A는 언제나, 전부 B인가?' 아니면 is-a 아님"
+    },
+    {
+     "k": "2 · 부분?",
+     "t": "'A는 B의 조각인가?' → partOf"
+    },
+    {
+     "k": "3 · 역할/상태?",
+     "t": "'그만두거나 바뀔 수 있나?' → 관계·사건으로"
+    }
+   ],
+   "hear": [
+    "\"그거 is-a 아니고 part-of예요.\""
+   ],
+   "ask": [
+    "이 하위 클래스 관계는 시간이 지나도 항상 참인가요?"
+   ],
+   "mine": "현우가 그린 초안에 '중환자 subClassOf 환자'가 있었어요. 중환자는 상태라서 '입원 에피소드의 중증도'로 바꿔요.",
+   "deep": [
+    "OOPS!는 이런 흔한 실수를 '함정(pitfall)' 목록으로 정리해 자동 점검해 줘요(예: 클래스와 개체 혼동, 잘못된 is-a).",
+    "BFO 같은 상위 온톨로지는 역할(role)과 이를 지닌 개체를 따로 나눠 이 실수를 막아요(06장)."
+   ],
+   "recall": {
+    "q": "'좌심실 subClassOf 심장'이 틀린 이유는?",
+    "a": "부분 관계이지 종류 관계가 아니라서(partOf를 써야 해요)"
+   },
+   "quiz": [
+    {
+     "q": "'전공의'를 모델링하는 가장 안전한 방법은?",
+     "options": [
+      "사람의 하위 클래스",
+      "사람이 맡는 역할(관계)로",
+      "병원의 하위 클래스"
+     ],
+     "answer": 1,
+     "why": "전공의는 기간이 끝나면 바뀌는 역할이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "OOPS! — OntOlogy Pitfall Scanner!",
+     "url": "https://oops.linkeddata.es/",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C, Simple part-whole relations in OWL Ontologies (Editor's Draft)",
+     "url": "https://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/",
+     "date": "2005"
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "n항 관계: 관계에 정보가 붙을 때",
+   "lead": "'환자에게 약을 하루 3번 10일간 처방'처럼 관계에 날짜·용량이 붙으면, 관계를 하나의 개체(처방)로 올려요.",
+   "idea": [
+    "RDF/OWL의 기본 관계는 두 개를 잇는 이항 관계예요. 그런데 처방에는 환자·약·용량·기간·처방의가 같이 있어요.",
+    "그래서 '처방'이라는 개체를 만들고 각 정보를 그 개체에 연결해요. W3C는 이 방법을 'n항 관계' 패턴으로 정리했어요.",
+    "장점은 나중에 정보가 늘어도 구조가 그대로라는 거예요. 단점은 질의가 한 단계 길어져요."
+   ],
+   "code": {
+    "lang": "turtle",
+    "text": ":rx001 a :Prescription ;\n  :forPatient :pt42 ;\n  :drug :Amoxicillin500 ;\n  :dosePerDay 3 ;\n  :durationDays 10 ;\n  :prescribedBy :drKim .",
+    "read": "처방 rx001이 가운데 개체예요. 환자·약·용량·기간·처방의가 모두 처방에 붙어요. (가상 데이터)"
+   },
+   "hear": [
+    "\"그 날짜, 환자에 붙여요? 관계에 붙여요?\""
+   ],
+   "ask": [
+    "관계 자체에 시간·수량·출처가 붙나요?"
+   ],
+   "mine": "투약 기록, 검사 결과, 진단 모두 '사건 개체'로 올려 시간과 담당자를 붙여요.",
+   "deep": [
+    "W3C Working Group Note 'Defining N-ary Relations on the Semantic Web'(2006-04-12)은 관계를 클래스로 바꾸는 여러 패턴을 예시로 보여 줘요.",
+    "RDF 1.2의 트리플 용어(triple term)도 관계에 대한 진술을 돕지만, 진짜 사건이면 개체로 두는 게 더 명확할 때가 많아요(03장)."
+   ],
+   "recall": {
+    "q": "관계에 용량·기간이 붙으면 어떻게 모델링하나요?",
+    "a": "관계를 개체(예: 처방)로 올리고 정보를 그 개체에 연결해요."
+   },
+   "quiz": [
+    {
+     "q": "n항 관계 패턴의 비용은?",
+     "options": [
+      "질의가 한 단계 길어진다",
+      "추론이 불가능해진다",
+      "IRI를 못 쓴다"
+     ],
+     "answer": 0,
+     "why": "가운데 개체를 거쳐야 해서 질의가 길어져요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C, Defining N-ary Relations on the Semantic Web (Working Group Note)",
+     "url": "https://www.w3.org/TR/swbp-n-aryRelations/",
+     "date": "2006-04-12"
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "온톨로지 설계 패턴(ODP)",
+   "lead": "설계 패턴은 '부분-전체', '참여', '상황'처럼 자주 나오는 모델링 문제에 대한 검증된 작은 해법이에요.",
+   "idea": [
+    "소프트웨어 디자인 패턴처럼, 온톨로지에도 반복되는 문제가 있어요. Gangemi(2005)와 Presutti 등이 이를 패턴으로 정리했어요.",
+    "예: '참여' 패턴은 사건과 거기 참여한 대상을 잇고, '시간 색인 상황' 패턴은 '언제 참이었나'를 표현해요.",
+    "패턴을 쓰면 새로 온 사람이 구조를 빨리 읽어요. 다만 패턴 카탈로그 사이트는 오래 업데이트가 뜸해, 패턴 자체는 쓰되 출처를 꼼꼼히 봐요."
+   ],
+   "hear": [
+    "\"그건 participation 패턴 쓰면 돼요.\""
+   ],
+   "ask": [
+    "이 문제, 이미 알려진 패턴이 있나요?"
+   ],
+   "mine": "입원·수술·투약을 모두 '사건 + 참여자 + 시간' 패턴으로 통일해요. 소라는 API도 같은 모양으로 만들 수 있어 반겨요.",
+   "deep": [
+    "ontologydesignpatterns.org는 내용 패턴(Content ODP), 논리 패턴 등을 분류해 모아 둔 커뮤니티 카탈로그예요.",
+    "W3C 모범 사례 문서(n항 관계, 단순 부분-전체 관계)도 사실상 패턴 문서예요."
+   ],
+   "recall": {
+    "q": "ODP를 쓰는 이점 두 가지는?",
+    "a": "검증된 해법을 재사용하고, 다른 사람이 구조를 빨리 이해해요."
+   },
+   "quiz": [
+    {
+     "q": "'누가 언제 어떤 사건에 참여했나'를 표현할 때 떠올릴 패턴은?",
+     "options": [
+      "참여(participation)",
+      "동의어(synonym)",
+      "버전(version)"
+     ],
+     "answer": 0,
+     "why": "사건과 참여자를 잇는 패턴이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Ontology Design Patterns portal (ontologydesignpatterns.org)",
+     "url": "http://ontologydesignpatterns.org/",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C, Defining N-ary Relations on the Semantic Web (Working Group Note)",
+     "url": "https://www.w3.org/TR/swbp-n-aryRelations/",
+     "date": "2006-04-12"
+    },
+    {
+     "title": "W3C, Simple part-whole relations in OWL Ontologies (Editor's Draft)",
+     "url": "https://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/",
+     "date": "2005"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "재사용: 찾고, 가져오고, 일부만 떼기",
+   "lead": "용어를 새로 만들기 전에 OLS·BioPortal·LOV에서 먼저 찾아요. 찾으면 전체를 import하거나 필요한 부분만 떼어 와요.",
+   "idea": [
+    "재사용하면 남들이 이미 맞춰 둔 뜻을 공짜로 얻어요. 다른 병원·기관 데이터와도 자연스럽게 이어져요.",
+    "owl:imports는 남의 온톨로지 전체를 가져와요. 크면 추론이 느려져요. 그래서 필요한 용어와 그 위 계층만 떼어 오는 '모듈 추출'을 많이 써요.",
+    "주의: 가져온 온톨로지의 버전이 바뀌면 우리 쪽도 영향을 받아요. 어떤 버전을 가져왔는지 기록해요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 찾기",
+     "t": "OLS, BioPortal, LOV에서 용어 검색"
+    },
+    {
+     "k": "2 · 고르기",
+     "t": "관리 주체·라이선스·업데이트 주기 확인"
+    },
+    {
+     "k": "3 · 가져오기",
+     "t": "imports 또는 모듈 추출(ROBOT extract)"
+    },
+    {
+     "k": "4 · 고정",
+     "t": "버전 IRI 기록"
+    }
+   ],
+   "hear": [
+    "\"전체 import하니 추론이 10분 걸려요. extract로 바꾸죠.\""
+   ],
+   "ask": [
+    "이 온톨로지 관리 주체가 아직 활동 중인가요?",
+    "라이선스상 병원 내부·외부 사용이 되나요?"
+   ],
+   "mine": "한빛병원 '검사 결과' 클래스는 표준 용어의 개념을 참조하고, 병원 고유 검사 묶음만 새로 정의해요.",
+   "deep": [
+    "ROBOT의 extract 명령은 SLME·MIREOT 같은 방법으로 큰 온톨로지에서 필요한 부분만 떼어 내요(ROBOT 문서).",
+    "EMBL-EBI OLS는 여러 생명의학 온톨로지를 한곳에서 검색하게 해 줘요."
+   ],
+   "recall": {
+    "q": "큰 온톨로지 전체 import 대신 쓰는 방법은?",
+    "a": "필요한 용어와 상위 계층만 떼어 오는 모듈 추출"
+   },
+   "quiz": [
+    {
+     "q": "재사용 전에 꼭 확인할 것이 아닌 것은?",
+     "options": [
+      "라이선스",
+      "관리 주체의 활동 여부",
+      "로고 색깔"
+     ],
+     "answer": 2,
+     "why": "라이선스와 유지 관리가 핵심이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "ROBOT — command line tool for OWL ontologies",
+     "url": "https://robot.obolibrary.org/",
+     "date": "n.d."
+    },
+    {
+     "title": "EMBL-EBI Ontology Lookup Service (OLS4)",
+     "url": "https://www.ebi.ac.uk/ols4/",
+     "date": "n.d."
+    },
+    {
+     "title": "Linked Open Vocabularies (LOV)",
+     "url": "https://lov.linkeddata.es/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "상위 온톨로지에 맞추기(정렬)",
+   "lead": "우리 클래스를 BFO 같은 상위 온톨로지 아래에 놓으면, '이건 물체인가, 사건인가, 성질인가'가 분명해져요.",
+   "idea": [
+    "상위 온톨로지는 모든 분야에 공통인 아주 큰 갈래를 줘요. 예: 시간이 지나도 계속 있는 것(연속체)과 시간 속에서 일어나는 것(발생체).",
+    "우리 '처방'을 어디에 둘지 고민하면, 처방 '행위'(발생체)와 처방 '문서'(정보 개체)를 구분하게 돼요. 이 구분이 데이터 오류를 막아요.",
+    "단점: 상위 온톨로지는 추상적이라 배우는 데 시간이 걸려요. 작은 프로젝트라면 핵심 구분 몇 개만 빌려 써도 충분할 수 있어요."
+   ],
+   "hear": [
+    "\"그건 continuant예요, occurrent예요?\""
+   ],
+   "ask": [
+    "다른 기관과 데이터를 섞을 계획이 있나요? 있으면 같은 상위 온톨로지가 도움이 돼요."
+   ],
+   "mine": "한빛병원은 BFO 전체를 쓰진 않고, '사건 vs 물체 vs 정보 문서' 구분만 상위 틀로 빌려요.",
+   "deep": [
+    "OBO Foundry 원칙은 회원 온톨로지가 BFO와 공통 관계 온톨로지(RO)에 맞추길 권해요(OBO Foundry Principles).",
+    "BFO는 ISO/IEC 21838-2:2021로 표준화됐어요(06장에서 자세히)."
+   ],
+   "recall": {
+    "q": "상위 온톨로지 정렬의 가장 큰 효과는?",
+    "a": "개념이 어떤 종류의 것(사건/물체/정보 등)인지 분명해지고, 다른 온톨로지와 이어 붙이기 쉬워져요."
+   },
+   "quiz": [
+    {
+     "q": "'처방전 PDF'와 '처방하는 행위'는?",
+     "options": [
+      "같은 클래스",
+      "서로 다른 갈래(정보 개체 vs 사건)",
+      "둘 다 속성"
+     ],
+     "answer": 1,
+     "why": "문서와 행위는 다른 종류의 것이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "OBO Foundry Principles — Overview",
+     "url": "https://obofoundry.org/principles/fp-000-summary.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "Protégé와 WebProtégé",
+   "lead": "Protégé는 스탠퍼드가 만든 무료 온톨로지 편집기예요. 클래스·속성·제약을 화면에서 만들고, 추론기로 바로 검사해요.",
+   "idea": [
+    "데스크톱 Protégé는 OWL 2를 지원하고, HermiT·ELK 같은 추론기를 플러그인으로 붙여 '이 클래스가 모순인가'를 바로 보여 줘요.",
+    "WebProtégé는 웹에서 여러 사람이 같이 편집하고 댓글을 달 수 있어요. 현장 전문가와 함께 쓰기 좋아요.",
+    "한계: 아주 큰 온톨로지나 자동화된 빌드는 화면 도구보다 ROBOT 같은 명령줄 도구와 Git이 더 맞아요."
+   ],
+   "steps": [
+    {
+     "k": "1",
+     "t": "클래스 계층 만들기"
+    },
+    {
+     "k": "2",
+     "t": "객체·데이터 속성과 도메인/레인지"
+    },
+    {
+     "k": "3",
+     "t": "추론기 실행 → 빨간(모순) 클래스 확인"
+    },
+    {
+     "k": "4",
+     "t": "Turtle로 저장해 Git에 커밋"
+    }
+   ],
+   "hear": [
+    "\"Reasoner 돌렸더니 Nothing 아래로 클래스 두 개가 떨어졌어요.\""
+   ],
+   "ask": [
+    "편집은 화면에서, 빌드·검사는 CI에서 하는 걸로 나눌까요?"
+   ],
+   "mine": "현우는 WebProtégé로 용어 정의를 검토하고, 소라는 같은 파일을 Git·CI로 관리해요.",
+   "deep": [
+    "Protégé는 스탠퍼드 BMIR에서 개발하며, 공식 사이트는 데스크톱과 WebProtégé 두 형태를 안내해요.",
+    "추론기가 모순 클래스를 owl:Nothing의 하위로 보여 주는 것은 02장의 만족 불가능(unsatisfiable) 개념과 같아요."
+   ],
+   "recall": {
+    "q": "WebProtégé가 특히 좋은 상황은?",
+    "a": "여러 사람(현장 전문가 포함)이 함께 편집·검토할 때"
+   },
+   "quiz": [
+    {
+     "q": "Protégé에서 추론기를 돌리는 주된 이유는?",
+     "options": [
+      "색을 바꾸려고",
+      "모순·자동 분류를 확인하려고",
+      "파일을 압축하려고"
+     ],
+     "answer": 1,
+     "why": "추론기는 일관성과 분류를 검사해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Protégé (Stanford Center for Biomedical Informatics Research)",
+     "url": "https://protege.stanford.edu/",
+     "date": "n.d."
+    },
+    {
+     "title": "Protégé Desktop documentation — Getting started",
+     "url": "https://protegeproject.github.io/protege/getting-started/",
+     "date": "n.d."
+    },
+    {
+     "title": "WebProtégé",
+     "url": "https://webprotege.stanford.edu/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "이름 짓기와 정의 쓰기",
+   "lead": "IRI는 의미 없는 번호로, 사람이 읽을 이름은 라벨로, 뜻은 한 문장 정의로 따로 적어요.",
+   "idea": [
+    "IRI에 'Diabetes'처럼 뜻 있는 이름을 넣으면, 이름을 바꿀 때 IRI도 바뀌어 모든 링크가 깨져요. 그래서 많은 표준은 HB_0000123처럼 번호를 써요.",
+    "rdfs:label에는 한국어·영어 라벨을, skos:altLabel에는 동의어(당뇨, DM)를 둬요. 사람과 검색은 라벨을 봐요.",
+    "정의는 '종류 + 구별 특징' 형식이 좋아요. 예: '입원 에피소드란, 환자가 병원에 입원해서 퇴원할 때까지의 기간(사건)이다.'"
+   ],
+   "code": {
+    "lang": "turtle",
+    "text": "hb:HB_0000123 a owl:Class ;\n  rdfs:label \"입원 에피소드\"@ko , \"Inpatient episode\"@en ;\n  skos:altLabel \"입원\"@ko ;\n  skos:definition \"환자가 입원해 퇴원할 때까지의 사건\"@ko .",
+    "read": "IRI는 번호, 라벨은 두 언어, 동의어와 정의는 따로 붙여요. (가상 IRI)"
+   },
+   "hear": [
+    "\"라벨 바꿨다고 IRI 바꾸면 안 돼요.\""
+   ],
+   "ask": [
+    "정의만 읽고 다른 사람이 같은 걸 고를 수 있나요?"
+   ],
+   "mine": "한빛병원은 hb: 접두사에 7자리 번호를 쓰고, 정의는 현우가 임상 표현으로 검토해요.",
+   "deep": [
+    "OBO Foundry 원칙은 각 용어에 고유 식별자와 사람이 읽을 텍스트 정의를 요구해요(원칙 3·6).",
+    "SKOS는 prefLabel·altLabel·definition 같은 사람용 주석 속성을 표준으로 제공해요."
+   ],
+   "recall": {
+    "q": "IRI에 의미 없는 번호를 쓰는 이유는?",
+    "a": "이름(라벨)이 바뀌어도 식별자가 그대로라 링크가 안 깨져서"
+   },
+   "quiz": [
+    {
+     "q": "'DM'이라는 약어는 어디에 두면 좋을까요?",
+     "options": [
+      "IRI",
+      "altLabel(동의어)",
+      "정의 문장"
+     ],
+     "answer": 1,
+     "why": "동의어는 altLabel에 둬요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "OBO Foundry Principles — Overview",
+     "url": "https://obofoundry.org/principles/fp-000-summary.html",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C, SKOS Simple Knowledge Organization System Reference",
+     "url": "https://www.w3.org/TR/skos-reference/",
+     "date": "2009-08-18"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "버전과 폐기(deprecation)",
+   "lead": "용어는 지우지 않고 '폐기됨'으로 표시해요. 옛 데이터가 그 용어를 계속 가리키고 있기 때문이에요.",
+   "idea": [
+    "OWL 2는 온톨로지 IRI와 버전 IRI를 따로 둘 수 있어요. '최신'은 온톨로지 IRI로, '정확히 그 판'은 버전 IRI로 가리켜요.",
+    "용어를 지우면 작년 데이터의 링크가 허공을 가리켜요. 그래서 owl:deprecated true와 '대신 이걸 쓰세요'(예: replaced_by)를 남겨요.",
+    "버전마다 바뀐 점 목록을 남기면, 쓰는 쪽이 업데이트 영향을 미리 판단할 수 있어요."
+   ],
+   "code": {
+    "lang": "turtle",
+    "text": "<http://example.org/hb> a owl:Ontology ;\n  owl:versionIRI <http://example.org/hb/2026-10-21> .\nhb:HB_0000050 owl:deprecated true ;\n  rdfs:comment \"HB_0000123 으로 대체\"@ko .",
+    "read": "온톨로지 IRI와 날짜 버전 IRI를 따로 두고, 옛 용어는 지우지 않고 폐기 표시와 대체 안내를 달아요. (가상)"
+   },
+   "hear": [
+    "\"그 클래스 지우지 말고 deprecated 걸어 주세요.\""
+   ],
+   "ask": [
+    "이 용어를 쓰는 데이터가 몇 건이나 있나요?",
+    "다음 릴리스 날짜는 언제예요?"
+   ],
+   "mine": "한빛병원은 매달 날짜 버전으로 릴리스하고, 바뀐 점을 데이터팀 공지에 남겨요.",
+   "deep": [
+    "OWL 2 구조 명세는 ontology IRI와 version IRI의 관계, 그리고 imports가 어떤 IRI를 가리켜야 하는지 규칙을 정해요.",
+    "OBO Foundry 원칙 4(버전)는 각 릴리스에 고유 버전 식별자를 두라고 요구해요."
+   ],
+   "recall": {
+    "q": "용어를 지우는 대신 무엇을 하나요?",
+    "a": "owl:deprecated로 폐기 표시하고 대체 용어를 안내해요."
+   },
+   "quiz": [
+    {
+     "q": "작년 데이터가 정확히 그때의 정의로 해석되게 하려면?",
+     "options": [
+      "버전 IRI를 기록한다",
+      "라벨을 바꾼다",
+      "옛 용어를 지운다"
+     ],
+     "answer": 0,
+     "why": "버전 IRI가 그 시점의 판을 가리켜요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C, OWL 2 Structural Specification — Ontology IRI and Version IRI, Imports",
+     "url": "https://www.w3.org/TR/owl2-syntax/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "OBO Foundry Principles — Overview",
+     "url": "https://obofoundry.org/principles/fp-000-summary.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "거버넌스: 누가 바꾸고, 어떻게 승인하나",
+   "lead": "온톨로지는 한 번 만들고 끝이 아니에요. 변경 요청 → 검토 → 승인 → 릴리스 흐름과 책임자가 있어야 살아남아요.",
+   "idea": [
+    "의미가 바뀌면 그 위의 대시보드·AI 답변이 다 바뀌어요. 그래서 '누가 바꿀 수 있나'를 정하는 게 기술만큼 중요해요.",
+    "많은 오픈 온톨로지는 Git 이슈로 변경 요청을 받고, 풀 리퀘스트로 고치고, CI에서 추론·테스트를 돌린 뒤 사람이 승인해요.",
+    "역할을 나눠요: 도메인 전문가는 뜻을, 온톨로지 설계자는 구조를, 개발자는 빌드와 배포를 책임져요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 요청",
+     "t": "이슈에 '왜, 어떤 CQ 때문에' 적기"
+    },
+    {
+     "k": "2 · 검토",
+     "t": "전문가·설계자 리뷰"
+    },
+    {
+     "k": "3 · 검사",
+     "t": "CI: 추론기·CQ 테스트·SHACL"
+    },
+    {
+     "k": "4 · 릴리스",
+     "t": "버전 IRI, 변경 기록, 공지"
+    }
+   ],
+   "hear": [
+    "\"그 변경, 약제팀 승인 받았어요?\""
+   ],
+   "ask": [
+    "의미 변경의 최종 승인자는 누구인가요?",
+    "긴급 수정은 어떤 절차로 하나요?"
+   ],
+   "mine": "지수 팀장은 '약 관련 의미 변경은 약제부 승인 필수'를 규칙으로 정해요.",
+   "deep": [
+    "ODK(Ontology Development Kit)는 Git 저장소 구조, 릴리스 파이프라인, 품질 검사를 표준화한 도구 모음이에요.",
+    "ROBOT의 report 명령은 라벨 누락·중복 같은 품질 문제를 표로 보고해요."
+   ],
+   "recall": {
+    "q": "온톨로지 거버넌스의 네 단계는?",
+    "a": "요청 → 검토 → 자동 검사 → 릴리스"
+   },
+   "quiz": [
+    {
+     "q": "의미 변경에 도메인 전문가 승인이 필요한 이유는?",
+     "options": [
+      "형식상",
+      "뜻이 바뀌면 그 위의 보고서·AI 답이 바뀌어서",
+      "파일 크기 때문에"
+     ],
+     "answer": 1,
+     "why": "의미가 모든 하위 사용처에 퍼져요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Ontology Development Kit (ODK) documentation",
+     "url": "https://incatools.github.io/ontology-development-kit/",
+     "date": "n.d."
+    },
+    {
+     "title": "ROBOT — command line tool for OWL ontologies",
+     "url": "https://robot.obolibrary.org/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "매핑: 같은 뜻을 서로 다른 코드로 잇기",
+   "lead": "매핑은 '우리 코드 A = 표준 코드 B'를 기록하는 일이에요. '같다'에도 정확히 같음, 비슷함, 더 넓음이 있어요.",
+   "idea": [
+    "병원 고유 검사 코드 'K-POT'과 표준 검사 코드 '혈청 칼륨'이 같은지 기록해야 다른 병원 데이터와 합칠 수 있어요.",
+    "SKOS는 exactMatch, closeMatch, broadMatch, narrowMatch를 줘요. owl:equivalentClass는 논리적으로 아주 강해서, 잘못 쓰면 추론이 크게 틀어져요.",
+    "그래서 매핑마다 '누가, 언제, 어떤 근거로, 얼마나 확신하며' 만들었는지를 같이 남겨요."
+   ],
+   "hear": [
+    "\"그거 exact 말고 close로 걸어 두죠. 검체가 달라요.\""
+   ],
+   "ask": [
+    "이 매핑은 사람이 확인했나요, 자동 추천인가요?",
+    "검체·단위까지 같은가요?"
+   ],
+   "mine": "한빛병원 검사 코드 1,200개(가상)를 표준 코드에 매핑하는데, 혈청/전혈처럼 다르면 closeMatch로 둬요.",
+   "deep": [
+    "SKOS Reference(2009)는 매핑 속성들의 의미와 관계(예: exactMatch는 추이적)를 정의해요.",
+    "owl:sameAs·equivalentClass를 남용하면 서로 다른 것이 합쳐져 잘못된 추론이 퍼질 수 있어요."
+   ],
+   "recall": {
+    "q": "skos:closeMatch를 쓰는 때는?",
+    "a": "거의 같지만 완전히 같다고 단정하기 어려울 때"
+   },
+   "quiz": [
+    {
+     "q": "검체 종류가 다른 두 검사 코드를 owl:equivalentClass로 묶으면?",
+     "options": [
+      "안전하다",
+      "서로 다른 것이 논리적으로 같아져 잘못된 추론이 생길 수 있다",
+      "아무 일도 없다"
+     ],
+     "answer": 1,
+     "why": "동치는 강한 논리 주장이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C, SKOS Simple Knowledge Organization System Reference",
+     "url": "https://www.w3.org/TR/skos-reference/",
+     "date": "2009-08-18"
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "SSSOM: 매핑을 표로 공유하기",
+   "lead": "SSSOM은 매핑 한 줄마다 대상 ID, 관계, 근거, 확신도, 만든 사람을 적는 표준 표 형식이에요.",
+   "idea": [
+    "매핑을 엑셀에 제각각 적으면 '이게 어디서 왔지?'를 알 수 없어요. SSSOM은 열 이름과 뜻을 정해 둬요.",
+    "핵심 열: subject_id, predicate_id(skos:exactMatch 등), object_id, mapping_justification(수작업 검토, 어휘 일치 등), confidence, author_id.",
+    "TSV라 사람도 읽고 기계도 읽어요. 나중에 RDF·OWL로 바꿀 수도 있어요."
+   ],
+   "code": {
+    "lang": "tsv",
+    "text": "subject_id\tpredicate_id\tobject_id\tmapping_justification\tconfidence\nHB:K-POT\tskos:exactMatch\tLOINC:2823-3\tsemapv:ManualMappingCuration\t0.95",
+    "read": "병원 코드 K-POT이 표준 검사 코드와 정확히 같다는 매핑을, 사람이 검토했고 확신도 0.95로 기록했어요. (병원 코드는 가상; 표준 코드는 예시로 확인 필요)"
+   },
+   "hear": [
+    "\"자동 매칭 결과는 justification을 Lexical로 따로 표시해요.\""
+   ],
+   "ask": [
+    "사람 검토가 끝난 매핑만 운영에 쓰나요?"
+   ],
+   "mine": "소라는 매핑을 SSSOM TSV로 Git에 두고, 현우가 검토하면 justification을 수작업 검토로 바꿔요.",
+   "deep": [
+    "Matentzoglu 등(2022, Database)이 SSSOM을 발표했고, 명세와 도구는 mapping-commons 커뮤니티가 관리해요.",
+    "OAEI는 2004년부터 매년 자동 매칭 도구를 같은 데이터로 비교 평가해 왔어요."
+   ],
+   "recall": {
+    "q": "SSSOM이 매핑 한 줄에 꼭 남기게 하는 정보는?",
+    "a": "대상들, 관계, 근거(justification), (선택) 확신도·작성자"
+   },
+   "quiz": [
+    {
+     "q": "SSSOM의 mapping_justification이 필요한 이유는?",
+     "options": [
+      "색 표시",
+      "매핑을 어떻게 만들었는지(사람/자동) 알려고",
+      "파일 이름"
+     ],
+     "answer": 1,
+     "why": "근거를 알아야 믿을지 판단해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "SSSOM — Simple Standard for Sharing Ontological Mappings (spec site)",
+     "url": "https://mapping-commons.github.io/sssom/",
+     "date": "n.d."
+    },
+    {
+     "title": "Matentzoglu et al., A Simple Standard for Sharing Ontological Mappings (SSSOM), Database 2022",
+     "url": "https://academic.oup.com/database/article/doi/10.1093/database/baac035/6591806",
+     "date": "2022"
+    },
+    {
+     "title": "Ontology Alignment Evaluation Initiative (OAEI)",
+     "url": "https://oaei.ontologymatching.org/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "R2RML: 테이블을 그래프로",
+   "lead": "R2RML은 관계형 DB의 행·열을 RDF 트리플로 바꾸는 규칙을 적는 W3C 표준(2012)이에요.",
+   "idea": [
+    "병원 데이터는 대부분 EMR DB 테이블에 있어요. 다 옮기지 않고도 '이 테이블의 한 행 = 이 클래스의 개체'라는 규칙만 적으면 그래프로 볼 수 있어요.",
+    "규칙은 IRI를 어떻게 만들지(subjectMap), 각 열을 어떤 속성으로 바꿀지(predicateObjectMap)를 정해요.",
+    "가상화(질의할 때 바꾸기)와 구체화(미리 바꿔 저장하기) 두 방식이 있어요. 실시간성과 성능 사이에서 골라요."
+   ],
+   "code": {
+    "lang": "turtle",
+    "text": "<#LabMap> rr:logicalTable [ rr:tableName \"LAB_RESULT\" ] ;\n  rr:subjectMap [ rr:template \"http://example.org/lab/{ID}\" ;\n                  rr:class :LabResult ] ;\n  rr:predicateObjectMap [ rr:predicate :value ;\n                          rr:objectMap [ rr:column \"VAL\" ] ] .",
+    "read": "LAB_RESULT 테이블의 각 행을 ID로 IRI를 만든 LabResult 개체로, VAL 열을 :value 속성으로 바꿔요. (가상 테이블)"
+   },
+   "hear": [
+    "\"DB는 그대로 두고 R2RML로 가상 그래프를 띄워 보죠.\""
+   ],
+   "ask": [
+    "원본 DB 부하를 견딜 수 있나요? 아니면 야간에 구체화할까요?"
+   ],
+   "mine": "소라는 검사 결과 테이블부터 R2RML 매핑을 써서 CQ 테스트를 실제 구조에 돌려 봐요.",
+   "deep": [
+    "R2RML은 2012-09-27 W3C 권고안이 됐어요.",
+    "CSV·JSON까지 다루려는 확장으로 RML 같은 커뮤니티 언어가 있어요(표준 지위는 R2RML과 다름)."
+   ],
+   "recall": {
+    "q": "R2RML의 subjectMap이 정하는 것은?",
+    "a": "각 행을 가리킬 IRI를 만드는 방법(과 클래스)"
+   },
+   "quiz": [
+    {
+     "q": "원본 DB에 부하를 주지 않으려면?",
+     "options": [
+      "가상화만 쓴다",
+      "미리 RDF로 구체화해 따로 저장한다",
+      "매핑을 지운다"
+     ],
+     "answer": 1,
+     "why": "구체화하면 질의가 원본 DB에 가지 않아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C, R2RML: RDB to RDF Mapping Language (Recommendation)",
+     "url": "https://www.w3.org/TR/r2rml/",
+     "date": "2012-09-27"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "흔한 실수 점검: OOPS!와 ROBOT report",
+   "lead": "사람 눈으로 다 못 봐요. 함정 목록을 자동으로 훑는 도구를 빌드에 넣어요.",
+   "idea": [
+    "대표 함정: 라벨·정의 없음, 순환 계층, 도메인/레인지를 너무 좁게 걸기, 역관계 누락, 클래스와 개체 혼동, 같은 것을 두 번 정의하기.",
+    "도메인/레인지는 OWL에서 '제약'이 아니라 '추론 규칙'이에요. 잘못 걸면 엉뚱한 개체가 그 클래스로 추론돼요(02~03장의 열린 세계).",
+    "자동 도구는 후보를 알려 줄 뿐이에요. 고칠지 말지는 사람이 CQ와 뜻을 보고 정해요."
+   ],
+   "hear": [
+    "\"OOPS! 결과에 critical이 3개 떴어요.\""
+   ],
+   "ask": [
+    "이 경고, 일부러 그렇게 설계한 건가요?"
+   ],
+   "mine": "한빛병원 CI에 ROBOT report를 넣고, 'critical'이 있으면 릴리스를 막아요.",
+   "deep": [
+    "OOPS!(UPM)는 온라인으로 온톨로지를 넣으면 알려진 함정 목록과 대조해 중요도별로 보고해 줘요.",
+    "ROBOT report는 라벨 중복, 정의 누락 같은 검사를 기본 규칙으로 제공해요."
+   ],
+   "recall": {
+    "q": "OWL에서 rdfs:domain을 잘못 걸면 무슨 일이 생기나요?",
+    "a": "제약으로 막히는 게 아니라, 그 속성을 쓴 개체가 해당 클래스로 잘못 추론돼요."
+   },
+   "quiz": [
+    {
+     "q": "자동 함정 점검 도구의 올바른 위치는?",
+     "options": [
+      "최종 판단자",
+      "후보를 알려 주는 조수",
+      "필요 없음"
+     ],
+     "answer": 1,
+     "why": "판단은 사람이 CQ와 뜻을 보고 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "OOPS! — OntOlogy Pitfall Scanner!",
+     "url": "https://oops.linkeddata.es/",
+     "date": "n.d."
+    },
+    {
+     "title": "ROBOT — command line tool for OWL ontologies",
+     "url": "https://robot.obolibrary.org/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "평가: 논리·질문·데이터·사람",
+   "lead": "온톨로지는 네 갈래로 평가해요. 모순이 없나(추론기), 질문에 답하나(CQ), 데이터가 맞나(SHACL), 쓰는 사람이 이해하나(리뷰).",
+   "idea": [
+    "추론기 검사는 논리적 모순을 잡아요. 하지만 논리적으로 맞아도 현실과 다를 수 있어요.",
+    "CQ 테스트는 쓸모를, SHACL은 실제 데이터의 모양을 봐요. OWL의 열린 세계에서는 '빠진 값'을 못 잡으니 SHACL이 필요해요(03장).",
+    "마지막은 사람이에요. 현장 전문가가 정의를 읽고 '맞다'고 해야 해요. 출처 기록(PROV-O)이 있으면 리뷰가 쉬워져요."
+   ],
+   "steps": [
+    {
+     "k": "논리",
+     "t": "HermiT/ELK로 일관성·분류"
+    },
+    {
+     "k": "질문",
+     "t": "CQ → SPARQL 테스트"
+    },
+    {
+     "k": "데이터",
+     "t": "SHACL 모양 검사"
+    },
+    {
+     "k": "사람",
+     "t": "전문가 정의 리뷰"
+    }
+   ],
+   "hear": [
+    "\"추론은 통과했는데, 현우 쌤이 정의가 임상이랑 다르대요.\""
+   ],
+   "ask": [
+    "네 가지 중 지금 빠진 검사는 무엇인가요?"
+   ],
+   "mine": "릴리스 체크리스트에 네 칸을 만들고, 하나라도 비면 배포하지 않아요.",
+   "deep": [
+    "SHACL(2017 W3C 권고안)은 닫힌 세계식 검증으로 필수 값 누락·개수 위반을 보고해요.",
+    "PROV-O(2013 W3C 권고안)는 '누가, 무엇으로, 언제 만들었나'를 표현하는 표준 온톨로지예요."
+   ],
+   "recall": {
+    "q": "온톨로지 평가의 네 갈래는?",
+    "a": "논리(추론기), 질문(CQ), 데이터(SHACL), 사람(전문가 리뷰)"
+   },
+   "quiz": [
+    {
+     "q": "'모든 검사 결과에는 단위가 있어야 한다'는 무엇으로 검사하나요?",
+     "options": [
+      "추론기",
+      "SHACL",
+      "라벨"
+     ],
+     "answer": 1,
+     "why": "필수 값 존재는 닫힌 세계 검증인 SHACL이 잘해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C, Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    },
+    {
+     "title": "W3C, PROV-O: The PROV Ontology",
+     "url": "https://www.w3.org/TR/prov-o/",
+     "date": "2013-04-30"
+    },
+    {
+     "title": "W3C, OWL 2 Web Ontology Language Document Overview (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-overview/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "작게 시작해 키우기: 첫 릴리스 범위",
+   "lead": "첫 버전은 CQ 10~20개를 답하는 작은 핵심으로 내고, 실제 사용을 보며 키워요.",
+   "idea": [
+    "처음부터 병원 전체를 모델링하면 몇 달 동안 아무도 못 써요. 피드백이 없으니 틀린 방향으로 커져요.",
+    "한 업무(예: 검사 결과 이상치 알림)를 골라 그 CQ만 끝까지 답하게 만들어요. 데이터 매핑·테스트·거버넌스까지 한 바퀴를 돌아 봐요.",
+    "한 바퀴를 돌면 어디가 진짜 어려운지(매핑? 정의 합의? 성능?) 보여요. 그다음 범위를 넓혀요."
+   ],
+   "hear": [
+    "\"v0.1은 검사 결과만. 약은 다음 분기예요.\""
+   ],
+   "ask": [
+    "첫 릴리스로 실제로 바뀌는 업무는 무엇인가요?",
+    "성공 기준은 숫자로 무엇인가요?"
+   ],
+   "mine": "지수 팀장은 v0.1 범위를 '검사 결과 + 알레르기'로 정해요. 성공 기준은 CQ 15개 통과와 현장 리뷰 1회예요(가상).",
+   "deep": [
+    "LOT·eXtreme Design 같은 최근 방법론은 짧은 반복과 CQ 단위 개발을 기본으로 해요.",
+    "Noy & McGuinness(2001)도 온톨로지 개발은 반복적이며 '정답 모델은 하나가 아니다'라고 강조해요."
+   ],
+   "recall": {
+    "q": "첫 릴리스를 작게 내는 이유는?",
+    "a": "빨리 실제 사용 피드백을 받고, 진짜 어려운 곳을 일찍 찾으려고"
+   },
+   "quiz": [
+    {
+     "q": "좋은 첫 릴리스 범위는?",
+     "options": [
+      "병원 전체",
+      "한 업무의 CQ를 끝까지 답하는 핵심",
+      "라벨만"
+     ],
+     "answer": 1,
+     "why": "한 바퀴를 끝까지 돌아야 배워요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Noy & McGuinness, Ontology Development 101 (Stanford)",
+     "url": "https://protege.stanford.edu/publications/ontology_development/ontology101.pdf",
+     "date": "2001"
+    },
+    {
+     "title": "Suárez-Figueroa et al., The NeOn Methodology for Ontology Engineering (Ontology Engineering in a Networked World, Springer)",
+     "url": "https://link.springer.com/chapter/10.1007/978-3-642-24794-1_2",
+     "date": "2012"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "icd11-foundation",
+   "day": 4,
+   "title": "ICD-11: 수천 명이 함께 고친 질병 분류를 '기초층 + 선형화'로 나누다",
+   "when": "2022-01",
+   "lead": "WHO의 ICD-11은 2022년 1월 1일 발효됐어요. 한 개념이 여러 부모를 가질 수 있는 기초층(Foundation)을 두고, 통계용으로는 부모가 하나인 '선형화'를 따로 뽑는 구조예요.",
+   "facts": [
+    {
+     "label": "발효",
+     "value": "2022-01-01",
+     "src": "WHO 2022-02-11 발표"
+    },
+    {
+     "label": "규모",
+     "value": "고유 코드 약 17,000개, 코드 가능한 용어 120,000개 이상",
+     "src": "WHO 2022-02-11 발표"
+    },
+    {
+     "label": "도입국",
+     "value": "2022년 2월 기준 35개국이 사용 중",
+     "src": "WHO 2022-02-11 발표"
+    },
+    {
+     "label": "형태",
+     "value": "완전 디지털(웹 브라우저·API)",
+     "src": "WHO ICD-11 Browser"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "1990년대~",
+     "text": "ICD-10 시대(한국 KCD의 바탕)"
+    },
+    {
+     "t": "2019-05",
+     "text": "세계보건총회에서 ICD-11 채택"
+    },
+    {
+     "t": "2022-01-01",
+     "text": "ICD-11 발효",
+     "hot": true
+    },
+    {
+     "t": "2022-02",
+     "text": "WHO, 35개국 사용 발표"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "설계",
+     "title": "여러 부모 vs 하나의 부모",
+     "text": "의학 개념은 여러 갈래에 동시에 속하지만, 통계표는 중복 집계를 막으려 부모가 하나여야 해요. 그래서 두 층으로 나눴어요."
+    },
+    {
+     "stage": "협업",
+     "title": "공동 편집",
+     "text": "전 세계 전문가가 웹 기반 도구에서 제안·검토하며 만들었어요(거버넌스 흐름)."
+    },
+    {
+     "stage": "배포",
+     "title": "디지털 우선",
+     "text": "책 대신 브라우저와 API로 제공돼 버전 관리와 갱신이 쉬워요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "한빛병원 온톨로지에도 '여러 부모'와 '보고용 단일 분류'를 나눠야 할 곳이 있나요?",
+     "a": "있어요. 임상 개념은 여러 부모를 허용하고, 심사·통계 보고용 분류는 별도로 뽑아 중복 집계를 막아요."
+    },
+    {
+     "q": "수많은 사람이 편집할 때 가장 먼저 정할 것은?",
+     "a": "변경 요청·검토·승인 흐름과 영역별 책임자예요."
+    },
+    {
+     "q": "ICD-11의 디지털 배포에서 배울 점은?",
+     "a": "버전마다 식별 가능한 릴리스와 API 제공으로, 쓰는 쪽이 업데이트를 따라가기 쉬워져요."
+    }
+   ],
+   "after": [
+    "WHO는 회원국에 ICD-11 전환을 권하고 있어요. 한국의 질병 분류(KCD)는 ICD-10 기반이에요(06장)."
+   ],
+   "sources": [
+    {
+     "title": "WHO, ICD-11 2022 release",
+     "url": "https://www.who.int/news/item/11-02-2022-icd-11-2022-release",
+     "date": "2022-02-11"
+    },
+    {
+     "title": "WHO ICD-11 Browser",
+     "url": "https://icd.who.int/browse11",
+     "date": "n.d."
+    }
+   ],
+   "caveat": "개정 시작 연도 등 연혁 세부는 WHO 원문에서 다시 확인하세요. 기초층/선형화 구조 설명은 WHO 공개 자료의 요약이에요."
+  },
+  {
+   "id": "sssom-2022",
+   "day": 4,
+   "title": "매핑에도 '출처'를: SSSOM 표준의 등장",
+   "when": "2022",
+   "lead": "생명의학 온톨로지 커뮤니티는 매핑이 제각각인 문제를 풀려고 SSSOM이라는 공통 표 형식을 만들었어요. 2022년 Database 저널에 발표됐어요.",
+   "facts": [
+    {
+     "label": "이름",
+     "value": "Simple Standard for Sharing Ontological Mappings",
+     "src": "SSSOM 명세 사이트"
+    },
+    {
+     "label": "발표",
+     "value": "Matentzoglu et al., Database, 2022 (baac035)",
+     "src": "논문"
+    },
+    {
+     "label": "형식",
+     "value": "TSV 표 + 메타데이터(YAML), RDF/OWL로 변환 가능",
+     "src": "SSSOM 명세 사이트"
+    },
+    {
+     "label": "핵심 열",
+     "value": "subject_id, predicate_id, object_id, mapping_justification",
+     "src": "SSSOM 명세 사이트"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2004",
+     "text": "OAEI, 자동 매칭 도구 연례 평가 시작"
+    },
+    {
+     "t": "2009",
+     "text": "SKOS 권고안, exactMatch 등 매핑 속성 표준화"
+    },
+    {
+     "t": "2022",
+     "text": "SSSOM 논문 발표",
+     "hot": true
+    },
+    {
+     "t": "이후",
+     "text": "mapping-commons 커뮤니티가 명세·도구 관리"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "문제",
+     "title": "근거 없는 매핑",
+     "text": "누가 왜 만든 매핑인지 몰라 믿을 수 없었어요."
+    },
+    {
+     "stage": "해법",
+     "title": "근거 열 필수",
+     "text": "mapping_justification으로 사람 검토/자동 매칭을 구분해요."
+    },
+    {
+     "stage": "확산",
+     "title": "단순한 형식",
+     "text": "TSV라 엑셀로도 열 수 있어 진입 장벽이 낮아요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "한빛병원 검사 코드 매핑에 SSSOM을 쓰면 무엇이 좋아지나요?",
+     "a": "매핑마다 근거와 검토 상태가 남아, 운영에 쓸 것만 골라낼 수 있어요."
+    },
+    {
+     "q": "자동 매칭은 어떻게 다루나요?",
+     "a": "justification을 자동(어휘 일치 등)으로 남기고 사람 검토 후 바꿔요."
+    },
+    {
+     "q": "SSSOM이 해 주지 않는 것은?",
+     "a": "매핑이 맞는지 판단 자체는 해 주지 않아요. 기록 형식일 뿐이에요."
+    }
+   ],
+   "after": [
+    "OBO 계열 프로젝트들이 매핑 공유에 SSSOM을 쓰는 사례가 늘었어요(규모는 미확인)."
+   ],
+   "sources": [
+    {
+     "title": "SSSOM — Simple Standard for Sharing Ontological Mappings (spec site)",
+     "url": "https://mapping-commons.github.io/sssom/",
+     "date": "n.d."
+    },
+    {
+     "title": "Matentzoglu et al., A Simple Standard for Sharing Ontological Mappings (SSSOM), Database 2022",
+     "url": "https://academic.oup.com/database/article/doi/10.1093/database/baac035/6591806",
+     "date": "2022"
+    },
+    {
+     "title": "Ontology Alignment Evaluation Initiative (OAEI)",
+     "url": "https://oaei.ontologymatching.org/",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C, SKOS Simple Knowledge Organization System Reference",
+     "url": "https://www.w3.org/TR/skos-reference/",
+     "date": "2009-08-18"
+    }
+   ],
+   "caveat": "논문 사이트는 자동 접근을 막아 본문 세부 수치는 인용하지 않았어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "월요일, 어디서부터 시작하죠?",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "이번 달 안에 온톨로지 초안이 나와야 해요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "일단 Protégé 열고 클래스부터 만들까요?"
+    }
+   ],
+   "q": "가장 먼저 할 일은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "Protégé에서 클래스 계층부터 그린다",
+     "ok": false,
+     "why": "무엇에 답해야 하는지 모르면 범위가 끝없이 커져요."
+    },
+    {
+     "k": "B",
+     "t": "현장에서 실제 질문을 모아 CQ 목록과 우선순위를 만든다",
+     "ok": true,
+     "why": "CQ가 범위와 테스트 기준이 돼요."
+    },
+    {
+     "k": "C",
+     "t": "표준 온톨로지를 전부 내려받는다",
+     "ok": false,
+     "why": "필요한 게 무엇인지 모른 채 가져오면 무거워요."
+    }
+   ],
+   "explain": "질문 없이 만든 온톨로지는 평가할 기준이 없어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Grüninger & Fox, Methodology for the Design and Evaluation of Ontologies (IJCAI-95 workshop)",
+     "url": "https://www.researchgate.net/publication/2288533_Methodology_for_the_Design_and_Evaluation_of_Ontologies",
+     "date": "1995"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "'최근'과 '높은'",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "병동에선 '최근 칼륨 높은 환자'를 제일 많이 물어요."
+    }
+   ],
+   "q": "이 CQ를 어떻게 다듬을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "그대로 둔다",
+     "ok": false,
+     "why": "모호해서 테스트 기대 답을 정할 수 없어요."
+    },
+    {
+     "k": "B",
+     "t": "'최근 7일, 칼륨 5.5 mmol/L 초과'처럼 기준을 현장과 숫자로 합의한다",
+     "ok": true,
+     "why": "검사 가능한 질문이 돼요. 기준값은 병원 기준에 맞춰 현장과 정해요."
+    },
+    {
+     "k": "C",
+     "t": "칼륨 대신 모든 검사로 넓힌다",
+     "ok": false,
+     "why": "범위만 커지고 모호함은 그대로예요."
+    }
+   ],
+   "explain": "CQ는 기대 답을 정할 수 있을 만큼 구체적이어야 해요. (기준값 숫자는 예시)",
+   "mixed": false
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "만들까, 가져올까",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "진단명 클래스, 우리가 2만 개 만들면 되죠?"
+    },
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "시간이 될까요?"
+    }
+   ],
+   "q": "진단 개념은 어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "직접 2만 개를 만든다",
+     "ok": false,
+     "why": "이미 있는 표준을 다시 만드는 셈이고 다른 기관과 안 맞아요."
+    },
+    {
+     "k": "B",
+     "t": "표준 용어를 재사용하고, 병원 고유 개념만 새로 만든다",
+     "ok": true,
+     "why": "NeOn의 재사용 시나리오예요."
+    },
+    {
+     "k": "C",
+     "t": "진단은 모델에서 뺀다",
+     "ok": false,
+     "why": "핵심 CQ에 필요해요."
+    }
+   ],
+   "explain": "재사용은 시간과 상호운용성을 함께 얻어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Suárez-Figueroa et al., The NeOn Methodology for Ontology Engineering (Ontology Engineering in a Networked World, Springer)",
+     "url": "https://link.springer.com/chapter/10.1007/978-3-642-24794-1_2",
+     "date": "2012"
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "중환자 클래스?",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "초안에 '중환자 subClassOf 환자'를 넣었어요."
+    }
+   ],
+   "q": "어떻게 고칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "그대로 둔다",
+     "ok": false,
+     "why": "상태가 바뀌면 같은 사람이 클래스를 오가야 해요."
+    },
+    {
+     "k": "B",
+     "t": "중증도를 입원 에피소드(사건)의 시간 있는 속성/상태로 옮긴다",
+     "ok": true,
+     "why": "상태는 시간에 따라 바뀌니 사건·관계로 둬요."
+    },
+    {
+     "k": "C",
+     "t": "'중환자'를 인스턴스로 만든다",
+     "ok": false,
+     "why": "여러 명을 묶는 개념이라 인스턴스가 아니에요."
+    }
+   ],
+   "explain": "is-a는 언제나 참일 때만 써요.",
+   "mixed": false
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "좌심실은 심장인가요",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "해부학 분류에서 '좌심실 subClassOf 심장'으로 했어요."
+    }
+   ],
+   "q": "문제는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "문제없다",
+     "ok": false,
+     "why": "좌심실은 심장의 한 종류가 아니에요."
+    },
+    {
+     "k": "B",
+     "t": "부분 관계라 partOf로 표현해야 한다",
+     "ok": true,
+     "why": "종류(is-a)와 부분(part-of)은 달라요."
+    },
+    {
+     "k": "C",
+     "t": "심장을 좌심실의 하위로 바꾼다",
+     "ok": false,
+     "why": "방향만 바꿔도 여전히 틀려요."
+    }
+   ],
+   "explain": "부분-전체는 별도 관계(패턴)로 다뤄요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C, Simple part-whole relations in OWL Ontologies (Editor's Draft)",
+     "url": "https://www.w3.org/2001/sw/BestPractices/OEP/SimplePartWhole/",
+     "date": "2005"
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "처방 정보를 어디에",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "환자—약 관계에 용량, 기간, 처방의를 다 달고 싶어요."
+    }
+   ],
+   "q": "어떻게 모델링할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "환자 노드에 다 붙인다",
+     "ok": false,
+     "why": "처방이 여러 개면 어느 약의 용량인지 섞여요."
+    },
+    {
+     "k": "B",
+     "t": "'처방'을 개체로 올리고 정보를 처방에 연결한다",
+     "ok": true,
+     "why": "n항 관계 패턴이에요."
+    },
+    {
+     "k": "C",
+     "t": "용량은 저장하지 않는다",
+     "ok": false,
+     "why": "약물 안전 CQ에 필요해요."
+    }
+   ],
+   "explain": "관계에 정보가 붙으면 관계를 개체로 만들어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C, Defining N-ary Relations on the Semantic Web (Working Group Note)",
+     "url": "https://www.w3.org/TR/swbp-n-aryRelations/",
+     "date": "2006-04-12"
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "import가 너무 무거워요",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "큰 표준 온톨로지를 통째로 import했더니 추론이 한참 걸려요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "추론을 끈다",
+     "ok": false,
+     "why": "모순 검사를 잃어요."
+    },
+    {
+     "k": "B",
+     "t": "필요한 용어와 상위 계층만 모듈로 추출해 가져온다",
+     "ok": true,
+     "why": "ROBOT extract 같은 방법이에요."
+    },
+    {
+     "k": "C",
+     "t": "표준을 포기한다",
+     "ok": false,
+     "why": "재사용 이점을 잃어요."
+    }
+   ],
+   "explain": "모듈 추출은 재사용과 성능의 절충이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "ROBOT — command line tool for OWL ontologies",
+     "url": "https://robot.obolibrary.org/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "이름을 바꾸고 싶어요",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "'입원'보다 '입원 에피소드'가 더 정확해요. 이름 바꿔도 되죠?"
+    }
+   ],
+   "q": "무엇을 바꿀까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "IRI와 라벨 모두 바꾼다",
+     "ok": false,
+     "why": "IRI가 바뀌면 기존 데이터 링크가 깨져요."
+    },
+    {
+     "k": "B",
+     "t": "IRI는 그대로 두고 라벨만 바꾸고, 옛 이름은 altLabel로 남긴다",
+     "ok": true,
+     "why": "식별자는 안정, 사람용 이름만 바뀌어요."
+    },
+    {
+     "k": "C",
+     "t": "새 클래스를 따로 만들어 둘 다 쓴다",
+     "ok": false,
+     "why": "같은 뜻이 둘이 되어 혼란스러워요."
+    }
+   ],
+   "explain": "식별자와 이름을 분리하면 바꾸기 쉬워요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "OBO Foundry Principles — Overview",
+     "url": "https://obofoundry.org/principles/fp-000-summary.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "BFO를 다 배워야 하나요",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "상위 온톨로지까지 하면 일정이 밀리지 않을까요?"
+    }
+   ],
+   "q": "현실적인 선택은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "BFO 전체를 먼저 공부하고 시작한다",
+     "ok": false,
+     "why": "작은 팀엔 시작이 너무 늦어져요."
+    },
+    {
+     "k": "B",
+     "t": "사건·물체·정보 문서 같은 핵심 구분만 먼저 빌려 쓰고, 필요하면 넓힌다",
+     "ok": true,
+     "why": "효과는 얻고 비용은 줄여요."
+    },
+    {
+     "k": "C",
+     "t": "상위 구분은 아예 무시한다",
+     "ok": false,
+     "why": "처방 행위와 처방 문서가 섞이는 오류가 생겨요."
+    }
+   ],
+   "explain": "상위 정렬은 단계적으로 할 수 있어요.",
+   "mixed": true
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "클래스를 지울까요",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "안 쓰는 클래스 HB_0000050을 지울게요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "바로 지운다",
+     "ok": false,
+     "why": "옛 데이터가 그 IRI를 가리키고 있을 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "owl:deprecated로 표시하고 대체 용어를 안내한다",
+     "ok": true,
+     "why": "링크를 살리고 새 사용을 막아요."
+    },
+    {
+     "k": "C",
+     "t": "이름만 '쓰지 마세요'로 바꾼다",
+     "ok": false,
+     "why": "기계가 알 수 있는 표시가 아니에요."
+    }
+   ],
+   "explain": "폐기는 지우기가 아니라 표시하기예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C, OWL 2 Structural Specification — Ontology IRI and Version IRI, Imports",
+     "url": "https://www.w3.org/TR/owl2-syntax/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "누가 승인하죠",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "약제부가 모르는 사이에 '고위험 약' 정의가 바뀌었대요."
+    }
+   ],
+   "q": "재발을 막으려면?",
+   "options": [
+    {
+     "k": "A",
+     "t": "설계자 혼자 바꾸게 둔다",
+     "ok": false,
+     "why": "뜻의 주인이 빠져요."
+    },
+    {
+     "k": "B",
+     "t": "변경 요청→전문가 검토→CI 검사→릴리스 흐름과 영역별 승인자를 정한다",
+     "ok": true,
+     "why": "거버넌스예요."
+    },
+    {
+     "k": "C",
+     "t": "온톨로지를 잠가 아무도 못 바꾸게 한다",
+     "ok": false,
+     "why": "현실 변화를 못 따라가요."
+    }
+   ],
+   "explain": "의미 변경은 그 뜻의 주인이 승인해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Ontology Development Kit (ODK) documentation",
+     "url": "https://incatools.github.io/ontology-development-kit/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "같은 검사 맞아요?",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "우리 'K-POT'과 표준 혈청 칼륨 코드를 equivalentClass로 묶을게요."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "근데 우리 건 전혈 검사도 섞여 있어요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "equivalentClass로 묶는다",
+     "ok": false,
+     "why": "다른 검체를 논리적으로 같게 만들어 추론이 틀어져요."
+    },
+    {
+     "k": "B",
+     "t": "검체가 섞여 있으면 closeMatch로 두고 근거를 기록하거나, 코드를 나눈다",
+     "ok": true,
+     "why": "'같음'의 강도를 정직하게 표현해요."
+    },
+    {
+     "k": "C",
+     "t": "매핑하지 않는다",
+     "ok": false,
+     "why": "다른 병원 데이터와 합칠 수 없어요."
+    }
+   ],
+   "explain": "매핑 관계의 강도를 고르는 게 핵심이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C, SKOS Simple Knowledge Organization System Reference",
+     "url": "https://www.w3.org/TR/skos-reference/",
+     "date": "2009-08-18"
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "자동 매칭 결과",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "문자 비교로 1,200개 중 900개가 자동 매칭됐어요(가상)."
+    }
+   ],
+   "q": "운영에 어떻게 쓸까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "900개 모두 바로 운영에 쓴다",
+     "ok": false,
+     "why": "어휘가 같아도 뜻이 다를 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "SSSOM에 justification을 자동(어휘)으로 기록하고, 사람 검토를 거친 것만 운영에 쓴다",
+     "ok": true,
+     "why": "근거와 검토 상태가 남아요."
+    },
+    {
+     "k": "C",
+     "t": "자동 결과를 버린다",
+     "ok": false,
+     "why": "검토 후보로는 아주 쓸모 있어요."
+    }
+   ],
+   "explain": "자동 매칭은 후보, 사람 검토가 확정이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "SSSOM — Simple Standard for Sharing Ontological Mappings (spec site)",
+     "url": "https://mapping-commons.github.io/sssom/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "DB를 다 옮겨야 하나요",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "EMR 테이블을 전부 그래프 DB로 옮기려면 몇 달 걸려요."
+    }
+   ],
+   "q": "첫 단계로 좋은 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "전부 옮긴 뒤 시작한다",
+     "ok": false,
+     "why": "피드백이 너무 늦어요."
+    },
+    {
+     "k": "B",
+     "t": "검사 결과 테이블만 R2RML로 매핑해 CQ를 실제 구조에 돌려 본다",
+     "ok": true,
+     "why": "작게 한 바퀴를 돌아요."
+    },
+    {
+     "k": "C",
+     "t": "그래프는 포기한다",
+     "ok": false,
+     "why": "의미 통합 목표를 잃어요."
+    }
+   ],
+   "explain": "R2RML로 옮기지 않고도 그래프로 볼 수 있어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C, R2RML: RDB to RDF Mapping Language (Recommendation)",
+     "url": "https://www.w3.org/TR/r2rml/",
+     "date": "2012-09-27"
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "릴리스 해도 될까요",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "추론기는 통과했어요. 금요일에 v0.1 배포하죠."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "정의 리뷰는 아직 안 했어요."
+    }
+   ],
+   "q": "판단은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "추론기 통과했으니 배포한다",
+     "ok": false,
+     "why": "논리적으로 맞아도 뜻이 틀릴 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "CQ 테스트·SHACL·전문가 리뷰까지 네 칸이 채워진 뒤 배포한다",
+     "ok": true,
+     "why": "평가는 네 갈래예요."
+    },
+    {
+     "k": "C",
+     "t": "v1.0까지 배포를 미룬다",
+     "ok": false,
+     "why": "작은 릴리스의 피드백을 잃어요."
+    }
+   ],
+   "explain": "추론기 통과는 필요조건이지 충분조건이 아니에요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "W3C, Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "Ontology Development 101 (Noy & McGuinness, Stanford)",
+   "url": "https://protege.stanford.edu/publications/ontology_development/ontology101.pdf",
+   "min": 60,
+   "lang": "en",
+   "what": "CQ로 범위 정하기부터 클래스·속성·개체 결정까지, 고전 입문서를 처음부터 읽어요.",
+   "day": 1
+  },
+  {
+   "id": "l2",
+   "title": "Protégé Desktop — Getting started",
+   "url": "https://protegeproject.github.io/protege/getting-started/",
+   "min": 40,
+   "lang": "en",
+   "what": "Protégé를 설치하고 클래스 계층과 추론기 실행을 따라 해 봐요.",
+   "day": 3
+  },
+  {
+   "id": "l3",
+   "title": "OBO Academy (OBOOK) 튜토리얼",
+   "url": "https://oboacademy.github.io/obook/",
+   "min": 60,
+   "lang": "en",
+   "what": "ROBOT·ODK·Git으로 온톨로지를 관리·릴리스하는 실무 흐름을 배워요.",
+   "day": 4
+  },
+  {
+   "id": "l4",
+   "title": "SSSOM 명세와 예시",
+   "url": "https://mapping-commons.github.io/sssom/",
+   "min": 30,
+   "lang": "en",
+   "what": "매핑 표의 열 의미와 justification 어휘를 읽어요.",
+   "day": 4
+  },
+  {
+   "id": "l5",
+   "title": "W3C R2RML 권고안",
+   "url": "https://www.w3.org/TR/r2rml/",
+   "min": 40,
+   "lang": "en",
+   "what": "테이블을 RDF로 바꾸는 매핑 예제를 따라 읽어요.",
+   "day": 5
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "한빛병원 온톨로지 요구사항 명세서(ORSD) v0.1을 1~2쪽으로 써 보세요. 검사 결과·알레르기 범위의 첫 릴리스를 정해요.",
+  "template": [
+   "목적과 사용자(병동 간호사, 데이터팀, AI 비서)",
+   "범위: 포함 / 제외",
+   "역량 질문 15개와 우선순위, 각 CQ의 기대 답 기준",
+   "재사용할 표준과 버전, 새로 만들 병원 고유 개념",
+   "주요 설계 결정: 클래스/인스턴스, 상태·역할 처리, n항 관계",
+   "명명 규칙: IRI 번호 체계, 라벨·정의 규칙",
+   "매핑 계획: SSSOM, 사람 검토 기준, R2RML 대상 테이블",
+   "평가·릴리스: 추론기·CQ 테스트·SHACL·전문가 리뷰, 버전·폐기 규칙, 승인자"
+  ]
+ },
+ "check": [
+  "Story values (15 CQs, 1,200 lab codes, 900 auto matches, v0.1 scope, potassium 5.5 threshold) are fictional 한빛병원 examples.",
+  "Verified by fetching: R2RML W3C Rec 2012-09-27; OWL 2 Overview 2nd ed. Rec 2012-12-11; WHO ICD-11 2022 release page (in effect 2022-01-01, ~17,000 codes, >120,000 codable terms, 35 countries); OBO Foundry principles list (open, format, identifiers, versioning, textual definitions); Protégé, WebProtégé, ROBOT, ODK, OLS, OOPS!, ODP portal, SSSOM site load (HTTP 200).",
+  "From research notes (H, not re-fetched): Grüninger & Fox 1995 CQs/TOVE; METHONTOLOGY 1997 UPM based on IEEE 1074; NeOn 2006-2010 with ORSD; OAEI since 2004; SSSOM paper Database 2022 (OUP page blocks bots, 403).",
+  "ICD-11 timeline: 2019-05 WHA adoption is well known; no revision start year claimed.",
+  "Grüninger & Fox source URL is a ResearchGate listing (not fetched). LOINC code in the SSSOM code example is illustrative; read note says to verify.",
+  "Dropped: ontologydesignpatterns.org activity claims beyond 'aging', LOV dataset path (404; root used)."
+ ]
+}

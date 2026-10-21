@@ -1,0 +1,2071 @@
+{
+ "id": "onto-rdf",
+ "no": "03",
+ "title": "RDF · RDFS · OWL · SPARQL · SHACL",
+ "short": "RDF 스택",
+ "q": "'뜻'을 기계가 읽게 적으려면, 어떤 표준으로 어떻게 쓰고 묻고 검사할까?",
+ "sub": "트리플 · IRI · Turtle · RDFS · OWL 2 · SPARQL · SHACL · SKOS · RDF 1.2",
+ "doc": "한빛 임상 어휘 RDF 설계서 v1",
+ "story": {
+  "title": "\"말로 정한 뜻을, 이제 파일로 적어 주세요\"",
+  "size": 40,
+  "body": [
+   "(가상 이야기) 02장에서 나는 '당뇨 환자'의 논리 정의와 TBox/ABox를 정리했어요. 지수 팀장이 말해요. \"좋아요. 이제 그걸 시스템이 읽게 표준으로 적어 주세요.\"",
+   "현우는 걱정해요. \"생년월일 없는 환자, 단위 없는 검사 결과가 매일 들어와요. 뜻을 적는 것만으로 이게 막히나요?\" 소라는 묻죠. \"우리 JSON API는 버려야 해요?\"",
+   "시작은 핵심 개념 40개예요. 이번 주에 IRI 규칙, Turtle 파일, OWL 정의, SPARQL 테스트, SHACL 검사를 한 번씩 만들어 보고, 금요일까지 '한빛 임상 어휘 RDF 설계서 v1'을 내야 해요."
+  ]
+ },
+ "goals": [
+  "트리플·IRI·리터럴로 병원 데이터를 Turtle과 JSON-LD로 적을 수 있어요.",
+  "RDFS·OWL 2 구성자와 프로필(EL/QL/RL)의 쓰임과 대가를 설명하고, SPARQL로 역량 질문을 테스트할 수 있어요.",
+  "OWL(추론)과 SHACL(검사)의 차이를 열린/닫힌 세계로 설명하고, SKOS·RDF 1.2를 언제 쓸지 판단할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "트리플: 주어 · 술어 · 목적어",
+   "lead": "RDF는 모든 사실을 '주어-술어-목적어' 세 칸짜리 문장(트리플)으로 적어요. 트리플이 모이면 그래프가 돼요.",
+   "idea": [
+    "'환자A는 약B를 처방받았다'를 RDF로 쓰면 (환자A, 처방받음, 약B) 세 칸이에요. 표의 한 줄에 여러 칸이 있던 것을 문장 하나하나로 쪼갠다고 보면 돼요.",
+    "주어와 목적어는 점(노드), 술어는 화살표(엣지)가 돼요. 그래서 트리플 묶음은 그대로 '방향 있는 이름표 그래프'예요.",
+    "왜 이렇게 잘게 쪼갤까요? 칸이 고정된 표와 달리, 새 종류의 사실이 생겨도 스키마를 바꾸지 않고 문장만 더하면 돼요. 서로 다른 출처의 트리플은 그냥 합치면 하나의 그래프가 돼요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 문장",
+     "t": "환자A 처방받음 약B"
+    },
+    {
+     "k": "2 · 쪼개기",
+     "t": "주어 / 술어 / 목적어"
+    },
+    {
+     "k": "3 · 합치기",
+     "t": "트리플 여러 개 = 그래프"
+    }
+   ],
+   "hear": [
+    "\"그거 트리플로 몇 개나 돼요?\"",
+    "\"테이블 한 줄이 트리플 여러 개로 풀려요.\""
+   ],
+   "ask": [
+    "이 사실의 주어는 누구(무엇)인가요?",
+    "같은 사실을 다른 시스템도 같은 술어로 쓰나요?"
+   ],
+   "mine": "EMR의 처방 한 줄(환자, 약, 용량, 날짜)은 트리플 여러 개가 돼요. 용량·날짜는 '처방'이라는 중간 노드에 붙여야 뜻이 섞이지 않아요.",
+   "deep": [
+    "RDF 1.1 Concepts는 RDF 그래프를 '트리플의 집합'으로 정의해요. 집합이라서 같은 트리플을 두 번 넣어도 하나예요(2014-02-25 권고)."
+   ],
+   "recall": {
+    "q": "RDF 사실 하나의 기본 단위는?",
+    "a": "트리플(주어, 술어, 목적어)"
+   },
+   "quiz": [
+    {
+     "q": "표의 한 줄 (환자, 약, 용량)을 RDF로 바꾸면 보통?",
+     "options": [
+      "트리플 1개",
+      "중간 노드를 둔 트리플 여러 개",
+      "리터럴 1개"
+     ],
+     "answer": 1,
+     "why": "값이 여러 개인 사건은 중간 노드(처방)를 두고 트리플로 풀어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    },
+    {
+     "title": "W3C RDF 1.1 Primer",
+     "url": "https://www.w3.org/TR/rdf11-primer/",
+     "date": "2014-06-24"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "IRI: 전 세계에서 하나뿐인 이름",
+   "lead": "RDF는 사물과 관계를 IRI(웹 주소 꼴 이름)로 불러요. 그래서 다른 시스템과 합쳐도 이름이 부딪치지 않아요.",
+   "idea": [
+    "'혈당'이라는 글자는 검사실마다 뜻이 조금씩 달라요. RDF는 https://hanbit.example/lab/Glucose 처럼 주소 꼴 이름을 붙여 '어느 혈당'인지 못 박아요.",
+    "IRI는 URI에 한글 같은 유니코드를 허용한 확장이에요. 주소처럼 생겼지만 꼭 열리는 웹페이지일 필요는 없어요. 다만 열면 설명이 나오게 하는 게 좋은 습관(Linked Data)이에요.",
+    "접두어(prefix)를 쓰면 짧게 써요. hb:Glucose = https://hanbit.example/lab/Glucose. 이름의 '주인'이 도메인으로 드러나니 책임도 분명해져요."
+   ],
+   "hear": [
+    "\"그 IRI 네임스페이스 누가 관리해요?\"",
+    "\"내부 코드 말고 IRI로 노출해 주세요.\""
+   ],
+   "ask": [
+    "IRI가 바뀌면 옛 이름은 어떻게 되나요?",
+    "외부 표준 IRI(예: LOINC)를 쓸 수 있나요?"
+   ],
+   "mine": "한빛병원은 https://data.hanbit.example/ 아래에 환자·검사·약 IRI 규칙을 정해요. 환자 번호를 그대로 IRI에 넣으면 개인정보가 새니 대리 키를 써요.",
+   "deep": [
+    "RDF 1.1에서 IRI는 RFC 3987을 따르고, 두 IRI는 글자 단위로 같아야 같은 IRI예요. 대소문자만 달라도 다른 이름이에요."
+   ],
+   "recall": {
+    "q": "IRI가 '혈당' 같은 글자보다 나은 점은?",
+    "a": "전 세계에서 하나뿐이라 합쳐도 뜻이 부딪치지 않아요."
+   },
+   "quiz": [
+    {
+     "q": "hb:glucose와 hb:Glucose는 RDF에서?",
+     "options": [
+      "같은 IRI",
+      "다른 IRI",
+      "추론기가 같다고 판단"
+     ],
+     "answer": 1,
+     "why": "IRI는 글자 그대로 비교해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    },
+    {
+     "title": "W3C RDF 1.1 Primer",
+     "url": "https://www.w3.org/TR/rdf11-primer/",
+     "date": "2014-06-24"
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "리터럴: 값에는 타입과 언어가 붙어요",
+   "lead": "목적어 자리에 숫자·날짜·글 같은 값을 둘 수 있어요. 이 값(리터럴)에는 데이터타입이나 언어 태그를 붙여요.",
+   "idea": [
+    "\"5.6\"^^xsd:decimal 은 숫자 5.6이고, \"5.6\" 은 그냥 글자예요. 타입이 없으면 정렬·비교가 엉뚱해져요.",
+    "\"당뇨\"@ko, \"diabetes\"@en 처럼 언어 태그를 붙이면 한 개념에 여러 언어 이름을 달 수 있어요.",
+    "리터럴은 주어가 될 수 없어요. 값 자체에 무언가를 더 말하고 싶으면(단위, 측정 시각) 그 값을 노드로 올려야 해요."
+   ],
+   "hear": [
+    "\"단위는 어디 붙여요?\"",
+    "\"날짜가 문자열로 들어와서 FILTER가 안 먹어요.\""
+   ],
+   "ask": [
+    "이 값은 비교·계산할 건가요?",
+    "단위를 값에 섞나요, 따로 두나요?"
+   ],
+   "mine": "검사 결과 5.6 mmol/L는 '결과' 노드를 두고 값(xsd:decimal)과 단위(UCUM 코드)를 따로 붙여요. '5.6 mmol/L'를 글자 하나로 넣으면 계산을 못 해요.",
+   "deep": [
+    "RDF 1.1에서 언어 태그가 붙은 리터럴의 타입은 rdf:langString이에요. 타입을 안 쓰면 xsd:string이에요."
+   ],
+   "recall": {
+    "q": "타입 없는 \"5.6\"의 문제는?",
+    "a": "글자라서 숫자 비교·정렬이 틀려요."
+   },
+   "quiz": [
+    {
+     "q": "'5.6 mmol/L'를 저장하는 좋은 방법은?",
+     "options": [
+      "글자 하나로",
+      "값 5.6(decimal)과 단위를 따로",
+      "단위는 버린다"
+     ],
+     "answer": 1,
+     "why": "값과 단위를 나눠야 계산과 변환이 돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "Turtle로 읽고 쓰기",
+   "lead": "Turtle은 사람이 읽기 쉬운 RDF 글쓰기 방식이에요. 세미콜론(;)은 '같은 주어', 쉼표(,)는 '같은 주어·술어'를 뜻해요.",
+   "idea": [
+    "트리플마다 끝에 마침표를 찍어요. 같은 주어로 이어 말하면 세미콜론, 목적어만 여러 개면 쉼표로 줄여요.",
+    "'a'는 rdf:type의 줄임말이에요. 'hb:p1 a hb:Patient'는 'p1은 환자다'예요.",
+    "Turtle 말고도 N-Triples(한 줄 한 트리플, 대량 적재용), JSON-LD(웹 개발자 친화), RDF/XML이 있어요. 모두 같은 그래프를 다르게 적은 것뿐이에요."
+   ],
+   "code": {
+    "lang": "turtle",
+    "text": "@prefix hb: <https://data.hanbit.example/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\nhb:p1 a hb:Patient ;\n  hb:birthDate \"1980-03-02\"^^xsd:date ;\n  hb:hasLabResult hb:r1 .\nhb:r1 hb:value 5.6 ; hb:unit \"mmol/L\" .",
+    "read": "1~2줄은 접두어. p1은 환자이고(a), 생일과 검사 결과 r1을 가져요(;). r1에는 값과 단위가 따로 붙어요. 5.6은 자동으로 xsd:decimal이에요."
+   },
+   "hear": [
+    "\"Turtle 파일로 먼저 리뷰하고 적재해요.\"",
+    "\"세미콜론 빠져서 파싱 에러 났어요.\""
+   ],
+   "ask": [
+    "이 파일의 @prefix는 어디 정의돼 있나요?",
+    "대량 적재는 N-Triples로 하나요?"
+   ],
+   "mine": "현우가 엑셀로 정리한 검사 코드 10개를 Turtle로 옮겨 Git에서 리뷰해요. 줄 단위 diff가 잘 보여요.",
+   "deep": [
+    "Turtle은 2014-02-25 W3C 권고가 됐어요. RDF 1.2용 Turtle은 2026-10 기준 작업 초안이에요."
+   ],
+   "recall": {
+    "q": "Turtle에서 'a'의 뜻은?",
+    "a": "rdf:type (~의 인스턴스다)"
+   },
+   "quiz": [
+    {
+     "q": "'hb:p1 hb:hasLab hb:l1, hb:l2 .'는 트리플 몇 개?",
+     "options": [
+      "1개",
+      "2개",
+      "3개"
+     ],
+     "answer": 1,
+     "why": "쉼표는 같은 주어·술어에 목적어를 더해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Turtle",
+     "url": "https://www.w3.org/TR/turtle/",
+     "date": "2014-02-25"
+    },
+    {
+     "title": "W3C RDF 1.2 Turtle (Working Draft)",
+     "url": "https://www.w3.org/TR/rdf12-turtle/",
+     "date": "2026-10-07"
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "빈 노드와 이름 붙은 그래프",
+   "lead": "이름(IRI) 없는 노드를 빈 노드라고 해요. 트리플 묶음에 이름을 붙이면 '어디서 온 사실인지'를 관리할 수 있어요.",
+   "idea": [
+    "빈 노드는 '어떤 것'이에요. 주소 같은 하위 구조를 잠깐 묶을 때 편해요. 하지만 바깥에서 가리킬 수 없고, 두 파일을 합칠 때 같은지 알 수 없어요.",
+    "데이터셋은 기본 그래프 하나와 이름 붙은 그래프 여러 개로 이뤄져요. 트리플에 '그래프 이름'이 하나 더 붙어 쿼드(4칸)가 돼요.",
+    "이름 붙은 그래프는 출처·버전·권한 단위로 쓰기 좋아요. '검사실 시스템에서 온 사실', '어제 적재분'처럼요."
+   ],
+   "hear": [
+    "\"빈 노드 쓰지 말고 IRI 발급해요.\"",
+    "\"이건 graph 별로 지우고 다시 넣으면 돼요.\""
+   ],
+   "ask": [
+    "이 노드를 나중에 밖에서 가리킬 일이 있나요?",
+    "출처별로 그래프를 나눌까요?"
+   ],
+   "mine": "약제부·검사실·EMR에서 오는 트리플을 각자 이름 붙은 그래프에 넣어요. 잘못 들어온 배치는 그래프째 지우고 다시 넣어요.",
+   "deep": [
+    "RDF 1.1 Concepts는 데이터셋을 '기본 그래프 1개 + 이름 붙은 그래프 0개 이상'으로 정의해요. 빈 노드 식별자는 그 문서 안에서만 의미가 있어요."
+   ],
+   "recall": {
+    "q": "쿼드의 네 번째 칸은?",
+    "a": "트리플이 속한 그래프 이름"
+   },
+   "quiz": [
+    {
+     "q": "여러 기관 데이터를 합칠 때 빈 노드의 약점은?",
+     "options": [
+      "너무 빠르다",
+      "같은 것인지 판단할 수 없다",
+      "리터럴이 된다"
+     ],
+     "answer": 1,
+     "why": "이름이 없으니 합칠 때 같은 노드인지 알 수 없어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "RDFS: 클래스와 하위 클래스",
+   "lead": "RDFS는 '종류'를 말하는 최소한의 어휘예요. rdfs:subClassOf로 '당뇨는 대사질환의 하위 종류'라고 적으면, 추론기가 사실을 더해 줘요.",
+   "idea": [
+    "rdfs:Class, rdfs:subClassOf, rdfs:subPropertyOf, rdfs:domain, rdfs:range, rdfs:label 정도가 핵심이에요.",
+    "'제2형당뇨 ⊑ 당뇨 ⊑ 대사질환'이면, 제2형당뇨 환자는 자동으로 대사질환 환자 목록에도 나와요. 사람이 매번 두 번 적지 않아도 돼요.",
+    "RDFS에는 '아니다'(부정)나 '정확히 하나' 같은 말이 없어요. 그래서 모순이 생기지 않는 대신 표현력이 약해요."
+   ],
+   "hear": [
+    "\"subClassOf 걸어 두면 상위 클래스로도 검색돼요.\"",
+    "\"RDFS만으로 충분할까요, OWL까지 갈까요?\""
+   ],
+   "ask": [
+    "이 분류는 '종류'인가요, '부분'인가요?",
+    "하위 클래스 질의가 필요한 화면이 있나요?"
+   ],
+   "mine": "02장의 TBox를 RDFS로 옮겨요. 진단 분류는 subClassOf, '주치의' 같은 관계는 subPropertyOf(담당의의 하위)로 적어요.",
+   "deep": [
+    "RDF Schema 1.1(2014-02-25)은 rdfs:subClassOf가 전이적이라는 의미 규칙을 정해요. A⊑B, B⊑C면 A⊑C예요."
+   ],
+   "recall": {
+    "q": "RDFS에 없는 표현은?",
+    "a": "부정, 개수 제한(정확히 하나) 같은 것"
+   },
+   "quiz": [
+    {
+     "q": "'간호사 subClassOf 직원'이고 '김씨 a 간호사'면 추론되는 것은?",
+     "options": [
+      "김씨 a 직원",
+      "직원 a 간호사",
+      "아무것도 없다"
+     ],
+     "answer": 0,
+     "why": "인스턴스는 상위 클래스의 인스턴스이기도 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF Schema 1.1",
+     "url": "https://www.w3.org/TR/rdf11-schema/",
+     "date": "2014-02-25"
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "domain · range는 검사가 아니라 추론이에요",
+   "lead": "rdfs:range xsd:date라고 써도 잘못된 값을 막아 주지 않아요. 대신 '그렇다면 이건 날짜겠군' 하고 새 사실을 추론해요.",
+   "idea": [
+    "hb:prescribedBy의 domain이 hb:Prescription이면, 'X prescribedBy Y'를 본 추론기는 'X는 처방이다'를 더해요. 틀렸다고 알려 주지 않아요.",
+    "그래서 domain을 너무 좁게 걸면 엉뚱한 것(환자)이 처방으로 분류되는 사고가 나요. 이게 열린 세계 가정(02장)이 실제로 보이는 장면이에요.",
+    "'값이 꼭 날짜여야 한다'는 검사가 필요하면 SHACL(Day 5)을 써요. 이 차이를 모르면 RDFS를 스키마 검증기로 착각해요."
+   ],
+   "hear": [
+    "\"range 걸었는데 왜 에러가 안 나요?\"",
+    "\"domain 때문에 환자가 처방 클래스로 추론됐어요.\""
+   ],
+   "ask": [
+    "이 domain은 추론을 위해서인가요, 검사를 위해서인가요?",
+    "이 속성을 다른 클래스도 쓰게 될까요?"
+   ],
+   "mine": "소라가 'range 걸었으니 입력 검사는 끝'이라고 해요. 나는 range는 추론용이고 입력 검사는 SHACL로 따로 한다고 설명해요.",
+   "deep": [
+    "RDFS 1.1 의미 규칙(rdfs2, rdfs3)은 domain/range에서 rdf:type 트리플을 '이끌어 내는' 규칙이에요. 금지 규칙이 아니에요."
+   ],
+   "recall": {
+    "q": "rdfs:range의 실제 효과는?",
+    "a": "목적어의 타입을 추론해 더해요(막지 않아요)."
+   },
+   "quiz": [
+    {
+     "q": "domain이 Prescription인 속성을 환자 노드에 잘못 쓰면?",
+     "options": [
+      "에러",
+      "환자가 Prescription으로도 추론됨",
+      "트리플이 지워짐"
+     ],
+     "answer": 1,
+     "why": "RDFS는 거부하지 않고 추론해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF Schema 1.1",
+     "url": "https://www.w3.org/TR/rdf11-schema/",
+     "date": "2014-02-25"
+    },
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "JSON-LD: 개발자 JSON에 뜻을 붙이기",
+   "lead": "JSON-LD는 평범한 JSON에 @context를 붙여 키를 IRI로 바꿔요. 웹 개발자는 JSON처럼 쓰고, 기계는 RDF로 읽어요.",
+   "idea": [
+    "{\"@context\": ..., \"name\": \"홍길동\"}에서 context가 'name = https://schema.org/name'이라고 알려 줘요.",
+    "검색엔진 구조화 데이터(schema.org)가 대부분 JSON-LD로 쓰여요. 그래서 RDF를 몰라도 많은 웹사이트가 이미 RDF를 내보내고 있어요.",
+    "단점: context가 바뀌면 같은 JSON의 뜻이 바뀌어요. context 버전 관리를 꼭 해야 해요."
+   ],
+   "hear": [
+    "\"API 응답에 @context만 붙이면 돼요?\"",
+    "\"context 파일 캐싱 안 하면 느려요.\""
+   ],
+   "ask": [
+    "context는 어디에 두고 누가 버전 관리하나요?",
+    "기존 API 키 이름을 바꾸지 않아도 되나요?"
+   ],
+   "mine": "소라의 백엔드 API는 이미 JSON이에요. @context만 붙여 '환자 요약' 응답을 RDF로도 읽히게 만들어요. 키 이름은 그대로 둬요.",
+   "deep": [
+    "JSON-LD 1.1은 2020-07-16 W3C 권고예요. RDF 데이터셋과 서로 바꿀 수 있게 정의돼 있어요."
+   ],
+   "recall": {
+    "q": "JSON-LD에서 키에 뜻을 붙이는 장치는?",
+    "a": "@context"
+   },
+   "quiz": [
+    {
+     "q": "JSON-LD의 가장 큰 장점은?",
+     "options": [
+      "추론이 빨라짐",
+      "기존 JSON 개발 흐름을 유지하며 RDF가 됨",
+      "SQL로 바뀜"
+     ],
+     "answer": 1,
+     "why": "개발자 습관을 거의 안 바꿔요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C JSON-LD 1.1",
+     "url": "https://www.w3.org/TR/json-ld11/",
+     "date": "2020-07-16"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "OWL 2: 클래스를 '조건'으로 정의하기",
+   "lead": "OWL은 RDFS 위에 '모든', '어떤', '정확히 n개', '아니다' 같은 논리 말을 더해요. 그래서 클래스를 조건으로 정의하고 자동 분류할 수 있어요.",
+   "idea": [
+    "'당뇨 환자 ≡ 환자 그리고 (진단 some 당뇨)'라고 정의하면, 진단에 당뇨가 있는 환자는 따로 적지 않아도 당뇨 환자로 분류돼요.",
+    "주요 구성자: owl:equivalentClass, owl:intersectionOf, owl:someValuesFrom(어떤 ~이 있다), owl:allValuesFrom(있다면 모두 ~), owl:qualifiedCardinality(정확히 n), owl:disjointWith(겹치지 않음).",
+    "someValuesFrom은 '하나라도 있다', allValuesFrom은 '있다면 전부 ~'예요. allValuesFrom은 값이 하나도 없어도 참이 돼서 자주 헷갈려요."
+   ],
+   "code": {
+    "lang": "turtle",
+    "text": "hb:DiabeticPatient owl:equivalentClass [\n  owl:intersectionOf ( hb:Patient\n    [ a owl:Restriction ;\n      owl:onProperty hb:hasDiagnosis ;\n      owl:someValuesFrom hb:Diabetes ] ) ] .",
+    "read": "당뇨 환자 = 환자이면서, hasDiagnosis로 이어진 것 중 당뇨가 하나라도 있는 것. ≡이라서 조건을 채우면 추론기가 자동으로 분류해요."
+   },
+   "hear": [
+    "\"그건 equivalentClass로 정의 클래스 만들어요.\"",
+    "\"disjoint 걸었더니 불일치 나왔어요.\""
+   ],
+   "ask": [
+    "이건 필요조건(⊑)인가요, 필요충분조건(≡)인가요?",
+    "disjoint를 걸 만큼 확실한가요?"
+   ],
+   "mine": "'고위험 낙상 환자'를 '낙상 점수 45 이상이거나 진정제 복용 중인 입원 환자'로 정의해 자동 분류해요. 숫자 조건은 데이터 범위 제약으로 써요.",
+   "deep": [
+    "OWL 2는 2009년 권고, 2012-12-11에 2판이 나왔어요. OWL 2 DL의 바탕은 기술 논리 SROIQ(D)예요."
+   ],
+   "recall": {
+    "q": "someValuesFrom과 allValuesFrom의 차이는?",
+    "a": "'하나라도 있다' vs '있다면 모두'"
+   },
+   "quiz": [
+    {
+     "q": "'진단 only 당뇨'(allValuesFrom)는 진단이 하나도 없는 환자에게?",
+     "options": [
+      "거짓",
+      "참",
+      "에러"
+     ],
+     "answer": 1,
+     "why": "값이 없으면 '모두 ~'는 공허하게 참이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "W3C OWL 2 Web Ontology Language Document Overview (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-overview/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "OWL 속성의 성질: 전이 · 역 · 함수",
+   "lead": "속성에도 성질을 줄 수 있어요. '부분이다'는 전이적, '담당한다/담당받는다'는 서로 역, '생년월일'은 함수적(값 하나)이에요.",
+   "idea": [
+    "전이적(Transitive): 손가락 partOf 손, 손 partOf 팔 → 손가락 partOf 팔.",
+    "역(inverseOf): '주치의'와 '담당환자'를 역으로 걸면 한쪽만 적어도 다른 쪽을 물을 수 있어요.",
+    "함수적(Functional): 값이 하나뿐이에요. 그런데 OWL은 이름이 달라도 같은 것일 수 있다고 봐요(고유 이름 가정 없음). 그래서 생일이 두 개 들어오면 '에러'가 아니라 '두 날짜가 같은 것'이라고 추론하려다 리터럴이면 모순이 나요."
+   ],
+   "hear": [
+    "\"partOf에 transitive 걸면 해부학 질의가 쉬워져요.\"",
+    "\"functional인데 값이 두 개 들어왔어요.\""
+   ],
+   "ask": [
+    "이 속성은 정말 전이적인가요? (친구의 친구는 친구가 아니죠)",
+    "역 속성을 따로 저장할 필요가 있나요?"
+   ],
+   "mine": "해부학 위치(SNOMED식 '부위')는 partOf를 전이적으로, '주치의'는 '담당환자'의 역으로 정의해요.",
+   "deep": [
+    "OWL 2 Primer는 속성 특성으로 transitive, symmetric, asymmetric, reflexive, irreflexive, functional, inverse functional을 소개해요."
+   ],
+   "recall": {
+    "q": "OWL에서 functional 속성에 서로 다른 IRI 두 개가 값으로 오면?",
+    "a": "오류가 아니라 두 IRI가 같은 것이라고 추론해요."
+   },
+   "quiz": [
+    {
+     "q": "전이적으로 두면 안 되는 속성은?",
+     "options": [
+      "partOf",
+      "ancestorOf",
+      "friendOf"
+     ],
+     "answer": 2,
+     "why": "친구의 친구가 친구라는 보장은 없어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "OWL 2 프로필: EL · QL · RL",
+   "lead": "OWL 2 전체는 추론이 매우 무거워요. 그래서 일부 표현을 포기하고 빠르게 만든 세 가지 '프로필'이 있어요.",
+   "idea": [
+    "EL: 존재 제한(some)과 교집합 위주. 큰 분류 체계를 다항 시간에 분류해요. 거대한 의학 용어 체계에 맞아요.",
+    "QL: 질의를 SQL로 다시 써서 관계형 DB 위에서 바로 답해요(데이터를 옮기지 않는 OBDA).",
+    "RL: 규칙(if-then)으로 구현해 트리플 저장소 안에서 추론해요. 'A면 B를 더한다'를 반복해요.",
+    "고르는 기준은 '무엇을 포기해도 되나'예요. 표현력과 속도는 맞바꿈이에요."
+   ],
+   "hear": [
+    "\"그 온톨로지 EL 범위 넘어가면 ELK가 못 돌려요.\"",
+    "\"DB 그대로 두고 QL로 가상 그래프 만들죠.\""
+   ],
+   "ask": [
+    "우리 추론에 꼭 필요한 구성자는 무엇인가요?",
+    "데이터는 어디 그대로 남겨야 하나요?"
+   ],
+   "mine": "진단 분류(수십만 개념)는 EL, EMR 테이블 위 실시간 질의는 QL, 적재 때 규칙 추론은 RL로 나눠 써요.",
+   "deep": [
+    "OWL 2 Profiles 문서는 EL·QL·RL의 핵심 추론 문제가 다항 시간(QL은 데이터 크기에 대해 LOGSPACE 질의 응답)이라고 밝혀요. OWL 2 DL 전체는 N2EXPTIME-complete예요."
+   ],
+   "recall": {
+    "q": "DB를 옮기지 않고 SQL로 다시 써서 답하는 프로필은?",
+    "a": "OWL 2 QL"
+   },
+   "quiz": [
+    {
+     "q": "수십만 개 분류 개념을 빠르게 분류하려면?",
+     "options": [
+      "EL",
+      "QL",
+      "OWL 2 Full"
+     ],
+     "answer": 0,
+     "why": "EL은 큰 분류 체계용이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Profiles (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-profiles/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "owl:sameAs는 강력하고 위험해요",
+   "lead": "sameAs는 '두 IRI는 완전히 같은 것'이라는 뜻이에요. 한 번 걸면 한쪽의 모든 사실이 다른 쪽에도 붙어요.",
+   "idea": [
+    "병원 A의 환자 IRI와 병원 B의 환자 IRI에 sameAs를 걸면, 두 쪽 사실이 전부 합쳐져요. 하나라도 틀린 연결이면 다른 사람 병력이 섞여요.",
+    "sameAs는 전이적이라 A=B, B=C면 A=C예요. 작은 실수가 사슬처럼 번져요.",
+    "'비슷함'이나 '거의 같음'은 skos:closeMatch/exactMatch처럼 약한 연결로 두고, 근거와 함께 관리하는 게 안전해요."
+   ],
+   "hear": [
+    "\"sameAs 하나 잘못 걸어서 그래프가 오염됐어요.\"",
+    "\"매핑은 exactMatch로 두고 추론엔 안 써요.\""
+   ],
+   "ask": [
+    "이 두 개는 정말 '모든 면에서' 같은가요?",
+    "연결 근거와 신뢰도를 어디 남기나요?"
+   ],
+   "mine": "외부 의뢰 병원의 환자를 우리 환자와 잇을 때 sameAs를 바로 쓰지 않아요. 후보 연결과 근거를 따로 저장하고 사람이 확인해요(04장 엔터티 해소).",
+   "deep": [
+    "OWL 2 Primer는 sameAs가 두 개체가 같다는 뜻이라고 설명해요. Halpin et al.(2010, 'When owl:sameAs isn't the same')은 Linked Data에서 sameAs 오용을 분석했어요."
+   ],
+   "recall": {
+    "q": "sameAs가 위험한 이유는?",
+    "a": "모든 사실이 합쳐지고 전이적으로 번져서"
+   },
+   "quiz": [
+    {
+     "q": "'비슷한 개념'을 연결할 때 더 안전한 것은?",
+     "options": [
+      "owl:sameAs",
+      "skos:closeMatch",
+      "rdf:type"
+     ],
+     "answer": 1,
+     "why": "closeMatch는 논리적 합치기를 일으키지 않아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "W3C SKOS Simple Knowledge Organization System Reference",
+     "url": "https://www.w3.org/TR/skos-reference/",
+     "date": "2009-08-18"
+    },
+    {
+     "title": "Halpin et al., When owl:sameAs isn't the Same (ISWC 2010)",
+     "url": "https://doi.org/10.1007/978-3-642-17746-0_20",
+     "date": "2010"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "SPARQL: 그래프에 패턴으로 묻기",
+   "lead": "SPARQL은 '이런 모양의 트리플을 찾아 줘'라고 묻는 언어예요. 물음표 변수에 맞는 값이 결과 표로 나와요.",
+   "idea": [
+    "WHERE 안에 Turtle 같은 패턴을 적고, 모르는 칸을 ?변수로 비워요. 저장소는 패턴에 맞는 모든 조합을 찾아요.",
+    "패턴을 여러 줄 쓰면 같은 변수끼리 이어져요. SQL의 JOIN을 변수 이름 공유로 하는 셈이에요.",
+    "결과는 표(SELECT), 새 그래프(CONSTRUCT), 예/아니오(ASK), 설명(DESCRIBE) 네 가지 꼴이에요."
+   ],
+   "code": {
+    "lang": "sparql",
+    "text": "PREFIX hb: <https://data.hanbit.example/>\nSELECT ?p ?name WHERE {\n  ?p a hb:Patient ; hb:name ?name ;\n     hb:hasDiagnosis ?d ; hb:takes hb:Metformin .\n  ?d a hb:Diabetes .\n}",
+    "read": "환자 ?p 중 이름이 있고, 진단 ?d가 당뇨이며, 메트포르민을 먹는 사람을 찾아 이름을 표로 내요. ?p와 ?d가 패턴을 잇는 고리예요."
+   },
+   "hear": [
+    "\"SPARQL 엔드포인트로 열어 드릴게요.\"",
+    "\"변수 이름 하나 오타라서 결과가 0건이에요.\""
+   ],
+   "ask": [
+    "이 질문은 몇 개의 트리플 패턴으로 쪼개지나요?",
+    "결과가 표가 필요한가요, 그래프가 필요한가요?"
+   ],
+   "mine": "역량 질문 '메트포르민을 복용 중인 당뇨 환자는?'을 SPARQL로 옮겨 테스트로 저장해요.",
+   "deep": [
+    "SPARQL 1.1은 2013-03-21에 11개 문서 묶음으로 권고됐어요(질의, 업데이트, 연합 질의 등). SPARQL 1.2는 2026-10 기준 작업 초안이에요."
+   ],
+   "recall": {
+    "q": "SPARQL에서 JOIN 역할을 하는 것은?",
+    "a": "패턴끼리 같은 변수 이름을 공유하는 것"
+   },
+   "quiz": [
+    {
+     "q": "예/아니오만 필요할 때 쓰는 질의 꼴은?",
+     "options": [
+      "SELECT",
+      "ASK",
+      "CONSTRUCT"
+     ],
+     "answer": 1,
+     "why": "ASK는 참/거짓만 돌려줘요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C SPARQL 1.1 Query Language",
+     "url": "https://www.w3.org/TR/sparql11-query/",
+     "date": "2013-03-21"
+    },
+    {
+     "title": "W3C SPARQL 1.1 Overview",
+     "url": "https://www.w3.org/TR/sparql11-overview/",
+     "date": "2013-03-21"
+    },
+    {
+     "title": "W3C SPARQL 1.2 Query Language (Working Draft)",
+     "url": "https://www.w3.org/TR/sparql12-query/",
+     "date": "2026-10-11"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "OPTIONAL · FILTER · 집계",
+   "lead": "실제 데이터는 비어 있는 칸이 많아요. OPTIONAL은 '있으면 붙이고 없어도 줄은 남겨', FILTER는 조건 거르기, GROUP BY는 세기예요.",
+   "idea": [
+    "OPTIONAL이 없으면 알레르기 정보가 없는 환자는 결과에서 통째로 빠져요. SQL의 LEFT JOIN과 같아요.",
+    "FILTER(?v > 7.0)처럼 값 조건을 걸어요. 리터럴 타입이 틀리면(글자 \"7.5\") 비교가 안 돼 조용히 빠져요.",
+    "FILTER NOT EXISTS { ... }로 '없는 것'을 찾아요. 단 열린 세계에서는 '적혀 있지 않다'일 뿐 '사실이 아니다'는 아니에요."
+   ],
+   "hear": [
+    "\"OPTIONAL 빼먹어서 환자 수가 줄었어요.\"",
+    "\"NOT EXISTS 결과는 '기록 없음'으로 표기해요.\""
+   ],
+   "ask": [
+    "비어 있는 값은 결과에서 빠져야 하나요?",
+    "'없음'이 '기록 안 됨'인지 '검사 음성'인지 구분되나요?"
+   ],
+   "mine": "'HbA1c 7.0 초과 환자 수를 병동별로' 질의에 GROUP BY와 COUNT를 써요. 알레르기 미기록 환자는 '음성'이 아니라 '미기록'으로 보여요.",
+   "deep": [
+    "SPARQL 1.1에서 집계(COUNT, SUM, AVG, GROUP_CONCAT 등), 하위 질의, 속성 경로(hb:partOf+)가 추가됐어요."
+   ],
+   "recall": {
+    "q": "OPTIONAL은 SQL의 무엇과 비슷한가요?",
+    "a": "LEFT (OUTER) JOIN"
+   },
+   "quiz": [
+    {
+     "q": "FILTER NOT EXISTS로 찾은 '알레르기 없음' 환자는 정확히?",
+     "options": [
+      "알레르기가 없는 환자",
+      "알레르기 기록이 없는 환자",
+      "에러"
+     ],
+     "answer": 1,
+     "why": "기록이 없을 뿐이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C SPARQL 1.1 Query Language",
+     "url": "https://www.w3.org/TR/sparql11-query/",
+     "date": "2013-03-21"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "CONSTRUCT · UPDATE · SERVICE",
+   "lead": "SPARQL은 묻기만 하지 않아요. CONSTRUCT로 새 그래프를 만들고, UPDATE로 고치고, SERVICE로 다른 저장소에 함께 물어요.",
+   "idea": [
+    "CONSTRUCT는 결과를 트리플로 내요. 내부 모델을 외부 표준 모양으로 바꿀 때 써요.",
+    "SPARQL Update의 INSERT/DELETE ... WHERE로 패턴에 맞는 트리플을 한꺼번에 바꿔요.",
+    "SERVICE <엔드포인트> { ... }는 연합 질의예요. 데이터를 옮기지 않고 두 곳을 이어 묻지만, 네트워크가 느리면 전체가 느려져요."
+   ],
+   "hear": [
+    "\"외부 엔드포인트 SERVICE로 붙였더니 타임아웃 나요.\"",
+    "\"CONSTRUCT로 FHIR 모양 그래프를 뽑죠.\""
+   ],
+   "ask": [
+    "연합 질의 대상이 내려가면 어떻게 되나요?",
+    "UPDATE 권한은 누가 갖나요?"
+   ],
+   "mine": "약제 그래프를 CONSTRUCT로 표준 어휘 모양으로 바꿔 외부 연구팀에 내보내요. UPDATE 권한은 데이터팀 계정만 가져요.",
+   "deep": [
+    "SPARQL 1.1 Federated Query와 Update는 2013-03-21 권고 묶음에 포함돼요."
+   ],
+   "recall": {
+    "q": "다른 엔드포인트와 함께 묻는 키워드는?",
+    "a": "SERVICE"
+   },
+   "quiz": [
+    {
+     "q": "내부 모델을 외부 표준 모양 그래프로 바꾸는 데 알맞은 것은?",
+     "options": [
+      "ASK",
+      "CONSTRUCT",
+      "DESCRIBE"
+     ],
+     "answer": 1,
+     "why": "CONSTRUCT가 새 트리플을 만들어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C SPARQL 1.1 Overview",
+     "url": "https://www.w3.org/TR/sparql11-overview/",
+     "date": "2013-03-21"
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "추론을 켠 질의: 엔테일먼트 체제",
+   "lead": "같은 SPARQL이라도 저장소가 추론을 켜는지에 따라 답이 달라져요. '어떤 의미 규칙으로 답하나'를 정해 둔 것이 엔테일먼트 체제예요.",
+   "idea": [
+    "추론을 끄면 적힌 트리플만 나와요. RDFS 체제를 켜면 subClassOf로 이끌어 낸 사실도 나와요.",
+    "추론 방법은 두 가지예요. 적재 때 미리 계산해 저장(물질화: 질의 빠름, 저장 큼)하거나, 질의 때 다시 써서 계산(질의 느림, 항상 최신)해요.",
+    "어떤 쪽이든 '이 화면은 추론 결과를 보여 준다'를 사용자에게 알려야 해요. 의료에서는 근거 추적이 중요해요."
+   ],
+   "hear": [
+    "\"추론 켜니까 결과가 3배 늘었어요.\"",
+    "\"물질화해 두면 삭제할 때가 골치예요.\""
+   ],
+   "ask": [
+    "이 답은 적힌 사실인가요, 추론된 사실인가요?",
+    "원천 데이터가 지워지면 추론된 사실도 지워지나요?"
+   ],
+   "mine": "AI 비서가 '당뇨 환자 목록'을 답할 때, 하위 분류(제2형 등)까지 포함하려면 추론을 켜야 해요. 근거로 '어느 규칙으로 포함됐는지'를 함께 보여요.",
+   "deep": [
+    "SPARQL 1.1 Entailment Regimes는 RDF, RDFS, D, OWL 2 RDF-Based/Direct, RIF 체제를 정의해요."
+   ],
+   "recall": {
+    "q": "물질화의 장단점은?",
+    "a": "질의는 빠르지만 저장이 커지고 삭제·갱신이 어려워요."
+   },
+   "quiz": [
+    {
+     "q": "추론을 끈 저장소에서 '대사질환 환자'를 물으면 제2형당뇨로만 적힌 환자는?",
+     "options": [
+      "나온다",
+      "안 나온다",
+      "에러"
+     ],
+     "answer": 1,
+     "why": "subClassOf 추론을 안 하니 안 나와요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C SPARQL 1.1 Entailment Regimes",
+     "url": "https://www.w3.org/TR/sparql11-entailment/",
+     "date": "2013-03-21"
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "SHACL: 데이터의 모양 검사",
+   "lead": "SHACL은 '환자는 생년월일이 정확히 하나, 날짜 타입이어야 한다' 같은 규칙(셰이프)을 적고, 데이터가 지키는지 검사해 보고서를 내요.",
+   "idea": [
+    "셰이프는 '대상(누구를 검사)'과 '제약(무엇을 검사)'으로 이뤄져요. sh:targetClass hb:Patient + sh:property [ sh:path hb:birthDate ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:date ].",
+    "결과는 검증 보고서(그 자체도 RDF)예요. 어느 노드가, 어느 경로에서, 무슨 규칙을 어겼는지 나와요. 심각도(Violation/Warning/Info)도 붙일 수 있어요.",
+    "적재 파이프라인에 넣으면 '깨진 데이터는 들어오지 못하게' 막을 수 있어요."
+   ],
+   "code": {
+    "lang": "turtle",
+    "text": "hb:PatientShape a sh:NodeShape ;\n  sh:targetClass hb:Patient ;\n  sh:property [ sh:path hb:birthDate ;\n    sh:minCount 1 ; sh:maxCount 1 ;\n    sh:datatype xsd:date ;\n    sh:severity sh:Violation ] .",
+    "read": "Patient 인스턴스마다 birthDate가 1개 이상 1개 이하(=정확히 1개), 날짜 타입이어야 해요. 어기면 Violation으로 보고해요."
+   },
+   "hear": [
+    "\"SHACL 리포트에 위반 230건 떴어요.\"",
+    "\"이건 Warning으로 내려서 적재는 허용해요.\""
+   ],
+   "ask": [
+    "이 규칙을 어기면 적재를 막나요, 경고만 하나요?",
+    "보고서는 누가 받아서 고치나요?"
+   ],
+   "mine": "현우가 걱정한 '생년월일 없는 환자'를 SHACL 셰이프로 잡아요. 위반 노드 목록이 원무팀에 가요.",
+   "deep": [
+    "SHACL은 2017-07-20 W3C 권고예요. SHACL Core와 SHACL-SPARQL(SPARQL로 규칙 쓰기) 두 부분이 있어요. SHACL 1.2 Core는 2026-10 기준 작업 초안이에요."
+   ],
+   "recall": {
+    "q": "SHACL 셰이프의 두 부분은?",
+    "a": "대상 선언(target)과 제약(constraint)"
+   },
+   "quiz": [
+    {
+     "q": "SHACL 검증 보고서의 형식은?",
+     "options": [
+      "PDF",
+      "RDF 그래프",
+      "SQL 테이블"
+     ],
+     "answer": 1,
+     "why": "보고서도 RDF라 질의할 수 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    },
+    {
+     "title": "W3C SHACL 1.2 Core (Working Draft)",
+     "url": "https://www.w3.org/TR/shacl12-core/",
+     "date": "2026-10-14"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "왜 OWL이 있는데 SHACL이 따로 필요할까",
+   "lead": "OWL은 열린 세계에서 '새 사실을 추론'하고, SHACL은 닫힌 세계처럼 '있는 데이터를 검사'해요. 목적이 반대라서 둘 다 필요해요.",
+   "idea": [
+    "OWL로 '환자는 생년월일이 최소 1개'라고 써도, 생일이 없는 환자를 보면 추론기는 '어딘가 있겠지(모를 뿐)'라고 봐요. 오류를 내지 않아요.",
+    "OWL은 고유 이름 가정도 없어서, '최대 1개'인데 두 값이 오면 '둘이 같은 것'으로 합치려 해요. 데이터 품질 검사로는 엉뚱한 행동이에요.",
+    "SHACL은 '적힌 것만 본다'예요. 없으면 없다고, 두 개면 두 개라고 보고해요. 입력 검사·API 계약에 맞아요.",
+    "정리: 뜻과 분류는 OWL, 데이터 품질과 계약은 SHACL. 같은 클래스에 둘을 다 쓰되 역할을 섞지 않아요."
+   ],
+   "hear": [
+    "\"OWL cardinality로 검증하려다 안 돼서 SHACL 붙였어요.\"",
+    "\"온톨로지는 OWL, 데이터 계약은 SHACL로 나눠요.\""
+   ],
+   "ask": [
+    "이 규칙의 목적은 '알아내기'인가요, '막기'인가요?",
+    "같은 제약을 두 곳에 중복으로 쓰고 있지 않나요?"
+   ],
+   "mine": "지수 팀장에게 한 장으로 설명해요. '진단 분류 자동화 = OWL, 생년월일 누락 차단 = SHACL'. 서로 대신할 수 없어요.",
+   "deep": [
+    "SHACL 명세는 검증이 데이터 그래프에 실제로 있는 트리플만으로 이뤄진다고 정의해요. Validating RDF Data(2017)는 OWL과 SHACL/ShEx의 이 차이를 장으로 다뤄요."
+   ],
+   "recall": {
+    "q": "OWL이 생년월일 없는 환자를 오류로 보지 않는 이유는?",
+    "a": "열린 세계 가정: 적혀 있지 않으면 '모름'이니까요."
+   },
+   "quiz": [
+    {
+     "q": "'최대 1개'인 속성에 다른 IRI 두 개가 왔을 때 OWL 추론기는?",
+     "options": [
+      "위반 보고",
+      "두 IRI가 같다고 추론",
+      "트리플 삭제"
+     ],
+     "answer": 1,
+     "why": "고유 이름 가정이 없어 같다고 봐요. 검사는 SHACL로 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    },
+    {
+     "title": "Labra Gayo et al., Validating RDF Data (book, online)",
+     "url": "https://book.validatingrdf.com/",
+     "date": "2017"
+    },
+    {
+     "title": "W3C OWL 2 Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "SKOS: 분류표 · 용어집을 가볍게",
+   "lead": "SKOS는 '넓은 개념/좁은 개념/관련 개념'과 '대표 이름/다른 이름'만으로 용어 체계를 적는 가벼운 어휘예요. 논리 추론보다 검색·탐색용이에요.",
+   "idea": [
+    "skos:Concept, skos:broader, skos:narrower, skos:related, skos:prefLabel, skos:altLabel이 핵심이에요.",
+    "broader는 subClassOf와 달라요. '심장내과 broader 내과'는 탐색 관계일 뿐, 심장내과 소속 의사가 자동으로 내과 인스턴스가 되지 않아요.",
+    "기존 시소러스(MeSH 같은 것)나 사내 용어집을 OWL로 무리하게 바꾸기보다 SKOS로 먼저 올리면 싸고 빨라요."
+   ],
+   "hear": [
+    "\"그건 SKOS로 충분해요, OWL까지 안 가도 돼요.\"",
+    "\"altLabel에 약어 다 넣어 주세요.\""
+   ],
+   "ask": [
+    "이 위계는 논리적 '종류'인가요, 탐색용 '묶음'인가요?",
+    "다른 용어 체계와 매핑이 필요한가요?"
+   ],
+   "mine": "병원 내부 약어집('DM'=당뇨, 'HTN'=고혈압)을 SKOS altLabel로 올려 AI 비서가 약어를 알아듣게 해요.",
+   "deep": [
+    "SKOS Reference는 2009-08-18 W3C 권고예요. skos:broader는 전이적이 아니고, 전이적 버전은 skos:broaderTransitive예요."
+   ],
+   "recall": {
+    "q": "skos:broader와 rdfs:subClassOf의 차이는?",
+    "a": "broader는 탐색 관계, subClassOf는 인스턴스 상속을 일으키는 논리 관계"
+   },
+   "quiz": [
+    {
+     "q": "약어 'DM'을 넣기 알맞은 곳은?",
+     "options": [
+      "skos:prefLabel",
+      "skos:altLabel",
+      "rdfs:range"
+     ],
+     "answer": 1,
+     "why": "다른 이름(동의어·약어)은 altLabel이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C SKOS Simple Knowledge Organization System Reference",
+     "url": "https://www.w3.org/TR/skos-reference/",
+     "date": "2009-08-18"
+    },
+    {
+     "title": "W3C SKOS Primer",
+     "url": "https://www.w3.org/TR/skos-primer/",
+     "date": "2009-08-18"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "RDF 1.2: 문장에 대한 문장(트리플 텀)",
+   "lead": "'이 진단은 김 교수가 2026-10-01에 내렸다'처럼 사실 자체에 출처나 확신도를 붙이고 싶을 때가 많아요. RDF 1.2는 트리플을 다른 트리플의 목적어로 쓰는 '트리플 텀'을 더해요.",
+   "idea": [
+    "RDF 1.1에서는 사실에 메타데이터를 붙이려면 rdf:Statement로 4줄을 쓰는 '구체화(reification)'를 해야 했어요. 길고 쓰기 불편했어요.",
+    "RDF 1.2에서는 트리플을 하나의 값처럼 다뤄 그 위에 말을 걸 수 있어요. 속성 그래프의 '엣지 속성'과 비슷한 일을 RDF에서도 하게 된 거예요.",
+    "주의: 2026-10 기준 RDF 1.2 Concepts는 후보 권고(CR) 단계, SPARQL 1.2는 작업 초안이에요. 제품 지원이 제각각이니 확인 후 써요."
+   ],
+   "hear": [
+    "\"엣지 속성 때문에 LPG 가려 했는데 RDF 1.2면 되겠네요.\"",
+    "\"우리 저장소 RDF-star 지원 버전이 뭐예요?\""
+   ],
+   "ask": [
+    "메타데이터는 '사실'에 붙나요, '사건 노드'로 풀면 되나요?",
+    "우리 저장소가 지원하는 문법은 어느 초안 기준인가요?"
+   ],
+   "mine": "진단 트리플에 '누가 · 언제 · 확신도'를 붙여 AI 비서가 '확정 진단'과 '의심 진단'을 구분해 답하게 해요. 표준이 확정될 때까진 중간 노드 방식과 함께 시험해요.",
+   "deep": [
+    "W3C RDF-star 작업 그룹은 2022년 헌장으로 시작했어요. RDF 1.2 Concepts는 2026-04-07 후보 권고 스냅숏이 공개돼 있어요(2026-10-21 확인)."
+   ],
+   "recall": {
+    "q": "RDF 1.2가 더한 새 RDF 항(term)은?",
+    "a": "트리플 텀(트리플을 다른 트리플의 값으로)"
+   },
+   "quiz": [
+    {
+     "q": "RDF 1.1에서 사실에 출처를 붙이던 전통적 방법은?",
+     "options": [
+      "sameAs",
+      "구체화(rdf:Statement)",
+      "SKOS"
+     ],
+     "answer": 1,
+     "why": "rdf:subject/predicate/object로 문장을 노드로 만들었어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF 1.2 Concepts and Abstract Syntax (Candidate Recommendation Snapshot)",
+     "url": "https://www.w3.org/TR/rdf12-concepts/",
+     "date": "2026-04-07"
+    },
+    {
+     "title": "W3C RDF-star Working Group Charter",
+     "url": "https://www.w3.org/2022/08/rdf-star-wg-charter/",
+     "date": "2022-08"
+    },
+    {
+     "title": "W3C RDF-star Working Group page",
+     "url": "https://www.w3.org/groups/wg/rdf-star/",
+     "date": "n.d."
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "wdqs-split-2025",
+   "day": 4,
+   "title": "너무 커진 공개 RDF 그래프, 둘로 나뉘다 — Wikidata 질의 서비스",
+   "when": "2025-05",
+   "lead": "Wikidata는 누구나 SPARQL로 물을 수 있는 거대한 공개 RDF 그래프예요. 데이터가 계속 커지자 2025-05-09 질의 서비스를 '본 그래프'와 '학술 논문 그래프'로 나눴어요.",
+   "facts": [
+    {
+     "label": "항목 수",
+     "value": "123,667,901개 (2026-10-21 통계 페이지)",
+     "src": "Wikidata:Statistics"
+    },
+    {
+     "label": "분리일",
+     "value": "2025-05-09",
+     "src": "WDQS graph split"
+    },
+    {
+     "label": "학술 그래프 엔드포인트",
+     "value": "query-scholarly.wikidata.org",
+     "src": "WDQS graph split"
+    },
+    {
+     "label": "나누는 기준",
+     "value": "P31=학술 논문(Q13442814) 등 규칙에 맞는 엔터티",
+     "src": "WDQS graph split"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2012-10",
+     "text": "Wikidata 시작"
+    },
+    {
+     "t": "2015",
+     "text": "공개 SPARQL 질의 서비스(WDQS) 운영"
+    },
+    {
+     "t": "2025-05-09",
+     "text": "본 그래프 / 학술 그래프 분리",
+     "hot": true
+    },
+    {
+     "t": "2026-10",
+     "text": "새 엔드포인트로 이전 안내 행사(Query Service Days 2026)"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "규모",
+     "title": "한 대의 그래프 DB 한계",
+     "text": "트리플 수가 계속 늘어 한 저장소에서 모든 질의를 감당하기 어려워졌어요."
+    },
+    {
+     "stage": "설계",
+     "title": "주제로 자르기",
+     "text": "학술 논문 엔터티처럼 경계가 분명한 덩어리를 따로 떼어 냈어요."
+    },
+    {
+     "stage": "대가",
+     "title": "질의 수정",
+     "text": "두 그래프에 걸친 질의는 연합(SERVICE)으로 다시 써야 해요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "한빛병원 그래프도 커지면 무엇을 기준으로 나눌까요?",
+     "a": "자주 같이 묻는 것끼리 묶어요. 예: 임상 그래프와 연구·문헌 그래프. 걸치는 질의 목록을 먼저 만들어요."
+    },
+    {
+     "q": "이름 붙은 그래프로 미리 나눠 두면 어떤 점이 좋나요?",
+     "a": "나중에 물리적으로 분리할 때 경계가 이미 있어서 옮기기 쉬워요."
+    },
+    {
+     "q": "연합 질의의 대가는?",
+     "a": "속도와 가용성이에요. 한쪽이 느리면 전체가 느려져요."
+    }
+   ],
+   "after": [
+    "2026년 10월 Wikidata는 질의 서비스 이전을 돕는 온라인 행사를 열었어요."
+   ],
+   "sources": [
+    {
+     "title": "Wikidata — WDQS graph split",
+     "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/WDQS_graph_split",
+     "date": "2025"
+    },
+    {
+     "title": "Wikidata:Statistics",
+     "url": "https://www.wikidata.org/wiki/Wikidata:Statistics",
+     "date": "2026-10-21"
+    },
+    {
+     "title": "W3C SPARQL 1.1 Overview",
+     "url": "https://www.w3.org/TR/sparql11-overview/",
+     "date": "2013-03-21"
+    }
+   ],
+   "caveat": "WDQS 운영 시작 연도(2015)는 일반적으로 알려진 값이고 이 페이지에서 직접 확인하진 않았어요."
+  },
+  {
+   "id": "rdf-star-to-12",
+   "day": 5,
+   "title": "'문장에 대한 문장'이 표준이 되기까지 — RDF-star에서 RDF 1.2로",
+   "when": "2022-2026",
+   "lead": "속성 그래프 쪽은 엣지에 속성을 쉽게 붙였지만 RDF는 불편했어요. 커뮤니티 제안이던 RDF-star가 W3C 작업 그룹을 거쳐 RDF 1.2의 트리플 텀이 되고 있어요.",
+   "facts": [
+    {
+     "label": "작업 그룹 헌장",
+     "value": "2022-08 (RDF-star Working Group)",
+     "src": "W3C 헌장"
+    },
+    {
+     "label": "RDF 1.2 Concepts",
+     "value": "후보 권고 스냅숏 2026-04-07",
+     "src": "W3C TR"
+    },
+    {
+     "label": "SPARQL 1.2 Query",
+     "value": "작업 초안 2026-10-11",
+     "src": "W3C TR"
+    },
+    {
+     "label": "SHACL 1.2 Core",
+     "value": "작업 초안 2026-10-14",
+     "src": "W3C TR"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2014",
+     "text": "RDF 1.1 권고: 메타데이터는 구체화(reification)로"
+    },
+    {
+     "t": "2022-08",
+     "text": "RDF-star 작업 그룹 헌장"
+    },
+    {
+     "t": "2026-04",
+     "text": "RDF 1.2 Concepts 후보 권고",
+     "hot": true
+    },
+    {
+     "t": "2026-10",
+     "text": "SPARQL 1.2 · SHACL 1.2 초안 갱신"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "요구",
+     "title": "엣지 메타데이터",
+     "text": "출처·시간·확신도를 사실에 붙이려는 요구가 컸어요."
+    },
+    {
+     "stage": "경쟁",
+     "title": "LPG와의 비교",
+     "text": "속성 그래프의 엣지 속성이 RDF의 약점으로 자주 꼽혔어요."
+    },
+    {
+     "stage": "표준",
+     "title": "문법·의미 통일",
+     "text": "여러 저장소가 RDF-star를 제각각 구현해 공통 규격이 필요했어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "아직 CR인 기능을 지금 써도 될까요?",
+     "a": "저장소가 지원하면 시험은 해요. 단 운영 데이터는 중간 노드 방식으로 바꿔 쓸 수 있게 설계해 둬요."
+    },
+    {
+     "q": "진단의 '확신도'를 담는 두 방법은?",
+     "a": "트리플 텀에 붙이거나, '진단 사건' 노드를 만들어 그 노드에 붙여요."
+    },
+    {
+     "q": "표준 확정 전 위험은?",
+     "a": "문법이 바뀌면 데이터와 질의를 고쳐야 해요."
+    }
+   ],
+   "after": [
+    "2026-10 기준 RDF 1.2 계열 문서들이 함께 갱신되고 있어요."
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF-star Working Group Charter",
+     "url": "https://www.w3.org/2022/08/rdf-star-wg-charter/",
+     "date": "2022-08"
+    },
+    {
+     "title": "W3C RDF-star Working Group page",
+     "url": "https://www.w3.org/groups/wg/rdf-star/",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C RDF 1.2 Concepts and Abstract Syntax (Candidate Recommendation Snapshot)",
+     "url": "https://www.w3.org/TR/rdf12-concepts/",
+     "date": "2026-04-07"
+    },
+    {
+     "title": "W3C SPARQL 1.2 Query Language (Working Draft)",
+     "url": "https://www.w3.org/TR/sparql12-query/",
+     "date": "2026-10-11"
+    },
+    {
+     "title": "W3C SHACL 1.2 Core (Working Draft)",
+     "url": "https://www.w3.org/TR/shacl12-core/",
+     "date": "2026-10-14"
+    }
+   ],
+   "caveat": "권고(REC) 확정 날짜는 아직 없어요. 상태는 2026-10-21에 W3C TR 페이지로 확인했어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "월요일, 'RDF로 하자'는 말",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "병원 데이터 뜻을 맞추려면 RDF로 가자는 의견이 있어요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "우리 JSON API는 어떻게 되나요? 다 버려요?"
+    }
+   ],
+   "q": "첫 번째로 무엇을 제안할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "모든 시스템을 트리플 저장소로 바로 옮긴다",
+     "ok": false,
+     "why": "위험과 비용이 너무 커요."
+    },
+    {
+     "k": "B",
+     "t": "핵심 개념 IRI 규칙을 정하고, 기존 API에 JSON-LD @context를 붙여 시작한다",
+     "ok": true,
+     "why": "기존 흐름을 지키며 뜻을 붙여요."
+    },
+    {
+     "k": "C",
+     "t": "RDF는 포기하고 엑셀 용어집만 쓴다",
+     "ok": false,
+     "why": "기계가 읽을 수 없어요."
+    }
+   ],
+   "explain": "RDF 도입은 '이름(IRI)'과 '뜻 붙이기'부터 작게 시작해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C JSON-LD 1.1",
+     "url": "https://www.w3.org/TR/json-ld11/",
+     "date": "2020-07-16"
+    },
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "검사 결과 '5.6 mmol/L'",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "검사 결과가 '5.6 mmol/L' 문자열로 들어와요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "그냥 그대로 넣으면 안 돼요?"
+    }
+   ],
+   "q": "어떻게 모델링할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "문자열 하나로 저장한다",
+     "ok": false,
+     "why": "비교·계산이 안 돼요."
+    },
+    {
+     "k": "B",
+     "t": "결과 노드에 값(xsd:decimal)과 단위를 따로 붙인다",
+     "ok": true,
+     "why": "계산과 단위 변환이 가능해요."
+    },
+    {
+     "k": "C",
+     "t": "단위를 버리고 숫자만 넣는다",
+     "ok": false,
+     "why": "단위가 다른 검사실 값과 섞여요."
+    }
+   ],
+   "explain": "값과 단위를 나누고 타입을 붙여요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "환자 IRI에 등록번호?",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "IRI를 https://data.hanbit.example/patient/12345678 로 하면 편해요."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "12345678은 실제 등록번호예요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "등록번호를 IRI에 그대로 쓴다",
+     "ok": false,
+     "why": "IRI는 로그·링크로 퍼져 개인정보가 새요."
+    },
+    {
+     "k": "B",
+     "t": "무작위 대리 키로 IRI를 만들고 등록번호는 접근 통제된 속성으로 둔다",
+     "ok": true,
+     "why": "식별성과 개인정보 보호를 함께 지켜요."
+    },
+    {
+     "k": "C",
+     "t": "IRI 대신 빈 노드를 쓴다",
+     "ok": false,
+     "why": "밖에서 가리킬 수 없고 합칠 수 없어요."
+    }
+   ],
+   "explain": "IRI는 오래, 넓게 퍼져요. 민감 정보는 넣지 않아요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "range 걸었는데 왜 막히지 않죠?",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "birthDate에 range xsd:date 걸었는데 '모름' 문자열이 그냥 들어갔어요."
+    },
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "표준이 고장 난 건가요?"
+    }
+   ],
+   "q": "무엇이라고 설명할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "range는 추론용이라 막지 않아요. 입력 검사는 SHACL로 해요",
+     "ok": true,
+     "why": "RDFS는 금지가 아니라 추론 규칙이에요."
+    },
+    {
+     "k": "B",
+     "t": "저장소 버그니 벤더에 문의해요",
+     "ok": false,
+     "why": "정상 동작이에요."
+    },
+    {
+     "k": "C",
+     "t": "range를 두 번 걸면 막혀요",
+     "ok": false,
+     "why": "효과가 없어요."
+    }
+   ],
+   "explain": "RDFS domain/range는 새 사실을 더할 뿐이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C RDF Schema 1.1",
+     "url": "https://www.w3.org/TR/rdf11-schema/",
+     "date": "2014-02-25"
+    },
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "domain이 만든 이상한 환자",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "추론을 켰더니 환자 몇 명이 '처방' 클래스로도 분류됐어요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "prescribedBy를 환자 노드에 잘못 썼었나 봐요."
+    }
+   ],
+   "q": "원인과 대처는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "추론기를 끈다",
+     "ok": false,
+     "why": "원인을 놔두고 장점도 잃어요."
+    },
+    {
+     "k": "B",
+     "t": "domain 추론 때문이니 잘못된 트리플을 고치고, 같은 실수는 SHACL로 막는다",
+     "ok": true,
+     "why": "추론 원리와 검사를 둘 다 써요."
+    },
+    {
+     "k": "C",
+     "t": "Patient와 Prescription을 같은 클래스로 합친다",
+     "ok": false,
+     "why": "뜻이 망가져요."
+    }
+   ],
+   "explain": "domain은 '쓰면 그 클래스로 본다'예요. 잘못 쓰면 잘못 분류돼요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C RDF Schema 1.1",
+     "url": "https://www.w3.org/TR/rdf11-schema/",
+     "date": "2014-02-25"
+    },
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "출처별 데이터 관리",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "검사실 배치가 어제 잘못 들어왔대요. 그것만 지울 수 있어요?"
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "트리플이 다 섞여 있어서요..."
+    }
+   ],
+   "q": "앞으로 어떻게 설계할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "출처·배치별 이름 붙은 그래프에 넣어 그래프 단위로 지우고 다시 넣는다",
+     "ok": true,
+     "why": "쿼드로 출처 관리가 쉬워요."
+    },
+    {
+     "k": "B",
+     "t": "매번 전체를 다시 적재한다",
+     "ok": false,
+     "why": "느리고 위험해요."
+    },
+    {
+     "k": "C",
+     "t": "트리플에 주석 문자열을 단다",
+     "ok": false,
+     "why": "질의·삭제가 어려워요."
+    }
+   ],
+   "explain": "데이터셋의 이름 붙은 그래프를 출처 단위로 써요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C RDF 1.1 Concepts and Abstract Syntax",
+     "url": "https://www.w3.org/TR/rdf11-concepts/",
+     "date": "2014-02-25"
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "'당뇨 환자'를 자동으로",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "당뇨 환자 목록을 매번 손으로 태깅해요."
+    },
+    {
+     "name": "나",
+     "role": "온톨로지 설계",
+     "text": "진단 코드로 자동 분류할 수 있어요."
+    }
+   ],
+   "q": "OWL로 어떻게 정의할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "DiabeticPatient ⊑ Patient만 쓴다",
+     "ok": false,
+     "why": "필요조건이라 자동 분류가 안 돼요."
+    },
+    {
+     "k": "B",
+     "t": "DiabeticPatient ≡ Patient ⊓ ∃hasDiagnosis.Diabetes",
+     "ok": true,
+     "why": "필요충분조건이라 추론기가 분류해요."
+    },
+    {
+     "k": "C",
+     "t": "DiabeticPatient ≡ ∀hasDiagnosis.Diabetes",
+     "ok": false,
+     "why": "진단이 없는 사람도 들어가요."
+    }
+   ],
+   "explain": "자동 분류는 equivalentClass + someValuesFrom이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C OWL 2 Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "프로필 고르기",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "진단 분류 체계가 수십만 개예요. 추론이 몇 시간 걸려요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "DB는 그대로 두고 싶어요."
+    }
+   ],
+   "q": "어떻게 나눌까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "전부 OWL 2 Full로",
+     "ok": false,
+     "why": "결정 불가능해요."
+    },
+    {
+     "k": "B",
+     "t": "분류 체계는 EL, DB 위 질의는 QL로 나눈다",
+     "ok": true,
+     "why": "프로필을 목적별로 써요."
+    },
+    {
+     "k": "C",
+     "t": "추론을 아예 포기한다",
+     "ok": false,
+     "why": "장점을 버려요."
+    }
+   ],
+   "explain": "표현력을 조금 포기하고 속도를 얻어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C OWL 2 Profiles (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-profiles/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "의뢰 병원 환자 연결",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "의뢰 병원 환자와 우리 환자가 이름·생일이 같아요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "sameAs 걸면 끝 아닌가요?"
+    }
+   ],
+   "q": "무엇을 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "바로 owl:sameAs를 건다",
+     "ok": false,
+     "why": "틀리면 병력이 섞이고 전이적으로 번져요."
+    },
+    {
+     "k": "B",
+     "t": "후보 연결과 근거·점수를 따로 저장하고 확인 후에만 합친다",
+     "ok": true,
+     "why": "sameAs의 위험을 관리해요."
+    },
+    {
+     "k": "C",
+     "t": "연결하지 않는다",
+     "ok": false,
+     "why": "진료 연속성을 잃어요."
+    }
+   ],
+   "explain": "동명이인은 흔해요. sameAs는 마지막에 신중히.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "W3C OWL 2 Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "W3C SKOS Simple Knowledge Organization System Reference",
+     "url": "https://www.w3.org/TR/skos-reference/",
+     "date": "2009-08-18"
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "CQ를 SPARQL 테스트로",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "온톨로지가 맞는지 어떻게 확인해요?"
+    },
+    {
+     "name": "나",
+     "role": "온톨로지 설계",
+     "text": "역량 질문이 있어요."
+    }
+   ],
+   "q": "좋은 방법은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "역량 질문을 SPARQL로 바꿔 기대 결과와 함께 자동 테스트로 돌린다",
+     "ok": true,
+     "why": "요구사항이 테스트가 돼요."
+    },
+    {
+     "k": "B",
+     "t": "눈으로 그래프를 본다",
+     "ok": false,
+     "why": "반복 확인이 안 돼요."
+    },
+    {
+     "k": "C",
+     "t": "추론기만 돌린다",
+     "ok": false,
+     "why": "일관성만 보고 질문 답은 못 봐요."
+    }
+   ],
+   "explain": "CQ는 SPARQL 테스트로 살아 있어야 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C SPARQL 1.1 Query Language",
+     "url": "https://www.w3.org/TR/sparql11-query/",
+     "date": "2013-03-21"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "환자 수가 줄었어요",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "알레르기 칸까지 넣었더니 환자 수가 반으로 줄었어요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "같은 질의에 패턴만 하나 더했어요."
+    }
+   ],
+   "q": "원인은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "알레르기 패턴을 OPTIONAL로 감싸지 않았다",
+     "ok": true,
+     "why": "기록 없는 환자가 빠져요."
+    },
+    {
+     "k": "B",
+     "t": "저장소가 데이터를 지웠다",
+     "ok": false,
+     "why": "아니에요."
+    },
+    {
+     "k": "C",
+     "t": "FILTER가 너무 느리다",
+     "ok": false,
+     "why": "속도 문제가 아니에요."
+    }
+   ],
+   "explain": "없을 수 있는 정보는 OPTIONAL로 붙여요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C SPARQL 1.1 Query Language",
+     "url": "https://www.w3.org/TR/sparql11-query/",
+     "date": "2013-03-21"
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "'알레르기 없음' 화면",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "NOT EXISTS로 '알레르기 없음' 배지를 띄우려 해요."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "기록 안 한 거랑 음성은 달라요!"
+    }
+   ],
+   "q": "어떻게 표시할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "'알레르기 없음'으로 표시",
+     "ok": false,
+     "why": "미기록을 음성으로 착각하게 해요."
+    },
+    {
+     "k": "B",
+     "t": "'알레르기 기록 없음'으로 표시하고, 음성 확인은 명시적 기록으로 따로 둔다",
+     "ok": true,
+     "why": "열린 세계의 '모름'을 존중해요."
+    },
+    {
+     "k": "C",
+     "t": "배지를 안 쓴다",
+     "ok": false,
+     "why": "정보를 숨겨요."
+    }
+   ],
+   "explain": "없음과 모름을 구분해요(02장 열린 세계).",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "W3C SPARQL 1.1 Query Language",
+     "url": "https://www.w3.org/TR/sparql11-query/",
+     "date": "2013-03-21"
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "생년월일 누락 막기",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "생년월일 없는 환자가 계속 들어와요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "OWL에 minCardinality 1 걸었어요."
+    }
+   ],
+   "q": "왜 안 막히고, 무엇을 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "OWL은 열린 세계라 '어딘가 있겠지'로 봐요. SHACL minCount 1로 적재 때 검사해요",
+     "ok": true,
+     "why": "목적이 다른 도구예요."
+    },
+    {
+     "k": "B",
+     "t": "minCardinality를 2로 올린다",
+     "ok": false,
+     "why": "똑같이 안 막혀요."
+    },
+    {
+     "k": "C",
+     "t": "추론기를 바꾼다",
+     "ok": false,
+     "why": "어떤 OWL 추론기도 막지 않아요."
+    }
+   ],
+   "explain": "막기는 SHACL, 알아내기는 OWL.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    },
+    {
+     "title": "Labra Gayo et al., Validating RDF Data (book, online)",
+     "url": "https://book.validatingrdf.com/",
+     "date": "2017"
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "약어 'DM'",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "AI 비서가 'DM 환자'를 못 알아들어요."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "병동마다 약어가 달라요."
+    }
+   ],
+   "q": "어디에 무엇을 넣을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "SKOS altLabel로 약어들을 개념에 붙인다",
+     "ok": true,
+     "why": "가볍고 검색에 바로 써요."
+    },
+    {
+     "k": "B",
+     "t": "약어마다 OWL 클래스를 새로 만든다",
+     "ok": false,
+     "why": "같은 개념이 쪼개져요."
+    },
+    {
+     "k": "C",
+     "t": "프롬프트에 약어를 다 적는다",
+     "ok": false,
+     "why": "관리되지 않고 흩어져요."
+    }
+   ],
+   "explain": "동의어·약어는 SKOS altLabel.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C SKOS Simple Knowledge Organization System Reference",
+     "url": "https://www.w3.org/TR/skos-reference/",
+     "date": "2009-08-18"
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "'의심 진단'과 '확정 진단'",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "AI 비서가 의심 진단을 확정처럼 말하면 큰일 나요."
+    },
+    {
+     "name": "나",
+     "role": "온톨로지 설계",
+     "text": "진단 사실에 상태·작성자·시각을 붙여야 해요."
+    }
+   ],
+   "q": "지금 무엇을 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "진단 사건 노드에 상태를 붙이고, RDF 1.2 트리플 텀은 저장소 지원 확인 후 시범 적용한다",
+     "ok": true,
+     "why": "표준 성숙도를 고려한 안전한 길이에요."
+    },
+    {
+     "k": "B",
+     "t": "확정 진단만 저장한다",
+     "ok": false,
+     "why": "임상 정보를 잃어요."
+    },
+    {
+     "k": "C",
+     "t": "상태를 진단 이름 글자에 섞는다('당뇨(의심)')",
+     "ok": false,
+     "why": "기계가 구분할 수 없어요."
+    }
+   ],
+   "explain": "메타데이터는 구조로. 새 표준은 상태를 확인하고 써요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "W3C RDF 1.2 Concepts and Abstract Syntax (Candidate Recommendation Snapshot)",
+     "url": "https://www.w3.org/TR/rdf12-concepts/",
+     "date": "2026-04-07"
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "W3C RDF 1.1 Primer",
+   "url": "https://www.w3.org/TR/rdf11-primer/",
+   "min": 40,
+   "lang": "en",
+   "what": "트리플·IRI·리터럴·Turtle·JSON-LD를 짧은 예로 훑어요.",
+   "day": 1
+  },
+  {
+   "id": "l2",
+   "title": "W3C OWL 2 Primer",
+   "url": "https://www.w3.org/TR/owl2-primer/",
+   "min": 90,
+   "lang": "en",
+   "what": "클래스 정의·제한·속성 성질을 예제로 읽어요. 4~6장 위주.",
+   "day": 3
+  },
+  {
+   "id": "l3",
+   "title": "Wikidata SPARQL tutorial",
+   "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_tutorial",
+   "min": 60,
+   "lang": "en",
+   "what": "실제 공개 엔드포인트(query.wikidata.org)에서 SELECT·OPTIONAL·FILTER를 직접 쳐 봐요.",
+   "day": 4
+  },
+  {
+   "id": "l4",
+   "title": "Validating RDF Data (Labra Gayo et al., 온라인 책)",
+   "url": "https://book.validatingrdf.com/",
+   "min": 90,
+   "lang": "en",
+   "what": "SHACL·ShEx가 왜 필요한지, OWL과 무엇이 다른지 장별로 읽어요.",
+   "day": 5
+  },
+  {
+   "id": "l5",
+   "title": "W3C SHACL 명세",
+   "url": "https://www.w3.org/TR/shacl/",
+   "min": 45,
+   "lang": "en",
+   "what": "1~2장의 예제와 검증 보고서 모양을 확인해요.",
+   "day": 5
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "'한빛 임상 어휘 RDF 설계서 v1'을 2쪽 안으로 써요. 핵심 개념 40개를 어떤 표준으로 적고, 묻고, 검사할지 정해요.",
+  "template": [
+   "상태 (제안 / 승인)",
+   "IRI 규칙: 네임스페이스, 대리 키, 버전",
+   "직렬화: Turtle(리뷰용) · JSON-LD(API) · N-Triples(적재)",
+   "RDFS/OWL로 정의할 클래스 5개와 정의식 (≡ / ⊑)",
+   "프로필 선택: EL / QL / RL과 이유",
+   "역량 질문 3개 → SPARQL 테스트",
+   "SHACL 셰이프 3개 (생년월일, 검사 단위, 처방 용량)와 심각도",
+   "SKOS로 올릴 용어집 · 약어",
+   "출처 관리: 이름 붙은 그래프 규칙",
+   "보류: RDF 1.2 트리플 텀 시범 조건"
+  ]
+ },
+ "check": [
+  "Story (40 core concepts, team members, 5.6 mmol/L example, IRIs under data.hanbit.example) is fictional.",
+  "Spec dates checked on w3.org TR pages 2026-10-21: SHACL REC 2017-07-20, SPARQL 1.1 REC 2013-03-21, OWL 2 2nd ed 2012-12-11, SKOS REC 2009-08-18. RDF 1.1/Turtle/RDFS 1.1 2014-02-25 and JSON-LD 1.1 2020-07-16 from memory (H).",
+  "RDF 1.2 Concepts = CR Snapshot 2026-04-07; SPARQL 1.2 Query WD 2026-10-11; SHACL 1.2 Core WD 2026-10-14; RDF 1.2 Turtle WD 2026-10-07 — read from the TR pages' status line.",
+  "Wikidata 123,667,901 items read from Wikidata:Statistics on 2026-10-21; WDQS split 2025-05-09 and query-scholarly endpoint from the graph split page. WDQS start year 2015 not re-checked (marked in caveat).",
+  "OWL 2 DL N2EXPTIME and profile complexities are from the OWL 2 Profiles/Overview spec (H, not re-read line by line). Halpin et al. 2010 citation from memory (H).",
+  "All lecture URLs returned HTTP 200 on 2026-10-21."
+ ]
+}

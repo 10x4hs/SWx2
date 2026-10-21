@@ -6,9 +6,11 @@ import { figCount } from "../figs/catalog.js";
 
 const LINE = {
   vg: "글을 숫자(벡터)로 바꾸고, 가까운 것을 빨리 찾고, 관계(그래프)로 엮어 AI가 답하게 해요.",
+  onto: "세상을 '무엇이 있고 어떻게 이어지는지'로 적어 기계가 뜻을 알게 해요. 원리부터 왜 지금 뜨는지까지.",
+  aip: "회사를 객체 · 링크 · 액션으로 옮기고, 그 위에서 LLM 이 일하게 하는 Palantir 의 방식을 뜯어봐요.",
   dev: "아이디어가 문서가 되고, 화면과 서버가 되고, 고객에게 닿고, 고장 나고, 다시 좋아지는 흐름을 따라가요.",
 };
-const VOL = { vg: "1권", dev: "2권" };
+const VOL = { vg: "1권", dev: "2권", onto: "3권", aip: "4권" };
 
 export function mountCourse(host, ctx, key) {
   let alive = true, idx = null, st = null, mins = minutes(), figs = 0;

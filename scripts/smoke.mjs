@@ -67,7 +67,7 @@ import { applyView, remindAt, isDue } from "../public/js/blocks/dbview.js";
       if (!(Number.isInteger(a) ? a >= 0 && a < c.idea.length : ["lead", "steps", "code", "end"].includes(a)) || (a === "steps" && !c.steps?.length) || (a === "code" && !c.code)) bad.push(k + " after " + a);
     }
   }
-  for (const course of ["vg", "dev"]) for (const m of J(`/${course}/index.json`).modules) { const doc = J(`/${course}/${m.id}.json`); if (doc.cards.map((c) => c.id).join() !== m.cards.map((c) => c.id).join()) bad.push(`${course}/${m.id} 카드 순서`); }
+  for (const course of ["vg", "dev", "onto", "aip"]) for (const m of J(`/${course}/index.json`).modules) { const doc = J(`/${course}/${m.id}.json`); if (doc.cards.map((c) => c.id).join() !== m.cards.map((c) => c.id).join()) bad.push(`${course}/${m.id} 카드 순서`); }
   const vids = Object.values(map.videos);
   ok(!bad.length && vids.every((v) => /^[\w-]{11}$/.test(v.id) && v.title && v.channel && ["ko", "en"].includes(v.lang)), `figs: map.json 자리 ${Object.keys(map.place).length}곳 · 그림 ${Object.keys(map.figs).length}개 · 영상 ${vids.length}개가 카드 · 파일과 맞아요${bad.length ? " — " + bad.slice(0, 4).join(" · ") : ""}`);
   const { figsOfModule } = await import("../src/mba.js");

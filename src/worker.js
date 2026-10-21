@@ -8,7 +8,7 @@ import { registerPages, servePageFile } from "./pages.js";
 import { registerProxy, handleProxy } from "./proxy.js";
 import { registerPapers } from "./papers.js";
 import { registerBooks } from "./books.js";
-import { registerMba, registerDev, registerVg } from "./mba.js";
+import { registerMba, registerDev, registerVg, registerOnto } from "./mba.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth } from "./oauth.js";
 import { registerHomePad } from "./homepad.js";
@@ -151,6 +151,7 @@ registerBooks(on, { json, body, fail, now }); // AI 공부책 (#/books)
 registerMba(on, { json, body, fail, now }); // 경영 마이크로디그리 (#/mba)
 registerDev(on, { json, body, fail, now }); // 개발 흐름 마이크로디그리 (#/sw/dev) — 같은 모양, dev_* 표
 registerVg(on, { json, body, fail, now }); // Vector & Graph 과정 (#/sw/vg) — 같은 모양, vg_* 표
+registerOnto(on, { json, body, fail, now }); // 온톨로지 (#/sw/onto) · Palantir AIP (#/sw/aip) — 같은 모양, onto_* · aip_* 표
 registerMcpTokens(on, { json, body, fail, now });
 registerHomePad(on, { json, body, fail, now });
 registerCalendar(on, { json, fail });

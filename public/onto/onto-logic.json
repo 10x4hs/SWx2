@@ -1,0 +1,1996 @@
+{
+ "id": "onto-logic",
+ "no": "02",
+ "title": "논리와 추론",
+ "short": "논리·추론",
+ "q": "적어 둔 뜻으로부터, 기계는 무엇을 스스로 알아내고 어디서 멈춰야 할까?",
+ "sub": "집합·클래스·인스턴스 · 기술 논리 · TBox/ABox · OWA/CWA · UNA · 추론기 · 결정 가능성",
+ "doc": "한빛병원 추론 설계 메모 v1",
+ "story": {
+  "title": "“기록이 없으면 없는 거 아니에요?”",
+  "size": 3,
+  "body": [
+   "(가상 이야기) 제안서 v0이 통과됐어요. 지수 팀장은 '입원·재원·진단' 파일럿을 허락했어요. 이제 정의를 실제로 적어 기계가 결론을 내게 해야 해요.",
+   "현우는 '당뇨 환자 명단'을 자동으로 만들고 싶어 하고, 소라는 '알레르기 기록이 없으면 없음으로 보여 주자'고 해요. 나는 거기서 멈칫해요. 기록이 없는 것과 알레르기가 없는 것은 달라요.",
+   "이번 주 과제는 '한빛병원 추론 설계 메모 v1'이에요. 무엇을 추론하고, 무엇은 검사하고, 어떤 함정을 피할지 정해야 해요."
+  ]
+ },
+ "goals": [
+  "클래스·인스턴스·관계를 집합으로 읽고 DL 기호(⊑ ⊓ ∃ ∀)로 병원 개념을 정의할 수 있어요.",
+  "포함·충족성·일관성·인스턴스 검사가 무엇이고 언제 쓰이는지 설명할 수 있어요.",
+  "열린/닫힌 세계와 고유 이름 가정의 차이로 OWL과 SHACL/SQL의 역할을 나누고, 프로필과 추론기를 고를 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "클래스는 집합이에요",
+   "lead": "논리에서 클래스는 '그 조건을 만족하는 것들의 모음', 곧 집합으로 읽어요.",
+   "idea": [
+    "'환자' 클래스 = 병원에서 환자인 모든 개체의 집합이에요. '항생제' 클래스 = 항생제인 모든 약물의 집합이에요.",
+    "이렇게 보면 하위 클래스는 부분집합이에요. '항생제 ⊑ 약물'은 '항생제 집합이 약물 집합 안에 들어 있다'는 뜻이에요.",
+    "집합으로 보면 헷갈리던 말이 정리돼요. '모든 항생제는 약물이다'는 맞지만 '모든 약물은 항생제다'는 틀려요. 포함 방향이 한쪽이에요."
+   ],
+   "steps": [
+    {
+     "k": "1",
+     "t": "약물 = 큰 원"
+    },
+    {
+     "k": "2",
+     "t": "항생제 = 안의 원"
+    },
+    {
+     "k": "3",
+     "t": "세팔로스포린 = 더 안의 원"
+    },
+    {
+     "k": "4",
+     "t": "개체 '세프트리악손' = 가장 안쪽 점"
+    }
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "01장의 '입원 환자'도 집합으로 그려 보니, '재원 환자'와 겹치지만 같지 않은 원이라는 게 한눈에 보여요.",
+   "deep": [
+    "DL Primer(Krötzsch 등 2012)는 개념(concept)을 개체 집합으로, 역할(role)을 개체 쌍의 집합으로 해석하는 집합 의미론을 소개해요."
+   ],
+   "recall": {
+    "q": "'A ⊑ B'를 집합으로 읽으면?",
+    "a": "A의 모든 원소가 B에도 들어 있다(A는 B의 부분집합)."
+   },
+   "quiz": [
+    {
+     "q": "'세팔로스포린 ⊑ 항생제'가 참일 때 반드시 참인 것은?",
+     "options": [
+      "모든 항생제는 세팔로스포린",
+      "모든 세팔로스포린은 항생제",
+      "둘은 같은 집합"
+     ],
+     "answer": 1,
+     "why": "포함은 한 방향이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    },
+    {
+     "title": "W3C OWL 2 Direct Semantics (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-direct-semantics/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "인스턴스: 집합의 원소",
+   "lead": "인스턴스(개체)는 집합 안의 점 하나예요. '환자#77'은 '환자' 집합의 원소예요.",
+   "idea": [
+    "클래스와 인스턴스를 구분하는 질문: '이것의 예를 하나 더 들 수 있나?' 들 수 있으면 클래스, 딱 하나면 인스턴스예요.",
+    "'세프트리악손'은 약물 개념(클래스)일 수도, 특정 약 한 병(인스턴스)일 수도 있어요. 무엇을 셀지에 따라 정해요.",
+    "한 개체는 여러 클래스에 동시에 속할 수 있어요. 환자#77은 '환자'이면서 '당뇨 환자'이면서 '고령자'예요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "현우가 '병동'을 클래스로 둘지 인스턴스로 둘지 묻네요. 나는 '3병동'은 인스턴스, '내과 병동'은 클래스로 정해요.",
+   "deep": [
+    "OWL 2 Primer는 개체를 named individual로 선언하고 ClassAssertion으로 클래스에 넣는 방식을 보여 줘요."
+   ],
+   "recall": {
+    "q": "클래스와 인스턴스를 가르는 쉬운 질문은?",
+    "a": "'예를 하나 더 들 수 있나?' 있으면 클래스, 하나뿐이면 인스턴스."
+   },
+   "quiz": [
+    {
+     "q": "'한빛병원 3병동'은 보통 무엇?",
+     "options": [
+      "클래스",
+      "인스턴스",
+      "속성"
+     ],
+     "answer": 1,
+     "why": "특정한 하나의 병동이에요."
+    },
+    {
+     "q": "한 개체가 여러 클래스에 속할 수 있나요?",
+     "options": [
+      "없다",
+      "있다",
+      "부모 클래스에만"
+     ],
+     "answer": 1,
+     "why": "집합이 겹칠 수 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "Noy & McGuinness, Ontology Development 101 (Stanford)",
+     "url": "https://protege.stanford.edu/publications/ontology_development/ontology101.pdf",
+     "date": "2001"
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "관계(속성)는 쌍의 집합",
+   "lead": "'처방받음' 같은 관계는 (환자, 처방) 쌍들의 모음으로 읽어요.",
+   "idea": [
+    "관계 R = 개체 쌍의 집합. (환자#77, 처방#123)이 '처방받음'에 들어 있으면 '환자#77은 처방#123을 받았다'가 참이에요.",
+    "관계에도 성질을 줄 수 있어요. 대칭(동료임), 이행(조상임: A가 B의 조상, B가 C의 조상이면 A는 C의 조상), 함수적(생년월일은 하나), 역관계(처방받음 ↔ 처방대상).",
+    "도메인과 레인지는 '이 관계의 왼쪽/오른쪽에 오는 건 어떤 클래스'라는 선언이에요. 주의: OWL에서 이건 검사가 아니라 추론 규칙이에요(c15)."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "소라의 FK 컬럼 하나하나가 사실상 관계예요. 나는 각 FK에 성질(함수적인지 등)을 표로 붙여요.",
+   "deep": [
+    "DL Primer는 역할 포함(role inclusion), 역할 체인, 이행성 같은 RBox 공리를 따로 설명해요."
+   ],
+   "code": {
+    "lang": "Turtle",
+    "text": ":partOf a owl:TransitiveProperty .\n:hasBirthDate a owl:FunctionalProperty .\n:prescribedTo owl:inverseOf :receivedPrescription .",
+    "read": "부분 관계는 이행, 생년월일은 함수적, 처방 관계는 역관계로 짝지어요."
+   },
+   "recall": {
+    "q": "'부분임(part-of)'은 보통 어떤 성질을 가질까요?",
+    "a": "이행적이에요. 심근이 심장의 부분이고 심장이 순환계의 부분이면 심근은 순환계의 부분."
+   },
+   "quiz": [
+    {
+     "q": "'생년월일'처럼 값이 최대 하나인 속성 성질은?",
+     "options": [
+      "대칭",
+      "함수적",
+      "이행"
+     ],
+     "answer": 1,
+     "why": "functional property예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "논리 기호 다섯 개만 알면 돼요",
+   "lead": "DL 표기는 ⊑ ⊓ ⊔ ¬ ∃ ∀ 정도면 대부분 읽을 수 있어요.",
+   "idea": [
+    "⊑ 포함(하위), ⊓ 그리고(교집합), ⊔ 또는(합집합), ¬ 아님(여집합).",
+    "∃R.C = 'R 관계로 C인 것이 적어도 하나 있는 것'. 예: ∃처방받음.항생제 = 항생제 처방을 하나 이상 받은 것.",
+    "∀R.C = 'R 관계로 이어진 건 모두 C인 것'. 주의: R로 이어진 게 하나도 없어도 참이에요. 이게 흔한 함정이에요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "'항생제만 처방받은 환자'를 정의하려면 ∀와 ∃를 같이 써야 해요. 이걸 회의에서 그림으로 보여 줘요.",
+   "deep": [
+    "Rector 등의 Pizza 교육 경험 보고는 ∀(only)와 ∃(some)를 헷갈리는 것을 대표적 실수로 꼽아요."
+   ],
+   "recall": {
+    "q": "∀처방받음.항생제 가 '처방이 하나도 없는 환자'에게 참인 이유는?",
+    "a": "이어진 것이 없으면 '모두 항생제'라는 조건을 깨는 반례가 없어서 참이에요."
+   },
+   "quiz": [
+    {
+     "q": "'항생제를 하나 이상 처방받은 환자'를 적으면?",
+     "options": [
+      "환자 ⊓ ∃처방받음.항생제",
+      "환자 ⊓ ∀처방받음.항생제",
+      "환자 ⊔ 항생제"
+     ],
+     "answer": 0,
+     "why": "'적어도 하나'는 ∃예요."
+    },
+    {
+     "q": "∀만 쓰면 생기는 함정은?",
+     "options": [
+      "항상 거짓",
+      "관계가 없는 개체도 만족",
+      "추론 불가"
+     ],
+     "answer": 1,
+     "why": "빈 경우도 참이라 의도와 달라요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    },
+    {
+     "title": "Rector et al., OWL Pizzas: Practical Experience of Teaching OWL-DL (abstract, Protégé 2004)",
+     "url": "https://protege.stanford.edu/conference/2004/abstracts/Rector1.html",
+     "date": "2004"
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "기술 논리(DL): 왜 1차 논리의 '일부'인가",
+   "lead": "기술 논리는 1차 논리에서 계산이 끝나도록 표현력을 잘라 낸 가족이에요. OWL의 바탕이에요.",
+   "idea": [
+    "1차 논리는 거의 무엇이든 표현하지만, 어떤 질문은 컴퓨터가 영원히 답을 못 낼 수 있어요(결정 불가능).",
+    "DL은 '개념과 관계'만 다루고 변수를 자유롭게 쓰지 못하게 해서, 대부분 '언제나 끝나는' 추론을 보장해요.",
+    "ALC, EL, SROIQ처럼 글자로 기능을 나타내요. OWL 2 DL은 SROIQ(D)에 기반해요. 기능을 더할수록 계산은 비싸져요."
+   ],
+   "steps": [
+    {
+     "k": "1차 논리",
+     "t": "표현력 최대, 결정 불가"
+    },
+    {
+     "k": "SROIQ(D)",
+     "t": "OWL 2 DL"
+    },
+    {
+     "k": "EL",
+     "t": "OWL 2 EL, 다항 시간"
+    },
+    {
+     "k": "ALC",
+     "t": "교과서 기본형"
+    }
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "소라가 '그냥 규칙 엔진 쓰면 안 돼요?'라고 해요. 나는 '언제나 답이 나온다는 보장'이 DL의 장점이라고 설명해요.",
+   "deep": [
+    "Horrocks, Kutz, Sattler(KR 2006)가 SROIQ를 제안했고, 이것이 OWL 2의 논리적 기반이 됐어요."
+   ],
+   "recall": {
+    "q": "DL이 1차 논리 전체를 쓰지 않는 이유는?",
+    "a": "추론이 언제나 끝나도록(결정 가능하게) 표현력을 제한하기 위해서요."
+   },
+   "quiz": [
+    {
+     "q": "OWL 2 DL의 바탕 DL은?",
+     "options": [
+      "ALC",
+      "SROIQ(D)",
+      "SQL"
+     ],
+     "answer": 1,
+     "why": "Horrocks 등의 SROIQ가 OWL 2의 바탕이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    },
+    {
+     "title": "Horrocks, Kutz & Sattler, The Even More Irresistible SROIQ (KR 2006)",
+     "url": "https://www.cs.ox.ac.uk/people/ian.horrocks/Publications/download/2006/HoKS06a.pdf",
+     "date": "2006"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "TBox: 개념에 대한 규칙",
+   "lead": "TBox(용어 상자)는 '어떤 개념이 무엇인가'에 대한 일반 규칙을 담아요.",
+   "idea": [
+    "예: 간염 ⊑ 간질환, 항생제 ⊑ 약물, 당뇨환자 ≡ 환자 ⊓ ∃진단받음.당뇨.",
+    "⊑는 '필요조건'만, ≡는 '필요충분조건'이에요. ≡로 정의하면 추론기가 조건을 만족하는 개체를 자동으로 그 클래스에 넣어요.",
+    "TBox는 잘 안 바뀌고, 사람이 검토해야 하는 부분이에요. 의학 지식이 바뀔 때 고쳐요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "현우는 '당뇨 환자 명단'을 매달 손으로 만들어요. ≡ 정의 하나로 자동 분류가 된다는 걸 보여 줘요.",
+   "deep": [
+    "DL Primer는 TBox를 개념 포함 공리(concept inclusion)의 모음으로, 동치는 양방향 포함 두 개로 설명해요."
+   ],
+   "code": {
+    "lang": "Turtle",
+    "text": ":DiabeticPatient owl:equivalentClass [\n  owl:intersectionOf ( :Patient\n    [ a owl:Restriction ;\n      owl:onProperty :hasDiagnosis ;\n      owl:someValuesFrom :Diabetes ] ) ] .",
+    "read": "환자이면서 당뇨 진단이 하나라도 있으면 DiabeticPatient. equivalentClass라서 양방향이에요."
+   },
+   "recall": {
+    "q": "⊑와 ≡의 차이는?",
+    "a": "⊑는 '이면 그렇다'(필요조건), ≡는 '이면 그렇고 그러면 이다'(필요충분조건)라서 자동 분류가 돼요."
+   },
+   "quiz": [
+    {
+     "q": "'당뇨환자 ≡ 환자 ⊓ ∃진단받음.당뇨'이면, 당뇨 진단을 받은 환자#77은?",
+     "options": [
+      "자동으로 당뇨환자",
+      "직접 넣어야만 당뇨환자",
+      "알 수 없음"
+     ],
+     "answer": 0,
+     "why": "≡ 정의는 자동 분류를 일으켜요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    },
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "ABox: 개체에 대한 사실",
+   "lead": "ABox(단언 상자)는 '환자#77은 환자다', '환자#77은 당뇨 진단을 받았다' 같은 개별 사실을 담아요.",
+   "idea": [
+    "ABox는 매일 늘어요. EMR에 기록이 쌓일 때마다 사실이 추가돼요. 크기는 TBox보다 훨씬 커요.",
+    "TBox + ABox를 합쳐 추론하면 '환자#77은 당뇨환자다'처럼 적지 않은 사실이 나와요.",
+    "실무에서는 TBox는 온톨로지 파일, ABox는 DB나 그래프 저장소에 두고 연결하는 경우가 많아요. 세 번째 상자 RBox는 관계 규칙(이행성, 역관계 등)이에요."
+   ],
+   "steps": [
+    {
+     "k": "TBox",
+     "t": "개념 규칙: 수백~수십만"
+    },
+    {
+     "k": "RBox",
+     "t": "관계 규칙"
+    },
+    {
+     "k": "ABox",
+     "t": "개체 사실: 수백만+"
+    },
+    {
+     "k": "추론",
+     "t": "셋을 합쳐 새 사실"
+    }
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "소라의 DB는 거대한 ABox예요. 나는 TBox만 새로 만들고 DB는 매핑으로 잇자고 해요.",
+   "deep": [
+    "SNOMED CT 확장 가이드는 '진술된(stated) 정의'를 OWL 참조집합에 두고, 분류기로 계산한 '추론된(inferred)' 관계를 Relationship 파일로 배포한다고 설명해요."
+   ],
+   "recall": {
+    "q": "TBox와 ABox를 병원 예로?",
+    "a": "TBox: '간염은 간질환이다'. ABox: '환자#77은 간염 진단을 받았다'."
+   },
+   "quiz": [
+    {
+     "q": "매일 크게 늘어나는 쪽은?",
+     "options": [
+      "TBox",
+      "ABox",
+      "RBox"
+     ],
+     "answer": 1,
+     "why": "개체 사실은 계속 쌓여요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    },
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021, arXiv:2003.02320)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2021"
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "모델: 규칙을 만족하는 세계",
+   "lead": "논리에서 '모델'은 모든 공리를 동시에 참으로 만드는 가능한 세계 하나예요.",
+   "idea": [
+    "공리가 적으면 가능한 세계(모델)가 많아요. 공리를 더할수록 세계가 줄어요. 온톨로지 설계는 '말이 안 되는 세계'를 지워 가는 일이에요.",
+    "어떤 문장이 '함의된다(entailed)'는 건 모든 모델에서 참이라는 뜻이에요. 하나라도 거짓인 모델이 있으면 함의되지 않아요.",
+    "모델이 하나도 없으면 온톨로지는 모순(inconsistent)이에요. 이건 c10에서 봐요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "회의에서 '이 공리 넣으면 어떤 이상한 경우가 사라지나요?'라고 물으면 설계 의도가 분명해져요.",
+   "deep": [
+    "OWL 2 Direct Semantics는 해석(interpretation)이 모든 공리를 만족하면 모델이고, 모든 모델에서 성립하면 함의라고 정의해요.",
+    "Guarino 등(2009)은 좋은 온톨로지일수록 의도한 모델에 가깝게 가능한 세계를 좁힌다고 설명해요."
+   ],
+   "recall": {
+    "q": "'함의된다'의 뜻은?",
+    "a": "가능한 모든 모델(규칙을 만족하는 세계)에서 참이라는 것."
+   },
+   "quiz": [
+    {
+     "q": "공리를 더하면 모델 수는?",
+     "options": [
+      "늘거나 같다",
+      "줄거나 같다",
+      "변하지 않는다"
+     ],
+     "answer": 1,
+     "why": "조건이 늘면 만족하는 세계가 줄어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Direct Semantics (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-direct-semantics/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "Guarino, Oberle & Staab (2009), What Is an Ontology? — Handbook on Ontologies",
+     "url": "https://link.springer.com/chapter/10.1007/978-3-540-92673-3_0",
+     "date": "2009"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "포함 관계(subsumption) 계산",
+   "lead": "추론기의 기본 일은 'A가 B의 하위인가'를 정의로부터 계산하는 거예요.",
+   "idea": [
+    "'바이러스성간염 ≡ 간염 ⊓ ∃원인.바이러스'와 '간염 ⊑ 간질환'이 있으면, 추론기는 '바이러스성간염 ⊑ 간질환'을 계산해요. 사람이 적지 않아도요.",
+    "이걸 모든 클래스 쌍에 하면 전체 계층이 자동으로 정리돼요(분류, classification).",
+    "이득은 다중 부모 관리예요. 사람은 부모 하나만 적고, 다른 부모는 정의에서 자동으로 나와요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "약제 분류에서 '소아용 항생제'를 따로 적지 않고, 정의로 계산되게 하자고 제안해요.",
+   "deep": [
+    "SNOMED CT 가이드는 분류가 진술된 정의로부터 포함 계층(subsumption hierarchy)을 계산한다고 설명해요."
+   ],
+   "recall": {
+    "q": "분류(classification)란?",
+    "a": "모든 클래스 쌍의 포함 관계를 계산해 계층을 자동으로 만드는 것."
+   },
+   "quiz": [
+    {
+     "q": "사람이 '바이러스성간염 ⊑ 감염병'을 직접 적지 않아도 되는 조건은?",
+     "options": [
+      "감염병 ≡ 질환 ⊓ ∃원인.병원체, 바이러스 ⊑ 병원체가 있을 때",
+      "아무 조건 없이",
+      "항상 직접 적어야"
+     ],
+     "answer": 0,
+     "why": "정의가 있으면 계산돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    },
+    {
+     "title": "SNOMED CT Extension Guide — Classifying an Edition",
+     "url": "https://docs.snomed.org/snomed-ct-practical-guides/snomed-ct-extension-guide/5-key-steps/5.6-distribution/5.6.1-preparing-for-distribution/5.6.1.1-classifying-an-edition",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "충족 가능성: 빈 클래스 찾기",
+   "lead": "어떤 클래스가 논리적으로 원소를 가질 수 없으면 '충족 불가능(unsatisfiable)'이에요. 거의 늘 설계 실수예요.",
+   "idea": [
+    "예: '소아 ⊑ ∀나이.<18', '소아암환자 ⊑ 소아 ⊓ 성인', '소아 ⊓ 성인 ⊑ ⊥'(서로소). 그러면 소아암환자는 절대 원소가 없어요.",
+    "Protégé에서 이런 클래스는 빨간색으로 표시되고 owl:Nothing의 하위로 분류돼요.",
+    "빈 클래스를 일찍 찾으면, 나중에 데이터를 넣었을 때 생길 모순을 미리 막아요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "현우가 만든 '응급 외래 입원환자' 클래스가 빨갛게 떠요. '외래'와 '입원'을 서로소로 둔 탓이에요. 정의를 다시 봐요.",
+   "deep": [
+    "DeBellis의 Pizza 튜토리얼은 일부러 모순 클래스를 만들어 추론기가 찾는 연습을 시켜요."
+   ],
+   "recall": {
+    "q": "충족 불가능한 클래스가 보통 뜻하는 것은?",
+    "a": "정의끼리 충돌하는 설계 실수."
+   },
+   "quiz": [
+    {
+     "q": "Protégé에서 충족 불가능 클래스는 어디로 분류되나요?",
+     "options": [
+      "owl:Thing",
+      "owl:Nothing",
+      "rdfs:Class"
+     ],
+     "answer": 1,
+     "why": "원소가 없으니 Nothing의 하위예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "DeBellis, A Practical Guide to Building OWL Ontologies Using Protégé (new Pizza tutorial)",
+     "url": "https://www.michaeldebellis.com/post/new-protege-pizza-tutorial",
+     "date": "2021"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "일관성: 온톨로지 전체에 모순이 있나",
+   "lead": "TBox와 ABox를 합쳤을 때 만족하는 세계가 하나도 없으면 온톨로지가 비일관(inconsistent)이에요.",
+   "idea": [
+    "예: '남성 ⊓ 여성 ⊑ ⊥'(서로소)인데 데이터에 개체 하나가 둘 다로 들어오면 모순이에요.",
+    "비일관이면 논리적으로 '무엇이든' 함의돼요. 그래서 추론 결과 전체를 믿을 수 없게 돼요. 반드시 고쳐야 해요.",
+    "원인은 보통 데이터 오류이거나 너무 강한 공리예요. 추론기의 설명(justification) 기능으로 원인 공리 몇 개를 찾아요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "EMR 이관 데이터에 '퇴원일 < 입원일'이 섞여 있으면 모순이 날 수 있어요. 나는 이런 건 SHACL로 먼저 거르자고 해요(03장).",
+   "deep": [
+    "OWL 2 Profiles 5장 표는 일관성, 충족 가능성, 포함, 인스턴스 검사를 핵심 추론 문제로 나열해요."
+   ],
+   "recall": {
+    "q": "비일관 온톨로지가 위험한 이유는?",
+    "a": "모순에서는 아무 문장이나 함의되어 추론 결과 전체를 믿을 수 없어서요."
+   },
+   "quiz": [
+    {
+     "q": "서로소인 두 클래스에 같은 개체가 들어오면?",
+     "options": [
+      "새 클래스가 생김",
+      "온톨로지가 비일관",
+      "무시됨"
+     ],
+     "answer": 1,
+     "why": "만족하는 세계가 없어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Direct Semantics (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-direct-semantics/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "Glimm et al., HermiT: An OWL 2 Reasoner, J. Automated Reasoning 53",
+     "url": "https://doi.org/10.1007/s10817-014-9305-1",
+     "date": "2014"
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "인스턴스 검사와 실현(realization)",
+   "lead": "개체가 어느 클래스에 속하는지 계산하는 것이 인스턴스 검사, 가장 구체적인 클래스를 찾는 것이 실현이에요.",
+   "idea": [
+    "환자#77이 '당뇨 진단'과 '인슐린 처방'을 가지면, 추론기는 '당뇨환자', '인슐린사용자'에 넣어요.",
+    "실현은 그중 가장 아래(구체적인) 클래스만 골라요. 화면에 '당뇨환자 > 인슐린사용 당뇨환자'처럼 보여 줄 때 써요.",
+    "이건 AI 비서의 질의에도 쓰여요. '인슐린 쓰는 당뇨 환자'를 물으면 정의된 클래스로 바로 찾을 수 있어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 사실",
+     "t": "환자#77: 당뇨 진단 + 인슐린 처방"
+    },
+    {
+     "k": "2 · 정의",
+     "t": "인슐린사용당뇨환자 ≡ ..."
+    },
+    {
+     "k": "3 · 추론",
+     "t": "환자#77 ∈ 인슐린사용당뇨환자"
+    },
+    {
+     "k": "4 · 질의",
+     "t": "AI가 클래스로 바로 조회"
+    }
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "현우의 '당뇨 명단'이 실현 결과로 자동 갱신돼요. 단, 정의를 바꾸면 명단도 바뀐다는 걸 공지해야 해요.",
+   "deep": [
+    "OWL 2 Profiles 문서는 인스턴스 검사(instance checking)를 RL 프로필에서 다항 시간에 풀 수 있다고 적어요."
+   ],
+   "recall": {
+    "q": "실현(realization)은?",
+    "a": "각 개체가 속하는 가장 구체적인 클래스들을 찾는 것."
+   },
+   "quiz": [
+    {
+     "q": "인스턴스 검사의 질문은?",
+     "options": [
+      "A ⊑ B인가?",
+      "개체 a가 클래스 C에 속하는가?",
+      "온톨로지에 모순이 있나?"
+     ],
+     "answer": 1,
+     "why": "개체 단위 질문이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    },
+    {
+     "title": "W3C OWL 2 Profiles (Second Edition) — incl. Section 5 Computational Properties",
+     "url": "https://www.w3.org/TR/owl2-profiles/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "열린 세계 가정(OWA)",
+   "lead": "OWL은 '적혀 있지 않으면 모른다'로 봐요. 거짓이라고 단정하지 않아요.",
+   "idea": [
+    "DB에서 '알레르기' 행이 없으면 보통 '알레르기 없음'으로 읽어요. 이게 닫힌 세계 가정(CWA)이에요.",
+    "OWL에서는 알레르기 사실이 없으면 '모른다'예요. 다른 병원 기록에 있을 수도 있으니까요. 웹처럼 정보가 흩어진 환경을 위한 선택이에요.",
+    "그래서 OWL로는 '알레르기 기록이 없는 환자'를 쉽게 못 찾아요. 그런 질문은 SPARQL의 FILTER NOT EXISTS나 SHACL(닫힌 세계)로 해요."
+   ],
+   "hear": [
+    "\"기록이 없으면 없는 거 아니에요?\""
+   ],
+   "ask": [
+    "이 질문은 '없음'을 결론 내야 하나요, '모름'이어도 되나요?"
+   ],
+   "mine": "알레르기는 OWA가 맞아요. '기록 없음'을 '알레르기 없음'으로 읽으면 위험해요. 반대로 청구 마감 체크는 CWA가 맞아요.",
+   "deep": [
+    "OWL 2 Primer는 DB의 닫힌 세계 가정과 OWL 2의 열린 세계 가정을 직접 대비해 설명해요.",
+    "Rector 등(2004)은 OWA가 DB·논리 프로그래밍에 익숙한 사용자에게 가장 큰 혼란이라고 보고했어요."
+   ],
+   "recall": {
+    "q": "같은 '기록 없음'을 DB와 OWL은 어떻게 읽나요?",
+    "a": "DB(CWA)는 거짓(없음), OWL(OWA)은 모름."
+   },
+   "quiz": [
+    {
+     "q": "환자#77의 알레르기 기록이 없을 때 OWL 추론기는?",
+     "options": [
+      "알레르기 없음으로 결론",
+      "알 수 없음",
+      "모순"
+     ],
+     "answer": 1,
+     "why": "적혀 있지 않으면 모름이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "Rector et al., OWL Pizzas: Practical Experience of Teaching OWL-DL (abstract, Protégé 2004)",
+     "url": "https://protege.stanford.edu/conference/2004/abstracts/Rector1.html",
+     "date": "2004"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "닫힌 세계 가정(CWA)이 맞는 곳",
+   "lead": "규정 점검, 마감 체크, 입력 검증은 '없으면 없음'으로 봐야 해요. 여기엔 CWA 도구를 써요.",
+   "idea": [
+    "'모든 입원 환자는 주치의가 정확히 1명 있어야 한다'를 OWL로 적으면, 주치의 기록이 없을 때 추론기는 '어딘가 있겠지'로 넘어가요. 오류를 안 잡아요.",
+    "SQL 쿼리나 SHACL은 '주치의 없음 = 위반'으로 보고해요. 입력 품질 점검엔 이쪽이 맞아요.",
+    "실무 공식: 뜻을 정하고 새 사실을 끌어내는 건 OWL(OWA), 데이터가 규칙을 지켰는지 검사하는 건 SHACL/SQL(CWA)."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "소라의 입력 검증은 SHACL로, 지수 팀장의 개념 정의는 OWL로 나눠 맡기자고 정리해요.",
+   "deep": [
+    "SHACL은 2017-07-20 W3C 권고안이 됐고, 데이터 그래프를 shapes 그래프의 조건으로 검증해 위반 보고서를 내요."
+   ],
+   "code": {
+    "lang": "Turtle",
+    "text": ":InpatientShape a sh:NodeShape ;\n  sh:targetClass :Inpatient ;\n  sh:property [ sh:path :attendingPhysician ;\n    sh:minCount 1 ; sh:maxCount 1 ] .",
+    "read": "SHACL은 입원 환자마다 주치의가 0명이거나 2명 이상이면 위반 보고를 내요. 닫힌 세계 검사예요."
+   },
+   "recall": {
+    "q": "'주치의 정확히 1명' 위반을 잡으려면 무엇을 쓰나요?",
+    "a": "닫힌 세계로 검사하는 SHACL이나 SQL."
+   },
+   "quiz": [
+    {
+     "q": "OWL의 '정확히 1명' 제약이 기록 없는 환자를 오류로 못 잡는 이유는?",
+     "options": [
+      "버그",
+      "열린 세계라 '아직 모르는 주치의'가 있을 수 있다고 봐서",
+      "제약이 무시돼서"
+     ],
+     "answer": 1,
+     "why": "OWA의 결과예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    },
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "고유 이름 가정(UNA)이 없다",
+   "lead": "OWL은 이름이 다르다고 다른 개체라고 보지 않아요. 같을 수도 있다고 봐요.",
+   "idea": [
+    "EMR의 '환자#77'과 검사 시스템의 'P-0077'은 같은 사람일 수 있어요. OWL은 이걸 막지 않아요. 여러 기관이 각자 이름을 붙이는 웹을 위한 설계예요.",
+    "그래서 '주치의 최대 1명'인데 '김의사'와 'Dr. Kim'이 들어오면, 추론기는 오류 대신 '둘은 같은 사람'이라고 결론 내요.",
+    "다르다는 걸 알면 owl:differentFrom이나 owl:AllDifferent로 적어야 해요. 같다는 건 owl:sameAs로 적어요. sameAs 남용은 큰 오류를 낳아요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "환자 마스터 인덱스(MPI) 없이 sameAs를 자동으로 걸면 다른 환자 기록이 섞여요. 소라에게 신중히 하자고 해요.",
+   "deep": [
+    "OWL 2 Primer: 'OWL does not make the assumption that different names are names for different individuals' — 여러 조직이 따로 이름을 짓는 웹에 맞춘 선택이라고 설명해요."
+   ],
+   "recall": {
+    "q": "최대 1명 제약에 이름 두 개가 들어오면 OWL은?",
+    "a": "모순이라 하지 않고 두 이름이 같은 개체라고 추론해요(UNA가 없어서)."
+   },
+   "quiz": [
+    {
+     "q": "두 개체가 다르다고 확실히 하려면?",
+     "options": [
+      "이름을 다르게 짓는다",
+      "owl:differentFrom을 적는다",
+      "주석을 단다"
+     ],
+     "answer": 1,
+     "why": "명시적으로 적어야 해요."
+    },
+    {
+     "q": "sameAs를 함부로 쓰면?",
+     "options": [
+      "속성이 서로 섞여 잘못된 결론이 퍼진다",
+      "아무 영향 없다",
+      "속도만 느려진다"
+     ],
+     "answer": 0,
+     "why": "같은 개체로 합쳐지니 모든 사실이 공유돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "W3C OWL 2 Direct Semantics (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-direct-semantics/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "도메인 · 레인지 함정",
+   "lead": "OWL의 domain/range는 '틀리면 오류'가 아니라 '그러면 그 클래스다'라는 추론이에요.",
+   "idea": [
+    "'처방대상' 속성의 range를 '환자'로 두고, 데이터에 '처방#1 처방대상 병동3'이 들어오면 추론기는 오류 대신 '병동3은 환자다'라고 결론 내요.",
+    "병동과 환자를 서로소로 선언해 두지 않으면 아무 경고도 없어요. 이게 RDFS/OWL 초보의 가장 흔한 놀람이에요.",
+    "입력 검사가 목적이면 SHACL의 sh:class를 쓰고, domain/range는 정말 '자동 분류'를 원할 때만 써요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "소라가 range를 '타입 검사'로 생각하고 있었어요. 03장 SHACL로 넘기는 이유가 여기 있어요.",
+   "deep": [
+    "RDF Schema 1.1은 rdfs:range를 '이 속성의 값은 그 클래스의 인스턴스다'라는 의미 조건으로 정의해요. 검증 규칙이 아니에요."
+   ],
+   "recall": {
+    "q": "range=환자 인데 병동이 들어오면 OWL은?",
+    "a": "병동3을 환자로 추론해요. 서로소 선언이 있어야 모순으로 잡혀요."
+   },
+   "quiz": [
+    {
+     "q": "입력 타입 검사에 알맞은 것은?",
+     "options": [
+      "rdfs:range",
+      "SHACL sh:class",
+      "owl:sameAs"
+     ],
+     "answer": 1,
+     "why": "검사는 닫힌 세계 도구로 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF Schema 1.1",
+     "url": "https://www.w3.org/TR/rdf-schema/",
+     "date": "2014-02-25"
+    },
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "추론기: HermiT · ELK와 친구들",
+   "lead": "추론기는 공리를 받아 분류·일관성·인스턴스 검사를 계산하는 프로그램이에요. 언어 조각마다 강한 도구가 달라요.",
+   "idea": [
+    "HermiT: OWL 2 Direct Semantics를 완전히 지원하는 추론기로, 하이퍼태블로 계산법을 써요. Protégé에 기본으로 들어 있어요.",
+    "ELK: OWL 2 EL에 특화돼 매우 빠르고, 큰 생명의학 온톨로지 분류에 많이 써요. 대신 EL 밖 기능은 무시해요.",
+    "그 밖에 Pellet, FaCT++, 규칙 기반 RDFox 등이 있어요. 고르는 기준은 표현력(어떤 공리를 쓰나)과 규모(클래스·개체 수)예요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "파일럿 온톨로지는 작아서 HermiT로 충분해요. 나중에 SNOMED CT를 들이면 ELK가 필요해요.",
+   "deep": [
+    "Glimm 등(2014)은 HermiT가 OWL 2 Direct Semantics를 완전히 준수하고 하이퍼태블로(hypertableau) 계산에 기반한다고 밝혀요.",
+    "Kazakov 등(2014)은 EL이 생명의학 용어 추론의 '선택 언어'가 됐고 OWL EL 프로필의 바탕이라고 설명해요."
+   ],
+   "recall": {
+    "q": "HermiT와 ELK를 고르는 기준은?",
+    "a": "표현력이 많이 필요하면 HermiT(OWL 2 DL 전체), 크고 단순한 EL 계층이면 ELK."
+   },
+   "quiz": [
+    {
+     "q": "ELK의 한계는?",
+     "options": [
+      "느리다",
+      "EL 밖의 구성자(예: ∀, 부정)는 처리 범위 밖",
+      "Protégé에서 못 쓴다"
+     ],
+     "answer": 1,
+     "why": "속도 대신 언어를 좁혔어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Glimm et al., HermiT: An OWL 2 Reasoner, J. Automated Reasoning 53",
+     "url": "https://doi.org/10.1007/s10817-014-9305-1",
+     "date": "2014"
+    },
+    {
+     "title": "Kazakov, Krötzsch & Simančík, The Incredible ELK, J. Automated Reasoning 53",
+     "url": "https://doi.org/10.1007/s10817-013-9296-3",
+     "date": "2014"
+    },
+    {
+     "title": "Protégé (Stanford)",
+     "url": "https://protege.stanford.edu/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "결정 가능성과 계산 비용",
+   "lead": "OWL 2 DL은 언제나 답이 나오지만 최악의 경우 엄청 느릴 수 있어요. OWL 2 Full은 답이 안 나올 수도 있어요.",
+   "idea": [
+    "결정 가능(decidable) = 모든 질문에 유한 시간 안에 예/아니오를 내는 알고리즘이 있다. OWL 2 DL은 결정 가능해요.",
+    "하지만 최악 복잡도는 N2EXPTIME(이중 지수)이에요. 실제 온톨로지는 대부분 잘 돌지만, 특정 구성자 조합이 폭발을 부를 수 있어요.",
+    "RDF 기반 의미론(OWL 2 Full)은 결정 불가능해요. 그래서 실무 추론은 거의 DL이나 프로필 위에서 해요."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "지수 팀장이 '추론기가 느려지면요?'라고 물어요. 나는 쓰는 구성자를 제한하고 프로필을 고르는 게 답이라고 해요.",
+   "deep": [
+    "OWL 2 Profiles 5장: Direct Semantics의 일관성·충족성·포함·인스턴스 검사는 N2EXPTIME-complete, RDF-Based Semantics는 Undecidable."
+   ],
+   "recall": {
+    "q": "결정 가능하다는 것이 '빠르다'는 뜻인가요?",
+    "a": "아니요. 답이 반드시 나온다는 뜻일 뿐, 최악에는 매우 느릴 수 있어요."
+   },
+   "quiz": [
+    {
+     "q": "OWL 2 Direct Semantics의 일관성 검사 최악 복잡도는?",
+     "options": [
+      "다항 시간",
+      "N2EXPTIME-complete",
+      "결정 불가능"
+     ],
+     "answer": 1,
+     "why": "OWL 2 Profiles 5장 표에 있어요."
+    },
+    {
+     "q": "OWL 2 Full(RDF 기반 의미론)의 추론은?",
+     "options": [
+      "결정 가능",
+      "결정 불가능",
+      "선형 시간"
+     ],
+     "answer": 1,
+     "why": "같은 표에 Undecidable로 적혀 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Profiles (Second Edition) — incl. Section 5 Computational Properties",
+     "url": "https://www.w3.org/TR/owl2-profiles/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "W3C OWL 2 Document Overview (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-overview/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "프로필: 표현력을 덜고 속도를 얻다",
+   "lead": "OWL 2 EL·QL·RL은 각각 다른 쓰임에 맞춰 표현력을 줄이고 다항 시간 추론을 얻은 조각이에요.",
+   "idea": [
+    "EL: 클래스·속성이 아주 많은 온톨로지용. 포함·일관성을 다항 시간에 풀어요. SNOMED CT 논리 프로필이 EL의 부분집합이에요.",
+    "QL: 데이터는 관계형 DB에 두고 질의를 SQL로 다시 써서 답해요. 데이터 크기에 대해 LOGSPACE로 질의 응답이 가능해요.",
+    "RL: 규칙 엔진으로 구현할 수 있게 만든 조각이에요. 트리플 저장소 안 추론에 많이 써요. 03장에서 문법과 함께 다시 봐요."
+   ],
+   "steps": [
+    {
+     "k": "EL",
+     "t": "큰 계층, 다항 시간"
+    },
+    {
+     "k": "QL",
+     "t": "DB 위 질의, LOGSPACE 데이터 복잡도"
+    },
+    {
+     "k": "RL",
+     "t": "규칙 엔진, 다항 시간"
+    },
+    {
+     "k": "DL",
+     "t": "전체 표현력, N2EXPTIME"
+    }
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "한빛병원은 DB를 옮기기 어려워서 QL 방식이 끌려요. 진단 계층은 SNOMED처럼 EL로 가요.",
+   "deep": [
+    "SNOMED CT Logical Profile Specification은 SNOMED CT 논리 프로필을 OWL 2 EL 프로필의 부분집합으로 정의해요.",
+    "OWL 2 Profiles: QL은 데이터 크기 기준 LOGSPACE로 결합 질의 응답, EL·RL은 핵심 추론을 다항 시간에 풀 수 있어요."
+   ],
+   "recall": {
+    "q": "세 프로필의 쓰임을 한 줄씩?",
+    "a": "EL = 거대 용어 계층, QL = 기존 DB 위 질의, RL = 규칙 엔진 추론."
+   },
+   "quiz": [
+    {
+     "q": "기존 EMR DB를 그대로 두고 온톨로지로 질의하고 싶다면?",
+     "options": [
+      "EL",
+      "QL",
+      "Full"
+     ],
+     "answer": 1,
+     "why": "QL은 SQL 재작성용이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Profiles (Second Edition) — incl. Section 5 Computational Properties",
+     "url": "https://www.w3.org/TR/owl2-profiles/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "SNOMED CT Logical Profile Specification — Introduction",
+     "url": "https://docs.snomed.org/snomed-ct-specifications/snomed-ct-logical-profile-specification/introduction/1-introduction",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "정리: 논리가 주는 것과 대가",
+   "lead": "논리는 '숨은 결론'과 '모순'을 기계가 찾게 해 줘요. 대가는 설계 난이도와 계산 비용이에요.",
+   "idea": [
+    "주는 것: 자동 분류, 빈 클래스·모순 발견, 개체 자동 분류, AI 질의의 정확한 기준.",
+    "조심할 것: OWA(기록 없음 ≠ 없음), UNA 없음(이름 다름 ≠ 다른 개체), domain/range는 검사가 아님, ∀의 빈 경우.",
+    "고를 것: 필요한 만큼의 표현력 → 프로필 → 추론기. 검증은 SHACL로 따로."
+   ],
+   "hear": [],
+   "ask": [],
+   "mine": "'추론 설계 메모 v1'에 이 네 함정을 체크리스트로 넣어요.",
+   "deep": [
+    "OWL 2 Primer는 OWA와 UNA 부재를 DB와의 핵심 차이로 정리해요."
+   ],
+   "recall": {
+    "q": "OWL 초보의 네 가지 함정은?",
+    "a": "열린 세계, 고유 이름 가정 없음, domain/range는 추론, ∀는 빈 경우도 참."
+   },
+   "quiz": [
+    {
+     "q": "입력 데이터 검사와 개념 추론을 나누는 실무 공식은?",
+     "options": [
+      "둘 다 OWL",
+      "추론은 OWL, 검사는 SHACL/SQL",
+      "둘 다 SQL"
+     ],
+     "answer": 1,
+     "why": "세계 가정이 달라요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "snomed-el-classification",
+   "day": 5,
+   "title": "SNOMED CT: 36만 개 의학 개념을 추론기로 분류하다",
+   "when": "현재",
+   "lead": "SNOMED CT는 개념을 OWL 2 EL의 부분집합으로 정의하고, 분류기가 진술된 정의로부터 상하 계층을 계산해 배포해요.",
+   "facts": [
+    {
+     "label": "규모",
+     "value": "국제판 36만 개 이상의 개념, 매월 배포",
+     "src": "snomed.org"
+    },
+    {
+     "label": "논리 언어",
+     "value": "SNOMED CT Logic Profile = OWL 2 EL 프로필의 부분집합",
+     "src": "Logical Profile Specification"
+    },
+    {
+     "label": "배포 구조",
+     "value": "진술된 정의(OWL 참조집합) → 분류 → 추론된 관계(Relationship 파일)",
+     "src": "Extension Guide"
+    },
+    {
+     "label": "추론기",
+     "value": "EL 전용 추론기(ELK 등)는 생명의학 용어 추론에 널리 쓰임",
+     "src": "Kazakov 등 2014"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2009/2012",
+     "text": "OWL 2와 EL 프로필이 W3C 권고안"
+    },
+    {
+     "t": "2014",
+     "text": "ELK 논문(J. Automated Reasoning)"
+    },
+    {
+     "t": "현재",
+     "text": "SNOMED CT 논리 프로필 명세가 EL 부분집합을 보장",
+     "hot": true
+    }
+   ],
+   "causes": [
+    {
+     "stage": "규모",
+     "title": "너무 커서 손으로 못 함",
+     "text": "수십만 개념의 다중 부모를 사람이 일일이 맞추기 어려워요."
+    },
+    {
+     "stage": "선택",
+     "title": "표현력보다 속도",
+     "text": "EL로 제한해 다항 시간 분류를 얻었어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "왜 OWL 2 DL 전체가 아니라 EL을 썼을까요?",
+     "a": "규모가 커서 다항 시간 보장이 필요하고, ∃와 ⊓만으로도 대부분의 임상 정의를 표현할 수 있어서요."
+    },
+    {
+     "q": "한빛병원에 주는 교훈은?",
+     "a": "진술(사람이 적음)과 추론(기계가 계산)을 나눠 관리하고, 사용자는 추론된 계층을 쓰게 하는 구조예요."
+    }
+   ],
+   "after": [
+    "SNOMED CT를 쓰는 기관은 진술 정의 대신 추론된 관계 파일을 주로 사용해요."
+   ],
+   "sources": [
+    {
+     "title": "SNOMED International — What is SNOMED CT?",
+     "url": "https://www.snomed.org/what-is-snomed-ct",
+     "date": "n.d."
+    },
+    {
+     "title": "SNOMED CT Logical Profile Specification — Introduction",
+     "url": "https://docs.snomed.org/snomed-ct-specifications/snomed-ct-logical-profile-specification/introduction/1-introduction",
+     "date": "n.d."
+    },
+    {
+     "title": "SNOMED CT Extension Guide — Classifying an Edition",
+     "url": "https://docs.snomed.org/snomed-ct-practical-guides/snomed-ct-extension-guide/5-key-steps/5.6-distribution/5.6.1-preparing-for-distribution/5.6.1.1-classifying-an-edition",
+     "date": "n.d."
+    },
+    {
+     "title": "Kazakov, Krötzsch & Simančík, The Incredible ELK, J. Automated Reasoning 53",
+     "url": "https://doi.org/10.1007/s10817-013-9296-3",
+     "date": "2014"
+    }
+   ],
+   "caveat": "SNOMED 내부가 어떤 분류기를 쓰는지는 버전마다 다를 수 있어 특정하지 않았어요."
+  },
+  {
+   "id": "owl-pizza-teaching",
+   "day": 4,
+   "title": "피자로 배운 OWL: 열린 세계가 가장 헷갈린다",
+   "when": "2004",
+   "lead": "맨체스터 대학 팀은 수년간 피자 온톨로지로 OWL을 가르치며, 학습자가 열린 세계 가정과 ∀/∃에서 가장 많이 틀린다는 걸 정리했어요.",
+   "facts": [
+    {
+     "label": "발표",
+     "value": "Protégé Conference 2004 초록 (Rector 등)",
+     "src": "protege.stanford.edu"
+    },
+    {
+     "label": "핵심 혼란",
+     "value": "DB·논리 프로그래밍·프레임 언어에 익숙한 사용자의 열린 세계 가정 혼란",
+     "src": "Rector 초록"
+    },
+    {
+     "label": "후속",
+     "value": "Pizza 튜토리얼이 Protégé 입문 교재로 계속 개정됨",
+     "src": "DeBellis 튜토리얼"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2004",
+     "text": "OWL 1 권고안 · 교육 경험 발표",
+     "hot": true
+    },
+    {
+     "t": "2012",
+     "text": "OWL 2 2판"
+    },
+    {
+     "t": "2021",
+     "text": "DeBellis의 새 Pizza 튜토리얼"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "배경",
+     "title": "닫힌 세계 습관",
+     "text": "DB에 익숙하면 '없으면 거짓'으로 읽어요."
+    },
+    {
+     "stage": "언어",
+     "title": "only vs some",
+     "text": "∀(only)는 빈 경우에도 참이라 의도와 다른 분류가 나와요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "'채소만 올린 피자'를 정의할 때 흔한 실수는?",
+     "a": "∀토핑.채소만 쓰는 것. 토핑이 없는 피자도 포함돼요. ∃토핑.채소를 같이 써요."
+    },
+    {
+     "q": "병원 팀 교육에 어떻게 쓸까요?",
+     "a": "OWA·∀ 함정을 병원 예(알레르기 기록, 항생제만 처방)로 바꿔 첫 주에 연습해요."
+    }
+   ],
+   "after": [
+    "Pizza 예제는 지금도 Protégé 입문의 표준 교재예요."
+   ],
+   "sources": [
+    {
+     "title": "Rector et al., OWL Pizzas: Practical Experience of Teaching OWL-DL (abstract, Protégé 2004)",
+     "url": "https://protege.stanford.edu/conference/2004/abstracts/Rector1.html",
+     "date": "2004"
+    },
+    {
+     "title": "DeBellis, A Practical Guide to Building OWL Ontologies Using Protégé (new Pizza tutorial)",
+     "url": "https://www.michaeldebellis.com/post/new-protege-pizza-tutorial",
+     "date": "2021"
+    },
+    {
+     "title": "Protégé (Stanford)",
+     "url": "https://protege.stanford.edu/",
+     "date": "n.d."
+    }
+   ],
+   "caveat": "초록만 확인했고 본문 세부 통계는 인용하지 않았어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "포함 방향 헷갈림",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "'항생제 ⊑ 약물'이면 약물 검색하면 항생제만 나오는 거죠?"
+    }
+   ],
+   "q": "어떻게 답할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "맞다",
+     "ok": false,
+     "why": "방향이 반대예요."
+    },
+    {
+     "k": "B",
+     "t": "아니다. 항생제는 약물의 부분집합이라, 약물 검색에 항생제가 포함될 뿐 다른 약도 나온다",
+     "ok": true,
+     "why": "집합으로 읽었어요."
+    },
+    {
+     "k": "C",
+     "t": "둘은 같은 집합이다",
+     "ok": false,
+     "why": "⊑는 동치가 아니에요."
+    }
+   ],
+   "explain": "⊑는 한 방향 포함이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "병동은 클래스? 인스턴스?",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "'3병동'이랑 '내과병동' 둘 다 클래스로 만들었어요."
+    }
+   ],
+   "q": "어떻게 고칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "둘 다 클래스로 둔다",
+     "ok": false,
+     "why": "3병동은 하나뿐이에요."
+    },
+    {
+     "k": "B",
+     "t": "3병동은 인스턴스, 내과병동은 클래스로 두고 3병동을 내과병동의 인스턴스로",
+     "ok": true,
+     "why": "예를 더 들 수 있나로 판단했어요."
+    },
+    {
+     "k": "C",
+     "t": "둘 다 인스턴스",
+     "ok": false,
+     "why": "내과병동은 여러 개 있을 수 있어요."
+    }
+   ],
+   "explain": "'하나 더 들 수 있나?'",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "'항생제만 처방받은 환자'",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "∀처방받음.항생제 로 정의했는데 처방 없는 환자도 들어가요."
+    }
+   ],
+   "q": "어떻게 고칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "∀를 ∃로 바꾼다",
+     "ok": false,
+     "why": "다른 약도 받은 환자가 들어가요."
+    },
+    {
+     "k": "B",
+     "t": "∀처방받음.항생제 ⊓ ∃처방받음.항생제 로 둘 다 쓴다",
+     "ok": true,
+     "why": "'적어도 하나, 그리고 모두' 조건이에요."
+    },
+    {
+     "k": "C",
+     "t": "그대로 둔다",
+     "ok": false,
+     "why": "의도와 달라요."
+    }
+   ],
+   "explain": "∀는 빈 경우도 참이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    },
+    {
+     "title": "Rector et al., OWL Pizzas: Practical Experience of Teaching OWL-DL (abstract, Protégé 2004)",
+     "url": "https://protege.stanford.edu/conference/2004/abstracts/Rector1.html",
+     "date": "2004"
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "규칙 엔진 vs DL",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "그냥 if-then 규칙 엔진으로 짜면 안 돼요?"
+    }
+   ],
+   "q": "DL을 쓸 때 얻는 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "코드가 짧다",
+     "ok": false,
+     "why": "부차적이에요."
+    },
+    {
+     "k": "B",
+     "t": "정해진 의미론 위에서 분류·모순 검사가 언제나 끝난다는 보장",
+     "ok": true,
+     "why": "결정 가능성과 표준 의미론이에요."
+    },
+    {
+     "k": "C",
+     "t": "UI가 생긴다",
+     "ok": false,
+     "why": "무관해요."
+    }
+   ],
+   "explain": "규칙 엔진이 나쁜 건 아니고, 목적이 달라요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    },
+    {
+     "title": "W3C OWL 2 Profiles (Second Edition) — incl. Section 5 Computational Properties",
+     "url": "https://www.w3.org/TR/owl2-profiles/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "당뇨 명단 자동화",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "매달 당뇨 환자 명단을 손으로 만들어요."
+    },
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "자동으로 안 돼요?"
+    }
+   ],
+   "q": "온톨로지로 어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "당뇨환자 ⊑ 환자 만 적는다",
+     "ok": false,
+     "why": "필요조건만이라 자동 분류가 안 돼요."
+    },
+    {
+     "k": "B",
+     "t": "당뇨환자 ≡ 환자 ⊓ ∃진단받음.당뇨 로 정의해 추론기가 분류",
+     "ok": true,
+     "why": "필요충분조건이라 자동 분류돼요."
+    },
+    {
+     "k": "C",
+     "t": "명단을 엑셀 매크로로",
+     "ok": false,
+     "why": "뜻이 시스템에 안 남아요."
+    }
+   ],
+   "explain": "≡ 정의가 자동 분류를 일으켜요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "TBox와 ABox 어디에",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "환자 기록 수백만 건도 다 OWL 파일에 넣어요?"
+    }
+   ],
+   "q": "현실적인 구조는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "전부 OWL 파일 하나에",
+     "ok": false,
+     "why": "관리·성능 문제가 커요."
+    },
+    {
+     "k": "B",
+     "t": "TBox는 온톨로지 파일, ABox는 DB/그래프 저장소에 두고 매핑",
+     "ok": true,
+     "why": "흔한 실무 구조예요."
+    },
+    {
+     "k": "C",
+     "t": "ABox는 버린다",
+     "ok": false,
+     "why": "데이터가 없어져요."
+    }
+   ],
+   "explain": "규칙과 사실을 나눠 관리해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021, arXiv:2003.02320)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2021"
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "빨간 클래스",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "Protégé에서 '응급외래입원환자'가 빨개요."
+    }
+   ],
+   "q": "무슨 뜻이고 어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "버그니 무시한다",
+     "ok": false,
+     "why": "설계 충돌 신호예요."
+    },
+    {
+     "k": "B",
+     "t": "충족 불가능한 클래스다. 외래·입원 서로소 공리와 정의를 다시 본다",
+     "ok": true,
+     "why": "원인 공리를 찾아요."
+    },
+    {
+     "k": "C",
+     "t": "클래스를 지운다",
+     "ok": false,
+     "why": "원인을 몰라요."
+    }
+   ],
+   "explain": "빈 클래스는 대부분 설계 실수예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "DeBellis, A Practical Guide to Building OWL Ontologies Using Protégé (new Pizza tutorial)",
+     "url": "https://www.michaeldebellis.com/post/new-protege-pizza-tutorial",
+     "date": "2021"
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "모순 하나가 전체를",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "데이터 하나가 모순인데 그냥 두면 안 돼요?"
+    }
+   ],
+   "q": "왜 안 되나요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "괜찮다",
+     "ok": false,
+     "why": "비일관이면 모든 함의가 무의미해져요."
+    },
+    {
+     "k": "B",
+     "t": "비일관 온톨로지에서는 무엇이든 함의되어 전체 추론 결과를 믿을 수 없다",
+     "ok": true,
+     "why": "정확해요."
+    },
+    {
+     "k": "C",
+     "t": "속도만 느려진다",
+     "ok": false,
+     "why": "문제는 정확성이에요."
+    }
+   ],
+   "explain": "모순은 반드시 고쳐요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C OWL 2 Direct Semantics (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-direct-semantics/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "AI의 '인슐린 쓰는 당뇨 환자'",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "AI 비서가 '인슐린 쓰는 당뇨 환자'를 매번 다르게 세요."
+    }
+   ],
+   "q": "개선책은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "프롬프트를 길게",
+     "ok": false,
+     "why": "정의가 고정되지 않아요."
+    },
+    {
+     "k": "B",
+     "t": "정의된 클래스를 만들고 추론기로 개체를 분류한 뒤, AI는 그 클래스를 조회",
+     "ok": true,
+     "why": "기준점을 줘요."
+    },
+    {
+     "k": "C",
+     "t": "AI 사용 금지",
+     "ok": false,
+     "why": "가능성을 버려요."
+    }
+   ],
+   "explain": "01장 그라운딩 + 실현.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Krötzsch, Simančík & Horrocks, A Description Logic Primer (arXiv:1201.4089)",
+     "url": "https://arxiv.org/abs/1201.4089",
+     "date": "2012"
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "알레르기 기록이 없는 환자",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "알레르기 행이 없으면 '알레르기 없음'으로 표시할게요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "그대로 표시",
+     "ok": false,
+     "why": "기록 없음 ≠ 알레르기 없음이에요."
+    },
+    {
+     "k": "B",
+     "t": "'알레르기 없음(확인됨)'과 '기록 없음'을 구분해 저장하고 표시",
+     "ok": true,
+     "why": "OWA를 존중해요."
+    },
+    {
+     "k": "C",
+     "t": "알레르기 칸을 없앤다",
+     "ok": false,
+     "why": "위험해요."
+    }
+   ],
+   "explain": "환자 안전에서는 '모름'을 '없음'으로 바꾸면 안 돼요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "주치의 누락 검사",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "주치의 없는 입원 환자를 찾아야 해요. OWL에 '정확히 1명' 넣었는데 아무것도 안 나와요."
+    }
+   ],
+   "q": "왜이고 어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "추론기 버그",
+     "ok": false,
+     "why": "OWA 때문이에요."
+    },
+    {
+     "k": "B",
+     "t": "OWL은 열린 세계라 누락을 오류로 안 봐요. SHACL minCount 1로 검사",
+     "ok": true,
+     "why": "검사는 닫힌 세계 도구로."
+    },
+    {
+     "k": "C",
+     "t": "주치의 칸을 필수 해제",
+     "ok": false,
+     "why": "문제 회피예요."
+    }
+   ],
+   "explain": "추론은 OWL, 검사는 SHACL.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "김의사와 Dr. Kim",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "'주치의 최대 1명'인데 김의사, Dr. Kim 두 명이 들어갔는데 오류가 안 나요."
+    }
+   ],
+   "q": "추론기는 무엇을 했을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "무시했다",
+     "ok": false,
+     "why": "결론을 냈어요."
+    },
+    {
+     "k": "B",
+     "t": "고유 이름 가정이 없어 두 이름을 같은 사람으로 추론했다",
+     "ok": true,
+     "why": "UNA 부재의 결과예요."
+    },
+    {
+     "k": "C",
+     "t": "모순을 보고했다",
+     "ok": false,
+     "why": "differentFrom이 없으면 안 해요."
+    }
+   ],
+   "explain": "다르면 differentFrom을 적어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C OWL 2 Web Ontology Language Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "range로 타입 검사?",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "'처방대상'의 range를 환자로 해 뒀으니 병동이 들어오면 막히겠죠?"
+    }
+   ],
+   "q": "실제로는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "막힌다",
+     "ok": false,
+     "why": "OWL은 막지 않아요."
+    },
+    {
+     "k": "B",
+     "t": "병동을 환자로 추론한다. 검사는 SHACL sh:class로",
+     "ok": true,
+     "why": "range는 추론 규칙이에요."
+    },
+    {
+     "k": "C",
+     "t": "무시된다",
+     "ok": false,
+     "why": "결론을 내요."
+    }
+   ],
+   "explain": "domain/range는 검사가 아니에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C RDF Schema 1.1",
+     "url": "https://www.w3.org/TR/rdf-schema/",
+     "date": "2014-02-25"
+    },
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "추론기 선택",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "SNOMED CT 일부를 들여오면 추론이 느려질까요?"
+    }
+   ],
+   "q": "어떻게 준비할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "HermiT 하나로 다 한다",
+     "ok": false,
+     "why": "큰 EL 온톨로지에선 느릴 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "EL 범위 계층은 ELK로, 표현력이 필요한 작은 부분은 HermiT로 나눈다",
+     "ok": true,
+     "why": "언어와 규모로 골라요."
+    },
+    {
+     "k": "C",
+     "t": "추론을 끈다",
+     "ok": false,
+     "why": "이득을 버려요."
+    }
+   ],
+   "explain": "추론기는 프로필과 규모로 골라요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Kazakov, Krötzsch & Simančík, The Incredible ELK, J. Automated Reasoning 53",
+     "url": "https://doi.org/10.1007/s10817-013-9296-3",
+     "date": "2014"
+    },
+    {
+     "title": "Glimm et al., HermiT: An OWL 2 Reasoner, J. Automated Reasoning 53",
+     "url": "https://doi.org/10.1007/s10817-014-9305-1",
+     "date": "2014"
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "기존 DB 위에서 질의",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "EMR DB는 못 옮겨요."
+    },
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "그래도 온톨로지 용어로 질의하고 싶어요."
+    }
+   ],
+   "q": "어떤 프로필이 맞을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "OWL 2 Full",
+     "ok": false,
+     "why": "결정 불가능해요."
+    },
+    {
+     "k": "B",
+     "t": "OWL 2 QL (질의를 SQL로 재작성)",
+     "ok": true,
+     "why": "DB를 그대로 둬요."
+    },
+    {
+     "k": "C",
+     "t": "OWL 2 EL",
+     "ok": false,
+     "why": "거대 계층용이에요."
+    }
+   ],
+   "explain": "QL은 OBDA용이에요. 03장에서 더 봐요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C OWL 2 Profiles (Second Edition) — incl. Section 5 Computational Properties",
+     "url": "https://www.w3.org/TR/owl2-profiles/",
+     "date": "2012-12-11"
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "A Description Logic Primer (Krötzsch, Simančík, Horrocks)",
+   "url": "https://arxiv.org/abs/1201.4089",
+   "min": 60,
+   "lang": "en",
+   "what": "DL의 기본 구성자, TBox/ABox/RBox, 집합 의미론을 짧고 정확하게 정리한 입문 논문이에요.",
+   "day": 2
+  },
+  {
+   "id": "l2",
+   "title": "W3C OWL 2 Primer",
+   "url": "https://www.w3.org/TR/owl2-primer/",
+   "min": 60,
+   "lang": "en",
+   "what": "열린 세계 가정, 고유 이름 가정 부재, 프로필을 예제로 읽어요.",
+   "day": 4
+  },
+  {
+   "id": "l3",
+   "title": "ISWC 2008 Tutorial — Reasoning for Ontology Engineering and Usage (videolectures)",
+   "url": "https://new.videolectures.net/videos/iswc08_moller_itsr",
+   "min": 90,
+   "lang": "en",
+   "what": "추론기가 무엇을 계산하는지, OWA가 실무에서 어떻게 보이는지 시연과 함께 봐요(OWL 2 이전 시기 자료).",
+   "day": 3
+  },
+  {
+   "id": "l4",
+   "title": "DeBellis — New Protégé Pizza Tutorial",
+   "url": "https://www.michaeldebellis.com/post/new-protege-pizza-tutorial",
+   "min": 120,
+   "lang": "en",
+   "what": "Protégé와 HermiT로 정의 클래스·빈 클래스·∀/∃ 함정을 직접 실습해요.",
+   "day": 5
+  },
+  {
+   "id": "l5",
+   "title": "W3C OWL 2 Profiles — 5장 Computational Properties",
+   "url": "https://www.w3.org/TR/owl2-profiles/",
+   "min": 30,
+   "lang": "en",
+   "what": "EL/QL/RL과 DL·Full의 계산 복잡도 표를 직접 확인해요.",
+   "day": 5
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "한빛병원 추론 설계 메모 v1을 1~2쪽으로 써 보세요. 파일럿 범위에서 무엇을 추론하고 무엇을 검사할지 정해요.",
+  "template": [
+   "범위: 입원·재원·진단 파일럿 개념 목록 (클래스/인스턴스 구분)",
+   "정의 클래스 3개: ≡ 정의와 기대 효과 (예: 당뇨환자)",
+   "TBox/ABox 위치: 파일 vs DB, 연결 방법",
+   "세계 가정 표: 질문마다 OWA(추론) vs CWA(검사)",
+   "함정 체크리스트: OWA, UNA, domain/range, ∀ 빈 경우",
+   "프로필·추론기 선택과 이유 (HermiT/ELK, EL/QL)",
+   "모순·빈 클래스가 나오면 누가 어떻게 고치나"
+  ]
+ },
+ "check": [
+  "All 한빛병원 people, the diabetes list, 3병동 and the attending-physician scenario are fictional.",
+  "OWL 2 complexity: Direct Semantics consistency/satisfiability/subsumption/instance checking N2EXPTIME-complete; RDF-Based Semantics undecidable; EL/RL polynomial; QL LOGSPACE data complexity — read from the table in OWL 2 Profiles §5 (fetched).",
+  "OWA vs CWA and no unique-name assumption — quoted from the OWL 2 Primer (fetched).",
+  "HermiT: fully compliant with OWL 2 Direct Semantics, hypertableau — Springer abstract (fetched). ELK: EL as language of choice for biomedical terminologies, basis of OWL EL — Springer abstract (fetched).",
+  "SNOMED CT: >360,000 concepts monthly (snomed.org fetched); Logic Profile is a subset of OWL 2 EL and classification from stated OWL refset to inferred Relationship file — docs.snomed.org pages via web search summary, URLs not separately fetched.",
+  "Rector et al. 2004 OWA confusion — Protégé 2004 abstract (fetched).",
+  "SROIQ as OWL 2 basis — Horrocks, Kutz, Sattler KR 2006 PDF (URL checked 200).",
+  "Dropped: specific ELK timing on SNOMED (could not read full paper); Reiter 1978 CWA paper (link dead)."
+ ]
+}

@@ -1,0 +1,2064 @@
+{
+ "id": "onto-graphs",
+ "no": "04",
+ "title": "그래프로 세상 잇기: 속성 그래프 · 지식그래프 · 엔터티 해소",
+ "short": "그래프와 KG",
+ "q": "뜻을 정한 개념들을, 실제 수많은 사실과 어떻게 이어 하나의 믿을 만한 그래프로 만들까?",
+ "sub": "LPG · RDF · Cypher · GQL · SQL/PGQ · 지식그래프 · Wikidata · 엔터티 해소 · 스키마 vs 온톨로지",
+ "doc": "한빛 임상 지식그래프 설계서 v1",
+ "story": {
+  "title": "\"뜻은 정했는데, 같은 환자가 세 명이에요\"",
+  "size": 300000,
+  "body": [
+   "(가상 이야기) 03장에서 핵심 개념 40개를 RDF·OWL·SHACL로 적었어요. 이제 진짜 데이터를 넣을 차례예요.",
+   "소라가 말해요. \"진료 동선 앱은 Neo4j로 짜고 싶어요. 그래프 그리듯 쓰기 편하거든요.\" 현우는 다른 걸 찾아냈어요. \"EMR·검사실·약제 시스템을 합치니 같은 환자가 세 개의 기록으로 나와요. 동명이인도 섞여 있고요.\"",
+   "지수 팀장은 환자 30만 명 규모로 계산해 보래요. 이번 주에 RDF와 속성 그래프를 어떻게 함께 쓸지, 중복 환자를 어떻게 안전하게 이을지 정하고, 금요일까지 '한빛 임상 지식그래프 설계서 v1'을 써야 해요."
+  ]
+ },
+ "goals": [
+  "속성 그래프(LPG)와 RDF의 차이를 설명하고, 관계 정보를 관계 속성·중간 노드·트리플 텀 중 무엇으로 둘지 고를 수 있어요.",
+  "Cypher/GQL·SQL/PGQ로 패턴과 경로 질의를 쓰고, 지식그래프의 정의와 Google KG·Wikidata·Amazon 사례를 비교할 수 있어요.",
+  "엔터티 해소·링킹 파이프라인을 설계하고, 스키마와 온톨로지의 경계와 KG 품질 지표를 정할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "속성 그래프(LPG)의 생김새",
+   "lead": "속성 그래프는 노드와 관계에 라벨과 '키-값 속성'을 직접 붙여요. 개발자가 머릿속 그림을 그대로 저장하는 느낌이에요.",
+   "idea": [
+    "(:Patient {name:'김하나'})-[:ADMITTED_TO {since:'2026-10-02'}]->(:Ward {name:'7병동'}). 노드에도 관계에도 속성이 붙어요.",
+    "관계는 타입 하나와 방향을 꼭 가져요. 같은 두 노드 사이에 같은 타입 관계가 여러 개 있을 수도 있어요(입원을 두 번 한 경우).",
+    "왜 빠를까요? 많은 그래프 DB는 노드가 자기 이웃 목록을 직접 들고 있어서, 이웃을 찾을 때 전체 인덱스를 뒤지지 않아요(index-free adjacency라고 불러요)."
+   ],
+   "hear": [
+    "\"그건 관계 속성으로 두면 돼요.\"",
+    "\"라벨 두 개 붙여요, :Person:Doctor.\""
+   ],
+   "ask": [
+    "이 값은 노드 속성인가요, 관계 속성인가요, 따로 노드인가요?",
+    "같은 관계가 여러 번 생길 수 있나요?"
+   ],
+   "mine": "소라는 '환자-입원-병동'을 Neo4j로 그려 보고 싶어 해요. 입원 날짜는 관계 속성으로 두면 자연스러워요.",
+   "deep": [
+    "Neo4j 문서는 속성 그래프를 노드·관계·라벨·속성으로 설명하고, 관계는 항상 방향과 타입 하나를 가진다고 해요."
+   ],
+   "recall": {
+    "q": "LPG에서 속성을 붙일 수 있는 곳은?",
+    "a": "노드와 관계 둘 다"
+   },
+   "quiz": [
+    {
+     "q": "'7병동에 2026-10-02부터 입원'에서 날짜를 두기 알맞은 곳은?",
+     "options": [
+      "환자 노드",
+      "ADMITTED_TO 관계",
+      "병동 노드"
+     ],
+     "answer": 1,
+     "why": "그 입원에만 해당하는 값이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j — What is a graph database",
+     "url": "https://neo4j.com/docs/getting-started/graph-database/",
+     "date": "n.d."
+    },
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "RDF vs LPG: 무엇이 다른가",
+   "lead": "RDF는 '전 세계 공유와 뜻(의미론)'에, LPG는 '한 앱 안에서 빠른 탐색과 개발 편의'에 강해요. 무엇이 낫다기보다 출발점이 달라요.",
+   "idea": [
+    "이름: RDF는 모든 것이 전역 IRI, LPG는 DB 안의 내부 ID와 라벨이에요. 여러 기관 데이터를 합치려면 RDF가 편해요.",
+    "의미: RDF는 RDFS/OWL로 형식 의미와 추론이 있어요. LPG는 스키마가 느슨하고 '뜻'은 앱 코드나 문서에 있어요.",
+    "모양: LPG는 관계에 속성을 바로 붙여요. RDF 1.1에선 불편했지만 RDF 1.2 트리플 텀이 이를 메우는 중이에요.",
+    "질의: RDF는 SPARQL(W3C), LPG는 Cypher·Gremlin과 2024년 ISO 표준 GQL이에요."
+   ],
+   "hear": [
+    "\"외부 연계가 핵심이면 RDF, 앱 내부 탐색이면 LPG.\"",
+    "\"둘 다 지원하는 DB도 있어요.\""
+   ],
+   "ask": [
+    "데이터를 밖과 나눌 일이 많나요?",
+    "추론이 필요한가요, 탐색 속도가 중요한가요?"
+   ],
+   "mine": "03장에서 만든 RDF 어휘는 '뜻의 기준'으로 두고, 소라의 진료 동선 탐색 앱은 LPG로 만들 수 있어요. 둘을 잇는 매핑이 핵심이에요.",
+   "deep": [
+    "Hogan et al.(2021) 지식그래프 서베이는 방향 라벨 그래프(RDF 계열)와 속성 그래프를 대표적 데이터 모델로 비교하고, 서로 변환할 수 있다고 정리해요."
+   ],
+   "recall": {
+    "q": "RDF가 LPG보다 강한 점 두 가지는?",
+    "a": "전역 IRI(합치기 쉬움)와 형식 의미·추론"
+   },
+   "quiz": [
+    {
+     "q": "기관 간 데이터 공유와 추론이 핵심이라면?",
+     "options": [
+      "RDF가 더 자연스러움",
+      "LPG가 더 자연스러움",
+      "둘 다 불가능"
+     ],
+     "answer": 0,
+     "why": "전역 이름과 의미론이 RDF의 장점이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    },
+    {
+     "title": "Neo4j — What is a graph database",
+     "url": "https://neo4j.com/docs/getting-started/graph-database/",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C RDF 1.2 Concepts and Abstract Syntax (Candidate Recommendation Snapshot)",
+     "url": "https://www.w3.org/TR/rdf12-concepts/",
+     "date": "2026-04-07"
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "관계에 정보를 붙이는 세 가지 방법",
+   "lead": "'누가, 언제, 얼마나 확신하고' 같은 관계 정보는 어디 둘까요? 관계 속성, 중간 노드, RDF 1.2 트리플 텀 세 가지가 있어요.",
+   "idea": [
+    "관계 속성(LPG): 가장 간단해요. 하지만 그 관계를 다른 관계가 가리킬 수 없어요(관계에서 관계로 선을 못 그어요).",
+    "중간 노드(사건 노드): '진단' 자체를 노드로 만들어 환자·의사·질병·날짜를 다 그 노드에 이어요. 어떤 모델에서도 되고 가장 유연해요.",
+    "트리플 텀(RDF 1.2): 사실 하나에 메타데이터를 붙여요. 표준이 아직 후보 권고 단계예요.",
+    "판단 기준: 그 관계가 '사건'처럼 자기 정보가 많고 다른 것과 이어지면 노드로 올려요."
+   ],
+   "hear": [
+    "\"처방은 그냥 관계로 두기엔 속성이 너무 많아요.\"",
+    "\"Encounter를 노드로 올리죠.\""
+   ],
+   "ask": [
+    "이 관계에 속성이 3개 넘나요?",
+    "이 관계를 다른 것이 가리켜야 하나요(예: 처방이 수정됨)?"
+   ],
+   "mine": "처방은 용량·경로·기간·처방의·수정 이력이 붙어서 관계가 아니라 '처방' 노드로 둬요. '같은 병동' 같은 단순 관계는 그냥 관계로 둬요.",
+   "deep": [
+    "RDF 1.2 Concepts(2026-04-07 CR 스냅숏)는 트리플 텀을 다른 트리플의 목적어로 둘 수 있다고 정의해요."
+   ],
+   "recall": {
+    "q": "어떤 모델에서나 통하는 가장 유연한 방법은?",
+    "a": "중간(사건) 노드로 올리기"
+   },
+   "quiz": [
+    {
+     "q": "처방 수정 이력을 처방에 이어야 한다면?",
+     "options": [
+      "관계 속성",
+      "처방을 노드로",
+      "리터럴"
+     ],
+     "answer": 1,
+     "why": "관계는 다른 관계의 끝점이 될 수 없어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C RDF 1.2 Concepts and Abstract Syntax (Candidate Recommendation Snapshot)",
+     "url": "https://www.w3.org/TR/rdf12-concepts/",
+     "date": "2026-04-07"
+    },
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "그래프 DB를 쓰지 말아야 할 때",
+   "lead": "관계가 주인공일 때 그래프가 빛나요. 집계·보고가 대부분이면 표(SQL)가 더 싸고 빨라요.",
+   "idea": [
+    "그래프가 맞는 질문: '이 환자와 같은 병동에 있었던 사람 중 감염 확진자와 2단계로 이어진 사람은?' 홉이 깊고 모양이 바뀌는 질문이에요.",
+    "표가 맞는 질문: '월별 병동별 입원 수'. 같은 모양 행을 대량으로 세는 일이에요.",
+    "운영 비용도 봐요. 새 DB는 백업·권한·모니터링·사람이 다 새로 필요해요. SQL/PGQ처럼 기존 DB에서 그래프 질의를 하는 길도 있어요."
+   ],
+   "hear": [
+    "\"이거 3홉 이상 가는 질의가 얼마나 돼요?\"",
+    "\"보고서는 그냥 웨어하우스에서 뽑아요.\""
+   ],
+   "ask": [
+    "대표 질문 10개 중 몇 개가 2홉 이상인가요?",
+    "새 DB를 운영할 사람이 있나요?"
+   ],
+   "mine": "감염 접촉 추적(다단계 관계)은 그래프로, 월간 통계는 기존 웨어하우스로 둬요.",
+   "deep": [
+    "SQL/PGQ(ISO/IEC 9075-16:2023)는 SQL 테이블 위에 그래프 뷰를 정의하고 GQL과 같은 패턴 문법으로 질의하게 해요(Deutsch et al.)."
+   ],
+   "recall": {
+    "q": "그래프 DB가 특히 빛나는 질문은?",
+    "a": "관계를 여러 단계(홉) 따라가는 질문"
+   },
+   "quiz": [
+    {
+     "q": "'월별 병동별 입원 수' 보고서에 더 알맞은 것은?",
+     "options": [
+      "그래프 DB",
+      "SQL 웨어하우스",
+      "SKOS"
+     ],
+     "answer": 1,
+     "why": "같은 모양 행 집계는 표가 강해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    },
+    {
+     "title": "Neo4j — What is a graph database",
+     "url": "https://neo4j.com/docs/getting-started/graph-database/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "Cypher: 그림 그리듯 묻기",
+   "lead": "Cypher는 (노드)-[관계]->(노드)를 ASCII 그림처럼 써서 패턴을 찾아요. 괄호는 노드, 대괄호는 관계, 화살표는 방향이에요.",
+   "idea": [
+    "MATCH로 패턴을 찾고, WHERE로 거르고, RETURN으로 돌려줘요. CREATE/MERGE로 만들어요.",
+    "MERGE는 '있으면 찾고 없으면 만든다'예요. 같은 환자를 두 번 만들지 않게 하는 핵심 도구지만, 유일 제약 없이 쓰면 동시에 들어올 때 중복이 생길 수 있어요.",
+    "Neo4j가 만들었고 openCypher로 공개돼 여러 DB가 써요. ISO GQL의 주요 바탕이 됐어요."
+   ],
+   "code": {
+    "lang": "cypher",
+    "text": "MATCH (p:Patient)-[a:ADMITTED_TO]->(w:Ward {name:'7병동'}),\n      (p)-[:HAS_DIAGNOSIS]->(:Condition {code:'E11'})\nWHERE a.since >= date('2026-10-01')\nRETURN p.name, a.since\nORDER BY a.since",
+    "read": "7병동에 10월 이후 입원했고 진단 코드 E11(제2형 당뇨)이 있는 환자를 찾아요. p가 두 패턴을 잇는 고리예요."
+   },
+   "hear": [
+    "\"MERGE에 속성 다 넣으면 매번 새 노드 생겨요.\"",
+    "\"MATCH 패턴에 라벨 빼면 전체 스캔해요.\""
+   ],
+   "ask": [
+    "MERGE 키는 무엇이고, 유일 제약이 걸려 있나요?",
+    "라벨과 인덱스가 패턴 시작점에 있나요?"
+   ],
+   "mine": "'7병동에 입원한 당뇨 환자'를 Cypher로 써서 소라의 화면 API에 붙여요.",
+   "deep": [
+    "Neo4j Cypher Manual은 MERGE가 전체 패턴이 없으면 패턴 전체를 만든다고 경고해요. 그래서 MERGE는 키 속성만으로 하고 나머지는 ON CREATE SET으로 넣어요."
+   ],
+   "recall": {
+    "q": "Cypher에서 ( )와 [ ]는?",
+    "a": "노드와 관계"
+   },
+   "quiz": [
+    {
+     "q": "중복 없이 환자 노드를 넣으려면?",
+     "options": [
+      "CREATE만",
+      "유일 제약 + MERGE (키만)",
+      "MATCH만"
+     ],
+     "answer": 1,
+     "why": "키로 MERGE하고 제약으로 보장해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    },
+    {
+     "title": "Neo4j Cypher Manual — Constraints",
+     "url": "https://neo4j.com/docs/cypher-manual/current/constraints/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "경로와 가변 길이 질의",
+   "lead": "그래프의 힘은 '몇 단계 떨어진'을 묻는 데 있어요. [*1..3]처럼 길이를 범위로 주면 여러 홉을 한 번에 따라가요.",
+   "idea": [
+    "(a)-[:CONTACT*1..2]-(b)는 1~2단계로 이어진 모든 b예요. 감염 접촉 추적에 딱 맞아요.",
+    "최단 경로(shortestPath)는 두 노드 사이 가장 짧은 길을 찾아요.",
+    "위험: 상한 없이 [*]를 쓰면 경로 수가 폭발해요. 연결이 아주 많은 '슈퍼노드'(예: '응급실' 노드)를 지나면 순식간에 수백만 개가 돼요. 항상 상한과 필터를 둬요."
+   ],
+   "hear": [
+    "\"*로 열어 뒀더니 쿼리가 안 끝나요.\"",
+    "\"슈퍼노드는 경로 탐색에서 빼요.\""
+   ],
+   "ask": [
+    "최대 몇 홉까지가 의미 있나요?",
+    "연결이 아주 많은 노드는 무엇인가요?"
+   ],
+   "mine": "감염관리실 질문 '확진자와 2단계 이내 접촉'을 [*1..2]로 쓰고, '로비'처럼 모두 지나는 장소 노드는 제외해요.",
+   "deep": [
+    "SPARQL 1.1도 속성 경로(hb:contact{1,2}는 초안 문법, 1.1은 +, *, ?)로 비슷한 질의를 해요. 경로 수 폭발 문제는 모델과 상관없이 생겨요."
+   ],
+   "recall": {
+    "q": "상한 없는 가변 길이 질의의 위험은?",
+    "a": "경로 수 폭발(특히 슈퍼노드를 지날 때)"
+   },
+   "quiz": [
+    {
+     "q": "감염 2단계 접촉 추적에 알맞은 패턴은?",
+     "options": [
+      "-[:CONTACT]-",
+      "-[:CONTACT*1..2]-",
+      "-[:CONTACT*]-"
+     ],
+     "answer": 1,
+     "why": "상한 2를 명시해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C SPARQL 1.1 Query Language",
+     "url": "https://www.w3.org/TR/sparql11-query/",
+     "date": "2013-03-21"
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "GQL: 그래프 질의의 국제 표준",
+   "lead": "2024년 4월 ISO/IEC 39075 GQL이 나왔어요. SQL 이후 처음 나온 새 ISO 데이터베이스 언어예요. 그래프 질의 문법이 하나로 모이고 있어요.",
+   "idea": [
+    "GQL은 Cypher의 그림 같은 패턴 문법을 많이 이어받았어요. Neo4j는 Cypher를 GQL에 맞춰 가고 있다고 밝혀요.",
+    "표준이 있으면 DB를 바꿀 때 질의를 덜 고쳐요. 하지만 제품마다 지원 범위가 달라 '표준 기능 목록'을 확인해야 해요.",
+    "GQL은 속성 그래프 언어예요. RDF 쪽 표준은 여전히 SPARQL이에요."
+   ],
+   "hear": [
+    "\"새로 짜는 질의는 GQL 호환 문법으로 써요.\"",
+    "\"이 기능은 벤더 전용이라 표시해 둬요.\""
+   ],
+   "ask": [
+    "우리 DB의 GQL 적합성 문서는 어디 있나요?",
+    "벤더 전용 문법을 어디에 쓰고 있나요?"
+   ],
+   "mine": "소라에게 '가능하면 표준 패턴 위주로, 벤더 전용 함수는 목록으로 관리'를 규칙으로 제안해요.",
+   "deep": [
+    "ISO/IEC 39075:2024는 2024-04에 출판됐고 IEC 웹스토어 기준 610쪽이에요(Book 2 vg-graph-model 모듈에서 확인한 값)."
+   ],
+   "recall": {
+    "q": "GQL의 표준 번호는?",
+    "a": "ISO/IEC 39075:2024"
+   },
+   "quiz": [
+    {
+     "q": "GQL과 SPARQL의 관계는?",
+     "options": [
+      "GQL이 SPARQL을 대체",
+      "GQL은 속성 그래프, SPARQL은 RDF용",
+      "같은 언어"
+     ],
+     "answer": 1,
+     "why": "대상 모델이 달라요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "ISO/IEC 39075:2024 Database languages — GQL",
+     "url": "https://www.iso.org/standard/76120.html",
+     "date": "2024-04"
+    },
+    {
+     "title": "Neo4j Cypher Manual — GQL conformance",
+     "url": "https://neo4j.com/docs/cypher-manual/current/appendix/gql-conformance/",
+     "date": "n.d."
+    },
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "SQL/PGQ: 표를 그래프로 보기",
+   "lead": "데이터를 옮기지 않고, 기존 SQL 테이블 위에 '그래프 뷰'를 정의해 그래프 패턴으로 질의할 수 있어요. SQL:2023의 일부예요.",
+   "idea": [
+    "CREATE PROPERTY GRAPH로 '이 테이블은 노드, 이 외래키는 관계'라고 선언해요.",
+    "질의는 GRAPH_TABLE( ... MATCH (a)-[e]->(b) ... ) 꼴로 SQL 안에 써요. 패턴 문법은 GQL과 같아요.",
+    "장점: 새 DB 없이 시작해요. 한계: 깊은 경로 탐색 성능은 엔진 구현에 달렸고, 지원하는 DB가 아직 많지 않아요."
+   ],
+   "hear": [
+    "\"그래프 DB 들이기 전에 PGQ로 먼저 써 보죠.\"",
+    "\"우리 DB 버전이 PGQ 지원해요?\""
+   ],
+   "ask": [
+    "우리 DB가 SQL/PGQ를 지원하나요?",
+    "깊은 경로 질의가 얼마나 자주 있나요?"
+   ],
+   "mine": "EMR 복제 DB 위에 '환자-입원-병동' 그래프 뷰를 정의해 감염 추적을 시험해 보고, 느리면 그때 그래프 DB를 검토해요.",
+   "deep": [
+    "SQL/PGQ는 ISO/IEC 9075-16:2023이에요. Deutsch et al.(2021)은 GQL과 SQL/PGQ가 공유하는 그래프 패턴 문법을 설명해요."
+   ],
+   "recall": {
+    "q": "SQL/PGQ의 가장 큰 장점은?",
+    "a": "데이터를 옮기지 않고 기존 테이블 위에서 그래프 질의"
+   },
+   "quiz": [
+    {
+     "q": "SQL/PGQ에서 그래프를 정의하는 문장은?",
+     "options": [
+      "CREATE PROPERTY GRAPH",
+      "CREATE ONTOLOGY",
+      "MERGE GRAPH"
+     ],
+     "answer": 0,
+     "why": "테이블을 노드·엣지로 선언해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "지식그래프란 무엇인가",
+   "lead": "지식그래프는 '현실 세계의 지식을 모으고 전하기 위한 데이터 그래프'예요. 노드는 관심 있는 것(엔터티), 엣지는 그 사이 관계예요.",
+   "idea": [
+    "Hogan et al.(2021)의 정의가 많이 인용돼요. 핵심은 그래프 모양 + 현실 세계 엔터티 + 지식을 계속 쌓는다는 점이에요.",
+    "온톨로지와의 관계: 온톨로지는 '어떤 종류와 관계가 있나'(스키마·규칙), 지식그래프는 그 틀에 담긴 '실제 많은 사실'이에요. 대략 KG ≈ 온톨로지(TBox) + 큰 ABox.",
+    "모든 그래프 DB가 지식그래프는 아니에요. 네트워크 로그 그래프는 '지식'이라기보다 데이터예요. 반대로 지식그래프가 꼭 그래프 DB에 있을 필요도 없어요."
+   ],
+   "hear": [
+    "\"그건 지식그래프라기보다 그냥 관계 테이블이에요.\"",
+    "\"KG에 온톨로지가 없으면 그냥 연결된 데이터죠.\""
+   ],
+   "ask": [
+    "이 그래프의 엔터티 종류와 관계는 어디 정의돼 있나요?",
+    "새 사실은 어떻게 계속 쌓이나요?"
+   ],
+   "mine": "한빛 KG = 03장 어휘(온톨로지) + 환자·의료진·약·검사의 실제 사실들. AI 비서는 이 KG를 근거로 답해요.",
+   "deep": [
+    "Hogan et al.은 KG를 'a graph of data intended to accumulate and convey knowledge of the real world, whose nodes represent entities of interest and whose edges represent relations between these entities'로 정의해요(arXiv 2003.02320)."
+   ],
+   "recall": {
+    "q": "KG와 온톨로지의 관계를 한 줄로?",
+    "a": "온톨로지는 틀(종류·규칙), KG는 그 틀에 담긴 많은 실제 사실"
+   },
+   "quiz": [
+    {
+     "q": "지식그래프의 노드가 나타내는 것은?",
+     "options": [
+      "테이블",
+      "관심 있는 현실 세계 엔터티",
+      "쿼리"
+     ],
+     "answer": 1,
+     "why": "엔터티가 노드예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "Google Knowledge Graph: 문자열이 아니라 사물",
+   "lead": "2012년 5월 Google은 검색이 '글자 맞추기'에서 '사물 이해'로 간다며 Knowledge Graph를 발표했어요. 'things, not strings'.",
+   "idea": [
+    "'타지마할'을 검색하면 건축물인지, 가수인지, 식당인지 엔터티를 구분해 보여 주는 게 목표였어요.",
+    "발표 때 5억 개 넘는 객체와 35억 개 넘는 사실·관계를 담았다고 밝혔어요. 2010년 인수한 Metaweb의 Freebase가 바탕이 됐어요.",
+    "교훈: 검색창 옆 '지식 패널'처럼, 사용자는 KG를 몰라도 그 혜택을 받아요. 동시에 출처가 잘 안 보인다는 비판도 있어요."
+   ],
+   "hear": [
+    "\"엔터티 카드로 보여 주죠, 구글 지식 패널처럼.\"",
+    "\"동음이의어는 엔터티로 풀어야 해요.\""
+   ],
+   "ask": [
+    "같은 이름의 다른 엔터티를 어떻게 구분하나요?",
+    "카드에 출처를 보여 주나요?"
+   ],
+   "mine": "AI 비서가 '김 교수'라고 들으면, 동명이인 의사 중 누구인지 엔터티로 확정한 뒤 답해요. 답 옆에 근거 엔터티 카드를 보여요.",
+   "deep": [
+    "Google 블로그(2012-05-16): 'more than 500 million objects, as well as more than 3.5 billion facts about and relationships between these different objects'."
+   ],
+   "recall": {
+    "q": "Google KG 발표의 표어는?",
+    "a": "Things, not strings"
+   },
+   "quiz": [
+    {
+     "q": "Google KG 발표 당시 규모는?",
+     "options": [
+      "5억+ 객체, 35억+ 사실",
+      "5천 객체, 3만 사실",
+      "1조 객체"
+     ],
+     "answer": 0,
+     "why": "2012-05-16 블로그에 적힌 값이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Google — Introducing the Knowledge Graph: things, not strings",
+     "url": "https://blog.google/products/search/introducing-knowledge-graph-things-not/",
+     "date": "2012-05-16"
+    },
+    {
+     "title": "Google Knowledge Graph Search API",
+     "url": "https://developers.google.com/knowledge-graph",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "Wikidata: 모두가 고치는 공개 지식그래프",
+   "lead": "Wikidata는 누구나 편집하고 SPARQL로 물을 수 있는 공개 지식그래프예요. 진술(statement)에 한정자와 출처를 붙이는 모델이 특징이에요.",
+   "idea": [
+    "항목(Q번호)과 속성(P번호)으로 진술을 만들어요. 예: Q42(더글러스 애덤스) P69(출신 학교) Q691283.",
+    "진술에 한정자(시작일, 종료일)와 참고 출처를 붙일 수 있어요. '언제부터 언제까지', '어디에 그렇게 적혀 있나'를 사실마다 관리해요.",
+    "순위(preferred/normal/deprecated)로 서로 다른 주장도 함께 담아요. 한 가지 '정답'만 강요하지 않아요."
+   ],
+   "hear": [
+    "\"그건 Wikidata Q번호로 링크해 두면 다국어 이름이 공짜예요.\"",
+    "\"출처 없는 진술은 믿지 말아요.\""
+   ],
+   "ask": [
+    "외부 공개 KG의 값을 그대로 믿어도 되나요?",
+    "우리 사실에도 '기간'과 '출처'를 붙이나요?"
+   ],
+   "mine": "한빛 KG도 Wikidata처럼 '사실 + 기간 + 출처'를 기본으로 해요. 주치의 관계에 시작일·종료일, 진단에 기록 출처를 붙여요.",
+   "deep": [
+    "Wikidata 통계 페이지는 2026-10-21 기준 항목 123,667,901개를 보여 줘요. 질의 서비스는 2025-05-09 본 그래프와 학술 그래프로 나뉘었어요."
+   ],
+   "recall": {
+    "q": "Wikidata 진술에 붙는 두 가지 부가 정보는?",
+    "a": "한정자(예: 기간)와 참고 출처"
+   },
+   "quiz": [
+    {
+     "q": "Wikidata에서 서로 다른 주장을 함께 담는 장치는?",
+     "options": [
+      "sameAs",
+      "순위(rank)",
+      "SHACL"
+     ],
+     "answer": 1,
+     "why": "preferred/normal/deprecated 순위예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Wikidata Help:Statements",
+     "url": "https://www.wikidata.org/wiki/Help:Statements",
+     "date": "n.d."
+    },
+    {
+     "title": "Wikibase DataModel Primer",
+     "url": "https://www.mediawiki.org/wiki/Wikibase/DataModel/Primer",
+     "date": "n.d."
+    },
+    {
+     "title": "Wikidata:Statistics",
+     "url": "https://www.wikidata.org/wiki/Wikidata:Statistics",
+     "date": "2026-10-21"
+    },
+    {
+     "title": "Wikidata — WDQS graph split",
+     "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/WDQS_graph_split",
+     "date": "2025"
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "Amazon 상품 그래프: 지저분한 데이터로 KG 만들기",
+   "lead": "Amazon은 판매자가 올린 들쭉날쭉한 상품 정보로 상품 지식그래프를 자동으로 만들고 고쳐요. AutoKnow(KDD 2020)가 그 시스템이에요.",
+   "idea": [
+    "상품 데이터는 희소하고 시끄러워요. 판매자마다 같은 속성을 다르게 쓰고, 상품 종류는 수백만, 속성은 수천 개예요.",
+    "AutoKnow는 분류 체계 만들기, 속성 찾기, 값 추출, 이상값 찾기, 동의어 찾기를 자동화하고, 고객 행동 로그(검색·구매)를 신호로 써요.",
+    "교훈: 현실의 KG는 '한 번 설계하고 끝'이 아니라 계속 추출·정제하는 파이프라인이에요. 사람 손은 줄이되 품질 지표로 감시해요."
+   ],
+   "hear": [
+    "\"추출 정확도 떨어지면 이상치 탐지로 잡아요.\"",
+    "\"동의어 사전도 로그에서 배워요.\""
+   ],
+   "ask": [
+    "사실을 자동으로 넣을 때 정확도 기준은?",
+    "사람 검토는 어디서 하나요?"
+   ],
+   "mine": "약제부 의약품 데이터도 제약사·도매상마다 이름과 단위가 달라요. 자동 추출 + 이상값 검사 + 약사 검토로 약 그래프를 키워요.",
+   "deep": [
+    "AutoKnow 논문 초록: 'operational in collecting product knowledge for over 11K product types'(arXiv 2006.13473, 2020-06)."
+   ],
+   "recall": {
+    "q": "AutoKnow가 쓰는 특별한 신호는?",
+    "a": "고객 행동 로그(검색·구매 등)"
+   },
+   "quiz": [
+    {
+     "q": "현실 KG 구축의 성격으로 맞는 것은?",
+     "options": [
+      "한 번 설계하면 끝",
+      "계속 추출·정제하는 파이프라인",
+      "사람이 전부 입력"
+     ],
+     "answer": 1,
+     "why": "끝없이 갱신되는 과정이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Dong et al., AutoKnow: Self-Driving Knowledge Collection for Products of Thousands of Types (KDD 2020)",
+     "url": "https://arxiv.org/abs/2006.13473",
+     "date": "2020-06-24"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "엔터티 해소: 같은 것을 같다고 알기",
+   "lead": "서로 다른 시스템의 '김하나, 1980-03-02'와 '김 하나, 80.3.2'가 같은 사람인지 판단하는 일이 엔터티 해소(ER)예요. KG 품질의 핵심이에요.",
+   "idea": [
+    "사람은 쉽게 보지만 기계는 철자·띄어쓰기·약어·오타 때문에 헷갈려요. 반대로 동명이인은 이름이 같아도 다른 사람이에요.",
+    "고전 이론은 Fellegi–Sunter(1969) 확률 모형이에요. 필드마다 '같을 때 일치할 확률'과 '다를 때 우연히 일치할 확률'로 점수를 매겨 '일치/검토/불일치'로 나눠요.",
+    "두 가지 실수가 있어요. 다른 사람을 합치는 것(과합침)과 같은 사람을 못 합치는 것(미합침). 의료에서는 과합침이 훨씬 위험해요."
+   ],
+   "hear": [
+    "\"매칭 점수 회색 지대는 사람 검토로 보내요.\"",
+    "\"생일 오타 때문에 미합침이 많아요.\""
+   ],
+   "ask": [
+    "과합침과 미합침 중 무엇이 더 위험한가요?",
+    "검토 대기 건은 누가, 얼마나 빨리 처리하나요?"
+   ],
+   "mine": "현우가 찾은 중복 환자 기록 문제를 ER로 풀어요. 기준을 보수적으로 잡아 과합침을 막고, 회색 지대는 원무팀이 검토해요.",
+   "deep": [
+    "Fellegi & Sunter, 'A Theory for Record Linkage', JASA 64(328), 1969. 일치/불일치 확률 비율로 결정 규칙을 세웠어요."
+   ],
+   "recall": {
+    "q": "의료 ER에서 더 위험한 실수는?",
+    "a": "과합침(다른 사람을 같은 사람으로 합치기)"
+   },
+   "quiz": [
+    {
+     "q": "Fellegi–Sunter 모형의 결과 범주는?",
+     "options": [
+      "일치/불일치 둘",
+      "일치/검토/불일치 셋",
+      "항상 일치"
+     ],
+     "answer": 1,
+     "why": "가운데 '검토'가 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Fellegi & Sunter, A Theory for Record Linkage (JASA 1969)",
+     "url": "https://doi.org/10.1080/01621459.1969.10501049",
+     "date": "1969"
+    },
+    {
+     "title": "Christen, Data Matching (Springer 2012)",
+     "url": "https://doi.org/10.1007/978-3-642-31164-2",
+     "date": "2012"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "ER 파이프라인: 블로킹 → 비교 → 군집",
+   "lead": "모든 쌍을 비교하면 n²이라 불가능해요. 그래서 후보를 좁히고(블로킹), 비교하고, 같은 것끼리 묶어요(군집).",
+   "idea": [
+    "블로킹: '생년이 같고 성이 같은 것끼리만' 비교해요. 100만 건이면 모든 쌍은 약 5천억 쌍이지만 블로킹으로 크게 줄어요.",
+    "비교: 이름은 편집 거리, 생일은 정확 일치·부분 일치, 주소는 정규화 후 비교. 요즘은 임베딩·학습 모델도 써요.",
+    "군집: A=B, B=C이면 A=C로 묶는데, 여기서 잘못된 연결 하나가 큰 덩어리를 만들 수 있어요(sameAs의 전이성 문제와 같아요)."
+   ],
+   "hear": [
+    "\"블로킹 키가 너무 좁아서 놓친 쌍이 있어요.\"",
+    "\"군집 크기가 비정상적으로 큰 건 의심해요.\""
+   ],
+   "ask": [
+    "블로킹 키로 놓치는 쌍은 얼마나 되나요?",
+    "군집 하나가 너무 크면 경고가 뜨나요?"
+   ],
+   "mine": "환자 30만 명(가상)을 생년+성 초성으로 블로킹하고, 군집 크기 3 이상은 자동 합치지 않고 검토해요.",
+   "deep": [
+    "Christen, Data Matching(2012)은 ER을 전처리 → 인덱싱(블로킹) → 비교 → 분류 → 평가 단계로 정리해요. n개 레코드 쌍은 n(n−1)/2개예요."
+   ],
+   "recall": {
+    "q": "블로킹을 하는 이유는?",
+    "a": "모든 쌍 비교(n²)를 피하려고"
+   },
+   "quiz": [
+    {
+     "q": "100만 건의 모든 쌍 수는 대략?",
+     "options": [
+      "100만",
+      "5천억",
+      "10억"
+     ],
+     "answer": 1,
+     "why": "n(n−1)/2 ≈ 5×10¹¹이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Christen, Data Matching (Springer 2012)",
+     "url": "https://doi.org/10.1007/978-3-642-31164-2",
+     "date": "2012"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "엔터티 링킹: 글 속 말을 KG에 잇기",
+   "lead": "의무기록 문장 '김 교수가 DM으로 메트포르민 처방'에서 '김 교수', 'DM', '메트포르민'을 KG의 정확한 노드에 연결하는 게 엔터티 링킹이에요.",
+   "idea": [
+    "두 단계예요. 먼저 글에서 이름 덩어리를 찾고(개체명 인식), 그 덩어리가 KG의 어느 엔터티인지 고르는(중의성 해소) 거예요.",
+    "후보 고르기에는 별칭 사전(SKOS altLabel이 여기서 쓰여요)과 문맥(같은 문장의 다른 엔터티)이 쓰여요. 'DM'이 당뇨인지 근육긴장성 이영양증인지 문맥이 정해요.",
+    "LLM이 잘하는 일이지만, 결과를 KG의 실제 ID로 확정하고 확신도를 남겨야 '그럴듯한 틀린 답'을 걸러요."
+   ],
+   "hear": [
+    "\"링킹 확신도 낮은 건 하이라이트만 하고 저장 안 해요.\"",
+    "\"별칭 사전이 링킹 성능을 좌우해요.\""
+   ],
+   "ask": [
+    "링킹 결과가 틀리면 누가 고치나요?",
+    "확신도 기준선은 몇으로 하나요?"
+   ],
+   "mine": "03장에서 만든 SKOS 약어집이 링킹의 별칭 사전이 돼요. AI 비서는 질문 속 'DM'을 KG의 당뇨 개념 ID로 바꾼 뒤 답을 찾아요.",
+   "deep": [
+    "Hogan et al.(2021) 서베이는 텍스트에서 KG를 만드는 단계로 개체명 인식, 엔터티 링킹, 관계 추출을 꼽아요."
+   ],
+   "recall": {
+    "q": "엔터티 링킹의 두 단계는?",
+    "a": "개체명 찾기 → 어느 KG 엔터티인지 고르기"
+   },
+   "quiz": [
+    {
+     "q": "'DM'의 뜻을 정하는 데 가장 중요한 것은?",
+     "options": [
+      "글자 길이",
+      "주변 문맥과 별칭 사전",
+      "폰트"
+     ],
+     "answer": 1,
+     "why": "같은 약어도 문맥이 뜻을 정해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    },
+    {
+     "title": "W3C SKOS Simple Knowledge Organization System Reference",
+     "url": "https://www.w3.org/TR/skos-reference/",
+     "date": "2009-08-18"
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "합치지 말고 '연결과 근거'를 저장하기",
+   "lead": "ER 결과를 바로 노드 합치기로 반영하면 되돌리기 어려워요. 연결(같다는 판단)을 따로 저장하고 근거·점수·결정자를 남기는 편이 안전해요.",
+   "idea": [
+    "'후보 연결' 노드에 두 레코드, 점수, 사용한 규칙, 결정자(자동/사람), 시각을 붙여요.",
+    "화면에는 '하나의 환자'로 보여 주되, 원본 레코드는 그대로 두고 연결만 끊으면 언제든 되돌릴 수 있어요.",
+    "출처 기록은 W3C PROV-O 같은 표준 어휘(prov:wasDerivedFrom, prov:wasAttributedTo)로 쓰면 다른 시스템도 읽어요."
+   ],
+   "hear": [
+    "\"합친 걸 되돌려 달래요, 원본이 남아 있어요?\"",
+    "\"이 연결 누가 승인했어요?\""
+   ],
+   "ask": [
+    "잘못 합친 걸 되돌리는 절차가 있나요?",
+    "연결 결정의 근거가 남나요?"
+   ],
+   "mine": "환자 병합 요청이 오면 '연결'만 만들고 원본 기록은 손대지 않아요. 감사 시 누가 왜 합쳤는지 바로 보여요.",
+   "deep": [
+    "PROV-O는 2013-04-30 W3C 권고로, Entity·Activity·Agent 세 핵심 클래스로 출처를 표현해요."
+   ],
+   "recall": {
+    "q": "노드를 바로 합치는 대신 무엇을 저장하나요?",
+    "a": "연결과 그 근거(점수·규칙·결정자·시각)"
+   },
+   "quiz": [
+    {
+     "q": "PROV-O의 세 핵심 클래스는?",
+     "options": [
+      "Entity · Activity · Agent",
+      "Class · Property · Individual",
+      "Node · Edge · Label"
+     ],
+     "answer": 0,
+     "why": "출처를 무엇이, 어떤 활동으로, 누구에 의해로 나눠요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C PROV-O: The PROV Ontology",
+     "url": "https://www.w3.org/TR/prov-o/",
+     "date": "2013-04-30"
+    },
+    {
+     "title": "W3C OWL 2 Primer (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-primer/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "스키마와 온톨로지의 경계",
+   "lead": "스키마는 '데이터를 어떤 모양으로 저장하나', 온톨로지는 '그 데이터가 세상의 무엇을 뜻하나'예요. 겹치지만 목적이 달라요.",
+   "idea": [
+    "DB 스키마: patient 테이블에 birth_date 컬럼, NOT NULL. 저장과 무결성이 목적이에요.",
+    "온톨로지: Patient는 Person의 하위 종류, 생년월일은 Person의 속성, Inpatient ≡ Patient ⊓ ∃admittedTo.Ward. 뜻과 추론이 목적이에요.",
+    "현실에서는 한 온톨로지에 여러 스키마(EMR, 검사실, 약제)가 매핑돼요. 스키마가 바뀌어도 온톨로지는 잘 안 바뀌게 하는 게 설계 목표예요."
+   ],
+   "hear": [
+    "\"테이블 구조를 그대로 온톨로지라고 부르면 안 돼요.\"",
+    "\"이 컬럼은 온톨로지의 어느 속성에 매핑돼요?\""
+   ],
+   "ask": [
+    "이 이름은 저장 편의 때문인가요, 세상의 뜻 때문인가요?",
+    "시스템이 바뀌어도 이 개념은 남나요?"
+   ],
+   "mine": "소라가 Neo4j 라벨을 테이블 이름대로 붙이려 해요. 나는 라벨은 03장 어휘의 클래스 이름을 따르고, 테이블은 매핑으로 연결하자고 해요.",
+   "deep": [
+    "Hogan et al.(2021)은 KG의 스키마를 의미 스키마(RDFS/OWL), 검증 스키마(SHACL/ShEx), 발현 스키마(데이터에서 드러난 구조)로 나눠 설명해요."
+   ],
+   "recall": {
+    "q": "스키마와 온톨로지의 목적 차이는?",
+    "a": "스키마=저장 모양과 무결성, 온톨로지=뜻과 추론"
+   },
+   "quiz": [
+    {
+     "q": "시스템이 바뀌어도 덜 바뀌어야 하는 것은?",
+     "options": [
+      "DB 스키마",
+      "온톨로지",
+      "인덱스"
+     ],
+     "answer": 1,
+     "why": "뜻은 저장 방식보다 오래가야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    },
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "그래프에 규칙 걸기: 제약 vs 셰이프",
+   "lead": "LPG DB는 유일성·존재·타입 제약을 DB 안에서 걸고, RDF는 SHACL 셰이프로 검사해요. 어느 쪽이든 '깨진 데이터를 막는 층'이 꼭 필요해요.",
+   "idea": [
+    "Neo4j는 속성 유일성, 속성 존재, 노드 키, 속성 타입 같은 제약을 지원해요(일부는 Enterprise 판에서만).",
+    "SHACL은 더 풍부해요. 개수, 값 범위, 패턴, 다른 노드와의 관계 조건, SPARQL 기반 규칙까지 써요. 대신 별도 검증 단계가 필요해요.",
+    "공통 원칙: 키(누구인지)는 반드시 유일 제약으로, 의미 규칙은 셰이프나 테스트로, 결과는 보고서로."
+   ],
+   "hear": [
+    "\"MERGE 중복은 유일 제약 걸면 바로 막혀요.\"",
+    "\"복잡한 규칙은 SHACL로 밖에서 돌려요.\""
+   ],
+   "ask": [
+    "DB가 직접 막는 규칙과 배치로 검사하는 규칙을 나눴나요?",
+    "우리 판(Edition)이 그 제약을 지원하나요?"
+   ],
+   "mine": "환자 노드의 대리 키에는 Neo4j 유일 제약을, '입원 환자는 병동 하나에만' 같은 규칙은 SHACL 검증 배치로 돌려요.",
+   "deep": [
+    "Neo4j Cypher Manual(Constraints)은 property uniqueness, property existence, property type, key 제약을 설명하고 일부가 Enterprise Edition 전용임을 밝혀요."
+   ],
+   "recall": {
+    "q": "LPG에서 MERGE 중복을 확실히 막는 방법은?",
+    "a": "키 속성에 유일 제약 걸기"
+   },
+   "quiz": [
+    {
+     "q": "'입원 환자는 병동 하나에만' 같은 관계 규칙에 더 표현력 있는 것은?",
+     "options": [
+      "SHACL",
+      "인덱스",
+      "라벨"
+     ],
+     "answer": 0,
+     "why": "SHACL은 관계 조건과 개수를 표현해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Constraints",
+     "url": "https://neo4j.com/docs/cypher-manual/current/constraints/",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "RDF ↔ LPG 오가기",
+   "lead": "두 세계는 서로 바꿀 수 있어요. Neo4j의 n10s는 RDF를 가져오고 내보내며, 일부 DB는 두 모델을 함께 지원해요. 다만 번역에는 손실이 있어요.",
+   "idea": [
+    "RDF → LPG: 리터럴 값은 노드 속성, IRI 객체는 관계로 바꿔요. rdf:type은 라벨이 돼요.",
+    "LPG → RDF: 내부 ID에 IRI를 만들어 줘야 하고, 관계 속성은 RDF 1.2 트리플 텀이나 중간 노드로 풀어야 해요.",
+    "손실: OWL 추론 의미는 LPG에 그대로 옮겨지지 않아요. '뜻의 기준'은 한쪽(보통 RDF/OWL)에 두고 다른 쪽은 그 사본으로 다뤄요."
+   ],
+   "hear": [
+    "\"n10s로 온톨로지 가져와서 라벨 계층 만들어요.\"",
+    "\"왕복 변환하면 관계 속성이 깨져요.\""
+   ],
+   "ask": [
+    "어느 쪽이 '원본'이고 어느 쪽이 '사본'인가요?",
+    "변환에서 잃는 정보 목록이 있나요?"
+   ],
+   "mine": "03장 OWL 어휘는 원본으로 Git에 두고, n10s로 Neo4j에 가져와 소라의 앱이 라벨 계층을 쓰게 해요. 앱에서 바뀐 건 원본에 되돌려 반영하지 않아요.",
+   "deep": [
+    "Neo4j Labs neosemantics(n10s) 페이지는 RDF 가져오기·내보내기와 온톨로지·추론 지원을 소개해요(Labs 프로젝트, 공식 제품 지원과 다름)."
+   ],
+   "recall": {
+    "q": "RDF → LPG 변환에서 rdf:type은 보통 무엇이 되나요?",
+    "a": "노드 라벨"
+   },
+   "quiz": [
+    {
+     "q": "두 모델을 함께 쓸 때 원칙은?",
+     "options": [
+      "양쪽을 다 원본으로",
+      "뜻의 원본은 한쪽에 두고 다른 쪽은 사본",
+      "변환하지 않는다"
+     ],
+     "answer": 1,
+     "why": "원본이 둘이면 뜻이 갈라져요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j Labs — neosemantics (n10s)",
+     "url": "https://neo4j.com/labs/neosemantics/",
+     "date": "n.d."
+    },
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "지식그래프 품질: 정확·완전·최신·출처",
+   "lead": "KG가 클수록 틀린 사실도 많아져요. 정확도, 완전성, 최신성, 출처 네 가지를 지표로 재고 관리해야 AI가 믿고 쓸 수 있어요.",
+   "idea": [
+    "정확도: 표본을 뽑아 사람이 맞는지 확인해요. 자동 추출 사실은 확신도를 같이 저장해요.",
+    "완전성: 열린 세계에서는 '없음'을 모르니, 꼭 있어야 할 것(환자의 생년월일)은 SHACL로, 있으면 좋은 것은 비율로 재요.",
+    "최신성·출처: 각 사실이 언제, 어디서 왔는지 남겨야 오래된 사실을 걸러요. Wikidata의 '참고 출처', PROV-O가 같은 생각이에요."
+   ],
+   "hear": [
+    "\"표본 200개 검수했더니 정확도 94%예요.\"",
+    "\"출처 없는 사실은 AI 답 근거로 안 써요.\""
+   ],
+   "ask": [
+    "어떤 지표를 매주 보나요?",
+    "출처 없는 사실을 AI가 쓰게 두나요?"
+   ],
+   "mine": "AI 비서는 '출처와 최신 날짜가 있는 사실'만 근거로 쓰고, 답에 출처 날짜를 함께 보여요. 데이터팀은 주간 품질 대시보드를 봐요.",
+   "deep": [
+    "Hogan et al.(2021)은 KG 품질 차원으로 정확성, 커버리지, 일관성, 간결성 등을 정리해요. 정확도 94%(위 예)는 가상의 값이에요."
+   ],
+   "recall": {
+    "q": "KG 품질의 네 가지 기본 지표는?",
+    "a": "정확도 · 완전성 · 최신성 · 출처"
+   },
+   "quiz": [
+    {
+     "q": "열린 세계에서 '반드시 있어야 할 값'의 누락을 잡는 도구는?",
+     "options": [
+      "SHACL",
+      "OWL 추론",
+      "Cypher MERGE"
+     ],
+     "answer": 0,
+     "why": "닫힌 세계 검사는 SHACL이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    },
+    {
+     "title": "W3C PROV-O: The PROV Ontology",
+     "url": "https://www.w3.org/TR/prov-o/",
+     "date": "2013-04-30"
+    },
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "google-kg-2012",
+   "day": 3,
+   "title": "검색이 '사물'을 알게 된 날 — Google Knowledge Graph",
+   "when": "2012-05",
+   "lead": "2012-05-16 Google은 검색어를 글자가 아니라 현실의 '사물'로 이해하겠다며 Knowledge Graph를 공개했어요. 지식그래프라는 말이 업계에 퍼진 계기가 됐어요.",
+   "facts": [
+    {
+     "label": "발표일",
+     "value": "2012-05-16",
+     "src": "Google 공식 블로그"
+    },
+    {
+     "label": "발표 당시 규모",
+     "value": "5억 개+ 객체, 35억 개+ 사실·관계",
+     "src": "Google 공식 블로그"
+    },
+    {
+     "label": "표어",
+     "value": "things, not strings",
+     "src": "Google 공식 블로그"
+    },
+    {
+     "label": "외부 접근",
+     "value": "Knowledge Graph Search API로 엔터티 조회",
+     "src": "Google Developers"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2007",
+     "text": "Metaweb이 Freebase 공개"
+    },
+    {
+     "t": "2010",
+     "text": "Google이 Metaweb 인수"
+    },
+    {
+     "t": "2012-05-16",
+     "text": "Knowledge Graph 발표",
+     "hot": true
+    },
+    {
+     "t": "2016",
+     "text": "Freebase 종료, 데이터는 Wikidata 쪽으로"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "문제",
+     "title": "동음이의어",
+     "text": "같은 글자가 여러 사물을 뜻해 검색 결과가 섞였어요."
+    },
+    {
+     "stage": "자산",
+     "title": "Freebase",
+     "text": "이미 구조화된 엔터티 데이터베이스가 있었어요."
+    },
+    {
+     "stage": "화면",
+     "title": "지식 패널",
+     "text": "엔터티 요약을 결과 옆에 보여 줘 사용자가 바로 체감했어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "한빛 AI 비서가 배울 점은?",
+     "a": "먼저 질문 속 말을 엔터티로 확정하고, 그 엔터티의 사실로 답해요."
+    },
+    {
+     "q": "지식 패널 방식의 약점은?",
+     "a": "출처가 잘 안 보여요. 의료에서는 답마다 출처를 보여 줘야 해요."
+    },
+    {
+     "q": "규모보다 중요한 것은?",
+     "a": "엔터티 해소와 품질 관리예요. 큰 KG일수록 틀린 사실도 많아요."
+    }
+   ],
+   "after": [
+    "이후 많은 회사가 사내 지식그래프를 만들며 'KG'를 제품 용어로 쓰기 시작했어요."
+   ],
+   "sources": [
+    {
+     "title": "Google — Introducing the Knowledge Graph: things, not strings",
+     "url": "https://blog.google/products/search/introducing-knowledge-graph-things-not/",
+     "date": "2012-05-16"
+    },
+    {
+     "title": "Google Knowledge Graph Search API",
+     "url": "https://developers.google.com/knowledge-graph",
+     "date": "n.d."
+    },
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    }
+   ],
+   "caveat": "Freebase 공개(2007), Metaweb 인수(2010), Freebase 종료(2016) 연도는 널리 알려진 값이지만 이번에 1차 출처로 다시 확인하진 않았어요."
+  },
+  {
+   "id": "amazon-autoknow-2020",
+   "day": 3,
+   "title": "수백만 종 상품을 한 그래프로 — Amazon AutoKnow",
+   "when": "2020-08",
+   "lead": "Amazon 연구진은 판매자가 올린 지저분한 상품 정보로 상품 지식그래프를 자동으로 모으고 고치는 AutoKnow를 KDD 2020에 발표했어요.",
+   "facts": [
+    {
+     "label": "발표",
+     "value": "KDD 2020 (arXiv 2020-06-24)",
+     "src": "arXiv 2006.13473"
+    },
+    {
+     "label": "운영 범위",
+     "value": "11K개+ 상품 종류",
+     "src": "논문 초록"
+    },
+    {
+     "label": "도전",
+     "value": "희소·잡음 데이터, 수백만 상품 종류, 수천 속성",
+     "src": "논문 초록"
+    },
+    {
+     "label": "구성 기술",
+     "value": "분류 체계 구축, 속성 식별, 지식 추출, 이상 탐지, 동의어 발견",
+     "src": "논문 초록"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2012",
+     "text": "웹 검색에 KG 등장(Google)"
+    },
+    {
+     "t": "2020-06",
+     "text": "AutoKnow 논문 공개",
+     "hot": true
+    },
+    {
+     "t": "2020-08",
+     "text": "KDD 2020 발표"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "데이터",
+     "title": "판매자 입력",
+     "text": "같은 속성을 판매자마다 다르게 적어요."
+    },
+    {
+     "stage": "규모",
+     "title": "사람 손으론 불가능",
+     "text": "상품 종류와 속성이 너무 많아 자동화가 필요했어요."
+    },
+    {
+     "stage": "신호",
+     "title": "고객 행동",
+     "text": "검색·구매 로그가 동의어와 이상값을 찾는 단서가 됐어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "약제부 의약품 그래프에 응용하면?",
+     "a": "제조사·도매상 데이터의 이름·단위를 자동 정규화하고, 이상값(용량 단위 오류)은 약사가 검토해요."
+    },
+    {
+     "q": "자동 추출의 위험은?",
+     "a": "그럴듯한 오류가 쌓여요. 확신도와 출처를 같이 저장하고 표본 검수를 해요."
+    },
+    {
+     "q": "의료에서 '고객 행동 로그'에 해당하는 신호는?",
+     "a": "처방 수정 이력, 약사 중재 기록처럼 사람이 고친 흔적이에요."
+    }
+   ],
+   "after": [
+    "상품 KG는 검색·추천·질의응답의 바탕으로 쓰여요."
+   ],
+   "sources": [
+    {
+     "title": "Dong et al., AutoKnow: Self-Driving Knowledge Collection for Products of Thousands of Types (KDD 2020)",
+     "url": "https://arxiv.org/abs/2006.13473",
+     "date": "2020-06-24"
+    },
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    }
+   ],
+   "caveat": "논문은 연구 발표라 실제 서비스 규모·현재 운영 상태는 공개 자료로 확인하지 못했어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "Neo4j로 갈까요?",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "03장 RDF는 좋은데, 앱은 Neo4j로 짜고 싶어요."
+    },
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "둘 다 하면 뜻이 갈라지지 않아요?"
+    }
+   ],
+   "q": "어떻게 정리할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "RDF는 버리고 Neo4j만 쓴다",
+     "ok": false,
+     "why": "외부 연계와 형식 의미를 잃어요."
+    },
+    {
+     "k": "B",
+     "t": "뜻의 원본은 RDF/OWL로 두고, 앱용 LPG는 n10s 등으로 가져온 사본으로 쓴다",
+     "ok": true,
+     "why": "역할을 나눠 갈라짐을 막아요."
+    },
+    {
+     "k": "C",
+     "t": "양쪽을 각자 원본으로 관리한다",
+     "ok": false,
+     "why": "뜻이 곧 갈라져요."
+    }
+   ],
+   "explain": "원본은 하나, 사본은 여럿.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Neo4j Labs — neosemantics (n10s)",
+     "url": "https://neo4j.com/labs/neosemantics/",
+     "date": "n.d."
+    },
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "입원 날짜는 어디에?",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "환자-병동 관계에 입원일, 퇴원일, 병상, 담당 간호사까지 붙여야 해요."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "입원 중 전동도 기록해야 해요."
+    }
+   ],
+   "q": "어떻게 모델링할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "ADMITTED_TO 관계 속성으로 다 둔다",
+     "ok": false,
+     "why": "전동·담당자를 다른 관계로 이을 수 없어요."
+    },
+    {
+     "k": "B",
+     "t": "입원(Encounter)을 노드로 올려 환자·병동·간호사·전동을 잇는다",
+     "ok": true,
+     "why": "정보 많은 사건은 노드로."
+    },
+    {
+     "k": "C",
+     "t": "환자 노드에 입원일 배열을 둔다",
+     "ok": false,
+     "why": "어느 병동 입원인지 잃어요."
+    }
+   ],
+   "explain": "자기 정보가 많고 다른 것과 이어지면 노드로 올려요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "보고서도 그래프로?",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "월별 병동 입원 통계도 새 그래프 DB에서 뽑으면 되죠?"
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "웨어하우스에 이미 있어요."
+    }
+   ],
+   "q": "무엇을 권할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "모든 보고서를 그래프 DB로 옮긴다",
+     "ok": false,
+     "why": "집계는 표가 더 강하고 비용만 늘어요."
+    },
+    {
+     "k": "B",
+     "t": "집계 보고는 웨어하우스에 두고, 다단계 관계 질의만 그래프로 한다",
+     "ok": true,
+     "why": "도구를 질문에 맞춰요."
+    },
+    {
+     "k": "C",
+     "t": "그래프 DB는 쓰지 않는다",
+     "ok": false,
+     "why": "접촉 추적 같은 질의를 놓쳐요."
+    }
+   ],
+   "explain": "관계가 주인공일 때 그래프를 써요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    },
+    {
+     "title": "Neo4j — What is a graph database",
+     "url": "https://neo4j.com/docs/getting-started/graph-database/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "중복 환자 노드",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "적재를 두 번 돌렸더니 환자 노드가 두 배가 됐어요. MERGE 썼는데요."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "MERGE에 이름·생일·주소 다 넣었어요."
+    }
+   ],
+   "q": "원인과 해결은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "MERGE를 키 속성만으로 하고 유일 제약을 걸며, 나머지는 ON CREATE SET으로",
+     "ok": true,
+     "why": "MERGE는 전체 패턴 일치를 봐요."
+    },
+    {
+     "k": "B",
+     "t": "CREATE로 바꾼다",
+     "ok": false,
+     "why": "더 많이 중복돼요."
+    },
+    {
+     "k": "C",
+     "t": "적재 후 수동으로 지운다",
+     "ok": false,
+     "why": "반복될 때마다 사람 손이 들어요."
+    }
+   ],
+   "explain": "속성 하나만 달라도 MERGE는 새로 만들어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Constraints",
+     "url": "https://neo4j.com/docs/cypher-manual/current/constraints/",
+     "date": "n.d."
+    },
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "접촉 추적 질의가 안 끝나요",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "확진자와 이어진 사람을 [:CONTACT*]로 찾았더니 쿼리가 안 끝나요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "'로비' 노드에 거의 모든 사람이 연결돼 있어요."
+    }
+   ],
+   "q": "어떻게 고칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "서버를 키운다",
+     "ok": false,
+     "why": "경로 폭발은 하드웨어로 못 풀어요."
+    },
+    {
+     "k": "B",
+     "t": "홉 상한(*1..2)과 기간 필터를 두고, 로비 같은 슈퍼노드를 제외한다",
+     "ok": true,
+     "why": "탐색 공간을 줄여요."
+    },
+    {
+     "k": "C",
+     "t": "접촉 추적을 포기한다",
+     "ok": false,
+     "why": "핵심 기능이에요."
+    }
+   ],
+   "explain": "상한과 필터, 슈퍼노드 처리가 기본이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Neo4j Cypher Manual — Introduction",
+     "url": "https://neo4j.com/docs/cypher-manual/current/introduction/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "표준 문법 규칙",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "벤더 전용 함수가 편해서 잔뜩 썼어요."
+    },
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "나중에 DB 바꾸면요?"
+    }
+   ],
+   "q": "팀 규칙으로 무엇을 정할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "표준(GQL 호환) 패턴 위주로 쓰고, 벤더 전용 기능은 목록으로 관리한다",
+     "ok": true,
+     "why": "이식성과 편의의 균형이에요."
+    },
+    {
+     "k": "B",
+     "t": "벤더 기능을 금지한다",
+     "ok": false,
+     "why": "생산성을 너무 잃어요."
+    },
+    {
+     "k": "C",
+     "t": "신경 쓰지 않는다",
+     "ok": false,
+     "why": "교체 비용이 커져요."
+    }
+   ],
+   "explain": "표준을 기본으로, 예외는 기록해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "ISO/IEC 39075:2024 Database languages — GQL",
+     "url": "https://www.iso.org/standard/76120.html",
+     "date": "2024-04"
+    },
+    {
+     "title": "Neo4j Cypher Manual — GQL conformance",
+     "url": "https://neo4j.com/docs/cypher-manual/current/appendix/gql-conformance/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "그래프 DB 없이 시작하기",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "예산이 없어요. 새 DB 도입은 내년이에요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "EMR 복제 DB는 PostgreSQL 계열이에요."
+    }
+   ],
+   "q": "지금 할 수 있는 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "내년까지 아무것도 안 한다",
+     "ok": false,
+     "why": "질문 검증 시간을 잃어요."
+    },
+    {
+     "k": "B",
+     "t": "현재 DB의 SQL/PGQ 지원을 확인하고, 안 되면 재귀 CTE로 2홉 질의를 시험한다",
+     "ok": true,
+     "why": "데이터를 옮기지 않고 검증해요."
+    },
+    {
+     "k": "C",
+     "t": "엑셀로 관계를 그린다",
+     "ok": false,
+     "why": "규모가 안 맞아요."
+    }
+   ],
+   "explain": "작게 검증하고 나중에 키워요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Deutsch et al., Graph Pattern Matching in GQL and SQL/PGQ",
+     "url": "https://arxiv.org/abs/2112.06217",
+     "date": "2021-12"
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "'우리도 KG 있어요'",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "옆 팀이 테이블 조인 결과를 그래프로 그려 놓고 지식그래프라고 해요."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "노드 종류 정의는 없대요."
+    }
+   ],
+   "q": "어떻게 평가할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "훌륭한 KG다",
+     "ok": false,
+     "why": "정의 없는 연결 데이터예요."
+    },
+    {
+     "k": "B",
+     "t": "엔터티 종류·관계 정의(온톨로지)와 출처가 있어야 KG로 쓸 수 있다고 피드백한다",
+     "ok": true,
+     "why": "KG는 틀과 사실이 함께여야 해요."
+    },
+    {
+     "k": "C",
+     "t": "그래프는 다 쓸모없다",
+     "ok": false,
+     "why": "데이터 자체는 쓸모 있어요."
+    }
+   ],
+   "explain": "KG = 정의된 틀 + 쌓이는 사실.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "동명이인 '김 교수'",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "AI 비서에게 '김 교수 외래 일정'을 물으면 엉뚱한 사람 일정이 나와요."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "김씨 교수가 4명이에요."
+    }
+   ],
+   "q": "무엇을 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "이름 문자열로 검색한다",
+     "ok": false,
+     "why": "동명이인을 못 가려요."
+    },
+    {
+     "k": "B",
+     "t": "질문 속 이름을 엔터티로 링킹하고, 애매하면 진료과 등으로 되묻는다",
+     "ok": true,
+     "why": "'things, not strings'예요."
+    },
+    {
+     "k": "C",
+     "t": "가장 유명한 김 교수로 답한다",
+     "ok": false,
+     "why": "틀린 답을 자신 있게 해요."
+    }
+   ],
+   "explain": "엔터티를 확정한 뒤 답해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Google — Introducing the Knowledge Graph: things, not strings",
+     "url": "https://blog.google/products/search/introducing-knowledge-graph-things-not/",
+     "date": "2012-05-16"
+    },
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "중복 환자 합치기 기준",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "이름·생일 같은 기록 1,200쌍이 나왔어요."
+    },
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "다 합치면 깔끔하죠?"
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "모두 자동 합친다",
+     "ok": false,
+     "why": "동명이인이 합쳐지면 병력이 섞여요."
+    },
+    {
+     "k": "B",
+     "t": "점수로 일치/검토/불일치를 나누고, 기준은 과합침을 피하도록 보수적으로 잡는다",
+     "ok": true,
+     "why": "의료는 과합침이 더 위험해요."
+    },
+    {
+     "k": "C",
+     "t": "하나도 합치지 않는다",
+     "ok": false,
+     "why": "같은 환자 기록이 흩어져요."
+    }
+   ],
+   "explain": "Fellegi–Sunter의 세 구간을 써요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Fellegi & Sunter, A Theory for Record Linkage (JASA 1969)",
+     "url": "https://doi.org/10.1080/01621459.1969.10501049",
+     "date": "1969"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "비교가 안 끝나요",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "환자 30만 명을 모두 쌍으로 비교하니 며칠이 걸려요."
+    },
+    {
+     "name": "나",
+     "role": "온톨로지 설계",
+     "text": "쌍이 약 450억 개예요."
+    }
+   ],
+   "q": "무엇을 더할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "블로킹(생년+성 등)으로 후보 쌍을 줄이고, 놓치는 비율을 표본으로 확인한다",
+     "ok": true,
+     "why": "n² 비교를 피해요."
+    },
+    {
+     "k": "B",
+     "t": "서버를 100대 쓴다",
+     "ok": false,
+     "why": "비용만 늘어요."
+    },
+    {
+     "k": "C",
+     "t": "무작위로 1%만 비교한다",
+     "ok": false,
+     "why": "대부분을 놓쳐요."
+    }
+   ],
+   "explain": "블로킹은 ER의 필수 단계예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Christen, Data Matching (Springer 2012)",
+     "url": "https://doi.org/10.1007/978-3-642-31164-2",
+     "date": "2012"
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "병합 취소 요청",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "원무팀이 두 환자를 잘못 합쳤대요. 되돌려 달래요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "노드를 합쳐 버려서 원본이 없어요..."
+    }
+   ],
+   "q": "앞으로 어떻게 설계할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "원본은 두고 '연결'과 근거·결정자를 따로 저장해 연결만 끊으면 되돌리게 한다",
+     "ok": true,
+     "why": "되돌릴 수 있고 감사도 돼요."
+    },
+    {
+     "k": "B",
+     "t": "합치기를 금지한다",
+     "ok": false,
+     "why": "업무가 막혀요."
+    },
+    {
+     "k": "C",
+     "t": "백업에서 전체 복구한다",
+     "ok": false,
+     "why": "다른 변경까지 사라져요."
+    }
+   ],
+   "explain": "합치기보다 연결, 그리고 PROV 기록.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C PROV-O: The PROV Ontology",
+     "url": "https://www.w3.org/TR/prov-o/",
+     "date": "2013-04-30"
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "라벨 이름 정하기",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "Neo4j 라벨을 테이블 이름 TB_PT_MST로 붙일게요."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "검사실 시스템은 이름이 또 달라요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "테이블 이름 그대로 쓴다",
+     "ok": false,
+     "why": "시스템마다 달라 뜻이 흩어져요."
+    },
+    {
+     "k": "B",
+     "t": "03장 어휘의 클래스 이름(Patient)을 라벨로 쓰고, 테이블은 매핑으로 잇는다",
+     "ok": true,
+     "why": "스키마와 온톨로지를 나눠요."
+    },
+    {
+     "k": "C",
+     "t": "라벨을 쓰지 않는다",
+     "ok": false,
+     "why": "질의와 성능이 나빠져요."
+    }
+   ],
+   "explain": "라벨은 뜻을 따르고, 저장 구조는 매핑으로.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "AI 비서의 근거",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "AI 비서가 3년 전 주치의 정보를 지금 주치의라고 답했어요."
+    },
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "관계에 기간이 없어요."
+    }
+   ],
+   "q": "무엇을 고칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "관계에 시작일·종료일과 출처를 붙이고, AI는 유효 기간과 출처가 있는 사실만 근거로 쓴다",
+     "ok": true,
+     "why": "Wikidata식 한정자·출처예요."
+    },
+    {
+     "k": "B",
+     "t": "프롬프트에 '최신 정보만 써'를 넣는다",
+     "ok": false,
+     "why": "데이터에 기간이 없으면 소용없어요."
+    },
+    {
+     "k": "C",
+     "t": "주치의 정보를 지운다",
+     "ok": false,
+     "why": "필요한 정보를 잃어요."
+    }
+   ],
+   "explain": "사실에는 기간과 출처가 있어야 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Wikidata Help:Statements",
+     "url": "https://www.wikidata.org/wiki/Help:Statements",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C PROV-O: The PROV Ontology",
+     "url": "https://www.w3.org/TR/prov-o/",
+     "date": "2013-04-30"
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "품질 회의",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "KG가 쓸 만한지 숫자로 보고 싶어요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "노드 수는 매일 늘어요."
+    }
+   ],
+   "q": "무엇을 지표로 볼까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "노드·엣지 수",
+     "ok": false,
+     "why": "크기는 품질이 아니에요."
+    },
+    {
+     "k": "B",
+     "t": "표본 검수 정확도, 필수 값 SHACL 통과율, 최신성, 출처 보유율",
+     "ok": true,
+     "why": "품질 네 축을 재요."
+    },
+    {
+     "k": "C",
+     "t": "쿼리 속도만",
+     "ok": false,
+     "why": "품질과 별개예요."
+    }
+   ],
+   "explain": "크기보다 정확·완전·최신·출처예요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Hogan et al., Knowledge Graphs (ACM Computing Surveys 2021)",
+     "url": "https://arxiv.org/abs/2003.02320",
+     "date": "2020-03"
+    },
+    {
+     "title": "W3C Shapes Constraint Language (SHACL)",
+     "url": "https://www.w3.org/TR/shacl/",
+     "date": "2017-07-20"
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "Neo4j GraphAcademy (Neo4j Fundamentals · Cypher Fundamentals)",
+   "url": "https://graphacademy.neo4j.com/",
+   "min": 60,
+   "lang": "en",
+   "what": "속성 그래프와 MATCH·MERGE를 실습 환경에서 쳐 봐요.",
+   "day": 2
+  },
+  {
+   "id": "l2",
+   "title": "Stanford CS520: Knowledge Graphs",
+   "url": "https://web.stanford.edu/class/cs520/",
+   "min": 75,
+   "lang": "en",
+   "what": "업계 연사들이 KG 정의·구축·활용을 다루는 강의 목록이에요. 관심 주제 1~2편을 골라요.",
+   "day": 3
+  },
+  {
+   "id": "l3",
+   "title": "Hogan et al., Knowledge Graphs (서베이 논문)",
+   "url": "https://arxiv.org/abs/2003.02320",
+   "min": 90,
+   "lang": "en",
+   "what": "2장(데이터 모델)과 3장(스키마·정체성·문맥)을 읽어요. 이 모듈 대부분의 바탕이에요.",
+   "day": 3
+  },
+  {
+   "id": "l4",
+   "title": "Wikibase DataModel Primer",
+   "url": "https://www.mediawiki.org/wiki/Wikibase/DataModel/Primer",
+   "min": 30,
+   "lang": "en",
+   "what": "항목·속성·진술·한정자·출처·순위 구조를 그림으로 봐요.",
+   "day": 3
+  },
+  {
+   "id": "l5",
+   "title": "Neo4j Cypher Manual — GQL conformance",
+   "url": "https://neo4j.com/docs/cypher-manual/current/appendix/gql-conformance/",
+   "min": 20,
+   "lang": "en",
+   "what": "실제 제품이 GQL 표준을 어디까지 지원하는지 표로 확인해요.",
+   "day": 2
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "'한빛 임상 지식그래프 설계서 v1'을 2쪽 안으로 써요. 03장 어휘 위에 실제 환자·의료진·약 사실을 어떻게 담고 잇고 검사할지 정해요.",
+  "template": [
+   "상태 (제안 / 승인)",
+   "원본과 사본: RDF/OWL 어휘(원본) ↔ 앱용 LPG(사본)와 변환 규칙",
+   "노드로 올릴 사건(입원·처방·진단)과 관계로 둘 것",
+   "대표 질의 3개 (Cypher/GQL 또는 SQL/PGQ)와 홉 상한",
+   "엔터티 해소: 블로킹 키, 비교 필드, 일치/검토/불일치 기준",
+   "연결 저장 방식: 근거·점수·결정자 (PROV-O)",
+   "제약: DB 유일 제약 vs SHACL 셰이프",
+   "품질 지표: 정확도·완전성·최신성·출처",
+   "다시 볼 조건: 환자 수, 검토 대기 건수"
+  ]
+ },
+ "check": [
+  "Story (300,000 patients, 1,200 candidate pairs, 4 professors named Kim, 94% accuracy example, TB_PT_MST) is fictional.",
+  "Google KG: 2012-05-16, 'more than 500 million objects ... more than 3.5 billion facts' — read from the Google blog page on 2026-10-21. Freebase/Metaweb years (2007/2010/2016) from memory, flagged in caveat.",
+  "Wikidata 123,667,901 items from Wikidata:Statistics (2026-10-21); WDQS split 2025-05-09 from the graph split page.",
+  "AutoKnow: 'over 11K product types' and challenge list from the arXiv abstract (2006.13473, 2020-06-24).",
+  "GQL ISO/IEC 39075:2024 (2024-04, 610 pages) reused from the vg-graph-model module check; ISO page returns 403 to curl. SQL/PGQ = ISO/IEC 9075-16:2023 from memory (H).",
+  "Hogan et al. KG definition quoted from the survey (H). Fellegi–Sunter 1969 and Christen 2012 citations from memory (H); DOIs resolve (Halpin DOI checked 200).",
+  "Neo4j constraint types and Enterprise-only note from the Cypher Manual constraints page (page loads 200; wording summarized).",
+  "All lecture URLs returned HTTP 200 on 2026-10-21."
+ ]
+}

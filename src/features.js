@@ -28,7 +28,7 @@ const MAP = [
   [/^\/(?:english|papers|books)(?:\/|$)/, "study"],
   [/^\/news(?:\/|$)/, "news"],
   [/^\/mba\/(?:state|read|review|day|done|ask)$/, "biz"], // 경영 과정 기록 · 튜터 (내용 파일 /mba/*.json 은 정적이라 여기 안 와요)
-  [/^\/(?:dev|vg)\/(?:state|read|review|day|done|ask)$/, "dev"], // SW 공간의 과정 기록 · 튜터 (내용 파일 /dev/*.json · /vg/*.json 은 정적이라 여기 안 와요)
+  [/^\/(?:dev|vg|onto|aip)\/(?:state|read|review|day|done|ask)$/, "dev"], // SW 공간의 과정 기록 · 튜터 (내용 파일 /dev · /vg · /onto · /aip *.json 은 정적이라 여기 안 와요)
   [/^\/ai\//, "ai"], [/^\/review\/week\/ai$/, "ai"],
   [/^\/(?:pages|site-meta|proxy-token)(?:\/|$)/, "pages"],
   [/^\/mcp\/tokens/, "mcp"],

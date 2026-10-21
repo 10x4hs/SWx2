@@ -1,0 +1,2071 @@
+{
+ "id": "onto-standards",
+ "no": "06",
+ "title": "표준 온톨로지 지도 — 상위·의료·생명·금융·산업",
+ "short": "표준 지도",
+ "q": "바퀴를 다시 만들지 않으려면, 어떤 표준을 어디에 겹쳐 써야 할까?",
+ "sub": "BFO · DOLCE · schema.org · SNOMED CT · ICD-11/KCD · LOINC · RxNorm · FHIR · OMOP · GO · OBO · FIBO · ISO 15926 · Gaia-X",
+ "doc": "한빛병원 표준 용어 채택안 v1",
+ "story": {
+  "title": "“표준이 너무 많아요. 뭘 써야 하죠?”",
+  "size": 12,
+  "body": [
+   "(가상 이야기) 05장에서 한빛병원 팀은 ORSD v0.1을 썼어요. '진단·검사·약 개념은 표준을 재사용한다'는 줄이 있었죠.",
+   "막상 찾아보니 이름이 쏟아져요. SNOMED CT, KCD, ICD-11, LOINC, RxNorm, FHIR, OMOP… 소라가 묻습니다. \"이거 다 같은 종류예요?\"",
+   "현우는 병동 경험으로 말해요. \"청구는 KCD로 하지만, 간호 기록에서 찾고 싶은 건 훨씬 세밀해요.\" 지수 팀장은 다기관 연구 참여 요청 메일을 보여 줘요.",
+   "나는 금요일까지 '표준 용어 채택안 v1'을 써야 해요. 어떤 표준을 어떤 층에, 어떤 매핑으로 겹쳐 쓸지 정하는 문서예요."
+  ]
+ },
+ "goals": [
+  "상위 온톨로지(BFO, DOLCE)와 실용 어휘(schema.org)의 차이를 설명할 수 있어요.",
+  "SNOMED CT·ICD/KCD·LOINC·RxNorm·FHIR·OMOP의 역할을 구분하고 병원 구조에 겹쳐 배치할 수 있어요.",
+  "GO·OBO·FIBO·산업 표준을 보며 표준 선택 기준(범위·관리·라이선스·생태계)과 한계를 판단할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "표준 온톨로지 지도 한눈에",
+   "lead": "표준은 세 층으로 보면 쉬워요. 맨 위 상위 온톨로지, 가운데 분야 표준(의료·생명·금융·산업), 아래 우리 조직 고유 개념.",
+   "idea": [
+    "상위 온톨로지(BFO, DOLCE)는 '물체·사건·성질' 같은 가장 큰 갈래를 줘요. 분야 표준은 그 분야의 실제 개념(질병, 유전자, 금융상품)을 줘요.",
+    "우리 조직은 표준을 가져오고, 표준에 없는 고유 개념만 만들어요(05장 재사용).",
+    "주의: '표준'이라고 다 같은 종류가 아니에요. SNOMED CT는 논리 정의가 있는 온톨로지에 가깝고, ICD는 통계용 분류, LOINC는 검사 코드 체계, FHIR는 교환 형식이에요."
+   ],
+   "steps": [
+    {
+     "k": "상위",
+     "t": "BFO · DOLCE · (실용) schema.org"
+    },
+    {
+     "k": "분야",
+     "t": "SNOMED CT · ICD · LOINC · RxNorm · GO · FIBO"
+    },
+    {
+     "k": "교환·분석",
+     "t": "FHIR · OMOP CDM"
+    },
+    {
+     "k": "고유",
+     "t": "한빛병원 고유 개념"
+    }
+   ],
+   "hear": [
+    "\"그건 용어 표준이에요, 교환 표준이에요?\""
+   ],
+   "ask": [
+    "이 표준은 뜻(의미)을 정하나요, 모양(형식)을 정하나요?"
+   ],
+   "mine": "한빛병원 팀은 표준 목록을 '뜻 표준'과 '형식 표준'으로 나눠 표를 만들어요.",
+   "deep": [
+    "OHDSI 책은 진단에 SNOMED, 약에 RxNorm, 검사에 LOINC를 표준 개념으로 쓰고, ICD 같은 원천 코드는 매핑한다고 설명해요(Book of OHDSI 5장)."
+   ],
+   "recall": {
+    "q": "FHIR와 SNOMED CT의 역할 차이는?",
+    "a": "FHIR는 데이터를 주고받는 형식, SNOMED CT는 그 안의 뜻을 정하는 용어 체계예요."
+   },
+   "quiz": [
+    {
+     "q": "ICD는 주로 어떤 목적의 체계인가요?",
+     "options": [
+      "통계·보고용 분류",
+      "데이터 전송 프로토콜",
+      "상위 온톨로지"
+     ],
+     "answer": 0,
+     "why": "ICD는 사망·질병 통계 보고를 위한 분류예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "The Book of OHDSI — Ch.5 Standardized Vocabularies",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/StandardizedVocabularies.html",
+     "date": "2021"
+    },
+    {
+     "title": "HL7 FHIR — Using Codes in Resources (Terminologies)",
+     "url": "https://hl7.org/fhir/terminologies.html",
+     "date": "2023"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "BFO: 계속 있는 것과 일어나는 것",
+   "lead": "BFO는 세상을 '시간이 지나도 계속 있는 것(연속체)'과 '시간 속에서 일어나는 것(발생체)'으로 먼저 나눠요.",
+   "idea": [
+    "심장은 연속체예요. 오늘도 내일도 그 심장이에요. 심장 수술은 발생체예요. 시작과 끝이 있고 단계가 있어요.",
+    "연속체 안에서도 '독립적으로 있는 것(심장)'과 '무엇에 기대어 있는 것(심장의 색, 환자의 역할)'을 또 나눠요.",
+    "왜 쓸모 있냐면, 데이터를 섞을 때 '혈압'이 성질인지, 측정 사건인지, 측정값 기록인지 헷갈리지 않게 해 줘요."
+   ],
+   "hear": [
+    "\"혈압 측정은 occurrent, 혈압 값 기록은 information entity예요.\""
+   ],
+   "ask": [
+    "이건 계속 있는 것인가요, 일어나는 것인가요?"
+   ],
+   "mine": "한빛병원 팀은 '처방 행위(발생체)'와 '처방 문서(정보 개체)'를 BFO 구분으로 나눠요.",
+   "deep": [
+    "BFO 공식 사이트는 BFO를 '작은 상위 온톨로지'로 소개하고, 전 세계 550개 이상의 온톨로지 기반 프로젝트에서 쓰인다고 밝혀요. 프로젝트는 2002년에 시작됐어요.",
+    "BFO는 ISO/IEC 21838-2:2021로 국제 표준이 됐어요."
+   ],
+   "recall": {
+    "q": "BFO의 첫 번째 큰 구분은?",
+    "a": "연속체(continuant)와 발생체(occurrent)"
+   },
+   "quiz": [
+    {
+     "q": "'수술'은 BFO에서 어디에 가까울까요?",
+     "options": [
+      "연속체",
+      "발생체",
+      "성질"
+     ],
+     "answer": 1,
+     "why": "시작과 끝이 있는 일어남이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Basic Formal Ontology (BFO) — Home",
+     "url": "https://basic-formal-ontology.org/",
+     "date": "n.d."
+    },
+    {
+     "title": "ISO/IEC 21838-2:2021 Top-level ontologies — Part 2: Basic Formal Ontology (BFO)",
+     "url": "https://www.iso.org/standard/74572.html",
+     "date": "2021"
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "DOLCE와 여러 상위 온톨로지",
+   "lead": "상위 온톨로지는 BFO만 있는 게 아니에요. DOLCE는 사람의 인지·언어에 가까운 구분을 택했고, 이것도 ISO 21838의 한 부분이에요.",
+   "idea": [
+    "BFO는 '과학이 다루는 실재'에 맞추는 실재론 쪽이에요. DOLCE는 '사람이 세상을 나눠 보는 방식'에 더 가깝게 설계됐어요.",
+    "ISO/IEC 21838은 상위 온톨로지가 갖춰야 할 요건(1부)을 두고, 2부에 BFO, 3부에 DOLCE를 실었어요.",
+    "어느 것이 '정답'이라기보다, 우리 분야 표준이 이미 무엇에 맞춰 있는지가 고르는 기준이에요. 생명의학 OBO 계열은 BFO에 맞춰 있어요."
+   ],
+   "hear": [
+    "\"우리 쪽 재사용 온톨로지들이 다 BFO 기반이라 BFO로 가죠.\""
+   ],
+   "ask": [
+    "우리가 가져올 분야 표준은 어떤 상위 온톨로지에 맞춰 있나요?"
+   ],
+   "mine": "한빛병원은 생명의학 표준과 잘 맞도록 BFO 쪽 구분을 빌려요.",
+   "deep": [
+    "ISO/IEC 21838-3은 DOLCE를 다루며 2023년판이에요(ISO 카탈로그 기준).",
+    "그 밖에 SUMO, UFO, Cyc 같은 상위 온톨로지도 있어요."
+   ],
+   "recall": {
+    "q": "상위 온톨로지를 고르는 실용적 기준은?",
+    "a": "재사용할 분야 표준이 이미 맞춰 있는 상위 온톨로지를 따라가는 것"
+   },
+   "quiz": [
+    {
+     "q": "ISO/IEC 21838-2가 다루는 것은?",
+     "options": [
+      "DOLCE",
+      "BFO",
+      "SNOMED CT"
+     ],
+     "answer": 1,
+     "why": "2부가 BFO, 3부가 DOLCE예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "ISO/IEC 21838-2:2021 Top-level ontologies — Part 2: Basic Formal Ontology (BFO)",
+     "url": "https://www.iso.org/standard/74572.html",
+     "date": "2021"
+    },
+    {
+     "title": "ISO/IEC 21838-3:2023 Top-level ontologies — Part 3: DOLCE",
+     "url": "https://www.iso.org/standard/76036.html",
+     "date": "2023"
+    },
+    {
+     "title": "OBO Foundry Principles — Overview",
+     "url": "https://obofoundry.org/principles/fp-000-summary.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "schema.org: 웹을 위한 실용 어휘",
+   "lead": "schema.org는 엄격한 상위 온톨로지가 아니라, 웹페이지에 '이건 병원, 이건 의사, 이건 진료 시간'을 표시하는 실용 어휘예요.",
+   "idea": [
+    "검색 엔진 회사들이 함께 만들었어요. 웹페이지에 JSON-LD로 표시하면 검색 결과에 풍부한 정보로 나타날 수 있어요.",
+    "논리적 엄밀함보다 쓰기 쉬움을 택했어요. 그래서 도메인/레인지가 느슨하고, 추론용으로는 약해요.",
+    "병원이라면 홈페이지의 진료과·의사·위치를 schema.org로 표시하는 데 써요. 임상 데이터 의미 표준으로는 맞지 않아요."
+   ],
+   "code": {
+    "lang": "json",
+    "text": "{\"@context\": \"https://schema.org\",\n \"@type\": \"Hospital\",\n \"name\": \"한빛병원\",\n \"medicalSpecialty\": \"Cardiovascular\"}",
+    "read": "웹페이지에 '이건 병원이고 이름과 진료 분야는 이것'이라고 표시하는 JSON-LD 예예요. (가상 병원)"
+   },
+   "hear": [
+    "\"홈페이지 구조화 데이터는 schema.org로 하죠.\""
+   ],
+   "ask": [
+    "이 어휘로 하려는 게 검색 노출인가요, 임상 의미 통합인가요?"
+   ],
+   "mine": "소라는 병원 홈페이지에만 schema.org를 쓰고, EMR 의미 통합에는 의료 표준을 써요.",
+   "deep": [
+    "schema.org About 페이지는 이 프로젝트를 검색 엔진들이 공동 설립한 커뮤니티 활동으로 소개해요(2011년 시작; 세부는 원문 확인)."
+   ],
+   "recall": {
+    "q": "schema.org가 임상 의미 표준으로 맞지 않는 이유는?",
+    "a": "쓰기 쉬움을 위해 느슨하게 설계돼 논리적 엄밀함과 임상 세부가 부족해서"
+   },
+   "quiz": [
+    {
+     "q": "schema.org의 가장 대표적인 쓰임은?",
+     "options": [
+      "웹페이지 구조화 데이터 표시",
+      "유전자 기능 기술",
+      "질병 통계 보고"
+     ],
+     "answer": 0,
+     "why": "검색 엔진이 읽는 웹 표시용이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "schema.org — About",
+     "url": "https://schema.org/docs/about.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "SNOMED CT: 논리로 정의된 임상 용어",
+   "lead": "SNOMED CT는 36만 개가 넘는 임상 개념을 갖고, 각 개념을 다른 개념과의 관계로 논리 정의한 세계 최대급 임상 용어 체계예요.",
+   "idea": [
+    "'세균성 폐렴'은 '폐렴'의 하위이면서, 원인체가 '세균'이라는 관계로 정의돼요. 그래서 '감염성 폐 질환 전부'를 물으면 하위 개념이 자동으로 따라와요.",
+    "개념은 의미 없는 숫자 ID를 갖고, 여러 언어의 용어(설명)를 따로 붙여요. 05장의 '식별자와 이름 분리'와 같아요.",
+    "논리는 OWL 2 EL 프로필에 맞춰 있어요. EL은 표현력을 줄인 대신 아주 큰 계층도 빠르게 분류할 수 있어요."
+   ],
+   "hear": [
+    "\"그 코드 하위 개념까지 다 포함해서 뽑아 주세요.\""
+   ],
+   "ask": [
+    "우리 병원은 어떤 SNOMED CT 에디션·버전을 쓰나요?",
+    "라이선스(회원국 여부)는 확인했나요?"
+   ],
+   "mine": "현우는 진단 목록을 SNOMED CT 개념에 붙이면 '하위 질환 포함' 검색이 쉬워진다는 걸 확인해요.",
+   "deep": [
+    "SNOMED International은 국제판이 매달 배포되며 36만 개 이상의 개념을 포함한다고 밝혀요.",
+    "OWL 2 EL은 다항 시간 추론이 가능한 프로필로, 대형 생명의학 온톨로지를 위해 설계됐어요(W3C OWL 2 Profiles)."
+   ],
+   "recall": {
+    "q": "SNOMED CT가 OWL 2 EL에 맞춘 이유는?",
+    "a": "아주 큰 개념 계층을 빠르게(다항 시간) 분류하려고"
+   },
+   "quiz": [
+    {
+     "q": "SNOMED CT 개념이 '하위 개념 포함' 검색에 강한 이유는?",
+     "options": [
+      "논리적 계층·관계로 정의돼서",
+      "개념 이름이 짧아서",
+      "엑셀로 배포돼서"
+     ],
+     "answer": 0,
+     "why": "is-a 계층과 관계 정의 덕분이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "SNOMED International — What is SNOMED CT?",
+     "url": "https://www.snomed.org/what-is-snomed-ct",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C, OWL 2 Web Ontology Language Profiles (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-profiles/",
+     "date": "2012-12-11"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "SNOMED CT를 쓴다는 것: 회원국·에디션·질의",
+   "lead": "SNOMED CT는 회원국 제도로 라이선스가 정해져요. 한국은 2020년 8월 회원국이 됐어요.",
+   "idea": [
+    "회원국 안에서는 국가 배포 센터를 통해 사용할 수 있어요. 국가마다 자국 언어·개념을 더한 '국가 에디션'을 낼 수 있어요.",
+    "개념 묶음을 질의할 때는 ECL(표현 제약 언어)을 써요. 예: '<< 당뇨병' = 당뇨병과 모든 하위 유형.",
+    "현실의 어려움: 현장 의사는 SNOMED 코드를 직접 고르지 않아요. 화면의 진단명과 SNOMED를 잇는 '인터페이스 용어' 매핑이 실제 일의 대부분이에요."
+   ],
+   "code": {
+    "lang": "ecl",
+    "text": "<< 73211009 |Diabetes mellitus|",
+    "read": "73211009(당뇨병)와 그 모든 하위 개념을 뜻해요. '<<'는 자기 자신 포함 하위 전부예요."
+   },
+   "hear": [
+    "\"ECL로 하위 개념 집합 뽑아서 값 집합(value set)으로 만들죠.\""
+   ],
+   "ask": [
+    "국가 배포 센터에서 받는 절차는 누가 맡나요?"
+   ],
+   "mine": "지수 팀장은 SNOMED 사용 절차를 확인하는 일을 이번 주 할 일에 넣어요.",
+   "deep": [
+    "SNOMED International 회원 페이지는 '2020년 8월 대한민국이 회원국이 됐다'고 적고 있어요.",
+    "ECL 예시의 73211009는 SNOMED CT의 Diabetes mellitus 개념 ID로 널리 쓰여요."
+   ],
+   "recall": {
+    "q": "ECL '<< X'의 뜻은?",
+    "a": "X 자신과 X의 모든 하위 개념"
+   },
+   "quiz": [
+    {
+     "q": "한국이 SNOMED International 회원국이 된 때는?",
+     "options": [
+      "2010년",
+      "2020년 8월",
+      "아직 아님"
+     ],
+     "answer": 1,
+     "why": "SNOMED International 회원 페이지 기준이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "SNOMED International — Members (Republic of Korea, August 2020)",
+     "url": "https://www.snomed.org/members",
+     "date": "n.d."
+    },
+    {
+     "title": "SNOMED International — What is SNOMED CT?",
+     "url": "https://www.snomed.org/what-is-snomed-ct",
+     "date": "n.d."
+    },
+    {
+     "title": "SNOMED International e-Learning",
+     "url": "https://elearning.ihtsdotools.org/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "ICD-10/11과 한국의 KCD",
+   "lead": "ICD는 WHO의 질병 분류예요. 사망·질병 통계와 보고를 위해 개념마다 부모가 하나인 분류표를 줘요.",
+   "idea": [
+    "ICD-11은 2022년 1월 1일 발효됐어요. 고유 코드 약 1만 7천 개, 코드 가능한 용어 12만 개 이상이고, 완전히 디지털로 제공돼요.",
+    "한국의 진료·청구에서 쓰는 KCD(한국표준질병·사인분류)는 ICD-10을 바탕으로 해요. 그래서 한국 병원 데이터의 진단 코드는 대개 KCD예요.",
+    "SNOMED CT와의 관계: SNOMED는 임상 기록용으로 세밀하고, ICD/KCD는 통계·청구용으로 묶어요. 둘은 경쟁이 아니라 매핑으로 함께 써요."
+   ],
+   "hear": [
+    "\"청구는 KCD, 임상 검색은 SNOMED로 가요.\""
+   ],
+   "ask": [
+    "KCD 개정판이 바뀌면 우리 매핑은 어떻게 갱신하나요?"
+   ],
+   "mine": "한빛병원 진단 데이터는 KCD 코드라, OMOP 변환 때 표준 개념(SNOMED)으로 매핑해야 해요.",
+   "deep": [
+    "WHO는 2022년 2월 발표에서 35개국이 ICD-11을 쓰고 있다고 밝혔어요.",
+    "ICD-11은 여러 부모를 허용하는 기초층(Foundation)에서 통계용 선형화(MMS)를 뽑는 구조예요(05장 사례)."
+   ],
+   "recall": {
+    "q": "ICD/KCD와 SNOMED CT의 쓰임 차이는?",
+    "a": "ICD/KCD는 통계·청구용 분류, SNOMED CT는 세밀한 임상 기록·검색용 용어"
+   },
+   "quiz": [
+    {
+     "q": "한국 KCD의 바탕은?",
+     "options": [
+      "ICD-10",
+      "SNOMED CT",
+      "LOINC"
+     ],
+     "answer": 0,
+     "why": "KCD는 ICD-10을 한국에 맞춘 분류예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "WHO, ICD-11 2022 release",
+     "url": "https://www.who.int/news/item/11-02-2022-icd-11-2022-release",
+     "date": "2022-02-11"
+    },
+    {
+     "title": "WHO — International Classification of Diseases (ICD)",
+     "url": "https://www.who.int/standards/classifications/classification-of-diseases",
+     "date": "n.d."
+    },
+    {
+     "title": "WHO ICD-11 Browser",
+     "url": "https://icd.who.int/browse11",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "LOINC와 RxNorm: 검사와 약의 이름표",
+   "lead": "LOINC는 검사·관찰에, RxNorm은 약에 표준 이름과 코드를 줘요. 병원마다 다른 검사·약 코드를 잇는 다리예요.",
+   "idea": [
+    "LOINC 코드는 '무엇을(칼륨), 어떤 검체에서(혈청), 어떤 단위 성질로(물질 농도), 어떤 방법으로' 같은 축을 조합해 검사 하나를 정해요. 그래서 '같은 칼륨'인지 정확히 가를 수 있어요.",
+    "RxNorm은 미국 NLM이 만든 약 이름 정규화 체계예요. 성분·함량·제형 단위로 약을 묶어 여러 약 DB를 이어요.",
+    "한국에서는 약에 국내 코드(보험 약가 코드 등)가 쓰여 RxNorm만으로 다 덮지 못해요. OHDSI는 미국 밖 약을 위해 RxNorm Extension을 둬요."
+   ],
+   "hear": [
+    "\"그 검사 LOINC 붙일 때 검체 축 꼭 확인해요.\""
+   ],
+   "ask": [
+    "우리 검사 코드에 검체·단위 정보가 같이 있나요?"
+   ],
+   "mine": "05장에서 고민한 'K-POT 매핑'은 LOINC의 검체 축 덕분에 혈청/전혈을 나눠 정확히 할 수 있어요.",
+   "deep": [
+    "NLM은 RxNorm이 임상 약의 정규화된 이름을 주고, 여러 약 어휘(First Databank, Micromedex 등)와 연결한다고 설명해요.",
+    "Book of OHDSI는 미국 밖에서만 쓰는 약을 위한 RxNorm Extension을 OHDSI가 만든다고 적어요."
+   ],
+   "recall": {
+    "q": "LOINC가 '같은 검사'를 정확히 가를 수 있는 이유는?",
+    "a": "성분·검체·성질·방법 같은 여러 축을 조합해 정의해서"
+   },
+   "quiz": [
+    {
+     "q": "한국 약 데이터를 OMOP에 넣을 때 RxNorm만으로 부족하면 OHDSI가 쓰는 것은?",
+     "options": [
+      "RxNorm Extension",
+      "ICD-11",
+      "schema.org"
+     ],
+     "answer": 0,
+     "why": "미국 밖 약을 위한 확장이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "LOINC (Regenstrief Institute) — About",
+     "url": "https://loinc.org/about/",
+     "date": "n.d."
+    },
+    {
+     "title": "NLM — RxNorm",
+     "url": "https://www.nlm.nih.gov/research/umls/rxnorm/index.html",
+     "date": "n.d."
+    },
+    {
+     "title": "The Book of OHDSI — Ch.5 Standardized Vocabularies",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/StandardizedVocabularies.html",
+     "date": "2021"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "FHIR: 교환 형식, 뜻은 용어가 준다",
+   "lead": "FHIR는 의료 데이터를 '리소스' 단위로 주고받는 HL7 표준이에요. 뜻은 리소스 안의 코드가 SNOMED·LOINC 같은 용어를 가리켜서 생겨요.",
+   "idea": [
+    "Observation(관찰) 리소스에는 '무슨 검사인지' 코드 칸이 있어요. 여기에 LOINC 코드를 넣으면 받는 쪽이 같은 뜻으로 읽어요.",
+    "FHIR는 REST API 방식이라 개발자에게 익숙해요. 하지만 형식이 같아도 코드가 병원 고유 코드면 뜻은 안 통해요.",
+    "현재 공식 최신 판은 R5(v5.0.0)이고, 많은 나라와 시스템이 아직 R4를 써요."
+   ],
+   "code": {
+    "lang": "json",
+    "text": "{\"resourceType\": \"Observation\",\n \"code\": {\"coding\": [{\"system\": \"http://loinc.org\",\n   \"code\": \"2823-3\"}]},\n \"valueQuantity\": {\"value\": 5.8, \"unit\": \"mmol/L\"}}",
+    "read": "검사 결과 리소스예요. code는 LOINC 체계의 코드를 가리키고, 값과 단위가 붙어요. (값은 가상, 코드는 예시)"
+   },
+   "hear": [
+    "\"FHIR로 보냈는데 저쪽이 로컬 코드라 못 읽는대요.\""
+   ],
+   "ask": [
+    "이 리소스의 code 칸은 어떤 용어 체계에 묶여 있나요?"
+   ],
+   "mine": "소라는 병원 간 연동 API를 FHIR로 만들되, code 칸에는 표준 용어를 넣기로 해요.",
+   "deep": [
+    "HL7 FHIR 홈은 현재 공개판을 v5.0.0(R5)로 표시하고, R4B·R4 등 이전 판도 함께 안내해요.",
+    "FHIR 용어 서비스는 $expand, $lookup, $subsumes 같은 연산으로 값 집합 펼치기와 하위 관계 확인을 제공해요."
+   ],
+   "recall": {
+    "q": "FHIR 메시지의 '뜻'은 어디서 오나요?",
+    "a": "리소스의 코드 칸이 가리키는 표준 용어(SNOMED, LOINC 등)에서"
+   },
+   "quiz": [
+    {
+     "q": "FHIR로 보냈는데 상대가 의미를 못 읽는 가장 흔한 이유는?",
+     "options": [
+      "JSON이라서",
+      "코드 칸에 병원 고유 코드를 넣어서",
+      "REST라서"
+     ],
+     "answer": 1,
+     "why": "형식은 맞아도 용어가 안 통했어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "HL7 FHIR R5 (v5.0.0) — Home",
+     "url": "https://hl7.org/fhir/",
+     "date": "2023"
+    },
+    {
+     "title": "HL7 FHIR — Using Codes in Resources (Terminologies)",
+     "url": "https://hl7.org/fhir/terminologies.html",
+     "date": "2023"
+    },
+    {
+     "title": "HL7 FHIR — Terminology Service",
+     "url": "https://hl7.org/fhir/terminology-service.html",
+     "date": "2023"
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "용어 바인딩과 강도",
+   "lead": "FHIR는 각 코드 칸에 '어떤 값 집합을 써야 하는지'를 묶고(바인딩), 그 강도를 required·extensible·preferred·example로 정해요.",
+   "idea": [
+    "required는 반드시 그 값 집합에서만 골라야 해요. extensible은 맞는 코드가 있으면 써야 하고, 없을 때만 다른 코드를 써요.",
+    "preferred는 권장, example은 예시일 뿐이에요. 강도가 약할수록 유연하지만, 받는 쪽의 해석은 어려워져요.",
+    "온톨로지 관점에서 바인딩은 '이 칸의 값은 이 개념 집합에서 온다'는 제약이에요. SHACL의 sh:in과 비슷한 역할이에요."
+   ],
+   "hear": [
+    "\"그 칸 extensible이라 맞는 코드 있으면 표준 코드 써야 해요.\""
+   ],
+   "ask": [
+    "이 칸의 바인딩 강도는 무엇이고, 우리 데이터는 그걸 지키나요?"
+   ],
+   "mine": "현우는 알레르기 원인 칸에 어떤 값 집합을 바인딩할지 정하는 표를 만들어요.",
+   "deep": [
+    "FHIR BindingStrength 값 집합은 required를 '그 값 집합의 개념이어야 적합', extensible을 '적용 가능한 코드가 있으면 그 값 집합에서' 등으로 정의해요."
+   ],
+   "recall": {
+    "q": "extensible 바인딩의 규칙은?",
+    "a": "값 집합에 맞는 코드가 있으면 반드시 쓰고, 없을 때만 다른 코드를 쓸 수 있어요."
+   },
+   "quiz": [
+    {
+     "q": "가장 엄격한 바인딩 강도는?",
+     "options": [
+      "example",
+      "preferred",
+      "required"
+     ],
+     "answer": 2,
+     "why": "required는 값 집합 밖을 허용하지 않아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "HL7 FHIR — BindingStrength value set",
+     "url": "https://www.hl7.org/fhir/valueset-binding-strength.html",
+     "date": "2023"
+    },
+    {
+     "title": "HL7 FHIR — Using Codes in Resources (Terminologies)",
+     "url": "https://hl7.org/fhir/terminologies.html",
+     "date": "2023"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "OMOP CDM: 분석을 위한 공통 모양",
+   "lead": "OMOP CDM은 여러 병원 데이터를 같은 테이블 구조와 같은 표준 개념으로 바꿔, 하나의 분석 코드로 여러 기관을 함께 연구하게 해요.",
+   "idea": [
+    "PERSON, VISIT_OCCURRENCE, CONDITION_OCCURRENCE, DRUG_EXPOSURE, MEASUREMENT 같은 표준 테이블에 데이터를 옮겨요.",
+    "핵심은 모든 임상 사건을 '개념 ID'로 표현하는 거예요. 원천 코드(KCD, 병원 코드)는 남겨 두고, 표준 개념(SNOMED, RxNorm, LOINC)으로 매핑해요.",
+    "계층 질의는 CONCEPT_ANCESTOR 표로 해요. 미리 계산된 조상-자손 표라, 추론기 없이 SQL로 '하위 개념 포함'을 할 수 있어요."
+   ],
+   "code": {
+    "lang": "sql",
+    "text": "SELECT co.person_id\nFROM condition_occurrence co\nJOIN concept_ancestor ca\n  ON ca.descendant_concept_id = co.condition_concept_id\nWHERE ca.ancestor_concept_id = 201820; -- 예: 당뇨병",
+    "read": "당뇨병 개념의 모든 하위 개념으로 기록된 진단을 가진 사람을 찾아요. 계층을 미리 펼친 표를 JOIN해요. (개념 ID는 예시, Athena에서 확인)"
+   },
+   "hear": [
+    "\"ETL에서 KCD를 표준 개념으로 못 바꾼 비율이 얼마예요?\""
+   ],
+   "ask": [
+    "매핑 안 된(concept_id 0) 기록은 몇 %인가요?"
+   ],
+   "mine": "한빛병원은 연구용으로 OMOP 변환을 하고, 그 매핑을 온톨로지 매핑(SSSOM)과 같이 관리하기로 해요.",
+   "deep": [
+    "OMOP CDM 문서 사이트는 v5.3, v5.4, v5.5 버전 문서를 제공해요.",
+    "Book of OHDSI 5장은 모든 임상 사건이 CONCEPT 표의 개념으로 표현되고, 원천 값과 표준 개념을 구분한다고 설명해요."
+   ],
+   "recall": {
+    "q": "OMOP에서 추론기 없이 하위 개념을 포함하는 방법은?",
+    "a": "미리 계산된 CONCEPT_ANCESTOR 표를 JOIN해요."
+   },
+   "quiz": [
+    {
+     "q": "OMOP에서 원천 코드(KCD)는 어떻게 하나요?",
+     "options": [
+      "버린다",
+      "남겨 두고 표준 개념으로 매핑한다",
+      "표준 개념 칸에 그대로 넣는다"
+     ],
+     "answer": 1,
+     "why": "source value와 표준 concept를 둘 다 둬요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "OHDSI — OMOP Common Data Model",
+     "url": "https://ohdsi.github.io/CommonDataModel/",
+     "date": "n.d."
+    },
+    {
+     "title": "The Book of OHDSI — Ch.5 Standardized Vocabularies",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/StandardizedVocabularies.html",
+     "date": "2021"
+    },
+    {
+     "title": "OHDSI Athena — vocabulary browser",
+     "url": "https://athena.ohdsi.org/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "FHIR vs OMOP vs 온톨로지: 무엇을 언제",
+   "lead": "FHIR는 '지금 주고받기', OMOP은 '모아서 분석하기', 온톨로지는 '뜻을 정의하고 추론하기'예요. 서로 바꿔 쓰는 게 아니라 겹쳐 써요.",
+   "idea": [
+    "진료 중 실시간 연동은 FHIR가 맞아요. 여러 병원 연구 분석은 OMOP이 맞아요. AI 비서가 '왜'를 설명하며 답하려면 개념 관계를 담은 온톨로지가 필요해요.",
+    "공통점은 모두 같은 표준 용어(SNOMED, LOINC, RxNorm)를 쓴다는 거예요. 용어가 같으면 세 층 사이 변환이 쉬워요.",
+    "함정: 한 가지로 다 하려고 하면 무리가 생겨요. OMOP 표로 실시간 연동을 하거나, FHIR 서버로 대규모 통계를 내는 건 어렵거나 느려요."
+   ],
+   "steps": [
+    {
+     "k": "교환",
+     "t": "FHIR 리소스 · REST"
+    },
+    {
+     "k": "분석",
+     "t": "OMOP 표 · SQL · ATLAS"
+    },
+    {
+     "k": "의미",
+     "t": "OWL/SKOS · 추론 · 그래프"
+    },
+    {
+     "k": "공통",
+     "t": "SNOMED · LOINC · RxNorm"
+    }
+   ],
+   "hear": [
+    "\"이건 연동 문제예요, 분석 문제예요?\""
+   ],
+   "ask": [
+    "이 요구는 실시간 교환, 대규모 분석, 의미 추론 중 무엇인가요?"
+   ],
+   "mine": "지수 팀장은 한빛병원 구조를 'FHIR로 받고, OMOP으로 분석하고, 온톨로지로 AI 비서에 뜻을 준다'로 정리해요.",
+   "deep": [
+    "FHIR 명세는 RDF 표현도 제공해 온톨로지 도구와 연결할 수 있어요(FHIR 명세 형식 목록).",
+    "OHDSI는 OMOP 위에서 ATLAS 같은 분석 도구를 제공해요(Book of OHDSI)."
+   ],
+   "recall": {
+    "q": "AI 비서가 개념 관계를 설명하며 답하려면 어느 층이 필요한가요?",
+    "a": "온톨로지(의미) 층"
+   },
+   "quiz": [
+    {
+     "q": "여러 병원 공동 연구 분석에 가장 맞는 것은?",
+     "options": [
+      "FHIR",
+      "OMOP CDM",
+      "schema.org"
+     ],
+     "answer": 1,
+     "why": "같은 표 구조와 표준 개념으로 같은 분석 코드를 돌려요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "HL7 FHIR R5 (v5.0.0) — Home",
+     "url": "https://hl7.org/fhir/",
+     "date": "2023"
+    },
+    {
+     "title": "The Book of OHDSI",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/",
+     "date": "2021"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "Gene Ontology: 생명과학의 공통어",
+   "lead": "Gene Ontology(GO)는 유전자 산물이 '무슨 일을 하는지'를 세 갈래(분자 기능, 생물학적 과정, 세포 구성요소)로 표현해요.",
+   "idea": [
+    "같은 유전자를 쥐·사람·효모에서 연구해도, GO 용어로 기능을 적으면 종을 넘어 비교할 수 있어요.",
+    "분자 기능은 '효소 활성'처럼 분자 하나의 활동, 생물학적 과정은 '세포 분열'처럼 여러 활동의 큰 흐름, 세포 구성요소는 '미토콘드리아'처럼 일하는 장소예요.",
+    "GO의 성공 비결은 온톨로지 자체보다 '주석(annotation)'이에요. 수많은 연구가 GO 용어로 유전자를 주석했기 때문에 쓸모가 커졌어요."
+   ],
+   "hear": [
+    "\"그 유전자 GO 주석은 실험 근거예요, 추론 근거예요?\""
+   ],
+   "ask": [
+    "이 주석의 근거 코드는 무엇인가요?"
+   ],
+   "mine": "한빛병원 유전체 검사 결과를 연구팀과 공유할 때 GO 같은 공통어가 있으면 해석이 쉬워진다는 걸 알게 돼요.",
+   "deep": [
+    "GO 문서는 GO가 분자 기능(MF), 세포 구성요소(CC), 생물학적 과정(BP) 세 측면으로 구성된다고 설명해요.",
+    "GO는 Ashburner 등의 2000년 Nature Genetics 논문으로 소개됐어요."
+   ],
+   "recall": {
+    "q": "GO의 세 갈래는?",
+    "a": "분자 기능, 생물학적 과정, 세포 구성요소"
+   },
+   "quiz": [
+    {
+     "q": "'미토콘드리아'는 GO의 어느 갈래?",
+     "options": [
+      "분자 기능",
+      "생물학적 과정",
+      "세포 구성요소"
+     ],
+     "answer": 2,
+     "why": "일이 일어나는 장소예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Gene Ontology — Ontology documentation",
+     "url": "https://geneontology.org/docs/ontology-documentation/",
+     "date": "n.d."
+    },
+    {
+     "title": "Ashburner et al., Gene Ontology: tool for the unification of biology, Nature Genetics 25:25–29",
+     "url": "https://www.nature.com/articles/ng0500_25",
+     "date": "2000-05"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "OBO Foundry: 함께 쓰려고 정한 규칙",
+   "lead": "OBO Foundry는 생명의학 온톨로지들이 서로 맞물리도록 '열려 있을 것, 공통 형식, 고유 ID, 버전, 텍스트 정의' 같은 원칙을 정한 모임이에요.",
+   "idea": [
+    "온톨로지가 제각각이면 서로 이어 쓸 수 없어요. OBO Foundry는 회원 온톨로지에 공통 원칙을 요구해 '같은 규칙의 레고 블록'을 만들어요.",
+    "원칙 예: 공개(누구나 사용), 공통 형식, URI/식별자 공간, 버전, 범위, 텍스트 정의, 관계 재사용 등.",
+    "한 개념은 한 온톨로지가 맡아요(중복 피하기). 다른 온톨로지는 그걸 가져다 써요. 05장의 재사용 원칙이 커뮤니티 규칙이 된 거예요."
+   ],
+   "hear": [
+    "\"그 개념은 다른 OBO 온톨로지가 이미 맡고 있어요. 가져다 쓰죠.\""
+   ],
+   "ask": [
+    "이 개념을 이미 맡은 온톨로지가 있나요?"
+   ],
+   "mine": "한빛병원 고유 온톨로지도 OBO 원칙(고유 ID, 텍스트 정의, 버전)을 체크리스트로 빌려 써요.",
+   "deep": [
+    "OBO Foundry 원칙 요약은 원칙 1(Open)부터 Common Format, URI/Identifier Space, Versioning, Scope, Textual Definitions 등을 나열해요.",
+    "원칙 1은 출처를 밝히고 원본을 바꿔 같은 이름으로 배포하지 않는 조건으로 누구나 쓸 수 있어야 한다고 해요."
+   ],
+   "recall": {
+    "q": "OBO Foundry 원칙 하나를 들면?",
+    "a": "공개, 공통 형식, 고유 식별자, 버전, 텍스트 정의 등"
+   },
+   "quiz": [
+    {
+     "q": "OBO Foundry가 개념 중복을 피하는 방식은?",
+     "options": [
+      "한 개념은 한 온톨로지가 맡고 다른 곳은 재사용",
+      "모두 각자 만든다",
+      "중복을 장려한다"
+     ],
+     "answer": 0,
+     "why": "재사용으로 서로 맞물려요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "OBO Foundry Principles — Overview",
+     "url": "https://obofoundry.org/principles/fp-000-summary.html",
+     "date": "n.d."
+    },
+    {
+     "title": "OBO Foundry",
+     "url": "https://obofoundry.org/",
+     "date": "n.d."
+    },
+    {
+     "title": "EMBL-EBI Ontology Lookup Service (OLS4)",
+     "url": "https://www.ebi.ac.uk/ols4/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "FIBO: 금융의 온톨로지",
+   "lead": "FIBO는 EDM Council이 만든 금융 산업 온톨로지예요. 채권·대출·법인·소유 관계 같은 금융 개념을 OWL로 정의해요.",
+   "idea": [
+    "은행마다 '거래 상대방', '실소유자' 정의가 달라 규제 보고가 어려웠어요. FIBO는 이 뜻을 하나의 공유 모델로 정하려 해요.",
+    "OWL과 기술 논리를 써서 개념을 모호하지 않게 정의해요. 그래서 '이 회사의 최종 지배 법인은?' 같은 질문에 추론을 쓸 수 있어요.",
+    "현실: FIBO 전체는 크고 어려워요. 많은 기관은 필요한 모듈만 가져와 자기 데이터 모델의 '뜻 사전'으로 써요."
+   ],
+   "hear": [
+    "\"그 법인 관계는 FIBO 모듈에서 가져오죠.\""
+   ],
+   "ask": [
+    "FIBO 중 어느 모듈이 우리 질문에 필요한가요?"
+   ],
+   "mine": "의료가 아닌 분야도 같은 고민을 한다는 걸 보며, 한빛병원 팀은 '필요한 모듈만'이라는 전략을 다시 확인해요.",
+   "deep": [
+    "FIBO 명세 사이트는 2020년 1월부터 FIBO가 공개 커뮤니티 과정으로 개발되고 있다고 밝혀요.",
+    "FIBO는 OWL로 개발되며, OMG(Object Management Group)에서도 표준화됐다고 EDM Council이 설명해요."
+   ],
+   "recall": {
+    "q": "FIBO가 OWL을 쓰는 이유는?",
+    "a": "금융 개념을 논리적으로 모호하지 않게 정의하고 추론에 쓰려고"
+   },
+   "quiz": [
+    {
+     "q": "FIBO를 관리하는 곳은?",
+     "options": [
+      "EDM Council",
+      "WHO",
+      "HL7"
+     ],
+     "answer": 0,
+     "why": "EDM Council이 만들고 커뮤니티로 개발해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "EDM Council — FIBO specification",
+     "url": "https://spec.edmcouncil.org/fibo/",
+     "date": "n.d."
+    },
+    {
+     "title": "EDM Council — FIBO overview",
+     "url": "https://www.edmcouncil.org/frameworks/industry-models/fibo/",
+     "date": "2026-06"
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "산업·데이터 공간: ISO 15926, SSN/SOSA, Gaia-X",
+   "lead": "공장·설비·센서·데이터 공유에도 표준 어휘가 있어요. 공정 플랜트의 ISO 15926, 센서의 SSN/SOSA, 유럽 데이터 공간의 Gaia-X가 대표적이에요.",
+   "idea": [
+    "ISO 15926은 석유·화학 플랜트 같은 공정 설비의 생애주기 데이터를 통합하려는 표준이에요. 설계사·시공사·운영사가 같은 설비를 같은 뜻으로 부르게 하려는 거예요.",
+    "W3C의 SSN/SOSA는 '센서가 무엇을 관찰했고 어떤 절차로 결과를 냈나'를 표현해요. 병원의 의료기기·IoT 측정에도 응용할 수 있어요.",
+    "Gaia-X는 유럽의 데이터·클라우드 협회로, 참여자와 서비스를 기계가 읽을 수 있는 설명(자기 기술)으로 공유하는 생태계를 지향해요."
+   ],
+   "hear": [
+    "\"센서 데이터는 SOSA의 Observation 패턴으로 맞추죠.\""
+   ],
+   "ask": [
+    "우리 장비 데이터에 이미 산업 표준 어휘가 있나요?"
+   ],
+   "mine": "병동 모니터 같은 의료기기 측정값을 다룰 때 SOSA의 '관찰' 패턴을 참고할 수 있어요.",
+   "deep": [
+    "SSN/SOSA는 2017-10-19 W3C 권고안이에요.",
+    "Gaia-X의 공식 명칭은 'Gaia-X European Association for Data and Cloud AISBL'이에요. 데이터 공간 세부 기술(RDF/SHACL 자기 기술 등)은 버전마다 바뀌니 최신 문서를 확인해야 해요."
+   ],
+   "recall": {
+    "q": "SSN/SOSA가 표현하는 핵심은?",
+    "a": "센서가 무엇을, 어떤 절차로 관찰해 어떤 결과를 냈는지"
+   },
+   "quiz": [
+    {
+     "q": "공정 플랜트 생애주기 데이터 통합 표준은?",
+     "options": [
+      "ISO 15926",
+      "LOINC",
+      "GO"
+     ],
+     "answer": 0,
+     "why": "ISO 15926이 공정 설비 데이터 통합을 다뤄요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "ISO 15926 — Industrial automation systems and integration — Integration of life-cycle data for process plants",
+     "url": "https://www.iso.org/standard/29557.html",
+     "date": "2004"
+    },
+    {
+     "title": "W3C, Semantic Sensor Network Ontology (SSN/SOSA)",
+     "url": "https://www.w3.org/TR/vocab-ssn/",
+     "date": "2017-10-19"
+    },
+    {
+     "title": "Gaia-X European Association for Data and Cloud AISBL",
+     "url": "https://gaia-x.eu/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "표준을 고르는 기준",
+   "lead": "표준은 '유명해서'가 아니라 범위·관리 주체·라이선스·업데이트 주기·주변 생태계로 골라요.",
+   "idea": [
+    "범위: 우리 CQ의 개념을 덮나요? 관리: 누가 언제까지 관리하나요? 라이선스: 비용과 사용 조건은? 업데이트: 얼마나 자주 바뀌나요?",
+    "생태계가 가장 중요할 때가 많아요. 같이 일할 기관·규제·도구가 이미 쓰는 표준을 고르면 매핑 비용이 확 줄어요.",
+    "표준이 없거나 안 맞으면 만들어도 돼요. 다만 표준과 잇는 매핑을 처음부터 같이 설계해요."
+   ],
+   "steps": [
+    {
+     "k": "범위",
+     "t": "CQ 개념 덮는 비율"
+    },
+    {
+     "k": "관리",
+     "t": "관리 주체·릴리스 주기"
+    },
+    {
+     "k": "조건",
+     "t": "라이선스·비용"
+    },
+    {
+     "k": "생태계",
+     "t": "협력 기관·규제·도구"
+    }
+   ],
+   "hear": [
+    "\"규제 보고가 KCD라 KCD 매핑은 무조건 있어야 해요.\""
+   ],
+   "ask": [
+    "이 표준을 같이 쓰는 기관은 어디인가요?",
+    "업데이트가 오면 누가 반영하나요?"
+   ],
+   "mine": "한빛병원 표준 선택표: 진단=KCD(청구)+SNOMED CT(임상), 검사=LOINC, 약=국내 코드+RxNorm(Extension), 교환=FHIR, 분석=OMOP.",
+   "deep": [
+    "Book of OHDSI 5장은 표준 어휘를 '채택할지 만들지(adopt versus build)'를 따로 다뤄요.",
+    "SNOMED CT 국제판은 매달 배포돼 업데이트 반영 절차가 필요해요."
+   ],
+   "recall": {
+    "q": "표준을 고르는 기준 네 가지는?",
+    "a": "범위, 관리 주체, 라이선스, 생태계(+업데이트 주기)"
+   },
+   "quiz": [
+    {
+     "q": "매핑 비용을 가장 크게 줄이는 선택 기준은?",
+     "options": [
+      "이름이 멋진 표준",
+      "협력 기관·규제가 이미 쓰는 표준",
+      "가장 큰 표준"
+     ],
+     "answer": 1,
+     "why": "같은 표준이면 매핑이 필요 없거나 적어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "The Book of OHDSI — Ch.5 Standardized Vocabularies",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/StandardizedVocabularies.html",
+     "date": "2021"
+    },
+    {
+     "title": "SNOMED International — What is SNOMED CT?",
+     "url": "https://www.snomed.org/what-is-snomed-ct",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "용어 서버와 매핑 도구",
+   "lead": "표준을 실제로 쓰려면 '이 코드 맞아?', '하위 개념은?', '이 코드는 저 코드로 뭐야?'를 물어볼 용어 서버가 필요해요.",
+   "idea": [
+    "FHIR 용어 서비스는 $lookup(코드 정보), $expand(값 집합 펼치기), $subsumes(상하위 관계 확인), $translate(매핑) 같은 연산을 표준으로 정해요.",
+    "OHDSI의 Athena는 표준 어휘를 내려받고 검색하는 곳이에요. OLS는 생명의학 온톨로지를 검색해요.",
+    "앱마다 용어 파일을 따로 들고 있으면 버전이 어긋나요. 용어 서버 하나를 두고 모두 거기에 물어보게 해요."
+   ],
+   "hear": [
+    "\"$expand로 값 집합 펼쳐서 화면 선택지 만들죠.\""
+   ],
+   "ask": [
+    "용어 서버의 버전은 누가, 언제 올리나요?"
+   ],
+   "mine": "소라는 병원 안에 FHIR 용어 서버를 두고, EMR 화면과 AI 비서가 같은 서버에 묻게 설계해요.",
+   "deep": [
+    "FHIR Terminology Service 페이지는 CodeSystem $lookup, ValueSet $expand, CodeSystem $subsumes, ConceptMap $translate 등 연산을 정의해요.",
+    "UMLS는 여러 생명의학 어휘를 연결하는 NLM의 통합 자원이에요."
+   ],
+   "recall": {
+    "q": "FHIR의 $subsumes 연산은 무엇을 확인하나요?",
+    "a": "두 코드 사이의 상하위(포함) 관계"
+   },
+   "quiz": [
+    {
+     "q": "앱마다 용어 파일을 따로 두면 생기는 문제는?",
+     "options": [
+      "버전이 어긋나 같은 코드를 다르게 해석",
+      "속도가 무조건 빨라짐",
+      "문제없음"
+     ],
+     "answer": 0,
+     "why": "중앙 용어 서버로 버전을 맞춰요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "HL7 FHIR — Terminology Service",
+     "url": "https://hl7.org/fhir/terminology-service.html",
+     "date": "2023"
+    },
+    {
+     "title": "OHDSI Athena — vocabulary browser",
+     "url": "https://athena.ohdsi.org/",
+     "date": "n.d."
+    },
+    {
+     "title": "EMBL-EBI Ontology Lookup Service (OLS4)",
+     "url": "https://www.ebi.ac.uk/ols4/",
+     "date": "n.d."
+    },
+    {
+     "title": "NLM — Unified Medical Language System (UMLS)",
+     "url": "https://www.nlm.nih.gov/research/umls/index.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "SKOS로 표준과 우리 개념을 잇기",
+   "lead": "병원 고유 목록은 SKOS 개념 체계로 가볍게 표현하고, 표준 개념과는 exactMatch·broadMatch로 이어요.",
+   "idea": [
+    "모든 걸 OWL로 엄격하게 만들 필요는 없어요. 병동 목록, 병원 고유 검사 묶음 같은 건 SKOS의 개념·상하위(broader)·라벨이면 충분해요.",
+    "표준과의 연결은 skos:exactMatch, closeMatch, broadMatch로 해요. 이 연결을 SSSOM 표로 관리하면 근거도 남아요(05장).",
+    "SKOS의 broader는 OWL의 subClassOf보다 약한 주장이에요. 그래서 엄밀한 추론은 못 하지만, 잘못 추론될 위험도 적어요."
+   ],
+   "code": {
+    "lang": "turtle",
+    "text": "hb:LabPanel_Electrolyte a skos:Concept ;\n  skos:prefLabel \"전해질 묶음 검사\"@ko ;\n  skos:narrower hb:LabItem_Potassium .\nhb:LabItem_Potassium skos:exactMatch loinc:2823-3 .",
+    "read": "병원 고유 검사 묶음을 SKOS 개념으로 두고, 그 안의 칼륨 항목을 표준 검사 코드와 정확히 같다고 이어요. (병원 IRI는 가상)"
+   },
+   "hear": [
+    "\"병원 목록은 SKOS로 가볍게, 표준과는 match로만 잇죠.\""
+   ],
+   "ask": [
+    "이 목록에 진짜 논리 추론이 필요한가요?"
+   ],
+   "mine": "한빛병원은 병원 고유 목록 300여 개(가상)를 SKOS로 두고 표준과 match로 연결해요.",
+   "deep": [
+    "SKOS Reference(2009)는 broader/narrower와 매핑 속성을 정의하고, skos:broader가 추이적이지 않다는 점(추이적 버전은 broaderTransitive)을 밝혀요."
+   ],
+   "recall": {
+    "q": "SKOS broader가 OWL subClassOf보다 '약한' 것의 장단점은?",
+    "a": "엄밀한 추론은 못 하지만, 잘못된 추론 위험이 적고 가볍게 쓸 수 있어요."
+   },
+   "quiz": [
+    {
+     "q": "병원 고유 병동 목록을 표현하기에 가장 가벼운 방법은?",
+     "options": [
+      "SKOS 개념 체계",
+      "OWL 전체 공리",
+      "FHIR 리소스"
+     ],
+     "answer": 0,
+     "why": "목록·계층·라벨이면 SKOS로 충분해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "W3C, SKOS Simple Knowledge Organization System Reference",
+     "url": "https://www.w3.org/TR/skos-reference/",
+     "date": "2009-08-18"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "표준의 한계와 현실",
+   "lead": "표준을 써도 문제가 다 풀리진 않아요. 매핑 손실, 버전 차이, 국가별 차이, 그리고 현장 입력 습관이 남아요.",
+   "idea": [
+    "매핑 손실: 세밀한 SNOMED 개념을 ICD로 바꾸면 정보가 줄어요. 반대로 ICD에서 SNOMED로 가면 세밀함을 지어낼 수 없어요.",
+    "버전 차이: 표준은 매달·매년 바뀌어요. 작년 데이터와 올해 데이터가 다른 판을 쓰면 비교가 어긋나요.",
+    "현장 입력: 의사가 자유 텍스트로 쓰거나 '기타' 코드를 많이 쓰면 표준이 있어도 뜻이 비어요. 결국 화면 설계와 교육이 같이 가야 해요."
+   ],
+   "hear": [
+    "\"매핑률 95%인데, 남은 5%가 다 중요한 희귀 질환이에요.\""
+   ],
+   "ask": [
+    "매핑 안 된 기록은 어떻게 표시하고 추적하나요?",
+    "표준 버전이 바뀌면 과거 데이터는 다시 매핑하나요?"
+   ],
+   "mine": "지수 팀장은 '매핑 안 됨'을 숨기지 말고 AI 비서 답변에도 '이 부분은 확실하지 않다'고 드러내기로 해요(07장 예고).",
+   "deep": [
+    "OMOP에서는 표준 개념으로 매핑되지 않은 기록의 concept_id를 0으로 두는 관례가 있어 매핑 누락을 셀 수 있어요(Book of OHDSI).",
+    "ICD-11은 발효 후에도 나라마다 전환 속도가 달라요(2022년 2월 35개국 사용, WHO)."
+   ],
+   "recall": {
+    "q": "SNOMED → ICD 변환에서 생기는 문제는?",
+    "a": "세밀한 정보가 묶이며 사라지는 매핑 손실"
+   },
+   "quiz": [
+    {
+     "q": "표준 도입 후에도 뜻이 비는 대표 원인은?",
+     "options": [
+      "현장의 자유 텍스트·'기타' 코드 입력",
+      "JSON 형식",
+      "IRI 길이"
+     ],
+     "answer": 0,
+     "why": "입력 단계에서 뜻이 빠지면 표준이 채울 수 없어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "The Book of OHDSI — Ch.5 Standardized Vocabularies",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/StandardizedVocabularies.html",
+     "date": "2021"
+    },
+    {
+     "title": "WHO, ICD-11 2022 release",
+     "url": "https://www.who.int/news/item/11-02-2022-icd-11-2022-release",
+     "date": "2022-02-11"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "ohdsi-omop",
+   "day": 3,
+   "title": "OHDSI: 같은 모양, 같은 개념으로 전 세계 병원 데이터를 함께 분석하다",
+   "when": "2014~",
+   "lead": "OHDSI는 OMOP CDM과 표준 어휘로 서로 다른 나라·병원의 데이터를 같은 구조로 바꿔, 하나의 분석 코드를 여러 곳에서 돌리는 오픈 커뮤니티예요.",
+   "facts": [
+    {
+     "label": "협력자",
+     "value": "5,386명 (OHDSI 홈 'Global Impact', 2026-10 확인)",
+     "src": "ohdsi.org"
+    },
+    {
+     "label": "국가",
+     "value": "100개국 이상",
+     "src": "ohdsi.org"
+    },
+    {
+     "label": "논문",
+     "value": "1,100편 이상",
+     "src": "ohdsi.org"
+    },
+    {
+     "label": "CDM 버전",
+     "value": "v5.3, v5.4, v5.5 문서 제공",
+     "src": "OMOP CDM 문서 사이트"
+    },
+    {
+     "label": "표준 개념",
+     "value": "진단 SNOMED, 약 RxNorm, 검사 LOINC 중심",
+     "src": "Book of OHDSI 5장"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2014",
+     "text": "OHDSI 커뮤니티 출범(OMOP 프로젝트의 후속)"
+    },
+    {
+     "t": "2019~2021",
+     "text": "Book of OHDSI 공개·갱신"
+    },
+    {
+     "t": "현재",
+     "text": "CDM v5.4 널리 사용, v5.5 문서 공개",
+     "hot": true
+    }
+   ],
+   "causes": [
+    {
+     "stage": "모양",
+     "title": "공통 테이블",
+     "text": "PERSON, CONDITION_OCCURRENCE 등 같은 표 구조로 분석 코드를 공유해요."
+    },
+    {
+     "stage": "뜻",
+     "title": "표준 어휘",
+     "text": "원천 코드(KCD 등)를 표준 개념으로 매핑하고 CONCEPT_ANCESTOR로 계층을 써요."
+    },
+    {
+     "stage": "프라이버시",
+     "title": "데이터는 그대로",
+     "text": "데이터를 모으지 않고 분석 코드를 각 기관에 보내 결과만 모아요(분산 연구)."
+    }
+   ],
+   "questions": [
+    {
+     "q": "한빛병원이 OMOP 변환에서 가장 시간이 많이 들 곳은?",
+     "a": "KCD·병원 고유 검사·국내 약 코드를 표준 개념으로 매핑하는 일이에요."
+    },
+    {
+     "q": "OMOP이 실시간 진료 연동에 맞지 않는 이유는?",
+     "a": "분석용으로 변환·적재된 구조라 실시간 교환은 FHIR가 맞아요."
+    },
+    {
+     "q": "온톨로지 팀이 OMOP 매핑에서 얻을 것은?",
+     "a": "같은 표준 개념 매핑을 온톨로지·AI 비서에서도 재사용할 수 있어요."
+    }
+   ],
+   "after": [
+    "한국에서도 여러 병원이 OMOP CDM 네트워크에 참여해 왔어요(세부 기관 수는 출처마다 달라 생략)."
+   ],
+   "sources": [
+    {
+     "title": "OHDSI — home (Global Impact figures)",
+     "url": "https://www.ohdsi.org/",
+     "date": "2026-10 확인"
+    },
+    {
+     "title": "OHDSI — OMOP Common Data Model",
+     "url": "https://ohdsi.github.io/CommonDataModel/",
+     "date": "n.d."
+    },
+    {
+     "title": "The Book of OHDSI — Ch.5 Standardized Vocabularies",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/StandardizedVocabularies.html",
+     "date": "2021"
+    },
+    {
+     "title": "The Book of OHDSI",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/",
+     "date": "2021"
+    }
+   ],
+   "caveat": "협력자 수는 홈페이지 실시간 수치라 계속 바뀌어요. 2014 출범 연도는 OHDSI 공개 소개 기준이며 재확인을 권해요."
+  },
+  {
+   "id": "korea-snomed-2020",
+   "day": 2,
+   "title": "한국, 2020년 SNOMED International 회원국이 되다",
+   "when": "2020-08",
+   "lead": "한국은 2020년 8월 SNOMED International 회원국이 됐어요. 국내 병원이 국제 임상 용어를 쓸 수 있는 제도적 바탕이 생긴 거예요.",
+   "facts": [
+    {
+     "label": "가입",
+     "value": "2020년 8월 대한민국 회원국 가입",
+     "src": "SNOMED International 회원 페이지"
+    },
+    {
+     "label": "규모",
+     "value": "국제판 개념 360,000개 이상, 매달 배포",
+     "src": "SNOMED International"
+    },
+    {
+     "label": "논리",
+     "value": "OWL 2 EL 프로필 계열의 논리 정의",
+     "src": "W3C OWL 2 Profiles(EL 설계 목적)·연구 노트"
+    },
+    {
+     "label": "국내 청구 분류",
+     "value": "KCD(ICD-10 기반)",
+     "src": "WHO ICD 자료·국내 관행"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2019-05",
+     "text": "WHO 세계보건총회 ICD-11 채택"
+    },
+    {
+     "t": "2020-08",
+     "text": "한국 SNOMED International 가입",
+     "hot": true
+    },
+    {
+     "t": "2022-01-01",
+     "text": "ICD-11 발효"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "필요",
+     "title": "세밀한 임상 기록",
+     "text": "청구용 KCD로는 임상 기록의 세밀함·계층 검색이 부족했어요."
+    },
+    {
+     "stage": "제도",
+     "title": "회원국 라이선스",
+     "text": "회원국이 되면 국내 기관이 국가 단위로 사용할 길이 열려요."
+    },
+    {
+     "stage": "과제",
+     "title": "현장 연결",
+     "text": "실제 EMR 화면 용어와 SNOMED를 잇는 매핑·교육이 남은 일이에요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "회원국이 됐다고 바로 병원 데이터가 SNOMED로 바뀌나요?",
+     "a": "아니에요. EMR 인터페이스 용어 매핑과 입력 화면·교육이 따로 필요해요."
+    },
+    {
+     "q": "한빛병원이 SNOMED를 KCD와 함께 쓰는 이유는?",
+     "a": "KCD는 청구·통계, SNOMED는 임상 검색·AI 의미용으로 역할이 달라요."
+    },
+    {
+     "q": "국제판이 매달 바뀌면 무엇을 준비해야 하나요?",
+     "a": "용어 서버 업데이트 절차와 매핑 재검토 주기예요."
+    }
+   ],
+   "after": [
+    "국내 배포·활용 현황 세부는 공식 국가 배포 기관 자료로 확인해야 해요."
+   ],
+   "sources": [
+    {
+     "title": "SNOMED International — Members (Republic of Korea, August 2020)",
+     "url": "https://www.snomed.org/members",
+     "date": "n.d."
+    },
+    {
+     "title": "SNOMED International — What is SNOMED CT?",
+     "url": "https://www.snomed.org/what-is-snomed-ct",
+     "date": "n.d."
+    },
+    {
+     "title": "W3C, OWL 2 Web Ontology Language Profiles (Second Edition)",
+     "url": "https://www.w3.org/TR/owl2-profiles/",
+     "date": "2012-12-11"
+    },
+    {
+     "title": "WHO, ICD-11 2022 release",
+     "url": "https://www.who.int/news/item/11-02-2022-icd-11-2022-release",
+     "date": "2022-02-11"
+    }
+   ],
+   "caveat": "국내 활용 규모·기관 수는 검증하지 못해 넣지 않았어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "표준 목록부터",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "우리가 써야 할 표준 이름만 열 개가 넘어요."
+    },
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "다 같은 종류예요?"
+    }
+   ],
+   "q": "목록을 어떻게 정리할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "알파벳순으로 정리한다",
+     "ok": false,
+     "why": "역할 차이가 안 보여요."
+    },
+    {
+     "k": "B",
+     "t": "상위/분야 용어/교환·분석 형식/고유 개념 층으로 나눈다",
+     "ok": true,
+     "why": "뜻 표준과 형식 표준이 구분돼요."
+    },
+    {
+     "k": "C",
+     "t": "가장 유명한 하나만 고른다",
+     "ok": false,
+     "why": "하나로 모든 역할을 못 해요."
+    }
+   ],
+   "explain": "층으로 보면 무엇을 겹쳐 쓸지 보여요.",
+   "mixed": false
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "혈압은 무엇인가",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "'혈압'을 클래스 하나로 두면 되죠?"
+    }
+   ],
+   "q": "BFO 관점에서 더 나은 모델은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "혈압 클래스 하나로 충분하다",
+     "ok": false,
+     "why": "성질·측정 사건·기록값이 섞여요."
+    },
+    {
+     "k": "B",
+     "t": "혈압(성질), 혈압 측정(사건), 측정값 기록(정보)을 나눈다",
+     "ok": true,
+     "why": "연속체/발생체/정보 개체 구분이에요."
+    },
+    {
+     "k": "C",
+     "t": "혈압은 모델링하지 않는다",
+     "ok": false,
+     "why": "핵심 임상 개념이에요."
+    }
+   ],
+   "explain": "상위 구분은 섞이기 쉬운 개념을 갈라 줘요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Basic Formal Ontology (BFO) — Home",
+     "url": "https://basic-formal-ontology.org/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "schema.org로 다 할까요",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "schema.org에 MedicalCondition도 있던데, EMR 의미도 이걸로 하죠?"
+    }
+   ],
+   "q": "판단은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "그렇게 한다",
+     "ok": false,
+     "why": "임상 세부와 논리 엄밀성이 부족해요."
+    },
+    {
+     "k": "B",
+     "t": "웹 노출에는 schema.org, 임상 의미에는 SNOMED·LOINC 등 의료 표준을 쓴다",
+     "ok": true,
+     "why": "목적에 맞게 나눠요."
+    },
+    {
+     "k": "C",
+     "t": "둘 다 쓰지 않는다",
+     "ok": false,
+     "why": "각자 쓸모가 있어요."
+    }
+   ],
+   "explain": "어휘는 목적에 맞춰 골라요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "schema.org — About",
+     "url": "https://schema.org/docs/about.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "하위 질환 포함",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "'당뇨 환자 전부'를 뽑으면 1형·2형·임신성까지 다 나와야 해요."
+    }
+   ],
+   "q": "가장 맞는 방법은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "진단명 문자열에 '당뇨'가 들어간 걸 찾는다",
+     "ok": false,
+     "why": "표현이 다르면 빠지고 엉뚱한 게 섞여요."
+    },
+    {
+     "k": "B",
+     "t": "SNOMED CT 개념에 붙이고 ECL '<< 당뇨병'으로 하위 개념까지 뽑는다",
+     "ok": true,
+     "why": "계층으로 정확히 포함해요."
+    },
+    {
+     "k": "C",
+     "t": "1형만 뽑는다",
+     "ok": false,
+     "why": "요구와 달라요."
+    }
+   ],
+   "explain": "논리 계층이 있는 용어가 '하위 포함'에 강해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "SNOMED International — What is SNOMED CT?",
+     "url": "https://www.snomed.org/what-is-snomed-ct",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "청구 코드 vs 임상 코드",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "우리 진단은 다 KCD예요. SNOMED 필요 없지 않아요?"
+    }
+   ],
+   "q": "어떻게 답할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "필요 없다",
+     "ok": false,
+     "why": "임상 세밀함과 계층 검색이 약해요."
+    },
+    {
+     "k": "B",
+     "t": "청구·통계는 KCD로 두고, 임상 검색·AI용으로 SNOMED 매핑을 더한다",
+     "ok": true,
+     "why": "둘은 역할이 달라 함께 써요."
+    },
+    {
+     "k": "C",
+     "t": "KCD를 버리고 SNOMED만 쓴다",
+     "ok": false,
+     "why": "청구·보고가 KCD라 불가능해요."
+    }
+   ],
+   "explain": "ICD/KCD와 SNOMED는 경쟁이 아니라 매핑 관계예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "WHO, ICD-11 2022 release",
+     "url": "https://www.who.int/news/item/11-02-2022-icd-11-2022-release",
+     "date": "2022-02-11"
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "칼륨이 두 개",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "병원에 칼륨 검사 코드가 두 개예요. 혈청이랑 전혈."
+    }
+   ],
+   "q": "LOINC 매핑은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "둘 다 같은 LOINC 코드로",
+     "ok": false,
+     "why": "검체가 달라 다른 검사예요."
+    },
+    {
+     "k": "B",
+     "t": "검체 축을 보고 각각 맞는 LOINC 코드로 따로 매핑한다",
+     "ok": true,
+     "why": "LOINC는 검체까지 구분해요."
+    },
+    {
+     "k": "C",
+     "t": "매핑하지 않는다",
+     "ok": false,
+     "why": "다른 기관과 비교할 수 없어요."
+    }
+   ],
+   "explain": "LOINC의 다축 정의가 바로 이런 구분을 위해 있어요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "LOINC (Regenstrief Institute) — About",
+     "url": "https://loinc.org/about/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "FHIR로 보냈는데",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "협력 병원에 FHIR로 검사 결과를 보냈는데 무슨 검사인지 모르겠대요."
+    }
+   ],
+   "q": "가장 유력한 원인과 해결은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "FHIR 버전 문제라 R5로 올린다",
+     "ok": false,
+     "why": "형식보다 코드가 문제일 가능성이 커요."
+    },
+    {
+     "k": "B",
+     "t": "code 칸에 병원 고유 코드를 넣었으니 LOINC 코드를 함께 넣는다",
+     "ok": true,
+     "why": "뜻은 표준 용어가 줘요."
+    },
+    {
+     "k": "C",
+     "t": "CSV로 바꿔 보낸다",
+     "ok": false,
+     "why": "더 나빠져요."
+    }
+   ],
+   "explain": "FHIR는 형식, 뜻은 용어예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "HL7 FHIR — Using Codes in Resources (Terminologies)",
+     "url": "https://hl7.org/fhir/terminologies.html",
+     "date": "2023"
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "바인딩 강도",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "알레르기 원인 칸, 표준 값 집합에 없는 병원 특수 물질이 있어요."
+    }
+   ],
+   "q": "어떤 바인딩이 맞을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "required",
+     "ok": false,
+     "why": "값 집합 밖 물질을 아예 못 적어요."
+    },
+    {
+     "k": "B",
+     "t": "extensible — 맞는 표준 코드가 있으면 쓰고 없을 때만 다른 코드",
+     "ok": true,
+     "why": "표준성과 현실을 함께 지켜요."
+    },
+    {
+     "k": "C",
+     "t": "example",
+     "ok": false,
+     "why": "너무 느슨해 받는 쪽 해석이 어려워요."
+    }
+   ],
+   "explain": "강도는 표준성과 유연성의 절충이에요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "HL7 FHIR — BindingStrength value set",
+     "url": "https://www.hl7.org/fhir/valueset-binding-strength.html",
+     "date": "2023"
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "연구용 데이터",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "다기관 연구에 참여하재요. 우리 데이터를 어떤 모양으로 낼까요?"
+    }
+   ],
+   "q": "가장 맞는 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "FHIR 서버를 열어 준다",
+     "ok": false,
+     "why": "실시간 교환용이라 대규모 공동 분석엔 덜 맞아요."
+    },
+    {
+     "k": "B",
+     "t": "OMOP CDM으로 변환하고 원천 코드는 보존, 표준 개념으로 매핑한다",
+     "ok": true,
+     "why": "같은 분석 코드를 여러 기관에서 돌려요."
+    },
+    {
+     "k": "C",
+     "t": "엑셀로 보낸다",
+     "ok": false,
+     "why": "구조·의미가 통일되지 않아요."
+    }
+   ],
+   "explain": "분석은 OMOP, 교환은 FHIR예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "The Book of OHDSI",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/",
+     "date": "2021"
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "유전체 결과 공유",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "유전체 연구팀이 유전자 기능 설명을 공통어로 달아 달래요."
+    }
+   ],
+   "q": "무엇을 쓸까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "자유 텍스트 설명",
+     "ok": false,
+     "why": "종·연구 간 비교가 어려워요."
+    },
+    {
+     "k": "B",
+     "t": "Gene Ontology 용어로 주석하고 근거를 표시한다",
+     "ok": true,
+     "why": "생명과학의 공통어예요."
+    },
+    {
+     "k": "C",
+     "t": "ICD-11",
+     "ok": false,
+     "why": "질병 분류지 유전자 기능 어휘가 아니에요."
+    }
+   ],
+   "explain": "분야에 맞는 표준을 골라요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Gene Ontology — Ontology documentation",
+     "url": "https://geneontology.org/docs/ontology-documentation/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "우리만의 규칙",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "병원 고유 온톨로지도 규칙이 있어야 할 것 같아요."
+    }
+   ],
+   "q": "출발점으로 좋은 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "처음부터 우리 규칙을 발명한다",
+     "ok": false,
+     "why": "검증된 원칙을 버리는 셈이에요."
+    },
+    {
+     "k": "B",
+     "t": "OBO Foundry 원칙(공개 범위, 고유 ID, 버전, 텍스트 정의)을 체크리스트로 빌린다",
+     "ok": true,
+     "why": "검증된 커뮤니티 규칙이에요."
+    },
+    {
+     "k": "C",
+     "t": "규칙 없이 간다",
+     "ok": false,
+     "why": "곧 중복과 혼란이 생겨요."
+    }
+   ],
+   "explain": "커뮤니티 원칙은 좋은 기본값이에요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "OBO Foundry Principles — Overview",
+     "url": "https://obofoundry.org/principles/fp-000-summary.html",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "모니터 측정값",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "병동 모니터 측정값도 그래프에 넣고 싶어요."
+    }
+   ],
+   "q": "참고할 표준은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "FIBO",
+     "ok": false,
+     "why": "금융 온톨로지예요."
+    },
+    {
+     "k": "B",
+     "t": "SSN/SOSA의 관찰(Observation) 패턴",
+     "ok": true,
+     "why": "센서·절차·결과를 표현해요."
+    },
+    {
+     "k": "C",
+     "t": "schema.org Hospital",
+     "ok": false,
+     "why": "측정 표현용이 아니에요."
+    }
+   ],
+   "explain": "산업·센서 표준도 의료에 응용할 수 있어요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "W3C, Semantic Sensor Network Ontology (SSN/SOSA)",
+     "url": "https://www.w3.org/TR/vocab-ssn/",
+     "date": "2017-10-19"
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "표준 선택 회의",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "약 코드 표준을 정해야 해요. RxNorm이 제일 유명하던데요."
+    }
+   ],
+   "q": "어떻게 판단할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "유명하니 RxNorm만 쓴다",
+     "ok": false,
+     "why": "국내 약을 다 덮지 못할 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "국내 코드(청구·규제)를 기본으로 두고, 국제 분석용으로 RxNorm/RxNorm Extension 매핑을 더한다",
+     "ok": true,
+     "why": "생태계와 범위를 함께 봐요."
+    },
+    {
+     "k": "C",
+     "t": "약 코드를 새로 만든다",
+     "ok": false,
+     "why": "매핑 비용만 커져요."
+    }
+   ],
+   "explain": "범위·생태계·관리 주체로 골라요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "NLM — RxNorm",
+     "url": "https://www.nlm.nih.gov/research/umls/rxnorm/index.html",
+     "date": "n.d."
+    },
+    {
+     "title": "The Book of OHDSI — Ch.5 Standardized Vocabularies",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/StandardizedVocabularies.html",
+     "date": "2021"
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "앱마다 다른 코드표",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "EMR 화면과 AI 비서가 같은 코드를 다르게 보여 줘요."
+    }
+   ],
+   "q": "근본 해결은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "각 앱의 코드 파일을 손으로 맞춘다",
+     "ok": false,
+     "why": "다음 업데이트 때 또 어긋나요."
+    },
+    {
+     "k": "B",
+     "t": "용어 서버 하나를 두고 모든 앱이 $lookup·$expand로 묻게 한다",
+     "ok": true,
+     "why": "버전이 한곳에서 관리돼요."
+    },
+    {
+     "k": "C",
+     "t": "AI 비서를 끈다",
+     "ok": false,
+     "why": "문제를 피할 뿐이에요."
+    }
+   ],
+   "explain": "중앙 용어 서버가 버전 불일치를 막아요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "HL7 FHIR — Terminology Service",
+     "url": "https://hl7.org/fhir/terminology-service.html",
+     "date": "2023"
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "매핑률 95%",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드 개발자",
+     "text": "KCD→SNOMED 매핑률 95% 달성했어요!"
+    },
+    {
+     "name": "현우",
+     "role": "임상정보(간호사 출신)",
+     "text": "남은 5%에 희귀 질환이 몰려 있어요."
+    }
+   ],
+   "q": "AI 비서 관점에서 할 일은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "95%면 충분하니 넘어간다",
+     "ok": false,
+     "why": "중요한 환자가 빠질 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "매핑 안 된 기록을 표시·추적하고, AI 답변에서 불확실함을 드러낸다",
+     "ok": true,
+     "why": "한계를 숨기지 않아요."
+    },
+    {
+     "k": "C",
+     "t": "5%를 비슷한 코드로 억지 매핑한다",
+     "ok": false,
+     "why": "잘못된 뜻이 퍼져요."
+    }
+   ],
+   "explain": "표준의 한계는 정직하게 드러내야 안전해요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "The Book of OHDSI — Ch.5 Standardized Vocabularies",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/StandardizedVocabularies.html",
+     "date": "2021"
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "The Book of OHDSI — Ch.4 CDM · Ch.5 Standardized Vocabularies",
+   "url": "https://ohdsi.github.io/TheBookOfOhdsi/",
+   "min": 90,
+   "lang": "en",
+   "what": "OMOP 테이블과 표준 어휘(개념·매핑·CONCEPT_ANCESTOR)를 예제로 읽어요.",
+   "day": 3
+  },
+  {
+   "id": "l2",
+   "title": "SNOMED International e-Learning",
+   "url": "https://elearning.ihtsdotools.org/",
+   "min": 60,
+   "lang": "en",
+   "what": "SNOMED CT 개념·관계·ECL 기초 무료 과정을 들어요.",
+   "day": 2
+  },
+  {
+   "id": "l3",
+   "title": "HL7 FHIR — Using Codes in Resources",
+   "url": "https://hl7.org/fhir/terminologies.html",
+   "min": 40,
+   "lang": "en",
+   "what": "코드 칸·값 집합·바인딩이 어떻게 뜻을 싣는지 공식 명세로 읽어요.",
+   "day": 3
+  },
+  {
+   "id": "l4",
+   "title": "WHO ICD-11 Browser",
+   "url": "https://icd.who.int/browse11",
+   "min": 20,
+   "lang": "en",
+   "what": "실제 ICD-11에서 질환을 찾아 기초층과 MMS 선형화를 비교해 봐요.",
+   "day": 2
+  },
+  {
+   "id": "l5",
+   "title": "Basic Formal Ontology (BFO) — Guidebook·Tutorials",
+   "url": "https://basic-formal-ontology.org/",
+   "min": 45,
+   "lang": "en",
+   "what": "연속체/발생체 구분과 BFO 계층을 튜토리얼로 익혀요.",
+   "day": 1
+  },
+  {
+   "id": "l6",
+   "title": "FIBO 명세 사이트",
+   "url": "https://spec.edmcouncil.org/fibo/",
+   "min": 30,
+   "lang": "en",
+   "what": "금융 온톨로지 모듈 구조를 훑으며 '필요한 모듈만' 전략을 봐요.",
+   "day": 4
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "한빛병원 표준 용어 채택안 v1을 1~2쪽으로 써 보세요. 어떤 표준을 어떤 층에 겹쳐 쓸지, 매핑과 업데이트를 어떻게 관리할지 정해요.",
+  "template": [
+   "배경: ORSD v0.1의 재사용 결정, 다기관 연구 요청",
+   "층 구조: 상위(BFO 핵심 구분) / 용어(SNOMED CT·KCD·LOINC·RxNorm) / 교환(FHIR) / 분석(OMOP)",
+   "영역별 표준 선택과 이유(범위·관리·라이선스·생태계)",
+   "매핑 계획: 원천→표준, SSSOM 관리, 매핑 안 됨 처리",
+   "용어 서버: 위치, 버전 업데이트 주기, 담당자",
+   "바인딩 정책: 칸별 강도(required/extensible)",
+   "한계와 위험: 매핑 손실, 버전 차이, 현장 입력",
+   "다음 단계: AI 비서 그라운딩(07장)"
+  ]
+ },
+ "check": [
+  "Story values (300 local SKOS lists, 95% mapping rate) are fictional 한빛병원 examples.",
+  "Verified by fetching: SNOMED International page (>360,000 concepts, monthly International Edition); SNOMED members page (Republic of Korea member since August 2020); WHO ICD-11 2022 release (in effect 2022-01-01, ~17,000 codes, >120,000 codable terms, 35 countries); BFO home (550+ endeavors, started 2002); FIBO spec (open community since Jan 2020, OWL, OMG standardized); FHIR home shows v5.0.0 R5; FHIR BindingStrength definitions; GO three aspects; NLM RxNorm description; Book of OHDSI ch.5 (RxNorm Extension, CONCEPT table, SNOMED/LOINC/RxNorm); OMOP CDM site lists v5.3/5.4/5.5; OHDSI home: 5,386 collaborators, 100+ countries, 1,100+ publications; SSN/SOSA and SKOS W3C pages load.",
+  "From research notes (H, ISO pages block bots so not fetched): BFO = ISO/IEC 21838-2:2021; DOLCE = ISO/IEC 21838-3 (2023 edition per ISO catalog — not fetched, treat as likely); ISO 15926 scope; schema.org 2011 start (card says verify).",
+  "Example codes (SNOMED 73211009 diabetes, LOINC 2823-3 potassium, OMOP concept 201820) are widely used examples; read notes ask to verify in Athena/browsers.",
+  "OHDSI 2014 launch year from general knowledge; flagged in case caveat. Ashburner 2000 Nature Genetics URL not fetched.",
+  "Dropped: NHS SNOMED mandate dates (could not fetch NHS page), Korean OMOP network size, KOSTOM details, Gaia-X technical specifics (versions change)."
+ ]
+}
