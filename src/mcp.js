@@ -35,7 +35,7 @@ const TOOLS = [
   { name: "note_write", description: "노트 쓰기. mode=create(새로, 같은 제목이 있으면 실패) | append(끝에 덧붙이기, 기본) | replace(본문 통째로 바꾸기). [[제목]] 링크 · #태그는 그래프에 이어져요. 있는 노트에 parent_title 을 주면 그 아래로 옮겨요(body 를 \"\" 로 두면 옮기기만).",
     inputSchema: S({ title: str("노트 제목 ([ ] | # 은 못 써요)"), body: str("마크다운 본문"), mode: str("create | append | replace", { enum: ["create", "append", "replace"] }), parent_title: str("상위 페이지 제목 (선택) — create 면 그 아래에 만들고, 있는 노트면 그 아래로 옮겨요") }, ["title", "body"]) },
   // ---- Dock 페이지 (사용자가 추가하는 화면, HTML 한 파일) ----
-  { name: "page_guide", description: "Dock 페이지 코드 규칙: HTML 한 파일 · sandbox iframe · window.trio 브리지(api/me/go/toast/store) · 쓸 수 있는 앱 API 목록. page_write 전에 꼭 읽어요.", inputSchema: S({}) },
+  { name: "page_guide", description: "Dock 페이지 코드 규칙: HTML 한 파일 · sandbox iframe · window.trio 브리지(api/me/go/toast/store + 도우미 trio.plans.today/day/range/add/done · trio.notes.search/get) · 쓸 수 있는 앱 API 목록. page_write 전에 꼭 읽어요.", inputSchema: S({}) },
   { name: "pages_list", description: "내 Dock 페이지와 셋이 공유한 페이지 목록 (id · 제목 · 아이콘 · 목적 · 공유 여부).", inputSchema: S({}) },
   { name: "page_read", description: "Dock 페이지 하나의 코드 읽기 (고치기 전에).", inputSchema: S({ id: str("페이지 id (앞 6글자 이상)"), title: str("또는 제목") }) },
   { name: "page_write", description: "Dock 페이지 만들기·고치기 (파일 여러 개). id/title 로 기존 페이지를 찾으면 그 파일들을 바꿔요(이전 묶음은 버전으로 남아요), 없으면 새로 만들어요. files = { \"index.html\": \"<!doctype html>…\", \"style.css\": \"…\", \"app.js\": \"…\" } (index.html 필수 · 상대 경로 그대로 · 외부 CDN · 폰트 OK). 기존 페이지를 고칠 땐 적은 파일만 바뀌고, 값이 null 인 파일은 지워져요. 간단하면 code(=index.html) 하나만 줘도 돼요.",

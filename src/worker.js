@@ -32,6 +32,7 @@ import { registerCustom } from "./custom.js";
 import { registerFiles } from "./files.js";
 import { registerNotes, indexStmts, MAX_NOTE } from "./notes.js";
 import { registerRecords } from "./records.js";
+import { registerApiKeys, handleV1 } from "./apikeys.js";
 export { RoomHub } from "./hub.js"; // Durable Object 클래스는 main 모듈에서 내보내야 해요
 
 export default {
@@ -55,6 +56,8 @@ export default {
       try { return await servePageFile(req, env, url, () => sessionUser(req, env)); } // 로그인은 파일 토큰이 없을 때만 찾아봐요
       catch (e) { console.error("pf", e); return new Response("서버에서 문제가 생겼어요.", { status: 500 }); }
     }
+    // 바깥 사이트용 읽기 전용 REST: 개인 API 키(Bearer)만 · CORS * · 쿠키는 안 봐요 (보통 /api 와 완전히 따로)
+    if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) return handleV1(req, env, url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
     ec.waitUntil(cronCatchUp(env).catch((e) => console.log("크론 대신 실패", String(e?.message || e))));
     try {
@@ -153,6 +156,7 @@ registerDev(on, { json, body, fail, now }); // 개발 흐름 마이크로디그�
 registerVg(on, { json, body, fail, now }); // Vector & Graph 과정 (#/sw/vg) — 같은 모양, vg_* 표
 registerOnto(on, { json, body, fail, now }); // 온톨로지 (#/sw/onto) · Palantir AIP (#/sw/aip) — 같은 모양, onto_* · aip_* 표
 registerMcpTokens(on, { json, body, fail, now });
+registerApiKeys(on); // 개인 API 키 (/api/v1 은 위 fetch 에서 따로)
 registerHomePad(on, { json, body, fail, now });
 registerCalendar(on, { json, fail });
 registerTogether(on, { json, body, fail, now });

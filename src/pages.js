@@ -32,11 +32,17 @@ export const BRIDGE_GUIDE = `## 페이지 규칙
 - trio.others() → [{ user_id, display_name, color, data }] 공개 페이지일 때 셋의 저장값(친구 진도 나란히 보기). 비공개면 내 것만.
 - trio.onChange(fn) 앱 데이터가 바뀌면 fn 호출(다시 그릴 때)
 
+## 짧은 도우미 (trio.api 를 감싼 것 — 되도록 이걸 먼저 써)
+- await trio.plans.today() → 오늘 하루 계획 [{id,text,start,mins,done,missed,priority,focus_mins}] · trio.plans.day("YYYY-MM-DD") 그날 · trio.plans.range(from, to) 그 사이 날마다(62일까지, 항목에 date)
+- await trio.plans.add({ text, start?:"HH:MM", mins?, day?:"YYYY-MM-DD"(기본 오늘), priority?:1~5 }) → 만든 plan · await trio.plans.done(id, true|false) → 고친 plan
+- await trio.notes.search("검색어") → [{id,title,snippet}] · await trio.notes.get(id) → { id, title, body(markdown) … }
+- 예: const ps = await trio.plans.today(); list.innerHTML = ps.map((p) => \`<li>\${p.start || ""} \${p.text}</li>\`).join("") || "<li>오늘 계획이 없어요</li>";
+
 ## 앱 API (path 는 /api 를 뺀 것)
 - GET /plans?periods=D:YYYY-MM-DD,W:YYYY-Wnn,M:YYYY-MM,Y:YYYY[&user=id][&days=YYYY-MM-DD..YYYY-MM-DD] → { plans:[{id,text,period,start("HH:MM"|null),mins,done,missed,priority,focus_mins,sort}] }
-- POST /plans { text, period:"D:2026-10-04", start?, mins?, priority? } · PATCH /plans/:id { done?, missed?, text?, start?, mins?, priority? } · DELETE /plans/:id
+- POST /plans { scope:"day", period:"D:2026-10-04", text, start?, mins?, priority? } (scope 는 day|week|month|year, period 모양과 맞게) · PATCH /plans/:id { done?, missed?, text?, start?, mins?, priority? } · DELETE /plans/:id
 - GET /summary?periods=... → 기간별 계획 수·끝낸 수 · GET /plans/heatmap?from=&to= → 날마다 실행률
-- GET /notes[?q=] → { notes:[{id,title,updated_at,shared,user_id}] } · GET /notes/:id → { note:{title,body(markdown)} } · POST /notes { title, body } · PUT /notes/:id { body }
+- GET /notes → { notes:[{id,title,updated_at,shared,user_id}] } (검색은 GET /search?q= → { notes:[{id,title,snippet}], plans }) · GET /notes/:id → { note:{title,body(markdown)} } · POST /notes { title, body } · PUT /notes/:id { body }
 - GET /search?q= · GET /tags · GET /graph
 - GET /english/day?day= → 그날 영어 기록 { day:{minutes,newwords,...} } · GET /english/days?from=&to= · PUT /english/day { day, minutes, ... }
 - GET /papers/progress → 논문 스프린트 진도(셋) · GET /logs/focus?from=&to=&user= → 집중 타이머 기록
@@ -51,7 +57,7 @@ const PAGE_SYSTEM = `너는 작은 웹 사이트·앱 화면을 짜는 프런트
 ${BRIDGE_GUIDE}
 
 ## 품질
-- 처음 열자마자 쓸 수 있게: 앱 데이터가 필요하면 trio.api 로 바로 불러와 보여 주고, 비어 있으면 안내 문장.
+- 처음 열자마자 쓸 수 있게: 앱 데이터가 필요하면 trio.plans · trio.notes 도우미(없으면 trio.api)로 바로 불러와 보여 주고, 비어 있으면 안내 문장.
 - 버튼마다 동작이 있어야 해. 예외는 try/catch 로 잡아 trio.toast 로 알려.
 - 디자인은 목적에 맞게 과감하게(폰트 · 여백 · 움직임). 글은 쉬운 한국어 해요체.
 - 파일은 index.html + style.css + app.js 로 나누는 게 기본. 장이 여러 개면 html 을 더 만들어 서로 링크해.

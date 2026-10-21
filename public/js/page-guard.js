@@ -6,7 +6,7 @@ export function pageApiBlock(method, path, readonly) {
   if (!/^\/[\w\-./?=&%:,+@]*$/.test(path)) return bad;
   const u = new URL("/api" + path, "http://app.invalid");
   if (u.pathname + u.search !== "/api" + path) return bad;
-  if (path.startsWith("/auth") || path.startsWith("/pages")) return bad;
+  if (path.startsWith("/auth") || path.startsWith("/pages") || path.startsWith("/apikeys") || path.startsWith("/mcp")) return bad; // 페이지가 내 이름으로 키 · 토큰을 몰래 만들지 못하게
   // 일기: 친구 일기 · 일기 친구 초대(/diary/of · circle · invite · link)는 어떤 페이지에서도, 남이 공유한 페이지에선 내 일기도 못 써요
   //   (내 세션으로 남의 일기를 가져가거나, 몰래 초대를 수락시켜 내 일기를 열지 못하게)
   if (/^\/diary\/(?:of|circle|invite|link)\b/.test(path) || (readonly && path.startsWith("/diary"))) return "일기는 이 페이지에서 못 써요.";
