@@ -107,27 +107,32 @@ export function registerFeatures(on) {
     await grant(env, params.id, params.f, user.id);
     return json({ ok: true });
   });
-  // 시간 추가: scope 'all' = 전체 Dock 체험(trial_until), 기능 키 = 그 기능만(expires_at). 지금이나 남은 끝 시각 중 늦은 쪽에서 늘려요
+  // 시간 추가 · 빼기: scope 'all' = 전체 Dock 체험(trial_until), 기능 키 = 그 기능만(expires_at). hours 가 음수면 빼요 (잘못 늘렸을 때)
+  //   늘리기는 지금이나 남은 끝 시각 중 늦은 쪽에서, 빼기는 남은 끝 시각에서 — 지금보다 앞이 되면 바로 끝(잠김)
   on("POST", "/admin/users/:id/time", async ({ req, env, user, params, ec }) => {
     needAdmin(user);
     const b = await body(req), scope = String(b.scope || ""), hours = Number(b.hours);
-    if (![24, 72, 168].includes(hours)) fail(400, "24 · 72 · 168시간 중에서 골라 주세요.");
+    if (![24, 72, 168].includes(Math.abs(hours))) fail(400, "24 · 72 · 168시간 (빼기는 앞에 −) 중에서 골라 주세요.");
     if (scope !== "all" && !FEATURES[scope]) fail(400, "없는 기능이에요.");
     const u = await env.DB.prepare("SELECT id, role, state, trial_until FROM users WHERE id = ?").bind(params.id).first() || fail(404, "없는 회원이에요.");
     if (u.role === "admin") fail(400, "관리자는 이미 전부 열려 있어요.");
-    const t = now(), add = hours * 3600e3;
+    const t = now(), add = hours * 3600e3, sub = hours < 0, name = scope === "all" ? "전체 Dock" : FEATURES[scope];
     let until;
     if (scope === "all") {
-      until = Math.max(t, u.trial_until || 0) + add;
-      await env.DB.prepare("UPDATE users SET trial_until = ? WHERE id = ?").bind(until, u.id).run();
+      if (sub && !((u.trial_until || 0) > t)) return json({ ok: true, none: true, message: "남은 체험 시간이 없어요." });
+      until = sub ? u.trial_until + add : Math.max(t, u.trial_until || 0) + add;
+      await env.DB.prepare("UPDATE users SET trial_until = ? WHERE id = ?").bind(until > t ? until : null, u.id).run();
     } else {
       const g = await env.DB.prepare("SELECT expires_at FROM user_features WHERE user_id = ? AND feature = ?").bind(u.id, scope).first();
-      if (g && g.expires_at == null) return json({ ok: true, permanent: true, message: `'${FEATURES[scope]}' 은(는) 이미 계속 열려 있어요.` });
-      until = Math.max(t, g?.expires_at || 0) + add;
-      await env.DB.prepare("INSERT INTO user_features (user_id, feature, granted_by, at, expires_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (user_id, feature) DO UPDATE SET expires_at = excluded.expires_at, granted_by = excluded.granted_by").bind(u.id, scope, user.id, t, until).run();
+      if (g && g.expires_at == null) return json({ ok: true, permanent: true, message: `'${FEATURES[scope]}' 은(는) 계속 열려 있어요${sub ? " — 닫으려면 기능 칩을 눌러 주세요." : "."}` });
+      if (sub && !(g?.expires_at > t)) return json({ ok: true, none: true, message: `'${FEATURES[scope]}' 은(는) 남은 시간이 없어요.` });
+      until = sub ? g.expires_at + add : Math.max(t, g?.expires_at || 0) + add;
+      if (until > t) await env.DB.prepare("INSERT INTO user_features (user_id, feature, granted_by, at, expires_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (user_id, feature) DO UPDATE SET expires_at = excluded.expires_at, granted_by = excluded.granted_by").bind(u.id, scope, user.id, t, until).run();
+      else await env.DB.prepare("DELETE FROM user_features WHERE user_id = ? AND feature = ?").bind(u.id, scope).run();
     }
-    await tellUser(env, ec, u.id, `관리자가 ${scope === "all" ? "전체 Dock" : FEATURES[scope]} 사용 시간을 ${hours % 24 ? hours + "시간" : hours === 24 ? "24시간" : hours / 24 + "일"} 늘려 줬어요 · ${kst(until)}까지`);
-    return json({ ok: true, until });
+    const h = Math.abs(hours), len = h === 24 ? "24시간" : h / 24 + "일";
+    await tellUser(env, ec, u.id, sub ? `관리자가 ${name} 사용 시간을 ${len} 줄였어요 · ${until > t ? kst(until) + "까지" : "지금 끝났어요"}` : `관리자가 ${name} 사용 시간을 ${len} 늘려 줬어요 · ${kst(until)}까지`);
+    return json({ ok: true, until: until > t ? until : null });
   });
   on("DELETE", "/admin/users/:id/features/:f", async ({ env, user, params }) => {
     needAdmin(user);
