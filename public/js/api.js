@@ -216,6 +216,7 @@ export const api = {
   homePad: (day) => request("GET", "/home/pad" + (day ? "?day=" + day : "")),
   savePledge: (text, day) => request("PUT", "/home/pledge", { text, day }),
   saveMemo: (text) => request("PUT", "/home/memo", { text }),
+  apiKeys: () => request("GET", "/apikeys"), apiKeyCreate: (name) => request("POST", "/apikeys", { name }), apiKeyRevoke: (id) => request("DELETE", "/apikeys/" + encodeURIComponent(id)), // 개인 API 키 (/api/v1)
   mcpTokens: () => request("GET", "/mcp/tokens"),
   mcpCreate: (name) => request("POST", "/mcp/tokens", { name }),
   mcpRevoke: (name) => request("DELETE", "/mcp/tokens/" + encodeURIComponent(name)),

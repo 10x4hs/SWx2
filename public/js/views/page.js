@@ -5,6 +5,7 @@ import { icon } from "../icons.js";
 import { mountRunner } from "../page-runner.js";
 import { aiPrefs, mountAiPick } from "../ai-pick.js";
 import { runJob } from "../jobs.js";
+import { openApiPanel } from "../api-panel.js";
 const pageIcon = (ic) => /^https?:\/\//.test(ic || "") ? `<img class="page-fav" src="${esc(ic)}" alt="">` : esc(ic || "✨");
 
 const model = () => aiPrefs().model || "gemini"; // 긴 코드 출력은 Gemini 가 가장 안정적
@@ -39,7 +40,9 @@ export function mount(root, ctx, r) {
         <form class="urlbar" id="nu-form" ${place === "study" ? "hidden" : ""}>
           ${icon.external(15)}<input class="urlbar-in" id="nu-url" type="url" placeholder="또는 URL 붙여넣기" aria-label="사이트 주소"><button class="urlbar-go" type="submit">Add URL</button>
         </form>
+        <p class="faint upage-api"><a href="#" id="np-api">페이지 API 안내</a> — 내 페이지에서 오늘 계획 · 노트 쓰기, 바깥 사이트용 개인 API 키</p>
       </div>`;
+    $("#np-api", root).addEventListener("click", (e) => { e.preventDefault(); openApiPanel(ctx); });
     const ta = $("#np-purpose", root); ta.focus();
     mountAiPick($("#np-pick", root), { web: false });
     $("#nu-form", root).addEventListener("submit", async (e) => {
@@ -134,7 +137,7 @@ export function mount(root, ctx, r) {
         const names = Object.keys(files).sort((a, b) => (a === "index.html" ? -1 : b === "index.html" ? 1 : a.localeCompare(b)));
         body.innerHTML = `<div class="up-files">${names.map((n) => `<button type="button" class="up-file${n === cur ? " on" : ""}" data-f="${esc(n)}">${esc(n)}</button>`).join("")}<button type="button" class="up-file add" id="up-f-add" title="새 파일">${icon.plus(12)}</button></div>
           <textarea class="input up-code" id="up-code" spellcheck="false" aria-label="${esc(cur)}">${esc(files[cur] ?? "")}</textarea>
-          <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="faint" style="font-size:12px">상대 경로 그대로 · 외부 CDN · 폰트 · 이미지 다 돼요 · <a href="#" id="up-guide">브리지 규칙</a></span>
+          <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="faint" style="font-size:12px">상대 경로 그대로 · 외부 CDN · 폰트 · 이미지 다 돼요 · <a href="#" id="up-guide">브리지 규칙</a> · <a href="#" id="up-api">페이지 API 안내</a></span>
             <div class="row" style="gap:6px">${cur !== "index.html" ? `<button class="btn sm ghost danger" type="button" id="up-f-del">${esc(cur)} 지우기</button>` : ""}<button class="btn sm ghost" type="button" id="up-code-run">저장 없이 미리보기</button><button class="btn sm accent" type="button" id="up-code-save">저장</button></div></div>`;
         const ta = $("#up-code", body);
         ta.addEventListener("input", () => { files[cur] = ta.value; });
@@ -142,6 +145,7 @@ export function mount(root, ctx, r) {
         body.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { cur = S_file = b.dataset.f; draw(); }));
         $("#up-f-add", body).addEventListener("click", () => { const n = prompt("파일 이름 (예: about.html · chart.js · data.json)"); if (!n) return; const name = n.trim().replace(/^\.?\//, ""); if (!/^[\w\-. /]{1,120}$/.test(name) || name.includes("..")) return toast("이름은 글자 · 숫자 · -_./ 만 써요."); if (!(name in files)) files[name] = ""; cur = S_file = name; draw(); });
         $("#up-f-del", body)?.addEventListener("click", () => { if (!confirm(`${cur} 를 지울까요?`)) return; delete files[cur]; removed.add(cur); cur = S_file = "index.html"; draw(); });
+        $("#up-api", body).addEventListener("click", (e) => { e.preventDefault(); openApiPanel(ctx); });
         $("#up-guide", body).addEventListener("click", async (e) => { e.preventDefault(); const g = (await api.raw("GET", "/pages/guide")).guide; body.insertAdjacentHTML("afterbegin", `<pre class="up-guide">${esc(g)}</pre>`); });
         $("#up-code-run", body).addEventListener("click", () => { stopRun?.(); stopRun = mountRunner($("#up-host", root), ctx, page, { preview: files }); });
         $("#up-code-save", body).addEventListener("click", async (e) => {

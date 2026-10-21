@@ -12,6 +12,18 @@
     go: (hash) => call("go", { hash }), toast: (text) => call("toast", { text }),
     store: { get: (key) => call("store.get", { key }), set: (key, value) => call("store.set", { key, value }), all: () => call("store.all", {}) },
     others: () => call("others", {}),
+    // 짧은 도우미 — 모두 trio.api 를 얇게 감싼 것 (남이 공유한 페이지에선 add · done 이 실패해요)
+    plans: {
+      day: async (ymd) => (await trio.api("GET", "/plans?periods=D:" + (ymd || trio.today))).plans,
+      today: () => trio.plans.day(trio.today),
+      range: async (from, to) => (await trio.api("GET", `/plans?days=${from}..${to}`)).plans.filter((p) => p.scope === "day").map((p) => ({ ...p, date: p.period.slice(2) })),
+      add: async ({ text, start, mins, day, priority } = {}) => (await trio.api("POST", "/plans", { scope: "day", period: "D:" + (day || trio.today), text, ...(start ? { start } : {}), ...(mins ? { mins } : {}), ...(priority ? { priority } : {}) })).plan,
+      done: async (id, done = true) => (await trio.api("PATCH", "/plans/" + encodeURIComponent(id), { done: !!done })).plan,
+    },
+    notes: {
+      search: async (q) => (await trio.api("GET", "/search?q=" + encodeURIComponent(q || ""))).notes,
+      get: async (id) => (await trio.api("GET", "/notes/" + encodeURIComponent(id))).note,
+    },
     onChange: (fn) => { changeFns.add(fn); return () => changeFns.delete(fn); },
     onReady: (fn) => { if (ready) fn(trio); else readyFns.push(fn); },
   };

@@ -21,6 +21,7 @@ import * as adminView from "./views/admin.js";
 import * as teamsView from "./views/teams.js";
 import { featureOfRoute, isOpen, loadFeatures, mountLocked } from "./features.js";
 import { openMcpPanel } from "./mcp-panel.js";
+import { openApiPanel } from "./api-panel.js";
 import { openProfile } from "./profile-edit.js";
 import { statusPicker, statusText } from "./status.js";
 import * as calendarView from "./views/calendar.js";
@@ -252,6 +253,7 @@ function renderMeRow() {
       <a role="menuitem" class="me-link" id="teams-btn" href="#/teams">${icon.share(16)}팀</a>
       <a role="menuitem" class="me-link" id="upd-btn" href="#/updates">${icon.spark(16)}업데이트 기록<span class="me-badge" id="upd-badge" hidden></span></a>
       <button type="button" role="menuitem" id="mcp-btn">${icon.share(16)}MCP 연결 (AI 에이전트)</button>
+      <button type="button" role="menuitem" id="apikey-btn">${icon.share(16)}페이지 API · 개인 키</button>
       <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
     </div>`;
   const menu = $("#me-menu"), btn = $("#me-btn");
@@ -279,6 +281,7 @@ function renderMeRow() {
   updBadge(); window.addEventListener("trio:updates-seen", updBadge);
   $("#me-upd").addEventListener("click", () => location.reload());
   $("#mcp-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openMcpPanel(ctx); });
+  $("#apikey-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openApiPanel(ctx); });
   const prof = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openProfile(ctx); };
   $("#me-head").addEventListener("click", prof); $("#prof-btn").addEventListener("click", prof);
   $("#logout-btn").addEventListener("click", async () => { await api.logout().catch(() => {}); showAuth(); });

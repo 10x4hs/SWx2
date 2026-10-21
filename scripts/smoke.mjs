@@ -1244,6 +1244,40 @@ if (!process.env.SKIP_AI) {
   await call("a", "DELETE", `/pages/${pa.id}`); await call("a", "DELETE", `/pages/${pa2.id}`);
 }
 
+// ---------- 개인 API 키 + /api/v1 (바깥 사이트, 키만 · CORS *) ----------
+{
+  const v1 = (path, h = {}, method = "GET") => fetch(BASE + "/api/v1" + path, { method, headers: h });
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  const plan = (await call("a", "POST", "/plans", { scope: "day", period: "D:" + today, text: "v1 계획 " + tag })).data.plan;
+  const k = await call("a", "POST", "/apikeys", { name: "smoke" });
+  ok(k.status === 201 && /^swx2_/.test(k.data.secret) && k.data.key.prefix === k.data.secret.slice(0, 10), "apikey: created, secret shown once");
+  const H = { authorization: "Bearer " + k.data.secret };
+  r = await v1("/plans/today", H); let d = await r.json();
+  ok(r.status === 200 && d.date === today && d.plans.some((p) => p.id === plan.id && p.text === plan.text), "v1: plans/today with key returns my plan");
+  ok(r.headers.get("access-control-allow-origin") === "*", "v1: CORS * on GET");
+  r = await v1(`/plans?from=${today}&to=${today}`, H); d = await r.json(); ok(r.status === 200 && d.plans.some((p) => p.id === plan.id), "v1: plans range");
+  r = await v1("/plans?from=2026-01-01&to=2026-06-01", H); ok(r.status === 400, "v1: range over 62 days 400");
+  r = await v1("/me", H); d = await r.json(); ok(r.status === 200 && d.user.id && !("role" in d.user), "v1: me");
+  r = await v1("/plans/today"); ok(r.status === 401, "v1: no key 401");
+  r = await v1("/plans/today", { cookie: jar.a }); ok(r.status === 401, "v1: cookie only 401");
+  r = await v1("/plans/today", { origin: "https://example.com", "access-control-request-method": "GET", "access-control-request-headers": "authorization" }, "OPTIONS");
+  ok(r.status === 204 && r.headers.get("access-control-allow-origin") === "*" && /authorization/i.test(r.headers.get("access-control-allow-headers") || ""), "v1: CORS preflight");
+  r = await v1("/plans/today", H, "POST"); ok(r.status === 405, "v1: write method 405");
+  r = await fetch(BASE + "/api/plans?periods=D:" + today, { headers: H }); ok(r.status === 401, "apikey: can't call /api/plans");
+  r = await fetch(BASE + "/api/notes", { headers: H }); ok(r.status === 401, "apikey: can't call /api/notes");
+  r = await call("b", "DELETE", "/apikeys/" + k.data.key.id); ok(r.status === 404, "apikey: others can't revoke my key");
+  const meId = (await call("a", "GET", "/me")).data.user.id;
+  d1(`UPDATE users SET state = 'suspended' WHERE id = '${meId}'`);
+  r = await v1("/plans/today", H); ok(r.status === 401, "v1: suspended user 401");
+  d1(`UPDATE users SET state = 'active' WHERE id = '${meId}'`);
+  r = await call("a", "GET", "/apikeys"); ok(r.status === 200 && r.data.keys.length === 1 && !("key_hash" in r.data.keys[0]) && r.data.keys[0].last_used_at, "apikey: list (no hash, last used)");
+  for (let i = 0; i < 4; i++) await call("a", "POST", "/apikeys", { name: "more" + i });
+  r = await call("a", "POST", "/apikeys", { name: "sixth" }); ok(r.status === 400, "apikey: max 5 per user");
+  for (const x of (await call("a", "GET", "/apikeys")).data.keys) await call("a", "DELETE", "/apikeys/" + x.id);
+  r = await v1("/plans/today", H); ok(r.status === 401, "v1: revoked key 401");
+  await call("a", "DELETE", "/plans/" + plan.id);
+}
+
 r = await call("a", "POST", "/auth/logout"); r = await call("a", "GET", "/me"); ok(r.status === 401, "logout");
 
 execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", "DELETE FROM users WHERE username LIKE 't\\_%' ESCAPE '\\'"], { stdio: "ignore" });

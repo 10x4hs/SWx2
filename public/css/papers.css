@@ -622,3 +622,9 @@ iframe.pp-vid-frame { cursor: auto; }
 @media (max-width: 900px) { .pp-marks { margin: 0 0 8px; } }
 @media (prefers-reduced-motion: reduce) { .pp-hlbar, .pp-hlpop { animation: none; } }
 .mcp-widget-go { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+/* ---------- 페이지 API 안내 · 개인 API 키 (js/api-panel.js) — .mcp-* 모양을 같이 써요 ---------- */
+.apip-tabs { margin: 0 0 4px; flex-wrap: wrap; }
+.apip-list li { display: grid; gap: 2px; }
+.apip-list code { white-space: pre-wrap; word-break: break-all; }
+.upage-api { margin-top: 10px; font-size: 13px; text-align: center; }
