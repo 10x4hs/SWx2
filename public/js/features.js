@@ -5,7 +5,7 @@ import { esc, toast } from "./util.js";
 
 // 화면(view) → 기능
 export function featureOfRoute(r) {
-  if (["ai", "planner"].includes(r.view)) return "ai";
+  if (r.view === "ai") return "ai"; // AI 계획(planner)은 누구나 — 계획 짤 때 AI 를 쓰게
   if (r.view === "news") return "news";
   if (["english", "papers", "books"].includes(r.view) || (r.view === "page" && r.place === "study")) return "study";
   if (r.view === "mba") return "biz";

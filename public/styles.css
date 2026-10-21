@@ -3192,3 +3192,11 @@ body.app-upd .me-upd { display: flex !important; align-items: center; gap: 8px; 
 @keyframes dock-ping { 0% { height: 4px; opacity: 0; } 25% { height: 24px; opacity: 1; box-shadow: 0 0 0 6px rgba(255, 138, 0, .25), 0 0 14px rgba(255, 138, 0, .9); } 100% { height: 18px; box-shadow: 0 0 8px rgba(255, 138, 0, .7); } }
 @media (max-width: 860px) { .dock-ping { display: none !important; } .rail-btn.has-unread .app-ic { box-shadow: 0 0 0 2px #ff8a00, 0 0 10px rgba(255, 138, 0, .6); } } /* 폰 Dock 은 줄 밖이 잘려서 아이콘 테두리로 */
 @media (prefers-reduced-motion: reduce) { .rail-btn.ping-new .dock-ping { animation: none; } }
+
+/* 고르기 칸(select)의 펼친 목록: 어두운 화면에서 흰 바탕에 흰 글자로 안 보이던 문제 (윈도우 크롬 등) — 브라우저에 테마를 알리고 목록 색을 직접 정해요 */
+:root { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+select option, select optgroup { background-color: #fff; color: #1d1d1f; }
+:root[data-theme="dark"] select option, :root[data-theme="dark"] select optgroup { background-color: #1f1f22; color: #f2f2f4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) select option, :root:not([data-theme="light"]) select optgroup { background-color: #1f1f22; color: #f2f2f4; } }
