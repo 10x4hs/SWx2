@@ -9,7 +9,7 @@
     "deploy": "wrangler deploy",
     "deploy:all": "bash scripts/deploy.sh",
     "seed": "node scripts/seed.mjs",
-    "test": "node scripts/assets.mjs --check && node scripts/mba-index.mjs --check && node scripts/dev-index.mjs --check && node scripts/dev-index.mjs vg --check && node scripts/smoke.mjs",
+    "test": "node scripts/assets.mjs --check && node scripts/mba-index.mjs --check && node scripts/dev-index.mjs --check && node scripts/dev-index.mjs vg --check && node scripts/dev-index.mjs onto --check && node scripts/dev-index.mjs aip --check && node scripts/smoke.mjs",
     "e2e": "node scripts/e2e.mjs",
     "db:reset": "rm -rf .wrangler/state && wrangler d1 migrations apply dsm-mafia --local",
     "user:add": "node scripts/add-user.mjs",

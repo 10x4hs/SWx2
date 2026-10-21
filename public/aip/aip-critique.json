@@ -1,0 +1,1917 @@
+{
+ "id": "aip-critique",
+ "no": "08",
+ "title": "한계 · 비판 · 대안: 언제 팔란티어가 맞고 언제 아닌가",
+ "short": "한계와 대안",
+ "q": "팔란티어를 계속 갈지, 다른 플랫폼이나 직접 만들기로 갈지 무엇으로 판단할까?",
+ "sub": "락인 · 비용 · 윤리 · Fabric IQ · Snowflake · Databricks · 오픈 스택",
+ "doc": "누리 AIP 본 도입 결정 메모",
+ "story": {
+  "title": "“파일럿은 잘 됐어요. 그럼 5년 계약해도 돼요?”",
+  "size": 5,
+  "body": [
+   "(가상 이야기) 누리모빌리티 AIP TF의 파일럿이 끝났어요. 07장 사례 보고서로 임원 설명도 마쳤어요. 이제 본 도입 여부를 정해야 해요.",
+   "TF장 민서는 계속 가고 싶어 해요. \"현장이 처음으로 화면을 좋아해요.\" 데이터 엔지니어 태오는 반대 의견을 들고 왔어요. \"우리 클라우드에 이미 Microsoft Fabric이 있어요. 거기 온톨로지 기능도 나왔대요.\"",
+   "보안·법무 하린은 계약 조건과 윤리 리스크를 걱정해요. 정비 반장 준호는 한마디만 해요. \"뭘 고르든, 내년에 또 화면 바뀌는 건 싫어요.\"",
+   "도입 담당인 나는 금요일까지 '누리 AIP 본 도입 결정 메모'를 써야 해요. 계속 / 다른 플랫폼 / 직접 만들기 세 갈래를 공정하게 비교해야 해요."
+  ]
+ },
+ "goals": [
+  "팔란티어 도입의 락인·비용·윤리 리스크를 구체적인 계약·설계 질문으로 바꿀 수 있어요.",
+  "Microsoft Fabric IQ, Snowflake semantic views, Databricks metric views, 오픈 스택이 각각 무엇을 대신하고 무엇을 못 대신하는지 설명할 수 있어요.",
+  "우리 조직 조건에서 '팔란티어가 맞는 경우와 아닌 경우'를 기준표로 판단할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "락인의 정체: 데이터가 아니라 '뜻과 행동'이 갇혀요",
+   "lead": "팔란티어 락인은 데이터 파일보다 온톨로지 정의, 액션 규칙, Workshop 앱, AIP Logic이 플랫폼 안에 있다는 데서 생겨요.",
+   "idea": [
+    "원천 데이터는 보통 밖으로 꺼낼 수 있어요. 어려운 건 그 위에 쌓은 것들이에요. 객체 정의, 링크, 액션 규칙, 화면, 에이전트 로직이요.",
+    "이것들은 팔란티어 고유 형식이에요. 다른 플랫폼으로 가면 다시 만들어야 해요. 쓰면 쓸수록 이 '재구축 비용'이 커져요.",
+    "락인이 무조건 나쁜 건 아니에요. 가치가 크면 감수할 수 있어요. 문제는 모르고 들어가는 거예요."
+   ],
+   "hear": [
+    "\"데이터는 우리 거니까 언제든 나갈 수 있어요.\" → \"앱과 규칙은요?\""
+   ],
+   "ask": [
+    "온톨로지 정의를 어떤 형식으로 내보낼 수 있나요?",
+    "앱·액션을 다시 만드는 데 몇 인월이 들까요?"
+   ],
+   "mine": "누리 파일럿 4주 동안 만든 객체 5개·액션 3개·화면 2개가 이미 재구축 대상이에요.",
+   "deep": [
+    "Palantir 문서상 온톨로지는 객체·링크·액션·함수로 이뤄지고 Workshop 등 앱이 그 위에서 동작해요. 이 계층 전체가 이전 비용의 대상이에요."
+   ],
+   "recall": {
+    "q": "팔란티어 락인의 핵심 대상은?",
+    "a": "온톨로지 정의·액션 규칙·앱·AIP 로직(데이터 위에 쌓은 것)"
+   },
+   "quiz": [
+    {
+     "q": "이전 비용이 가장 큰 것은?",
+     "options": [
+      "원천 CSV 파일",
+      "액션 규칙과 화면",
+      "로그인 계정"
+     ],
+     "answer": 1,
+     "why": "고유 형식이라 다시 만들어야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "Palantir Docs — Action types overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "출구 전략: 들어갈 때 나갈 문을 만든다",
+   "lead": "본 계약 전에 데이터·정의·로직을 어떤 형식으로 받을지 정해 두면 락인 비용을 줄일 수 있어요.",
+   "idea": [
+    "첫째, 원천 데이터와 가공 결과는 열린 형식(Parquet 등)으로 우리 저장소에도 남겨요.",
+    "둘째, 외부 앱은 OSDK 같은 API로 온톨로지에 붙여요. 그러면 화면 일부는 우리 코드로 남아요. 대신 OSDK 앱도 팔란티어 API에 의존해요.",
+    "셋째, 핵심 업무 규칙은 문서와 테스트로 따로 적어 둬요. 규칙이 플랫폼 설정 안에만 있으면 나갈 때 잃어버려요."
+   ],
+   "hear": [
+    "\"규칙은 화면 설정에 다 있어요.\" → \"그럼 문서는요?\""
+   ],
+   "ask": [
+    "계약 해지 때 받을 산출물 목록이 계약서에 있나요?",
+    "핵심 규칙의 원본은 어디에 있나요?"
+   ],
+   "mine": "하린은 '해지 시 산출물' 부록을 계약서 초안에 넣기로 해요.",
+   "deep": [
+    "Palantir 문서: OSDK는 온톨로지의 객체·링크·액션을 TypeScript·Python 등 외부 코드에서 쓰게 해 주는 SDK예요."
+   ],
+   "recall": {
+    "q": "출구 전략 세 가지는?",
+    "a": "열린 형식 사본 · API로 붙인 외부 앱 · 규칙의 문서·테스트화"
+   },
+   "quiz": [
+    {
+     "q": "OSDK로 만든 앱의 한계는?",
+     "options": [
+      "팔란티어 API에 여전히 의존",
+      "인터넷이 필요 없음",
+      "무료"
+     ],
+     "answer": 0,
+     "why": "부분적 출구일 뿐이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Ontology SDK overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology-sdk/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "비용 구조: 라이선스보다 큰 것",
+   "lead": "총비용(TCO)은 라이선스 + 데이터 엔지니어링 + 현장 교육 + 공급사 엔지니어 의존 + 나중의 이전 비용이에요.",
+   "idea": [
+    "팔란티어 가격은 공개 표가 없고 계약마다 달라요. 그래서 '얼마냐'보다 '무엇에 비례해 늘어나냐'를 물어야 해요(사용자 수, 컴퓨팅, 유스케이스).",
+    "공급사 현장 엔지니어(FDE)가 초기 속도를 내지만, 그들이 떠나면 누가 유지할지가 숨은 비용이에요.",
+    "미 육군은 계약 75개를 하나로 묶어 중간 수수료를 없앴다고 했어요. 규모가 크면 묶어서 협상력을 얻을 수 있다는 예예요."
+   ],
+   "hear": [
+    "\"첫해는 싸게 해 준대요.\" → \"3년째는요?\""
+   ],
+   "ask": [
+    "비용은 무엇에 비례해 늘어나나요?",
+    "공급사 엔지니어 없이 우리 인력으로 유지할 수 있나요?"
+   ],
+   "mine": "누리 메모에 3년 TCO 표를 넣어요: 라이선스, 내부 인력 2명, 교육, 이전 예비비(모두 가상 추정).",
+   "deep": [
+    "DefenseScoop(2025-07-31): 육군 엔터프라이즈 계약은 계약 75개를 통합하고 재판매 수수료를 없애는 구조, 10년 상한 최대 100억 달러."
+   ],
+   "recall": {
+    "q": "TCO의 숨은 항목 두 가지는?",
+    "a": "공급사 엔지니어 의존과 나중의 이전 비용"
+   },
+   "quiz": [
+    {
+     "q": "가격 협상에서 가장 먼저 물을 것은?",
+     "options": [
+      "로고 색",
+      "비용이 무엇에 비례해 늘어나는지",
+      "회사 창업 연도"
+     ],
+     "answer": 1,
+     "why": "확장할수록 비용 구조가 중요해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "DefenseScoop — Army, Palantir sign enterprise agreement worth up to $10B",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "빠른 성공의 대가: 공급사 의존",
+   "lead": "부트캠프와 현장 엔지니어로 빨리 성공하면, 우리 팀이 그 시스템을 이해하지 못한 채 남을 수 있어요.",
+   "idea": [
+    "처음 몇 주는 공급사가 객체와 앱을 대신 만들어 줘요. 효과가 빨라요.",
+    "하지만 설계 이유를 아는 사람이 공급사 쪽에만 있으면, 고칠 때마다 다시 불러야 해요. 의존이 비용과 속도 모두를 묶어요.",
+    "그래서 HD현대처럼 '센터 오브 엑설런스'를 만들어 내부 역량을 키우는 계획을 같이 세우는 조직이 있어요."
+   ],
+   "hear": [
+    "\"그건 팔란티어 엔지니어가 만들어서 몰라요.\""
+   ],
+   "ask": [
+    "설계 결정 기록(왜 이렇게 했나)을 누가 남기나요?",
+    "내부 인력이 혼자 액션 하나를 추가할 수 있나요?"
+   ],
+   "mine": "태오와 내가 파일럿 객체 5개를 직접 다시 만들어 보는 '역량 점검 주간'을 넣기로 해요.",
+   "deep": [
+    "보도(2026-01-21): HD현대는 팔란티어와 공동으로 '센터 오브 엑설런스'를 만들어 임직원 데이터·AI 역량을 내재화할 계획이라고 밝혔어요."
+   ],
+   "recall": {
+    "q": "공급사 의존을 줄이는 방법은?",
+    "a": "설계 기록 · 내부 역량 점검 · CoE 같은 내재화 계획"
+   },
+   "quiz": [
+    {
+     "q": "내부 역량을 확인하는 좋은 시험은?",
+     "options": [
+      "공급사 없이 우리가 액션 하나 추가",
+      "공급사 발표 듣기",
+      "라이선스 수 늘리기"
+     ],
+     "answer": 0,
+     "why": "직접 해 봐야 알아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "스마트투데이 — 정기선 HD현대 회장, 다보스포럼서 팔란티어 CEO 만나",
+     "url": "https://www.smarttoday.co.kr/ko-kr/articles/101783",
+     "date": "2026-01-21"
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "NHS 논쟁: 의사들은 왜 반대했나",
+   "lead": "BMA는 2025년 6월 팔란티어가 NHS 데이터 플랫폼 파트너로 '용납할 수 없는 선택'이라고 결의했어요.",
+   "idea": [
+    "이유는 세 가지였어요. 데이터 저장·처리 방식의 투명성 부족, 미국에서 차별적 치안 소프트웨어를 만든 이력, 미국 정부와의 밀접한 관계.",
+    "결의는 공공 소유 대안을 지원하라고도 요구했어요. 기술 성능이 아니라 '누가 공공 데이터를 다루나'의 문제였어요.",
+    "핵심은 신뢰가 공급사의 다른 사업까지 포함해 평가된다는 거예요. 우리 프로젝트가 깨끗해도 평판은 따라와요."
+   ],
+   "hear": [
+    "\"우리 프로젝트는 군사와 무관한데요.\" → \"평판은 회사 단위로 와요.\""
+   ],
+   "ask": [
+    "고객·직원이 공급사 이름에 어떻게 반응할까요?",
+    "데이터가 어떤 법적 관할에서 처리되나요?"
+   ],
+   "mine": "누리는 승객 데이터를 다뤄요. 하린은 '공급사 평판 리스크' 항목을 결정 메모에 넣기로 해요.",
+   "deep": [
+    "BMA ARM 2025 결의(2025-06): 투명성 부족·차별적 치안 소프트웨어 이력·미국 정부와의 관계를 이유로 반대하고, 공공 소유 대안 지원을 요구했어요."
+   ],
+   "recall": {
+    "q": "BMA 반대의 본질은?",
+    "a": "기술 성능보다 공공 데이터를 누가 다루나에 대한 신뢰 문제"
+   },
+   "quiz": [
+    {
+     "q": "평판 리스크가 우리 프로젝트에 오는 이유는?",
+     "options": [
+      "공급사 평판은 회사 단위로 평가돼서",
+      "프로젝트 코드가 같아서",
+      "법이 그렇게 정해서"
+     ],
+     "answer": 0,
+     "why": "사람들은 공급사 이름으로 판단해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "BMA — ARM 2025: resolution on Health Information Management and IT",
+     "url": "https://www.bma.org.uk/bma-media-centre/arm-2025-bma-passes-resolution-on-health-information-management-and-information-technology",
+     "date": "2025-06"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "2026년 BMA 지침: 사용 제한 권고",
+   "lead": "2026년 2월 BMA는 팔란티어의 미국 이민 단속(ICE) 관련 사업을 이유로 의사들에게 FDP 사용 제한을 권했다고 보도됐어요.",
+   "idea": [
+    "보도에 따르면 BMA는 직접 진료가 아닌 FDP 사용은 거부하는 방안을 검토하라고 권했어요.",
+    "이건 '시스템을 끄자'가 아니라 '용도를 좁히자'는 요구예요. 직접 진료와 2차 활용(계획·분석)을 나눠 다르게 대한 거예요.",
+    "설계로 옮기면: 용도별로 권한과 동의를 나누는 구조가 있으면 이런 요구에 대응하기 쉬워요."
+   ],
+   "hear": [
+    "\"직접 업무용이면 괜찮고, 분석은 안 된대요.\""
+   ],
+   "ask": [
+    "우리 시스템은 용도(업무 vs 분석)별로 접근을 나눌 수 있나요?",
+    "사용자가 거부하면 업무가 멈추나요?"
+   ],
+   "mine": "누리 정비사 데이터도 '작업 배정용'과 '성과 분석용'을 나눠 권한을 설계해요.",
+   "deep": [
+    "Digital Health(2026-02): BMA가 ICE 관련 우려로 FDP의 직접 진료 외 사용 거부를 검토하라고 권고했다고 보도."
+   ],
+   "recall": {
+    "q": "BMA 2026 권고의 핵심은?",
+    "a": "직접 진료 외(2차 활용) 사용을 제한하자는 것"
+   },
+   "quiz": [
+    {
+     "q": "이 요구에 대응하기 쉬운 설계는?",
+     "options": [
+      "모든 사용자 같은 권한",
+      "용도별 권한·동의 분리",
+      "로그 끄기"
+     ],
+     "answer": 1,
+     "why": "용도를 나누면 일부만 좁힐 수 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Digital Health — BMA calls for NHS doctors to reject using the FDP",
+     "url": "https://www.digitalhealth.net/2026/02/bma-calls-for-nhs-doctors-to-reject-using-the-fdp/",
+     "date": "2026-02"
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "통제권 설계: 누가 데이터의 주인인가",
+   "lead": "NHS는 트러스트마다 자기 인스턴스의 데이터 통제자가 되는 구조를 강조했어요. 통제권 설계는 윤리 논쟁의 기술적 답 중 하나예요.",
+   "idea": [
+    "데이터 통제자는 데이터를 왜, 어떻게 쓸지 결정하고 책임지는 주체예요(GDPR 개념). 플랫폼 공급사는 보통 처리자예요.",
+    "통제자가 분명하면 '누가 허락했나'에 답할 수 있어요. 감사 로그가 그 증거가 돼요.",
+    "하지만 계약서에 통제권이 있어도, 실제로 공급사 엔지니어가 모든 걸 운영하면 통제는 이름뿐일 수 있어요."
+   ],
+   "hear": [
+    "\"통제자는 우리, 처리자는 공급사예요.\"",
+    "\"실제로 키는 누가 들고 있어요?\""
+   ],
+   "ask": [
+    "암호 키와 관리자 권한은 누가 갖나요?",
+    "공급사 직원의 접근도 감사 로그에 남나요?"
+   ],
+   "mine": "누리는 관리자 권한을 내부 2명에게만 주고, 공급사 접근은 요청-승인 방식으로 하기로 해요.",
+   "deep": [
+    "NHS England 설명: 각 트러스트는 자기 FDP 인스턴스를 갖고 그 데이터 통제자가 되며, 시작 제품을 선택해 쓸 수 있어요."
+   ],
+   "recall": {
+    "q": "통제권이 이름뿐이 되는 경우는?",
+    "a": "공급사가 실제 운영·키·관리 권한을 모두 쥘 때"
+   },
+   "quiz": [
+    {
+     "q": "통제권을 실제로 만드는 장치는?",
+     "options": [
+      "공급사 접근도 남는 감사 로그와 내부 관리자 권한",
+      "계약서 한 줄",
+      "브랜드 로고"
+     ],
+     "answer": 0,
+     "why": "실제 권한과 기록이 있어야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "NHS England — NHS Federated Data Platform",
+     "url": "https://www.england.nhs.uk/digitaltechnology/nhs-federated-data-platform/",
+     "date": "n.d."
+    },
+    {
+     "title": "Bio-IT World — Innovative Practices Award for NHS England, IQVIA Privacy Protection Platform",
+     "url": "https://www.bio-itworld.com/news/2025/07/23/innovative-practices-award-for-nhs-england-iqvia-privacy-protection-platform",
+     "date": "2025-07-23"
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "신뢰는 기능이 아니라 과정",
+   "lead": "윤리 리스크는 체크박스로 끝나지 않아요. 공개·참여·감사가 계속 돌아가야 해요.",
+   "idea": [
+    "공개: 어떤 데이터를 왜 쓰는지 사용자에게 알려요. NHS 계약은 처음에 많은 부분이 가려진 채 공개돼 비판을 받았다고 보도됐어요.",
+    "참여: 현장 대표가 설계에 들어가요. 반대 의견이 들어올 통로가 있어야 해요.",
+    "감사: 정기적으로 누가 무엇을 봤는지 확인하고 결과를 공유해요. 이게 반복돼야 신뢰가 쌓여요."
+   ],
+   "hear": [
+    "\"보안 검토 끝났으니 윤리도 끝이죠?\" → \"아니요, 계속해요.\""
+   ],
+   "ask": [
+    "사용자 대표가 의견을 낼 정기 회의가 있나요?",
+    "감사 결과를 누구에게 공유하나요?"
+   ],
+   "mine": "누리는 분기마다 정비사 대표·노조와 '데이터 사용 보고회'를 열기로 해요.",
+   "deep": [
+    "BMA 결의는 데이터 저장·처리 방식의 투명성 부족을 첫 번째 반대 이유로 들었어요(2025-06)."
+   ],
+   "recall": {
+    "q": "신뢰를 만드는 세 과정은?",
+    "a": "공개 · 참여 · 감사(반복)"
+   },
+   "quiz": [
+    {
+     "q": "일회성으로 끝내면 안 되는 것은?",
+     "options": [
+      "윤리·신뢰 점검",
+      "로고 디자인",
+      "회의실 예약"
+     ],
+     "answer": 0,
+     "why": "신뢰는 계속 관리해야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "BMA — ARM 2025: resolution on Health Information Management and IT",
+     "url": "https://www.bma.org.uk/bma-media-centre/arm-2025-bma-passes-resolution-on-health-information-management-and-information-technology",
+     "date": "2025-06"
+    },
+    {
+     "title": "The Register — Palantir wins NHS contract",
+     "url": "https://www.theregister.com/2023/11/22/palantir_wins_nhs_contract/",
+     "date": "2023-11-22"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "Microsoft Fabric IQ 온톨로지: 가장 직접적인 경쟁자",
+   "lead": "2025년 11월 Ignite에서 Microsoft는 Fabric IQ와 그 핵심인 온톨로지 항목을 프리뷰로 내놓았어요.",
+   "idea": [
+    "Fabric 온톨로지는 엔터티 타입·속성·관계·지표·규칙을 정의하고, OneLake의 데이터에 '바인딩'해요. 데이터를 복사하지 않고 원천 위에 가상 의미 층을 둬요.",
+    "규칙은 자연어 문장으로 적고, 지표는 Power BI 의미 모델의 DAX 측정값을 그대로 가져와요. 기존 Power BI 모델에서 온톨로지를 생성할 수도 있어요.",
+    "RDF·Turtle·OWL을 가져오고 RDF·Turtle로 내보낼 수 있어요. 팔란티어보다 W3C 표준과 가까운 출구가 있다는 뜻이에요."
+   ],
+   "hear": [
+    "\"이미 Power BI 쓰는데, 거기서 바로 온톨로지 만들 수 있대요.\""
+   ],
+   "ask": [
+    "지금 프리뷰 기능 중 무엇이 GA인가요?",
+    "액션(쓰기)과 승인 흐름은 어디까지 되나요?"
+   ],
+   "mine": "태오는 누리 Power BI 정비 모델에서 온톨로지를 생성해 보는 2일 실험을 제안해요.",
+   "deep": [
+    "Microsoft Learn(2026-10 갱신): 온톨로지는 프리뷰이고, 옛 경험은 2027-01-31 종료 예정이에요.",
+    "권한은 OneLake 보안과 원천의 행·객체·열 수준 보안(RLS·OLS·CLS)을 따라요.",
+    "애널리스트(Info-Tech)는 Microsoft가 이전에 '온톨로지'라는 말을 쓰지 않았기 때문에 가장 예상 밖의 발표라고 평했어요."
+   ],
+   "recall": {
+    "q": "Fabric 온톨로지의 두 강점은?",
+    "a": "기존 Power BI/OneLake 재사용과 RDF/Turtle/OWL 가져오기·내보내기"
+   },
+   "quiz": [
+    {
+     "q": "Fabric 온톨로지의 '규칙'은 어떻게 적나요?",
+     "options": [
+      "자연어 문장",
+      "Java 코드만",
+      "SPARQL만"
+     ],
+     "answer": 0,
+     "why": "문서상 자연어로 적고 개념에 연결해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Microsoft Learn — Ontology (Fabric IQ) overview",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "n.d."
+    },
+    {
+     "title": "Microsoft Fabric Blog — From data platform to intelligence platform: introducing Fabric IQ",
+     "url": "https://blog.fabric.microsoft.com/en-US/blog/from-data-platform-to-intelligence-platform-introducing-microsoft-fabric-iq/",
+     "date": "2025-11"
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "Snowflake semantic views와 OSI",
+   "lead": "Snowflake는 데이터베이스 안에 '의미 뷰'를 두고, 업계 공통 의미 모델 규격(OSI)을 주도해요.",
+   "idea": [
+    "semantic view는 논리 테이블(고객·주문 같은 엔터티), 관계, 팩트, 차원, 지표를 데이터베이스 객체로 저장해요.",
+    "Cortex Analyst·Cortex Agents가 이 정의를 읽고 자연어 질문을 SQL로 바꿔요. 즉 '묻기(읽기)'에 강해요.",
+    "2025년 9월 Snowflake는 Salesforce, dbt Labs 등과 Open Semantic Interchange(OSI)를 발표했어요. 벤더 중립 의미 모델 규격을 만들자는 거예요."
+   ],
+   "hear": [
+    "\"지표 정의를 도구마다 따로 만들지 말자.\""
+   ],
+   "ask": [
+    "semantic view로 쓰기·승인(액션)도 되나요?",
+    "OSI 규격이 실제로 어디까지 구현됐나요?"
+   ],
+   "mine": "누리 데이터가 Snowflake에 있다면 'AOG 시간' 같은 지표는 여기 정의하는 게 자연스러워요.",
+   "deep": [
+    "Snowflake 문서: semantic view = 논리 테이블·관계·팩트·차원·지표, Cortex Analyst/Agents가 사용.",
+    "Business Wire(2025-09-23): Snowflake가 Salesforce, dbt Labs, BlackRock, RelationalAI 등과 OSI 발표."
+   ],
+   "recall": {
+    "q": "semantic view가 주로 강한 일은?",
+    "a": "지표·관계 정의를 바탕으로 한 자연어 질의(읽기·분석)"
+   },
+   "quiz": [
+    {
+     "q": "OSI의 목표는?",
+     "options": [
+      "벤더 중립 의미 모델 규격",
+      "새 데이터베이스 엔진",
+      "AI 칩"
+     ],
+     "answer": 0,
+     "why": "의미 정의를 도구 사이에서 공유하려는 거예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Snowflake Docs — Overview of semantic views",
+     "url": "https://docs.snowflake.com/en/user-guide/views-semantic/overview",
+     "date": "n.d."
+    },
+    {
+     "title": "Business Wire — Snowflake, Salesforce, dbt Labs and more launch Open Semantic Interchange",
+     "url": "https://www.businesswire.com/news/home/20250923902448/en/Snowflake-Salesforce-dbt-Labs-and-More-Revolutionize-Data-Readiness-for-AI-with-Open-Semantic-Interchange-Initiative",
+     "date": "2025-09-23"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "Databricks metric views",
+   "lead": "Databricks는 Unity Catalog 안에 지표를 한 번 정의하고 어디서나 같은 뜻으로 쓰게 하는 metric views를 제공해요.",
+   "idea": [
+    "metric view는 YAML로 지표와 차원을 정의해 Unity Catalog에 등록해요. 질의할 때 원하는 차원으로 잘라 볼 수 있어요.",
+    "강점은 열린 형식(Delta/Iceberg)과 ML·AI 도구가 한 곳에 있다는 거예요. 데이터 과학 팀이 강한 조직에 맞아요.",
+    "약점은 운영 행동 층이에요. 지표 정의는 '읽기'예요. 현장 버튼·승인·쓰기 흐름은 따로 만들어야 해요."
+   ],
+   "hear": [
+    "\"지표는 metric view, 앱은 우리가 만든다.\""
+   ],
+   "ask": [
+    "지표 정의를 다른 도구(BI, 에이전트)가 그대로 쓰나요?",
+    "액션·승인 흐름은 어디서 만들까요?"
+   ],
+   "mine": "누리 예측 정비 모델 팀이 Databricks를 쓴다면, 예측 결과를 어디서 '작업지시'로 바꿀지가 핵심 질문이에요.",
+   "deep": [
+    "Databricks 문서: metric views는 비즈니스 지표를 Unity Catalog에 한 번 정의하고 런타임에 임의 차원으로 질의하는 방식이며 YAML로 정의해요."
+   ],
+   "recall": {
+    "q": "의미 층(지표 정의)만으로 부족한 것은?",
+    "a": "현장 결정을 기록하는 행동(액션)·승인·쓰기 흐름"
+   },
+   "quiz": [
+    {
+     "q": "metric view는 무엇을 정의하나요?",
+     "options": [
+      "지표와 차원",
+      "화면 레이아웃",
+      "사용자 비밀번호"
+     ],
+     "answer": 0,
+     "why": "읽기용 의미 정의예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Databricks Docs — Unity Catalog metric views",
+     "url": "https://docs.databricks.com/aws/en/metric-views/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "비교의 핵심: 명사는 다들 하고, 동사는 차이가 커요",
+   "lead": "객체·관계·지표(명사)는 여러 플랫폼이 비슷해졌어요. 차이는 액션·권한·감사·현장 앱(동사)에서 나요.",
+   "idea": [
+    "Fabric·Snowflake·Databricks 모두 '비즈니스 개념을 데이터 위에 정의하고 AI가 읽게 한다'는 방향은 같아요.",
+    "팔란티어의 강점은 액션 타입(규칙·제출 조건·부수 효과), writeback, 감사, Workshop 앱이 한 시스템에 붙어 있다는 점이에요.",
+    "그래서 질문은 '우리 문제가 주로 묻기(분석)인가, 하기(운영 결정)인가'예요. 묻기 위주면 대안이 충분할 수 있어요."
+   ],
+   "hear": [
+    "\"다 온톨로지 한다는데 뭐가 달라요?\" → \"버튼 누른 뒤가 달라요.\""
+   ],
+   "ask": [
+    "우리 유스케이스 중 쓰기(액션)가 필요한 비율은?",
+    "대안에서 액션을 만들면 누가 유지하나요?"
+   ],
+   "mine": "누리 유스케이스 6개 중 4개가 '작업지시·부품 예약' 같은 쓰기예요(가상). 이게 판단의 핵심 숫자예요.",
+   "deep": [
+    "Palantir 문서: 액션 타입은 파라미터·규칙·제출 조건·부수 효과를 갖고 객체를 바꿔요.",
+    "Fabric 문서의 핵심 개념은 엔터티·속성·관계·지표·규칙·바인딩이에요(2026-10 기준, 액션은 핵심 개념 목록에 없음)."
+   ],
+   "recall": {
+    "q": "플랫폼 비교의 핵심 질문은?",
+    "a": "우리 문제가 묻기(분석) 위주인가, 하기(운영 결정) 위주인가"
+   },
+   "quiz": [
+    {
+     "q": "분석 질의 위주의 조직에 가장 알맞은 판단은?",
+     "options": [
+      "무조건 팔란티어",
+      "기존 데이터 플랫폼의 의미 층으로 충분할 수 있음",
+      "아무것도 안 함"
+     ],
+     "answer": 1,
+     "why": "행동 층이 덜 중요하면 비용 대비 대안이 나아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "Microsoft Learn — Ontology (Fabric IQ) overview",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "n.d."
+    },
+    {
+     "title": "Snowflake Docs — Overview of semantic views",
+     "url": "https://docs.snowflake.com/en/user-guide/views-semantic/overview",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "직접 만든다면: 오픈 스택의 모양",
+   "lead": "오픈 스택 온톨로지는 '저장(레이크하우스) + 의미(그래프/스키마) + 행동(API) + 에이전트(MCP)'를 조립하는 일이에요.",
+   "idea": [
+    "저장: Postgres나 Iceberg 테이블. 의미: RDF/OWL 또는 속성 그래프(LPG)로 객체·관계 정의. SHACL로 검증할 수 있어요.",
+    "행동: 액션마다 API를 만들고, 그 안에서 규칙 확인 → 쓰기 → 감사 로그를 한 트랜잭션으로 처리해요.",
+    "에이전트: 액션 API를 MCP 같은 도구 규격으로 노출하면 LLM이 도구로 부를 수 있어요. 2024년 11월 Anthropic이 MCP를 공개했어요."
+   ],
+   "steps": [
+    {
+     "k": "저장",
+     "t": "Postgres / Iceberg"
+    },
+    {
+     "k": "의미",
+     "t": "RDF·OWL 또는 LPG + 검증"
+    },
+    {
+     "k": "행동",
+     "t": "액션 API + 감사"
+    },
+    {
+     "k": "에이전트",
+     "t": "MCP 도구로 노출"
+    }
+   ],
+   "hear": [
+    "\"부품 하나하나 다 우리가 고를 수 있어요.\"",
+    "\"그 대신 다 우리가 붙이고 지켜야 해요.\""
+   ],
+   "ask": [
+    "각 층을 누가 운영하나요?",
+    "권한이 층마다 일관되게 적용되나요?"
+   ],
+   "mine": "태오의 오픈 스택 안: Postgres + 그래프 뷰 + TypeScript 액션 API + MCP 서버.",
+   "deep": [
+    "Anthropic(2024-11-25): MCP는 AI 앱이 외부 데이터·도구에 연결하는 열린 표준으로 공개됐어요."
+   ],
+   "recall": {
+    "q": "오픈 스택 네 층은?",
+    "a": "저장 · 의미 · 행동(API) · 에이전트(MCP 등)"
+   },
+   "quiz": [
+    {
+     "q": "오픈 스택에서 가장 품이 많이 드는 층은?",
+     "options": [
+      "저장",
+      "행동 층의 규칙·권한·감사",
+      "아이콘"
+     ],
+     "answer": 1,
+     "why": "운영 결정을 안전하게 만드는 부분이 어려워요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Anthropic — Introducing the Model Context Protocol",
+     "url": "https://www.anthropic.com/news/model-context-protocol",
+     "date": "2024-11-25"
+    },
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "액션 층을 직접 짜 보기",
+   "lead": "직접 만들 때 액션 하나는 '입력 검증 → 권한 확인 → 규칙 확인 → 쓰기 → 감사 기록'을 한 번에 해야 해요.",
+   "idea": [
+    "이 다섯 단계 중 하나라도 빠지면 위험해요. 감사 기록이 없으면 누가 했는지 몰라요. 트랜잭션이 아니면 반쯤 써진 상태가 남아요.",
+    "LLM 에이전트가 이 액션을 부를 때도 같은 경로를 지나야 해요. 에이전트용 뒷문을 따로 만들면 권한이 새요.",
+    "팔란티어는 이걸 액션 타입으로 제공해요. 직접 만들면 자유롭지만, 모든 액션에 같은 품질을 유지하는 게 일이에요."
+   ],
+   "hear": [
+    "\"에이전트용 API는 따로 빠르게 만들죠.\" → \"권한 경로는 같아야 해요.\""
+   ],
+   "ask": [
+    "모든 액션이 같은 권한·감사 경로를 지나나요?",
+    "실패하면 롤백되나요?"
+   ],
+   "mine": "누리 '부품 예약' 액션을 오픈 스택으로 짜 보고 소요 시간을 재 보기로 해요.",
+   "deep": [
+    "Palantir 문서: 액션은 규칙과 제출 조건을 통과해야 실행되고, 실행 기록이 남아요. 직접 구현 시 이 보장을 스스로 만들어야 해요."
+   ],
+   "recall": {
+    "q": "액션 하나의 다섯 단계는?",
+    "a": "입력 검증 → 권한 → 규칙 → 쓰기(트랜잭션) → 감사 기록"
+   },
+   "quiz": [
+    {
+     "q": "에이전트 전용 뒷문 API의 문제는?",
+     "options": [
+      "권한·감사를 우회할 수 있음",
+      "너무 느림",
+      "이름이 김"
+     ],
+     "answer": 0,
+     "why": "사람과 같은 경로를 지나야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "Anthropic — Introducing the Model Context Protocol",
+     "url": "https://www.anthropic.com/news/model-context-protocol",
+     "date": "2024-11-25"
+    }
+   ],
+   "code": {
+    "lang": "TypeScript",
+    "text": "async function reservePart(user, partId, woId) {\n  assertRole(user, \"technician\");          // 권한\n  const part = await db.part(partId);\n  if (part.status !== \"in_stock\") throw Error(\"재고 없음\"); // 규칙\n  await db.tx(t => { t.reserve(partId, woId);   // 쓰기\n    t.audit(user.id, \"reservePart\", { partId, woId }); }); // 감사\n}",
+    "read": "권한 → 규칙 → 쓰기와 감사를 한 트랜잭션으로. 에이전트도 이 함수를 그대로 불러야 해요."
+   }
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "권한과 감사: 직접 만들기의 가장 어려운 부분",
+   "lead": "객체·속성 단위 권한, 마킹, 계보, 감사 로그를 층마다 일관되게 지키는 게 직접 구축의 진짜 비용이에요.",
+   "idea": [
+    "데이터베이스 권한, API 권한, 검색 인덱스 권한, LLM이 보는 컨텍스트 권한이 모두 같아야 해요. 한 곳만 느슨해도 새요.",
+    "계보(lineage)는 '이 숫자가 어디서 왔나'를 추적해요. 직접 만들면 도구마다 따로라 끊기기 쉬워요.",
+    "규제 산업(항공·의료·국방)은 이 증거를 감사 때 내야 해요. 이 요구가 클수록 통합 플랫폼의 가치가 올라가요."
+   ],
+   "hear": [
+    "\"검색 인덱스에 권한이 안 걸려 있었어요.\""
+   ],
+   "ask": [
+    "LLM에 넣는 문서도 사용자 권한으로 걸러지나요?",
+    "감사 때 계보를 한 번에 보여 줄 수 있나요?"
+   ],
+   "mine": "누리는 항공 당국 감사가 있어요. 정비 기록 계보를 증명하는 비용을 직접 구축안에 넣어요.",
+   "deep": [
+    "Fabric 온톨로지는 OneLake 보안과 원천의 RLS·OLS·CLS를 따른다고 문서에 적혀 있어요. 대안 플랫폼도 권한 상속을 핵심 기능으로 내세워요."
+   ],
+   "recall": {
+    "q": "권한이 새는 흔한 곳은?",
+    "a": "검색 인덱스·LLM 컨텍스트처럼 원천 밖으로 복사된 곳"
+   },
+   "quiz": [
+    {
+     "q": "규제 산업에서 통합 플랫폼의 가치가 올라가는 이유는?",
+     "options": [
+      "권한·계보·감사 증거를 한 곳에서 내기 쉬워서",
+      "화면이 예뻐서",
+      "무료라서"
+     ],
+     "answer": 0,
+     "why": "증명 비용이 커요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Microsoft Learn — Ontology (Fabric IQ) overview",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "n.d."
+    },
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "TCO 비교 사고법: 사기 vs 만들기",
+   "lead": "사기(팔란티어)와 만들기(오픈 스택)는 비용이 드는 시점과 종류가 달라요. 3~5년 그림으로 비교해요.",
+   "idea": [
+    "사기: 초기에 빠르고, 라이선스가 계속 들어요. 이전 비용이 나중에 쌓여요.",
+    "만들기: 초기 개발 인력이 크고, 라이선스는 적어요. 유지·보안·인력 이탈 리스크가 계속 있어요.",
+    "섞기도 있어요. 의미·지표는 기존 데이터 플랫폼에, 운영 핵심 몇 개만 통합 플랫폼에 두는 식이에요."
+   ],
+   "hear": [
+    "\"오픈소스니까 공짜죠?\" → \"사람 비용이 있어요.\""
+   ],
+   "ask": [
+    "5년 동안 연도별 비용 곡선은?",
+    "핵심 개발자 2명이 떠나면 어떻게 되나요?"
+   ],
+   "mine": "누리 메모에 세 선택지의 5년 비용 곡선(가상 추정)과 인력 리스크를 함께 그려요.",
+   "deep": [
+    "이 카드의 비용 구조는 일반적 사고 틀이에요. 실제 금액은 계약·조직마다 달라 숫자를 넣지 않았어요."
+   ],
+   "recall": {
+    "q": "만들기의 숨은 비용은?",
+    "a": "유지·보안·인력 이탈 리스크"
+   },
+   "quiz": [
+    {
+     "q": "'오픈소스라 공짜'가 틀린 이유는?",
+     "options": [
+      "사람·운영 비용이 크기 때문",
+      "오픈소스는 유료라서",
+      "법이 금지해서"
+     ],
+     "answer": 0,
+     "why": "라이선스만 비용이 아니에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "DefenseScoop — Army, Palantir sign enterprise agreement worth up to $10B",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "팔란티어가 맞는 경우",
+   "lead": "운영 결정이 많고, 규제·보안 요구가 높고, 여러 시스템을 빨리 묶어야 하고, 예산이 있을 때 팔란티어가 잘 맞아요.",
+   "idea": [
+    "조건 1: 문제의 중심이 '하기'예요. 배정·예약·승인 같은 결정을 매일 많이 내려요.",
+    "조건 2: 권한·감사 증거가 중요해요. 국방·의료·항공처럼요.",
+    "조건 3: 데이터 시스템이 많고 내부 엔지니어링 인력이 부족해요. 빨리 묶는 데 돈을 쓸 가치가 있어요."
+   ],
+   "hear": [
+    "\"내부 개발팀으로 2년 걸릴 걸 몇 달에 해요.\""
+   ],
+   "ask": [
+    "세 조건 중 몇 개에 해당하나요?",
+    "가치가 비용을 넘는 걸 무엇으로 보여 줄 수 있나요?"
+   ],
+   "mine": "누리는 조건 1·2에 강하게 해당하고, 조건 3은 중간이에요.",
+   "deep": [
+    "미 육군·NHS·HD현대 사례는 모두 여러 시스템 통합과 운영 결정이 핵심이었어요(07장 참고)."
+   ],
+   "recall": {
+    "q": "팔란티어가 맞는 세 조건은?",
+    "a": "운영 결정 중심 · 높은 권한/감사 요구 · 많은 시스템 + 부족한 내부 인력"
+   },
+   "quiz": [
+    {
+     "q": "팔란티어 적합도가 가장 높은 상황은?",
+     "options": [
+      "월간 매출 차트만 필요",
+      "매일 수백 건의 정비 배정·승인을 감사 증거와 함께",
+      "개인 블로그"
+     ],
+     "answer": 1,
+     "why": "운영 결정과 감사가 핵심이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "DefenseScoop — Army, Palantir sign enterprise agreement worth up to $10B",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "팔란티어가 맞지 않는 경우",
+   "lead": "질문이 주로 분석이고, 이미 강한 데이터 플랫폼과 팀이 있고, 평판·비용 제약이 크면 다른 길이 나을 수 있어요.",
+   "idea": [
+    "분석 위주라면 Fabric·Snowflake·Databricks의 의미 층으로 충분할 수 있어요.",
+    "강한 내부 엔지니어링 팀이 있으면 오픈 스택으로 핵심만 만들 수 있어요. 대신 권한·감사를 진지하게 설계해야 해요.",
+    "공공성이 높아 공급사 평판이 문제가 되면, 기술이 좋아도 사용자가 거부할 수 있어요(NHS 사례)."
+   ],
+   "hear": [
+    "\"우리는 대시보드면 충분해요.\""
+   ],
+   "ask": [
+    "쓰기(액션)가 필요한 유스케이스가 몇 개인가요?",
+    "이해관계자가 공급사를 받아들일까요?"
+   ],
+   "mine": "누리 승객 서비스 분석은 Fabric으로, 정비 운영은 AIP로 나누는 혼합안도 메모에 넣어요.",
+   "deep": [
+    "BMA 2025 결의는 '공공 소유 대안' 지원을 요구했어요. 기술 외 요인이 선택을 바꿀 수 있다는 예예요."
+   ],
+   "recall": {
+    "q": "팔란티어가 덜 맞는 신호 세 가지는?",
+    "a": "분석 위주 · 강한 내부 팀/플랫폼 · 평판·비용 제약"
+   },
+   "quiz": [
+    {
+     "q": "혼합안의 위험은?",
+     "options": [
+      "의미 정의가 두 곳에 갈라질 수 있음",
+      "너무 단순함",
+      "비용 0"
+     ],
+     "answer": 0,
+     "why": "공유 개념(항공기 등)의 정의를 맞춰야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "BMA — ARM 2025: resolution on Health Information Management and IT",
+     "url": "https://www.bma.org.uk/bma-media-centre/arm-2025-bma-passes-resolution-on-health-information-management-and-information-technology",
+     "date": "2025-06"
+    },
+    {
+     "title": "Snowflake Docs — Overview of semantic views",
+     "url": "https://docs.snowflake.com/en/user-guide/views-semantic/overview",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "세계 동향: 온톨로지가 표준 기능이 되는 중",
+   "lead": "2025년 이후 Microsoft·Snowflake·Databricks가 모두 '비즈니스 의미 층'을 내놓으면서, 온톨로지는 팔란티어만의 말이 아니게 됐어요.",
+   "idea": [
+    "2025년 9월 OSI, 2025년 11월 Fabric IQ 온톨로지처럼 큰 데이터 플랫폼이 의미 층을 기본 기능으로 넣고 있어요.",
+    "에이전트가 도구를 부르는 표준(MCP)이 퍼지면서, 의미 층과 액션을 에이전트에 노출하는 방식도 비슷해지고 있어요.",
+    "결과적으로 경쟁은 '온톨로지가 있나'에서 '그 위에서 안전하게 행동까지 하나'로 옮겨 가요. 가격 압력도 커질 수 있어요(추정)."
+   ],
+   "hear": [
+    "\"이제 다들 온톨로지 한대요.\""
+   ],
+   "ask": [
+    "2년 뒤 대안 제품의 GA 상태는 어떨까요?",
+    "지금 정의를 다른 플랫폼으로 옮길 수 있는 형식인가요?"
+   ],
+   "mine": "누리 메모의 '다시 볼 조건'에 'Fabric 온톨로지 GA + 액션 기능 확인'을 넣어요.",
+   "deep": [
+    "Fabric 온톨로지는 2026-10 기준 프리뷰예요(Microsoft Learn).",
+    "OSI 발표 2025-09-23(Business Wire)."
+   ],
+   "recall": {
+    "q": "경쟁의 축이 어디로 옮겨 가나요?",
+    "a": "온톨로지 유무에서 그 위의 안전한 행동(액션·권한·감사)으로"
+   },
+   "quiz": [
+    {
+     "q": "결정 메모에 '다시 볼 조건'을 넣는 이유는?",
+     "options": [
+      "시장이 빠르게 변해서",
+      "형식상 필요해서",
+      "길게 쓰려고"
+     ],
+     "answer": 0,
+     "why": "대안이 성숙하면 판단이 바뀔 수 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Microsoft Learn — Ontology (Fabric IQ) overview",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "n.d."
+    },
+    {
+     "title": "Business Wire — Snowflake, Salesforce, dbt Labs and more launch Open Semantic Interchange",
+     "url": "https://www.businesswire.com/news/home/20250923902448/en/Snowflake-Salesforce-dbt-Labs-and-More-Revolutionize-Data-Readiness-for-AI-with-Open-Semantic-Interchange-Initiative",
+     "date": "2025-09-23"
+    },
+    {
+     "title": "Anthropic — Introducing the Model Context Protocol",
+     "url": "https://www.anthropic.com/news/model-context-protocol",
+     "date": "2024-11-25"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "결정 메모 쓰는 법: 공정한 비교",
+   "lead": "결정 메모는 이미 정한 답을 포장하는 문서가 아니에요. 같은 기준으로 선택지를 비교하고, 틀렸을 때 바꿀 조건까지 적어요.",
+   "idea": [
+    "선택지마다 같은 칸을 채워요. 행동 층, 권한·감사, 데이터 위치, 비용 구조, 인력, 출구.",
+    "각 칸에 근거 등급을 붙여요. 문서 확인, 실험 결과, 공급사 주장, 추정.",
+    "마지막에 추천 하나와 '다시 볼 조건'을 적어요. 예: 2년 차 비용이 X를 넘거나, 대안 제품이 GA되면 재검토."
+   ],
+   "hear": [
+    "\"반대 의견도 메모에 넣어 주세요.\""
+   ],
+   "ask": [
+    "가장 강한 반대 논리는 무엇이고, 어떻게 답했나요?",
+    "이 결정을 언제 다시 보나요?"
+   ],
+   "mine": "누리 메모 결론 초안: 정비 운영은 AIP 2년 계약(출구 부록 포함), 분석은 Fabric 유지, 1년 뒤 재검토.",
+   "deep": [
+    "이 장의 대안 기능 상태(프리뷰/GA)는 2026-10 문서 기준이에요. 메모에도 날짜를 적어요."
+   ],
+   "recall": {
+    "q": "결정 메모의 마지막 두 요소는?",
+    "a": "추천 하나와 다시 볼 조건"
+   },
+   "quiz": [
+    {
+     "q": "공정한 결정 메모의 특징은?",
+     "options": [
+      "선택지를 같은 기준으로 비교",
+      "좋아하는 안만 자세히",
+      "근거 없이 결론"
+     ],
+     "answer": 0,
+     "why": "같은 칸이 공정함을 만들어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Microsoft Learn — Ontology (Fabric IQ) overview",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "n.d."
+    },
+    {
+     "title": "Palantir Docs — Action types overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d."
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "army-ea-2025",
+   "day": 1,
+   "title": "미 육군 엔터프라이즈 계약: 75개 계약을 하나로 묶은 결정의 양면",
+   "when": "2025-07",
+   "lead": "2025년 7월 31일 미 육군은 팔란티어와 10년, 최대 100억 달러 상한의 엔터프라이즈 계약을 발표했어요. 계약 75개를 하나로 묶어 수수료를 없앤 효율화이자, 한 공급사에 대한 의존을 키우는 결정이기도 해요.",
+   "facts": [
+    {
+     "label": "발표일",
+     "value": "2025-07-31",
+     "src": "DefenseScoop"
+    },
+    {
+     "label": "기간·상한",
+     "value": "10년, 최대 100억 달러(상한, 확정 지출 아님)",
+     "src": "DefenseScoop · The Register"
+    },
+    {
+     "label": "통합 범위",
+     "value": "계약 75개(주계약 15 + 관련 60)",
+     "src": "DefenseScoop"
+    },
+    {
+     "label": "육군 설명",
+     "value": "계약·재판매 수수료 제거, 다른 국방 기관도 구매 가능",
+     "src": "DefenseScoop"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "그 전",
+     "text": "부대·프로그램별로 팔란티어 제품을 개별 계약"
+    },
+    {
+     "t": "2025-07-31",
+     "text": "엔터프라이즈 계약 발표",
+     "hot": true
+    },
+    {
+     "t": "이후",
+     "text": "육군 CIO, 다른 엔터프라이즈 라이선스 계약도 추진한다고 언급"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "효율",
+     "title": "흩어진 계약",
+     "text": "같은 공급사 제품을 여러 계약으로 사면서 중간 수수료와 관리 비용이 생겼어요."
+    },
+    {
+     "stage": "규모",
+     "title": "협상력",
+     "text": "구매를 묶으면 단가와 조건을 협상할 힘이 커져요."
+    },
+    {
+     "stage": "위험",
+     "title": "의존 심화",
+     "text": "모든 계약이 한 곳에 모이면 나중에 바꾸기 더 어려워져요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "100억 달러를 어떻게 설명해야 정확한가요?",
+     "a": "10년 동안의 지출 상한이에요. 육군은 그만큼 쓰기로 약속한 게 아니라고 밝혔어요."
+    },
+    {
+     "q": "누리가 도구 계약을 통합할 때 같이 넣을 조항은?",
+     "a": "해지 시 데이터·정의 반출 형식, 가격 인상 상한, 재검토 시점이에요."
+    },
+    {
+     "q": "이 결정의 장점과 위험을 한 줄씩?",
+     "a": "장점: 수수료 제거와 협상력. 위험: 한 공급사 의존과 이전 비용 증가."
+    }
+   ],
+   "after": [
+    "육군 CIO는 이 계약이 여러 엔터프라이즈 라이선스 계약 중 하나가 될 거라고 말했어요."
+   ],
+   "sources": [
+    {
+     "title": "DefenseScoop — Army, Palantir sign enterprise agreement worth up to $10B",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    },
+    {
+     "title": "The Register — $10 billion, 10 year US Army contract",
+     "url": "https://www.theregister.com/2025/08/01/palantir_us_army_contract/",
+     "date": "2025-08-01"
+    }
+   ],
+   "caveat": "실제 연도별 집행액은 공개 자료로 확인하지 못했어요."
+  },
+  {
+   "id": "fabric-iq-2025",
+   "day": 3,
+   "title": "Microsoft Fabric IQ 온톨로지: '온톨로지'가 범용 데이터 플랫폼 기능이 되다",
+   "when": "2025-11",
+   "lead": "2025년 11월 Ignite에서 Microsoft는 Fabric IQ와 온톨로지 항목(프리뷰)을 발표했어요. 비즈니스 개념을 OneLake 데이터에 바인딩하고 AI 에이전트가 같은 뜻을 쓰게 하는 기능으로, 팔란티어의 가장 직접적인 개념 경쟁자로 꼽혀요.",
+   "facts": [
+    {
+     "label": "발표",
+     "value": "2025-11 Microsoft Ignite",
+     "src": "Microsoft Fabric Blog"
+    },
+    {
+     "label": "상태",
+     "value": "프리뷰(2026-10 문서 기준), 옛 경험은 2027-01-31 종료",
+     "src": "Microsoft Learn"
+    },
+    {
+     "label": "구성 요소",
+     "value": "엔터티 타입 · 속성 · 관계 · 지표(DAX) · 자연어 규칙 · 데이터 바인딩 · 네임스페이스",
+     "src": "Microsoft Learn"
+    },
+    {
+     "label": "표준 연결",
+     "value": "RDF·Turtle·OWL 가져오기, RDF·Turtle 내보내기",
+     "src": "Microsoft Learn"
+    },
+    {
+     "label": "권한",
+     "value": "OneLake 보안 + 원천 RLS·OLS·CLS 준수",
+     "src": "Microsoft Learn"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2024-11",
+     "text": "Anthropic MCP 공개 (에이전트 도구 표준)"
+    },
+    {
+     "t": "2025-09-23",
+     "text": "Snowflake 등 OSI 발표"
+    },
+    {
+     "t": "2025-11",
+     "text": "Fabric IQ · 온톨로지 프리뷰 발표",
+     "hot": true
+    },
+    {
+     "t": "2026",
+     "text": "새 온톨로지 경험 기본값, 그래프 실행은 선택형으로 정리"
+    },
+    {
+     "t": "2027-01-31",
+     "text": "옛 온톨로지 경험 종료 예정"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "수요",
+     "title": "에이전트의 뜻 부족",
+     "text": "AI 에이전트가 테이블·열 이름만으로는 비즈니스 뜻을 몰라 틀린 답을 냈어요."
+    },
+    {
+     "stage": "자산",
+     "title": "Power BI 모델 재사용",
+     "text": "고객이 이미 가진 의미 모델에서 온톨로지를 생성해 진입 장벽을 낮췄어요."
+    },
+    {
+     "stage": "경쟁",
+     "title": "팔란티어 효과",
+     "text": "온톨로지가 AI 시대의 핵심 층으로 주목받으면서 대형 플랫폼이 직접 뛰어들었어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "누리가 Fabric 온톨로지로 AIP를 대신할 수 있나요?",
+     "a": "분석·질의는 상당 부분 가능할 수 있어요. 작업지시·부품 예약 같은 쓰기 액션과 승인 흐름이 어디까지 되는지 직접 확인해야 해요(2026-10 문서의 핵심 개념에는 액션이 없어요)."
+    },
+    {
+     "q": "RDF/OWL 가져오기·내보내기는 왜 중요하나요?",
+     "a": "정의를 W3C 표준 형식으로 옮길 수 있어 락인을 줄여요. 단, 지원 안 되는 요소는 빠질 수 있어요."
+    },
+    {
+     "q": "프리뷰 기능에 본 업무를 올려도 되나요?",
+     "a": "프리뷰는 바뀔 수 있어요. 실험은 하되 운영 핵심은 GA와 지원 조건을 확인한 뒤 올려요."
+    }
+   ],
+   "after": [
+    "Microsoft는 새 온톨로지 경험을 기본값으로 바꾸고, 옛 경험 사용자에게 이전을 안내하고 있어요."
+   ],
+   "sources": [
+    {
+     "title": "Microsoft Learn — Ontology (Fabric IQ) overview",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "n.d."
+    },
+    {
+     "title": "Microsoft Fabric Blog — From data platform to intelligence platform: introducing Fabric IQ",
+     "url": "https://blog.fabric.microsoft.com/en-US/blog/from-data-platform-to-intelligence-platform-introducing-microsoft-fabric-iq/",
+     "date": "2025-11"
+    },
+    {
+     "title": "Business Wire — Snowflake, Salesforce, dbt Labs and more launch Open Semantic Interchange",
+     "url": "https://www.businesswire.com/news/home/20250923902448/en/Snowflake-Salesforce-dbt-Labs-and-More-Revolutionize-Data-Readiness-for-AI-with-Open-Semantic-Interchange-Initiative",
+     "date": "2025-09-23"
+    },
+    {
+     "title": "Anthropic — Introducing the Model Context Protocol",
+     "url": "https://www.anthropic.com/news/model-context-protocol",
+     "date": "2024-11-25"
+    }
+   ],
+   "caveat": "기능 범위는 2026-10 문서 기준이며 프리뷰라 바뀔 수 있어요. GA 시점은 확인하지 못했어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "월요일, 락인 질문",
+   "scene": [
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "나중에 팔란티어에서 나가면 뭘 잃어요?"
+    },
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "데이터는 우리 거잖아요."
+    }
+   ],
+   "q": "가장 정확한 답은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "아무것도 안 잃는다",
+     "ok": false,
+     "why": "앱·규칙·로직은 다시 만들어야 해요."
+    },
+    {
+     "k": "B",
+     "t": "원천 데이터는 남지만 온톨로지 정의·액션·앱·로직은 재구축 대상",
+     "ok": true,
+     "why": "락인의 실체예요."
+    },
+    {
+     "k": "C",
+     "t": "데이터도 다 잃는다",
+     "ok": false,
+     "why": "보통 원천 데이터는 꺼낼 수 있어요."
+    }
+   ],
+   "explain": "데이터보다 위에 쌓은 것이 갇혀요.",
+   "mixed": false
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "계약서 부록",
+   "scene": [
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "계약 초안에 해지 조항이 한 줄뿐이에요."
+    },
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "뭘 더 넣어요?"
+    }
+   ],
+   "q": "무엇을 추가할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "해지 시 산출물 목록과 반출 형식",
+     "ok": true,
+     "why": "출구 비용을 줄여요."
+    },
+    {
+     "k": "B",
+     "t": "공급사 로고 사용 조항",
+     "ok": false,
+     "why": "핵심이 아니에요."
+    },
+    {
+     "k": "C",
+     "t": "아무것도 안 넣음",
+     "ok": false,
+     "why": "나중에 협상력이 없어요."
+    }
+   ],
+   "explain": "들어갈 때 나갈 문을 만들어요.",
+   "mixed": false
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "비용 질문",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "첫해 할인 50%래요(가상)."
+    },
+    {
+     "name": "나",
+     "role": "도입 담당",
+     "text": "3년째는요?"
+    }
+   ],
+   "q": "무엇을 확인할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "첫해 가격만",
+     "ok": false,
+     "why": "이후 비용을 놓쳐요."
+    },
+    {
+     "k": "B",
+     "t": "비용이 무엇에 비례해 늘고, 3년 TCO가 얼마인지",
+     "ok": true,
+     "why": "확장할수록 중요해요."
+    },
+    {
+     "k": "C",
+     "t": "가격 협상 포기",
+     "ok": false,
+     "why": "손해예요."
+    }
+   ],
+   "explain": "단가보다 비용 구조.",
+   "mixed": false
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "BMA 사례 공유",
+   "scene": [
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "영국 의사들이 팔란티어에 반대했대요."
+    },
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "우리는 병원이 아니잖아요."
+    }
+   ],
+   "q": "누리에 주는 시사점은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "무관하다",
+     "ok": false,
+     "why": "공급사 평판은 회사 단위로 와요."
+    },
+    {
+     "k": "B",
+     "t": "공급사 평판·데이터 관할 리스크를 메모에 넣는다",
+     "ok": true,
+     "why": "승객 데이터를 다루는 누리도 해당돼요."
+    },
+    {
+     "k": "C",
+     "t": "즉시 계약 중단",
+     "ok": false,
+     "why": "근거 없는 과잉 반응이에요."
+    }
+   ],
+   "explain": "리스크는 기록하고 관리해요.",
+   "mixed": false
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "용도별 권한",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 반장",
+     "text": "정비사 기록이 성과 평가에 쓰이면 다들 싫어해요."
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "BMA도 직접 진료 외 사용을 문제 삼았죠."
+    }
+   ],
+   "q": "설계를 어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "모든 용도에 같은 권한",
+     "ok": false,
+     "why": "반발이 커져요."
+    },
+    {
+     "k": "B",
+     "t": "작업 배정용과 성과 분석용 권한·동의를 분리",
+     "ok": true,
+     "why": "용도를 좁힐 수 있어요."
+    },
+    {
+     "k": "C",
+     "t": "정비사 데이터 미사용",
+     "ok": false,
+     "why": "자격 확인을 못 해요."
+    }
+   ],
+   "explain": "용도별 분리가 신뢰를 지켜요.",
+   "mixed": true
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "관리자 권한",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "운영 편하게 공급사 엔지니어에게 전체 관리자 권한 줄까요?"
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "통제자는 우리예요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "전체 권한 부여",
+     "ok": false,
+     "why": "통제권이 이름뿐이 돼요."
+    },
+    {
+     "k": "B",
+     "t": "내부 관리자 + 공급사는 요청-승인 접근, 감사 로그",
+     "ok": true,
+     "why": "실제 통제권을 지켜요."
+    },
+    {
+     "k": "C",
+     "t": "공급사 접근 전면 금지",
+     "ok": false,
+     "why": "지원을 못 받아요."
+    }
+   ],
+   "explain": "권한과 기록이 통제권이에요.",
+   "mixed": false
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "Fabric 제안",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "우리 Fabric에 온톨로지 기능이 생겼대요. 이걸로 대신하죠."
+    },
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "현장 버튼은요?"
+    }
+   ],
+   "q": "먼저 할 일은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "바로 AIP 해지",
+     "ok": false,
+     "why": "확인 없이 결정해요."
+    },
+    {
+     "k": "B",
+     "t": "Fabric 온톨로지로 정비 모델 2일 실험 + 액션·승인 지원 범위 확인",
+     "ok": true,
+     "why": "사실로 비교해요."
+    },
+    {
+     "k": "C",
+     "t": "Fabric 무시",
+     "ok": false,
+     "why": "좋은 대안을 놓쳐요."
+    }
+   ],
+   "explain": "프리뷰 기능은 실험으로 확인해요.",
+   "mixed": false
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "분석 vs 운영",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "다 온톨로지라는데 뭐가 달라요?"
+    },
+    {
+     "name": "나",
+     "role": "도입 담당",
+     "text": "유스케이스를 나눠 보죠."
+    }
+   ],
+   "q": "비교의 기준은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "화면 디자인",
+     "ok": false,
+     "why": "핵심이 아니에요."
+    },
+    {
+     "k": "B",
+     "t": "유스케이스가 묻기(분석)인지 하기(쓰기·승인)인지",
+     "ok": true,
+     "why": "행동 층 필요도가 갈라요."
+    },
+    {
+     "k": "C",
+     "t": "회사 시가총액",
+     "ok": false,
+     "why": "무관해요."
+    }
+   ],
+   "explain": "명사는 비슷하고 동사가 달라요.",
+   "mixed": false
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "지표 정의 위치",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "AOG 시간 정의가 Power BI랑 AIP에 따로 있어요."
+    },
+    {
+     "name": "준호",
+     "role": "정비 반장",
+     "text": "숫자가 달라요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "두 곳 유지",
+     "ok": false,
+     "why": "숫자가 계속 어긋나요."
+    },
+    {
+     "k": "B",
+     "t": "한 곳을 원본으로 정하고 다른 곳은 참조",
+     "ok": true,
+     "why": "의미 층의 목적이에요."
+    },
+    {
+     "k": "C",
+     "t": "지표 삭제",
+     "ok": false,
+     "why": "필요한 지표예요."
+    }
+   ],
+   "explain": "정의는 한 곳, 사용은 여러 곳.",
+   "mixed": true
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "오픈 스택 제안",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "Postgres + 그래프 + MCP로 직접 만들면 라이선스 0원이에요."
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "감사는요?"
+    }
+   ],
+   "q": "가장 먼저 검증할 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "라이선스 비용",
+     "ok": false,
+     "why": "이미 0이라고 했어요."
+    },
+    {
+     "k": "B",
+     "t": "액션 하나를 권한·규칙·감사까지 만들어 소요 시간 측정",
+     "ok": true,
+     "why": "진짜 비용이 드러나요."
+    },
+    {
+     "k": "C",
+     "t": "아이콘 디자인",
+     "ok": false,
+     "why": "무관해요."
+    }
+   ],
+   "explain": "행동 층이 가장 비싸요.",
+   "mixed": false
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "에이전트 API",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "에이전트용 쓰기 API는 권한 체크 없이 빠르게 따로 만들죠."
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "그건…"
+    }
+   ],
+   "q": "판단은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "따로 빠르게",
+     "ok": false,
+     "why": "권한·감사 우회가 생겨요."
+    },
+    {
+     "k": "B",
+     "t": "사람과 같은 액션 경로를 에이전트도 지나게",
+     "ok": true,
+     "why": "권한 상속이 06장 원칙이에요."
+    },
+    {
+     "k": "C",
+     "t": "에이전트 금지",
+     "ok": false,
+     "why": "가치를 버려요."
+    }
+   ],
+   "explain": "06장 권한 상속과 연결돼요.",
+   "mixed": true
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "검색 인덱스 권한",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "정비 매뉴얼을 벡터 인덱스에 넣었어요."
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "보안 등급 문서도요?"
+    }
+   ],
+   "q": "무엇을 확인할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "인덱스는 권한 무관",
+     "ok": false,
+     "why": "권한이 새요."
+    },
+    {
+     "k": "B",
+     "t": "사용자 권한으로 검색 결과를 거르는지",
+     "ok": true,
+     "why": "복사된 곳에서 권한이 새기 쉬워요."
+    },
+    {
+     "k": "C",
+     "t": "인덱스 삭제",
+     "ok": false,
+     "why": "기능을 버려요."
+    }
+   ],
+   "explain": "원천 밖 복사본에도 같은 권한.",
+   "mixed": false
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "적합도 판단",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "우리가 팔란티어에 맞는 회사예요?"
+    },
+    {
+     "name": "나",
+     "role": "도입 담당",
+     "text": "세 조건으로 보죠."
+    }
+   ],
+   "q": "누리에 해당하는 강한 조건은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "매출 차트만 필요",
+     "ok": false,
+     "why": "누리와 달라요."
+    },
+    {
+     "k": "B",
+     "t": "매일 많은 정비 결정 + 항공 당국 감사 요구",
+     "ok": true,
+     "why": "운영 결정·감사 조건에 해당해요."
+    },
+    {
+     "k": "C",
+     "t": "개발자 100명 보유",
+     "ok": false,
+     "why": "누리 상황이 아니에요(가상)."
+    }
+   ],
+   "explain": "운영 결정과 감사가 핵심.",
+   "mixed": false
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "혼합안",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "승객 분석은 Fabric, 정비 운영은 AIP로 나누죠."
+    },
+    {
+     "name": "준호",
+     "role": "정비 반장",
+     "text": "항공기 정의가 두 개 되는 거 아니에요?"
+    }
+   ],
+   "q": "혼합안의 조건은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "정의를 따로 둬도 된다",
+     "ok": false,
+     "why": "숫자가 어긋나요."
+    },
+    {
+     "k": "B",
+     "t": "항공기 등 공유 개념의 원본과 동기화 규칙을 정한다",
+     "ok": true,
+     "why": "혼합의 핵심 위험을 관리해요."
+    },
+    {
+     "k": "C",
+     "t": "혼합 금지",
+     "ok": false,
+     "why": "합리적 선택지를 버려요."
+    }
+   ],
+   "explain": "공유 개념 정의를 맞춰요.",
+   "mixed": false
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "금요일, 결정 메모",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "결론만 'AIP 계속'으로 쓰면 되죠?"
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "다시 볼 조건도요."
+    }
+   ],
+   "q": "메모 마지막에 무엇을 둘까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "결론 한 줄",
+     "ok": false,
+     "why": "판단 근거가 부족해요."
+    },
+    {
+     "k": "B",
+     "t": "추천 + 이유 + 다시 볼 조건(비용 상한, 대안 GA)",
+     "ok": true,
+     "why": "변화에 대응해요."
+    },
+    {
+     "k": "C",
+     "t": "공급사 소개",
+     "ok": false,
+     "why": "핵심이 아니에요."
+    }
+   ],
+   "explain": "결정은 조건과 함께 써요.",
+   "mixed": false
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "Microsoft Learn — What is Ontology (Preview)? (Fabric IQ)",
+   "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+   "min": 20,
+   "lang": "en",
+   "what": "Fabric 온톨로지의 구성 요소·바인딩·권한·RDF 가져오기를 공식 문서로 읽어요.",
+   "day": 3
+  },
+  {
+   "id": "l2",
+   "title": "Snowflake Docs — Overview of semantic views",
+   "url": "https://docs.snowflake.com/en/user-guide/views-semantic/overview",
+   "min": 15,
+   "lang": "en",
+   "what": "논리 테이블·관계·지표로 의미 층을 만드는 방식을 봐요.",
+   "day": 3
+  },
+  {
+   "id": "l3",
+   "title": "Palantir Docs — Ontology SDK overview",
+   "url": "https://www.palantir.com/docs/foundry/ontology-sdk/overview/",
+   "min": 15,
+   "lang": "en",
+   "what": "외부 코드로 온톨로지에 붙는 방법과 그 한계(출구 전략)를 생각하며 읽어요.",
+   "day": 1
+  },
+  {
+   "id": "l4",
+   "title": "BMA — ARM 2025 resolution on health information management and IT",
+   "url": "https://www.bma.org.uk/bma-media-centre/arm-2025-bma-passes-resolution-on-health-information-management-and-information-technology",
+   "min": 10,
+   "lang": "en",
+   "what": "의사 단체가 FDP·팔란티어에 반대한 이유를 원문으로 읽어요.",
+   "day": 2
+  },
+  {
+   "id": "l5",
+   "title": "Palantir Docs — Action types overview",
+   "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+   "min": 15,
+   "lang": "en",
+   "what": "직접 만들 때 무엇을 재현해야 하는지 액션 타입 기능 목록으로 확인해요.",
+   "day": 4
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "누리 AIP 본 도입 결정 메모를 2쪽으로 써 보세요. 세 갈래(계속 / 다른 플랫폼 / 직접 만들기)를 같은 기준으로 비교하고 추천 하나를 고르세요.",
+  "template": [
+   "상태 (제안 / 승인)",
+   "결정할 것: 본 도입 범위와 기간",
+   "선택지 3개 비교표: 행동 레이어 · 권한/감사 · 데이터 위치 · 비용 구조 · 인력 · 출구",
+   "리스크: 락인 · 비용 · 윤리/평판 · 현장 수용",
+   "출구 전략: 데이터·온톨로지 반출 형식, 해지 조건",
+   "추천과 이유",
+   "다시 볼 조건 (예: 2년 뒤 비용, 대안 제품 GA)"
+  ]
+ },
+ "check": [
+  "Story (누리모빌리티, team, cost figures in problems) is fictional; all money numbers in problems are marked (가상).",
+  "Microsoft Fabric IQ ontology: preview status, entity types/properties/relationships/metrics/natural-language rules/bindings, RDF/Turtle/OWL import & RDF/Turtle export, OneLake security incl. RLS/OLS/CLS, old experience retires 2027-01-31 — read from Microsoft Learn overview (ms.date 2026-10-16) via WebFetch. Announced at Ignite Nov 2025 (Fabric blog; curl 403, confirmed by search).",
+  "Info-Tech note that Microsoft had not used the term 'ontology' before — from search summary of Info-Tech/SoftwareReviews; framed as an analyst view.",
+  "Snowflake semantic views (logical tables, relationships, facts, dimensions, metrics; used by Cortex Analyst/Agents) — Snowflake docs via WebFetch; GA status not stated, so not claimed.",
+  "Databricks metric views (define metrics once in Unity Catalog, YAML) — Databricks docs via search; release stage unclear, not claimed.",
+  "OSI announced 2025-09-23 by Snowflake with Salesforce, dbt Labs, BlackRock, RelationalAI — Business Wire press release via search.",
+  "BMA ARM 2025 resolution (2025-06) and 2026-02 BMA guidance (ICE reason) — BMA site (curl 200) and Digital Health via search.",
+  "US Army EA facts as in module 07 (DefenseScoop 2025-07-31). MCP announced 2024-11-25 (Anthropic).",
+  "Palantir OSDK/action/ontology claims are from palantir.com/docs overview pages (curl 200).",
+  "Dropped: Palantir pricing figures, Storebrand divestment, Fabric IQ GA claims, Commons committee break-clause recommendation, market-size numbers (not verified)."
+ ]
+}

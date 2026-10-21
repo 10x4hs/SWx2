@@ -1,0 +1,2150 @@
+{
+  "version": 1,
+  "note": "node scripts/dev-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.",
+  "modules": [
+    {
+      "id": "onto-what",
+      "no": "01",
+      "title": "온톨로지란 무엇인가",
+      "short": "온톨로지란",
+      "q": "같은 단어가 시스템마다 다른 뜻일 때, '뜻'을 어떻게 기계에 적어 둘까?",
+      "sub": "존재론 · Gruber/Studer 정의 · 목록·분류·시소러스·온톨로지·지식그래프",
+      "doc": "한빛병원 온톨로지 도입 제안서 v0",
+      "goals": [
+        "Gruber·Studer 정의의 네 단어(개념화·명시·형식·공유)를 병원 예로 설명할 수 있어요.",
+        "통제 어휘·분류체계·시소러스·온톨로지·지식그래프의 차이를 구분할 수 있어요.",
+        "왜 뜻을 기계에 적어야 하는지, 그리고 온톨로지가 필요 없는 경우를 판단할 수 있어요."
+      ],
+      "story": {
+        "title": "“입원 환자가 42명이에요, 57명이에요?”",
+        "size": 3
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "같은 단어, 다른 뜻",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "철학의 존재론: 무엇이 있는가",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "포르피리오스의 나무: 분류의 조상",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "AI가 '온톨로지'를 빌려 온 이유",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "Gruber의 정의: 개념화의 명시적 명세",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "Studer의 네 단어: 형식 · 명시 · 공유 · 개념화",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "형식적이라는 말의 진짜 뜻",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "공유라는 말의 진짜 비용",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "목록: 통제 어휘",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "분류체계(택소노미): 위아래가 생기다",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "시소러스: 같은 말 · 넓은 말 · 관련 말",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "온톨로지와 지식그래프: 규칙과 사실",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "문자열이 아니라 '것': things, not strings",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "기계가 '뜻'을 알면 생기는 세 가지",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "AI 비서에게 왜 온톨로지가 필요한가",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "온톨로지가 답이 아닐 때",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "의미의 웹: 시맨틱 웹 비전",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "온톨로지는 무엇으로 이뤄지나",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "흔한 오해 다섯 가지",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "정리: 온톨로지 한 장 요약",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "mars-climate-orbiter",
+          "title": "단위의 뜻이 달라 잃어버린 화성 탐사선",
+          "day": 1
+        },
+        {
+          "id": "google-knowledge-graph",
+          "title": "Google 지식그래프: 문자열에서 '것'으로",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 세 개의 입원 환자 수",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "온톨로지 = 철학?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "주사제는 항생제의 하위?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "정의를 어디에 적을까",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "혼자 만든 완벽한 OWL",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "'형식적'이 왜 필요해요?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "약어집을 어떻게 옮길까",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "broader를 is-a로 써도 될까",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "온톨로지 vs 지식그래프",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "'MS'가 섞인 진단 칸",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "AI가 숫자를 지어냈다",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "범위를 어디까지",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "시맨틱 웹은 실패했나",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "DB를 갈아엎나요?",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "제안서 첫 문단",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "openHPI — Knowledge Graphs: Foundations and Applications (Harald Sack)",
+          "url": "https://open.hpi.de/courses/knowledgegraphs2023",
+          "min": 60,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Ontology Development 101 (Noy & McGuinness, Stanford)",
+          "url": "https://protege.stanford.edu/publications/ontology_development/ontology101.pdf",
+          "min": 40,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Stanford Encyclopedia of Philosophy — Logic and Ontology",
+          "url": "https://plato.stanford.edu/entries/logic-ontology/",
+          "min": 40,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Google — Introducing the Knowledge Graph: things, not strings",
+          "url": "https://blog.google/products/search/introducing-knowledge-graph-things-not/",
+          "min": 5,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Hogan et al., Knowledge Graphs (survey)",
+          "url": "https://arxiv.org/abs/2003.02320",
+          "min": 60,
+          "day": 3,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "onto-logic",
+      "no": "02",
+      "title": "논리와 추론",
+      "short": "논리·추론",
+      "q": "적어 둔 뜻으로부터, 기계는 무엇을 스스로 알아내고 어디서 멈춰야 할까?",
+      "sub": "집합·클래스·인스턴스 · 기술 논리 · TBox/ABox · OWA/CWA · UNA · 추론기 · 결정 가능성",
+      "doc": "한빛병원 추론 설계 메모 v1",
+      "goals": [
+        "클래스·인스턴스·관계를 집합으로 읽고 DL 기호(⊑ ⊓ ∃ ∀)로 병원 개념을 정의할 수 있어요.",
+        "포함·충족성·일관성·인스턴스 검사가 무엇이고 언제 쓰이는지 설명할 수 있어요.",
+        "열린/닫힌 세계와 고유 이름 가정의 차이로 OWL과 SHACL/SQL의 역할을 나누고, 프로필과 추론기를 고를 수 있어요."
+      ],
+      "story": {
+        "title": "“기록이 없으면 없는 거 아니에요?”",
+        "size": 3
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "클래스는 집합이에요",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "인스턴스: 집합의 원소",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "관계(속성)는 쌍의 집합",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "논리 기호 다섯 개만 알면 돼요",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "기술 논리(DL): 왜 1차 논리의 '일부'인가",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "TBox: 개념에 대한 규칙",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "ABox: 개체에 대한 사실",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "모델: 규칙을 만족하는 세계",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "포함 관계(subsumption) 계산",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "충족 가능성: 빈 클래스 찾기",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "일관성: 온톨로지 전체에 모순이 있나",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "인스턴스 검사와 실현(realization)",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "열린 세계 가정(OWA)",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "닫힌 세계 가정(CWA)이 맞는 곳",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "고유 이름 가정(UNA)이 없다",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "도메인 · 레인지 함정",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "추론기: HermiT · ELK와 친구들",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "결정 가능성과 계산 비용",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "프로필: 표현력을 덜고 속도를 얻다",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "정리: 논리가 주는 것과 대가",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "snomed-el-classification",
+          "title": "SNOMED CT: 36만 개 의학 개념을 추론기로 분류하다",
+          "day": 5
+        },
+        {
+          "id": "owl-pizza-teaching",
+          "title": "피자로 배운 OWL: 열린 세계가 가장 헷갈린다",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "포함 방향 헷갈림",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "병동은 클래스? 인스턴스?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "'항생제만 처방받은 환자'",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "규칙 엔진 vs DL",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "당뇨 명단 자동화",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "TBox와 ABox 어디에",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "빨간 클래스",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "모순 하나가 전체를",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "AI의 '인슐린 쓰는 당뇨 환자'",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "알레르기 기록이 없는 환자",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "주치의 누락 검사",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "김의사와 Dr. Kim",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "range로 타입 검사?",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "추론기 선택",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "기존 DB 위에서 질의",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "A Description Logic Primer (Krötzsch, Simančík, Horrocks)",
+          "url": "https://arxiv.org/abs/1201.4089",
+          "min": 60,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "W3C OWL 2 Primer",
+          "url": "https://www.w3.org/TR/owl2-primer/",
+          "min": 60,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "ISWC 2008 Tutorial — Reasoning for Ontology Engineering and Usage (videolectures)",
+          "url": "https://new.videolectures.net/videos/iswc08_moller_itsr",
+          "min": 90,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "DeBellis — New Protégé Pizza Tutorial",
+          "url": "https://www.michaeldebellis.com/post/new-protege-pizza-tutorial",
+          "min": 120,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "W3C OWL 2 Profiles — 5장 Computational Properties",
+          "url": "https://www.w3.org/TR/owl2-profiles/",
+          "min": 30,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "onto-rdf",
+      "no": "03",
+      "title": "RDF · RDFS · OWL · SPARQL · SHACL",
+      "short": "RDF 스택",
+      "q": "'뜻'을 기계가 읽게 적으려면, 어떤 표준으로 어떻게 쓰고 묻고 검사할까?",
+      "sub": "트리플 · IRI · Turtle · RDFS · OWL 2 · SPARQL · SHACL · SKOS · RDF 1.2",
+      "doc": "한빛 임상 어휘 RDF 설계서 v1",
+      "goals": [
+        "트리플·IRI·리터럴로 병원 데이터를 Turtle과 JSON-LD로 적을 수 있어요.",
+        "RDFS·OWL 2 구성자와 프로필(EL/QL/RL)의 쓰임과 대가를 설명하고, SPARQL로 역량 질문을 테스트할 수 있어요.",
+        "OWL(추론)과 SHACL(검사)의 차이를 열린/닫힌 세계로 설명하고, SKOS·RDF 1.2를 언제 쓸지 판단할 수 있어요."
+      ],
+      "story": {
+        "title": "\"말로 정한 뜻을, 이제 파일로 적어 주세요\"",
+        "size": 40
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "트리플: 주어 · 술어 · 목적어",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "IRI: 전 세계에서 하나뿐인 이름",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "리터럴: 값에는 타입과 언어가 붙어요",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "Turtle로 읽고 쓰기",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "빈 노드와 이름 붙은 그래프",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "RDFS: 클래스와 하위 클래스",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "domain · range는 검사가 아니라 추론이에요",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "JSON-LD: 개발자 JSON에 뜻을 붙이기",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "OWL 2: 클래스를 '조건'으로 정의하기",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "OWL 속성의 성질: 전이 · 역 · 함수",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "OWL 2 프로필: EL · QL · RL",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "owl:sameAs는 강력하고 위험해요",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "SPARQL: 그래프에 패턴으로 묻기",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "OPTIONAL · FILTER · 집계",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "CONSTRUCT · UPDATE · SERVICE",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "추론을 켠 질의: 엔테일먼트 체제",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "SHACL: 데이터의 모양 검사",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "왜 OWL이 있는데 SHACL이 따로 필요할까",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "SKOS: 분류표 · 용어집을 가볍게",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "RDF 1.2: 문장에 대한 문장(트리플 텀)",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "wdqs-split-2025",
+          "title": "너무 커진 공개 RDF 그래프, 둘로 나뉘다 — Wikidata 질의 서비스",
+          "day": 4
+        },
+        {
+          "id": "rdf-star-to-12",
+          "title": "'문장에 대한 문장'이 표준이 되기까지 — RDF-star에서 RDF 1.2로",
+          "day": 5
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 'RDF로 하자'는 말",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "검사 결과 '5.6 mmol/L'",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "환자 IRI에 등록번호?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "range 걸었는데 왜 막히지 않죠?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "domain이 만든 이상한 환자",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "출처별 데이터 관리",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "'당뇨 환자'를 자동으로",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "프로필 고르기",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "의뢰 병원 환자 연결",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "CQ를 SPARQL 테스트로",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "환자 수가 줄었어요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "'알레르기 없음' 화면",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "생년월일 누락 막기",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "약어 'DM'",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "'의심 진단'과 '확정 진단'",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "W3C RDF 1.1 Primer",
+          "url": "https://www.w3.org/TR/rdf11-primer/",
+          "min": 40,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "W3C OWL 2 Primer",
+          "url": "https://www.w3.org/TR/owl2-primer/",
+          "min": 90,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Wikidata SPARQL tutorial",
+          "url": "https://www.wikidata.org/wiki/Wikidata:SPARQL_tutorial",
+          "min": 60,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Validating RDF Data (Labra Gayo et al., 온라인 책)",
+          "url": "https://book.validatingrdf.com/",
+          "min": 90,
+          "day": 5,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "W3C SHACL 명세",
+          "url": "https://www.w3.org/TR/shacl/",
+          "min": 45,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "onto-graphs",
+      "no": "04",
+      "title": "그래프로 세상 잇기: 속성 그래프 · 지식그래프 · 엔터티 해소",
+      "short": "그래프와 KG",
+      "q": "뜻을 정한 개념들을, 실제 수많은 사실과 어떻게 이어 하나의 믿을 만한 그래프로 만들까?",
+      "sub": "LPG · RDF · Cypher · GQL · SQL/PGQ · 지식그래프 · Wikidata · 엔터티 해소 · 스키마 vs 온톨로지",
+      "doc": "한빛 임상 지식그래프 설계서 v1",
+      "goals": [
+        "속성 그래프(LPG)와 RDF의 차이를 설명하고, 관계 정보를 관계 속성·중간 노드·트리플 텀 중 무엇으로 둘지 고를 수 있어요.",
+        "Cypher/GQL·SQL/PGQ로 패턴과 경로 질의를 쓰고, 지식그래프의 정의와 Google KG·Wikidata·Amazon 사례를 비교할 수 있어요.",
+        "엔터티 해소·링킹 파이프라인을 설계하고, 스키마와 온톨로지의 경계와 KG 품질 지표를 정할 수 있어요."
+      ],
+      "story": {
+        "title": "\"뜻은 정했는데, 같은 환자가 세 명이에요\"",
+        "size": 300000
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "속성 그래프(LPG)의 생김새",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "RDF vs LPG: 무엇이 다른가",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "관계에 정보를 붙이는 세 가지 방법",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "그래프 DB를 쓰지 말아야 할 때",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "Cypher: 그림 그리듯 묻기",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "경로와 가변 길이 질의",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "GQL: 그래프 질의의 국제 표준",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "SQL/PGQ: 표를 그래프로 보기",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "지식그래프란 무엇인가",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "Google Knowledge Graph: 문자열이 아니라 사물",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "Wikidata: 모두가 고치는 공개 지식그래프",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "Amazon 상품 그래프: 지저분한 데이터로 KG 만들기",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "엔터티 해소: 같은 것을 같다고 알기",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "ER 파이프라인: 블로킹 → 비교 → 군집",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "엔터티 링킹: 글 속 말을 KG에 잇기",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "합치지 말고 '연결과 근거'를 저장하기",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "스키마와 온톨로지의 경계",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "그래프에 규칙 걸기: 제약 vs 셰이프",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "RDF ↔ LPG 오가기",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "지식그래프 품질: 정확·완전·최신·출처",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "google-kg-2012",
+          "title": "검색이 '사물'을 알게 된 날 — Google Knowledge Graph",
+          "day": 3
+        },
+        {
+          "id": "amazon-autoknow-2020",
+          "title": "수백만 종 상품을 한 그래프로 — Amazon AutoKnow",
+          "day": 3
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "Neo4j로 갈까요?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "입원 날짜는 어디에?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "보고서도 그래프로?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "중복 환자 노드",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "접촉 추적 질의가 안 끝나요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "표준 문법 규칙",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "그래프 DB 없이 시작하기",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "'우리도 KG 있어요'",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "동명이인 '김 교수'",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "중복 환자 합치기 기준",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "비교가 안 끝나요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "병합 취소 요청",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "라벨 이름 정하기",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p14",
+          "title": "AI 비서의 근거",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "품질 회의",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Neo4j GraphAcademy (Neo4j Fundamentals · Cypher Fundamentals)",
+          "url": "https://graphacademy.neo4j.com/",
+          "min": 60,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Stanford CS520: Knowledge Graphs",
+          "url": "https://web.stanford.edu/class/cs520/",
+          "min": 75,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Hogan et al., Knowledge Graphs (서베이 논문)",
+          "url": "https://arxiv.org/abs/2003.02320",
+          "min": 90,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "Wikibase DataModel Primer",
+          "url": "https://www.mediawiki.org/wiki/Wikibase/DataModel/Primer",
+          "min": 30,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Neo4j Cypher Manual — GQL conformance",
+          "url": "https://neo4j.com/docs/cypher-manual/current/appendix/gql-conformance/",
+          "min": 20,
+          "day": 2,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "onto-build",
+      "no": "05",
+      "title": "온톨로지 설계 실전 — 질문에서 릴리스까지",
+      "short": "설계 실전",
+      "q": "병원 데이터의 '뜻'을 담는 온톨로지는 어떤 순서로, 어떤 실수를 피하며 만들까?",
+      "sub": "역량 질문 · METHONTOLOGY · NeOn · ODP · 재사용 · Protégé · 버전 · 거버넌스 · SSSOM · R2RML",
+      "doc": "한빛병원 온톨로지 요구사항 명세서(ORSD) v0.1",
+      "goals": [
+        "역량 질문(CQ)으로 범위를 정하고, CQ를 SPARQL 테스트로 바꿀 수 있어요.",
+        "클래스/인스턴스, is-a/부분/역할, n항 관계 같은 설계 결정을 근거를 들어 내릴 수 있어요.",
+        "재사용·명명·버전·거버넌스·매핑(SSSOM, R2RML)을 포함한 릴리스 흐름을 설계할 수 있어요."
+      ],
+      "story": {
+        "title": "“그래서, 무엇부터 만들죠?”",
+        "size": 15
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "역량 질문(CQ): 온톨로지의 요구사항",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "CQ를 테스트로 바꾸기",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "METHONTOLOGY: 단계로 나눈 설계",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "NeOn: 재사용을 전제로 한 방법",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "클래스냐 인스턴스냐",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "is-a 남용: 부분·역할·상태는 하위 클래스가 아니에요",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "n항 관계: 관계에 정보가 붙을 때",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "온톨로지 설계 패턴(ODP)",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "재사용: 찾고, 가져오고, 일부만 떼기",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "상위 온톨로지에 맞추기(정렬)",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "Protégé와 WebProtégé",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "이름 짓기와 정의 쓰기",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "버전과 폐기(deprecation)",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "거버넌스: 누가 바꾸고, 어떻게 승인하나",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "매핑: 같은 뜻을 서로 다른 코드로 잇기",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "SSSOM: 매핑을 표로 공유하기",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "R2RML: 테이블을 그래프로",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "흔한 실수 점검: OOPS!와 ROBOT report",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "평가: 논리·질문·데이터·사람",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "작게 시작해 키우기: 첫 릴리스 범위",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "icd11-foundation",
+          "title": "ICD-11: 수천 명이 함께 고친 질병 분류를 '기초층 + 선형화'로 나누다",
+          "day": 4
+        },
+        {
+          "id": "sssom-2022",
+          "title": "매핑에도 '출처'를: SSSOM 표준의 등장",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, 어디서부터 시작하죠?",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "'최근'과 '높은'",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "만들까, 가져올까",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "중환자 클래스?",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "좌심실은 심장인가요",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "처방 정보를 어디에",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "import가 너무 무거워요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "이름을 바꾸고 싶어요",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "BFO를 다 배워야 하나요",
+          "day": 3,
+          "mixed": true
+        },
+        {
+          "id": "p10",
+          "title": "클래스를 지울까요",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "누가 승인하죠",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "같은 검사 맞아요?",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "자동 매칭 결과",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "DB를 다 옮겨야 하나요",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "릴리스 해도 될까요",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Ontology Development 101 (Noy & McGuinness, Stanford)",
+          "url": "https://protege.stanford.edu/publications/ontology_development/ontology101.pdf",
+          "min": 60,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "Protégé Desktop — Getting started",
+          "url": "https://protegeproject.github.io/protege/getting-started/",
+          "min": 40,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "OBO Academy (OBOOK) 튜토리얼",
+          "url": "https://oboacademy.github.io/obook/",
+          "min": 60,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "SSSOM 명세와 예시",
+          "url": "https://mapping-commons.github.io/sssom/",
+          "min": 30,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "W3C R2RML 권고안",
+          "url": "https://www.w3.org/TR/r2rml/",
+          "min": 40,
+          "day": 5,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "onto-standards",
+      "no": "06",
+      "title": "표준 온톨로지 지도 — 상위·의료·생명·금융·산업",
+      "short": "표준 지도",
+      "q": "바퀴를 다시 만들지 않으려면, 어떤 표준을 어디에 겹쳐 써야 할까?",
+      "sub": "BFO · DOLCE · schema.org · SNOMED CT · ICD-11/KCD · LOINC · RxNorm · FHIR · OMOP · GO · OBO · FIBO · ISO 15926 · Gaia-X",
+      "doc": "한빛병원 표준 용어 채택안 v1",
+      "goals": [
+        "상위 온톨로지(BFO, DOLCE)와 실용 어휘(schema.org)의 차이를 설명할 수 있어요.",
+        "SNOMED CT·ICD/KCD·LOINC·RxNorm·FHIR·OMOP의 역할을 구분하고 병원 구조에 겹쳐 배치할 수 있어요.",
+        "GO·OBO·FIBO·산업 표준을 보며 표준 선택 기준(범위·관리·라이선스·생태계)과 한계를 판단할 수 있어요."
+      ],
+      "story": {
+        "title": "“표준이 너무 많아요. 뭘 써야 하죠?”",
+        "size": 12
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "표준 온톨로지 지도 한눈에",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "BFO: 계속 있는 것과 일어나는 것",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "DOLCE와 여러 상위 온톨로지",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "schema.org: 웹을 위한 실용 어휘",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "SNOMED CT: 논리로 정의된 임상 용어",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "SNOMED CT를 쓴다는 것: 회원국·에디션·질의",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "ICD-10/11과 한국의 KCD",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "LOINC와 RxNorm: 검사와 약의 이름표",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "FHIR: 교환 형식, 뜻은 용어가 준다",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "용어 바인딩과 강도",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "OMOP CDM: 분석을 위한 공통 모양",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "FHIR vs OMOP vs 온톨로지: 무엇을 언제",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "Gene Ontology: 생명과학의 공통어",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "OBO Foundry: 함께 쓰려고 정한 규칙",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "FIBO: 금융의 온톨로지",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "산업·데이터 공간: ISO 15926, SSN/SOSA, Gaia-X",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "표준을 고르는 기준",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "용어 서버와 매핑 도구",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "SKOS로 표준과 우리 개념을 잇기",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "표준의 한계와 현실",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "ohdsi-omop",
+          "title": "OHDSI: 같은 모양, 같은 개념으로 전 세계 병원 데이터를 함께 분석하다",
+          "day": 3
+        },
+        {
+          "id": "korea-snomed-2020",
+          "title": "한국, 2020년 SNOMED International 회원국이 되다",
+          "day": 2
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "표준 목록부터",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "혈압은 무엇인가",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "schema.org로 다 할까요",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "하위 질환 포함",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "청구 코드 vs 임상 코드",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p06",
+          "title": "칼륨이 두 개",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p07",
+          "title": "FHIR로 보냈는데",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "바인딩 강도",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "연구용 데이터",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "유전체 결과 공유",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "우리만의 규칙",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p12",
+          "title": "모니터 측정값",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "표준 선택 회의",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "앱마다 다른 코드표",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "매핑률 95%",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "The Book of OHDSI — Ch.4 CDM · Ch.5 Standardized Vocabularies",
+          "url": "https://ohdsi.github.io/TheBookOfOhdsi/",
+          "min": 90,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "SNOMED International e-Learning",
+          "url": "https://elearning.ihtsdotools.org/",
+          "min": 60,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "HL7 FHIR — Using Codes in Resources",
+          "url": "https://hl7.org/fhir/terminologies.html",
+          "min": 40,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "WHO ICD-11 Browser",
+          "url": "https://icd.who.int/browse11",
+          "min": 20,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Basic Formal Ontology (BFO) — Guidebook·Tutorials",
+          "url": "https://basic-formal-ontology.org/",
+          "min": 45,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l6",
+          "title": "FIBO 명세 사이트",
+          "url": "https://spec.edmcouncil.org/fibo/",
+          "min": 30,
+          "day": 4,
+          "lang": "en"
+        }
+      ]
+    },
+    {
+      "id": "onto-ai",
+      "no": "07",
+      "title": "AI 시대의 온톨로지: 그라운딩 · GraphRAG · 시맨틱 레이어 · 에이전트",
+      "short": "AI와 온톨로지",
+      "q": "AI 비서가 그럴듯한 거짓말 대신 병원 데이터에 근거해 답하고, 안전하게 '일'까지 하려면 무엇이 필요할까?",
+      "sub": "환각 · 그라운딩 · GraphRAG · 시맨틱 레이어 · OSI · MCP · 액션·권한 · 평가",
+      "doc": "한빛 AI 비서 그라운딩 설계서 v1",
+      "goals": [
+        "LLM 환각의 원인과, RAG·GraphRAG·온톨로지 그라운딩이 각각 어떤 질문에 맞는지 설명할 수 있어요.",
+        "시맨틱 레이어와 온톨로지의 차이, OSI·MCP 같은 연결 표준의 역할을 구분할 수 있어요.",
+        "에이전트 행동에 필요한 객체·액션·권한·승인 지점과 평가 방법을 설계할 수 있어요."
+      ],
+      "story": {
+        "title": "“AI 비서가 반코마이신 용량을 교과서 값으로 말했어요”",
+        "size": 60
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "환각은 왜 생길까",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "그라운딩 = 답을 근거에 묶기",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "RAG의 기본과 빈틈",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "온톨로지가 그라운딩에 더하는 것",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "GraphRAG: 글에서 그래프를 뽑아 답하기",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "LLM이 뽑은 그래프 vs 설계한 온톨로지",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "GraphRAG의 비용과 변형들",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "질문을 그래프 질의로 바꾸기 (Text2Cypher·Text2SPARQL)",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "시맨틱 레이어란",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "시맨틱 레이어 vs 온톨로지",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "OSI: 시맨틱 정의를 옮겨 다니게",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "시맨틱 정의를 AI에 꽂는 통로: MCP",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "답하기에서 행동하기로",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "액션 = 파라미터 + 조건 + 결과 + 기록",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "권한은 사람을 따라가야 해요",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "사람 승인(Human-in-the-loop)을 어디에 둘까",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "LLM으로 온톨로지 초안 만들기",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "LLM으로 온톨로지 채우기 (추출·매핑)",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "평가: 무엇을 재야 하나",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "언제 온톨로지 없이도 될까",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "graphrag-2024",
+          "title": "Microsoft GraphRAG: '전체를 묻는 질문'에 그래프로 답하다",
+          "day": 2
+        },
+        {
+          "id": "fabric-iq-ontology",
+          "title": "Microsoft Fabric IQ: 데이터 플랫폼에 '온톨로지' 항목이 생기다",
+          "day": 3
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "월요일, AI 비서가 틀린 용량을 말했다",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "출처 링크 논쟁",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "두 약을 잇지 못하는 RAG",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "사고 보고서 전체 분석",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "추출 엔터티 중복",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p06",
+          "title": "인덱싱 비용 경고",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "재원일수 숫자가 둘",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "레이어냐 온톨로지냐",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "OSI 지원 주장",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "에이전트 계정",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "처방 변경 자동화 요청",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "조건을 프롬프트에?",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p13",
+          "title": "LLM 초안 온톨로지",
+          "day": 5,
+          "mixed": true
+        },
+        {
+          "id": "p14",
+          "title": "추출 알레르기 저장",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "평가 셋 만들기",
+          "day": 5,
+          "mixed": false
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "GraphRAG: LLM-Derived Knowledge Graphs for RAG (Alex Chao)",
+          "url": "https://www.youtube.com/watch?v=r09tJfON6kE",
+          "min": 15,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "DeepLearning.AI — Knowledge Graphs for RAG (Neo4j)",
+          "url": "https://www.deeplearning.ai/short-courses/knowledge-graphs-rag/",
+          "min": 60,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l3",
+          "title": "Neo4j GraphAcademy — Neo4j & Generative AI Fundamentals",
+          "url": "https://graphacademy.neo4j.com/courses/genai-fundamentals/",
+          "min": 120,
+          "day": 1,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "dbt Semantic Layer 문서",
+          "url": "https://docs.getdbt.com/docs/use-dbt-semantic-layer/dbt-sl",
+          "min": 30,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Microsoft Learn — Fabric IQ ontology (preview)",
+          "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+          "min": 25,
+          "day": 4,
+          "lang": "en"
+        },
+        {
+          "id": "l6",
+          "title": "ZeroCho TV — 팔란티어의 핵심 기술, 온톨로지 5분 정리 + 실습",
+          "url": "https://www.youtube.com/watch?v=165vVglFnps",
+          "min": 15,
+          "day": 4,
+          "lang": "ko"
+        }
+      ]
+    },
+    {
+      "id": "onto-world",
+      "no": "08",
+      "title": "왜 지금 뜨나 · 온톨로지 세계 동향",
+      "short": "세계 동향",
+      "q": "10년 넘게 '좋지만 비싼 것'이던 온톨로지가 왜 2025~2026년에 갑자기 경영진의 단어가 됐고, 우리는 무엇을 골라야 할까?",
+      "sub": "팔란티어 효과 · Fabric IQ · 시맨틱 뷰 · OSI · 벤더 지도 · 미국·EU·한국·일본·중국 · 시장 규모 · 쟁점",
+      "doc": "왜 지금 온톨로지인가 — 세계 동향과 한빛의 선택 (병원장 보고서)",
+      "goals": [
+        "2023년 이후 온톨로지가 다시 뜬 수요·공급 원인과 팔란티어 효과를 사실과 과장으로 나눠 설명할 수 있어요.",
+        "Microsoft·Snowflake·Databricks·그래프 벤더, 미국·EU·한국·일본·중국의 움직임을 출처와 함께 지도로 그릴 수 있어요.",
+        "시장 숫자를 정직하게 읽고, 락인·거버넌스 쟁점을 고려해 조직의 도입 순서를 제안할 수 있어요."
+      ],
+      "story": {
+        "title": "“요즘 다들 온톨로지 얘기하던데, 우리는 뭐가 다른가요?”",
+        "size": 5
+      },
+      "cards": [
+        {
+          "id": "c01",
+          "title": "온톨로지는 오래된 말인데 왜 지금 뜰까",
+          "day": 1
+        },
+        {
+          "id": "c02",
+          "title": "팔란티어 효과",
+          "day": 1
+        },
+        {
+          "id": "c03",
+          "title": "에이전트 붐이 온톨로지를 끌어올린 이유",
+          "day": 1
+        },
+        {
+          "id": "c04",
+          "title": "기대와 현실: 하이프를 읽는 법",
+          "day": 1
+        },
+        {
+          "id": "c05",
+          "title": "Microsoft Fabric IQ: 데이터 플랫폼 안의 온톨로지",
+          "day": 2
+        },
+        {
+          "id": "c06",
+          "title": "Snowflake·Databricks: 시맨틱 모델 경쟁",
+          "day": 2
+        },
+        {
+          "id": "c07",
+          "title": "그래프·시맨틱 전문 벤더 지도",
+          "day": 2
+        },
+        {
+          "id": "c08",
+          "title": "표준은 조용히 자라요",
+          "day": 2
+        },
+        {
+          "id": "c09",
+          "title": "미국: 국방·정부가 큰손",
+          "day": 3
+        },
+        {
+          "id": "c10",
+          "title": "유럽: 규제가 '공유 가능한 뜻'을 요구해요",
+          "day": 3
+        },
+        {
+          "id": "c11",
+          "title": "의료는 세계 공통 무대",
+          "day": 3
+        },
+        {
+          "id": "c12",
+          "title": "일본·중국: 다른 길",
+          "day": 3
+        },
+        {
+          "id": "c13",
+          "title": "한국 기업: 팔란티어 파트너십 붐",
+          "day": 4
+        },
+        {
+          "id": "c14",
+          "title": "한국 공공: 통계·도시·행정에 온톨로지",
+          "day": 4
+        },
+        {
+          "id": "c15",
+          "title": "한국 병원: OMOP과 의료데이터 중심병원",
+          "day": 4
+        },
+        {
+          "id": "c16",
+          "title": "한국의 강점과 빈자리",
+          "day": 4
+        },
+        {
+          "id": "c17",
+          "title": "시장 규모: 숫자를 정직하게 읽기",
+          "day": 5
+        },
+        {
+          "id": "c18",
+          "title": "앞으로의 쟁점 1: 이름 전쟁과 락인",
+          "day": 5
+        },
+        {
+          "id": "c19",
+          "title": "앞으로의 쟁점 2: 거버넌스·신뢰·사람",
+          "day": 5
+        },
+        {
+          "id": "c20",
+          "title": "한빛병원의 결정: 무엇을, 왜, 어디까지",
+          "day": 5
+        }
+      ],
+      "cases": [
+        {
+          "id": "army-palantir-ea-2025",
+          "title": "미 육군, 75개 계약을 하나로: 팔란티어 100억 달러 기업 계약",
+          "day": 3
+        },
+        {
+          "id": "korea-ontology-2025-26",
+          "title": "한국의 온톨로지 2025~2026: 기업 파트너십에서 국가 통계까지",
+          "day": 4
+        }
+      ],
+      "problems": [
+        {
+          "id": "p01",
+          "title": "병원장의 질문",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p02",
+          "title": "'팔란티어처럼 하자'",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p03",
+          "title": "데모의 함정",
+          "day": 1,
+          "mixed": false
+        },
+        {
+          "id": "p04",
+          "title": "Fabric 프리뷰",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p05",
+          "title": "벤더 비교표 첫 줄",
+          "day": 2,
+          "mixed": true
+        },
+        {
+          "id": "p06",
+          "title": "인수된 벤더",
+          "day": 2,
+          "mixed": false
+        },
+        {
+          "id": "p07",
+          "title": "100억 달러 보도",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p08",
+          "title": "EHDS 일정",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p09",
+          "title": "일본 사례 정정",
+          "day": 3,
+          "mixed": false
+        },
+        {
+          "id": "p10",
+          "title": "국내 사례 인용",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p11",
+          "title": "국가 통계 온톨로지",
+          "day": 4,
+          "mixed": false
+        },
+        {
+          "id": "p12",
+          "title": "OMOP 참여",
+          "day": 4,
+          "mixed": true
+        },
+        {
+          "id": "p13",
+          "title": "시장 규모 한 줄",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p14",
+          "title": "정의는 누구 것",
+          "day": 5,
+          "mixed": false
+        },
+        {
+          "id": "p15",
+          "title": "최종 보고서 구조",
+          "day": 5,
+          "mixed": true
+        }
+      ],
+      "lectures": [
+        {
+          "id": "l1",
+          "title": "Microsoft Learn — Fabric IQ ontology (preview) overview",
+          "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+          "min": 25,
+          "day": 2,
+          "lang": "en"
+        },
+        {
+          "id": "l2",
+          "title": "빅데이터닥터 — 팔란티어 온톨로지를 따라할 수 없는 이유",
+          "url": "https://www.youtube.com/watch?v=0rlg6Ee3hcw",
+          "min": 15,
+          "day": 1,
+          "lang": "ko"
+        },
+        {
+          "id": "l3",
+          "title": "European Commission — EHDS Regulation 안내",
+          "url": "https://health.ec.europa.eu/ehealth-digital-health-and-care/european-health-data-space-regulation-ehds_en",
+          "min": 20,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l4",
+          "title": "The Book of OHDSI",
+          "url": "https://ohdsi.github.io/TheBookOfOhdsi/",
+          "min": 60,
+          "day": 3,
+          "lang": "en"
+        },
+        {
+          "id": "l5",
+          "title": "Snowflake Docs — Overview of semantic views",
+          "url": "https://docs.snowflake.com/en/user-guide/views-semantic/overview",
+          "min": 20,
+          "day": 2,
+          "lang": "en"
+        }
+      ]
+    }
+  ]
+}

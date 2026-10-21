@@ -1,0 +1,536 @@
+{
+  "id": "aip-objects",
+  "no": "02",
+  "title": "온톨로지의 명사: 객체 · 속성 · 링크",
+  "short": "객체 모델",
+  "q": "흩어진 표를 '항공기', '작업지시' 같은 현실의 것으로 바꾸려면 무엇을 어떻게 정의해야 할까?",
+  "sub": "Object type · Property · Primary key · Title key · Link type · Interface · Object set · 시맨틱 vs 키네틱",
+  "doc": "정비 지연 시범: 객체 모델 설계서 v1",
+  "story": {
+    "title": "“HL8001이 세 시스템에서 세 가지 이름이에요.”",
+    "size": 3,
+    "body": [
+      "(가상 이야기) 1차 보고서가 '조건부 진행'으로 통과됐어요. 누리모빌리티 TF는 3개월 시범을 시작해요. 주제는 '정비 지연 때문에 생기는 결항 줄이기'예요.",
+      "태오가 데이터를 열어 보고 한숨을 쉬어요. \"같은 항공기가 MRO 시스템엔 'HL8001', 운항 시스템엔 '8001', ERP엔 자산번호 'A-2019-034'로 있어요. 작업지시 테이블은 컬럼이 140개고요.\"",
+      "준호 반장은 말해요. \"저는 표 말고, 비행기 하나 누르면 걸린 작업이랑 부품이 다 보였으면 좋겠어요.\" 민서는 \"나중에 AI가 이걸 보고 일정을 제안하려면 뭐가 필요해요?\"라고 물어요.",
+      "도입 담당인 나는 이번 주에 '정비 지연 시범: 객체 모델 설계서 v1'을 써야 해요. 어떤 객체 타입을 만들고, 키는 무엇으로 하고, 어떻게 서로 잇는지 정해야 해요."
+    ]
+  },
+  "goals": [
+    "Object type · object · property · primary key · title key · link type · interface · object set을 항공 정비 예로 설명하고, Palantir 문서 정의와 맞춰 말할 수 있어요.",
+    "데이터셋(표)이 객체 타입을 '뒷받침(backing)'하는 구조와 링크의 카디널리티(외래 키 vs 조인 데이터셋)를 설계할 수 있어요.",
+    "시맨틱(명사)과 키네틱(동사)의 구분, 디지털 트윈 비유의 한계, OWL 같은 고전 온톨로지와의 차이를 설명할 수 있어요."
+  ],
+  "cards": [
+    {
+      "id": "c01",
+      "day": 1,
+      "title": "온톨로지 = 조직의 '운영 레이어'",
+      "lead": "Palantir 문서는 온톨로지를 데이터셋·가상 테이블·모델 위에 놓여, 그것들을 현실의 것(장비·제품·주문)과 잇는 조직의 '운영 레이어'라고 정의해요.",
+      "idea": [
+        "표는 기계가 저장하기 좋은 모양이고, 사람은 '항공기 HL8001', '작업지시 WO-1123'처럼 현실의 것으로 생각해요. 온톨로지는 이 둘 사이의 번역층이에요.",
+        "한 번 번역해 두면 모든 앱과 AI가 같은 '항공기'를 봐요. 앱마다 다른 SQL로 다르게 정의하던 문제가 줄어요.",
+        "'운영'이라는 말이 중요해요. 분석용 모델이 아니라, 사람이 그 위에서 일하고 결정하고 고치는 공간이라는 뜻이에요."
+      ],
+      "hear": ["\"온톨로지에 올리면 다른 팀도 바로 써요.\"", "\"표 말고 객체로 생각하세요.\""],
+      "ask": ["이 객체를 쓸 앱과 사람은 누구인가요?", "같은 '항공기'를 다르게 정의하는 팀이 있나요?"],
+      "mine": "누리모빌리티에선 '항공기'를 세 시스템이 다르게 불러요. 온톨로지가 이걸 하나로 묶는 층이 돼요.",
+      "deep": ["Ontology overview 문서: \"an operational layer for the organization\", 데이터셋·가상 테이블·모델 위에서 현실 대응물과 연결.", "같은 문서: 온톨로지에 투자하는 목적은 '조직 규모의 더 나은 의사결정'이라고 적어요."],
+      "recall": {"q": "Palantir 문서가 온톨로지를 부르는 말은?", "a": "조직의 운영 레이어(operational layer)"},
+      "quiz": [{"q": "온톨로지가 표와 사람 사이에서 하는 일은?", "options": ["표를 지운다", "표를 현실의 것(객체) 단위로 번역해 모두가 같은 정의를 쓰게 한다", "표를 압축한다"], "answer": 1, "why": "같은 객체 정의를 앱·AI가 공유해요."}],
+      "sources": [{"title": "Palantir Docs — Ontology overview", "url": "https://www.palantir.com/docs/foundry/ontology/overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c02",
+      "day": 1,
+      "title": "표 ↔ 객체 대응표",
+      "lead": "문서는 쉬운 비유를 줘요. 객체 타입 ≈ 데이터셋, 객체 ≈ 행, 속성 ≈ 컬럼, 속성 값 ≈ 셀이에요.",
+      "idea": [
+        "이 비유로 시작하면 데이터 엔지니어가 바로 이해해요. '작업지시' 객체 타입 하나는 작업지시 표 하나와 비슷하고, 작업지시 한 건이 행 하나예요.",
+        "하지만 비유는 출발점일 뿐이에요. 객체에는 표에 없는 것이 붙어요. 사람이 읽는 이름(title), 다른 객체로의 링크, 그 객체에 할 수 있는 액션, 그리고 권한이에요.",
+        "그래서 '표를 그대로 객체로 올리기'는 흔한 실수예요. 컬럼 140개를 다 속성으로 만들기보다, 현장이 실제로 쓰는 것을 골라요."
+      ],
+      "steps": [
+        {"k": "데이터셋", "t": "→ 객체 타입 (작업지시)"},
+        {"k": "행", "t": "→ 객체 (WO-1123)"},
+        {"k": "컬럼", "t": "→ 속성 (상태, 예정일)"},
+        {"k": "셀", "t": "→ 속성 값 ('대기', 10-24)"}
+      ],
+      "hear": ["\"컬럼 다 올리지 마세요. 현장 화면에 쓸 것만.\""],
+      "ask": ["이 컬럼은 누가 어떤 결정에 쓰나요?"],
+      "mine": "작업지시 표 140개 컬럼 중 준호 반장이 매일 보는 건 15개 정도예요(가상). 그것부터 속성으로 만들어요.",
+      "deep": ["Core concepts 문서의 대응: object type ↔ dataset, object ↔ row, property ↔ column, property value ↔ cell."],
+      "recall": {"q": "객체 ≈ ?, 속성 ≈ ?", "a": "객체 ≈ 행(row), 속성 ≈ 컬럼(column)"},
+      "quiz": [{"q": "표 비유로 설명되지 않는 객체의 특징은?", "options": ["속성 값", "링크·액션·권한", "행"], "answer": 1, "why": "링크와 액션, 권한은 표에 없는 층이에요."}],
+      "sources": [{"title": "Palantir Docs — Core concepts", "url": "https://www.palantir.com/docs/foundry/ontology/core-concepts/", "date": "2026-10"}]
+    },
+    {
+      "id": "c03",
+      "day": 1,
+      "title": "Object type과 object",
+      "lead": "Object type은 현실의 '것이나 사건'의 스키마이고, object는 그 타입의 실제 하나예요. '항공기'는 타입, 'HL8001'은 객체예요.",
+      "idea": [
+        "객체 타입은 물건(항공기, 부품)일 수도, 사건(정비 작업, 결항)일 수도 있어요. 문서도 'entity or event'라고 둘 다 말해요.",
+        "사건을 객체로 만드는 게 중요해요. '결항'을 객체로 두면 결항마다 원인·비용·관련 작업지시를 붙일 수 있어요. 숫자 컬럼으로만 두면 이 연결이 사라져요.",
+        "좋은 객체 타입은 현장 말과 같아요. 준호 반장이 '작업 카드'라고 부르면 이름도 그렇게 맞추는 게 좋아요."
+      ],
+      "hear": ["\"이벤트도 객체로 만들어요.\""],
+      "ask": ["이건 사람들이 '하나, 둘' 셀 수 있는 것인가요?", "이 사건에 다른 것을 붙여야 하나요?"],
+      "mine": "시범의 첫 객체 타입 후보: 항공기, 작업지시, 부품, 격납고, 정비사, 운항편, 결항(사건).",
+      "deep": ["Core concepts: object type = \"the schema definition of a real-world entity or event\"; object = \"a single instance of an object type\"."],
+      "recall": {"q": "'결항'은 객체 타입이 될 수 있나요?", "a": "네. 사건(event)도 객체 타입이 될 수 있어요."},
+      "quiz": [{"q": "다음 중 객체(인스턴스)는?", "options": ["항공기", "HL8001", "등록번호"], "answer": 1, "why": "항공기는 타입, 등록번호는 속성, HL8001은 객체예요."}],
+      "sources": [{"title": "Palantir Docs — Core concepts", "url": "https://www.palantir.com/docs/foundry/ontology/core-concepts/", "date": "2026-10"}, {"title": "Palantir Docs — Object types overview", "url": "https://www.palantir.com/docs/foundry/object-link-types/object-types-overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c04",
+      "day": 1,
+      "title": "시맨틱과 키네틱: 명사와 동사",
+      "lead": "문서는 온톨로지를 시맨틱 요소(객체·속성·링크)와 키네틱 요소(액션·함수·동적 보안)로 나눠요. 이번 장은 명사, 다음 장은 동사예요.",
+      "idea": [
+        "시맨틱 = '무엇이 있나'예요. 항공기, 그 상태, 어떤 작업지시와 이어졌는지.",
+        "키네틱 = '어떻게 바뀌나'예요. 작업지시를 배정하고, 일정을 미루고, 그 변경을 누가 할 수 있는지.",
+        "명사가 엉성하면 동사도 엉성해져요. '정비사에게 작업 배정' 액션을 만들려면 정비사와 작업지시 객체, 그 사이 링크가 먼저 있어야 해요."
+      ],
+      "hear": ["\"객체만 만들면 반쪽이에요, 액션까지 가야 운영이죠.\""],
+      "ask": ["이 객체에 나중에 어떤 행동(액션)을 하게 될까요?"],
+      "mine": "설계서에 객체마다 '나중에 할 액션 후보' 칸을 둬요. 03장에서 그대로 이어서 써요.",
+      "deep": ["Ontology overview: \"semantic elements (objects, properties, links) and kinetic elements (actions, functions, dynamic security)\"."],
+      "recall": {"q": "키네틱 요소 세 가지는?", "a": "액션(actions), 함수(functions), 동적 보안(dynamic security)"},
+      "quiz": [{"q": "다음 중 시맨틱 요소는?", "options": ["링크 타입", "액션 타입", "함수"], "answer": 0, "why": "링크는 명사 쪽(무엇이 어떻게 이어졌나)이에요."}],
+      "sources": [{"title": "Palantir Docs — Ontology overview", "url": "https://www.palantir.com/docs/foundry/ontology/overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c05",
+      "day": 2,
+      "title": "Property와 기본 타입",
+      "lead": "Property는 객체의 특징을 정의해요. 문자열·숫자·날짜뿐 아니라 지리 좌표, 시계열, 벡터, 첨부 파일 같은 타입도 있어요.",
+      "idea": [
+        "속성 타입을 정확히 고르면 앱이 알아서 맞는 모양을 보여 줘요. 위치는 지도에, 시계열은 차트에, 날짜는 달력에요.",
+        "항공 정비에서는 '엔진 온도 기록'을 시계열 속성으로, '격납고 위치'를 지리 좌표로, '작업 사진'을 미디어로 두는 식이에요.",
+        "벡터 타입은 AI 검색(의미 검색)에 쓰여요. 작업 메모를 벡터로 바꿔 두면 '비슷한 결함 기록'을 찾을 수 있어요(06장)."
+      ],
+      "hear": ["\"센서 값은 시계열 속성으로 붙여요.\""],
+      "ask": ["이 값은 하나인가요, 시간에 따라 바뀌는 연속값인가요?"],
+      "mine": "항공기 객체: 등록번호(String), 기종(String), 누적 비행시간(Double), 현재 위치(Geopoint), 엔진 센서(Time Series).",
+      "deep": ["Properties 문서의 기본 타입: String, Integer, Short, Date, Timestamp, Boolean, Byte, Long, Float, Double, Decimal, Vector, Array, Struct, Media Reference, Time Series, Geotemporal Series, Attachment, Geopoint, Geoshape, Marking, Cipher.", "OSv2는 객체 타입당 최대 2,000개 속성을 지원해요(Object backend 문서)."],
+      "recall": {"q": "센서 기록에 맞는 속성 타입은?", "a": "Time Series(시계열)"},
+      "quiz": [{"q": "'비슷한 결함 메모 찾기'에 쓰이는 속성 타입은?", "options": ["Boolean", "Vector", "Short"], "answer": 1, "why": "벡터 임베딩으로 의미 검색을 해요."}],
+      "sources": [{"title": "Palantir Docs — Properties overview", "url": "https://www.palantir.com/docs/foundry/object-link-types/properties-overview/", "date": "2026-10"}, {"title": "Palantir Docs — Object backend overview", "url": "https://www.palantir.com/docs/foundry/object-backend/overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c06",
+      "day": 2,
+      "title": "Primary key: 객체의 주민번호",
+      "lead": "Primary key는 객체 하나를 유일하게 가리키는 속성이에요. 문서는 String·Integer·Short를 권장하고, 실수(Float/Double)나 배열은 키로 못 쓰게 해요.",
+      "idea": [
+        "키가 흔들리면 모든 게 흔들려요. 링크는 키로 이어지고, 액션 기록도 키로 남아요. 키가 바뀌면 '같은 항공기'가 둘이 될 수 있어요.",
+        "그래서 키는 바뀌지 않는 값이어야 해요. 항공기 등록번호는 다른 나라로 팔리면 바뀔 수 있어요. 기체 일련번호(MSN)가 더 안정적일 수 있어요.",
+        "날짜·시각은 키로 권장되지 않아요. 저장 형식과 보이는 형식이 달라 충돌하거나 이상하게 동작할 수 있다고 문서가 경고해요. Boolean 키는 객체를 2개로 제한해 버려요."
+      ],
+      "steps": [
+        {"k": "1 · 후보", "t": "등록번호, MSN, ERP 자산번호"},
+        {"k": "2 · 안정성", "t": "평생 안 바뀌나?"},
+        {"k": "3 · 유일성", "t": "세 시스템 모두에서 하나인가?"},
+        {"k": "4 · 타입", "t": "String으로 저장"}
+      ],
+      "hear": ["\"등록번호는 키로 쓰지 마세요, 바뀌어요.\"", "\"합성 키는 문자열로 이어 붙여요.\""],
+      "ask": ["이 값은 평생 바뀌지 않나요?", "다른 시스템과 맞출 때 같은 값을 쓰나요?"],
+      "mine": "태오의 세 이름 문제: 키는 MSN(String)으로 하고, 'HL8001', '8001', 'A-2019-034'는 매핑 표로 MSN에 붙여요.",
+      "code": {"lang": "TypeScript", "text": "// 개념 예시: 항공기 키 설계\ntype Aircraft = {\n  msn: string;          // primary key: 바뀌지 않음\n  registration: string; // title key: 사람이 읽는 이름\n  model: string;\n  flightHours: number;\n};", "read": "msn이 객체를 유일하게 가리키는 키예요. registration은 화면에 보이는 이름이지만 바뀔 수 있어서 키로 쓰지 않아요."},
+      "deep": ["Properties 문서: 권장 키 타입 String·Integer·Short; Date·Timestamp·Boolean·Byte·Long은 비권장; Float·Double·Decimal·Array·Geopoint·Vector 등은 키로 불가."],
+      "recall": {"q": "좋은 primary key의 두 조건은?", "a": "유일하고, 바뀌지 않아야 해요."},
+      "quiz": [{"q": "항공기 키로 가장 안정적인 후보는?", "options": ["등록번호(매각 시 바뀔 수 있음)", "기체 일련번호(MSN)", "마지막 정비 날짜"], "answer": 1, "why": "MSN은 기체 평생 유지돼요. 날짜는 키로 비권장이에요."}],
+      "sources": [{"title": "Palantir Docs — Properties overview", "url": "https://www.palantir.com/docs/foundry/object-link-types/properties-overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c07",
+      "day": 2,
+      "title": "Title key: 사람이 부르는 이름",
+      "lead": "Title key는 화면에서 객체 이름으로 보이는 속성이에요. 키는 기계용, 타이틀은 사람용이에요.",
+      "idea": [
+        "MSN '1234'만 화면에 뜨면 준호 반장은 무슨 비행기인지 몰라요. 'HL8001 (A321neo)'처럼 보여야 해요.",
+        "그래서 키와 타이틀을 나눠요. 키는 안정성, 타이틀은 읽기 쉬움이 기준이에요. 타이틀은 바뀌어도 괜찮아요.",
+        "타이틀로 쓸 수 있는 타입은 문자열·숫자·날짜 등이고, 벡터·구조체·시계열·첨부 같은 건 안 돼요."
+      ],
+      "hear": ["\"검색 결과에 뜨는 이름이 타이틀이에요.\""],
+      "ask": ["현장에서 이 객체를 뭐라고 부르나요?"],
+      "mine": "작업지시 타이틀은 'WO-1123 · 좌측 엔진 보어스코프'처럼 번호+요약 문자열을 만들어 써요.",
+      "deep": ["Properties 문서: title key 가능 타입 String, Integer, Short, Date, Timestamp, Boolean, Byte, Long, Float, Double, Decimal, Geopoint, Cipher (Array는 내부 타입이 가능할 때만); Vector, Struct, Media Reference, Time Series, Attachment, Geoshape 등은 불가."],
+      "recall": {"q": "Primary key와 title key의 기준 차이는?", "a": "키는 안정성·유일성, 타이틀은 사람이 읽기 쉬움"},
+      "quiz": [{"q": "타이틀로 쓸 수 없는 타입은?", "options": ["String", "Time Series", "Integer"], "answer": 1, "why": "시계열은 타이틀이 될 수 없어요."}],
+      "sources": [{"title": "Palantir Docs — Properties overview", "url": "https://www.palantir.com/docs/foundry/object-link-types/properties-overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c08",
+      "day": 2,
+      "title": "Shared property: 같은 뜻은 한 번만 정의",
+      "lead": "Shared property는 여러 객체 타입에서 같이 쓰는 속성 정의예요. '격납고 코드'를 항공기·작업지시·부품 재고에서 같은 뜻으로 써요.",
+      "idea": [
+        "같은 뜻을 객체마다 따로 정의하면 이름과 형식이 조금씩 달라져요. 'hangar', 'HANGAR_CD', '격납고'가 섞여요.",
+        "공유 속성으로 한 번 정의하면 이름·타입·설명이 하나로 맞춰져요. 나중에 '격납고별로 모아 보기'가 쉬워져요.",
+        "트레이드오프: 공유 속성을 바꾸면 쓰는 모든 객체에 영향이 가요. 그래서 소유자와 변경 절차가 필요해요."
+      ],
+      "hear": ["\"이거 shared property로 빼죠.\""],
+      "ask": ["이 속성은 다른 객체에서도 같은 뜻인가요?", "바꾸면 누가 영향을 받나요?"],
+      "mine": "공유 후보: 격납고 코드, 기종 코드, 정비 등급. 소유자는 태오로 정해요.",
+      "deep": ["Core concepts: shared property = \"a property that can be used on multiple object types in your ontology\"."],
+      "recall": {"q": "공유 속성의 장점과 비용은?", "a": "장점: 뜻·형식 통일. 비용: 바꾸면 여러 객체에 영향"},
+      "quiz": [{"q": "공유 속성을 쓸 때 꼭 필요한 것은?", "options": ["소유자와 변경 절차", "색상", "더 많은 컬럼"], "answer": 0, "why": "변경 영향이 넓어서요."}],
+      "sources": [{"title": "Palantir Docs — Core concepts", "url": "https://www.palantir.com/docs/foundry/ontology/core-concepts/", "date": "2026-10"}]
+    },
+    {
+      "id": "c09",
+      "day": 3,
+      "title": "Link type: 객체 사이의 관계",
+      "lead": "Link type은 두 객체 타입 사이 관계의 스키마예요. '항공기 —(받는다)→ 작업지시'처럼요. 실제 링크 하나는 그 관계의 한 사례예요.",
+      "idea": [
+        "링크가 있으면 '따라가기'가 쉬워져요. 항공기 HL8001을 누르면 열린 작업지시들, 그 작업지시에 필요한 부품, 부품 재고가 있는 격납고까지 이어서 볼 수 있어요.",
+        "문서는 링크를 '두 데이터셋의 조인과 비슷하다'고 설명해요. 앱마다 조인을 다시 짜지 않고, 한 번 정의한 관계를 모두가 써요.",
+        "링크 이름은 양쪽 방향으로 붙여요. 항공기 쪽에선 '작업지시들', 작업지시 쪽에선 '대상 항공기'예요. 같은 두 타입 사이에 여러 링크가 있으면 이름이 겹치지 않아야 해요."
+      ],
+      "hear": ["\"Search Around로 링크 따라가 보세요.\""],
+      "ask": ["이 관계를 양쪽에서 뭐라고 부르나요?", "같은 두 객체 사이에 다른 관계도 있나요?"],
+      "mine": "핵심 링크: 항공기–작업지시, 작업지시–부품, 작업지시–정비사, 운항편–항공기, 결항–운항편.",
+      "deep": ["Link types 문서: 링크 타입은 두 객체 타입 사이 관계의 스키마이고, 두 데이터셋 조인과 비슷하다고 설명. 서로 다른 온톨로지의 객체 타입끼리는 링크를 지원하지 않아요.", "OSv2 기본 Search Around 한도는 100,000 객체예요(요청 시 상향)."],
+      "recall": {"q": "링크 타입을 표 세계에 비유하면?", "a": "두 데이터셋의 조인(join)"},
+      "quiz": [{"q": "링크가 없으면 생기는 일은?", "options": ["앱마다 조인을 따로 짜야 한다", "객체가 사라진다", "권한이 없어진다"], "answer": 0, "why": "관계를 한 번 정의해 공유하는 게 링크의 가치예요."}],
+      "sources": [{"title": "Palantir Docs — Link types overview", "url": "https://www.palantir.com/docs/foundry/object-link-types/link-types-overview/", "date": "2026-10"}, {"title": "Palantir Docs — Object backend overview", "url": "https://www.palantir.com/docs/foundry/object-backend/overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c10",
+      "day": 3,
+      "title": "카디널리티: 1:1, 다:1, 다:다",
+      "lead": "링크는 몇 대 몇인지(카디널리티)가 있어요. 1:1과 다:1은 외래 키로, 다:다는 조인 데이터셋으로 뒷받침해요.",
+      "idea": [
+        "다:1 예: 작업지시 여러 개가 항공기 하나를 향해요. 작업지시 객체에 '항공기 MSN' 속성(외래 키)을 두면 돼요.",
+        "다:다 예: 작업지시 하나에 정비사 여러 명, 정비사 한 명이 여러 작업지시. 이건 한쪽 속성으로 못 담아요. '작업지시 MSN–정비사 ID' 쌍을 담은 조인 데이터셋이 필요해요.",
+        "주의: 1:1은 '의도 표시'일 뿐 강제되지 않는다고 문서가 말해요. 데이터가 실제로 1:1인지 검사는 파이프라인에서 따로 해야 해요."
+      ],
+      "steps": [
+        {"k": "1:1", "t": "항공기 ↔ 현재 탑재 기록장치 (강제 안 됨)"},
+        {"k": "다:1", "t": "작업지시 → 항공기 (외래 키)"},
+        {"k": "다:다", "t": "작업지시 ↔ 정비사 (조인 데이터셋)"}
+      ],
+      "hear": ["\"다대다면 조인 테이블 하나 만들어 주세요.\""],
+      "ask": ["실제 데이터가 정말 1:1인가요, 예외가 있나요?", "다대다 조인 표는 어디서 오나요?"],
+      "mine": "정비사 배정 기록은 MRO 시스템의 '작업 서명' 표에서 뽑아 조인 데이터셋으로 만들어요.",
+      "code": {"lang": "TypeScript", "text": "// 개념 예시: 링크를 뒷받침하는 데이터\n// 다:1 — 작업지시에 외래 키\ntype WorkOrder = { woId: string; aircraftMsn: string };\n// 다:다 — 조인 데이터셋 한 행 = 링크 하나\ntype WoTechnician = { woId: string; techId: string };", "read": "aircraftMsn이 항공기 키를 가리키는 외래 키예요. 다대다는 (woId, techId) 쌍 한 행이 링크 하나가 돼요."},
+      "deep": ["Create link type 문서: 외래 키는 one-to-one·many-to-one을, 조인 테이블 데이터셋은 many-to-many를 지원. one-to-one은 \"not enforced\"."],
+      "recall": {"q": "다대다 링크는 무엇으로 뒷받침하나요?", "a": "두 객체의 키 쌍을 담은 조인 데이터셋"},
+      "quiz": [{"q": "1:1 카디널리티에 대해 맞는 것은?", "options": ["플랫폼이 엄격히 강제한다", "의도 표시이며 강제되지 않는다", "쓸 수 없다"], "answer": 1, "why": "문서가 강제되지 않는다고 명시해요."}],
+      "sources": [{"title": "Palantir Docs — Create a link type", "url": "https://www.palantir.com/docs/foundry/object-link-types/create-link-type/", "date": "2026-10"}]
+    },
+    {
+      "id": "c11",
+      "day": 3,
+      "title": "Object set: 객체의 묶음",
+      "lead": "Object set은 여러 객체의 모음이에요. '오늘 정비 예정인 A321 항공기들'처럼 필터나 링크 따라가기로 만들어요.",
+      "idea": [
+        "앱과 AI는 보통 객체 하나보다 묶음을 다뤄요. '이번 주 지연 위험 작업지시', '김포 격납고 정비사'처럼요.",
+        "묶음은 조건으로 정의할 수 있어요. 그러면 데이터가 바뀌면 묶음 내용도 따라 바뀌어요. 반대로 특정 시점의 목록을 고정해 저장할 수도 있어요.",
+        "링크 따라가기(Search Around)로도 만들어요. '지연 위험 작업지시 → 대상 항공기들' 하면 영향받는 항공기 묶음이 나와요."
+      ],
+      "hear": ["\"이 객체 세트를 화면에 바인딩해요.\""],
+      "ask": ["이 목록은 계속 바뀌어야 하나요, 그 시점으로 고정해야 하나요?"],
+      "mine": "준호 반장 첫 화면 = '내 격납고, 오늘 예정, 상태≠완료' 작업지시 객체 세트.",
+      "deep": ["Core concepts: object set = \"a collection of multiple object instances\".", "Object Explorer 문서는 객체 세트를 저장·공유하는 방법을 다뤄요."],
+      "recall": {"q": "객체 세트를 만드는 두 방법은?", "a": "필터(조건)와 링크 따라가기(Search Around)"},
+      "quiz": [{"q": "조건으로 정의한 객체 세트의 특징은?", "options": ["데이터가 바뀌면 내용도 바뀐다", "절대 안 바뀐다", "하나만 담는다"], "answer": 0, "why": "조건을 다시 적용하니까요."}],
+      "sources": [{"title": "Palantir Docs — Core concepts", "url": "https://www.palantir.com/docs/foundry/ontology/core-concepts/", "date": "2026-10"}, {"title": "Palantir Docs — Object Explorer object sets", "url": "https://www.palantir.com/docs/foundry/object-explorer/object-sets/", "date": "2026-10"}]
+    },
+    {
+      "id": "c12",
+      "day": 3,
+      "title": "Interface: 모양이 같은 객체를 한 번에",
+      "lead": "Interface는 객체 타입의 '모양과 능력'을 기술해요. 공항·정비 격납고·공장이 모두 'Facility'를 구현하면 하나의 흐름으로 다 다뤄요.",
+      "idea": [
+        "문서 예가 바로 우리 업종이에요. Facility 인터페이스(이름, 위치)를 Airport, Manufacturing Plant, Maintenance Hangar가 구현하고, 각자 고유 속성을 더해요.",
+        "장점은 확장이에요. Facility로 만든 지도 화면은 나중에 '부품 창고' 타입을 추가해도 고치지 않고 동작해요. 프로그래밍의 다형성과 같은 생각이에요.",
+        "인터페이스에는 속성뿐 아니라 링크 제약, 액션 제약도 담을 수 있어요. 객체 타입 하나가 여러 인터페이스를 구현할 수도 있어요."
+      ],
+      "hear": ["\"이건 인터페이스로 묶으면 화면을 하나로 만들 수 있어요.\""],
+      "ask": ["이 타입들이 공통으로 갖는 속성과 행동은?", "앞으로 같은 모양의 타입이 더 생기나요?"],
+      "mine": "'정비 대상(Maintainable)' 인터페이스: 항공기·엔진·APU가 구현. 공통 속성 = 일련번호, 다음 점검 예정일.",
+      "deep": ["Interface overview: interface = 객체 타입의 shape와 capabilities를 기술; 인터페이스 속성, 링크 타입 제약, 액션 타입 제약, 메타데이터를 가짐; 예시 Facility ← Airport, Manufacturing Plant, Maintenance Hangar."],
+      "recall": {"q": "인터페이스의 가장 큰 이점은?", "a": "같은 모양의 여러 객체 타입을 한 흐름으로 다루고, 새 타입이 생겨도 고치지 않아도 돼요."},
+      "quiz": [{"q": "인터페이스와 가장 비슷한 프로그래밍 개념은?", "options": ["다형성(공통 인터페이스)", "반복문", "주석"], "answer": 0, "why": "공통 모양으로 여러 구현을 다뤄요."}],
+      "sources": [{"title": "Palantir Docs — Interface overview", "url": "https://www.palantir.com/docs/foundry/interfaces/interface-overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c13",
+      "day": 4,
+      "title": "Backing datasource: 데이터셋이 객체를 받친다",
+      "lead": "객체는 보통 '뒷받침 데이터소스'(데이터셋 등)를 붙여서 만들어져요. 컬럼이 속성에 매핑되고, 데이터셋이 갱신되면 객체도 갱신돼요.",
+      "idea": [
+        "흐름: MRO 원본 → 파이프라인으로 정리 → '작업지시_clean' 데이터셋 → 작업지시 객체 타입. 객체는 데이터셋의 '얼굴'이에요.",
+        "그래서 객체 품질은 데이터셋 품질이에요. 키가 중복되거나 비어 있으면 객체도 깨져요. 정리 작업은 파이프라인에서 해요(04장).",
+        "모든 객체가 데이터셋에서 오는 건 아니에요. 액션으로만 만들어지는 객체 타입(예: 현장 '이상 보고')은 뒷받침 데이터소스 없이 만들 수 있어요."
+      ],
+      "steps": [
+        {"k": "1 · 원본", "t": "MRO·ERP·운항 시스템"},
+        {"k": "2 · 정리", "t": "키 통일, 중복 제거"},
+        {"k": "3 · 데이터셋", "t": "객체 타입당 하나의 깨끗한 표"},
+        {"k": "4 · 매핑", "t": "컬럼 → 속성, 키·타이틀 지정"}
+      ],
+      "hear": ["\"객체가 이상하면 백킹 데이터셋부터 보세요.\""],
+      "ask": ["이 객체의 백킹 데이터셋은 얼마나 자주 갱신되나요?", "키 중복 검사는 어디서 하나요?"],
+      "mine": "태오의 할 일: 세 시스템의 항공기 표를 MSN으로 합친 '항공기_master' 데이터셋을 만들기.",
+      "deep": ["Object types overview: 객체는 백킹 데이터소스를 추가하거나 객체를 만드는 액션을 설정해 생성·표시되며, 모든 객체가 액션으로 만들어진다면 백킹 데이터소스 없이 객체 타입을 만들 수 있어요."],
+      "recall": {"q": "액션으로만 생기는 객체 타입에도 백킹 데이터셋이 필요한가요?", "a": "아니요. 없이 만들 수 있어요."},
+      "quiz": [{"q": "객체 화면에 같은 항공기가 두 번 보인다면 먼저 볼 곳은?", "options": ["앱 색상", "백킹 데이터셋의 키 중복", "LLM 설정"], "answer": 1, "why": "객체는 데이터셋의 얼굴이라 키 중복이 그대로 보여요."}],
+      "sources": [{"title": "Palantir Docs — Object types overview", "url": "https://www.palantir.com/docs/foundry/object-link-types/object-types-overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c14",
+      "day": 4,
+      "title": "객체 저장소: OSv1(Phonograph) → OSv2",
+      "lead": "객체는 데이터셋에서 '인덱싱'되어 빠르게 찾을 수 있는 저장소에 들어가요. 새 저장소 OSv2가 표준이고, 옛 OSv1은 2026년 6월 30일 이후 쓸 수 없어요.",
+      "idea": [
+        "데이터셋은 대량 처리에 좋지만, '이 항공기 하나 바로 보여 줘'처럼 빠른 조회엔 느려요. 그래서 객체 저장소가 따로 있어요. 검색 엔진처럼 인덱스를 만들어 둬요.",
+        "OSv2는 증분 인덱싱(바뀐 것만)이 기본이고, 스트리밍 데이터소스로 지연을 줄여요. 한 객체 타입에 수백억 개 객체 규모까지 다룬다고 해요.",
+        "한계도 숫자로 있어요. 액션 한 번에 편집할 수 있는 객체 수, 링크 따라가기 기본 한도 같은 것들이에요. 설계할 때 미리 알아야 해요."
+      ],
+      "hear": ["\"인덱싱이 끝나야 앱에 반영돼요.\""],
+      "ask": ["데이터셋 갱신 후 객체 반영까지 얼마나 걸리나요?", "우리 환경은 OSv2인가요?"],
+      "mine": "센서처럼 자주 바뀌는 데이터는 스트리밍, 작업지시는 15분 주기 배치(가상)로 시범 설계해요.",
+      "deep": ["Object backend 문서: OSv1(Phonograph)은 2026-06-30 이후 사용 불가; OSv2는 객체 타입당 최대 2,000 속성, 액션 1회 최대 10,000 객체 편집, Search Around 기본 100,000 객체, 단일 객체 타입 수백억(tens of billions) 객체 규모 인덱싱."],
+      "recall": {"q": "OSv1이 쓸 수 없게 되는 날짜는?", "a": "2026년 6월 30일 이후"},
+      "quiz": [{"q": "데이터셋과 별도로 객체 저장소가 있는 이유는?", "options": ["빠른 개별 조회·검색을 위해", "데이터를 지우려고", "LLM 학습용"], "answer": 0, "why": "인덱스로 빠르게 찾기 위해서예요."}],
+      "sources": [{"title": "Palantir Docs — Object backend overview", "url": "https://www.palantir.com/docs/foundry/object-backend/overview/", "date": "2026-10"}, {"title": "Palantir Docs — OSv1 to OSv2 migration", "url": "https://www.palantir.com/docs/foundry/object-backend/osv1-osv2-migration/", "date": "2026-10"}]
+    },
+    {
+      "id": "c15",
+      "day": 4,
+      "title": "Ontology Manager: 설계하는 곳",
+      "lead": "객체 타입·속성·링크·인터페이스·액션은 Ontology Manager라는 앱에서 정의하고 관리해요.",
+      "idea": [
+        "Ontology Manager에서 객체 타입을 만들고, 백킹 데이터셋을 고르고, 컬럼을 속성에 매핑하고, 키와 타이틀을 지정해요.",
+        "온톨로지는 여러 팀이 같이 쓰는 공용 자산이에요. 그래서 이름 규칙, 설명, 상태(실험/운영) 같은 메타데이터를 잘 적는 게 중요해요.",
+        "변경은 신중해야 해요. 키나 링크를 바꾸면 그 위의 앱·AI가 깨질 수 있어요. 바꾸기 전에 '누가 쓰고 있나'를 확인해요."
+      ],
+      "hear": ["\"OMA에서 API 이름 확인해 보세요.\""],
+      "ask": ["이 객체 타입의 소유자는 누구인가요?", "API 이름 규칙이 있나요?"],
+      "mine": "설계서에 객체마다 표시 이름, API 이름, 설명, 소유자, 상태 칸을 둬요.",
+      "deep": ["Ontology Manager 문서는 온톨로지 리소스(객체 타입, 링크 타입, 액션 타입 등)를 만들고 관리하는 앱으로 설명해요."],
+      "recall": {"q": "객체 타입을 정의하는 앱 이름은?", "a": "Ontology Manager"},
+      "quiz": [{"q": "키를 바꾸기 전에 먼저 할 일은?", "options": ["그 객체를 쓰는 앱·AI 확인", "색상 변경", "바로 저장"], "answer": 0, "why": "위에 쌓인 것이 깨질 수 있어요."}],
+      "sources": [{"title": "Palantir Docs — Ontology Manager overview", "url": "https://www.palantir.com/docs/foundry/ontology-manager/overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c16",
+      "day": 4,
+      "title": "흔한 설계 실수 다섯 가지",
+      "lead": "객체 모델에서 자주 보는 실수는 대부분 '표를 그대로 올리기'와 '키를 대충 정하기'에서 와요.",
+      "idea": [
+        "① 원본 표마다 객체 타입 하나(시스템 중심). 현장 개념 중심으로 합쳐야 해요. ② 바뀌는 값을 키로. ③ 컬럼 전부를 속성으로.",
+        "④ 사건을 숫자로만(결항 건수 컬럼). 사건을 객체로 두면 원인·비용을 붙일 수 있어요. ⑤ 다대다를 쉼표 문자열로 저장('김준호,이민수'). 조인 데이터셋으로 바꿔요.",
+        "공통 해결책은 '현장 질문에서 출발'이에요. 준호 반장이 묻는 질문 10개를 먼저 적고, 그 질문에 답하는 데 필요한 객체·링크만 만들어요."
+      ],
+      "hear": ["\"시스템 테이블 구조가 아니라 업무 개념으로 모델링하세요.\""],
+      "ask": ["이 객체 모델로 현장 질문 10개에 다 답할 수 있나요?"],
+      "mine": "준호 반장 질문 예: '오늘 출발편 중 열린 작업 있는 비행기는?', '이 부품 기다리는 작업은 몇 개?'.",
+      "deep": ["(원칙 정리) 역량 질문(competency question)에서 출발하는 방법은 고전 온톨로지 공학(Book 3 05장)과 같아요."],
+      "recall": {"q": "모델링 실수를 줄이는 출발점은?", "a": "현장 질문(역량 질문) 목록"},
+      "quiz": [{"q": "'정비사 이름들'을 쉼표 문자열 속성으로 둔 것의 문제는?", "options": ["다대다 관계를 링크로 못 따라간다", "저장이 안 된다", "문제없다"], "answer": 0, "why": "조인 데이터셋 + 링크로 바꿔야 정비사 객체와 이어져요."}],
+      "sources": [{"title": "Palantir Docs — Create a link type", "url": "https://www.palantir.com/docs/foundry/object-link-types/create-link-type/", "date": "2026-10"}, {"title": "Palantir Docs — Properties overview", "url": "https://www.palantir.com/docs/foundry/object-link-types/properties-overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c17",
+      "day": 5,
+      "title": "디지털 트윈 비유와 그 한계",
+      "lead": "문서는 '많은 경우 온톨로지가 조직의 디지털 트윈 역할을 한다'고 말해요. 좋은 비유지만, 트윈은 실제보다 늦고 거칠 수 있어요.",
+      "idea": [
+        "트윈 비유의 좋은 점: 현실의 항공기·격납고·작업이 화면 속에 같은 모양으로 있어서, 그 위에서 '만약 이 작업을 미루면?'을 생각할 수 있어요.",
+        "한계 ①: 데이터 갱신 주기만큼 늦어요. 15분 배치면 화면은 15분 전 현실이에요. 한계 ②: 모델에 없는 것은 안 보여요. 현장 반장의 '느낌'은 객체가 아니에요.",
+        "한계 ③: 물리 시뮬레이션 트윈(엔진 열·진동 모델)과는 달라요. 온톨로지는 업무 객체의 트윈이지, 물리 법칙 모델이 아니에요."
+      ],
+      "hear": ["\"화면이 현실이랑 달라요!\" — 갱신 주기 문제일 때가 많아요."],
+      "ask": ["이 화면은 몇 분 전 현실인가요?", "모델에 빠진 중요한 현실은 무엇인가요?"],
+      "mine": "준호 반장 화면에 '마지막 갱신 시각'을 꼭 보여 줘요.",
+      "deep": ["Ontology overview: \"In many settings, the Ontology serves as a digital twin of the organization.\""],
+      "recall": {"q": "온톨로지 트윈의 대표 한계 두 가지는?", "a": "갱신 주기만큼 늦다, 모델에 없는 것은 안 보인다"},
+      "quiz": [{"q": "온톨로지 디지털 트윈과 물리 시뮬레이션 트윈의 차이는?", "options": ["같다", "온톨로지는 업무 객체 모델이고 물리 법칙을 계산하지 않는다", "온톨로지가 더 정밀한 물리 모델이다"], "answer": 1, "why": "업무 객체와 관계의 모델이에요."}],
+      "sources": [{"title": "Palantir Docs — Ontology overview", "url": "https://www.palantir.com/docs/foundry/ontology/overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c18",
+      "day": 5,
+      "title": "고전 온톨로지(OWL)와 무엇이 다른가",
+      "lead": "같은 '온톨로지'라는 말이지만, OWL은 논리 추론을 위한 명세 언어이고, Palantir 온톨로지는 데이터·권한·행동을 가진 운영용 객체 모델이에요.",
+      "idea": [
+        "OWL에서는 '모든 A321은 항공기다' 같은 공리를 적으면 추론기가 숨은 사실을 계산해요. 열린 세계 가정이라 '기록 없음 = 거짓'이 아니에요.",
+        "Palantir 온톨로지는 데이터셋이 받치는 객체 타입과 링크, 액션, 권한이 중심이에요. 문서에 기술 논리 추론기나 자동 분류(subsumption) 기능은 핵심으로 나오지 않아요. '없는 행 = 없음'으로 다루는 닫힌 세계에 가까워요.",
+        "그래서 둘은 경쟁보다 역할이 달라요. 의료 용어처럼 개념 체계가 깊으면 OWL/SKOS로 관리하고, 그 코드를 Palantir 객체의 속성으로 가져와 운영에 쓰는 조합도 가능해요."
+      ],
+      "code": {"lang": "Turtle", "text": "@prefix ex: <http://example.org/> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\nex:A321 rdfs:subClassOf ex:Aircraft .\nex:HL8001 a ex:A321 .\n# 추론기: HL8001 은 Aircraft 다 (적지 않아도)", "read": "OWL/RDFS는 클래스 관계를 적어 두면 추론기가 'HL8001은 항공기'를 계산해요. Palantir 객체 모델은 이런 추론 대신 데이터와 액션으로 운영해요."},
+      "hear": ["\"팔란티어 온톨로지는 시맨틱 웹 온톨로지가 아니에요.\""],
+      "ask": ["우리에게 자동 추론이 필요한 질문이 있나요, 아니면 데이터 연결과 행동이 필요한가요?"],
+      "mine": "기종 계층(A320 패밀리 → A321neo)처럼 분류가 필요한 곳은 단순 속성/참조 표로 두고, 깊은 추론은 범위 밖으로 적어요.",
+      "deep": ["OWL 2 Overview(W3C, 2판 2012): OWL 2는 형식 의미론을 가진 온톨로지 언어로, 기술 논리 기반 추론을 지원해요.", "Palantir core concepts는 객체·링크·액션·인터페이스·함수를 정의하고 데이터셋 매핑을 설명하지만, 논리 추론기는 다루지 않아요(문서 검토 기준 해석)."],
+      "recall": {"q": "OWL과 Palantir 온톨로지의 핵심 차이 한 줄?", "a": "OWL = 논리 추론용 명세, Palantir = 데이터·권한·행동을 가진 운영 객체 모델"},
+      "quiz": [{"q": "'기록에 없으면 없는 것'으로 다루는 쪽은?", "options": ["OWL(열린 세계)", "Palantir 운영 객체 모델(닫힌 세계에 가까움)", "둘 다 아님"], "answer": 1, "why": "운영 시스템은 데이터에 없는 행을 없음으로 다뤄요."}],
+      "sources": [{"title": "W3C — OWL 2 Web Ontology Language Document Overview (Second Edition)", "url": "https://www.w3.org/TR/owl2-overview/", "date": "2012-12-11"}, {"title": "Palantir Docs — Core concepts", "url": "https://www.palantir.com/docs/foundry/ontology/core-concepts/", "date": "2026-10"}]
+    },
+    {
+      "id": "c19",
+      "day": 5,
+      "title": "AI는 객체 모델을 어떻게 쓰나 (미리보기)",
+      "lead": "LLM은 표의 컬럼 이름보다 '항공기', '작업지시' 같은 이름 있는 객체와 링크를 훨씬 잘 다뤄요. 좋은 객체 모델이 곧 좋은 AI 도구예요.",
+      "idea": [
+        "AI에게 'HL8001의 열린 작업은?'을 물으면, AI는 항공기 객체를 찾고 링크를 따라 작업지시 객체 세트를 가져와요. SQL을 지어내는 것보다 덜 틀려요.",
+        "설명(description)이 중요해요. 객체·속성 설명이 AI에게 주는 '사전'이 돼요. '상태=H'가 무슨 뜻인지 적혀 있어야 AI가 잘못 읽지 않아요.",
+        "권한도 객체 단위로 따라가요. AI는 질문한 사람이 볼 수 있는 객체만 봐요(06장)."
+      ],
+      "hear": ["\"속성 설명을 잘 써야 AI가 덜 헷갈려요.\""],
+      "ask": ["이 속성 값 코드(H, P, C)의 뜻이 설명에 적혀 있나요?"],
+      "mine": "설계서에 속성 설명 칸을 필수로 두고, 상태 코드표를 붙여요.",
+      "deep": ["Ontology overview는 온톨로지를 앱과 AI가 같은 정의를 공유하는 기반으로 설명해요. AIP의 객체 조회·도구 사용은 06장에서 공식 문서로 확인해요."],
+      "recall": {"q": "AI를 위해 객체 모델에서 특히 잘 써야 하는 것은?", "a": "객체·속성 설명과 코드 값의 뜻"},
+      "quiz": [{"q": "AI가 링크를 따라가는 방식이 SQL 생성보다 나은 이유는?", "options": ["정의된 관계만 따라가 틀릴 여지가 적다", "더 빠른 GPU를 쓴다", "데이터를 지운다"], "answer": 0, "why": "관계를 지어내지 않고 정의된 링크를 써요."}],
+      "sources": [{"title": "Palantir Docs — Ontology overview", "url": "https://www.palantir.com/docs/foundry/ontology/overview/", "date": "2026-10"}]
+    },
+    {
+      "id": "c20",
+      "day": 5,
+      "title": "설계서 한 장으로 묶기",
+      "lead": "객체 모델 설계서는 '현장 질문 → 객체 타입 → 키·타이틀 → 링크·카디널리티 → 백킹 데이터 → 액션 후보' 순서로 쓰면 빠짐이 적어요.",
+      "idea": [
+        "질문에서 시작해야 객체가 쓸모 있어요. 질문 10개를 맨 위에 둬요.",
+        "객체 타입마다 키·타이틀·핵심 속성·백킹 데이터셋·갱신 주기·소유자를 표로 적어요.",
+        "링크 표에는 양쪽 이름, 카디널리티, 뒷받침 방식(외래 키/조인 데이터셋)을 적어요. 마지막에 다음 장(액션)으로 넘길 후보를 남겨요."
+      ],
+      "steps": [
+        {"k": "1", "t": "현장 질문 10개"},
+        {"k": "2", "t": "객체 타입 표 (키·타이틀·속성·백킹)"},
+        {"k": "3", "t": "링크 표 (카디널리티·뒷받침)"},
+        {"k": "4", "t": "인터페이스 후보"},
+        {"k": "5", "t": "액션 후보 · 열린 문제"}
+      ],
+      "hear": ["\"질문으로 검증 안 된 객체는 지우세요.\""],
+      "ask": ["모든 질문에 어떤 객체·링크로 답하는지 표시했나요?"],
+      "mine": "금요일 설계서 목표: 객체 타입 7개, 링크 6개, 인터페이스 1개(Maintainable).",
+      "deep": ["(정리 카드) 카드 c02~c19의 공식 문서 규칙을 한 문서 틀로 묶었어요."],
+      "recall": {"q": "설계서의 출발점은?", "a": "현장 질문 목록"},
+      "quiz": [{"q": "링크 표에 꼭 들어갈 것이 아닌 것은?", "options": ["카디널리티", "뒷받침 방식", "주가"], "answer": 2, "why": "주가는 무관해요."}],
+      "sources": [{"title": "Palantir Docs — Core concepts", "url": "https://www.palantir.com/docs/foundry/ontology/core-concepts/", "date": "2026-10"}]
+    }
+  ],
+  "cases": [
+    {
+      "id": "airbus-skywise",
+      "day": 3,
+      "title": "Airbus Skywise: 항공기를 '데이터의 중심 객체'로 놓다",
+      "when": "2017-06",
+      "lead": "2017년 6월 파리 에어쇼에서 Airbus는 Palantir를 기술 파트너로 한 항공 데이터 플랫폼 Skywise를 공개했어요. 항공사들의 기체·정비·운항 데이터를 한 플랫폼에 모으는 구상이었어요.",
+      "facts": [
+        {"label": "공개", "value": "2017년 6월, 파리 에어쇼(르부르제)", "src": "Runway Girl Network 2017-06-20"},
+        {"label": "기술 파트너", "value": "Palantir Technologies", "src": "Runway Girl Network"},
+        {"label": "초기 참여·지지 항공사", "value": "AirAsia, Peach(ANA 계열), easyJet, Emirates(영상 지지)", "src": "Runway Girl Network"},
+        {"label": "easyJet 사례", "value": "승객 불편을 일으키는 잦은 기체 결함 상위 100개를 파악", "src": "Runway Girl Network"},
+        {"label": "단계 구상", "value": "1단계 핵심 플랫폼 → 2단계 정비·운항·기단 계획 앱 → 3단계 'aircraft-as-a-sensor'", "src": "Runway Girl Network"}
+      ],
+      "timeline": [
+        {"t": "2015년경", "text": "easyJet이 기체 시스템 데이터 수집을 시작(2년 이상 작업했다고 언급)"},
+        {"t": "2017-06", "text": "Airbus·Palantir, Skywise 공개", "hot": true},
+        {"t": "이후", "text": "정비·운항 앱과 공급사 참여 확대 계획"}
+      ],
+      "causes": [
+        {"stage": "문제", "title": "데이터가 항공사·제조사에 흩어짐", "text": "기체 결함과 지연 데이터가 항공사마다 따로 있어 패턴을 보기 어려웠어요."},
+        {"stage": "모델", "title": "항공기 중심 연결", "text": "기체(객체)를 중심으로 결함·정비·운항 기록을 잇는 구조가 예측 정비의 바탕이 돼요."},
+        {"stage": "위험", "title": "프라이버시", "text": "승객 데이터는 개인 식별 정보와 분리하고 EU 규정을 지켜야 한다는 우려가 당시에도 나왔어요."}
+      ],
+      "questions": [
+        {"q": "누리모빌리티 객체 모델에서 Skywise의 교훈은?", "a": "항공기를 중심 객체로 놓고 결함·작업지시·운항편을 링크로 잇는 구조가 지연 분석의 출발점이에요."},
+        {"q": "easyJet의 '상위 100개 결함'을 객체로 표현하면?", "a": "결함 유형 객체 타입 + 결함 발생(사건) 객체 + 항공기·운항편 링크로 두면 빈도와 영향을 셀 수 있어요."},
+        {"q": "제조사 플랫폼에 데이터를 올릴 때 주의할 점은?", "a": "데이터 소유권·사용 범위·개인정보 분리를 계약으로 정해야 해요."}
+      ],
+      "after": ["Skywise는 이후 Airbus의 항공 데이터 플랫폼 브랜드로 이어졌어요(세부 규모 숫자는 이 모듈에서 확인하지 않았어요)."],
+      "sources": [
+        {"title": "Runway Girl Network — Airbus, Palantir unveil Skywise IoT data platform for aviation", "url": "https://runwaygirlnetwork.com/2017/06/20/airbus-palantir-unveil-skywise-iot-data-platform-for-aviation/", "date": "2017-06-20"}
+      ],
+      "caveat": "Skywise 내부 객체 모델은 공개되지 않았어요. '항공기 중심 객체' 해석은 공개 설명을 바탕으로 한 교육용 정리예요."
+    },
+    {
+      "id": "osv1-to-osv2",
+      "day": 4,
+      "title": "Phonograph에서 OSv2로: 객체 저장소를 통째로 바꾸다",
+      "when": "~2026-06-30",
+      "lead": "Palantir는 객체 저장소 OSv1(Phonograph)을 단계적으로 폐지하고 OSv2로 옮기게 했어요. OSv1은 2026년 6월 30일 이후 쓸 수 없어요.",
+      "facts": [
+        {"label": "OSv1 종료", "value": "2026-06-30 이후 사용 불가", "src": "Object backend 문서"},
+        {"label": "속성 한도", "value": "객체 타입당 최대 2,000개 (OSv2)", "src": "Object backend 문서"},
+        {"label": "액션 편집 한도", "value": "액션 1회 최대 10,000 객체 (상향은 지원 요청)", "src": "Object backend 문서"},
+        {"label": "Search Around 기본 한도", "value": "100,000 객체", "src": "Object backend 문서"},
+        {"label": "인덱싱 규모", "value": "단일 객체 타입 수백억(tens of billions) 객체, 증분 인덱싱 기본", "src": "Object backend 문서"}
+      ],
+      "timeline": [
+        {"t": "과거", "text": "OSv1(Phonograph)이 객체 저장소"},
+        {"t": "전환기", "text": "OSv2 도입, 스트리밍·증분 인덱싱 지원, 이전 가이드 제공"},
+        {"t": "2026-06-30", "text": "OSv1 사용 종료", "hot": true}
+      ],
+      "causes": [
+        {"stage": "규모", "title": "객체 수 증가", "text": "센서·이벤트 객체가 늘면서 더 큰 규모의 인덱싱이 필요했어요."},
+        {"stage": "지연", "title": "실시간 요구", "text": "운영 화면은 몇 분 전이 아니라 지금의 현실을 원해요. 스트리밍 지원이 그 답이에요."},
+        {"stage": "구조", "title": "인덱싱과 조회 분리", "text": "쓰기(인덱싱)와 읽기(조회)를 나눠 각각 키울 수 있게 했어요."}
+      ],
+      "questions": [
+        {"q": "시범 설계에서 OSv2 한도가 왜 중요하나요?", "a": "예를 들어 '모든 작업지시 일괄 마감' 액션이 1만 개를 넘으면 나눠 처리해야 해요. 처음부터 알고 설계해요."},
+        {"q": "플랫폼이 저장소를 바꾸면 고객은 무엇을 해야 하나요?", "a": "이전 가이드를 따라 객체 타입을 옮기고, 동작 차이를 테스트해요. 벤더 로드맵을 계속 확인해야 해요."},
+        {"q": "이 사례가 락인과 관련된 점은?", "a": "저장소 교체 시점과 방식을 고객이 정하지 못해요. 플랫폼 결정에 따라 일정이 생겨요."}
+      ],
+      "after": ["새 객체 타입은 OSv2를 기본으로 만들어요."],
+      "sources": [
+        {"title": "Palantir Docs — Object backend overview", "url": "https://www.palantir.com/docs/foundry/object-backend/overview/", "date": "2026-10"},
+        {"title": "Palantir Docs — OSv1 to OSv2 migration", "url": "https://www.palantir.com/docs/foundry/object-backend/osv1-osv2-migration/", "date": "2026-10"}
+      ],
+      "caveat": "한도 숫자는 문서 확인 시점(2026-10) 기준이며 바뀔 수 있어요."
+    }
+  ],
+  "problems": [
+    {"id": "p01", "day": 1, "title": "표부터 올릴까", "scene": [{"name": "태오", "role": "데이터 엔지니어", "text": "원본 테이블 23개를 일단 다 객체로 올릴까요?"}, {"name": "준호", "role": "정비 반장", "text": "저는 비행기, 작업, 부품만 보면 돼요."}], "q": "첫 단계로 맞는 것은?", "options": [{"k": "A", "t": "23개 표를 그대로 객체 타입 23개로", "ok": false, "why": "시스템 구조를 그대로 옮기면 현장 개념과 어긋나요."}, {"k": "B", "t": "현장 질문 10개를 모으고, 거기 필요한 업무 개념만 객체 타입으로", "ok": true, "why": "질문에서 출발하면 쓸모 있는 객체만 남아요."}, {"k": "C", "t": "객체 없이 SQL 대시보드만", "ok": false, "why": "AI·액션으로 이어갈 기반이 안 생겨요."}], "explain": "객체는 업무 개념 단위로, 질문에서 출발해요."},
+    {"id": "p02", "day": 1, "title": "결항은 무엇인가", "scene": [{"name": "민서", "role": "TF장", "text": "결항 건수는 운항 표에 숫자로 있잖아요. 그걸로 되죠?"}], "q": "결항을 어떻게 모델링할까요?", "options": [{"k": "A", "t": "결항을 사건 객체 타입으로 두고 운항편·원인 작업지시와 링크", "ok": true, "why": "원인·비용을 붙여 분석할 수 있어요."}, {"k": "B", "t": "운항편의 숫자 컬럼으로만", "ok": false, "why": "원인과의 연결이 사라져요."}, {"k": "C", "t": "모델링하지 않는다", "ok": false, "why": "시범의 목표 지표예요."}], "explain": "사건도 객체가 될 수 있어요."},
+    {"id": "p03", "day": 1, "title": "명사와 동사", "scene": [{"name": "민서", "role": "TF장", "text": "작업 배정 버튼부터 만들면 안 돼요?"}], "q": "왜 순서가 중요한가요?", "options": [{"k": "A", "t": "배정 액션은 정비사·작업지시 객체와 링크(명사)가 있어야 만들 수 있다", "ok": true, "why": "키네틱은 시맨틱 위에 서요."}, {"k": "B", "t": "버튼은 디자인팀 일이라서", "ok": false, "why": "본질이 아니에요."}, {"k": "C", "t": "순서는 상관없다", "ok": false, "why": "명사가 없으면 동사가 대상을 못 가리켜요."}], "explain": "명사 → 동사 순서예요."},
+    {"id": "p04", "day": 2, "title": "항공기 키 정하기", "scene": [{"name": "태오", "role": "데이터 엔지니어", "text": "HL8001, 8001, A-2019-034… 키는 등록번호로 할까요?"}], "q": "가장 좋은 선택은?", "options": [{"k": "A", "t": "등록번호", "ok": false, "why": "매각·재등록 때 바뀔 수 있어요."}, {"k": "B", "t": "MSN(String)을 키로, 나머지 식별자는 매핑해 속성으로", "ok": true, "why": "안정적이고 유일하며, 권장 타입이에요."}, {"k": "C", "t": "마지막 정비 시각(Timestamp)", "ok": false, "why": "유일하지 않고 비권장 타입이에요."}], "explain": "키는 안정성과 유일성이 기준이에요."},
+    {"id": "p05", "day": 2, "title": "화면에 뜨는 이름", "scene": [{"name": "준호", "role": "정비 반장", "text": "화면에 '1234'만 떠요. 무슨 비행기예요?"}], "q": "어떻게 고칠까요?", "options": [{"k": "A", "t": "키를 등록번호로 바꾼다", "ok": false, "why": "키 안정성을 잃어요."}, {"k": "B", "t": "title key를 '등록번호 (기종)' 문자열 속성으로 지정", "ok": true, "why": "사람용 이름은 타이틀로 해결해요."}, {"k": "C", "t": "반장님께 MSN을 외우게 한다", "ok": false, "why": "사용성 문제를 사람에게 떠넘겨요."}], "explain": "키는 기계용, 타이틀은 사람용."},
+    {"id": "p06", "day": 2, "title": "격납고 코드가 세 가지", "scene": [{"name": "태오", "role": "데이터 엔지니어", "text": "항공기엔 HGR, 작업지시엔 hangar_cd, 재고엔 LOC로 있어요."}], "q": "어떻게 할까요?", "options": [{"k": "A", "t": "격납고 코드를 shared property로 한 번 정의해 세 객체에서 같이 쓴다", "ok": true, "why": "뜻·형식이 통일돼요."}, {"k": "B", "t": "각자 그대로 둔다", "ok": false, "why": "모아 보기가 어려워요."}, {"k": "C", "t": "격납고 정보를 지운다", "ok": false, "why": "필요한 정보예요."}], "explain": "같은 뜻은 한 번만 정의해요."},
+    {"id": "p07", "day": 3, "title": "정비사 배정 저장", "scene": [{"name": "태오", "role": "데이터 엔지니어", "text": "작업지시에 '정비사' 컬럼을 두고 '김준호,이민수'처럼 넣을까요?"}], "q": "맞는 설계는?", "options": [{"k": "A", "t": "그대로 쉼표 문자열", "ok": false, "why": "정비사 객체와 링크가 안 돼요."}, {"k": "B", "t": "작업지시–정비사 다대다 링크를 (woId, techId) 조인 데이터셋으로 뒷받침", "ok": true, "why": "다대다는 조인 데이터셋이 표준 방식이에요."}, {"k": "C", "t": "정비사 1명만 저장", "ok": false, "why": "현실과 달라요."}], "explain": "다대다 = 조인 데이터셋."},
+    {"id": "p08", "day": 3, "title": "1:1이라고 했는데", "scene": [{"name": "준호", "role": "정비 반장", "text": "항공기 하나에 기록장치 하나라던데, 화면에 두 개 붙은 비행기가 있어요."}], "q": "원인과 대응은?", "options": [{"k": "A", "t": "1:1은 강제되지 않으니, 파이프라인에서 데이터 검사(교체 이력 등)를 추가한다", "ok": true, "why": "문서상 1:1은 의도 표시일 뿐이에요."}, {"k": "B", "t": "플랫폼 버그로 신고만 한다", "ok": false, "why": "데이터 문제예요."}, {"k": "C", "t": "링크를 지운다", "ok": false, "why": "필요한 관계예요."}], "explain": "카디널리티 보장은 데이터 검사로 해요."},
+    {"id": "p09", "day": 3, "title": "엔진도 정비 대상", "scene": [{"name": "민서", "role": "TF장", "text": "항공기·엔진·APU 다 '다음 점검일' 화면이 필요해요. 화면 세 개 만들어요?"}], "q": "더 나은 방법은?", "options": [{"k": "A", "t": "'Maintainable' 인터페이스를 만들고 세 타입이 구현하게 해 화면 하나로", "ok": true, "why": "같은 모양을 한 흐름으로 다뤄요."}, {"k": "B", "t": "세 타입을 하나로 합친다", "ok": false, "why": "고유 속성이 섞여요."}, {"k": "C", "t": "화면 세 개를 복사한다", "ok": false, "why": "유지보수가 세 배예요."}], "explain": "인터페이스 = 다형성.", "mixed": false},
+    {"id": "p10", "day": 4, "title": "같은 비행기가 두 대", "scene": [{"name": "준호", "role": "정비 반장", "text": "검색하면 HL8001이 두 번 나와요."}], "q": "먼저 볼 곳은?", "options": [{"k": "A", "t": "백킹 데이터셋의 키 중복과 매핑", "ok": true, "why": "객체는 데이터셋의 얼굴이에요."}, {"k": "B", "t": "앱 테마", "ok": false, "why": "무관해요."}, {"k": "C", "t": "LLM 모델", "ok": false, "why": "무관해요."}], "explain": "객체 문제는 데이터에서 찾아요."},
+    {"id": "p11", "day": 4, "title": "현장 이상 보고", "scene": [{"name": "준호", "role": "정비 반장", "text": "현장에서 바로 '이상 보고'를 올리고 싶어요. 원본 시스템엔 없어요."}], "q": "객체 타입을 어떻게 만들까요?", "options": [{"k": "A", "t": "원본 시스템을 먼저 새로 만든다", "ok": false, "why": "시범에 과해요."}, {"k": "B", "t": "백킹 데이터셋 없이, 액션으로만 생성되는 객체 타입으로 만든다", "ok": true, "why": "문서가 허용하는 방식이에요."}, {"k": "C", "t": "엑셀로 받는다", "ok": false, "why": "연결과 감사가 끊겨요."}], "explain": "액션으로만 생기는 객체도 가능해요(03장과 연결)."},
+    {"id": "p12", "day": 4, "title": "일괄 마감", "scene": [{"name": "태오", "role": "데이터 엔지니어", "text": "연말에 오래된 작업지시 3만 개를 한 번에 마감 처리하고 싶어요."}], "q": "설계 시 고려할 점은?", "options": [{"k": "A", "t": "OSv2 액션 1회 편집 한도(10,000 객체)를 고려해 나눠 처리하거나 지원 요청", "ok": true, "why": "문서 한도를 넘어요."}, {"k": "B", "t": "그냥 한 번에 누른다", "ok": false, "why": "한도에 걸려요."}, {"k": "C", "t": "객체를 지운다", "ok": false, "why": "기록이 사라져요."}], "explain": "플랫폼 한도를 설계에 반영해요."},
+    {"id": "p13", "day": 5, "title": "화면이 현실과 달라요", "scene": [{"name": "준호", "role": "정비 반장", "text": "방금 끝낸 작업이 화면엔 아직 '진행 중'이에요. 트윈이라면서요?"}], "q": "가장 좋은 대응은?", "options": [{"k": "A", "t": "갱신 주기를 확인하고, 화면에 마지막 갱신 시각을 표시하며 필요하면 스트리밍/액션 기록으로 바꾼다", "ok": true, "why": "트윈은 갱신 주기만큼 늦어요."}, {"k": "B", "t": "트윈이니 화면이 맞다고 한다", "ok": false, "why": "현실이 기준이에요."}, {"k": "C", "t": "시범을 중단한다", "ok": false, "why": "고칠 수 있는 문제예요."}], "explain": "디지털 트윈의 한계를 투명하게 보여 줘요."},
+    {"id": "p14", "day": 5, "title": "추론기는 어디에", "scene": [{"name": "하린", "role": "보안/법무", "text": "책에서 온톨로지는 추론을 한다던데, 이것도 'A321이면 항공기' 같은 걸 자동으로 하나요?"}], "q": "맞는 답은?", "options": [{"k": "A", "t": "네, OWL 추론기가 내장돼 있다", "ok": false, "why": "Palantir 온톨로지의 핵심은 논리 추론이 아니에요."}, {"k": "B", "t": "Palantir 온톨로지는 데이터·링크·액션 중심 운영 모델이라, 분류는 속성/참조 데이터로 명시하고 깊은 추론이 필요하면 OWL 도구를 따로 쓴다", "ok": true, "why": "역할이 달라요."}, {"k": "C", "t": "온톨로지라는 말은 같으니 똑같다", "ok": false, "why": "이름만 같아요."}], "explain": "같은 단어, 다른 도구예요.", "mixed": true},
+    {"id": "p15", "day": 5, "title": "설계서 검토", "scene": [{"name": "민서", "role": "TF장", "text": "설계서에 객체 타입이 15개예요. 많은 거예요?"}], "q": "어떻게 판단할까요?", "options": [{"k": "A", "t": "많을수록 좋다", "ok": false, "why": "유지 비용이 커져요."}, {"k": "B", "t": "현장 질문 10개에 각 객체가 쓰이는지 표시하고, 안 쓰이는 건 다음 단계로 미룬다", "ok": true, "why": "질문으로 검증해요."}, {"k": "C", "t": "3개로 무조건 줄인다", "ok": false, "why": "근거 없는 숫자예요."}], "explain": "질문이 기준이에요."}
+  ],
+  "lectures": [
+    {"id": "l1", "title": "Palantir Docs — Ontology overview", "url": "https://www.palantir.com/docs/foundry/ontology/overview/", "min": 10, "lang": "en", "what": "운영 레이어, 디지털 트윈, 시맨틱/키네틱 정의를 원문으로 읽어요.", "day": 1},
+    {"id": "l2", "title": "Palantir Docs — Core concepts", "url": "https://www.palantir.com/docs/foundry/ontology/core-concepts/", "min": 15, "lang": "en", "what": "객체 타입·속성·링크·인터페이스·객체 세트 정의와 표 비유를 확인해요.", "day": 1},
+    {"id": "l3", "title": "Palantir Docs — Properties overview (키 타입 표)", "url": "https://www.palantir.com/docs/foundry/object-link-types/properties-overview/", "min": 15, "lang": "en", "what": "primary key·title key로 쓸 수 있는 타입 표를 보며 우리 키를 점검해요.", "day": 2},
+    {"id": "l4", "title": "Palantir Docs — Create a link type", "url": "https://www.palantir.com/docs/foundry/object-link-types/create-link-type/", "min": 15, "lang": "en", "what": "외래 키 vs 조인 데이터셋, 카디널리티 규칙을 확인해요.", "day": 3},
+    {"id": "l5", "title": "Palantir Docs — Interface overview", "url": "https://www.palantir.com/docs/foundry/interfaces/interface-overview/", "min": 10, "lang": "en", "what": "Facility 예(공항·격납고)로 인터페이스 개념을 익혀요.", "day": 3},
+    {"id": "l6", "title": "Palantir Docs — Object backend overview (OSv2)", "url": "https://www.palantir.com/docs/foundry/object-backend/overview/", "min": 15, "lang": "en", "what": "객체 저장소 구조와 한도 숫자를 설계에 반영해요.", "day": 4}
+  ],
+  "write": {
+    "title": "금요일에 쓸 것",
+    "task": "'정비 지연 시범: 객체 모델 설계서 v1'을 1~2쪽으로 써 보세요. 세 시스템에 흩어진 항공기·작업지시·부품을 하나의 객체 모델로 묶어요.",
+    "template": [
+      "현장 질문 10개 (준호 반장·민서와 확인)",
+      "객체 타입 표: 이름 · API 이름 · 설명 · primary key · title key · 핵심 속성 · 백킹 데이터셋 · 갱신 주기 · 소유자",
+      "식별자 매핑: 등록번호 · 운항 코드 · ERP 자산번호 → MSN",
+      "링크 표: 양쪽 이름 · 카디널리티 · 뒷받침 방식(외래 키/조인 데이터셋) · 데이터 검사",
+      "공유 속성과 인터페이스(Maintainable) 후보",
+      "한계와 주의: 갱신 지연(트윈), OSv2 한도, OWL식 추론은 범위 밖",
+      "다음 장으로 넘길 액션 후보 (배정, 일정 연기, 이상 보고)"
+    ]
+  },
+  "check": [
+    "Story numbers (3 systems, 140 columns, 23 tables, 15 daily columns, 15-min batch, 7 object types) are fictional 누리모빌리티 values.",
+    "Palantir docs fetched 2026-10-21: Ontology overview (operational layer, digital twin, semantic vs kinetic), Core concepts (definitions, dataset/row/column/cell analogy, shared property), Properties overview (base types, PK/title key allowed types), Create link type (FK for 1:1 and many:1, join dataset for many:many, 1:1 not enforced), Link types overview (join analogy, no cross-ontology links), Interface overview (Facility ← Airport/Manufacturing Plant/Maintenance Hangar), Object types overview (backing datasource optional when created by actions), Object backend (OSv1 unavailable after 2026-06-30; OSv2 2,000 props, 10,000 objects per action, 100,000 Search Around default, tens of billions objects).",
+    "Ontology Manager and Object Explorer object-set pages confirmed to load (HTTP 200); their content summarized lightly.",
+    "Airbus Skywise facts from Runway Girl Network 2017-06-20 (fetched): Paris Air Show, Palantir partner, AirAsia/Peach/easyJet/Emirates, easyJet top-100 faults, three phases. Interpretation as 'aircraft-centric object model' is teaching framing, marked in caveat.",
+    "Code snippets are conceptual TypeScript/Turtle, not real OSDK-generated code.",
+    "OWL contrast: no DL reasoner in Palantir core concepts is an interpretation from reading the docs, stated as such."
+  ]
+}

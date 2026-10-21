@@ -1,0 +1,2083 @@
+{
+ "id": "onto-world",
+ "no": "08",
+ "title": "왜 지금 뜨나 · 온톨로지 세계 동향",
+ "short": "세계 동향",
+ "q": "10년 넘게 '좋지만 비싼 것'이던 온톨로지가 왜 2025~2026년에 갑자기 경영진의 단어가 됐고, 우리는 무엇을 골라야 할까?",
+ "sub": "팔란티어 효과 · Fabric IQ · 시맨틱 뷰 · OSI · 벤더 지도 · 미국·EU·한국·일본·중국 · 시장 규모 · 쟁점",
+ "doc": "왜 지금 온톨로지인가 — 세계 동향과 한빛의 선택 (병원장 보고서)",
+ "story": {
+  "title": "“요즘 다들 온톨로지 얘기하던데, 우리는 뭐가 다른가요?”",
+  "size": 5,
+  "body": [
+   "(가상 이야기) 07장에서 AI 비서 그라운딩 설계서를 냈어요. 병원장은 고개를 끄덕이면서도 신문 기사 묶음을 내밀었어요. 팔란티어, 마이크로소프트, KT, HD현대, 국가데이터처…",
+   "\"다들 온톨로지래요. 우리가 하는 거랑 같은 거예요? 어디 거 사면 돼요?\" 지수 팀장은 5쪽(가상) 보고서를 약속했어요. 현우는 유럽 EHDS 일정을, 소라는 벤더 비교표를 맡았어요.",
+   "온톨로지 설계자인 나는 이번 주에 세계 동향을 사실·주장·추정으로 나눠 정리하고, 한빛병원이 '유행을 사는 게 아니라 우리 문제에 맞는 층을 고르는' 결론을 써야 해요."
+  ]
+ },
+ "goals": [
+  "2023년 이후 온톨로지가 다시 뜬 수요·공급 원인과 팔란티어 효과를 사실과 과장으로 나눠 설명할 수 있어요.",
+  "Microsoft·Snowflake·Databricks·그래프 벤더, 미국·EU·한국·일본·중국의 움직임을 출처와 함께 지도로 그릴 수 있어요.",
+  "시장 숫자를 정직하게 읽고, 락인·거버넌스 쟁점을 고려해 조직의 도입 순서를 제안할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "온톨로지는 오래된 말인데 왜 지금 뜰까",
+   "lead": "온톨로지는 1990년대부터 있었지만, 2023년 이후 LLM·에이전트가 '기업 데이터의 뜻'을 필요로 하면서 다시 주목받아요.",
+   "idea": [
+    "2000년대 시맨틱 웹 붐 때도 온톨로지는 '좋지만 비싼 것'이었어요. 만드는 비용에 비해 당장 쓰는 곳이 적었어요.",
+    "2023년 이후 바뀐 건 수요 쪽이에요. LLM은 말은 잘하지만 '우리 회사의 고객·설비·환자'를 정확히 모르고, 에이전트는 '무엇을 해도 되는지'를 알아야 해요(07장).",
+    "공급 쪽도 바뀌었어요. LLM이 초안 작성·매핑을 도와 구축 비용이 내려갔고, 팔란티어의 성장과 Microsoft·Snowflake·Databricks의 제품 발표가 '온톨로지'를 경영진 언어로 만들었어요."
+   ],
+   "hear": [
+    "\"온톨로지, 10년 전에도 들었던 말인데요.\"",
+    "\"이번엔 AI가 수요를 만든 거죠.\""
+   ],
+   "ask": [
+    "이번 붐에서 달라진 수요와 공급은 무엇인가요?",
+    "우리 조직에서 '뜻이 달라 생기는 비용'은 얼마인가요?"
+   ],
+   "mine": "병원장은 '요즘 다들 온톨로지 얘기하던데 우리는 뭐가 다르냐'고 물었어요. 지수 팀장은 07장의 AI 비서 사례로 답하기로 했어요.",
+   "deep": [
+    "Pan et al.(IEEE TKDE 2024)은 LLM의 환각·지식 갱신 문제를 KG가 보완하고, KG 구축의 어려움을 LLM이 보완한다는 상호 보완 구도를 제시했어요."
+   ],
+   "recall": {
+    "q": "이번 온톨로지 붐의 수요 쪽 원인은?",
+    "a": "LLM·에이전트가 기업 데이터의 정확한 뜻·관계·허용 행동을 필요로 함"
+   },
+   "quiz": [
+    {
+     "q": "2000년대와 비교해 '공급 쪽'에서 달라진 것은?",
+     "options": [
+      "온톨로지 표준이 사라졌다",
+      "LLM이 구축·매핑 비용을 낮췄다",
+      "그래프 DB가 없어졌다"
+     ],
+     "answer": 1,
+     "why": "초안·매핑을 LLM이 도와요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Pan et al., Unifying LLMs and Knowledge Graphs: A Roadmap",
+     "url": "https://arxiv.org/abs/2306.08302",
+     "date": "2023-06"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "팔란티어 효과",
+   "lead": "팔란티어의 상업 매출 급성장이 '온톨로지'를 투자자와 경영진의 단어로 만들었어요.",
+   "idea": [
+    "팔란티어는 Foundry의 핵심을 '온톨로지'(객체·링크·액션)라고 불러요. 4권 AIP 과정에서 자세히 봐요.",
+    "2024년 9월 S&P 500 편입(9월 6일 발표, 23일 반영), 2025~2026년 미국 상업 매출 급성장이 겹치며 '온톨로지가 비결'이라는 이야기가 퍼졌어요.",
+    "주의: 팔란티어의 '온톨로지'는 OWL 같은 형식 논리보다는 운영 객체 모델 + 행동 모델에 가까워요. 성장 원인도 온톨로지 하나가 아니라 영업 방식(부트캠프), 국방 수요, AIP 등이 함께 작용해요."
+   ],
+   "hear": [
+    "\"팔란티어처럼 온톨로지 하면 우리도 잘 되나요?\"",
+    "\"그 온톨로지랑 W3C 온톨로지는 결이 달라요.\""
+   ],
+   "ask": [
+    "팔란티어 온톨로지와 OWL 온톨로지는 무엇이 같고 다른가요?",
+    "성장 원인 중 온톨로지 몫은 얼마나 될까요?"
+   ],
+   "mine": "병원장이 '팔란티어 같은 거 하자'고 할 때, 지수는 '객체·행동 모델'이라는 핵심만 가져오고 제품 선택은 따로 보자고 했어요.",
+   "deep": [
+    "Palantir 2026년 2분기 실적: 매출 약 19.4억 달러(전년 대비 +93%), 미국 상업 매출 7.64억 달러(+149%), 연간 매출 가이던스 81.5억~81.58억 달러(회사 8-K).",
+    "S&P Dow Jones Indices는 2024-09-06 팔란티어·델·이리 인뎀니티 편입을 발표했고 9-23 장 시작 전 반영됐어요."
+   ],
+   "recall": {
+    "q": "팔란티어 '온톨로지'의 성격은?",
+    "a": "형식 논리보다 운영 객체(명사)·행동(동사) 모델에 가까움"
+   },
+   "quiz": [
+    {
+     "q": "팔란티어 성장을 보고 내릴 수 있는 가장 정확한 결론은?",
+     "options": [
+      "온톨로지만 만들면 매출이 오른다",
+      "운영 객체·행동 모델의 가치가 시장에서 인정받고 있지만, 성장 원인은 여러 가지다",
+      "온톨로지는 거품이다"
+     ],
+     "answer": 1,
+     "why": "상관과 인과를 나눠 봐요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Q2 2026 results press release (SEC Form 8-K Ex. 99.1)",
+     "url": "https://www.sec.gov/Archives/edgar/data/0001321655/000132165526000039/a2026q2ex991pressrelease.htm",
+     "date": "2026-08-03"
+    },
+    {
+     "title": "Nasdaq — Palantir to Join S&P 500: How Will It Impact the Stock?",
+     "url": "https://www.nasdaq.com/articles/palantir-join-sp-500-how-will-it-impact-stock",
+     "date": "2024-09"
+    },
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "에이전트 붐이 온톨로지를 끌어올린 이유",
+   "lead": "에이전트가 '행동'하려면 객체·액션·권한이 필요하고, 이걸 담는 그릇으로 온톨로지가 다시 불려 나왔어요.",
+   "idea": [
+    "2024년 말 MCP 공개 이후 '도구를 쓰는 AI'가 빠르게 늘었어요. 도구가 많아질수록 '무엇이 무엇과 연결되고 누가 무엇을 해도 되나'가 문제가 돼요.",
+    "벤더들은 이 층을 온톨로지, 시맨틱 레이어, 컨텍스트 레이어, IQ 등 다른 이름으로 불러요. 이름은 달라도 '비즈니스 뜻을 기계가 읽게 적는다'는 핵심은 같아요.",
+    "Gartner 같은 분석 기관은 2025년 AI 하이프 사이클에서 AI 에이전트와 'AI-ready data'를 기대 정점 근처에 뒀다고 보도됐어요. 기대가 크면 실망 구간도 와요."
+   ],
+   "hear": [
+    "\"에이전트 데모는 되는데 운영이 안 돼요.\"",
+    "\"컨텍스트 레이어가 결국 온톨로지죠.\""
+   ],
+   "ask": [
+    "이 제품이 말하는 '온톨로지'는 지표 정의인가, 객체·관계인가, 행동까지인가?",
+    "기대 정점 이후에도 남을 가치는 무엇인가요?"
+   ],
+   "mine": "한빛병원 07장 AI 비서도 '약사 검토 요청' 같은 행동을 넣는 순간 객체·액션·권한 정의가 필요해졌어요.",
+   "deep": [
+    "Anthropic은 2024-11-25 MCP를 AI와 데이터 소스를 잇는 개방형 표준으로 공개했어요.",
+    "Gartner는 2025 AI 하이프 사이클에서 생성형 AI가 실망의 골짜기로 들어간다고 밝혔어요(Gartner 인사이트 페이지). 지식그래프의 정확한 위치는 원문 유료라 확인하지 못했어요."
+   ],
+   "recall": {
+    "q": "벤더마다 다른 이름(시맨틱 레이어·컨텍스트 레이어·IQ)의 공통 핵심은?",
+    "a": "비즈니스 뜻(개념·관계·규칙)을 기계가 읽게 적는 것"
+   },
+   "quiz": [
+    {
+     "q": "제품 설명의 '온톨로지'를 평가할 때 먼저 볼 것은?",
+     "options": [
+      "로고",
+      "지표만인지, 객체·관계인지, 행동·권한까지인지",
+      "출시 연도"
+     ],
+     "answer": 1,
+     "why": "같은 말이 다른 범위를 가리켜요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Anthropic — Introducing the Model Context Protocol",
+     "url": "https://www.anthropic.com/news/model-context-protocol",
+     "date": "2024-11-25"
+    },
+    {
+     "title": "Gartner — Hype Cycle for Artificial Intelligence (insights page)",
+     "url": "https://www.gartner.com/en/insights/gartner-hype-cycle",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "기대와 현실: 하이프를 읽는 법",
+   "lead": "온톨로지 붐에도 과장이 섞여 있어요. 시장 숫자, 벤더 주장, 성공 사례를 나눠서 읽어야 해요.",
+   "idea": [
+    "벤더 발표는 '가능한 것', 고객 사례는 '선택된 성공', 시장 보고서는 '정의에 따라 다른 숫자'예요. 셋을 같은 무게로 믿으면 안 돼요.",
+    "프리뷰와 GA(정식)는 달라요. 예를 들어 Microsoft Fabric 온톨로지는 2026년 10월에도 프리뷰예요.",
+    "좋은 질문: 이 사례는 몇 년 걸렸나? 몇 명이 유지하나? 실패한 곳은 어디인가? 우리 데이터 상태와 비슷한가?"
+   ],
+   "hear": [
+    "\"데모는 멋진데 우리 데이터는 그렇게 깨끗하지 않아요.\"",
+    "\"GA 언제예요?\""
+   ],
+   "ask": [
+    "이 수치의 출처와 정의는?",
+    "이 사례의 유지 인력과 기간은?"
+   ],
+   "mine": "지수는 병원장 보고 자료에 '확인된 사실 / 벤더 주장 / 추정'을 색으로 나눠 표시하기로 했어요.",
+   "deep": [
+    "Microsoft Learn(2026-10-16)은 Fabric 온톨로지를 여전히 프리뷰로 표시해요. Directions on Microsoft 로드맵(2026-08)도 온톨로지가 프리뷰라고 적어요."
+   ],
+   "recall": {
+    "q": "벤더 발표·고객 사례·시장 보고서를 각각 어떻게 읽나요?",
+    "a": "가능성 / 선택된 성공 / 정의에 따라 다른 숫자"
+   },
+   "quiz": [
+    {
+     "q": "병원 운영 도입 판단에 가장 덜 믿을 만한 근거는?",
+     "options": [
+      "우리 데이터로 한 파일럿 결과",
+      "벤더 데모 영상",
+      "공식 문서의 GA 여부"
+     ],
+     "answer": 1,
+     "why": "데모는 가장 좋은 경우만 보여 줘요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Microsoft Learn — What is ontology (preview)? Fabric IQ",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "2026-10-16"
+    },
+    {
+     "title": "Directions on Microsoft — Fabric IQ roadmap",
+     "url": "https://www.directionsonmicrosoft.com/roadmaps/ref/fabric-iq-roadmap/",
+     "date": "2026-08"
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "Microsoft Fabric IQ: 데이터 플랫폼 안의 온톨로지",
+   "lead": "2025년 11월 Microsoft가 Fabric에 온톨로지 항목을 넣으면서 '온톨로지'가 주류 데이터 플랫폼 기능이 됐어요.",
+   "idea": [
+    "Ignite 2025에서 발표된 Fabric IQ의 온톨로지 항목은 엔터티 타입·속성·관계·규칙·지표를 정의하고 OneLake 데이터에 바인딩해요.",
+    "Power BI 시맨틱 모델에서 온톨로지를 생성할 수 있어요. 이미 Power BI를 쓰는 조직엔 진입 장벽이 낮아요.",
+    "RDF·Turtle·OWL 가져오기를 지원해요. W3C 계열 온톨로지와 다리가 생긴 셈이지만, 지원 안 되는 요소는 따로 표시돼요."
+   ],
+   "hear": [
+    "\"Power BI 모델에서 바로 온톨로지가 나와요.\"",
+    "\"프리뷰라 운영엔 아직이에요.\""
+   ],
+   "ask": [
+    "OWL 가져오기 때 무엇이 빠지나요?",
+    "에이전트가 쓰는 규칙은 강제인가, 문맥인가?"
+   ],
+   "mine": "한빛병원은 이미 Power BI로 경영 지표를 보고 있어서, 소라는 Fabric 온톨로지를 시범 후보로 적었어요.",
+   "deep": [
+    "Microsoft Learn: 온톨로지는 데이터를 복사하지 않는 가상 의미층이며, 질의는 바인딩된 원천에서 실행돼요. 옛 경험은 2027-01-31 종료 예정이에요.",
+    "Info-Tech는 Ignite 2025에서 온톨로지 층을 가장 예상 밖의 발표로 평가했어요."
+   ],
+   "recall": {
+    "q": "Fabric 온톨로지가 데이터를 다루는 방식은?",
+    "a": "데이터 복사 없이 정의·바인딩만 저장하고 원천에서 질의 실행"
+   },
+   "quiz": [
+    {
+     "q": "Fabric 온톨로지에 대해 맞는 것은?",
+     "options": [
+      "2026-10 기준 GA다",
+      "Power BI 시맨틱 모델에서 생성할 수 있다",
+      "OWL과 전혀 호환 안 된다"
+     ],
+     "answer": 1,
+     "why": "생성 가능, 프리뷰, OWL 가져오기 지원이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Microsoft Learn — What is ontology (preview)? Fabric IQ",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "2026-10-16"
+    },
+    {
+     "title": "Microsoft Fabric blog — Introducing Microsoft Fabric IQ",
+     "url": "https://blog.fabric.microsoft.com/en-US/blog/from-data-platform-to-intelligence-platform-introducing-microsoft-fabric-iq/",
+     "date": "2025-11"
+    },
+    {
+     "title": "Info-Tech — Microsoft Adopts Ontology-Based IQ Layer for Agentic AI",
+     "url": "https://www.infotech.com/software-reviews/research/microsoft-adopts-ontology-based-iq-layer-for-agentic-ai",
+     "date": "2025-11"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "Snowflake·Databricks: 시맨틱 모델 경쟁",
+   "lead": "두 데이터 플랫폼은 '온톨로지'보다 '시맨틱 뷰·메트릭 뷰'라는 이름으로 같은 문제를 풀고, OSI로 정의 교환을 추진해요.",
+   "idea": [
+    "Snowflake 시맨틱 뷰는 테이블·관계·차원·팩트·지표를 DB 객체로 저장하고, Cortex Analyst 같은 AI 기능이 이를 써요.",
+    "Databricks는 Unity Catalog 메트릭 뷰로 지표를 정의하고 거버넌스(권한·계보)를 붙여요. 핵심 구현을 Apache Spark에 오픈소스로 넣겠다고 했어요.",
+    "2025년 9월 Snowflake·Salesforce·dbt Labs 등이 OSI를 시작했고, 2026년 1월 첫 사양을 Apache 2.0으로 공개했어요. Databricks도 참여했어요. 다만 실제 가져오기/내보내기 구현은 제품마다 확인이 필요해요."
+   ],
+   "hear": [
+    "\"Snowflake 쓰면 시맨틱 뷰, Databricks면 메트릭 뷰.\"",
+    "\"OSI로 묶이면 락인이 줄겠죠.\""
+   ],
+   "ask": [
+    "이 시맨틱 모델은 관계·행동까지 표현하나요?",
+    "OSI로 실제 옮겨 보면 무엇이 깨지나요?"
+   ],
+   "mine": "한빛병원 데이터 웨어하우스는 아직 온프레미스라, 지수는 '플랫폼보다 정의(지표·개념)를 먼저 표준화하자'고 했어요.",
+   "deep": [
+    "Snowflake 블로그(2026-01-27): OSI 첫 사양이 Apache 2 라이선스 GitHub 저장소로 공개.",
+    "Snowflake 문서: 시맨틱 뷰는 논리 테이블·관계·차원·팩트·지표를 정의하는 스키마 객체예요."
+   ],
+   "recall": {
+    "q": "Snowflake·Databricks의 접근을 한 줄로?",
+    "a": "지표·차원 중심 시맨틱 모델을 플랫폼 객체로 두고, OSI로 교환을 추진"
+   },
+   "quiz": [
+    {
+     "q": "OSI에 대해 가장 정확한 말은?",
+     "options": [
+      "모든 제품이 완벽히 지원한다",
+      "업계 컨소시엄 사양으로 2026년 1월 첫 버전이 공개됐다",
+      "ISO 표준이다"
+     ],
+     "answer": 1,
+     "why": "컨소시엄 사양이고 구현은 진행 중이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Snowflake Docs — Overview of semantic views",
+     "url": "https://docs.snowflake.com/en/user-guide/views-semantic/overview",
+     "date": "n.d."
+    },
+    {
+     "title": "Databricks Docs — Unity Catalog metric views",
+     "url": "https://docs.databricks.com/aws/en/metric-views/",
+     "date": "n.d."
+    },
+    {
+     "title": "Snowflake blog — Open Semantic Interchange specs finalized",
+     "url": "https://www.snowflake.com/en/blog/open-semantic-interchanges-specs-finalized/",
+     "date": "2026-01-27"
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "그래프·시맨틱 전문 벤더 지도",
+   "lead": "Neo4j(속성 그래프), Graphwise·Stardog·TopQuadrant(RDF·시맨틱), 그리고 인수합병이 이 시장의 지형을 바꾸고 있어요.",
+   "idea": [
+    "Neo4j는 속성 그래프 DB 선두로, 2024년 11월 ARR 2억 달러 돌파를 발표했어요. GraphRAG·MCP 연동을 앞세워요.",
+    "RDF 쪽은 2024년 10월 Ontotext(GraphDB)와 Semantic Web Company(PoolParty)가 합병해 Graphwise가 됐어요. Stardog(가상 그래프), TopQuadrant(SHACL 기반 EDG), metaphacts 등도 있어요.",
+    "큰 회사들이 사들이고 있어요. 삼성전자는 2024년 7월 Oxford Semantic Technologies(RDFox)를, ServiceNow는 2025년 data.world를 인수했어요."
+   ],
+   "hear": [
+    "\"그래프 벤더가 다 'GraphRAG' 얘기해요.\"",
+    "\"인수되면 로드맵이 바뀔 수 있어요.\""
+   ],
+   "ask": [
+    "이 벤더는 LPG인가 RDF인가, 표준(GQL·SPARQL·SHACL)을 얼마나 지원하나요?",
+    "인수·합병 후 라이선스·지원 정책은?"
+   ],
+   "mine": "소라는 '표준 형식(Turtle·SHACL·GQL)으로 내보낼 수 있는지'를 벤더 비교표 첫 줄에 넣었어요.",
+   "deep": [
+    "Neo4j 보도자료(2024-11-19): ARR 2억 달러 돌파, 3년 새 두 배, 기업가치 20억 달러 이상.",
+    "삼성 뉴스룸(2024-07-18): 2017년 옥스퍼드 교수 3명이 세운 OST 인수, 온디바이스 개인 지식그래프 목적.",
+    "ServiceNow는 2025년 5월 data.world 인수를 발표했고, FY2025 10-K에 7월 완료로 적었어요."
+   ],
+   "recall": {
+    "q": "삼성전자가 RDFox 회사를 산 목적은?",
+    "a": "온디바이스 AI와 결합한 개인 지식그래프(개인정보는 기기 안에)"
+   },
+   "quiz": [
+    {
+     "q": "2024년 10월 Graphwise로 합병한 두 회사는?",
+     "options": [
+      "Neo4j와 Stardog",
+      "Ontotext와 Semantic Web Company",
+      "Snowflake와 dbt Labs"
+     ],
+     "answer": 1,
+     "why": "GraphDB + PoolParty예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Neo4j — Neo4j Surpasses $200M in Revenue",
+     "url": "https://neo4j.com/press-releases/neo4j-revenue-milestone-2024/",
+     "date": "2024-11-19"
+    },
+    {
+     "title": "KMWorld — Semantic Web Company and Ontotext merge to rebrand as Graphwise",
+     "url": "https://www.kmworld.com/Articles/News/News/Semantic-Web-Company-and-Ontotext-merge-to-rebrand-as-knowledge-graph-and-AI-powerhouse-Graphwise-166526.aspx",
+     "date": "2024-10"
+    },
+    {
+     "title": "Samsung Newsroom — Samsung Electronics Announces Acquisition of Oxford Semantic Technologies",
+     "url": "https://news.samsung.com/global/samsung-electronics-announces-acquisition-of-oxford-semantic-technologies-uk-based-knowledge-graph-startup",
+     "date": "2024-07-18"
+    },
+    {
+     "title": "SC Media — ServiceNow expands AI platform with data.world deal",
+     "url": "https://www.scworld.com/brief/servicenow-expands-ai-platform-with-data-world-deal",
+     "date": "2025-05"
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "표준은 조용히 자라요",
+   "lead": "제품 발표보다 느리지만, GQL·SHACL·RDF 1.2 같은 표준이 장기적으로 락인을 줄여 줘요.",
+   "idea": [
+    "2024년 4월 GQL(ISO/IEC 39075)이 그래프 질의 언어 국제 표준이 됐어요(04장). 속성 그래프 쪽에 공통 언어가 생겼어요.",
+    "W3C는 RDF 1.2·SPARQL 1.2·SHACL 1.2를 다듬고 있어요(03장). 의료는 SNOMED·LOINC·FHIR, 상위는 BFO(ISO/IEC 21838)가 기반이에요(06장).",
+    "제품의 '온톨로지'가 표준으로 내보내지지 않으면, 나중에 바꿀 때 다시 만들어야 해요. 표준 지원은 보험이에요."
+   ],
+   "hear": [
+    "\"표준은 느려요.\"",
+    "\"그래도 5년 뒤 이사 비용을 줄여 줘요.\""
+   ],
+   "ask": [
+    "이 제품의 정의를 표준 형식으로 내보낼 수 있나요?",
+    "표준 코드(SNOMED·LOINC)를 그대로 쓰나요?"
+   ],
+   "mine": "한빛병원 온톨로지는 처음부터 Turtle 파일로 Git에 두고, 어떤 제품이든 가져오게 하자는 원칙을 세웠어요.",
+   "deep": [
+    "ISO/IEC 39075:2024 GQL은 2024년 4월 출판됐어요(ISO)."
+   ],
+   "recall": {
+    "q": "표준 지원이 '보험'인 이유는?",
+    "a": "제품을 바꿀 때 정의를 다시 만들지 않아도 되게 해 줌"
+   },
+   "quiz": [
+    {
+     "q": "병원 온톨로지 원본을 둘 가장 좋은 형식은?",
+     "options": [
+      "특정 제품 전용 형식만",
+      "Turtle 같은 표준 형식(버전 관리) + 제품으로 가져오기",
+      "엑셀"
+     ],
+     "answer": 1,
+     "why": "원본은 표준으로요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "ISO/IEC 39075:2024 GQL",
+     "url": "https://www.iso.org/standard/76120.html",
+     "date": "2024-04"
+    },
+    {
+     "title": "Microsoft Learn — What is ontology (preview)? Fabric IQ",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "2026-10-16"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "미국: 국방·정부가 큰손",
+   "lead": "미국에선 국방·정보기관이 데이터 통합·온톨로지의 가장 큰 고객이고, 2025년 육군-팔란티어 기업 계약이 상징적이에요.",
+   "idea": [
+    "2025년 7월 31일 미 육군은 팔란티어와 최대 10년·상한 100억 달러 기업 계약(Enterprise Agreement)을 맺었어요. 흩어진 75개 계약(본계약 15 + 관련 60)을 하나로 묶었어요.",
+    "100억 달러는 '상한'이지 지출 약속이 아니에요. 육군 CIO는 비슷한 기업 라이선스 계약을 더 검토한다고 했어요.",
+    "정부 쪽 온톨로지는 BFO·CCO(Common Core Ontologies) 같은 형식 온톨로지 연구와, 팔란티어 같은 운영 플랫폼이 함께 쓰여요."
+   ],
+   "hear": [
+    "\"상한 100억이지 실제 집행은 달라요.\"",
+    "\"계약 통합이 핵심이에요.\""
+   ],
+   "ask": [
+    "상한액과 실제 집행액은 얼마나 다른가요?",
+    "왜 계약을 하나로 묶었을까요?"
+   ],
+   "mine": "지수는 '국방 사례는 규모가 다르니 병원엔 계약 통합·거버넌스 교훈만 가져오자'고 메모했어요.",
+   "deep": [
+    "DefenseScoop(2025-07-31): 15개 본계약과 60개 관련 계약을 하나의 기업 계약으로 통합, 기간 최대 10년, 상한 100억 달러, 리셀러 수수료 제거와 물량 할인 목적."
+   ],
+   "recall": {
+    "q": "미 육군 100억 달러 계약에서 '100억'의 의미는?",
+    "a": "최대 상한액(지출 약속 아님)"
+   },
+   "quiz": [
+    {
+     "q": "육군 계약의 핵심 목적으로 맞는 것은?",
+     "options": [
+      "새 온톨로지 표준 제정",
+      "흩어진 계약 통합과 물량 할인",
+      "오픈소스 공개"
+     ],
+     "answer": 1,
+     "why": "75개 계약을 하나로 묶었어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "DefenseScoop — Army consolidates Palantir software into $10B enterprise agreement",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "유럽: 규제가 '공유 가능한 뜻'을 요구해요",
+   "lead": "EU는 Data Act·EHDS 같은 법으로 데이터 공유를 의무화하고 있어서, 기계가 읽는 공통 의미(메타데이터·온톨로지)가 필수가 되고 있어요.",
+   "idea": [
+    "Data Act는 2025년 9월 12일부터 적용돼요. 연결 기기 데이터를 사용자·제3자와 공유하게 하는 규칙이에요.",
+    "EHDS(유럽 건강 데이터 공간, 규정 2025/327)는 2025년 3월 26일 발효됐어요. 일반 적용은 2027년 3월, 환자 요약·전자처방 교환 같은 핵심은 2029년 3월부터 단계적으로 적용돼요.",
+    "데이터 스페이스(Gaia-X, IDSA, Catena-X)는 참여자·서비스를 RDF·SHACL 같은 기계 판독 설명으로 표현해요. 법이 공유를 요구하고, 공유는 공통 의미를 요구하는 구조예요."
+   ],
+   "steps": [
+    {
+     "k": "2025-03",
+     "t": "EHDS 발효"
+    },
+    {
+     "k": "2025-09",
+     "t": "Data Act 적용"
+    },
+    {
+     "k": "2027-03",
+     "t": "EHDS 일반 적용"
+    },
+    {
+     "k": "2029-03",
+     "t": "환자 요약·전자처방 교환 시작"
+    }
+   ],
+   "hear": [
+    "\"EHDS 대응하려면 용어 표준부터.\"",
+    "\"유럽은 규제가 시장을 만들어요.\""
+   ],
+   "ask": [
+    "EHDS 일정 중 우리와 비슷한 단계는?",
+    "법이 요구하는 '상호운용'은 어느 수준인가요?"
+   ],
+   "mine": "현우는 EHDS 타임라인을 보며 '한국도 진료정보교류 표준이 강해지면 우리 매핑이 자산이 된다'고 말했어요.",
+   "deep": [
+    "EHDS 규정 제105조: 2027-03-26부터 적용, 일부 조항은 2029·2031·2035년부터(EUR-Lex).",
+    "유럽연합 집행위원회: 2029년 3월부터 환자 요약·전자처방이 모든 회원국에서 교환되는 첫 단계가 적용돼요."
+   ],
+   "recall": {
+    "q": "EHDS 발효일과 핵심 적용 시점은?",
+    "a": "2025-03-26 발효, 일반 적용 2027-03, 핵심 1차 교환 2029-03"
+   },
+   "quiz": [
+    {
+     "q": "EU 규제가 온톨로지 수요를 만드는 논리는?",
+     "options": [
+      "규제가 온톨로지를 금지해서",
+      "법이 데이터 공유를 요구하고, 공유엔 공통 의미가 필요해서",
+      "온톨로지 벤더가 유럽 회사라서"
+     ],
+     "answer": 1,
+     "why": "공유 의무 → 공통 의미 필요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "European Commission — European Health Data Space Regulation (EHDS)",
+     "url": "https://health.ec.europa.eu/ehealth-digital-health-and-care/european-health-data-space-regulation-ehds_en",
+     "date": "n.d."
+    },
+    {
+     "title": "EUR-Lex — Regulation (EU) 2025/327 (EHDS)",
+     "url": "https://eur-lex.europa.eu/eli/reg/2025/327/oj",
+     "date": "2025-03-05"
+    },
+    {
+     "title": "European Commission — Data Act",
+     "url": "https://digital-strategy.ec.europa.eu/en/policies/data-act",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "의료는 세계 공통 무대",
+   "lead": "의료는 SNOMED·LOINC·FHIR·OMOP 같은 국제 표준이 이미 있어서, 나라와 상관없이 온톨로지가 가장 성숙한 분야예요.",
+   "idea": [
+    "06장에서 본 표준들이 국경을 넘어 쓰여요. OHDSI의 OMOP CDM은 세계 여러 나라 병원이 같은 형태로 데이터를 바꿔 함께 연구하게 해요.",
+    "핵심 아이디어는 '데이터는 병원에 두고, 분석 코드만 보낸다'예요. 개인정보 규제가 강한 곳에서도 다기관 연구가 가능해져요.",
+    "한계: 변환 품질이 병원마다 다르고, 지역 코드(한국 KCD·EDI 등)를 표준으로 매핑하는 데 손이 많이 들어요."
+   ],
+   "hear": [
+    "\"데이터는 안 나가고 결과만 나가요.\"",
+    "\"매핑 품질이 연구 품질이에요.\""
+   ],
+   "ask": [
+    "우리 병원 지역 코드의 표준 매핑률은?",
+    "변환 품질 검사는 누가 하나요?"
+   ],
+   "mine": "한빛병원도 OMOP 변환을 검토 중이고, 06장에서 만든 매핑이 그대로 쓰일 수 있어요.",
+   "deep": [
+    "Book of OHDSI는 OMOP CDM과 표준 용어(Athena)로 다기관 관찰연구를 하는 방법을 설명해요."
+   ],
+   "recall": {
+    "q": "OMOP 다기관 연구의 핵심 아이디어는?",
+    "a": "데이터는 각 병원에 두고 분석 코드·결과만 주고받기"
+   },
+   "quiz": [
+    {
+     "q": "OMOP 변환에서 가장 손이 많이 가는 부분은?",
+     "options": [
+      "서버 구매",
+      "지역 코드를 표준 개념으로 매핑",
+      "로고 디자인"
+     ],
+     "answer": 1,
+     "why": "용어 매핑이 핵심 작업이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Book of OHDSI",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/",
+     "date": "n.d."
+    },
+    {
+     "title": "바이오스펙테이터 — OMOP-CDM으로 다기관 임상데이터 활용",
+     "url": "https://www.biospectator.com/news/view/4081",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "일본·중국: 다른 길",
+   "lead": "일본은 대기업·합작 중심, 중국은 빅테크가 자체 지식그래프와 오픈소스(OpenSPG·KAG)로 앞서가요.",
+   "idea": [
+    "일본: 팔란티어는 2019년 손해보험사 SOMPO와 50:50 합작사 Palantir Technologies Japan을 세웠어요(초기 초점: 헬스케어·사이버보안). 후지쯔는 2024년 '지식그래프 확장 RAG'를 발표했어요.",
+    "중국: Ant Group은 OpenKG와 함께 OpenSPG 엔진을 만들고, 2024년 KAG(지식 증강 생성)를 논문·오픈소스로 공개했어요. 전자정부·전자건강 Q&A 적용을 보고했어요.",
+    "공통점: W3C 스택보다 각 회사의 실용형 그래프가 많아요. 차이점: 일본은 외국 플랫폼과의 합작, 중국은 자체 생태계 경향이 강해요."
+   ],
+   "hear": [
+    "\"SoftBank랑 합작 아니었어요?\" \"SOMPO예요.\"",
+    "\"KAG는 중국판 GraphRAG 같은 거예요.\""
+   ],
+   "ask": [
+    "이 사례는 외국 플랫폼 도입인가, 자체 개발인가?",
+    "오픈소스 라이선스와 유지 주체는?"
+   ],
+   "mine": "소라는 KAG 저장소를 보고 '병원 내부 설치형 대안'으로 비교표에 넣었어요.",
+   "deep": [
+    "후지쯔 보도자료(2024-06-04): 지식그래프 확장 RAG로 LLM이 참조하는 데이터를 1,000만 토큰 이상으로 늘린다고 발표.",
+    "KAG 논문(arXiv 2409.13731): 2Wiki·HotpotQA 다단계 질의응답에서 기존 방법 대비 상대 F1 향상을 보고했어요. OpenSPG v0.5(2024-10-24)에서 KAG 공개."
+   ],
+   "recall": {
+    "q": "팔란티어 일본 합작 파트너는?",
+    "a": "SOMPO 홀딩스 (2019, 50:50)"
+   },
+   "quiz": [
+    {
+     "q": "Ant Group KAG에 대해 맞는 것은?",
+     "options": [
+      "비공개 상용 제품만 있다",
+      "논문과 오픈소스(OpenSPG 기반)로 공개됐다",
+      "Microsoft 제품이다"
+     ],
+     "answer": 1,
+     "why": "Apache-2.0 오픈소스예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Business Insurance — Sompo launches Japanese joint venture with Palantir",
+     "url": "https://www.businessinsurance.com/sompo-launches-japanese-joint-venture-with-palantir/",
+     "date": "2019-11"
+    },
+    {
+     "title": "Fujitsu press release — Enterprise generative AI framework (knowledge graph extended RAG)",
+     "url": "https://www.fujitsu.com/global/about/resources/news/press-releases/2024/0604-01.html",
+     "date": "2024-06-04"
+    },
+    {
+     "title": "Liang et al., KAG: Knowledge Augmented Generation (Ant Group)",
+     "url": "https://arxiv.org/abs/2409.13731",
+     "date": "2024-09"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "한국 기업: 팔란티어 파트너십 붐",
+   "lead": "한국에선 HD현대(2021~)와 KT(2025~)가 팔란티어 온톨로지를 들여오며 '온톨로지'가 기업 화제가 됐어요.",
+   "idea": [
+    "HD현대는 2021년 HD현대오일뱅크를 시작으로 조선·에너지·건설기계에 팔란티어를 도입했어요. 2026년 1월 다보스에서 협력을 그룹 전반(일렉트릭·로보틱스·마린솔루션 등)으로 넓히고 공동 CoE를 만들기로 했다고 보도됐어요.",
+    "KT는 2025년 3월 팔란티어와 전략적 파트너십을 맺었어요. 국내 기업 최초로 팔란티어 월드와이드 파트너 생태계 멤버가 됐고, 금융권 중심 AX 사업과 내부 PoC를 진행한다고 밝혔어요.",
+    "주의: 성과 수치(예: 건조 속도 개선)는 언론 인용이 많고 산정 기준이 공개되지 않은 경우가 많아요."
+   ],
+   "hear": [
+    "\"우리도 팔란티어 들여오자는 말이 위에서 내려와요.\"",
+    "\"성과 숫자의 기준이 뭔지 봐야죠.\""
+   ],
+   "ask": [
+    "이 사례에서 무엇을 객체로, 무엇을 행동으로 모델링했나요?",
+    "공개된 성과 수치의 산정 기준은?"
+   ],
+   "mine": "지수는 HD현대·KT 기사를 보고 '기술보다 현장 문제를 먼저 고른 점'을 병원 보고서 교훈으로 적었어요.",
+   "deep": [
+    "한국경제(2025-03-13): KT-팔란티어 전략적 파트너십, 국내 금융권 중심 AX 사업.",
+    "헤럴드경제(2026-01-20): 팔란티어-HD현대 AI 소프트웨어 공급 계약, 조선 디지털화 협력 확대."
+   ],
+   "recall": {
+    "q": "KT-팔란티어 협력의 초기 초점은?",
+    "a": "국내 금융권 중심 AX 사업과 KT 내부 PoC"
+   },
+   "quiz": [
+    {
+     "q": "언론에 나온 '건조 속도 30% 개선' 같은 수치를 쓸 때 맞는 태도는?",
+     "options": [
+      "그대로 인용",
+      "출처·산정 기준을 확인하고 불명확하면 '보도 기준'이라고 표시",
+      "무시"
+     ],
+     "answer": 1,
+     "why": "근거 등급을 표시해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "헤럴드경제 — 팔란티어, HD현대와 AI 소프트웨어 공급 계약…조선 디지털화 협력 확대",
+     "url": "https://www.heraldk.com/article/2026012013064508566",
+     "date": "2026-01-20"
+    },
+    {
+     "title": "한국경제 — KT, 팔란티어와 AX 전략적 파트너십",
+     "url": "https://www.hankyung.com/article/202503132335i",
+     "date": "2025-03-13"
+    },
+    {
+     "title": "디지털데일리 — KT, 팔란티어로부터 산업계 AX 기술 역량 수혈",
+     "url": "https://www.ddaily.co.kr/page/view/2025061210092656199",
+     "date": "2025-06-12"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "한국 공공: 통계·도시·행정에 온톨로지",
+   "lead": "2026년 한국 공공에선 국가데이터처의 통계 온톨로지, 지자체 도시 지식그래프, 행정 AI 에이전트가 함께 움직이고 있어요.",
+   "idea": [
+    "국가데이터처는 2026년 6월, AI가 공식 통계 DB에 근거해 답하도록 AI 친화적 통계 메타데이터와 온톨로지를 구축 중이라고 밝혔어요. 국가데이터기본법 제정안도 발의됐어요.",
+    "화성시는 시 정보시스템 데이터를 도시 온톨로지 기반 지식그래프로 연결해 민원 위험도를 예측하는 사업을 추진한다고 보도됐어요.",
+    "행정안전부는 2026년 3월 'AI 국민비서' 시범서비스, 8월 AI 기반 공공데이터포털 시범서비스를 열었다고 보도됐어요. 공공도 '답하는 AI'에서 '일하는 AI'로 가고 있어요."
+   ],
+   "hear": [
+    "\"공공은 통계 환각이 제일 무서워요.\"",
+    "\"온톨로지가 공공 AI 사업 제안서 단골 단어가 됐어요.\""
+   ],
+   "ask": [
+    "공공 온톨로지는 누가 유지하고 어디에 공개하나요?",
+    "표준(DCAT, 공공데이터 표준)과 어떻게 맞추나요?"
+   ],
+   "mine": "현우는 '국가 통계 온톨로지가 공개되면 병원 지표 정의를 맞출 수 있겠다'고 했어요.",
+   "deep": [
+    "SBS Biz(2026-06-02): 국가데이터처, AI 친화적 통계 메타데이터·온톨로지 구축 중, 국가데이터기본법 발의 완료.",
+    "벤처스퀘어: 화성시 도시데이터플랫폼에서 도시 온톨로지 기반 지식그래프로 민원 위험도 예측(포티투마루 참여)."
+   ],
+   "recall": {
+    "q": "국가데이터처가 통계 온톨로지를 만드는 목적은?",
+    "a": "AI가 공식 통계에 근거해 정확히 답하도록(환각 감소)"
+   },
+   "quiz": [
+    {
+     "q": "공공 온톨로지 사업에서 가장 먼저 확인할 것은?",
+     "options": [
+      "홍보 문구",
+      "유지 주체·공개 형식·표준 정합성",
+      "사업명"
+     ],
+     "answer": 1,
+     "why": "지속성과 재사용성이 핵심이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "SBS Biz — 데이터처 \"기본법 발의 완료…AI 온톨로지 구축 추진 중\"",
+     "url": "https://biz.sbs.co.kr/amp/article/20000314080",
+     "date": "2026-06-02"
+    },
+    {
+     "title": "벤처스퀘어 — 포티투마루, 화성시 도시데이터플랫폼 참여",
+     "url": "https://www.venturesquare.net/1107736/",
+     "date": "2026"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "한국 병원: OMOP과 의료데이터 중심병원",
+   "lead": "한국 병원들은 OMOP CDM 변환과 정부 의료데이터 사업으로 '같은 뜻의 데이터' 기반을 쌓아 왔어요.",
+   "idea": [
+    "아주대 등이 이끈 국내 OMOP 네트워크(FEEDER-NET 계열)에는 대형병원 수십 곳이 참여했다는 연구 보고가 있어요. 국민건강보험 표본코호트도 OMOP으로 변환된 연구가 있어요.",
+    "보건복지부 '의료데이터 중심병원' 사업, 한국의약품안전관리원의 EHR 기반 CDM 확대 구축사업 등이 병원 데이터 표준화를 지원해 왔어요.",
+    "한계: 개인정보보호법·생명윤리법 때문에 원자료 공유는 어렵고, 병원마다 EMR 형식이 달라요. 그래서 '데이터는 안에, 분석만 밖으로' 구조와 용어 매핑이 중요해요."
+   ],
+   "hear": [
+    "\"CDM 변환은 했는데 매핑 품질이 들쭉날쭉해요.\"",
+    "\"KCD를 SNOMED로 어떻게 잇죠?\""
+   ],
+   "ask": [
+    "우리 병원은 어떤 국가 사업에 참여할 수 있나요?",
+    "CDM 변환 후 유지·갱신은 누가 하나요?"
+   ],
+   "mine": "지수는 'OMOP 변환 + 06장 매핑 + 07장 AI 비서'를 하나의 로드맵으로 묶어 병원장에게 보고하기로 했어요.",
+   "deep": [
+    "코메디닷컴: 울산대병원이 한국의약품안전관리원 EHR 기반 CDM 확대 구축사업에 참여, 약 68만 명 건강기록 표준화(게재일 확인 필요).",
+    "바이오스펙테이터: 국내 규제와 EMR 형식 차이로 임상정보 공유가 어렵고, OMOP-CDM은 결과값만 주고받는 방식이라고 설명."
+   ],
+   "recall": {
+    "q": "한국에서 OMOP 방식이 특히 맞는 이유는?",
+    "a": "개인정보 규제로 원자료 공유가 어려워 '분석만 밖으로' 구조가 유리"
+   },
+   "quiz": [
+    {
+     "q": "국내 병원 데이터 표준화의 가장 큰 실무 병목은?",
+     "options": [
+      "서버 성능",
+      "병원마다 다른 EMR 형식과 지역 코드 매핑",
+      "그래프 DB 가격"
+     ],
+     "answer": 1,
+     "why": "용어·형식 차이가 핵심이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "바이오스펙테이터 — OMOP-CDM으로 다기관 임상데이터 활용",
+     "url": "https://www.biospectator.com/news/view/4081",
+     "date": "n.d."
+    },
+    {
+     "title": "코메디닷컴 — 울산대병원, EHR 기반 CDM 확대 구축사업 참여",
+     "url": "https://kormedi.com/1578704/",
+     "date": "n.d."
+    },
+    {
+     "title": "Book of OHDSI",
+     "url": "https://ohdsi.github.io/TheBookOfOhdsi/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "한국의 강점과 빈자리",
+   "lead": "한국은 IT 인프라·병원 전산화가 강하지만, 공개 온톨로지·표준 인력·유지 체계는 아직 얇아요.",
+   "idea": [
+    "강점: EMR 보급률이 높고, 공공데이터가 많고, 대기업이 빠르게 도입해요. 삼성의 RDFox 인수처럼 기술 확보 움직임도 있어요.",
+    "빈자리: 한국어 공개 온톨로지와 표준 매핑 자료가 적고, 온톨로지 설계·거버넌스 인력이 부족해요. 사업 단위 구축 후 유지가 끊기는 경우도 많아요.",
+    "기회: 의료·공공처럼 표준이 이미 있는 영역에서 '매핑 + 거버넌스 + AI 그라운딩'을 묶어 보여 주는 사례가 나오면 확산이 빨라질 수 있어요(추정)."
+   ],
+   "hear": [
+    "\"사업 끝나면 온톨로지가 방치돼요.\"",
+    "\"사람이 없어요, 설계자가.\""
+   ],
+   "ask": [
+    "구축 후 유지 예산과 담당자는?",
+    "한국어 레이블·동의어는 누가 관리하나요?"
+   ],
+   "mine": "나(온톨로지 설계자)는 한빛병원 온톨로지에 한국어·영어 레이블을 같이 달고, 분기별 리뷰 회의를 제안했어요.",
+   "deep": [
+    "삼성 뉴스룸(2024-07-18): 삼성전자는 2019년부터 OST에 투자했고 2018년부터 협력해 왔어요."
+   ],
+   "recall": {
+    "q": "한국 온톨로지 생태계의 빈자리 두 가지는?",
+    "a": "공개 한국어 온톨로지·매핑 자료 부족, 설계·거버넌스 인력과 유지 체계 부족"
+   },
+   "quiz": [
+    {
+     "q": "구축형 사업의 흔한 실패는?",
+     "options": [
+      "너무 빨리 끝남",
+      "구축 후 유지 담당·예산이 없어 방치됨",
+      "표준을 너무 많이 씀"
+     ],
+     "answer": 1,
+     "why": "유지 체계가 핵심이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Samsung Newsroom — Samsung Electronics Announces Acquisition of Oxford Semantic Technologies",
+     "url": "https://news.samsung.com/global/samsung-electronics-announces-acquisition-of-oxford-semantic-technologies-uk-based-knowledge-graph-startup",
+     "date": "2024-07-18"
+    },
+    {
+     "title": "SBS Biz — 데이터처 \"기본법 발의 완료…AI 온톨로지 구축 추진 중\"",
+     "url": "https://biz.sbs.co.kr/amp/article/20000314080",
+     "date": "2026-06-02"
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "시장 규모: 숫자를 정직하게 읽기",
+   "lead": "'지식그래프 시장' 숫자는 조사 기관마다 2배 이상 달라요. 범위와 정의를 함께 말해야 해요.",
+   "idea": [
+    "MarketsandMarkets는 2024년 지식그래프 시장을 약 10.7억 달러, 2030년 약 69.4억 달러(연평균 36.6%)로 봤어요.",
+    "다른 기관은 2024년 약 12.4억 달러, 2030년 약 31.9억 달러(연평균 약 17%)처럼 훨씬 낮게 봐요. '시맨틱 지식그래핑'처럼 정의를 달리한 보고서도 있어요.",
+    "비교 감각: 팔란티어 한 회사의 2026년 매출 가이던스(약 81.5억 달러)가 대부분의 '지식그래프 시장' 전체보다 커요. 즉 이 시장 정의엔 팔란티어 같은 플랫폼이 거의 안 들어가요."
+   ],
+   "hear": [
+    "\"시장이 7조 원이래요!\"",
+    "\"어느 기관, 어떤 정의요?\""
+   ],
+   "ask": [
+    "이 숫자는 어느 기관, 무엇을 포함한 정의인가요?",
+    "다른 기관 숫자와 몇 배 차이 나나요?"
+   ],
+   "mine": "지수는 보고서에 시장 규모를 하나로 쓰지 않고 '기관별 범위(약 30억~70억 달러, 2030)'로 적기로 했어요.",
+   "deep": [
+    "MarketsandMarkets 보도자료(2025-01-10): 2024년 1,068.4백만 달러 → 2030년 6,938.4백만 달러, CAGR 36.6%.",
+    "다른 조사(2차 인용): 2024년 약 12.4억 달러 → 2030년 약 31.9억 달러, CAGR 약 17.1%.",
+    "Palantir 8-K(2026-08): 2026년 매출 가이던스 81.5억~81.58억 달러."
+   ],
+   "recall": {
+    "q": "시장 규모를 보고할 때 지켜야 할 것은?",
+    "a": "기관명과 정의를 밝히고, 하나의 숫자 대신 범위로"
+   },
+   "quiz": [
+    {
+     "q": "팔란티어 매출이 '지식그래프 시장'보다 크다는 사실이 말해 주는 것은?",
+     "options": [
+      "시장 보고서가 틀렸다",
+      "시장 정의에 따라 포함 범위가 크게 다르다",
+      "팔란티어는 지식그래프 회사가 아니다"
+     ],
+     "answer": 1,
+     "why": "정의가 숫자를 정해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "MarketsandMarkets — Knowledge Graph Market worth $6,938.4 million by 2030 (press release)",
+     "url": "https://prnewswire.co.uk/news-releases/knowledge-graph-market-worth-6-938-4-million-by-2030--exclusive-report-by-marketsandmarkets-302347820.html",
+     "date": "2025-01-10"
+    },
+    {
+     "title": "Palantir Q2 2026 results press release (SEC Form 8-K Ex. 99.1)",
+     "url": "https://www.sec.gov/Archives/edgar/data/0001321655/000132165526000039/a2026q2ex991pressrelease.htm",
+     "date": "2026-08-03"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "앞으로의 쟁점 1: 이름 전쟁과 락인",
+   "lead": "모든 벤더가 '온톨로지'를 말하지만 범위가 달라요. 정의가 한 제품에 갇히면 바꾸기 어려워져요.",
+   "idea": [
+    "팔란티어 온톨로지(객체·액션), Fabric 온톨로지(엔터티·규칙·지표), 시맨틱 뷰(지표), W3C 온톨로지(논리)는 같은 단어, 다른 물건이에요.",
+    "락인 위험: 비즈니스 뜻을 한 제품 형식으로만 정의하면, 플랫폼을 바꿀 때 회사의 '뜻'을 다시 만들어야 해요.",
+    "대응: 원본 정의는 표준 형식(Turtle·SHACL·OSI·표준 코드)으로 버전 관리하고, 제품엔 가져오기로 넣어요. 완벽하진 않지만 이사 비용을 줄여요."
+   ],
+   "hear": [
+    "\"우리 온톨로지가 벤더 거예요, 우리 거예요?\"",
+    "\"원본은 Git에.\""
+   ],
+   "ask": [
+    "이 정의를 내보내면 무엇이 남고 무엇이 사라지나요?",
+    "계약 종료 시 정의 반출 조항이 있나요?"
+   ],
+   "mine": "하나의 원칙: 한빛병원의 '뜻'은 병원 소유. 제품은 그걸 쓰는 도구.",
+   "deep": [
+    "Microsoft Learn: Fabric 온톨로지는 RDF·Turtle·OWL 가져오기와 RDF·Turtle 내보내기를 지원하되, 지원 안 되는 요소를 따로 알려 줘요."
+   ],
+   "recall": {
+    "q": "락인을 줄이는 핵심 원칙은?",
+    "a": "원본 정의를 표준 형식으로 우리가 소유·버전 관리하고, 제품엔 가져오기"
+   },
+   "quiz": [
+    {
+     "q": "계약서에 넣으면 좋은 조항은?",
+     "options": [
+      "벤더 로고 사용",
+      "온톨로지 정의·매핑의 표준 형식 반출 보장",
+      "무제한 사용자"
+     ],
+     "answer": 1,
+     "why": "뜻의 소유권을 지켜요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Microsoft Learn — What is ontology (preview)? Fabric IQ",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "2026-10-16"
+    },
+    {
+     "title": "Snowflake blog — Open Semantic Interchange specs finalized",
+     "url": "https://www.snowflake.com/en/blog/open-semantic-interchanges-specs-finalized/",
+     "date": "2026-01-27"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "앞으로의 쟁점 2: 거버넌스·신뢰·사람",
+   "lead": "온톨로지가 AI의 '사실 기준'이 되면, 누가 정의를 바꾸고 어떻게 검증하느냐가 안전 문제가 돼요.",
+   "idea": [
+    "온톨로지 한 줄을 잘못 바꾸면 AI 비서 수천 개 답이 한꺼번에 틀릴 수 있어요. 변경 검토·버전·테스트(07장 골든 셋)가 필수예요.",
+    "LLM이 온톨로지를 자동으로 늘리면 속도는 빨라지지만 '누가 승인했는지'가 흐려져요. 제안 먼저, 사람 확정 구조가 기본이 되고 있어요.",
+    "결국 사람 문제예요. 도메인 전문가(간호사·약사)와 데이터 팀이 같은 테이블에 앉는 운영 체계가 기술보다 오래 걸려요."
+   ],
+   "hear": [
+    "\"정의 바꾸면 AI 테스트부터 돌려요.\"",
+    "\"용어 위원회가 필요해요.\""
+   ],
+   "ask": [
+    "정의 변경 승인자는 누구인가요?",
+    "변경이 AI 답에 미친 영향을 어떻게 측정하나요?"
+   ],
+   "mine": "지수는 '용어·온톨로지 위원회(월 1회, 간호·약제·데이터팀)'를 2027년 계획에 넣었어요.",
+   "deep": [
+    "Microsoft Learn: Fabric 온톨로지 에이전트의 변경은 proposal-first(제안 후 사람 검토) 모델이에요."
+   ],
+   "recall": {
+    "q": "온톨로지가 AI의 사실 기준이 될 때 필요한 세 장치는?",
+    "a": "변경 검토(승인자), 버전 관리, 변경 영향 테스트"
+   },
+   "quiz": [
+    {
+     "q": "온톨로지 변경 후 가장 먼저 할 일은?",
+     "options": [
+      "바로 배포",
+      "골든 셋으로 AI 답 회귀 테스트",
+      "공지만 함"
+     ],
+     "answer": 1,
+     "why": "변경 영향을 측정해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Microsoft Learn — What is ontology (preview)? Fabric IQ",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "2026-10-16"
+    },
+    {
+     "title": "Pan et al., Unifying LLMs and Knowledge Graphs: A Roadmap",
+     "url": "https://arxiv.org/abs/2306.08302",
+     "date": "2023-06"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "한빛병원의 결정: 무엇을, 왜, 어디까지",
+   "lead": "세계 동향을 본 뒤의 결론은 '유행을 사는 것'이 아니라 '우리 문제에 맞는 층을 고르는 것'이에요.",
+   "idea": [
+    "1층: 표준 용어 매핑(06장) — 어떤 제품을 고르든 남는 자산이에요. 가장 먼저 해요.",
+    "2층: AI 그라운딩(07장) — 위험이 큰 질문(알레르기·처방)부터 온톨로지 근거로, 나머지는 RAG로.",
+    "3층: 플랫폼 선택 — Fabric·팔란티어·오픈 스택(그래프 DB + MCP)을 우리 데이터로 짧게 시험하고, 표준 반출·권한·비용을 기준으로 골라요. 국가 동향(국가데이터처·EHDS 같은 규제)은 '언젠가 공유가 의무가 된다'는 신호로 읽어요."
+   ],
+   "hear": [
+    "\"그래서 뭘 사요?\"",
+    "\"사기 전에 우리 뜻부터 적어요.\""
+   ],
+   "ask": [
+    "어떤 결과가 나오면 3층 선택을 다시 볼까요?",
+    "1층 자산은 어떤 제품으로도 옮겨지나요?"
+   ],
+   "mine": "이번 주 산출물은 병원장 보고서 '왜 지금 온톨로지인가 — 세계 동향과 한빛의 선택'이에요.",
+   "deep": [
+    "Palantir 2026년 2분기 미국 상업 매출 +149%, Microsoft Fabric IQ 발표(2025-11), OSI 첫 사양(2026-01), 국가데이터처 통계 온톨로지(2026-06)는 모두 같은 방향(비즈니스 뜻을 AI에 제공)을 가리켜요."
+   ],
+   "recall": {
+    "q": "한빛병원 3층 로드맵의 순서는?",
+    "a": "표준 용어 매핑 → 위험 질문부터 AI 그라운딩 → 짧은 시험 후 플랫폼 선택"
+   },
+   "quiz": [
+    {
+     "q": "가장 먼저 투자할 '어떤 제품에서도 남는' 자산은?",
+     "options": [
+      "특정 벤더 라이선스",
+      "표준 용어 매핑과 표준 형식 온톨로지",
+      "데모 영상"
+     ],
+     "answer": 1,
+     "why": "제품과 독립적인 자산이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Q2 2026 results press release (SEC Form 8-K Ex. 99.1)",
+     "url": "https://www.sec.gov/Archives/edgar/data/0001321655/000132165526000039/a2026q2ex991pressrelease.htm",
+     "date": "2026-08-03"
+    },
+    {
+     "title": "Microsoft Learn — What is ontology (preview)? Fabric IQ",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "2026-10-16"
+    },
+    {
+     "title": "Snowflake blog — Open Semantic Interchange specs finalized",
+     "url": "https://www.snowflake.com/en/blog/open-semantic-interchanges-specs-finalized/",
+     "date": "2026-01-27"
+    },
+    {
+     "title": "SBS Biz — 데이터처 \"기본법 발의 완료…AI 온톨로지 구축 추진 중\"",
+     "url": "https://biz.sbs.co.kr/amp/article/20000314080",
+     "date": "2026-06-02"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "army-palantir-ea-2025",
+   "day": 3,
+   "title": "미 육군, 75개 계약을 하나로: 팔란티어 100억 달러 기업 계약",
+   "when": "2025-07",
+   "lead": "2025년 7월 31일 미 육군은 흩어진 팔란티어 계약 75개를 최대 10년·상한 100억 달러의 기업 계약 하나로 묶었어요. 온톨로지 플랫폼이 '국가 단위 표준 인프라'로 쓰이는 상징적 사례예요.",
+   "facts": [
+    {
+     "label": "발표일",
+     "value": "2025-07-31",
+     "src": "DefenseScoop"
+    },
+    {
+     "label": "통합 대상",
+     "value": "본계약 15개 + 관련 계약 60개",
+     "src": "DefenseScoop"
+    },
+    {
+     "label": "기간·상한",
+     "value": "최대 10년, 상한 100억 달러(지출 약속 아님)",
+     "src": "DefenseScoop"
+    },
+    {
+     "label": "목적",
+     "value": "상용 SW 조달 가속, 리셀러 수수료 제거, 물량 할인",
+     "src": "DefenseScoop"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2003",
+     "text": "팔란티어 창업(정부·정보기관 고객으로 시작)"
+    },
+    {
+     "t": "2024-09",
+     "text": "S&P 500 편입"
+    },
+    {
+     "t": "2025-07",
+     "text": "육군 기업 계약",
+     "hot": true
+    },
+    {
+     "t": "2026-08",
+     "text": "2분기 매출 +93%, 연간 가이던스 81.5억 달러대"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "문제",
+     "title": "계약 파편화",
+     "text": "부대·사업별로 따로 사서 중복 비용과 통합 어려움이 있었어요."
+    },
+    {
+     "stage": "해법",
+     "title": "기업 라이선스",
+     "text": "하나의 계약으로 묶어 할인과 공통 플랫폼을 얻어요."
+    },
+    {
+     "stage": "위험",
+     "title": "의존도",
+     "text": "한 벤더에 깊게 묶이는 락인 우려도 함께 커져요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "병원이 이 사례에서 가져올 교훈은?",
+     "a": "부서별 도구 난립을 줄이고 공통 데이터·의미층을 두는 것. 규모와 예산은 그대로 옮길 수 없어요."
+    },
+    {
+     "q": "상한 100억 달러를 '100억 매출'로 보도하면 무엇이 틀렸나요?",
+     "a": "상한은 최대치일 뿐 실제 집행 약속이 아니에요."
+    },
+    {
+     "q": "기업 계약이 락인을 키우는 이유는?",
+     "a": "여러 조직의 업무·데이터가 한 플랫폼 형식에 쌓여 바꾸는 비용이 커져요."
+    }
+   ],
+   "after": [
+    "육군 CIO는 비슷한 기업 라이선스 계약을 더 검토한다고 밝혔어요."
+   ],
+   "sources": [
+    {
+     "title": "DefenseScoop — Army consolidates Palantir software into $10B enterprise agreement",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    },
+    {
+     "title": "Palantir Q2 2026 results press release (SEC Form 8-K Ex. 99.1)",
+     "url": "https://www.sec.gov/Archives/edgar/data/0001321655/000132165526000039/a2026q2ex991pressrelease.htm",
+     "date": "2026-08-03"
+    }
+   ],
+   "caveat": "계약 세부 조건 일부는 공개되지 않았고, 실제 집행액은 연도별로 달라요."
+  },
+  {
+   "id": "korea-ontology-2025-26",
+   "day": 4,
+   "title": "한국의 온톨로지 2025~2026: 기업 파트너십에서 국가 통계까지",
+   "when": "2025-03 ~ 2026-08",
+   "lead": "KT-팔란티어 파트너십(2025-03), HD현대 협력 확대(2026-01), 국가데이터처 통계 온톨로지 구축(2026-06), 지자체 도시 지식그래프까지 — 한국에서 '온톨로지'가 기업과 공공 양쪽의 화두가 됐어요.",
+   "facts": [
+    {
+     "label": "KT",
+     "value": "2025-03 팔란티어와 전략적 파트너십, 국내 기업 최초 월드와이드 파트너 생태계 멤버, 금융권 중심",
+     "src": "한국경제"
+    },
+    {
+     "label": "HD현대",
+     "value": "2021 오일뱅크부터 도입, 2026-01 그룹 전반으로 협력 확대·CoE 구축 보도",
+     "src": "헤럴드경제"
+    },
+    {
+     "label": "국가데이터처",
+     "value": "AI 친화적 통계 메타데이터·온톨로지 구축 중, 국가데이터기본법 발의",
+     "src": "SBS Biz 2026-06-02"
+    },
+    {
+     "label": "화성시",
+     "value": "도시 온톨로지 기반 지식그래프로 민원 위험도 예측 사업",
+     "src": "벤처스퀘어"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2021",
+     "text": "HD현대오일뱅크 팔란티어 도입"
+    },
+    {
+     "t": "2024-07",
+     "text": "삼성전자, Oxford Semantic Technologies 인수"
+    },
+    {
+     "t": "2025-03",
+     "text": "KT-팔란티어 전략적 파트너십"
+    },
+    {
+     "t": "2026-01",
+     "text": "HD현대-팔란티어 협력 확대(다보스)"
+    },
+    {
+     "t": "2026-06",
+     "text": "국가데이터처 통계 온톨로지 구축 발표",
+     "hot": true
+    }
+   ],
+   "causes": [
+    {
+     "stage": "기업",
+     "title": "AX 압력",
+     "text": "생성형 AI를 실제 업무에 붙이려는 경영진 요구가 커졌어요."
+    },
+    {
+     "stage": "공공",
+     "title": "통계 환각 우려",
+     "text": "AI가 공식 통계를 틀리게 말하면 신뢰 문제가 커요."
+    },
+    {
+     "stage": "공통",
+     "title": "인력·유지",
+     "text": "설계 인력과 유지 체계가 확산 속도를 정해요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "한빛병원이 국가데이터처 움직임에서 볼 점은?",
+     "a": "공공 지표 정의가 기계 판독형으로 공개되면 병원 지표를 맞출 기회가 생겨요."
+    },
+    {
+     "q": "기업 사례의 성과 수치를 보고서에 쓸 때 주의점은?",
+     "a": "산정 기준이 공개되지 않은 보도 수치는 '보도 기준'으로 표시해요."
+    },
+    {
+     "q": "한국에서 가장 부족한 것은?",
+     "a": "공개 한국어 온톨로지·매핑 자료와 설계·거버넌스 인력, 구축 후 유지 체계예요."
+    }
+   ],
+   "after": [
+    "행정안전부는 2026년 AI 국민비서·AI 기반 공공데이터포털 시범서비스를 열었다고 보도됐어요."
+   ],
+   "sources": [
+    {
+     "title": "한국경제 — KT, 팔란티어와 AX 전략적 파트너십",
+     "url": "https://www.hankyung.com/article/202503132335i",
+     "date": "2025-03-13"
+    },
+    {
+     "title": "디지털데일리 — KT, 팔란티어로부터 산업계 AX 기술 역량 수혈",
+     "url": "https://www.ddaily.co.kr/page/view/2025061210092656199",
+     "date": "2025-06-12"
+    },
+    {
+     "title": "헤럴드경제 — 팔란티어, HD현대와 AI 소프트웨어 공급 계약…조선 디지털화 협력 확대",
+     "url": "https://www.heraldk.com/article/2026012013064508566",
+     "date": "2026-01-20"
+    },
+    {
+     "title": "SBS Biz — 데이터처 \"기본법 발의 완료…AI 온톨로지 구축 추진 중\"",
+     "url": "https://biz.sbs.co.kr/amp/article/20000314080",
+     "date": "2026-06-02"
+    },
+    {
+     "title": "벤처스퀘어 — 포티투마루, 화성시 도시데이터플랫폼 참여",
+     "url": "https://www.venturesquare.net/1107736/",
+     "date": "2026"
+    }
+   ],
+   "caveat": "대부분 언론 보도 기반이며, 정부 공식 보도자료 원문은 일부만 확인했어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "병원장의 질문",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "병원장이 '왜 하필 지금 온톨로지냐'고 물어요."
+    }
+   ],
+   "q": "가장 설득력 있는 답은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "요즘 유행이라서",
+     "ok": false,
+     "why": "이유가 안 돼요."
+    },
+    {
+     "k": "B",
+     "t": "AI 비서가 정확한 뜻·관계·허용 행동을 필요로 하고, LLM이 구축 비용을 낮췄기 때문",
+     "ok": true,
+     "why": "수요와 공급 변화를 둘 다 말해요."
+    },
+    {
+     "k": "C",
+     "t": "팔란티어 주가가 올라서",
+     "ok": false,
+     "why": "결과일 뿐이에요."
+    }
+   ],
+   "explain": "수요(AI)와 공급(LLM 보조) 변화를 함께 설명해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Pan et al., Unifying LLMs and Knowledge Graphs: A Roadmap",
+     "url": "https://arxiv.org/abs/2306.08302",
+     "date": "2023-06"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "'팔란티어처럼 하자'",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "이사회에서 '팔란티어처럼'이라는 말이 나왔어요."
+    }
+   ],
+   "q": "어떻게 받을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "바로 팔란티어 계약",
+     "ok": false,
+     "why": "문제 정의 전 제품 선택이에요."
+    },
+    {
+     "k": "B",
+     "t": "객체·행동 모델이라는 핵심을 가져오고, 제품은 시험 후 선택",
+     "ok": true,
+     "why": "개념과 제품을 분리해요."
+    },
+    {
+     "k": "C",
+     "t": "무시",
+     "ok": false,
+     "why": "중요한 신호를 놓쳐요."
+    }
+   ],
+   "explain": "핵심 아이디어와 제품 선택을 나눠요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "Palantir Q2 2026 results press release (SEC Form 8-K Ex. 99.1)",
+     "url": "https://www.sec.gov/Archives/edgar/data/0001321655/000132165526000039/a2026q2ex991pressrelease.htm",
+     "date": "2026-08-03"
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "데모의 함정",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "벤더 데모가 완벽했어요. 우리 데이터는 지저분한데요."
+    }
+   ],
+   "q": "다음 단계는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "데모 보고 계약",
+     "ok": false,
+     "why": "선택된 성공이에요."
+    },
+    {
+     "k": "B",
+     "t": "우리 데이터로 짧은 파일럿",
+     "ok": true,
+     "why": "현실 조건에서 확인해요."
+    },
+    {
+     "k": "C",
+     "t": "데이터 정리 3년 후 검토",
+     "ok": false,
+     "why": "너무 늦어요."
+    }
+   ],
+   "explain": "데모보다 우리 데이터 파일럿.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Microsoft Learn — What is ontology (preview)? Fabric IQ",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "2026-10-16"
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "Fabric 프리뷰",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "Fabric 온톨로지가 Power BI랑 바로 이어져요. 운영에 쓸까요?"
+    }
+   ],
+   "q": "판단은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "바로 운영",
+     "ok": false,
+     "why": "2026-10 기준 프리뷰예요."
+    },
+    {
+     "k": "B",
+     "t": "시범·학습용으로 쓰고, GA·버전 관리 확인 후 운영 판단",
+     "ok": true,
+     "why": "상태에 맞게 써요."
+    },
+    {
+     "k": "C",
+     "t": "아예 배제",
+     "ok": false,
+     "why": "좋은 후보예요."
+    }
+   ],
+   "explain": "프리뷰와 GA를 구분해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Microsoft Learn — What is ontology (preview)? Fabric IQ",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "2026-10-16"
+    },
+    {
+     "title": "Directions on Microsoft — Fabric IQ roadmap",
+     "url": "https://www.directionsonmicrosoft.com/roadmaps/ref/fabric-iq-roadmap/",
+     "date": "2026-08"
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "벤더 비교표 첫 줄",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "벤더 비교표에 뭘 제일 먼저 넣을까요?"
+    }
+   ],
+   "q": "가장 중요한 항목은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "디자인",
+     "ok": false,
+     "why": "판단 기준과 관련이 없어요."
+    },
+    {
+     "k": "B",
+     "t": "표준 형식(Turtle·SHACL·GQL·OSI) 반출과 권한 모델",
+     "ok": true,
+     "why": "락인과 안전을 좌우해요."
+    },
+    {
+     "k": "C",
+     "t": "본사 위치",
+     "ok": false,
+     "why": "판단 기준과 관련이 없어요."
+    }
+   ],
+   "explain": "이사 비용과 권한이 먼저예요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "KMWorld — Semantic Web Company and Ontotext merge to rebrand as Graphwise",
+     "url": "https://www.kmworld.com/Articles/News/News/Semantic-Web-Company-and-Ontotext-merge-to-rebrand-as-knowledge-graph-and-AI-powerhouse-Graphwise-166526.aspx",
+     "date": "2024-10"
+    },
+    {
+     "title": "Snowflake blog — Open Semantic Interchange specs finalized",
+     "url": "https://www.snowflake.com/en/blog/open-semantic-interchanges-specs-finalized/",
+     "date": "2026-01-27"
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "인수된 벤더",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "후보 벤더가 대기업에 인수됐대요."
+    }
+   ],
+   "q": "무엇을 확인할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "신경 안 씀",
+     "ok": false,
+     "why": "로드맵이 바뀔 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "라이선스·지원 정책·로드맵 변화와 반출 가능성",
+     "ok": true,
+     "why": "위험을 점검해요."
+    },
+    {
+     "k": "C",
+     "t": "즉시 제외",
+     "ok": false,
+     "why": "과잉 반응이에요."
+    }
+   ],
+   "explain": "인수합병은 위험이자 기회예요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Samsung Newsroom — Samsung Electronics Announces Acquisition of Oxford Semantic Technologies",
+     "url": "https://news.samsung.com/global/samsung-electronics-announces-acquisition-of-oxford-semantic-technologies-uk-based-knowledge-graph-startup",
+     "date": "2024-07-18"
+    },
+    {
+     "title": "SC Media — ServiceNow expands AI platform with data.world deal",
+     "url": "https://www.scworld.com/brief/servicenow-expands-ai-platform-with-data-world-deal",
+     "date": "2025-05"
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "100억 달러 보도",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "육군이 팔란티어에 100억 달러 쓴대요!"
+    }
+   ],
+   "q": "정확한 해석은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "100억 달러 지출 확정",
+     "ok": false,
+     "why": "상한일 뿐이에요."
+    },
+    {
+     "k": "B",
+     "t": "최대 10년·상한 100억 달러의 계약 통합",
+     "ok": true,
+     "why": "상한과 집행을 구분해요."
+    },
+    {
+     "k": "C",
+     "t": "오보",
+     "ok": false,
+     "why": "계약은 사실이에요."
+    }
+   ],
+   "explain": "상한과 지출을 구분해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "DefenseScoop — Army consolidates Palantir software into $10B enterprise agreement",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "EHDS 일정",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "EHDS가 벌써 다 적용됐나요?"
+    }
+   ],
+   "q": "맞는 답은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "2025년에 전부 적용",
+     "ok": false,
+     "why": "단계적이에요."
+    },
+    {
+     "k": "B",
+     "t": "2025-03 발효, 2027-03 일반 적용, 핵심 교환은 2029-03부터",
+     "ok": true,
+     "why": "단계별 일정이에요."
+    },
+    {
+     "k": "C",
+     "t": "아직 법이 아님",
+     "ok": false,
+     "why": "발효됐어요."
+    }
+   ],
+   "explain": "발효와 적용은 달라요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "European Commission — European Health Data Space Regulation (EHDS)",
+     "url": "https://health.ec.europa.eu/ehealth-digital-health-and-care/european-health-data-space-regulation-ehds_en",
+     "date": "n.d."
+    },
+    {
+     "title": "EUR-Lex — Regulation (EU) 2025/327 (EHDS)",
+     "url": "https://eur-lex.europa.eu/eli/reg/2025/327/oj",
+     "date": "2025-03-05"
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "일본 사례 정정",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "팔란티어 일본은 SoftBank 합작이죠?"
+    }
+   ],
+   "q": "맞는 정보는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "SoftBank 합작",
+     "ok": false,
+     "why": "흔한 오해예요."
+    },
+    {
+     "k": "B",
+     "t": "SOMPO와 2019년 50:50 합작",
+     "ok": true,
+     "why": "보도로 확인돼요."
+    },
+    {
+     "k": "C",
+     "t": "단독 법인",
+     "ok": false,
+     "why": "판단 기준과 관련이 없어요."
+    }
+   ],
+   "explain": "출처로 확인해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Business Insurance — Sompo launches Japanese joint venture with Palantir",
+     "url": "https://www.businessinsurance.com/sompo-launches-japanese-joint-venture-with-palantir/",
+     "date": "2019-11"
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "국내 사례 인용",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "HD현대 '건조 속도 30%' 수치를 보고서에 넣을까요?"
+    }
+   ],
+   "q": "어떻게?",
+   "options": [
+    {
+     "k": "A",
+     "t": "그대로 강조",
+     "ok": false,
+     "why": "기준이 불명확해요."
+    },
+    {
+     "k": "B",
+     "t": "'언론 보도 기준, 산정 기준 미공개'로 표시",
+     "ok": true,
+     "why": "근거 등급을 밝혀요."
+    },
+    {
+     "k": "C",
+     "t": "숫자를 키운다",
+     "ok": false,
+     "why": "판단 기준과 관련이 없어요."
+    }
+   ],
+   "explain": "확인/보도/추정을 구분해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "헤럴드경제 — 팔란티어, HD현대와 AI 소프트웨어 공급 계약…조선 디지털화 협력 확대",
+     "url": "https://www.heraldk.com/article/2026012013064508566",
+     "date": "2026-01-20"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "국가 통계 온톨로지",
+   "scene": [
+    {
+     "name": "현우",
+     "role": "임상정보",
+     "text": "국가데이터처가 통계 온톨로지를 만든대요."
+    }
+   ],
+   "q": "우리에게 의미는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "상관없음",
+     "ok": false,
+     "why": "지표 정합성 기회예요."
+    },
+    {
+     "k": "B",
+     "t": "공개되면 병원 지표 정의를 맞추고 연계할 기회",
+     "ok": true,
+     "why": "공공 정의와 맞추면 재사용성이 커져요."
+    },
+    {
+     "k": "C",
+     "t": "우리 걸 버린다",
+     "ok": false,
+     "why": "판단 기준과 관련이 없어요."
+    }
+   ],
+   "explain": "공공 표준 흐름을 기회로 봐요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "SBS Biz — 데이터처 \"기본법 발의 완료…AI 온톨로지 구축 추진 중\"",
+     "url": "https://biz.sbs.co.kr/amp/article/20000314080",
+     "date": "2026-06-02"
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "OMOP 참여",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "국가 CDM 사업 공모가 났어요."
+    }
+   ],
+   "q": "판단 기준은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "무조건 참여",
+     "ok": false,
+     "why": "유지 계획이 필요해요."
+    },
+    {
+     "k": "B",
+     "t": "06장 매핑 자산 활용도, 유지 인력·예산, 연구 수요를 보고 결정",
+     "ok": true,
+     "why": "지속 가능성이 핵심이에요."
+    },
+    {
+     "k": "C",
+     "t": "무조건 불참",
+     "ok": false,
+     "why": "판단 기준과 관련이 없어요."
+    }
+   ],
+   "explain": "구축 후 유지가 성패를 정해요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "바이오스펙테이터 — OMOP-CDM으로 다기관 임상데이터 활용",
+     "url": "https://www.biospectator.com/news/view/4081",
+     "date": "n.d."
+    },
+    {
+     "title": "코메디닷컴 — 울산대병원, EHR 기반 CDM 확대 구축사업 참여",
+     "url": "https://kormedi.com/1578704/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "시장 규모 한 줄",
+   "scene": [
+    {
+     "name": "소라",
+     "role": "백엔드",
+     "text": "보고서에 '지식그래프 시장 69억 달러'라고 쓸까요?"
+    }
+   ],
+   "q": "어떻게 쓸까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "그 숫자만",
+     "ok": false,
+     "why": "한 기관 값이에요."
+    },
+    {
+     "k": "B",
+     "t": "기관명과 정의를 밝히고 범위(약 32억~69억 달러, 2030)로",
+     "ok": true,
+     "why": "정직한 표기예요."
+    },
+    {
+     "k": "C",
+     "t": "가장 큰 숫자를 쓴다",
+     "ok": false,
+     "why": "판단 기준과 관련이 없어요."
+    }
+   ],
+   "explain": "숫자는 출처·정의와 함께.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "MarketsandMarkets — Knowledge Graph Market worth $6,938.4 million by 2030 (press release)",
+     "url": "https://prnewswire.co.uk/news-releases/knowledge-graph-market-worth-6-938-4-million-by-2030--exclusive-report-by-marketsandmarkets-302347820.html",
+     "date": "2025-01-10"
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "정의는 누구 것",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "벤더 계약 초안에 온톨로지 반출 조항이 없어요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "그냥 서명",
+     "ok": false,
+     "why": "락인 위험이에요."
+    },
+    {
+     "k": "B",
+     "t": "표준 형식 반출 보장 조항 추가, 원본은 병원 저장소에",
+     "ok": true,
+     "why": "뜻의 소유권을 지켜요."
+    },
+    {
+     "k": "C",
+     "t": "계약 포기",
+     "ok": false,
+     "why": "판단 기준과 관련이 없어요."
+    }
+   ],
+   "explain": "뜻은 병원 소유.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Microsoft Learn — What is ontology (preview)? Fabric IQ",
+     "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+     "date": "2026-10-16"
+    },
+    {
+     "title": "Snowflake blog — Open Semantic Interchange specs finalized",
+     "url": "https://www.snowflake.com/en/blog/open-semantic-interchanges-specs-finalized/",
+     "date": "2026-01-27"
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "최종 보고서 구조",
+   "scene": [
+    {
+     "name": "지수",
+     "role": "데이터팀장",
+     "text": "금요일 병원장 보고서 결론을 정해요."
+    }
+   ],
+   "q": "가장 좋은 결론은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "최신 플랫폼 즉시 도입",
+     "ok": false,
+     "why": "순서가 거꾸로예요."
+    },
+    {
+     "k": "B",
+     "t": "표준 매핑 → 위험 질문부터 그라운딩 → 짧은 시험 후 플랫폼 선택",
+     "ok": true,
+     "why": "남는 자산부터 쌓아요."
+    },
+    {
+     "k": "C",
+     "t": "동향만 보고 보류",
+     "ok": false,
+     "why": "기회를 놓쳐요."
+    }
+   ],
+   "explain": "유행보다 우리 문제에 맞는 층부터.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Palantir Q2 2026 results press release (SEC Form 8-K Ex. 99.1)",
+     "url": "https://www.sec.gov/Archives/edgar/data/0001321655/000132165526000039/a2026q2ex991pressrelease.htm",
+     "date": "2026-08-03"
+    },
+    {
+     "title": "SBS Biz — 데이터처 \"기본법 발의 완료…AI 온톨로지 구축 추진 중\"",
+     "url": "https://biz.sbs.co.kr/amp/article/20000314080",
+     "date": "2026-06-02"
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "Microsoft Learn — Fabric IQ ontology (preview) overview",
+   "url": "https://learn.microsoft.com/en-us/fabric/iq/ontology/overview",
+   "min": 25,
+   "lang": "en",
+   "what": "빅테크가 정의하는 '온톨로지'의 범위(엔터티·규칙·지표·바인딩·권한)를 원문으로 읽어요.",
+   "day": 2
+  },
+  {
+   "id": "l2",
+   "title": "빅데이터닥터 — 팔란티어 온톨로지를 따라할 수 없는 이유",
+   "url": "https://www.youtube.com/watch?v=0rlg6Ee3hcw",
+   "min": 15,
+   "lang": "ko",
+   "what": "한국어로 팔란티어 온톨로지 붐의 배경과 한계를 들어 봐요.",
+   "day": 1
+  },
+  {
+   "id": "l3",
+   "title": "European Commission — EHDS Regulation 안내",
+   "url": "https://health.ec.europa.eu/ehealth-digital-health-and-care/european-health-data-space-regulation-ehds_en",
+   "min": 20,
+   "lang": "en",
+   "what": "EHDS 적용 일정과 1차·2차 활용 구조를 공식 페이지로 확인해요.",
+   "day": 3
+  },
+  {
+   "id": "l4",
+   "title": "The Book of OHDSI",
+   "url": "https://ohdsi.github.io/TheBookOfOhdsi/",
+   "min": 60,
+   "lang": "en",
+   "what": "OMOP CDM·표준 용어로 다기관 연구를 하는 세계 공통 방식을 읽어요(1~4장 권장).",
+   "day": 3
+  },
+  {
+   "id": "l5",
+   "title": "Snowflake Docs — Overview of semantic views",
+   "url": "https://docs.snowflake.com/en/user-guide/views-semantic/overview",
+   "min": 20,
+   "lang": "en",
+   "what": "데이터 플랫폼이 말하는 시맨틱 모델(지표·차원·관계)을 온톨로지와 비교하며 읽어요.",
+   "day": 2
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "병원장 보고서 '왜 지금 온톨로지인가 — 세계 동향과 한빛의 선택'을 3~5쪽으로 써 보세요. 모든 수치에 출처와 근거 등급(확인/보도/추정)을 붙여요.",
+  "template": [
+   "한 줄 결론",
+   "왜 지금: 수요(AI·에이전트)와 공급(LLM 보조·벤더 제품) 변화",
+   "세계 지도: 빅테크·데이터 플랫폼·그래프 벤더 표 (온톨로지 범위: 지표/객체·관계/행동)",
+   "나라별: 미국(국방), EU(Data Act·EHDS), 한국(기업·공공·병원), 일본·중국",
+   "시장 규모: 기관별 범위와 정의 차이",
+   "쟁점: 이름 전쟁·락인, 거버넌스·신뢰, 인력",
+   "한빛의 선택: 1층 표준 매핑 → 2층 위험 질문 그라운딩 → 3층 플랫폼 시험",
+   "계약 원칙: 표준 형식 반출, 권한 상속",
+   "다시 볼 조건: Fabric 온톨로지 GA, 국가 통계 온톨로지 공개, EHDS 유사 국내 규제"
+  ]
+ },
+ "check": [
+  "Story values (5-page report, 병원장 questions, 한빛 roadmap/committee) are fictional.",
+  "Palantir Q2 2026 (rev ~$1.94B +93%, US commercial $764M +149%, FY guide $8.150-8.158B) from company 8-K via search results; sec.gov returns 403 to curl (bot block), so figures are from search summaries of the press release.",
+  "S&P 500: announced 2024-09-06, effective 2024-09-23 (search results citing S&P DJI release).",
+  "US Army EA 2025-07-31: 15+60 contracts, up to 10 years, $10B ceiling (DefenseScoop loads 200).",
+  "Fabric IQ ontology preview status, RDF/OWL import, RLS/OLS/CLS, retirement of old experience 2027-01-31: Microsoft Learn fetched 2026-10-21. Build 2026 umbrella GA only from secondary sources, so not stated as fact.",
+  "OSI: launched 2025-09, first spec 2026-01-27 Apache 2.0 (Snowflake blog via search). Databricks OSI membership and metric views GA timing via secondary sources; GA date not asserted.",
+  "Neo4j $200M ARR 2024-11-19 (press release loads). Graphwise merger 2024-10 (KMWorld). Samsung-OST 2024-07-18 (Samsung newsroom/Oxford). ServiceNow-data.world announced 2025-05, completed 2025-07 per FY2025 10-K (via search).",
+  "EHDS: Reg (EU) 2025/327, in force 2025-03-26, applies 2027-03-26, Chapter IV 2029, some 2031/2035 (EUR-Lex/Commission). Data Act applies 2025-09-12 (well-known; Commission page loads).",
+  "Korea: KT-Palantir 2025-03 (한국경제), HD현대 2026-01 (헤럴드경제), 국가데이터처 2026-06-02 (SBS Biz fetched), 화성시 (벤처스퀘어), 행안부 AI 국민비서 2026-03 and AI 공공데이터포털 2026-08 from search summaries only (no URL cited). OMOP Korea: '61 hospitals FEEDER-NET' seen only in an abstract summary — stated vaguely as '수십 곳'. 울산대병원 article date unclear (flagged).",
+  "Japan: Palantir Japan JV is with SOMPO (2019), NOT SoftBank as research.md said — corrected. Fujitsu KG extended RAG 2024-06-04 (>10M tokens) from Fujitsu release via search.",
+  "China: KAG arXiv 2409.13731, OpenSPG v0.5 2024-10-24 per README summary.",
+  "Market: MarketsandMarkets $1,068.4M (2024) → $6,938.4M (2030), CAGR 36.6% (press release loads); lower estimate ($1.24B→$3.19B, 17.07%) from a GII summary, cited as secondary.",
+  "Gartner: KG hype-cycle position NOT verified (paywalled; secondary sources conflict) — only GenAI-in-trough and agents/AI-ready data near peak stated as reported.",
+  "Dropped: Neo4j 2025 figures, Stardog defense customers, DoD BFO/CCO specifics, Naver/Kakao KG, KISTI/ETRI details (not re-verified).",
+  "Lecture URLs returned HTTP 200 on 2026-10-21 except sec.gov (403 bot block; page exists per search). YouTube title checked via oEmbed."
+ ]
+}

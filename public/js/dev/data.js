@@ -22,6 +22,14 @@ export const COURSES = {
     scene: (no) => `기억 검색 팀 · ${no}장면 · 가상 이야기`, sceneOf: "기억 검색 팀의",
     quickWeek: ["이번 주 질문에 엔지니어 입장에서 답해 줘", "이번 장면에서 내가 엔지니어라면 무엇을 고를까?", "이번 주 카드로 퀴즈 3개 내 줘", "이 개념을 파이썬 10줄로 보여 줘"],
     quickCard: ["쉬운 비유로 다시 설명해 줘", "그림으로 보여 줘", "실제 서비스에서는 어떻게 써?", "숫자 예시로 계산해 줘"], ph: "예: HNSW 는 왜 빠른데 정확도가 조금 떨어져요?" },
+  onto: { key: "onto", base: "#/sw/onto", dir: "/onto", name: "Ontology", brand: "온톨로지", tutor: "온톨로지 과정", docs: false, role: "온톨로지 설계자",
+    scene: (no) => `한빛병원 데이터팀 · ${no}장면 · 가상 이야기`, sceneOf: "한빛병원 데이터팀의",
+    quickWeek: ["이번 주 질문에 설계자 입장에서 답해 줘", "이번 장면에서 내가 설계자라면 무엇을 정할까?", "이번 주 카드로 퀴즈 3개 내 줘", "이 개념을 Turtle 이나 SPARQL 몇 줄로 보여 줘"],
+    quickCard: ["쉬운 비유로 다시 설명해 줘", "그림으로 보여 줘", "실제로 어디서 이렇게 써?", "작은 예시로 직접 만들어 줘"], ph: "예: 온톨로지랑 지식그래프는 뭐가 달라요?" },
+  aip: { key: "aip", base: "#/sw/aip", dir: "/aip", name: "Palantir AIP", brand: "Palantir AIP", tutor: "Palantir AIP 과정", docs: false, role: "AIP 도입 담당",
+    scene: (no) => `누리모빌리티 AIP 도입 TF · ${no}장면 · 가상 이야기`, sceneOf: "누리모빌리티 TF의",
+    quickWeek: ["이번 주 질문에 도입 담당 입장에서 답해 줘", "이번 장면에서 내가 담당이라면 무엇을 고를까?", "이번 주 카드로 퀴즈 3개 내 줘", "이걸 객체 · 링크 · 액션으로 그려 줘"],
+    quickCard: ["쉬운 비유로 다시 설명해 줘", "그림으로 보여 줘", "실제 회사는 이걸 어떻게 써?", "우리 회사라면 어떻게 모델링해?"], ph: "예: Action type 은 그냥 API 랑 뭐가 달라요?" },
 };
 export let C = COURSES.dev;
 export function setCourse(k) { C = COURSES[k] || COURSES.dev; }

@@ -1,0 +1,2023 @@
+{
+ "id": "aip-data",
+ "no": "04",
+ "title": "데이터에서 객체로: 연결 · 파이프라인 · 인덱싱 · 권한",
+ "short": "데이터에서 객체로",
+ "q": "흩어진 원천 데이터가 어떻게 믿을 수 있는 객체가 되고, 그 길에서 품질과 권한은 어떻게 지켜질까?",
+ "sub": "Data Connection · Virtual tables · Datasets · Branching · Pipeline Builder · Data expectations · Funnel · OSv2 · Markings · Restricted views",
+ "doc": "데이터 연결·품질·권한 설계서 v1",
+ "story": {
+  "title": "“AI가 틀린 게 아니라, 데이터가 어제 거였어요.”",
+  "size": 3,
+  "body": [
+   "(가상 이야기) 03장에서 TF는 정비 결정을 액션으로 만들었어요. 그런데 시연 날, 화면의 작업지시가 어제 상태였고 같은 항공기가 두 대로 보였어요.",
+   "데이터 엔지니어 태오가 말해요. \"원천이 세 개예요. 운항 시스템, 사내 MRO, SAP. 연결도 갱신 주기도 제각각이에요.\"",
+   "보안·법무 하린은 정비사 개인정보와 협력사 데이터가 섞이는 걸 걱정해요. \"보이는 범위가 데이터를 따라가야 해요.\"",
+   "도입 담당인 나는 이번 주에 원천 3개를 객체까지 잇는 길과 검사·권한을 정해요. 금요일까지 '데이터 연결·품질·권한 설계서 v1'을 써요."
+  ]
+ },
+ "goals": [
+  "Source·worker·virtual table·dataset 트랜잭션·브랜치로 원천에서 객체까지의 경로를 설계할 수 있어요.",
+  "Pipeline Builder와 data expectations·health checks·lineage로 품질을 지키는 방법을 설명할 수 있어요.",
+  "Funnel·OSv2 인덱싱 구조와 markings·restricted views의 경계를 알고 권한을 설계할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "데이터에서 객체까지 한 장 지도",
+   "lead": "원천 시스템 → Data Connection → 파이프라인 → 깨끗한 데이터셋 → Object type. 이 길을 알아야 객체가 왜 틀렸는지 찾을 수 있어요.",
+   "idea": [
+    "02장에서 '데이터셋이 객체를 뒷받침한다'고 배웠어요. 이번 장은 그 데이터셋이 어디서 와서 어떻게 객체가 되는지예요.",
+    "흐름: 외부 시스템(MRO, 운항, ERP)에서 Data Connection으로 동기화 → Pipeline Builder나 Code Repositories로 정제 → 백킹 데이터셋 → Funnel이 객체 DB에 인덱싱 → 앱과 AIP가 객체를 읽어요.",
+    "각 단계마다 버전·권한·품질 검사가 붙어요. 객체 화면의 숫자가 이상하면 이 지도를 거꾸로 따라가며 어디서 틀렸는지 찾아요."
+   ],
+   "steps": [
+    {
+     "k": "1",
+     "t": "Source 동기화"
+    },
+    {
+     "k": "2",
+     "t": "파이프라인 정제"
+    },
+    {
+     "k": "3",
+     "t": "백킹 데이터셋"
+    },
+    {
+     "k": "4",
+     "t": "Funnel 인덱싱 → 객체"
+    }
+   ],
+   "hear": [
+    "\"객체가 어제 값이에요.\" — \"인덱싱이 밀렸나, 동기화가 밀렸나 봐요.\"",
+    "\"원천부터 객체까지 라인리지 띄워 봐요.\""
+   ],
+   "ask": [
+    "이 객체의 백킹 데이터셋은 어떤 원천에서 오나요?",
+    "각 단계는 얼마나 자주 갱신되나요?"
+   ],
+   "mine": "누리모빌리티 Aircraft 객체는 운항 시스템, WorkOrder는 사내 MRO, Part는 SAP에서 와요(가상 구성).",
+   "deep": [
+    "Datasets 문서: 데이터셋은 Foundry에 들어온 순간부터 온톨로지에 매핑될 때까지 데이터의 가장 기본 표현이에요.",
+    "Ontology architecture 문서: Funnel은 데이터셋·restricted view·스트리밍 데이터소스와 액션 편집을 읽어 객체 DB에 인덱싱해요."
+   ],
+   "recall": {
+    "q": "데이터가 객체가 되기까지 큰 단계 4개는?",
+    "a": "동기화(Data Connection) → 정제(파이프라인) → 데이터셋 → 인덱싱(Funnel)"
+   },
+   "quiz": [
+    {
+     "q": "객체 값이 낡았을 때 가장 먼저 할 일은?",
+     "options": [
+      "object type을 새로 만든다",
+      "원천→객체 경로를 거꾸로 따라가 지연 단계를 찾는다",
+      "앱을 재시작한다"
+     ],
+     "answer": 1,
+     "why": "각 단계에 지연·실패가 있을 수 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Datasets",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/datasets/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Ontology architecture (object backend)",
+     "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "Source · Credential · Worker",
+   "lead": "Source는 외부 시스템 하나와의 연결이에요. 어디로(URL), 어떻게 인증(credential), 어디서 계산(worker)할지를 담아요.",
+   "idea": [
+    "Source는 커넥터(source type)를 골라 만들어요. 흔한 시스템용 커넥터가 많고, 없으면 generic connector나 REST API source를 써요.",
+    "Credential은 비밀번호·토큰·API 키 같은 비밀값이에요. 플랫폼에서 암호화해 저장하고, OpenID Connect나 클라우드 ID처럼 비밀값 없이 인증하는 방법도 있어요.",
+    "Worker는 계산이 어디서 도는지, networking은 대상 시스템에 어떻게 닿는지를 정해요. 둘을 나눠 생각하면 방화벽 논의가 쉬워져요."
+   ],
+   "hear": [
+    "\"그 시스템 커넥터 있어요? 없으면 REST로 가죠.\"",
+    "\"서비스 계정 비밀번호를 누가 관리해요?\""
+   ],
+   "ask": [
+    "비밀값 없이 인증할 수 있나요(OIDC, 클라우드 ID)?",
+    "사내망 시스템이면 어떤 경로로 닿나요?"
+   ],
+   "mine": "사내 MRO DB는 사내망에 있어 agent proxy 경로가 필요하고, 운항 시스템은 SaaS라 직접 연결이 가능해요(가상).",
+   "deep": [
+    "Core concepts 문서: 모든 credential은 암호화돼 안전하게 저장돼요.",
+    "Data Connection 문서: 웹훅·데이터 내보내기 같은 외부 쓰기(아웃바운드) 연결도 Data Connection에서 설정해요(03장 웹훅과 연결)."
+   ],
+   "recall": {
+    "q": "Source가 담는 세 가지는?",
+    "a": "대상 위치(URL 등), 인증 정보(credential), 계산 위치(worker)"
+   },
+   "quiz": [
+    {
+     "q": "전용 커넥터가 없는 시스템은?",
+     "options": [
+      "연결 불가",
+      "generic connector나 REST API source를 쓴다",
+      "CSV만 가능"
+     ],
+     "answer": 1,
+     "why": "Core concepts 문서에 나와요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Data Connection · Core concepts",
+     "url": "https://www.palantir.com/docs/foundry/data-connection/core-concepts/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Data Connection · Overview",
+     "url": "https://www.palantir.com/docs/foundry/data-connection/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "Foundry worker vs Agent worker",
+   "lead": "지금 권장은 Foundry worker예요. Agent worker는 legacy라 새로 만들지 않는 게 좋아요.",
+   "idea": [
+    "Foundry worker는 Foundry의 컨테이너 기반 작업 실행으로 돌아요. 에이전트를 직접 유지보수할 필요가 없어요.",
+    "사내망 시스템도 이제 Foundry worker + agent proxy egress 정책으로 닿을 수 있어요. 예전엔 Foundry worker를 'direct connection'이라 불렀는데 프록시도 지원하면서 이름을 바꿨어요.",
+    "Agent worker는 고객 서버에 에이전트를 설치해 계산을 돌리는 옛 방식이에요. 문서는 Foundry worker로 옮기길 권해요."
+   ],
+   "hear": [
+    "\"에이전트 서버 패치 누가 해요?\" — \"Foundry worker로 가면 없어요.\"",
+    "\"사내망은 agent proxy로 열어요.\""
+   ],
+   "ask": [
+    "우리 보안 정책상 외부로 나가는 egress를 열 수 있나요?",
+    "기존 agent worker 소스가 있나요?"
+   ],
+   "mine": "하린은 사내망 MRO DB 연결에 agent proxy를 쓰되 egress 정책을 목록으로 승인받기로 해요.",
+   "deep": [
+    "Core concepts 문서: Agent worker는 legacy 단계이며 Foundry worker로 이전을 권장.",
+    "Foundry worker는 direct egress와 agent proxy 정책을 모두 지원."
+   ],
+   "recall": {
+    "q": "새 연결에 권장되는 worker는?",
+    "a": "Foundry worker"
+   },
+   "quiz": [
+    {
+     "q": "'direct connection' 소스의 지금 이름은?",
+     "options": [
+      "Agent worker",
+      "Foundry worker",
+      "Virtual table"
+     ],
+     "answer": 1,
+     "why": "프록시 지원 후 Foundry worker로 바뀌었어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Data Connection · Core concepts",
+     "url": "https://www.palantir.com/docs/foundry/data-connection/core-concepts/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "Virtual table: 옮기지 않고 쓰기",
+   "lead": "Virtual table은 외부 데이터 플랫폼의 테이블을 Foundry 데이터셋으로 복사하지 않고 가리키는 포인터예요.",
+   "idea": [
+    "정의는 두 가지예요. 원천 연결(Data Connection의 source)과 테이블 위치(locator: DB·스키마·테이블 이름).",
+    "장점: 이미 데이터 웨어하우스에 있는 데이터를 중복 저장하지 않아요. 변환 결과를 외부 스토리지에 virtual table로 쓸 수도 있어요.",
+    "trade-off: 질의 성능과 비용이 원천에 달려요. 원천이 느리거나 쿼리당 과금이면 매번 읽는 게 오히려 비쌀 수 있어요. 그래도 Foundry 보안·권한 모델은 그대로 적용돼요."
+   ],
+   "hear": [
+    "\"데이터 복사 말고 그냥 가리키면 안 돼요?\"",
+    "\"웨어하우스 과금 폭탄 조심해요.\""
+   ],
+   "ask": [
+    "원천이 지원 목록에 있나요?",
+    "얼마나 자주, 얼마나 크게 읽나요?"
+   ],
+   "mine": "누리모빌리티 재무 데이터는 이미 클라우드 웨어하우스에 있어 virtual table로 붙이는 안을 검토해요(가상).",
+   "deep": [
+    "Virtual tables 문서: 데이터를 Foundry 데이터셋에 먼저 저장하지 않고 지원 플랫폼의 테이블을 질의할 수 있어요.",
+    "virtual table도 Foundry 보안·권한 모델의 적용을 받아요."
+   ],
+   "recall": {
+    "q": "Virtual table을 정의하는 두 요소는?",
+    "a": "원천 연결(source)과 locator(테이블 위치)"
+   },
+   "quiz": [
+    {
+     "q": "virtual table의 대표적 위험은?",
+     "options": [
+      "권한이 사라진다",
+      "원천의 성능·비용에 의존한다",
+      "스키마를 못 본다"
+     ],
+     "answer": 1,
+     "why": "읽을 때마다 원천에 질의하니까요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Virtual tables",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/virtual-tables/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "Dataset: 파일 묶음 + 스키마 + 버전",
+   "lead": "Foundry 데이터셋은 파일 묶음을 감싸 권한·스키마·버전·갱신을 한꺼번에 관리해요.",
+   "idea": [
+    "정형 데이터는 Parquet 같은 오픈 포맷 파일과 컬럼 메타데이터(스키마)로 저장돼요.",
+    "비정형(이메일, PDF, 이미지)은 스키마 없는 데이터셋이나 media set으로, 반정형(JSON, XML)은 스키마 없이 올린 뒤 뒤 단계에서 표로 바꿔요.",
+    "우리가 화면에서 보는 행·열은 사실 '최신 데이터셋 뷰'예요. 뒤에는 트랜잭션의 역사가 쌓여 있어요."
+   ],
+   "hear": [
+    "\"정비 매뉴얼 PDF는 media set으로 올려요.\"",
+    "\"스키마는 파이프라인에서 추론해요.\""
+   ],
+   "ask": [
+    "이 데이터는 정형인가요, 반정형인가요, 비정형인가요?",
+    "원본 파일을 그대로 보관해야 하나요?"
+   ],
+   "mine": "작업지시 표는 정형, 정비사 메모 JSON은 반정형, 결함 사진은 media set이에요.",
+   "deep": [
+    "Datasets 문서: 데이터셋은 백킹 파일 시스템에 저장된 파일 모음의 래퍼이며 권한·스키마·버전 관리·갱신을 통합 지원.",
+    "비정형 데이터 업로드는 'Upload as media set' 또는 '스키마 없는 데이터셋' 두 길."
+   ],
+   "recall": {
+    "q": "화면에 보이는 데이터셋 행·열의 정체는?",
+    "a": "트랜잭션이 쌓인 결과인 '최신 데이터셋 뷰'"
+   },
+   "quiz": [
+    {
+     "q": "JSON 파일 업로드에 대한 문서 권장은?",
+     "options": [
+      "전용 반정형 업로드",
+      "스키마 없는 데이터셋에 올리고 뒤에서 표로 변환",
+      "업로드 불가"
+     ],
+     "answer": 1,
+     "why": "반정형 전용 업로드 옵션은 없어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Datasets",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/datasets/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "트랜잭션 4종: SNAPSHOT · APPEND · UPDATE · DELETE",
+   "lead": "데이터셋은 트랜잭션으로 바뀌어요. Git의 커밋처럼 원자적인 변경이고, 이게 '데이터용 Git'의 바탕이에요.",
+   "idea": [
+    "생애: 시작하면 OPEN → 커밋하면 COMMITTED(최신 뷰에 반영) → 중단하면 ABORTED(쓴 파일 무시).",
+    "SNAPSHOT은 뷰 전체를 새 파일로 교체(배치 파이프라인의 기본). APPEND는 새 파일 추가만, 기존 파일은 못 고쳐요. UPDATE는 파일 추가와 덮어쓰기, DELETE는 파일 제거예요.",
+    "고르는 기준: 매번 전체를 다시 계산해도 싸면 SNAPSHOT, 로그처럼 계속 쌓이면 APPEND. 증분 처리는 빠르지만 '과거 수정'이 어려워져요."
+   ],
+   "steps": [
+    {
+     "k": "OPEN",
+     "t": "파일 쓰기"
+    },
+    {
+     "k": "COMMITTED",
+     "t": "최신 뷰 반영"
+    },
+    {
+     "k": "ABORTED",
+     "t": "무시"
+    }
+   ],
+   "hear": [
+    "\"비행 로그는 APPEND로 쌓아요.\"",
+    "\"마스터 테이블은 매일 SNAPSHOT이에요.\""
+   ],
+   "ask": [
+    "과거 데이터가 나중에 고쳐질 수 있나요?",
+    "전체 재계산 비용은 얼마인가요?"
+   ],
+   "mine": "운항 이벤트(이착륙 기록)는 APPEND, 부품 마스터는 SNAPSHOT으로 정해요.",
+   "deep": [
+    "Datasets 문서: 트랜잭션은 Git 커밋에 비유되는 원자적 변경이며 Foundry 데이터 버전 관리의 바탕.",
+    "SNAPSHOT 트랜잭션이 배치 파이프라인의 기본."
+   ],
+   "recall": {
+    "q": "APPEND 트랜잭션이 못 하는 것은?",
+    "a": "기존 파일 수정"
+   },
+   "quiz": [
+    {
+     "q": "중단(ABORTED)된 트랜잭션에서 쓴 파일은?",
+     "options": [
+      "최신 뷰에 반영",
+      "무시된다",
+      "다음 트랜잭션에 합쳐진다"
+     ],
+     "answer": 1,
+     "why": "ABORTED면 쓴 파일은 무시돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Datasets",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/datasets/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "브랜치: 데이터도 Git처럼",
+   "lead": "브랜치를 만들면 master 파이프라인을 건드리지 않고 내 변경을 실험하고, 리뷰 후 합쳐요.",
+   "idea": [
+    "흐름: 브랜치 생성 → 커밋 → 풀 리퀘스트 → 리뷰 → master에 병합. 소프트웨어 개발의 방식을 데이터 파이프라인에 가져왔어요.",
+    "Foundry 브랜치는 두 층에서 일해요. 개별 데이터셋 안의 브랜치, 그리고 빌드할 때의 브랜치. 내 브랜치에서 빌드한 결과는 master 데이터셋을 바꾸지 않아요.",
+    "문서는 한 브랜치에 한 명의 개발자를 권해요. 같이 쓰면 서로의 변경을 덮어쓸 수 있어요."
+   ],
+   "hear": [
+    "\"운영 데이터셋 직접 고치지 말고 브랜치에서 빌드해 봐요.\"",
+    "\"PR 리뷰 받고 머지해요.\""
+   ],
+   "ask": [
+    "이 변경이 아래 객체·앱에 어떤 영향을 주나요?",
+    "리뷰어는 누구인가요?"
+   ],
+   "mine": "태오는 결함 분류 로직을 바꾸기 전에 브랜치에서 빌드해 결과를 준호와 비교하기로 해요.",
+   "deep": [
+    "Branching 문서: 데이터셋·브랜치·트랜잭션은 Git의 저장소·브랜치·커밋에 대응.",
+    "Code Repositories는 파일 브랜치당 활성 개발자 한 명을 전제로 설계."
+   ],
+   "recall": {
+    "q": "브랜치를 쓰는 가장 큰 이유는?",
+    "a": "운영(master)에 영향 없이 변경을 실험·리뷰하기 위해"
+   },
+   "quiz": [
+    {
+     "q": "두 사람이 같은 개인 브랜치에서 작업하면?",
+     "options": [
+      "더 빠르다",
+      "변경이 덮어써질 수 있다",
+      "자동 병합된다"
+     ],
+     "answer": 1,
+     "why": "문서가 사람마다 브랜치를 따로 쓰라고 권해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Branching",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/branching/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "Pipeline Builder: 코드 안 쓰는 사람과 함께",
+   "lead": "Pipeline Builder는 Foundry의 주력 데이터 통합 앱이에요. 그래프·폼으로 변환을 그리면 백엔드가 코드를 쓰고 검사해요.",
+   "idea": [
+    "Spark와 Flink를 엔진으로 써요. 배치와 스트리밍을 같은 화면에서 다뤄요.",
+    "특징(공식): 타입 안전 함수로 빌드 전에 오류 표시, 출력 검사 실패 시 빌드 차단, 출력과 안 이어진 경로 자동 가지치기, 서브그래프 재사용, 전체 버전 관리.",
+    "LLM 변환도 넣을 수 있어요(예: 정비사 메모에서 결함 유형 추출). 단, LLM 출력은 평가 도구로 먼저 시험해야 해요."
+   ],
+   "hear": [
+    "\"조인 키 추천이 떠요, 편하네요.\"",
+    "\"출력 검사 걸려서 빌드가 안 돼요 — 다행이죠.\""
+   ],
+   "ask": [
+    "코드를 모르는 현장 분석가도 고쳐야 하나요?",
+    "LLM 변환의 품질은 어떻게 재나요?"
+   ],
+   "mine": "준호 팀 분석가도 결함 코드 매핑을 직접 고칠 수 있게 Pipeline Builder로 시작해요.",
+   "deep": [
+    "Pipeline Builder 문서: Spark와 Flink를 아키텍처에 활용.",
+    "LLM 변환은 LLM 평가 suite로 배포 전 테스트할 수 있다고 문서가 설명."
+   ],
+   "recall": {
+    "q": "Pipeline Builder의 '엄격한 출력 검사'가 하는 일은?",
+    "a": "기대 출력 검사를 통과 못 하면 빌드를 막아 아래 단계 손상을 방지"
+   },
+   "quiz": [
+    {
+     "q": "Pipeline Builder가 쓰는 실행 엔진으로 문서에 나온 것은?",
+     "options": [
+      "Spark와 Flink",
+      "Hadoop MapReduce만",
+      "엑셀 매크로"
+     ],
+     "answer": 0,
+     "why": "Overview 문서 기준이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Pipeline Builder · Overview",
+     "url": "https://www.palantir.com/docs/foundry/pipeline-builder/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Pipeline Builder · Core concepts",
+     "url": "https://www.palantir.com/docs/foundry/pipeline-builder/core-concepts/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "Pipeline Builder vs Code Repositories",
+   "lead": "같은 데이터셋을 만들지만, Pipeline Builder는 시각적·협업, Code Repositories는 PySpark·SQL 코드와 Git 리뷰가 강점이에요.",
+   "idea": [
+    "Pipeline Builder: 빠른 시작, 비개발자 참여, 스키마 오류를 빌드 전에 발견.",
+    "Code Repositories: 복잡한 로직, 단위 테스트, 코드 리뷰, 코드로 정의한 data expectations. 보호 브랜치의 PR 절차를 그대로 써요.",
+    "정답은 하나가 아니에요. 팀 역량과 로직 복잡도로 골라요. 둘을 섞으면 '어디에 무엇이 있나'를 문서로 관리해야 해요."
+   ],
+   "hear": [
+    "\"이건 윈도 함수 범벅이라 코드가 나아요.\"",
+    "\"현장이 고칠 매핑 테이블은 Builder로.\""
+   ],
+   "ask": [
+    "로직을 누가 유지보수하나요?",
+    "테스트를 코드로 남겨야 하나요?"
+   ],
+   "mine": "태오는 복잡한 MEL 이월 계산 파이프라인은 Code Repositories, 결함 코드 매핑은 Pipeline Builder로 나누기로 해요.",
+   "deep": [
+    "Define data expectations 문서: expectations를 Code Repositories에 정의하면 보호 브랜치의 PR 리뷰 절차를 그대로 따름.",
+    "Pipeline Builder 문서: 코드 사용자와 비사용자가 한 파이프라인에서 협업."
+   ],
+   "recall": {
+    "q": "두 도구를 고르는 핵심 기준 두 가지는?",
+    "a": "유지보수할 사람(역량)과 로직 복잡도·테스트 필요"
+   },
+   "quiz": [
+    {
+     "q": "단위 테스트와 코드 리뷰가 중요한 복잡한 로직이면?",
+     "options": [
+      "Pipeline Builder만",
+      "Code Repositories가 유리",
+      "엑셀"
+     ],
+     "answer": 1,
+     "why": "코드·PR 절차가 강점이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Pipeline Builder · Overview",
+     "url": "https://www.palantir.com/docs/foundry/pipeline-builder/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Define data expectations",
+     "url": "https://www.palantir.com/docs/foundry/maintaining-pipelines/define-data-expectations/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "Data expectations: 나쁜 데이터를 문 앞에서",
+   "lead": "Data expectations는 출력에 거는 요구 조건이에요. 실패하면 빌드가 멈춰 나쁜 데이터가 아래로 흐르지 않아요.",
+   "idea": [
+    "Pipeline Builder 지원 종류: Primary key(널 없음 + 조합 유일), Row count(행 수 범위), Value is one of(허용 값 목록), Value is not null, Floats and doubles are not NaN, Row-level(행마다 참이어야 할 조건).",
+    "Primary key 검사가 특히 중요해요. 객체의 primary key가 중복되거나 비면, 같은 항공기가 두 개로 보이거나 객체가 사라져요.",
+    "원리: 검사를 데이터가 만들어지는 곳 바로 옆에 두면, 문제가 생긴 위치와 발견 위치가 같아져 원인을 빨리 찾아요."
+   ],
+   "hear": [
+    "\"PK 검사 실패로 빌드 멈췄어요. 원천에 중복 행이 들어왔대요.\"",
+    "\"행 수가 반토막 나면 막아요.\""
+   ],
+   "ask": [
+    "이 출력의 primary key는 무엇이고 유일한가요?",
+    "평소 행 수 범위는 얼마인가요?"
+   ],
+   "mine": "WorkOrder 출력에 PK(workOrderId) 검사, status에 'Value is one of(OPEN, IN_PROGRESS, CLOSED, DEFERRED, CANCELLED)'를 걸어요.",
+   "deep": [
+    "Pipeline Builder 문서: 어떤 expectation이든 실패하면 빌드가 실패.",
+    "Define data expectations 문서: 코드 기반 expectations는 Data Health와 통합돼 모니터링."
+   ],
+   "recall": {
+    "q": "Primary key expectation이 검사하는 두 가지는?",
+    "a": "널 없음, 컬럼 조합 유일"
+   },
+   "quiz": [
+    {
+     "q": "status 값이 정해진 다섯 개 중 하나여야 한다면?",
+     "options": [
+      "Row count",
+      "Value is one of",
+      "NaN 검사"
+     ],
+     "answer": 1,
+     "why": "허용 값 목록 검사예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Pipeline Builder · Data expectations",
+     "url": "https://www.palantir.com/docs/foundry/pipeline-builder/dataexpectations-overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Define data expectations",
+     "url": "https://www.palantir.com/docs/foundry/maintaining-pipelines/define-data-expectations/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "Health checks: 제때, 제대로 돌고 있나",
+   "lead": "Health check는 운영 중인 파이프라인의 작업·빌드 성공과 데이터 신선도를 계속 지켜봐요.",
+   "idea": [
+    "종류: Job-level(출력 데이터셋 작업이 성공하나), Build-level(빌드가 성공하고 예상 시간 안에 끝나나), Freshness(데이터가 최신으로 유지되나).",
+    "Expectations는 '내용이 맞나', health check는 '제때 돌았나'에 가까워요. 둘 다 있어야 해요.",
+    "신선도 기준은 업무에서 나와요. 정비 대기 화면이 30분 늦으면 문제인지, 하루 늦어도 괜찮은지 현장과 정해요."
+   ],
+   "hear": [
+    "\"어제 밤 빌드가 조용히 실패했어요.\" — \"freshness 체크 걸어요.\"",
+    "\"알림 받을 사람 정해요.\""
+   ],
+   "ask": [
+    "이 데이터는 얼마나 늦어도 괜찮나요?",
+    "실패 알림은 누구에게 가나요?"
+   ],
+   "mine": "AOG 현황 데이터셋은 freshness 30분, 월간 비용 데이터셋은 하루로 정해요(가상 기준).",
+   "deep": [
+    "Health checks 문서: Job-level, Build-level, Freshness 체크가 대표 종류.",
+    "Data expectations도 Data Health에서 함께 모니터링."
+   ],
+   "recall": {
+    "q": "Freshness 체크는 무엇을 보나요?",
+    "a": "데이터가 기준 시간 안에 갱신됐는지"
+   },
+   "quiz": [
+    {
+     "q": "빌드는 성공했지만 원천 동기화가 멈춰 같은 데이터만 반복된다면 잡아낼 체크는?",
+     "options": [
+      "Job-level",
+      "Freshness",
+      "Primary key"
+     ],
+     "answer": 1,
+     "why": "값이 갱신되지 않는 걸 봐요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Health checks",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/health-checks/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Define data expectations",
+     "url": "https://www.palantir.com/docs/foundry/maintaining-pipelines/define-data-expectations/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "Lineage: 이 숫자는 어디서 왔나",
+   "lead": "Data Lineage는 데이터가 플랫폼을 어떻게 흘러가는지 보여 주는 대화형 도구예요.",
+   "idea": [
+    "조상·후손 데이터셋을 펼치고, 스키마·마지막 빌드 시각·생성 코드를 볼 수 있어요. 오래된 테이블을 색으로 표시할 수도 있어요.",
+    "쓰임새 두 가지: 원인 찾기(이 객체 값은 어디서 왔나, 위로), 영향 분석(이 컬럼을 바꾸면 무엇이 깨지나, 아래로).",
+    "라인리지는 권한과도 이어져요. 마킹은 의존 관계를 따라 아래로 전파되니, 라인리지가 곧 '민감 데이터가 흘러간 길'이에요."
+   ],
+   "hear": [
+    "\"이 컬럼 지우면 어디 깨져요?\" — \"라인리지 후손 보세요.\"",
+    "\"스냅샷 떠서 공유해요.\""
+   ],
+   "ask": [
+    "이 변경의 하류에 객체·앱이 있나요?",
+    "오래된(out-of-date) 테이블이 있나요?"
+   ],
+   "mine": "결함 코드 컬럼 이름을 바꾸기 전에 라인리지로 WorkOrder 객체와 Workshop 앱까지 영향을 확인해요.",
+   "deep": [
+    "Data Lineage 문서: 조상·후손 펼치기, 스키마·마지막 빌드·코드 보기, 파이프라인 스냅샷 공유.",
+    "Markings 문서: 마킹은 직접 의존 관계를 따라 상속·전파."
+   ],
+   "recall": {
+    "q": "라인리지의 두 방향 쓰임새는?",
+    "a": "위로 원인 찾기, 아래로 영향 분석"
+   },
+   "quiz": [
+    {
+     "q": "컬럼 삭제 전 확인할 것은?",
+     "options": [
+      "조상",
+      "후손",
+      "아무것도"
+     ],
+     "answer": 1,
+     "why": "아래로 무엇이 깨지는지 봐요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Data Lineage · Overview",
+     "url": "https://www.palantir.com/docs/foundry/data-lineage/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Markings",
+     "url": "https://www.palantir.com/docs/foundry/security/markings/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "온톨로지 백엔드: OMS · 객체 DB · OSS · Funnel",
+   "lead": "온톨로지는 여러 서비스가 같이 돌려요. 정의(OMS), 저장(객체 DB), 읽기(OSS), 쓰기 조율(Funnel), 편집(Actions)이에요.",
+   "idea": [
+    "OMS(Ontology Metadata Service): object type·link type·action type 같은 정의를 담아요.",
+    "객체 DB: 인덱싱된 객체를 저장하고 빠른 질의를 해요. OSS(Object Set Service): 검색·필터·집계 같은 읽기를 맡아요.",
+    "Funnel(Object Data Funnel): 데이터소스와 액션 편집을 읽어 객체 DB에 인덱싱하고, 원천이 바뀌면 최신으로 유지해요. Actions 서비스는 03장의 편집을 적용해요."
+   ],
+   "hear": [
+    "\"정의는 OMS, 데이터는 객체 DB예요.\"",
+    "\"인덱싱은 Funnel 파이프라인 보면 돼요.\""
+   ],
+   "ask": [
+    "문제가 정의(스키마)인가요, 데이터(인덱싱)인가요?",
+    "읽기 성능 문제인가요(OSS)?"
+   ],
+   "mine": "Aircraft 객체 속성이 안 보이면 OMS 정의를, 값이 틀리면 Funnel 인덱싱을 먼저 봐요.",
+   "deep": [
+    "Ontology architecture 문서: 백엔드 기능 3가지 — 데이터소스 관리, 질의·검색·집계, 쓰기 조율(인덱싱과 편집).",
+    "임시 object set은 만든 사용자만 접근하고 24시간 안에 만료."
+   ],
+   "recall": {
+    "q": "Funnel의 역할은?",
+    "a": "데이터소스와 액션 편집을 객체 DB에 인덱싱하고 최신으로 유지"
+   },
+   "quiz": [
+    {
+     "q": "검색·필터·집계 같은 읽기를 맡는 서비스는?",
+     "options": [
+      "OMS",
+      "OSS",
+      "Funnel"
+     ],
+     "answer": 1,
+     "why": "Object Set Service예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Ontology architecture (object backend)",
+     "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "Funnel batch pipeline 4단계",
+   "lead": "Changelog → Merge changes → Indexing → Hydration. 데이터셋이 바뀌면 이 네 단계를 지나야 객체에 보여요.",
+   "idea": [
+    "Changelog: 원천의 차이(diff)를 계산해 APPEND로 쌓아요. 증분 계산의 바탕이에요.",
+    "Merge changes: 차이와 최근 액션 편집을 primary key로 합쳐요. 그래서 PK가 흔들리면 편집이 엉뚱한 객체에 붙을 수 있어요.",
+    "Indexing: 객체 DB 형식의 인덱스 파일로 바꿔요. Hydration: 인덱스 파일을 검색 노드 디스크로 내려받아요. 이게 끝나야 질의할 수 있어요."
+   ],
+   "steps": [
+    {
+     "k": "1 Changelog",
+     "t": "차이 계산"
+    },
+    {
+     "k": "2 Merge",
+     "t": "PK로 편집과 합치기"
+    },
+    {
+     "k": "3 Indexing",
+     "t": "인덱스 파일"
+    },
+    {
+     "k": "4 Hydration",
+     "t": "검색 노드로 적재"
+    }
+   ],
+   "hear": [
+    "\"빌드는 끝났는데 객체는 아직이에요.\" — \"hydration 중이에요.\"",
+    "\"Ontology Manager에서 진행률 보여요.\""
+   ],
+   "ask": [
+    "지금 어느 단계에서 멈췄나요?",
+    "PK가 원천에서 바뀌는 일이 있나요?"
+   ],
+   "mine": "준호가 '방금 들어온 작업지시가 안 보여요' 하면, 태오는 Funnel 파이프라인 단계를 먼저 확인해요.",
+   "deep": [
+    "Funnel batch pipelines 문서: 네 단계의 중간 데이터셋은 Funnel 소유라 사용자가 접근할 수 없어요.",
+    "live 파이프라인은 데이터소스 갱신 때 돌고, 사용자 편집이 있으면 원천 갱신이 없어도 6시간마다 돌아요."
+   ],
+   "recall": {
+    "q": "Merge changes 단계에서 무엇과 무엇을 합치나요?",
+    "a": "원천 변경(changelog)과 최근 액션 편집을, primary key로"
+   },
+   "quiz": [
+    {
+     "q": "인덱스 파일을 검색 노드 디스크에 내려받는 단계는?",
+     "options": [
+      "Changelog",
+      "Indexing",
+      "Hydration"
+     ],
+     "answer": 2,
+     "why": "Hydration이 마지막 단계예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Funnel batch pipelines",
+     "url": "https://www.palantir.com/docs/foundry/object-indexing/funnel-batch-pipelines/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Indexing (OSv2)",
+     "url": "https://www.palantir.com/docs/foundry/object-indexing/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "OSv2와 OSv1(Phonograph)",
+   "lead": "Object Storage v2는 인덱싱과 질의를 분리해 수평 확장하는 새 객체 저장소예요. OSv1은 2026년 6월 30일 이후 사용할 수 없어요.",
+   "idea": [
+    "OSv2가 가져온 것(공식): 기본 증분 인덱싱, 한 object type에 수백억 개 규모 인덱싱, 다중 데이터소스 객체로 열(속성) 단위 권한, 액션당 최대 10,000개 편집, 스트리밍 데이터소스, object type당 속성 2,000개.",
+    "Search Around 기본 한도는 100,000개 객체예요. 더 크면 지원팀에 요청해요.",
+    "원리: OSv1은 인덱싱·질의·편집이 한 덩어리였어요. OSv2는 관심사를 쪼개 서비스별로 따로 키울 수 있게 했어요. 대신 일부 OSv1 기능·API는 바뀌어(breaking changes) 이전 시 수정이 필요해요."
+   ],
+   "hear": [
+    "\"아직 Phonograph 쓰는 타입 있어요?\"",
+    "\"마이그레이션은 Upgrade Assistant에서 봐요.\""
+   ],
+   "ask": [
+    "우리 타입은 모두 OSv2인가요?",
+    "Search Around가 10만 개를 넘는 화면이 있나요?"
+   ],
+   "mine": "파일럿은 처음부터 OSv2로 시작하니 이전 부담이 없어요. 되돌리기(03장)도 OSv2 전용이에요.",
+   "deep": [
+    "Ontology architecture 문서: OSv1(Phonograph)은 planned deprecation, 2026-06-30 이후 사용 불가.",
+    "OSv2: object type당 최대 속성 2,000개, Search Around 기본 한도 100,000개."
+   ],
+   "recall": {
+    "q": "OSv2가 OSv1보다 잘 확장되는 구조적 이유는?",
+    "a": "인덱싱과 질의 서브시스템을 분리해 수평 확장"
+   },
+   "quiz": [
+    {
+     "q": "OSv2의 object type당 최대 속성 수는?",
+     "options": [
+      "200",
+      "2,000",
+      "무제한"
+     ],
+     "answer": 1,
+     "why": "문서 기준 2,000개예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Ontology architecture (object backend)",
+     "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Breaking changes between OSv1 and OSv2",
+     "url": "https://www.palantir.com/docs/foundry/object-backend/object-storage-v2-breaking-changes/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "스트리밍과 object set의 시간",
+   "lead": "모든 데이터가 배치일 필요는 없어요. 지연 요구에 따라 Funnel 스트리밍 파이프라인이나 direct datasource를 골라요.",
+   "idea": [
+    "Funnel에는 배치와 스트리밍 두 파이프라인이 있어요. 지연·데이터소스 구성·비용을 보고 골라요. 저지연 쓰기와 편집에는 direct datasource도 있어요.",
+    "주의: 03장에서 본 것처럼 액션은 아직 Foundry stream 데이터소스 기반 object type에서 지원되지 않아요. 실시간 위치처럼 '보기'만 하는 데이터와 '결정'을 적는 데이터를 나눠요.",
+    "Object set도 시간 개념이 있어요. Static은 primary key 목록이라 그대로, Dynamic은 필터라서 새 데이터가 맞으면 자동으로 늘어나요."
+   ],
+   "hear": [
+    "\"항공기 위치는 스트리밍으로, 작업지시는 배치+액션으로.\"",
+    "\"이 목록은 고정이에요, 필터예요?\""
+   ],
+   "ask": [
+    "몇 초·몇 분·몇 시간 지연이면 충분한가요?",
+    "이 데이터에 사람이 편집을 하나요?"
+   ],
+   "mine": "항공기 실시간 상태는 스트리밍, 작업지시는 배치+액션, 'AOG 항공기 목록'은 dynamic object set으로 정해요.",
+   "deep": [
+    "Indexing 문서: funnel batch/streaming 파이프라인 중 지연·워크플로·비용에 따라 선택.",
+    "Object edits 문서: 액션은 Foundry stream 데이터소스 기반 object type에서 아직 미지원."
+   ],
+   "recall": {
+    "q": "Static과 Dynamic object set의 차이는?",
+    "a": "Static = PK 목록(고정), Dynamic = 필터(새 데이터 자동 반영)"
+   },
+   "quiz": [
+    {
+     "q": "'지금 AOG인 항공기'처럼 계속 바뀌는 목록은?",
+     "options": [
+      "Static object set",
+      "Dynamic object set",
+      "임시 object set"
+     ],
+     "answer": 1,
+     "why": "필터로 저장해야 자동 갱신돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Indexing (OSv2)",
+     "url": "https://www.palantir.com/docs/foundry/object-indexing/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Ontology architecture (object backend)",
+     "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Object edits · Overview",
+     "url": "https://www.palantir.com/docs/foundry/object-edits/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "Markings: 데이터를 따라다니는 의무 통제",
+   "lead": "Marking은 '이 표시의 자격이 있는 사람만' 볼 수 있게 하는 의무 통제예요. 파생 데이터로 따라 전파돼요.",
+   "idea": [
+    "마킹은 AND예요. 자원에 붙은 모든 마킹의 구성원이어야 접근해요. 접근은 전부 아니면 전무이고, Owner 역할이어도 마킹 자격이 없으면 못 봐요.",
+    "역할(role)은 재량 통제라 Owner가 남에게 줄 수 있어요. 마킹은 의무 통제라 마킹의 Expand Access 권한이 있어야만 제거할 수 있어요.",
+    "마킹은 폴더 계층과 데이터 의존 관계를 따라 상속돼요. 마킹된 데이터에서 파생된 데이터는 명시적으로 제거하지 않는 한 마킹을 이어받아요. 위치가 아니라 데이터를 따라다니는 거예요."
+   ],
+   "hear": [
+    "\"정비사 개인정보는 PII 마킹 걸어요.\"",
+    "\"Owner인데 왜 못 봐요?\" — \"마킹 자격이 없어서요.\""
+   ],
+   "ask": [
+    "어떤 데이터 범주에 마킹이 필요한가요(개인정보, 수출통제 기술 자료)?",
+    "마킹 해제 권한은 누가 가지나요?"
+   ],
+   "mine": "정비사 자격·연락처는 PII 마킹, 일부 엔진 기술 자료는 별도 마킹(가상)을 걸어요. 하린이 마킹 관리자예요.",
+   "deep": [
+    "Markings 문서: 마킹은 의무 통제, 역할은 재량 통제. 마킹은 결합적(AND).",
+    "문서는 마킹과 자원 권한을 함께 쓰는 최소 권한 원칙을 권장."
+   ],
+   "recall": {
+    "q": "Owner 역할이 있는데도 데이터를 못 보는 이유는?",
+    "a": "그 자원의 마킹 중 하나라도 구성원이 아니기 때문"
+   },
+   "quiz": [
+    {
+     "q": "PII 마킹 데이터셋에서 만든 집계 데이터셋은?",
+     "options": [
+      "마킹이 사라진다",
+      "명시적 제거 전까지 마킹을 이어받는다",
+      "역할만 남는다"
+     ],
+     "answer": 1,
+     "why": "마킹은 의존 관계를 따라 전파돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Markings",
+     "url": "https://www.palantir.com/docs/foundry/security/markings/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "Restricted views: 행 단위 통제와 그 경계",
+   "lead": "Restricted view는 정책에 맞는 행만 보이게 하는 뷰예요. 객체 타입의 백킹으로 쓰면 '누구에게 어떤 객체가 보이나'를 정해요.",
+   "idea": [
+    "정책은 사용자 속성·컬럼·값을 비교하는 규칙이에요. 예: 영업사원은 자기 지점 고객만.",
+    "Restricted view는 변환의 입력으로 쓸 수 없어요. 객체 백킹용이에요.",
+    "경계가 중요해요. 정책은 '읽기'만 걸러요. 함수, 액션, AIP Logic, OSDK 응답, writeback, 내보내기로는 확장되지 않아요. 그래서 마킹과 함께 설계해야 해요."
+   ],
+   "hear": [
+    "\"협력사는 자기 정비 건만 보이게 RV 걸어요.\"",
+    "\"근데 액션 쓰기는 따로 막아야 해요.\""
+   ],
+   "ask": [
+    "행 단위 기준이 되는 사용자 속성은 무엇인가요?",
+    "이 데이터가 AIP Logic이나 내보내기로 흘러가나요?"
+   ],
+   "mine": "협력 정비사(가상 'A정비')는 자기 회사 배정 작업지시만 보이도록 restricted view로 WorkOrder를 뒷받침해요.",
+   "deep": [
+    "Restricted views 문서: 정책은 함수·액션·AIP Logic·OSDK 응답·writeback·내보내기로 확장되지 않음.",
+    "Restricted view는 변환이나 배치 파생 작업의 입력으로 쓸 수 없음."
+   ],
+   "recall": {
+    "q": "Restricted view 정책이 막지 못하는 경로 예시는?",
+    "a": "액션 쓰기, AIP Logic, 내보내기 등"
+   },
+   "quiz": [
+    {
+     "q": "Restricted view를 Pipeline Builder 변환 입력으로 쓸 수 있나요?",
+     "options": [
+      "예",
+      "아니요",
+      "관리자만"
+     ],
+     "answer": 1,
+     "why": "문서상 불가예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Restricted views",
+     "url": "https://www.palantir.com/docs/foundry/security/restricted-views/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Permissions",
+     "url": "https://www.palantir.com/docs/foundry/action-types/permissions/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "권한 두 층: 온톨로지 자원과 객체 데이터",
+   "lead": "온톨로지 권한은 '스키마(object type·action type)'와 '데이터(객체·링크)' 두 층으로 나눠 생각해요.",
+   "idea": [
+    "온톨로지 자원: object type의 이름·속성 정의 같은 설계도. 누가 보고 고칠 수 있나.",
+    "객체와 링크: 실제 PK와 속성 값. 누가 어떤 행과 열을 볼 수 있나. OSv2는 다중 데이터소스로 속성(열) 단위 권한도 가능해요.",
+    "설계 순서 팁: 프로젝트·역할로 기본선 → 마킹으로 의무 통제 → restricted view·보안 정책으로 행·열 세분화 → 액션 criteria로 쓰기 통제."
+   ],
+   "hear": [
+    "\"타입 정의는 다 보여도 돼요, 값은 아니고요.\"",
+    "\"연락처 속성만 숨길 수 있어요?\""
+   ],
+   "ask": [
+    "스키마 자체가 비밀인가요, 값만 비밀인가요?",
+    "속성 하나만 숨겨야 하나요?"
+   ],
+   "mine": "Mechanic 객체의 이름·자격은 정비 조직에, 연락처 속성은 인사 담당에만 보이게 해요(가상 정책).",
+   "deep": [
+    "Object permissioning 문서: 권한 구조는 온톨로지 자원과 객체·링크 두 층.",
+    "Ontology architecture 문서: OSv2의 다중 데이터소스 object type으로 열/속성 단위 권한 가능."
+   ],
+   "recall": {
+    "q": "온톨로지 권한의 두 층은?",
+    "a": "온톨로지 자원(스키마)과 객체·링크(데이터)"
+   },
+   "quiz": [
+    {
+     "q": "Mechanic의 연락처 속성만 일부에게 숨기려면?",
+     "options": [
+      "object type 전체 숨김",
+      "속성(열) 단위 권한",
+      "action criteria"
+     ],
+     "answer": 1,
+     "why": "OSv2 다중 데이터소스로 가능해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Object permissioning · Overview",
+     "url": "https://www.palantir.com/docs/foundry/object-permissioning/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Ontology architecture (object backend)",
+     "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "데이터 품질이 곧 AIP 품질",
+   "lead": "LLM은 온톨로지에서 객체를 읽어 판단해요. PK 중복, 늦은 데이터, 잘못된 권한은 그대로 AI의 틀린 답이 돼요.",
+   "idea": [
+    "06장의 AIP 에이전트는 '프롬프트에 붙인 글'이 아니라 '사용자 권한 안의 객체'를 근거로 써요. 그래서 근거의 품질은 이 장의 파이프라인이 정해요.",
+    "점검 사슬: 동기화 성공(Data Connection) → 내용 검사(expectations) → 제때 갱신(freshness) → 인덱싱 완료(Funnel) → 올바른 권한(마킹·RV).",
+    "한계도 솔직히: 검사는 '알고 있는 오류'만 잡아요. 새 유형의 오류는 현장 피드백(액션으로 오류 신고)을 통해 찾고 검사로 추가해요."
+   ],
+   "hear": [
+    "\"AI 답이 틀렸어요.\" — \"근거 객체부터 보죠. 데이터가 어제 거예요.\"",
+    "\"오류 신고 액션 하나 만들어요.\""
+   ],
+   "ask": [
+    "AI가 쓰는 객체마다 freshness와 PK 검사가 있나요?",
+    "현장이 데이터 오류를 신고할 길이 있나요?"
+   ],
+   "mine": "TF는 금요일까지 '데이터 연결·품질·권한 설계서 v1'을 써요. 원천 3개, 파이프라인, 검사, 마킹을 정해요.",
+   "deep": [
+    "Pipeline Builder 문서: 출력 검사 실패 시 빌드를 막아 하류 손상을 방지.",
+    "Markings 문서: 마킹은 파생 데이터로 전파돼 데이터가 흘러가도 보호."
+   ],
+   "recall": {
+    "q": "AI 답이 틀렸을 때 데이터 쪽에서 볼 순서는?",
+    "a": "근거 객체 → 인덱싱 → 신선도 → 검사 → 원천 동기화, 그리고 권한"
+   },
+   "quiz": [
+    {
+     "q": "검사로 잡기 어려운 오류는?",
+     "options": [
+      "PK 중복",
+      "널 값",
+      "아직 아무도 정의하지 않은 새 유형의 오류"
+     ],
+     "answer": 2,
+     "why": "그래서 현장 피드백 루프가 필요해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Pipeline Builder · Overview",
+     "url": "https://www.palantir.com/docs/foundry/pipeline-builder/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Markings",
+     "url": "https://www.palantir.com/docs/foundry/security/markings/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Ontology architecture (object backend)",
+     "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "nhs-fdp",
+   "day": 5,
+   "title": "NHS 연합 데이터 플랫폼(FDP): 데이터 연결과 권한 논쟁",
+   "when": "2023-11",
+   "lead": "NHS England는 2023년 11월 Palantir 컨소시엄에 연합 데이터 플랫폼 계약(£330M, 7년)을 줬어요. 프라이버시 강화 기술(PET)은 IQVIA가 따로 맡았어요.",
+   "facts": [
+    {
+     "label": "발표",
+     "value": "2023-11-21 NHS England 발표",
+     "src": "Digital Health 2023-11"
+    },
+    {
+     "label": "계약",
+     "value": "£330M, 7년; Palantir + Accenture, PwC, NECS, Carnall Farrar",
+     "src": "Digital Health · The Register"
+    },
+    {
+     "label": "대상",
+     "value": "최대 240개 NHS 조직(트러스트·ICS)",
+     "src": "Digital Health"
+    },
+    {
+     "label": "PET",
+     "value": "프라이버시 강화 기술 계약은 IQVIA에 별도 수여",
+     "src": "NHS England FDP FAQ"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2020",
+     "text": "코로나 대응에 Foundry 사용(보도 기준)"
+    },
+    {
+     "t": "2023-11",
+     "text": "FDP 계약 수여",
+     "hot": true
+    },
+    {
+     "t": "이후",
+     "text": "시민단체·의료계 반대와 트러스트별 도입 속도 차이"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "필요",
+     "title": "흩어진 병원 데이터",
+     "text": "대기 명단·퇴원·수술실 일정을 트러스트마다 따로 관리했어요."
+    },
+    {
+     "stage": "통제",
+     "title": "권한과 가명화",
+     "text": "NHS 허락 없이 회사가 데이터에 접근할 수 없다는 조건, PET 계층을 따로 둠."
+    },
+    {
+     "stage": "논쟁",
+     "title": "신뢰",
+     "text": "공급사 신뢰·투명성 문제로 반대가 이어졌어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "누리모빌리티가 배울 '권한 설계' 포인트는?",
+     "a": "데이터 소유자(트러스트=각 조직)가 접근을 승인하고, 민감 데이터는 마킹·가명화 계층으로 분리해요."
+    },
+    {
+     "q": "기술보다 큰 위험은?",
+     "a": "이해관계자 신뢰예요. 하린 같은 보안·법무가 처음부터 들어와야 해요."
+    },
+    {
+     "q": "확인 못 한 것은?",
+     "a": "계약 이후 실제 도입 트러스트 수의 최신 값은 확인하지 않았어요."
+    }
+   ],
+   "after": [
+    "반대 단체의 소송·문제 제기와 트러스트별 도입 차이가 보도됐어요(세부는 출처마다 달라요)."
+   ],
+   "sources": [
+    {
+     "title": "Digital Health — NHS England awards £330m Federated Data Platform contract to Palantir",
+     "url": "https://digitalhealth.net/2023/11/nhs-england-awards-330m-federated-data-platform-contract-to-palantir",
+     "date": "2023-11"
+    },
+    {
+     "title": "The Register — Palantir wins NHS contract",
+     "url": "https://www.theregister.com/2023/11/22/palantir_wins_nhs_contract/",
+     "date": "2023-11-22"
+    },
+    {
+     "title": "NHS England — Federated Data Platform FAQs",
+     "url": "https://www.england.nhs.uk/digitaltechnology/nhs-federated-data-platform/fdp-faqs",
+     "date": "n.d."
+    }
+   ],
+   "caveat": "일부 매체는 다른 금액을 쓰지만 NHS England FAQ와 다수 보도는 £330M이에요."
+  },
+  {
+   "id": "skywise-data",
+   "day": 1,
+   "title": "Skywise: 여러 항공사 데이터를 한 플랫폼에",
+   "when": "2017~2019",
+   "lead": "에어버스 Skywise(Palantir Foundry 기반)는 여러 항공사와 제조사 데이터를 연결했어요. 2019년 기준 회사 발표로 항공기 8,000대 이상, 데이터 소스 75개, 시스템 120개예요.",
+   "facts": [
+    {
+     "label": "규모(2019)",
+     "value": "항공기 8,000대 이상, 월 사용자 4만 명 이상, 약 3,000TB",
+     "src": "CIO.com 2019-11-08"
+    },
+    {
+     "label": "연결",
+     "value": "데이터 소스 75개, 시스템 120개",
+     "src": "CIO.com 2019-11-08"
+    },
+    {
+     "label": "항공사",
+     "value": "70곳 이상 연결(2019-06)",
+     "src": "Airbus 보도자료"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "A350 시기",
+     "text": "공급망 데이터 통합으로 출발"
+    },
+    {
+     "t": "2019-06",
+     "text": "United 합류, 70곳 이상",
+     "hot": true
+    },
+    {
+     "t": "2019-11",
+     "text": "8,000대·75 소스·120 시스템(회사 발표)"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "연결",
+     "title": "많은 원천",
+     "text": "75개 소스·120개 시스템을 잇는 데이터 연결이 핵심이었어요."
+    },
+    {
+     "stage": "모델",
+     "title": "통합 데이터 모델",
+     "text": "흩어진 데이터를 한 모델로 묶었어요."
+    },
+    {
+     "stage": "권한",
+     "title": "회사 간 데이터",
+     "text": "항공사 데이터 소유권과 접근 통제가 필수였어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "원천이 120개면 무엇이 가장 먼저 필요할까요?",
+     "a": "source 목록, 갱신 주기, 담당자, PK 기준을 표로 관리하고 health check를 걸어요."
+    },
+    {
+     "q": "항공사별 데이터를 섞지 않으려면?",
+     "a": "마킹·restricted view로 조직별 접근을 나눠요."
+    },
+    {
+     "q": "이 숫자의 한계는?",
+     "a": "2019년 회사 발표 수치예요. 지금 값은 다를 수 있어요."
+    }
+   ],
+   "after": [
+    "이후 Skywise는 항공사 정비·운항 데이터 서비스로 확장됐어요."
+   ],
+   "sources": [
+    {
+     "title": "CIO.com — Airbus CIO Luc Hennekens' plan to disrupt aviation with data",
+     "url": "https://www.cio.com/article/197665/airbus-cio-luc-hennekens-plan-to-disrupt-aviation-with-data.html",
+     "date": "2019-11-08"
+    },
+    {
+     "title": "Airbus — Airbus partners with United Airlines to manage aircraft data",
+     "url": "https://www.airbus.com/en/newsroom/press-releases/2019-06-airbus-partners-with-united-airlines-to-manage-aircraft-data-and",
+     "date": "2019-06-11"
+    }
+   ],
+   "caveat": "모든 수치는 회사 발표이고 2019년 기준이에요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "사내망 MRO 연결",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "MRO DB가 사내망에만 있어요."
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "새 서버에 에이전트 깔고 패치하는 건 부담이에요."
+    }
+   ],
+   "q": "어떻게 연결할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "Agent worker를 새로 설치",
+     "ok": false,
+     "why": "legacy 방식이라 권장되지 않아요."
+    },
+    {
+     "k": "B",
+     "t": "Foundry worker + agent proxy egress 정책",
+     "ok": true,
+     "why": "현재 권장 방식이에요."
+    },
+    {
+     "k": "C",
+     "t": "매일 CSV 메일 전송",
+     "ok": false,
+     "why": "보안·신선도 모두 나빠요."
+    }
+   ],
+   "explain": "Foundry worker가 기본, 사내망은 프록시로.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Data Connection · Core concepts",
+     "url": "https://www.palantir.com/docs/foundry/data-connection/core-concepts/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "웨어하우스 데이터",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장·운영본부",
+     "text": "재무 데이터는 이미 클라우드 웨어하우스에 있어요."
+    },
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "복사하면 두 군데 관리해요."
+    }
+   ],
+   "q": "첫 시도는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "virtual table로 가리키고 질의량·비용을 측정",
+     "ok": true,
+     "why": "중복 저장 없이 시작하고 데이터로 판단해요."
+    },
+    {
+     "k": "B",
+     "t": "무조건 전체 복사",
+     "ok": false,
+     "why": "중복과 동기화 부담이 생겨요."
+    },
+    {
+     "k": "C",
+     "t": "재무 데이터는 안 쓴다",
+     "ok": false,
+     "why": "필요한 근거를 잃어요."
+    }
+   ],
+   "explain": "virtual table은 원천 성능·비용에 의존하니 측정해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Virtual tables",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/virtual-tables/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "비밀번호 공유",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "연결용 비밀번호를 단톡방에 올려 줄게요."
+    }
+   ],
+   "q": "하린의 답은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "좋아요",
+     "ok": false,
+     "why": "비밀값이 유출돼요."
+    },
+    {
+     "k": "B",
+     "t": "Source의 credential로 암호화 저장하거나, 가능하면 OIDC·클라우드 ID로 비밀 없이 인증",
+     "ok": true,
+     "why": "문서 권장 방식이에요."
+    },
+    {
+     "k": "C",
+     "t": "코드에 하드코딩",
+     "ok": false,
+     "why": "더 위험해요."
+    }
+   ],
+   "explain": "비밀값은 플랫폼에, 가능하면 아예 없게.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Data Connection · Core concepts",
+     "url": "https://www.palantir.com/docs/foundry/data-connection/core-concepts/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "비행 로그 적재",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "이착륙 이벤트가 하루 수천 건씩 계속 쌓여요(가상)."
+    }
+   ],
+   "q": "트랜잭션 방식은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "매번 SNAPSHOT 전체 교체",
+     "ok": false,
+     "why": "쌓이는 로그엔 낭비예요."
+    },
+    {
+     "k": "B",
+     "t": "APPEND",
+     "ok": true,
+     "why": "새 파일만 추가하는 로그형에 맞아요."
+    },
+    {
+     "k": "C",
+     "t": "DELETE",
+     "ok": false,
+     "why": "목적에 안 맞아요."
+    }
+   ],
+   "explain": "과거 수정이 잦으면 다시 생각해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Datasets",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/datasets/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "운영 데이터셋 직접 수정",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "결함 분류 로직을 바꾸려는데 master에서 바로 빌드할까요?"
+    },
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "내일 아침 회의에 그 숫자 써요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "master에서 바로",
+     "ok": false,
+     "why": "회의 숫자가 갑자기 바뀌어요."
+    },
+    {
+     "k": "B",
+     "t": "브랜치에서 빌드해 비교하고 리뷰 후 병합",
+     "ok": true,
+     "why": "운영 영향 없이 검증해요."
+    },
+    {
+     "k": "C",
+     "t": "로직 변경 포기",
+     "ok": false,
+     "why": "개선을 못 해요."
+    }
+   ],
+   "explain": "데이터도 Git처럼.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Branching",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/branching/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "도구 선택",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장·운영본부",
+     "text": "현장 분석가도 결함 코드 매핑을 직접 고치고 싶대요."
+    }
+   ],
+   "q": "어디서 만들까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "Pipeline Builder",
+     "ok": true,
+     "why": "비개발자 협업에 맞아요."
+    },
+    {
+     "k": "B",
+     "t": "Code Repositories만",
+     "ok": false,
+     "why": "현장이 고치기 어려워요."
+    },
+    {
+     "k": "C",
+     "t": "로컬 엑셀",
+     "ok": false,
+     "why": "버전·권한이 없어요."
+    }
+   ],
+   "explain": "유지보수할 사람을 기준으로 골라요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Pipeline Builder · Overview",
+     "url": "https://www.palantir.com/docs/foundry/pipeline-builder/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "같은 항공기가 두 대",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "화면에 같은 등록번호 항공기가 두 개 떠요."
+    }
+   ],
+   "q": "근본 대책은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "화면에서 중복 숨김",
+     "ok": false,
+     "why": "증상만 가려요."
+    },
+    {
+     "k": "B",
+     "t": "출력에 Primary key expectation을 걸어 중복이면 빌드 차단",
+     "ok": true,
+     "why": "문 앞에서 막아요."
+    },
+    {
+     "k": "C",
+     "t": "객체를 수동 삭제",
+     "ok": false,
+     "why": "다음 빌드에 다시 생겨요."
+    }
+   ],
+   "explain": "PK는 널 없음 + 유일.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Pipeline Builder · Data expectations",
+     "url": "https://www.palantir.com/docs/foundry/pipeline-builder/dataexpectations-overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "조용한 실패",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장·운영본부",
+     "text": "어제 AOG 화면 숫자가 그대로였는데 아무도 몰랐어요."
+    }
+   ],
+   "q": "무엇을 추가할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "Freshness health check와 알림",
+     "ok": true,
+     "why": "갱신 지연을 잡아요."
+    },
+    {
+     "k": "B",
+     "t": "Row count expectation만",
+     "ok": false,
+     "why": "같은 데이터 반복은 못 잡을 수 있어요."
+    },
+    {
+     "k": "C",
+     "t": "화면 새로고침 버튼",
+     "ok": false,
+     "why": "원인이 아니에요."
+    }
+   ],
+   "explain": "내용 검사와 신선도 검사는 따로 필요해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Health checks",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/health-checks/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "컬럼 이름 변경",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "defect_cd를 defect_code로 바꾸고 싶어요."
+    }
+   ],
+   "q": "먼저 할 일은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "바로 바꾼다",
+     "ok": false,
+     "why": "하류가 깨질 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "라인리지로 후손(객체·앱)을 확인하고 브랜치에서 시험",
+     "ok": true,
+     "why": "영향 분석이 먼저예요."
+    },
+    {
+     "k": "C",
+     "t": "새 데이터셋을 몰래 만든다",
+     "ok": false,
+     "why": "중복만 생겨요."
+    }
+   ],
+   "explain": "라인리지 아래 방향 = 영향 분석.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Data Lineage · Overview",
+     "url": "https://www.palantir.com/docs/foundry/data-lineage/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Branching",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/branching/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "빌드는 끝났는데",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "데이터셋 빌드 끝났다는데 객체엔 아직 안 보여요."
+    }
+   ],
+   "q": "태오가 볼 곳은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "Funnel 파이프라인 단계(indexing·hydration 진행률)",
+     "ok": true,
+     "why": "빌드 뒤에도 인덱싱 단계가 있어요."
+    },
+    {
+     "k": "B",
+     "t": "원천 시스템 재부팅",
+     "ok": false,
+     "why": "관계없어요."
+    },
+    {
+     "k": "C",
+     "t": "object type 삭제 후 재생성",
+     "ok": false,
+     "why": "편집까지 날아갈 수 있어요."
+    }
+   ],
+   "explain": "Changelog→Merge→Indexing→Hydration.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Funnel batch pipelines",
+     "url": "https://www.palantir.com/docs/foundry/object-indexing/funnel-batch-pipelines/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "PK를 바꾸자고요?",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "원천에서 작업지시 번호 체계를 바꾼대요."
+    }
+   ],
+   "q": "가장 큰 위험은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "화면 글꼴",
+     "ok": false,
+     "why": "아니에요."
+    },
+    {
+     "k": "B",
+     "t": "Merge 단계가 PK로 편집을 합치므로 기존 액션 편집이 엉뚱하거나 고아가 될 수 있다",
+     "ok": true,
+     "why": "PK는 편집의 주소예요."
+    },
+    {
+     "k": "C",
+     "t": "위험 없음",
+     "ok": false,
+     "why": "있어요."
+    }
+   ],
+   "explain": "PK 변경은 마이그레이션 계획이 필요해요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Palantir Docs — Funnel batch pipelines",
+     "url": "https://www.palantir.com/docs/foundry/object-indexing/funnel-batch-pipelines/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Scale and property limits",
+     "url": "https://www.palantir.com/docs/foundry/action-types/scale-property-limits/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "실시간 위치 + 액션",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장·운영본부",
+     "text": "실시간 항공기 위치 객체에서 바로 정비 요청 액션을 걸고 싶어요."
+    }
+   ],
+   "q": "설계는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "스트림 기반 객체에 액션을 직접",
+     "ok": false,
+     "why": "액션은 stream 데이터소스 객체에서 아직 미지원이에요."
+    },
+    {
+     "k": "B",
+     "t": "위치는 스트리밍 객체로 보고, 정비 요청은 배치 기반 WorkOrder 객체에 액션으로",
+     "ok": true,
+     "why": "보기와 결정을 나눠요."
+    },
+    {
+     "k": "C",
+     "t": "위치도 하루 배치로",
+     "ok": false,
+     "why": "실시간성을 잃어요."
+    }
+   ],
+   "explain": "데이터 성격별로 경로를 나눠요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Palantir Docs — Indexing (OSv2)",
+     "url": "https://www.palantir.com/docs/foundry/object-indexing/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Object edits · Overview",
+     "url": "https://www.palantir.com/docs/foundry/object-edits/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "Owner인데 못 봐요",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "제가 데이터셋 Owner인데 정비사 자격 데이터가 안 열려요."
+    }
+   ],
+   "q": "원인은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "버그",
+     "ok": false,
+     "why": "설계대로예요."
+    },
+    {
+     "k": "B",
+     "t": "PII 마킹 구성원이 아니라서 — 마킹은 역할보다 우선하는 의무 통제",
+     "ok": true,
+     "why": "Owner여도 마킹 자격이 필요해요."
+    },
+    {
+     "k": "C",
+     "t": "브랜치가 달라서",
+     "ok": false,
+     "why": "관계없어요."
+    }
+   ],
+   "explain": "마킹은 AND, 전부 아니면 전무.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Markings",
+     "url": "https://www.palantir.com/docs/foundry/security/markings/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "RV만 믿어도 될까",
+   "scene": [
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "협력사는 restricted view로 자기 건만 보여요."
+    },
+    {
+     "name": "민서",
+     "role": "TF장·운영본부",
+     "text": "그럼 AIP Logic에서도 안전하죠?"
+    }
+   ],
+   "q": "정확한 답은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "예, 완전히 안전",
+     "ok": false,
+     "why": "RV 정책은 AIP Logic·액션·내보내기로 확장되지 않아요."
+    },
+    {
+     "k": "B",
+     "t": "RV는 읽기만 거르니, 마킹과 액션 criteria를 함께 설계한다",
+     "ok": true,
+     "why": "문서상 경계를 반영해요."
+    },
+    {
+     "k": "C",
+     "t": "RV를 없앤다",
+     "ok": false,
+     "why": "통제가 줄어요."
+    }
+   ],
+   "explain": "읽기 통제와 흐름 통제를 같이.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Restricted views",
+     "url": "https://www.palantir.com/docs/foundry/security/restricted-views/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Permissions",
+     "url": "https://www.palantir.com/docs/foundry/action-types/permissions/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "AI 답이 틀렸어요",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "AI 비서가 이미 고친 결함을 '미조치'라고 해요."
+    }
+   ],
+   "q": "먼저 볼 것은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "프롬프트만 고친다",
+     "ok": false,
+     "why": "근거 데이터가 틀리면 그대로예요."
+    },
+    {
+     "k": "B",
+     "t": "근거 객체의 갱신 시각·인덱싱·freshness 체크를 확인",
+     "ok": true,
+     "why": "데이터 품질이 곧 AI 품질이에요."
+    },
+    {
+     "k": "C",
+     "t": "모델을 바꾼다",
+     "ok": false,
+     "why": "근거가 같으면 같아요."
+    }
+   ],
+   "explain": "AIP는 객체를 근거로 하니 데이터 사슬부터.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Palantir Docs — Health checks",
+     "url": "https://www.palantir.com/docs/foundry/data-integration/health-checks/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Funnel batch pipelines",
+     "url": "https://www.palantir.com/docs/foundry/object-indexing/funnel-batch-pipelines/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "Palantir Docs — Data Connection · Core concepts",
+   "url": "https://www.palantir.com/docs/foundry/data-connection/core-concepts/",
+   "min": 25,
+   "lang": "en",
+   "what": "Source·credential·worker·networking 용어를 정확히 잡아요.",
+   "day": 1
+  },
+  {
+   "id": "l2",
+   "title": "Palantir Docs — Datasets (transactions) · Branching",
+   "url": "https://www.palantir.com/docs/foundry/data-integration/datasets/",
+   "min": 30,
+   "lang": "en",
+   "what": "트랜잭션 4종과 '데이터용 Git'을 읽고 Branching 페이지로 이어가요.",
+   "day": 2
+  },
+  {
+   "id": "l3",
+   "title": "Palantir Docs — Pipeline Builder · Data expectations",
+   "url": "https://www.palantir.com/docs/foundry/pipeline-builder/dataexpectations-overview/",
+   "min": 20,
+   "lang": "en",
+   "what": "PK·행 수·허용 값 검사를 출력에 거는 법을 봐요.",
+   "day": 3
+  },
+  {
+   "id": "l4",
+   "title": "Palantir Docs — Ontology architecture (OSv2, Funnel)",
+   "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+   "min": 30,
+   "lang": "en",
+   "what": "OMS·OSS·Funnel과 OSv2 한도를 정리해요.",
+   "day": 4
+  },
+  {
+   "id": "l5",
+   "title": "Palantir Docs — Markings · Restricted views",
+   "url": "https://www.palantir.com/docs/foundry/security/markings/",
+   "min": 30,
+   "lang": "en",
+   "what": "의무 통제와 행 단위 통제, 그 경계를 읽어요.",
+   "day": 5
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "데이터 연결·품질·권한 설계서 v1을 1~2쪽으로 써 보세요. 원천 3개가 객체가 되기까지의 길과 지킬 장치를 정해요.",
+  "template": [
+   "상태 (제안 / 승인)",
+   "배경: 시연 날 낡은 데이터·중복 항공기 문제",
+   "원천 표: 시스템, 커넥터, worker/네트워크, 갱신 주기, 담당",
+   "복사 vs virtual table 결정과 이유",
+   "파이프라인: Pipeline Builder / Code Repositories 분담, 브랜치·리뷰 규칙",
+   "트랜잭션 방식(SNAPSHOT/APPEND)",
+   "검사: PK·허용 값·행 수 expectations, freshness 기준",
+   "인덱싱: OSv2, 배치/스트리밍 선택, 액션 대상 객체 구분",
+   "권한: 마킹 목록, restricted view 정책, 속성 단위 숨김",
+   "AI가 쓸 객체 목록과 품질 점검 순서"
+  ]
+ },
+ "check": [
+  "Story (3 sources, freshness 30 min, flight-log volume, 'A정비' partner) is fictional.",
+  "Data Connection, datasets/transactions, branching, Pipeline Builder, expectations, health checks, lineage, object backend, Funnel, markings, restricted views facts read from palantir.com/docs pages on 2026-10-21.",
+  "OSv2 numbers (2,000 properties, Search Around 100,000, 10,000 edits per action, OSv1 unavailable after 2026-06-30) from the Ontology architecture page; live Funnel pipeline every 6 hours with edits from Funnel batch pipelines page.",
+  "NHS FDP: £330M/7 years, 2023-11-21, up to 240 organisations, IQVIA PET — from Digital Health, The Register and search summary of NHS FAQ; FAQ page body itself not fetched (site returned 202).",
+  "Skywise numbers are Airbus-reported 2019 values (CIO.com, Airbus press release).",
+  "Lecture URLs returned HTTP 200 on 2026-10-21."
+ ]
+}

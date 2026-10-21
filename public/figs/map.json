@@ -145,6 +145,38 @@
   "git-graph": {
    "title": "커밋 · 브랜치 · 병합, 그리고 브랜치 전략",
    "about": "basics 모드는 main 커밋 → 기능 브랜치 → 커밋 → PR → 병합 커밋을, flows 모드는 같은 한 주를 GitHub flow · GitFlow · 트렁크 기반으로 그려 main 에 합친 횟수를 비교해 보여 줘요."
+  },
+  "onto-ladder": {
+   "title": "목록 → 분류 → 시소러스 → 온톨로지 → 지식그래프",
+   "about": "같은 병원 낱말(환자 · 의사 · 진료 · 약 · 아스피린)이 한 칸씩 올라가며 위·아래(상위어), 동의어 · 관련어, 이름 붙은 관계와 규칙, 실제 사례(김의사 · 홍길동)를 얻어요."
+  },
+  "rdf-triple": {
+   "title": "RDF 트리플 하나씩 — 주어 → 술어 → 목적어",
+   "about": "트리플을 한 줄 더할 때마다 그래프에 선이 하나 생기고 옆 Turtle 글에서 그 줄이 밝아져요. 같은 이름은 같은 점이라 그래프로 이어지고, 마지막에 URI(이름)와 리터럴(값)을 나눠 봐요."
+  },
+  "owa-cwa": {
+   "title": "열린 세계 vs 닫힌 세계 — 안 적힌 건 거짓일까?",
+   "about": "'홍길동은 아스피린 알레르기가 없나?'에 닫힌 세계(DB)는 '없어요', 열린 세계(OWL)는 '몰라요'라고 답해요. 단추로 두 세계를 바꿔 보고, 새 사실이 오거나 닫는 규칙을 적으면 답이 어떻게 바뀌는지 봐요."
+  },
+  "reasoning": {
+   "title": "추론 — 규칙이 하나씩 발동해요",
+   "about": "TBox(아스피린 ⊑ NSAID ⊑ 진통제, 정의역 · 치역, 이행적 속성)와 ABox 사실 4개에서 규칙이 한 단계에 하나씩 발동해 새 사실 5개를 보라 점선으로 그려요. 근거가 된 선은 굵게 보여요."
+  },
+  "lpg-vs-rdf": {
+   "title": "속성 그래프 vs RDF — 같은 사실 두 방식",
+   "about": "홍길동이 아스피린을 처방받은 사실(날짜 · 용량 포함)을 속성 그래프(점 · 선 안에 속성)와 RDF 트리플로 그려요. 선의 속성은 RDF 에서 사건 점(처방#1)이나 RDF-star(<< >>)로 풀어요. 단추로 두 보기를 바꿔요."
+  },
+  "ontology-layer-3d": {
+   "title": "온톨로지 층 — 원천 · 객체 · 앱 세 판 (3D)",
+   "about": "아래 판의 흩어진 원천(ERP · EMR · 센서 · 엑셀 · API)에서 가운데 온톨로지 객체(환자 · 진료 · 병상 …)로 매핑 선이, 객체에서 위 판의 앱 · AI 에이전트 · 사람으로 사용 선이 올라가요. 끌어서 돌려 봐요."
+  },
+  "palantir-ontology": {
+   "title": "Palantir 온톨로지의 부품 — 항공 정비 예시",
+   "about": "데이터셋 → 객체 타입(속성 · 기본 키) → 링크 타입 → 액션 타입(입력 칸 · 규칙 · 라이트백) → 함수 순서로 하나씩 더해요. 마지막에 의미(명사)와 동역학(동사)으로 나눠 봐요."
+  },
+  "aip-loop": {
+   "title": "AIP 에이전트 한 바퀴 — 질문에서 평가까지",
+   "about": "질문 → LLM 도구 선택 → 객체 조회 → 권한 관문 → 함수 계산 → 액션 초안 → 사람 승인 → 라이트백 → 기록 · 평가(AIP Evals). 주황 토큰이 한 칸씩 돌고, 옆 칸에 그 단계에서 오가는 것이 보여요."
   }
  },
  "videos": {
@@ -1497,6 +1529,72 @@
     "opts": {
      "start": 1
     }
+   }
+  ],
+  "onto/onto-what/c12": [
+   {
+    "fig": "onto-ladder",
+    "after": 0
+   }
+  ],
+  "onto/onto-rdf/c01": [
+   {
+    "fig": "rdf-triple",
+    "after": 0
+   }
+  ],
+  "onto/onto-logic/c09": [
+   {
+    "fig": "reasoning",
+    "after": 0
+   }
+  ],
+  "onto/onto-logic/c13": [
+   {
+    "fig": "owa-cwa",
+    "after": 0
+   }
+  ],
+  "onto/onto-graphs/c02": [
+   {
+    "fig": "lpg-vs-rdf",
+    "after": 0
+   }
+  ],
+  "onto/onto-ai/c04": [
+   {
+    "fig": "ontology-layer-3d",
+    "after": 0
+   }
+  ],
+  "onto/onto-ai/c13": [
+   {
+    "fig": "aip-loop",
+    "after": 0
+   }
+  ],
+  "aip/aip-objects/c01": [
+   {
+    "fig": "ontology-layer-3d",
+    "after": 0
+   }
+  ],
+  "aip/aip-objects/c04": [
+   {
+    "fig": "palantir-ontology",
+    "after": 0
+   }
+  ],
+  "aip/aip-actions/c02": [
+   {
+    "fig": "palantir-ontology",
+    "after": 0
+   }
+  ],
+  "aip/aip-llm/c08": [
+   {
+    "fig": "aip-loop",
+    "after": 0
    }
   ]
  }

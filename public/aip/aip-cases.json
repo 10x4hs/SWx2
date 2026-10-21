@@ -1,0 +1,1974 @@
+{
+ "id": "aip-cases",
+ "no": "07",
+ "title": "실제 사례: 무엇을 객체로, 무엇을 액션으로 했나",
+ "short": "실제 사례",
+ "q": "다른 조직은 팔란티어로 실제로 무엇을 객체로 만들고, 어떤 결정을 액션으로 바꿨을까?",
+ "sub": "NHS FDP · Tampa General · Airbus Skywise · HD현대 · US Army",
+ "doc": "누리 AIP 사례 분석 보고서 v1",
+ "story": {
+  "title": "“다른 데는 진짜 효과 봤대요? 숫자 말고 구조로 보여 줘요.”",
+  "size": 4,
+  "body": [
+   "(가상 이야기) 누리모빌리티 AIP 도입 TF는 06장에서 AIP Logic으로 '정비 지연 요약' 에이전트를 시험했어요. 이제 경영진 보고가 2주 남았어요.",
+   "TF장 민서가 말해요. \"임원들이 '다른 회사는 어땠냐'고 물을 거예요. 보도자료 숫자만 옮기면 안 돼요. 그 회사들이 무엇을 객체로 만들고 어떤 결정을 액션으로 바꿨는지 보여 줘야 해요.\"",
+   "정비 반장 준호는 의심이 많아요. \"항공기 정비는 병원이나 군대랑 달라요. 남의 사례가 우리한테 맞는지부터 따져 봐요.\" 보안·법무 하린은 \"공공 사례의 논란도 같이 넣어 주세요\"라고 해요.",
+   "도입 담당인 나는 이번 주에 사례 4개(의료·항공·조선·국방)를 같은 틀로 분석해서 금요일까지 '누리 AIP 사례 분석 보고서 v1'을 써야 해요."
+  ]
+ },
+ "goals": [
+  "실제 사례를 '데이터 → 객체 → 액션 → 결과 지표' 틀로 분해해서 설명할 수 있어요.",
+  "회사·고객이 발표한 숫자와 독립 검증된 숫자를 구별하고, 기준선(baseline)을 물을 수 있어요.",
+  "남의 사례에서 우리 조직(항공 정비)에 옮길 것과 옮기면 안 되는 것을 고를 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "사례를 읽는 틀: 데이터 → 객체 → 액션 → 지표",
+   "lead": "사례를 볼 때는 '무슨 AI를 썼나'보다 '어떤 객체 위에서 어떤 결정을 바꿨나'를 봐요.",
+   "idea": [
+    "보도자료는 보통 결과 숫자부터 말해요. 하지만 우리가 배울 건 구조예요. 어떤 데이터를 모았고, 그걸 어떤 객체(환자·항공기·선박 블록)로 묶었고, 사람이 무엇을 클릭해서 결정을 바꿨는지요.",
+    "02~03장에서 배운 말로 하면 객체는 명사, 액션은 동사예요. 좋은 사례는 동사가 분명해요. '병상 배정', '작업지시 발행'처럼요.",
+    "마지막으로 지표예요. 무엇이 몇 % 줄었다면, 언제와 비교했는지(기준선)와 누가 쟀는지를 꼭 확인해요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 데이터",
+     "t": "어떤 시스템에서 왔나"
+    },
+    {
+     "k": "2 · 객체",
+     "t": "무엇을 명사로 묶었나"
+    },
+    {
+     "k": "3 · 액션",
+     "t": "어떤 결정을 버튼으로 만들었나"
+    },
+    {
+     "k": "4 · 지표",
+     "t": "무엇이 얼마나, 무엇과 비교해 바뀌었나"
+    }
+   ],
+   "hear": [
+    "\"그 회사는 무엇을 객체로 잡았대요?\"",
+    "\"결과 숫자 기준 기간이 언제예요?\""
+   ],
+   "ask": [
+    "이 사례에서 사람이 매일 누르는 버튼(액션)은 무엇인가요?",
+    "결과 지표는 누가, 어떤 기준선과 비교해 쟀나요?"
+   ],
+   "mine": "누리 정비라면 데이터 = 정비 기록·부품 재고, 객체 = 항공기·결함·작업지시·부품, 액션 = '작업지시 발행', '부품 예약', 지표 = AOG(운항 불가) 시간이에요.",
+   "deep": [
+    "Palantir 문서는 온톨로지를 데이터셋 위의 객체·링크·액션 계층으로 설명하고, 액션이 데이터에 쓰기(writeback)를 할 수 있다고 해요."
+   ],
+   "recall": {
+    "q": "사례 분석 4단계는?",
+    "a": "데이터 → 객체 → 액션 → 결과 지표(기준선 포함)"
+   },
+   "quiz": [
+    {
+     "q": "사례에서 가장 먼저 옮겨 올 만한 것은?",
+     "options": [
+      "결과 % 숫자",
+      "객체와 액션의 구조",
+      "회사 로고"
+     ],
+     "answer": 1,
+     "why": "숫자는 조직마다 달라요. 구조는 재사용할 수 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "Palantir Docs — Action types overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "회사 발표 숫자 읽는 법",
+   "lead": "'30% 단축'은 대부분 고객이나 공급사가 직접 발표한 숫자예요. 틀린 건 아니지만 독립 검증과는 달라요.",
+   "idea": [
+    "사례 숫자에는 등급이 있어요. 동료 심사 논문이나 감사 보고서 > 공공기관 공식 발표 > 고객사 보도자료 > 공급사 마케팅 순서로 믿음이 약해져요.",
+    "같은 기간에 다른 변화(인력 충원, 정책 변경)가 있었을 수도 있어요. 그래서 숫자 하나로 '도구 덕분'이라고 말하면 위험해요.",
+    "그래도 회사 발표 숫자는 '무엇을 재려고 했는지'를 알려 줘요. 지표 이름은 그대로 빌려 오고, 우리 기준선은 따로 재요."
+   ],
+   "hear": [
+    "\"그거 회사 보도자료 숫자죠?\"",
+    "\"우리 기준선부터 재 놓읍시다.\""
+   ],
+   "ask": [
+    "이 숫자의 비교 기간과 대상은요?",
+    "독립 평가나 논문이 있나요?"
+   ],
+   "mine": "경영진 보고서에는 숫자마다 '회사 발표' 또는 '독립 검증' 표시를 붙이기로 해요.",
+   "deep": [
+    "Tampa General의 패혈증 재원일수 30% 감소는 병원 보도자료(2024-06)에 나와요. 이번 조사에서 같은 수치의 동료 심사 논문은 찾지 못했어요."
+   ],
+   "recall": {
+    "q": "회사 발표 숫자를 쓸 때 꼭 붙일 것은?",
+    "a": "출처 등급(회사 발표)과 비교 기준선"
+   },
+   "quiz": [
+    {
+     "q": "다음 중 믿음이 가장 강한 근거는?",
+     "options": [
+      "공급사 마케팅 영상",
+      "고객사 보도자료",
+      "동료 심사를 거친 평가 논문"
+     ],
+     "answer": 2,
+     "why": "방법과 비교군이 공개되고 검토돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Tampa General Hospital — TGH selects Palantir AI software for connected care coordination",
+     "url": "https://tgh.org/news/tgh-press-releases/2024/june/tgh-selects-palantir-ai-software-connected-care-coordination",
+     "date": "2024-06"
+    },
+    {
+     "title": "Palantir — Impact studies",
+     "url": "https://www.palantir.com/impact/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "부트캠프식 도입: 며칠 안에 실제 데이터로",
+   "lead": "팔란티어는 AIP를 긴 컨설팅보다 짧은 실습(부트캠프)으로 팔아 왔어요. 고객 데이터로 며칠 안에 작동하는 걸 보여 주는 방식이에요.",
+   "idea": [
+    "핵심은 '슬라이드 대신 작동하는 앱'이에요. 실제 데이터 몇 개를 연결하고, 객체 몇 개와 액션 한두 개로 업무 하나를 끝까지 돌려 봐요.",
+    "장점은 빨리 검증한다는 거예요. 단점도 있어요. 며칠 만에 만든 건 데이터 품질·권한·운영 문제를 다 풀지 않아요. 데모와 운영은 달라요.",
+    "그래서 부트캠프 결과는 '가능성 확인'으로 보고, 운영 전환 비용은 따로 계산해야 해요."
+   ],
+   "hear": [
+    "\"부트캠프 끝나면 바로 운영 가능한 거 아니에요?\"",
+    "\"유스케이스 하나만 골라 오세요.\""
+   ],
+   "ask": [
+    "부트캠프에 들어갈 데이터는 누가 준비하나요?",
+    "끝난 뒤 운영 전환에 드는 인력과 비용은?"
+   ],
+   "mine": "누리는 'AOG 부품 대기' 하나를 골라 부트캠프에 들고 가기로 해요.",
+   "deep": [
+    "Palantir AIP 소개 페이지는 고객이 자기 데이터로 AIP를 직접 써 보는 부트캠프를 안내해요. 기간·건수 같은 숫자는 이번에 공식 확인하지 못해 넣지 않았어요."
+   ],
+   "recall": {
+    "q": "부트캠프 결과를 어떻게 봐야 하나요?",
+    "a": "가능성 확인. 운영 전환(품질·권한·운영)은 따로 계산"
+   },
+   "quiz": [
+    {
+     "q": "부트캠프에 가장 알맞은 준비물은?",
+     "options": [
+      "전사 데이터 전부",
+      "업무 하나와 그 실제 데이터",
+      "완성된 요구사항 문서 200쪽"
+     ],
+     "answer": 1,
+     "why": "좁고 진짜인 문제가 빨리 검증돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir — AIP platform page",
+     "url": "https://www.palantir.com/platforms/aip/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "모든 사례에 숨은 공통 패턴: 운영 루프",
+   "lead": "성공 사례들은 '보고서 보기'에서 멈추지 않고, 화면에서 결정하고 그 결정이 다시 데이터로 돌아가는 루프를 만들었어요.",
+   "idea": [
+    "대시보드는 보여 주기만 해요. 운영 루프는 '보고 → 결정 → 기록 → 다시 보기'가 한 시스템 안에서 돌아요.",
+    "예를 들어 병상 관리라면, 빈 병상을 보고(객체), 환자를 배정하고(액션), 그 배정이 병상 상태를 바꾸고(writeback), 다음 사람이 바뀐 상태를 봐요.",
+    "이 루프가 있어야 AI도 일할 수 있어요. AI가 추천만 하고 사람이 승인하면 바로 기록되는 구조예요."
+   ],
+   "steps": [
+    {
+     "k": "보기",
+     "t": "객체 상태"
+    },
+    {
+     "k": "결정",
+     "t": "액션 실행"
+    },
+    {
+     "k": "기록",
+     "t": "writeback"
+    },
+    {
+     "k": "다시 보기",
+     "t": "갱신된 상태"
+    }
+   ],
+   "hear": [
+    "\"대시보드 말고 일하는 화면이 필요해요.\"",
+    "\"결정한 게 원래 시스템에 반영돼요?\""
+   ],
+   "ask": [
+    "결정 결과가 원천 시스템(ERP, EMR)에도 써지나요?",
+    "누가 승인했는지 기록이 남나요?"
+   ],
+   "mine": "누리 정비 화면에서 반장이 '부품 예약'을 누르면 재고 시스템에 바로 예약이 잡혀야 루프가 돼요.",
+   "deep": [
+    "Palantir 문서는 액션 타입을 '사용자가 객체를 한 번에 바꾸는 트랜잭션'으로 정의하고, 규칙·제출 조건·부수 효과(외부 시스템 호출)를 붙일 수 있다고 설명해요."
+   ],
+   "recall": {
+    "q": "대시보드와 운영 루프의 차이는?",
+    "a": "운영 루프는 결정(액션)이 데이터로 다시 기록돼 다음 판단에 쓰여요"
+   },
+   "quiz": [
+    {
+     "q": "운영 루프의 마지막 고리는?",
+     "options": [
+      "예쁜 차트",
+      "결정이 데이터에 기록되는 것",
+      "월간 보고서"
+     ],
+     "answer": 1,
+     "why": "기록돼야 다음 결정이 최신 상태를 봐요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "NHS FDP: 영국 공공의료의 연합 데이터 플랫폼",
+   "lead": "2023년 11월 NHS England는 연합 데이터 플랫폼(FDP)을 팔란티어 컨소시엄에 맡겼어요. 7년간 최대 £330m 규모예요.",
+   "idea": [
+    "FDP는 병원(트러스트)마다 자기 플랫폼 인스턴스를 두고, 필요하면 서로 연결하는 '연합' 구조예요. 데이터를 한 군데로 다 모으는 대신 각자 통제해요.",
+    "목표 활용은 다섯 가지였어요. 인구 건강, 진료 조정, 공급망, 예방접종, 그리고 코로나 이후 밀린 수술(elective recovery)이에요.",
+    "컨소시엄에는 Accenture, PwC, NECS, Carnall Farrar가 함께했고, 경쟁에는 Oracle·IBM 등이 있었다고 보도됐어요."
+   ],
+   "hear": [
+    "\"트러스트마다 따로 데이터 통제권이 있대요.\"",
+    "\"GP(동네의원) 데이터는 안 들어간대요.\""
+   ],
+   "ask": [
+    "연합 구조에서 데이터 통제자는 누구인가요?",
+    "공공 계약에서 어떤 정보가 공개됐나요?"
+   ],
+   "mine": "누리도 정비 기지마다 데이터 담당이 달라요. '한 곳에 다 모으기'보다 기지별 통제 + 연결이 맞을지 생각해 봐요.",
+   "deep": [
+    "계약: 7년간 최대 £330m, 2023-11-21 발표 (Digital Health, The Register).",
+    "첫해 투자 예상 £25.6m로 보도됐어요.",
+    "2024년 4월 보도 기준, 41개 트러스트가 참여에 동의했고 그해 약 70곳이 도입할 예정이었어요(당시 수치)."
+   ],
+   "recall": {
+    "q": "FDP의 '연합'은 무슨 뜻?",
+    "a": "트러스트마다 자기 인스턴스와 통제권을 갖고 필요할 때 연결해요"
+   },
+   "quiz": [
+    {
+     "q": "FDP 계약 규모로 보도된 것은?",
+     "options": [
+      "7년간 최대 £330m",
+      "1년 £1bn",
+      "무상 시범"
+     ],
+     "answer": 0,
+     "why": "NHS England 발표 기준 최대 £330m/7년이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Digital Health — NHS England awards £330m Federated Data Platform contract to Palantir",
+     "url": "https://digitalhealth.net/2023/11/nhs-england-awards-330m-federated-data-platform-contract-to-palantir",
+     "date": "2023-11-21"
+    },
+    {
+     "title": "The Register — Palantir wins NHS contract",
+     "url": "https://www.theregister.com/2023/11/22/palantir_wins_nhs_contract/",
+     "date": "2023-11-22"
+    },
+    {
+     "title": "NHS England — NHS Federated Data Platform",
+     "url": "https://www.england.nhs.uk/digitaltechnology/nhs-federated-data-platform/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "FDP를 객체와 액션으로 분해해 보기 (추정 분석)",
+   "lead": "밀린 수술을 줄이려면 '환자 대기 목록·수술실·의료진'을 객체로, '수술 배정·일정 변경'을 액션으로 두는 구조가 자연스러워요.",
+   "idea": [
+    "공개 자료는 FDP의 내부 스키마를 다 보여 주지 않아요. 그래서 이 카드는 공개된 활용 목적에서 거꾸로 추정한 분석이에요.",
+    "수술 대기(elective recovery)라면 객체는 환자 대기 항목, 수술실 세션, 외과의, 병상이에요. 링크는 '대기 항목 → 배정된 세션'이에요.",
+    "액션은 '세션에 환자 배정', '취소된 세션 다시 채우기'예요. 이게 빈 수술실을 줄이는 지점이에요."
+   ],
+   "hear": [
+    "\"취소된 수술실 슬롯을 누가 채워요?\"",
+    "\"대기 목록이 시스템마다 달라요.\""
+   ],
+   "ask": [
+    "객체 하나(대기 항목)의 기본 키는 무엇으로 하나요?",
+    "배정 액션의 승인권자는 누구인가요?"
+   ],
+   "mine": "누리에서는 '수술실 세션' 대신 '정비 행거 슬롯', '대기 환자' 대신 '대기 결함'으로 바꿔 보면 거의 같은 구조예요.",
+   "deep": [
+    "NHS 보도에 따르면 도싯(Dorset) 트러스트들은 FDP로 연간 약 2,500건의 수술 여력을 더 만들었다고 해요(NHS 측 발표 수치)."
+   ],
+   "recall": {
+    "q": "수술 대기 문제의 핵심 액션은?",
+    "a": "수술실 세션에 환자 배정 · 취소 슬롯 다시 채우기"
+   },
+   "quiz": [
+    {
+     "q": "이 카드의 객체 구조는 어떤 근거인가요?",
+     "options": [
+      "공개된 공식 스키마",
+      "공개 활용 목적에서 거꾸로 추정한 분석",
+      "내부 유출 문서"
+     ],
+     "answer": 1,
+     "why": "공식 스키마는 공개돼 있지 않아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "NHS England — NHS Federated Data Platform",
+     "url": "https://www.england.nhs.uk/digitaltechnology/nhs-federated-data-platform/",
+     "date": "n.d."
+    },
+    {
+     "title": "NHS England — Federated Data Platform update",
+     "url": "https://www.england.nhs.uk/long-read/federated-data-platform-update/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "PET: 가명화 층을 따로 둔 이유",
+   "lead": "NHS는 FDP와 별도로 '개인정보 보호 기술(PET)' 계약을 IQVIA에 줬어요. 플랫폼 공급사와 가명화 담당을 나눈 구조예요.",
+   "idea": [
+    "PET는 민감한 부분을 익명화·가명화하고, 어떤 데이터가 어떻게 바뀌었는지 감사 기록을 남겨요.",
+    "왜 따로 뒀을까요? 플랫폼 하나가 모든 걸 쥐면 신뢰 문제가 커져요. 역할을 나누면 서로 견제가 생겨요.",
+    "단점은 연결 지점이 늘어난다는 거예요. 가명 ID를 쓰는 분석과, 실명이 필요한 직접 진료를 어떻게 나눌지 설계가 복잡해져요."
+   ],
+   "hear": [
+    "\"직접 진료에는 실명이 필요하고, 계획에는 가명이면 돼요.\"",
+    "\"가명화 키는 누가 들고 있어요?\""
+   ],
+   "ask": [
+    "가명화 키를 플랫폼 공급사가 볼 수 있나요?",
+    "용도(직접 진료 vs 계획)별로 권한이 나뉘나요?"
+   ],
+   "mine": "하린은 누리 정비사 개인 기록(근태·자격)을 분석할 때 가명화 층을 따로 둘지 검토하기로 해요.",
+   "deep": [
+    "PET 계약은 2023년 11월 IQVIA에 돌아갔고 규모는 약 £28m로 보도됐어요.",
+    "2025년 Bio-IT World 행사에서 NHS England·IQVIA의 PET가 Innovative Practices Award를 받았어요(2025-07-23 기사)."
+   ],
+   "recall": {
+    "q": "PET를 플랫폼과 분리한 장점은?",
+    "a": "한 회사가 모든 걸 쥐지 않아 견제와 신뢰가 생겨요"
+   },
+   "quiz": [
+    {
+     "q": "PET가 하는 일이 아닌 것은?",
+     "options": [
+      "가명화",
+      "변환 감사 기록",
+      "수술 일정 자동 확정"
+     ],
+     "answer": 2,
+     "why": "PET는 보호 층이에요. 운영 결정은 하지 않아요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Bio-IT World — Innovative Practices Award for NHS England, IQVIA Privacy Protection Platform",
+     "url": "https://www.bio-itworld.com/news/2025/07/23/innovative-practices-award-for-nhs-england-iqvia-privacy-protection-platform",
+     "date": "2025-07-23"
+    },
+    {
+     "title": "NHS England — NHS Federated Data Platform",
+     "url": "https://www.england.nhs.uk/digitaltechnology/nhs-federated-data-platform/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "Tampa General: 병상 흐름과 패혈증",
+   "lead": "미국 탬파 제너럴 병원은 팔란티어 소프트웨어로 환자 배치와 패혈증 관리 흐름을 만들었다고 발표했어요.",
+   "idea": [
+    "병원이 꼽은 건 '연결된 진료 조정(care coordination)'이에요. 병상, 환자 이동, 수술 후 회복실(PACU) 대기 같은 흐름을 한 화면에서 봐요.",
+    "패혈증은 몇 시간이 생사를 가르는 병이에요. 검사·활력징후 신호를 모아 위험 환자를 빨리 찾고, 진료 지침(번들) 수행을 추적해요.",
+    "주의할 점은 숫자가 병원 발표라는 거예요. 같은 기간 다른 개선 활동도 있었을 수 있어요."
+   ],
+   "hear": [
+    "\"회복실에서 병동으로 못 올라가서 수술이 밀려요.\"",
+    "\"패혈증 번들 시간 안에 했는지 봐야 해요.\""
+   ],
+   "ask": [
+    "배치 시간 83% 감소의 기준 기간은요?",
+    "알림이 너무 많아 무시되는 문제(알람 피로)는 어떻게 했나요?"
+   ],
+   "mine": "누리에서는 '회복실 대기'가 '부품 대기로 묶인 항공기'와 닮았어요. 병목 한 곳을 고르는 방식이 배울 점이에요.",
+   "deep": [
+    "2024-06 병원 발표: 환자 배치 시간 83% 감소, PACU 대기 28% 감소, 패혈증 환자 평균 재원일수 30% 감소(병원 발표 수치).",
+    "이번 조사에서 같은 결과의 동료 심사 논문은 찾지 못했어요."
+   ],
+   "recall": {
+    "q": "Tampa General이 고른 병목 두 가지는?",
+    "a": "환자 배치(병상 흐름)와 패혈증 관리"
+   },
+   "quiz": [
+    {
+     "q": "이 사례 숫자를 보고서에 옮길 때 알맞은 표기는?",
+     "options": [
+      "'검증된 효과'",
+      "'병원 발표 수치(2024-06)'",
+      "숫자 생략하고 '대성공'"
+     ],
+     "answer": 1,
+     "why": "출처 등급과 날짜를 함께 써요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Tampa General Hospital — TGH selects Palantir AI software for connected care coordination",
+     "url": "https://tgh.org/news/tgh-press-releases/2024/june/tgh-selects-palantir-ai-software-connected-care-coordination",
+     "date": "2024-06"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "Airbus Skywise: 항공 데이터 플랫폼의 출발",
+   "lead": "2017년 6월 에어버스는 팔란티어와 함께 만든 항공 데이터 플랫폼 Skywise를 발표했어요.",
+   "idea": [
+    "항공기 한 대에는 설계·생산·운항·정비 데이터가 흩어져 있어요. Skywise는 제조사와 항공사의 데이터를 한 곳에서 연결하자는 생각이에요.",
+    "출시 때 에어버스는 AirAsia, Delta, easyJet, Emirates, jetBlue 등을 초기 도입사로 소개했어요.",
+    "중요한 점: 에어버스 같은 제조사가 '플랫폼 소유자'가 되고, 팔란티어는 그 아래 기술을 제공하는 구조예요."
+   ],
+   "hear": [
+    "\"항공사 운항 데이터를 제조사랑 공유해도 돼요?\"",
+    "\"센서 데이터를 정비 기록이랑 이어 봐야 해요.\""
+   ],
+   "ask": [
+    "데이터를 공유한 항공사는 무엇을 대가로 얻나요?",
+    "플랫폼 이름과 소유가 누구에게 있나요?"
+   ],
+   "mine": "누리는 항공사이자 정비(MRO) 회사라 Skywise 같은 제조사 플랫폼과 자체 AIP를 어떻게 함께 쓸지 정해야 해요.",
+   "deep": [
+    "Airbus 보도자료(2017-06): Skywise는 Palantir와 협력해 만든 항공 데이터 플랫폼이에요."
+   ],
+   "recall": {
+    "q": "Skywise의 플랫폼 소유자는?",
+    "a": "에어버스. 팔란티어는 기술 파트너"
+   },
+   "quiz": [
+    {
+     "q": "Skywise 발표 시기는?",
+     "options": [
+      "2017년 6월",
+      "2023년 11월",
+      "2010년"
+     ],
+     "answer": 0,
+     "why": "2017년 파리 에어쇼 시기 발표예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Airbus — Airbus launches Skywise, aviation's open data platform",
+     "url": "https://www.airbus.com/en/newsroom/press-releases/2017-06-airbus-launches-skywise-aviations-open-data-platform",
+     "date": "2017-06"
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "Skywise의 확장: 항공사 70곳 이상과 예측 정비",
+   "lead": "2019년 에어버스는 Skywise에 연결된 항공사가 70곳이 넘는다고 밝혔어요. 핵심 활용은 예측 정비예요.",
+   "idea": [
+    "예측 정비는 고장이 나기 전에 부품 교체를 계획하는 거예요. 센서 이상 신호와 과거 결함 기록을 연결해야 가능해요.",
+    "항공사가 많을수록 같은 부품의 고장 패턴을 더 많이 볼 수 있어요. 데이터 네트워크 효과예요.",
+    "한계도 있어요. 기종·운항 환경이 다르면 패턴이 다르고, 예측이 틀리면 멀쩡한 부품을 바꾸는 비용이 생겨요."
+   ],
+   "hear": [
+    "\"예측 알람이 맞은 비율이 얼마예요?\"",
+    "\"우리 기단 데이터만으론 부족해요.\""
+   ],
+   "ask": [
+    "예측 정비의 오탐(멀쩡한데 알람)은 얼마나 되나요?",
+    "다른 항공사 데이터와 섞일 때 우리 데이터 권리는?"
+   ],
+   "mine": "준호는 '알람이 틀리면 밤샘 작업만 늘어요'라고 해요. 누리 파일럿 지표에 정밀도(precision)를 꼭 넣기로 해요.",
+   "deep": [
+    "Airbus·United 보도자료(2019-06): 전 세계 70곳 이상 항공사가 Skywise에 연결돼 있다고 했어요(2019년 기준 수치)."
+   ],
+   "recall": {
+    "q": "Skywise 확장의 장점이 되는 효과는?",
+    "a": "참여 항공사가 늘수록 고장 패턴 데이터가 많아지는 네트워크 효과"
+   },
+   "quiz": [
+    {
+     "q": "예측 정비 도입 때 꼭 볼 지표는?",
+     "options": [
+      "알람 건수만",
+      "알람 정밀도와 놓친 고장",
+      "화면 개수"
+     ],
+     "answer": 1,
+     "why": "틀린 알람과 놓친 고장이 비용을 결정해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Airbus — Airbus partners with United Airlines to manage aircraft data",
+     "url": "https://www.airbus.com/en/newsroom/press-releases/2019-06-airbus-partners-with-united-airlines-to-manage-aircraft-data-and",
+     "date": "2019-06"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "항공 정비를 객체와 액션으로 (추정 분석)",
+   "lead": "항공 정비 온톨로지는 '항공기 · 부품(일련번호) · 결함 · 작업지시 · 정비사 자격'이 뼈대가 돼요.",
+   "idea": [
+    "항공 부품은 일련번호 단위로 이력을 따라가야 해요. 그래서 '부품 종류'와 '실제 부품 한 개'를 다른 객체로 두는 게 중요해요.",
+    "결함은 항공기에 링크되고, 작업지시는 결함을 해결해요. 정비사는 자격(기종·작업 종류)이 있어야 작업지시를 마감할 수 있어요.",
+    "액션 '작업지시 마감'에 자격 확인 규칙을 넣으면, 규정 위반을 화면 단계에서 막을 수 있어요."
+   ],
+   "hear": [
+    "\"이 부품 지난번엔 어느 비행기에 달려 있었어요?\"",
+    "\"자격 없는 사람이 마감하면 안 돼요.\""
+   ],
+   "ask": [
+    "부품 객체의 기본 키는 품번인가요, 일련번호인가요?",
+    "'마감' 액션의 제출 조건은 무엇인가요?"
+   ],
+   "mine": "누리 파일럿 첫 객체 5개: Aircraft, Part(일련번호), Defect, WorkOrder, Technician.",
+   "deep": [
+    "Palantir 문서는 액션 타입에 제출 조건(submission criteria)을 둬서 조건이 맞을 때만 실행되게 할 수 있다고 설명해요."
+   ],
+   "recall": {
+    "q": "부품을 두 종류 객체로 나누는 이유는?",
+    "a": "품번(종류)과 실제 한 개(일련번호)의 이력이 달라서"
+   },
+   "quiz": [
+    {
+     "q": "'작업지시 마감'에 넣을 제출 조건으로 알맞은 것은?",
+     "options": [
+      "정비사가 해당 기종 자격 보유",
+      "화면 색이 파랑",
+      "마감 시간이 오후"
+     ],
+     "answer": 0,
+     "why": "규정 준수를 액션 규칙으로 강제해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    }
+   ],
+   "code": {
+    "lang": "TypeScript",
+    "text": "// 추정 예시: 작업지시 마감 전 자격 확인\nfunction canClose(wo: WorkOrder, tech: Technician): boolean {\n  return tech.ratings.includes(wo.aircraftType)\n      && wo.openTasks === 0;\n}",
+    "read": "자격에 기종이 있고 남은 작업이 0일 때만 마감할 수 있어요. 실제로는 액션의 제출 조건으로 걸어요."
+   }
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "HD현대: 조선소에서 그룹 전체로",
+   "lead": "HD현대는 2021년 오일뱅크를 시작으로 팔란티어 플랫폼을 넓혀 왔고, 2026년 1월 그룹 전반으로 AIP를 확대한다고 밝혔어요.",
+   "idea": [
+    "조선은 블록 수천 개를 조립하는 일이에요. 설계 변경, 자재 도착, 작업장 일정이 얽혀서 한 곳이 늦으면 전체가 밀려요.",
+    "보도에 따르면 HD현대는 흩어진 데이터를 한 시스템에 모으고, 최적 공정 작업을 제안받는 방식으로 썼어요.",
+    "2024년 4월에는 무인수상정 공동 개발 MOU도 맺었어요. 소프트웨어 도입을 넘어 사업 협력으로 간 사례예요."
+   ],
+   "hear": [
+    "\"블록 하나 늦으면 도크 일정이 다 밀려요.\"",
+    "\"계열사마다 데이터 구조가 달라요.\""
+   ],
+   "ask": [
+    "'건조 기간 30% 단축'은 어떤 선종, 어떤 기간 기준인가요?",
+    "계열사로 넓힐 때 온톨로지를 공유하나요, 따로 만드나요?"
+   ],
+   "mine": "조선 블록 = 누리의 정비 작업 패키지, 도크 일정 = 행거 일정이에요. 한국 사례라 임원 보고에 가장 와닿을 거예요.",
+   "deep": [
+    "보도(2026-01-21): 정기선 회장이 2026-01-20 다보스에서 알렉스 카프 CEO를 만나 협력 확대에 합의했어요.",
+    "보도: 선박 건조 속도 약 30% 단축(회사 측 발표 인용), 계열사 순차 도입, 공동 '센터 오브 엑설런스' 구축 계획."
+   ],
+   "recall": {
+    "q": "HD현대 도입의 첫 계열사는?",
+    "a": "HD현대오일뱅크(2021)"
+   },
+   "quiz": [
+    {
+     "q": "HD현대 사례의 '30% 단축'은 어떤 근거인가요?",
+     "options": [
+      "독립 감사 결과",
+      "회사 측 발표를 인용한 언론 보도",
+      "정부 통계"
+     ],
+     "answer": 1,
+     "why": "회사 발표 등급으로 표시해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "스마트투데이 — 정기선 HD현대 회장, 다보스포럼서 팔란티어 CEO 만나",
+     "url": "https://www.smarttoday.co.kr/ko-kr/articles/101783",
+     "date": "2026-01-21"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "US Army 엔터프라이즈 계약: 75개 계약을 하나로",
+   "lead": "2025년 7월 31일 미 육군은 팔란티어와 10년, 최대 100억 달러 상한의 엔터프라이즈 계약을 발표했어요.",
+   "idea": [
+    "이 계약은 기존 계약 75개(주계약 15개 + 관련 60개)를 하나로 묶었어요. 재판매 수수료 같은 중간 비용을 없애겠다는 게 육군 설명이에요.",
+    "100억 달러는 '상한'이에요. 그만큼 쓰기로 약속한 게 아니라, 그 안에서 필요할 때 사는 구조예요.",
+    "육군 CIO는 이런 엔터프라이즈 라이선스 계약을 다른 회사와도 더 맺을 거라고 했어요."
+   ],
+   "hear": [
+    "\"100억 달러 계약 땄대요!\" → \"상한이에요, 확정 지출 아니에요.\"",
+    "\"계약을 합치면 협상력이 생겨요.\""
+   ],
+   "ask": [
+    "상한과 실제 집행액은 각각 얼마인가요?",
+    "계약을 하나로 묶으면 공급사 의존도는 어떻게 되나요?"
+   ],
+   "mine": "누리도 부서별로 따로 사던 분석 도구를 하나로 묶자는 의견이 있어요. 할인과 의존도를 같이 따져요.",
+   "deep": [
+    "DefenseScoop(2025-07-31): 10년, 상한 최대 100억 달러, 계약 75개 통합, 국방부 다른 기관도 이 계약으로 구매 가능."
+   ],
+   "recall": {
+    "q": "100억 달러는 무엇인가요?",
+    "a": "10년 동안의 지출 상한(확정 지출 아님)"
+   },
+   "quiz": [
+    {
+     "q": "계약 75개를 하나로 묶을 때 생기는 단점 가능성은?",
+     "options": [
+      "협상력 증가",
+      "한 공급사 의존도 증가",
+      "수수료 감소"
+     ],
+     "answer": 1,
+     "why": "장점과 함께 락인이 커질 수 있어요(08장)."
+    }
+   ],
+   "sources": [
+    {
+     "title": "DefenseScoop — Army, Palantir sign enterprise agreement worth up to $10B",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    },
+    {
+     "title": "The Register — $10 billion, 10 year US Army contract",
+     "url": "https://www.theregister.com/2025/08/01/palantir_us_army_contract/",
+     "date": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "국방 데이터의 객체와 액션 (추정 분석)",
+   "lead": "국방 쪽은 '부대 · 장비 · 보급품 · 임무'가 객체, '보급 요청 · 장비 상태 보고'가 액션이 되는 구조로 읽을 수 있어요.",
+   "idea": [
+    "국방 사례는 상세 구조가 공개되지 않아요. 이 카드는 공개된 활용(준비태세·보급)을 바탕으로 한 추정 분석이에요.",
+    "준비태세는 '장비가 쓸 수 있는 상태인가'예요. 장비 객체에 상태 속성, 정비 기록 링크, 부품 대기 링크가 붙어요.",
+    "항공 정비와 아주 비슷해요. 그래서 군 사례는 정비 조직이 배울 점이 많아요."
+   ],
+   "hear": [
+    "\"가동률이 몇 %예요?\"",
+    "\"부품 하나 때문에 장비가 서 있어요.\""
+   ],
+   "ask": [
+    "가동 불가 장비 목록은 몇 분마다 갱신돼요?",
+    "보안 등급이 다른 데이터를 한 객체에 섞을 수 있나요?"
+   ],
+   "mine": "누리 '항공기 가동 상태' 객체는 군의 장비 준비태세 객체와 거의 같아요. 마킹(보안 등급) 설계를 참고해요.",
+   "deep": [
+    "Palantir 문서는 객체·속성 단위 권한과 마킹으로 보안 등급이 다른 데이터를 나눠 보여 줄 수 있다고 설명해요(04장 참고)."
+   ],
+   "recall": {
+    "q": "군 준비태세 문제와 항공 정비 문제의 공통점은?",
+    "a": "장비 상태 · 정비 기록 · 부품 대기를 잇는 구조"
+   },
+   "quiz": [
+    {
+     "q": "국방 사례 분석에서 정직한 표기는?",
+     "options": [
+      "공식 스키마",
+      "공개 활용 바탕의 추정 분석",
+      "확정 사실"
+     ],
+     "answer": 1,
+     "why": "세부는 비공개예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "DefenseScoop — Army, Palantir sign enterprise agreement worth up to $10B",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "엔터프라이즈 계약이 말해 주는 것",
+   "lead": "큰 고객이 개별 프로젝트 대신 '전사 계약'으로 가면, 플랫폼이 실험 도구에서 기반 시설로 바뀐다는 신호예요.",
+   "idea": [
+    "처음엔 한 부서의 프로젝트로 시작해요. 효과가 보이면 다른 부서가 따라 쓰고, 결국 계약을 합쳐요. 육군 75개 통합이 그 결과예요.",
+    "기반 시설이 되면 장점이 커요. 같은 온톨로지를 여러 부서가 공유해요. 대신 바꾸기 어려워져요.",
+    "그래서 전사 계약 때는 데이터 반출, 표준 포맷, 계약 해지 조건을 미리 적어 둬야 해요."
+   ],
+   "hear": [
+    "\"이제 다 이걸로 해요.\"",
+    "\"나중에 바꾸려면 얼마나 들어요?\""
+   ],
+   "ask": [
+    "계약 해지 시 온톨로지와 앱은 어떤 형태로 받나요?",
+    "다른 부서가 붙을 때 비용은 어떻게 늘어요?"
+   ],
+   "mine": "누리 TF는 파일럿 단계부터 '나중에 나갈 때' 조항을 하린과 같이 적기로 해요.",
+   "deep": [
+    "보도: 육군은 이 계약으로 계약·재판매 수수료를 없앤다고 밝혔어요(DefenseScoop, 2025-07-31)."
+   ],
+   "recall": {
+    "q": "전사 계약 전에 꼭 적을 것은?",
+    "a": "데이터 반출·표준 포맷·해지 조건"
+   },
+   "quiz": [
+    {
+     "q": "플랫폼이 '기반 시설'이 됐다는 신호는?",
+     "options": [
+      "한 부서 파일럿",
+      "여러 계약을 합친 전사 계약",
+      "무료 체험"
+     ],
+     "answer": 1,
+     "why": "여러 부서가 같은 플랫폼을 쓴다는 뜻이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "DefenseScoop — Army, Palantir sign enterprise agreement worth up to $10B",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    },
+    {
+     "title": "The Register — $10 billion, 10 year US Army contract",
+     "url": "https://www.theregister.com/2025/08/01/palantir_us_army_contract/",
+     "date": "2025-08-01"
+    }
+   ]
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "공공 사례의 그림자: NHS의 반발",
+   "lead": "기술이 잘 돌아가도 신뢰가 없으면 현장이 안 써요. NHS FDP는 의사 단체의 공식 반대에 부딪혔어요.",
+   "idea": [
+    "영국의사협회(BMA)는 2025년 6월 대의원회에서 팔란티어가 FDP 파트너로 부적절하다는 결의를 통과시켰어요. 투명성 부족, 미국 치안 소프트웨어 이력, 미국 정부와의 관계를 이유로 들었어요.",
+    "2026년 2월 BMA는 의사들에게 직접 진료가 아닌 FDP 사용을 거부하는 방안을 검토하라고 권했다고 보도됐어요.",
+    "교훈: 도입 성공은 기술 지표만이 아니에요. 사용자 단체·시민의 신뢰도 지표예요. 08장에서 더 다뤄요."
+   ],
+   "hear": [
+    "\"현장이 안 쓰면 플랫폼은 빈 집이에요.\"",
+    "\"계약서를 공개하라고 해요.\""
+   ],
+   "ask": [
+    "현장 사용자 대표가 설계에 참여했나요?",
+    "데이터 사용 목적을 누구에게 어떻게 공개하나요?"
+   ],
+   "mine": "준호 같은 정비사들이 '감시 도구'로 느끼면 누리 파일럿도 실패해요. 정비사 대표를 TF에 넣기로 해요.",
+   "deep": [
+    "BMA ARM 2025 결의(2025-06): 팔란티어는 FDP 파트너로 '용납할 수 없는 선택'이라고 하고, 공공 소유 대안 지원을 요구했어요."
+   ],
+   "recall": {
+    "q": "BMA가 든 반대 이유 세 가지는?",
+    "a": "투명성 부족 · 차별적 치안 소프트웨어 이력 · 미국 정부와의 밀접한 관계"
+   },
+   "quiz": [
+    {
+     "q": "NHS 사례가 주는 교훈은?",
+     "options": [
+      "기술만 좋으면 된다",
+      "현장 신뢰와 투명성도 성공 조건이다",
+      "의사는 데이터와 무관하다"
+     ],
+     "answer": 1,
+     "why": "사용자가 거부하면 효과가 안 나요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "BMA — ARM 2025: resolution on Health Information Management and IT",
+     "url": "https://www.bma.org.uk/bma-media-centre/arm-2025-bma-passes-resolution-on-health-information-management-and-information-technology",
+     "date": "2025-06"
+    },
+    {
+     "title": "Digital Health — BMA calls for NHS doctors to reject using the FDP",
+     "url": "https://www.digitalhealth.net/2026/02/bma-calls-for-nhs-doctors-to-reject-using-the-fdp/",
+     "date": "2026-02"
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "무엇을 객체로, 무엇을 액션으로: 고르는 기준",
+   "lead": "자주 묻는 '것'은 객체로, 자주 바뀌는 '결정'은 액션으로 만들어요. 사례들은 모두 이 기준을 따랐어요.",
+   "idea": [
+    "객체 후보: 사람들이 이름으로 부르고, 상태를 묻고, 목록으로 보는 것. 항공기, 환자, 블록, 장비예요.",
+    "액션 후보: 하루에도 여러 번 내려지고, 누가 했는지 남아야 하고, 규칙이 있는 결정. 배정, 예약, 승인이에요.",
+    "피할 것: 분석 지표 하나하나를 객체로 만드는 것, 모든 버튼을 액션으로 만드는 것이에요. 업무 결정 단위로 묶어요."
+   ],
+   "hear": [
+    "\"이거 객체예요, 속성이에요?\"",
+    "\"이 결정은 기록이 남아야 해요.\""
+   ],
+   "ask": [
+    "이 결정을 하루에 몇 번, 누가 내리나요?",
+    "이 '것'을 사람들이 이름으로 부르나요?"
+   ],
+   "mine": "누리 후보 액션 3개: 작업지시 발행, 부품 예약, 항공기 운항 복귀 승인.",
+   "deep": [
+    "Palantir 문서는 객체 타입을 '실제 세계의 엔터티나 이벤트'로, 액션 타입을 '객체를 바꾸는 사용자 행동'으로 정의해요."
+   ],
+   "recall": {
+    "q": "액션으로 만들 결정의 조건은?",
+    "a": "자주 내려지고 · 기록이 필요하고 · 규칙이 있는 결정"
+   },
+   "quiz": [
+    {
+     "q": "다음 중 액션 후보로 가장 알맞은 것은?",
+     "options": [
+      "월평균 지연 시간",
+      "부품 예약",
+      "항공기 제조사 이름"
+     ],
+     "answer": 1,
+     "why": "결정이고 기록이 필요해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Ontology overview",
+     "url": "https://www.palantir.com/docs/foundry/ontology/overview/",
+     "date": "n.d."
+    },
+    {
+     "title": "Palantir Docs — Action types overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d."
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "결과 지표 설계: 기준선부터 재기",
+   "lead": "사례의 '30% 감소'를 우리가 말하려면, 도입 전에 지금 숫자를 먼저 재 놓아야 해요.",
+   "idea": [
+    "기준선이 없으면 나중에 효과를 말할 수 없어요. 파일럿 시작 전 4~8주치를 재 두는 게 흔한 방법이에요(일반적 권장, 조직마다 달라요).",
+    "지표는 결과 지표(AOG 시간)와 과정 지표(부품 예약까지 걸린 시간)를 같이 둬요. 과정 지표가 먼저 움직여요.",
+    "부작용 지표도 둬요. 예: 정비사 야간 작업 시간, 오탐 알람 수. 좋은 숫자 뒤의 비용을 봐요."
+   ],
+   "hear": [
+    "\"도입 전 숫자가 없어요.\"",
+    "\"좋아진 건 계절 탓 아니에요?\""
+   ],
+   "ask": [
+    "비교 기간이 계절 영향을 받나요?",
+    "부작용 지표는 무엇인가요?"
+   ],
+   "mine": "누리 지표 초안: AOG 평균 시간, 부품 대기 시간, 작업지시 재작업률, 정비사 야간 근무 시간.",
+   "deep": [
+    "Tampa General 발표는 배치 시간·PACU 대기·재원일수처럼 과정과 결과 지표를 함께 제시했어요(2024-06)."
+   ],
+   "recall": {
+    "q": "지표 세 종류는?",
+    "a": "결과 지표 · 과정 지표 · 부작용 지표"
+   },
+   "quiz": [
+    {
+     "q": "기준선을 언제 재야 하나요?",
+     "options": [
+      "도입 1년 뒤",
+      "도입 전",
+      "보고서 쓰는 날"
+     ],
+     "answer": 1,
+     "why": "전과 후를 비교해야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Tampa General Hospital — TGH selects Palantir AI software for connected care coordination",
+     "url": "https://tgh.org/news/tgh-press-releases/2024/june/tgh-selects-palantir-ai-software-connected-care-coordination",
+     "date": "2024-06"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "작게 시작해서 넓히기",
+   "lead": "사례들은 모두 한 곳에서 시작했어요. HD현대는 오일뱅크, NHS는 단계별 롤아웃, 육군은 여러 프로젝트를 나중에 합쳤어요.",
+   "idea": [
+    "처음부터 전사로 가면 데이터 정리와 권한 설계가 끝나지 않아요. 하나의 업무에서 루프를 완성하는 게 먼저예요.",
+    "넓힐 때는 온톨로지를 재사용해요. 첫 유스케이스에서 만든 항공기·부품 객체를 다음 유스케이스가 그대로 써요. 이게 '복리 효과'예요.",
+    "반대로 첫 객체를 대충 만들면, 넓힐수록 고치기 어려워져요. 첫 설계에 시간을 써요."
+   ],
+   "hear": [
+    "\"다음 유스케이스는 객체 재사용률로 고르죠.\"",
+    "\"첫 모델이 평생 가요.\""
+   ],
+   "ask": [
+    "다음 유스케이스가 지금 객체를 몇 개 재사용하나요?",
+    "첫 객체 설계를 누가 검토했나요?"
+   ],
+   "mine": "누리 순서: AOG 부품 대기 → 정비 일정 → 승무원 배정(나중).",
+   "deep": [
+    "보도: HD현대는 2021년 오일뱅크에서 시작해 조선·에너지·건설기계로 넓혔고, 2026년 계열사 순차 도입을 밝혔어요.",
+    "NHS FDP는 여러 단계로 3년에 걸쳐 롤아웃한다고 했어요(2024년 보도)."
+   ],
+   "recall": {
+    "q": "넓힐 때 복리 효과는 어디서 나요?",
+    "a": "이미 만든 객체를 다음 유스케이스가 재사용해서"
+   },
+   "quiz": [
+    {
+     "q": "두 번째 유스케이스를 고르는 좋은 기준은?",
+     "options": [
+      "가장 화려한 것",
+      "기존 객체를 많이 재사용하는 것",
+      "가장 큰 부서"
+     ],
+     "answer": 1,
+     "why": "재사용이 비용을 낮춰요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "스마트투데이 — 정기선 HD현대 회장, 다보스포럼서 팔란티어 CEO 만나",
+     "url": "https://www.smarttoday.co.kr/ko-kr/articles/101783",
+     "date": "2026-01-21"
+    },
+    {
+     "title": "Digital Health — NHS England awards £330m Federated Data Platform contract to Palantir",
+     "url": "https://digitalhealth.net/2023/11/nhs-england-awards-330m-federated-data-platform-contract-to-palantir",
+     "date": "2023-11-21"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "사례 보고서 쓰는 법: 같은 틀, 다른 결론",
+   "lead": "사례 보고서는 성공담 모음이 아니라, 같은 틀로 비교하고 우리에게 맞는지 판단하는 문서예요.",
+   "idea": [
+    "표 한 장에 사례를 같은 칸으로 넣어요. 조직, 문제, 객체, 액션, 결과, 출처 등급이에요. 칸이 비면 '공개 안 됨'이라고 써요.",
+    "다음엔 차이를 적어요. 병원·군대와 항공 정비는 규제, 데이터 공유 구조, 현장 문화가 달라요.",
+    "마지막으로 리스크를 적어요. 비용, 의존도, 신뢰 문제예요. 08장의 비판을 미리 연결해 둬요."
+   ],
+   "hear": [
+    "\"성공 사례만 있으면 오히려 안 믿어요.\"",
+    "\"우리랑 다른 점도 써 주세요.\""
+   ],
+   "ask": [
+    "이 사례가 우리와 가장 다른 점은?",
+    "빈 칸은 왜 비었나요(비공개/미확인)?"
+   ],
+   "mine": "금요일 보고서 첫 장: 사례 4개 비교표 + 누리에 옮길 패턴 2개.",
+   "deep": [
+    "이번 장 숫자 대부분은 고객·공급사·언론 발표예요. 출처 등급 칸이 그래서 필요해요."
+   ],
+   "recall": {
+    "q": "사례 비교표의 필수 칸은?",
+    "a": "조직 · 문제 · 객체 · 액션 · 결과 · 출처 등급"
+   },
+   "quiz": [
+    {
+     "q": "보고서에 빠지면 안 되는 부분은?",
+     "options": [
+      "우리와 다른 점과 리스크",
+      "회사 로고",
+      "주가 그래프"
+     ],
+     "answer": 0,
+     "why": "판단을 도와야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Digital Health — NHS England awards £330m Federated Data Platform contract to Palantir",
+     "url": "https://digitalhealth.net/2023/11/nhs-england-awards-330m-federated-data-platform-contract-to-palantir",
+     "date": "2023-11-21"
+    },
+    {
+     "title": "Airbus — Airbus launches Skywise, aviation's open data platform",
+     "url": "https://www.airbus.com/en/newsroom/press-releases/2017-06-airbus-launches-skywise-aviations-open-data-platform",
+     "date": "2017-06"
+    },
+    {
+     "title": "DefenseScoop — Army, Palantir sign enterprise agreement worth up to $10B",
+     "url": "https://defensescoop.com/2025/07/31/army-palantir-software-enterprise-agreement-10-billion/",
+     "date": "2025-07-31"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "nhs-fdp",
+   "day": 2,
+   "title": "NHS England 연합 데이터 플랫폼(FDP): 공공의료에 온톨로지를 깔다",
+   "when": "2023-11",
+   "lead": "2023년 11월 NHS England는 7년간 최대 £330m 규모의 연합 데이터 플랫폼 계약을 팔란티어 컨소시엄에 줬어요. 밀린 수술과 퇴원 흐름을 줄이려는 목적이었지만, 의사 단체와 시민단체의 강한 반대도 함께 불렀어요.",
+   "facts": [
+    {
+     "label": "계약 규모",
+     "value": "7년간 최대 £330m",
+     "src": "Digital Health 2023-11-21 · The Register 2023-11-22"
+    },
+    {
+     "label": "컨소시엄",
+     "value": "Palantir + Accenture, PwC, NECS, Carnall Farrar",
+     "src": "Digital Health 2023-11-21"
+    },
+    {
+     "label": "활용 목표",
+     "value": "인구 건강 · 진료 조정 · 공급망 · 예방접종 · 수술 대기 회복",
+     "src": "Digital Health 2023-11-21"
+    },
+    {
+     "label": "가명화(PET)",
+     "value": "IQVIA에 별도 계약(약 £28m로 보도)",
+     "src": "Digital Health · Bio-IT World 2025-07-23"
+    },
+    {
+     "label": "참여(2024-04 시점)",
+     "value": "41개 트러스트 동의, 그해 약 70곳 도입 예정",
+     "src": "Digital Health 2024-04 (당시 수치)"
+    },
+    {
+     "label": "보고된 효과",
+     "value": "도싯: 연간 수술 여력 약 2,500건 증가(NHS 측 발표)",
+     "src": "NHS 발표 인용 보도"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2020",
+     "text": "코로나 대응에 Foundry 사용 시작"
+    },
+    {
+     "t": "2023-11-21",
+     "text": "FDP 계약 발표, 최대 £330m/7년",
+     "hot": true
+    },
+    {
+     "t": "2023-11",
+     "text": "PET 계약 IQVIA"
+    },
+    {
+     "t": "2024",
+     "text": "트러스트별 단계 롤아웃"
+    },
+    {
+     "t": "2025-06",
+     "text": "BMA 대의원회, 팔란티어 반대 결의"
+    },
+    {
+     "t": "2026-02",
+     "text": "BMA, 직접 진료 외 사용 거부 검토 권고(보도)"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "문제",
+     "title": "밀린 수술",
+     "text": "코로나 이후 대기 목록이 길어졌고, 병원마다 시스템이 달라 수술실·병상 현황을 한 번에 보기 어려웠어요."
+    },
+    {
+     "stage": "구조",
+     "title": "연합 인스턴스",
+     "text": "트러스트마다 자기 인스턴스와 데이터 통제권을 두고, 필요할 때 연결하는 구조를 택했어요."
+    },
+    {
+     "stage": "신뢰",
+     "title": "공급사 논란",
+     "text": "회사의 다른 사업(치안·이민 단속)과 계약 투명성이 의료계 신뢰를 흔들었어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "FDP의 수술 대기 문제를 객체와 액션으로 나눈다면?",
+     "a": "객체: 대기 항목·수술실 세션·외과의·병상. 액션: 세션에 환자 배정, 취소 슬롯 다시 채우기. (공개 활용에서 추정한 구조)"
+    },
+    {
+     "q": "누리가 FDP에서 배울 구조적 아이디어는?",
+     "a": "기지별 인스턴스와 통제권을 두는 연합 구조, 그리고 가명화 층을 별도로 두는 설계예요."
+    },
+    {
+     "q": "기술이 잘 돼도 실패할 수 있는 이유는?",
+     "a": "현장 사용자(의사)가 신뢰하지 않으면 쓰지 않아요. 투명성과 사용자 참여가 성공 조건이에요."
+    }
+   ],
+   "after": [
+    "BMA는 2026년 초 의사들에게 FDP의 직접 진료 외 사용을 제한하라고 권했다고 보도됐어요.",
+    "FDP 확대와 계약 지속 여부는 계속 정치적 쟁점이에요."
+   ],
+   "sources": [
+    {
+     "title": "Digital Health — NHS England awards £330m Federated Data Platform contract to Palantir",
+     "url": "https://digitalhealth.net/2023/11/nhs-england-awards-330m-federated-data-platform-contract-to-palantir",
+     "date": "2023-11-21"
+    },
+    {
+     "title": "The Register — Palantir wins NHS contract",
+     "url": "https://www.theregister.com/2023/11/22/palantir_wins_nhs_contract/",
+     "date": "2023-11-22"
+    },
+    {
+     "title": "NHS England — NHS Federated Data Platform",
+     "url": "https://www.england.nhs.uk/digitaltechnology/nhs-federated-data-platform/",
+     "date": "n.d."
+    },
+    {
+     "title": "Bio-IT World — Innovative Practices Award for NHS England, IQVIA Privacy Protection Platform",
+     "url": "https://www.bio-itworld.com/news/2025/07/23/innovative-practices-award-for-nhs-england-iqvia-privacy-protection-platform",
+     "date": "2025-07-23"
+    },
+    {
+     "title": "BMA — ARM 2025: resolution on Health Information Management and IT",
+     "url": "https://www.bma.org.uk/bma-media-centre/arm-2025-bma-passes-resolution-on-health-information-management-and-information-technology",
+     "date": "2025-06"
+    },
+    {
+     "title": "Digital Health — BMA calls for NHS doctors to reject using the FDP",
+     "url": "https://www.digitalhealth.net/2026/02/bma-calls-for-nhs-doctors-to-reject-using-the-fdp/",
+     "date": "2026-02"
+    }
+   ],
+   "caveat": "효과 수치는 NHS 측 발표이고 독립 평가가 아니에요. 2024년 참여 수치는 당시 기준이라 지금과 달라요."
+  },
+  {
+   "id": "airbus-skywise",
+   "day": 3,
+   "title": "Airbus Skywise: 제조사가 만든 항공 데이터 플랫폼",
+   "when": "2017-06",
+   "lead": "2017년 6월 에어버스는 팔란티어와 함께 만든 Skywise를 내놓았어요. 제조사·항공사의 설계·운항·정비 데이터를 이어 예측 정비와 운영 개선에 쓰는 플랫폼이에요. 2019년에는 연결 항공사가 70곳을 넘었다고 밝혔어요.",
+   "facts": [
+    {
+     "label": "출시",
+     "value": "2017년 6월, Palantir와 협력",
+     "src": "Airbus 보도자료 2017-06"
+    },
+    {
+     "label": "초기 도입사",
+     "value": "AirAsia, Delta, easyJet, Emirates, Hong Kong Airlines, jetBlue, Peach",
+     "src": "Airbus 보도자료 2017-06"
+    },
+    {
+     "label": "연결 항공사(2019)",
+     "value": "70곳 이상",
+     "src": "Airbus·United 보도자료 2019-06"
+    },
+    {
+     "label": "주요 활용",
+     "value": "예측 정비, 항공기 데이터 관리",
+     "src": "Airbus·United 보도자료 2019-06"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2017-06",
+     "text": "Skywise 출시(파리 에어쇼 시기)",
+     "hot": true
+    },
+    {
+     "t": "2019-06",
+     "text": "United 합류, 연결 항공사 70곳+ 발표"
+    },
+    {
+     "t": "이후",
+     "text": "항공사·MRO로 생태계 확장"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "문제",
+     "title": "흩어진 항공기 데이터",
+     "text": "설계·생산·운항·정비 데이터가 회사와 시스템마다 흩어져 있었어요."
+    },
+    {
+     "stage": "구조",
+     "title": "제조사가 플랫폼 소유",
+     "text": "에어버스가 브랜드와 생태계를 갖고, 팔란티어는 기술 기반을 제공했어요."
+    },
+    {
+     "stage": "효과",
+     "title": "네트워크 효과",
+     "text": "항공사가 많을수록 같은 부품의 고장 패턴을 더 많이 볼 수 있어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "Skywise 위 항공 정비 온톨로지의 핵심 객체는?",
+     "a": "항공기, 부품(일련번호), 결함, 작업지시, 비행 기록. (일반적 정비 구조에서 추정)"
+    },
+    {
+     "q": "누리가 Skywise 데이터를 쓴다면 무엇을 먼저 확인할까요?",
+     "a": "데이터 권리(누가 무엇을 볼 수 있나), 반출 형식, 자체 AIP와의 연결 방법이에요."
+    },
+    {
+     "q": "예측 정비의 위험은?",
+     "a": "틀린 알람은 불필요한 부품 교체와 야간 작업을 늘려요. 정밀도와 놓친 고장을 같이 봐야 해요."
+    }
+   ],
+   "after": [
+    "Skywise는 에어버스 디지털 서비스의 대표 브랜드가 됐어요. 현재 연결 항공사 수는 이번에 공식 확인하지 못했어요."
+   ],
+   "sources": [
+    {
+     "title": "Airbus — Airbus launches Skywise, aviation's open data platform",
+     "url": "https://www.airbus.com/en/newsroom/press-releases/2017-06-airbus-launches-skywise-aviations-open-data-platform",
+     "date": "2017-06"
+    },
+    {
+     "title": "Airbus — Airbus partners with United Airlines to manage aircraft data",
+     "url": "https://www.airbus.com/en/newsroom/press-releases/2019-06-airbus-partners-with-united-airlines-to-manage-aircraft-data-and",
+     "date": "2019-06"
+    }
+   ],
+   "caveat": "70곳은 2019년 수치예요. 이후 숫자는 확인하지 못해 쓰지 않았어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "월요일, 사례 숫자 정리",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "임원들이 'HD현대는 30% 줄였다던데'라고 할 거예요."
+    },
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "그 숫자 그대로 표에 넣을까요?"
+    }
+   ],
+   "q": "보고서에 어떻게 넣을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "'검증된 효과 30%'로 쓴다",
+     "ok": false,
+     "why": "회사 발표를 검증된 것처럼 써요."
+    },
+    {
+     "k": "B",
+     "t": "'회사 발표 인용 보도(2026-01)' 표시와 함께 쓴다",
+     "ok": true,
+     "why": "출처 등급과 날짜가 판단을 도와요."
+    },
+    {
+     "k": "C",
+     "t": "숫자를 아예 뺀다",
+     "ok": false,
+     "why": "임원이 아는 숫자를 빼면 오히려 신뢰를 잃어요."
+    }
+   ],
+   "explain": "숫자는 쓰되 출처 등급을 붙여요.",
+   "mixed": false
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "사례 분석 틀 정하기",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 반장",
+     "text": "병원 얘기가 정비랑 무슨 상관이에요?"
+    },
+    {
+     "name": "나",
+     "role": "도입 담당",
+     "text": "구조로 보면 닮은 점이 있어요."
+    }
+   ],
+   "q": "사례 4개를 어떤 틀로 비교할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "회사 규모순",
+     "ok": false,
+     "why": "구조를 못 봐요."
+    },
+    {
+     "k": "B",
+     "t": "데이터 → 객체 → 액션 → 지표",
+     "ok": true,
+     "why": "업종이 달라도 같은 칸으로 비교돼요."
+    },
+    {
+     "k": "C",
+     "t": "AI 모델 이름순",
+     "ok": false,
+     "why": "핵심은 모델보다 운영 구조예요."
+    }
+   ],
+   "explain": "같은 틀이 있어야 차이가 보여요.",
+   "mixed": false
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "부트캠프 제안",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "팔란티어가 며칠짜리 부트캠프를 제안했어요."
+    },
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "데이터는 전부 가져가야 하나요?"
+    }
+   ],
+   "q": "무엇을 들고 갈까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "AOG 부품 대기 하나와 그 실제 데이터",
+     "ok": true,
+     "why": "좁고 진짜인 문제가 빨리 검증돼요."
+    },
+    {
+     "k": "B",
+     "t": "전사 데이터 전부",
+     "ok": false,
+     "why": "준비만 하다 끝나요."
+    },
+    {
+     "k": "C",
+     "t": "아무것도 없이 데모만 본다",
+     "ok": false,
+     "why": "우리 문제로 검증이 안 돼요."
+    }
+   ],
+   "explain": "업무 하나, 실제 데이터, 끝까지 도는 루프.",
+   "mixed": false
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "NHS 구조에서 배울 점",
+   "scene": [
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "기지마다 데이터 담당이 다른데, 한 곳에 다 모아야 해요?"
+    },
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "NHS는 트러스트별로 나눴대요."
+    }
+   ],
+   "q": "누리 데이터 구조로 무엇을 검토할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "본사에 무조건 통합",
+     "ok": false,
+     "why": "통제권 갈등이 생길 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "기지별 인스턴스와 통제권 + 필요한 연결",
+     "ok": true,
+     "why": "NHS FDP의 연합 구조에서 배울 점이에요."
+    },
+    {
+     "k": "C",
+     "t": "기지끼리 공유 금지",
+     "ok": false,
+     "why": "AOG 부품 이동을 못 봐요."
+    }
+   ],
+   "explain": "연합 구조는 통제권과 연결을 동시에 다뤄요.",
+   "mixed": false
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "Tampa General 숫자 비교",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "병원은 배치 시간 83% 줄였대요. 우리도 그 정도 목표로 잡죠."
+    },
+    {
+     "name": "준호",
+     "role": "정비 반장",
+     "text": "병원이랑 우리가 같나요?"
+    }
+   ],
+   "q": "목표를 어떻게 정할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "83%를 그대로 목표로",
+     "ok": false,
+     "why": "업종·기준선이 달라요."
+    },
+    {
+     "k": "B",
+     "t": "우리 기준선을 먼저 재고 그 위에서 목표를 정한다",
+     "ok": true,
+     "why": "비교 가능한 목표가 돼요."
+    },
+    {
+     "k": "C",
+     "t": "목표 없이 시작",
+     "ok": false,
+     "why": "효과를 말할 수 없어요."
+    }
+   ],
+   "explain": "남의 숫자는 지표 이름만 빌려요.",
+   "mixed": false
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "가명화 층",
+   "scene": [
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "정비사 근태·자격 데이터도 분석에 쓴대요."
+    },
+    {
+     "name": "준호",
+     "role": "정비 반장",
+     "text": "그거 감시 아니에요?"
+    }
+   ],
+   "q": "어떻게 설계할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "실명 그대로 전체 공개",
+     "ok": false,
+     "why": "신뢰를 잃어요."
+    },
+    {
+     "k": "B",
+     "t": "용도별 권한 + 분석용 가명화 층 분리",
+     "ok": true,
+     "why": "NHS PET처럼 보호와 활용을 나눠요."
+    },
+    {
+     "k": "C",
+     "t": "정비사 데이터 전부 제외",
+     "ok": false,
+     "why": "자격 확인 액션을 못 만들어요."
+    }
+   ],
+   "explain": "직접 업무에는 실명, 분석에는 가명.",
+   "mixed": false
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "Skywise와의 관계",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "에어버스 기체는 Skywise 데이터가 있어요."
+    },
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "그럼 우리 AIP는 필요 없어요?"
+    }
+   ],
+   "q": "어떻게 판단할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "Skywise만 쓴다",
+     "ok": false,
+     "why": "보잉 기체와 자체 MRO 업무가 빠져요."
+    },
+    {
+     "k": "B",
+     "t": "Skywise 데이터를 하나의 원천으로 연결하고, 자체 온톨로지는 누리 업무 기준으로",
+     "ok": true,
+     "why": "제조사 데이터와 자체 운영을 함께 봐요."
+    },
+    {
+     "k": "C",
+     "t": "Skywise 데이터는 무시",
+     "ok": false,
+     "why": "좋은 원천을 버려요."
+    }
+   ],
+   "explain": "외부 플랫폼은 원천, 온톨로지는 우리 업무 기준.",
+   "mixed": false
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "부품 객체 키",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "Part 객체 기본 키를 품번으로 할까요?"
+    },
+    {
+     "name": "준호",
+     "role": "정비 반장",
+     "text": "같은 품번이라도 한 개 한 개 이력이 달라요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "품번만 키로",
+     "ok": false,
+     "why": "개별 부품 이력을 못 따라가요."
+    },
+    {
+     "k": "B",
+     "t": "PartType(품번)과 PartUnit(일련번호)을 나누고 링크",
+     "ok": true,
+     "why": "종류와 실물을 구분해요."
+    },
+    {
+     "k": "C",
+     "t": "부품을 속성으로만",
+     "ok": false,
+     "why": "이력·위치 추적이 안 돼요."
+    }
+   ],
+   "explain": "02장 객체 설계 원칙과 연결돼요.",
+   "mixed": true
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "예측 정비 지표",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "예측 알람이 하루 50건 나와요(가상)."
+    },
+    {
+     "name": "준호",
+     "role": "정비 반장",
+     "text": "절반은 헛걸음이에요."
+    }
+   ],
+   "q": "무엇을 지표로 넣을까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "알람 수가 많을수록 좋다",
+     "ok": false,
+     "why": "헛걸음이 늘어요."
+    },
+    {
+     "k": "B",
+     "t": "정밀도 · 놓친 고장 · 정비사 야간 시간",
+     "ok": true,
+     "why": "효과와 부작용을 같이 봐요."
+    },
+    {
+     "k": "C",
+     "t": "지표 없이 운영",
+     "ok": false,
+     "why": "개선을 못 해요."
+    }
+   ],
+   "explain": "부작용 지표가 신뢰를 지켜요.",
+   "mixed": false
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "100억 달러 해석",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "미 육군이 100억 달러 썼대요. 대단하죠?"
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "계약서 문구를 봐야 해요."
+    }
+   ],
+   "q": "정확한 설명은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "100억 달러를 이미 지급했다",
+     "ok": false,
+     "why": "상한이지 집행액이 아니에요."
+    },
+    {
+     "k": "B",
+     "t": "10년 상한이며 확정 지출이 아니다",
+     "ok": true,
+     "why": "육군도 그렇게 밝혔어요."
+    },
+    {
+     "k": "C",
+     "t": "1년 계약이다",
+     "ok": false,
+     "why": "10년이에요."
+    }
+   ],
+   "explain": "상한(ceiling)과 집행을 구별해요.",
+   "mixed": false
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "도구 통합 제안",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "부서별로 산 분석 도구 7개를 하나로 합치면 싸대요(가상)."
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "의존도는요?"
+    }
+   ],
+   "q": "무엇을 같이 검토할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "할인만 보고 통합",
+     "ok": false,
+     "why": "락인을 놓쳐요."
+    },
+    {
+     "k": "B",
+     "t": "할인 + 데이터 반출·해지 조건",
+     "ok": true,
+     "why": "육군 사례처럼 통합의 양면을 봐요."
+    },
+    {
+     "k": "C",
+     "t": "통합하지 않는다",
+     "ok": false,
+     "why": "비용 절감 기회를 버려요."
+    }
+   ],
+   "explain": "08장의 락인 논의로 이어져요.",
+   "mixed": false
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "준비태세 객체",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 반장",
+     "text": "군대 사례가 우리랑 비슷하다고요?"
+    },
+    {
+     "name": "나",
+     "role": "도입 담당",
+     "text": "장비 가동 상태 구조가 닮았어요."
+    }
+   ],
+   "q": "누리에 옮길 구조는?",
+   "options": [
+    {
+     "k": "A",
+     "t": "부대 객체",
+     "ok": false,
+     "why": "업무에 없어요."
+    },
+    {
+     "k": "B",
+     "t": "항공기 가동 상태 + 정비 기록·부품 대기 링크",
+     "ok": true,
+     "why": "준비태세 구조가 AOG와 같아요."
+    },
+    {
+     "k": "C",
+     "t": "무기 객체",
+     "ok": false,
+     "why": "관련 없어요."
+    }
+   ],
+   "explain": "업종보다 구조를 봐요.",
+   "mixed": false
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "첫 액션 고르기",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "액션 10개 다 만들어요."
+    },
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "파일럿 4주예요(가상)."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "10개 다",
+     "ok": false,
+     "why": "루프 하나도 완성 못 해요."
+    },
+    {
+     "k": "B",
+     "t": "자주 · 기록 필요 · 규칙 있는 결정 1~2개(부품 예약 등)",
+     "ok": true,
+     "why": "루프를 끝까지 돌려요."
+    },
+    {
+     "k": "C",
+     "t": "액션 없이 대시보드만",
+     "ok": false,
+     "why": "운영 루프가 없어요."
+    }
+   ],
+   "explain": "03장의 액션 원칙과 같아요.",
+   "mixed": true
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "현장 반발",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 반장",
+     "text": "정비사들이 '감시용'이라고 수군대요."
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "NHS도 의사 단체가 반대했죠."
+    }
+   ],
+   "q": "무엇부터 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "무시하고 진행",
+     "ok": false,
+     "why": "사용자가 안 써요."
+    },
+    {
+     "k": "B",
+     "t": "정비사 대표를 TF에 넣고 데이터 용도를 공개",
+     "ok": true,
+     "why": "신뢰가 도입 조건이에요."
+    },
+    {
+     "k": "C",
+     "t": "파일럿 취소",
+     "ok": false,
+     "why": "문제를 풀 기회를 버려요."
+    }
+   ],
+   "explain": "기술 지표와 신뢰 지표를 같이 봐요.",
+   "mixed": false
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "보고서 결론",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장",
+     "text": "결론은 '팔란티어 도입 강력 추천'으로 가죠."
+    },
+    {
+     "name": "나",
+     "role": "도입 담당",
+     "text": "리스크도 써야 해요."
+    }
+   ],
+   "q": "결론 장에 무엇을 쓸까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "성공 사례만",
+     "ok": false,
+     "why": "임원이 믿지 않아요."
+    },
+    {
+     "k": "B",
+     "t": "옮길 패턴 2개 + 리스크(비용·의존도·신뢰) + 다음 실험",
+     "ok": true,
+     "why": "판단을 돕는 보고서예요."
+    },
+    {
+     "k": "C",
+     "t": "결론 없이 표만",
+     "ok": false,
+     "why": "결정을 못 도와요."
+    }
+   ],
+   "explain": "08장 비판과 연결해요.",
+   "mixed": true
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "Palantir Impact Studies (고객 사례 모음)",
+   "url": "https://www.palantir.com/impact/",
+   "min": 30,
+   "lang": "en",
+   "what": "회사가 공개한 고객 사례를 업종별로 읽어요. 숫자는 회사 발표 등급으로 읽어요.",
+   "day": 1
+  },
+  {
+   "id": "l2",
+   "title": "Palantir AIPCon (고객 발표 영상 모음)",
+   "url": "https://www.palantir.com/aipcon/",
+   "min": 45,
+   "lang": "en",
+   "what": "고객사가 직접 AIP 사용 화면을 시연해요. 객체와 액션을 찾아 메모해요.",
+   "day": 1
+  },
+  {
+   "id": "l3",
+   "title": "NHS England — Federated Data Platform 공식 페이지",
+   "url": "https://www.england.nhs.uk/digitaltechnology/nhs-federated-data-platform/",
+   "min": 20,
+   "lang": "en",
+   "what": "FDP 구조·개인정보 보호·활용 사례를 공식 설명으로 읽어요.",
+   "day": 2
+  },
+  {
+   "id": "l4",
+   "title": "Airbus — Skywise 출시 보도자료(2017)",
+   "url": "https://www.airbus.com/en/newsroom/press-releases/2017-06-airbus-launches-skywise-aviations-open-data-platform",
+   "min": 10,
+   "lang": "en",
+   "what": "Skywise가 무엇을 하려 했는지 원문으로 확인해요.",
+   "day": 3
+  },
+  {
+   "id": "l5",
+   "title": "Palantir YouTube 채널",
+   "url": "https://www.youtube.com/@palantirtech",
+   "min": 30,
+   "lang": "en",
+   "what": "AIPCon·부트캠프 영상에서 실제 화면 흐름을 봐요.",
+   "day": 5
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "누리 AIP 사례 분석 보고서 v1을 2쪽으로 써 보세요. 사례 4개를 같은 틀로 비교하고, 누리 정비 파일럿에 옮길 패턴 2개를 고르세요.",
+  "template": [
+   "상태 (초안 / 검토)",
+   "사례별 표: 조직 · 문제 · 핵심 객체 · 핵심 액션 · 발표된 결과 · 출처 등급(회사 발표/독립 검증)",
+   "공통 패턴 3개 (작게 시작 · 운영 루프 · 권한 설계)",
+   "논란과 리스크 (NHS 사례의 신뢰 문제 등)",
+   "누리에 옮길 것 2개와 옮기지 않을 것 1개",
+   "우리 기준선 지표: 지금 AOG 대응 시간, 부품 대기 시간 등",
+   "다음 단계: 부트캠프식 1주 실험 제안"
+  ]
+ },
+ "check": [
+  "Story (누리모빌리티, team, '2주' 일정, fictional AOG numbers in problems) is fictional.",
+  "NHS FDP: up to £330m over 7 years, awarded Nov 2023, partners Accenture/PwC/NECS/Carnall Farrar, five use cases — Digital Health 2023-11-21 and The Register 2023-11-22 (via web search; digitalhealth.net returns 403 to curl). IQVIA PET contract (Nov 2023, ~£28m) via search summary of Digital Health + Bio-IT World 2025-07-23. Dorset '2,500 extra surgical treatments/year' is NHS-reported (Intelligent CIO via search) — marked as reported.",
+  "April 2024 figures (41 trusts agreed, ~70 expected that year) are dated, from Digital Health via search; presented as 2024 snapshot.",
+  "Tampa General: 83% less placement time, 28% fewer PACU holds, 30% lower sepsis mean LOS — hospital press release 2024-06 (curl 200). No peer-reviewed study found; marked company/customer-reported.",
+  "Airbus Skywise: launched June 2017 with Palantir, early adopters list — Airbus PR (curl 200). '70+ airlines connected' — Airbus/United PR 2019-06 (curl 200), presented as 2019 snapshot.",
+  "HD Hyundai: from 2021 (Oilbank first), 2024-04 USV MOU, ~30% shorter shipbuilding time claimed, 2026-01-20 Davos meeting and group-wide AIP expansion/CoE — Korean press (스마트투데이 2026-01-21, curl 200); company-reported.",
+  "US Army EA: announced 2025-07-31, 10 years, ceiling up to $10B, consolidates 75 contracts (15 prime + 60 related), ceiling is not a commitment — DefenseScoop (curl 200) and The Register.",
+  "Object/action breakdowns of each case are my analysis (추정), not published schemas; marked as such in cards.",
+  "Timeline item 2020 COVID-era Foundry use at NHS is widely reported background (research notes, not re-fetched).",
+  "Dropped: Cleveland Clinic, R1 RCM, TITAN/Maven dollar values, Skywise current airline count (not verified this session)."
+ ]
+}

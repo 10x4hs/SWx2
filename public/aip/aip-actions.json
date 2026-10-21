@@ -1,0 +1,2026 @@
+{
+ "id": "aip-actions",
+ "no": "03",
+ "title": "온톨로지의 동사: 액션 · 함수 · 감사",
+ "short": "액션과 함수",
+ "q": "온톨로지가 '보여 주기'를 넘어 현장의 결정을 안전하게 '적어 넣으려면' 무엇을 모델링해야 할까?",
+ "sub": "Action type · Rules · Submission criteria · Side effects · Webhooks · Functions · Action log",
+ "doc": "정비 결정 액션 설계서 v1",
+ "story": {
+  "title": "“버튼 하나 눌렀을 때, 누가 무엇을 바꿀 수 있죠?”",
+  "size": 80,
+  "body": [
+   "(가상 이야기) 누리모빌리티 AIP 도입 TF는 02장에서 Aircraft·WorkOrder·Part 객체를 만들었어요. 화면은 예뻤지만 정비 반장 준호는 여전히 마감을 엑셀에 적어요.",
+   "TF장 민서가 말해요. \"이제 현장 결정이 온톨로지로 바로 들어가야 해요.\" 데이터 엔지니어 태오는 이월 기한 계산이 복잡해 코드가 필요하다고 해요.",
+   "보안·법무 하린은 조건을 붙여요. \"누가, 언제, 왜 바꿨는지 감사에서 바로 나와야 하고, 외주 인력이 함부로 못 바꿔야 해요.\"",
+   "도입 담당인 나는 이번 주에 핵심 액션 5개를 정해야 해요. 금요일까지 '정비 결정 액션 설계서 v1'을 써요."
+  ]
+ },
+ "goals": [
+  "Action type의 parameters·rules·submission criteria·side effects를 정비 업무 예로 설계할 수 있어요.",
+  "writeback 웹훅과 side effect 웹훅, 액션의 ACID 경계를 설명하고 외부 연동 방식을 고를 수 있어요.",
+  "Function-backed action, Action log, Undo/revert, 권한의 한계를 알고 감사 가능한 설계를 할 수 있어요."
+ ],
+ "cards": [
+  {
+   "id": "c01",
+   "day": 1,
+   "title": "명사만 있으면 왜 부족할까",
+   "lead": "객체와 링크만 있는 온톨로지는 '읽기 전용 지도'예요. 현장의 결정을 다시 적어 넣는 동사가 있어야 운영 도구가 돼요.",
+   "idea": [
+    "02장에서 우리는 Aircraft, WorkOrder, Part 같은 Object type과 Link type을 만들었어요. 이건 '지금 세상이 어떤가'를 보여 주는 명사예요.",
+    "그런데 정비 반장이 '이 작업지시 마감'을 누르면 어디에 적혀야 할까요? 엑셀에 따로 적으면 온톨로지는 금방 낡아요. 결정이 다시 데이터로 들어가지 않으니까요.",
+    "Palantir 문서는 이 동사를 Action이라고 불러요. 사용자의 결정과 통찰이 온톨로지 편집으로 쌓일수록 데이터 자산이 더 풍부해진다고 설명해요."
+   ],
+   "hear": [
+    "\"화면은 예쁜데, 결국 결재는 메일로 해요.\"",
+    "\"그 상태값 누가 바꿨는지 아무도 몰라요.\""
+   ],
+   "ask": [
+    "이 화면에서 사람이 내리는 결정은 무엇무엇인가요?",
+    "그 결정이 지금은 어느 시스템에 적히나요?"
+   ],
+   "mine": "누리모빌리티 정비 현장에서는 작업지시 마감, 부품 교체 기록, 항공기 AOG 지정이 하루에 수십 번 일어나요. 이게 동사 후보예요.",
+   "deep": [
+    "공식 문서: 액션 하나는 사용자 정의 로직에 따라 하나 이상의 객체 속성을 바꾸는 '단일 트랜잭션'이에요.",
+    "액션으로 바뀐 내용은 모든 사용자 앱에 반영되고, 편집이 합쳐진 최신 데이터는 object type의 writeback dataset에 담겨요."
+   ],
+   "recall": {
+    "q": "온톨로지의 명사와 동사는 각각 무엇인가요?",
+    "a": "명사 = object·property·link(시맨틱), 동사 = action·function(키네틱)"
+   },
+   "quiz": [
+    {
+     "q": "결정이 온톨로지에 다시 적히지 않으면 어떤 일이 생길까요?",
+     "options": [
+      "데이터가 더 빨라진다",
+      "온톨로지가 현실과 점점 어긋난다",
+      "권한이 자동으로 생긴다"
+     ],
+     "answer": 1,
+     "why": "결정이 바깥에만 남으면 지도와 현실이 벌어져요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Ontology architecture (object backend)",
+     "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c02",
+   "day": 1,
+   "title": "Action과 Action type",
+   "lead": "Action type은 '한 번에 할 수 있는 편집 묶음'의 설계도이고, Action은 그걸 실제로 한 번 실행한 거예요.",
+   "idea": [
+    "클래스와 인스턴스 관계와 같아요. 'Assign Employee'라는 Action type이 있고, HR 담당자가 '멜리사를 PM으로' 바꾸는 순간이 Action 하나예요(문서의 예).",
+    "Action type에는 네 가지가 들어가요. 무엇을 입력받을지(parameters), 무엇을 바꿀지(rules), 언제 허용할지(submission criteria), 그 뒤에 무엇을 할지(side effects).",
+    "핵심은 '속성 하나하나 고치기' 대신 '업무 목표 단위'로 생각하게 해 준다는 점이에요. '상태=CLOSED, 마감자=나, 마감시각=지금'을 따로 고치지 않고 '작업지시 마감' 하나로 묶어요."
+   ],
+   "steps": [
+    {
+     "k": "1 · 입력",
+     "t": "parameters"
+    },
+    {
+     "k": "2 · 변경",
+     "t": "rules"
+    },
+    {
+     "k": "3 · 허용",
+     "t": "submission criteria"
+    },
+    {
+     "k": "4 · 이후",
+     "t": "side effects"
+    }
+   ],
+   "hear": [
+    "\"그건 action 하나로 묶죠. 따로 고치면 반쯤 바뀐 상태가 생겨요.\"",
+    "\"action type 이름은 동사로 지어 주세요.\""
+   ],
+   "ask": [
+    "이 편집은 항상 같이 일어나야 하나요?",
+    "같은 객체를 바꾸는 다른 action type과 겹치지 않나요?"
+   ],
+   "mine": "TF의 첫 Action type은 'Close Work Order'예요. 파라미터는 작업지시, 조치 내용, 사용 부품. 규칙은 상태·마감자·시각 변경이에요.",
+   "deep": [
+    "문서는 한 object type에 여러 action type이 있을 수 있고, 각자 독립된 submission criteria를 가진다고 해요.",
+    "같은 action 로직과 검증을 모든 앱(Workshop, Object Views 등)에 똑같이 쓸 수 있어 편집이 일관돼요."
+   ],
+   "recall": {
+    "q": "Action type의 네 구성 요소는?",
+    "a": "parameters, rules, submission criteria, side effects"
+   },
+   "quiz": [
+    {
+     "q": "'작업지시 마감'에서 상태와 마감자를 각각 따로 고치는 화면 두 개를 만들면?",
+     "options": [
+      "더 유연해서 좋다",
+      "한쪽만 바뀐 어중간한 상태가 생길 수 있다",
+      "감사가 더 쉬워진다"
+     ],
+     "answer": 1,
+     "why": "업무 한 단위는 action 하나로 묶어야 원자적으로 바뀌어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Submission criteria",
+     "url": "https://www.palantir.com/docs/foundry/action-types/submission-criteria/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c03",
+   "day": 1,
+   "title": "파라미터: 사람에게 무엇을 물을까",
+   "lead": "파라미터는 액션 폼에서 사용자가 채우는 칸이에요. 타입이 정해져 있어 엉뚱한 값이 들어가기 어려워요.",
+   "idea": [
+    "파라미터는 문자열·숫자·날짜 같은 값일 수도 있고, 특정 객체를 가리키는 object reference일 수도 있어요.",
+    "object reference가 중요해요. '항공기 번호를 직접 타이핑'하는 대신 'Aircraft 객체를 고르기'로 하면 오타로 없는 항공기를 가리킬 일이 없어요.",
+    "기본값을 객체의 현재 속성으로 채우거나, 드롭다운 후보를 필터로 좁힐 수 있어요. 사람이 고민할 칸을 줄이는 게 좋은 설계예요."
+   ],
+   "hear": [
+    "\"부품 번호는 자유 입력 말고 Part 객체에서 고르게 해요.\"",
+    "\"기본값을 현재 상태로 채우면 실수가 줄어요.\""
+   ],
+   "ask": [
+    "이 칸은 사람이 꼭 입력해야 하나요, 시스템이 알 수 있나요?",
+    "목록 길이는 얼마나 되나요? 필터가 필요한가요?"
+   ],
+   "mine": "Close Work Order 폼: 작업지시(object reference, 현재 화면 객체로 기본값), 조치 내용(문자열), 사용 부품(Part 목록).",
+   "deep": [
+    "한계 수치(공식): 기본형 리스트 파라미터는 원소 10,000개, object reference 리스트는 1,000개까지예요.",
+    "OSDK로 액션을 호출할 때 선택 파라미터를 생략하려면 기본값이 설정돼 있어야 해요."
+   ],
+   "recall": {
+    "q": "object reference 파라미터의 장점은?",
+    "a": "존재하는 객체만 고를 수 있어 오타·유령 키를 막아요."
+   },
+   "quiz": [
+    {
+     "q": "object reference 리스트 파라미터의 최대 원소 수는?",
+     "options": [
+      "100",
+      "1,000",
+      "100,000"
+     ],
+     "answer": 1,
+     "why": "공식 Scale and property limits 문서 기준 1,000개예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Parameters",
+     "url": "https://www.palantir.com/docs/foundry/action-types/parameter-overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Scale and property limits",
+     "url": "https://www.palantir.com/docs/foundry/action-types/scale-property-limits/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Consistency and isolation",
+     "url": "https://www.palantir.com/docs/foundry/action-types/consistency-guarantees/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c04",
+   "day": 1,
+   "title": "규칙(Rules): 파라미터를 편집으로 바꾸기",
+   "lead": "Rules는 파라미터를 온톨로지 편집이나 다른 효과로 바꾸는 로직이에요. 생성·수정·삭제와 링크 생성·삭제가 기본이에요.",
+   "idea": [
+    "Ontology rule 종류: Create object, Modify object(s), Create or modify object(s), Delete object(s), Create link(s), Delete link, 그리고 Function rule.",
+    "Create object는 primary key를 꼭 채워야 해요. Modify/Delete는 object reference 파라미터로 대상을 정하고, 같은 액션 안에서 방금 만든 객체는 가리킬 수 없어요.",
+    "Interface가 있다면 'Create/Modify/Delete object(s) of interface'처럼 인터페이스를 구현한 여러 타입에 한 번에 걸 수도 있어요(02장 Interface와 연결)."
+   ],
+   "hear": [
+    "\"이건 modify 규칙 하나면 돼요.\"",
+    "\"create랑 link를 한 액션에서 같이 할 수 있어요.\""
+   ],
+   "ask": [
+    "새로 만드나요, 있는 걸 고치나요, 없으면 만드나요?",
+    "primary key는 누가 정하나요? 자동 ID인가요?"
+   ],
+   "mine": "부품 교체 액션: 새 PartInstallation 객체 생성(Create object) + 기존 부품 상태 수정(Modify object).",
+   "deep": [
+    "여러 규칙이 있으면 액션 백엔드가 이를 컴파일해 객체당 편집 하나로 만들어요(문서 'Invalid combinations').",
+    "액션으로는 primary key를 바꿀 수 없어요. 키 변경 = 삭제 후 새 생성과 같다고 문서가 설명해요."
+   ],
+   "recall": {
+    "q": "Create object 규칙에서 반드시 채워야 하는 값은?",
+    "a": "그 object type의 primary key"
+   },
+   "quiz": [
+    {
+     "q": "같은 액션 안에서 방금 Create한 객체를 Modify 규칙으로 고칠 수 있나요?",
+     "options": [
+      "예",
+      "아니요",
+      "관리자만 가능"
+     ],
+     "answer": 1,
+     "why": "문서: Modify/Delete는 현재 액션에서 생성된 객체를 참조할 수 없어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Rules",
+     "url": "https://www.palantir.com/docs/foundry/action-types/rules/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Scale and property limits",
+     "url": "https://www.palantir.com/docs/foundry/action-types/scale-property-limits/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c05",
+   "day": 2,
+   "title": "링크를 바꾸는 두 가지 길",
+   "lead": "1:1·1:다 링크는 외래 키 속성을 고쳐서, 다:다 링크는 Create/Delete link 규칙으로 바꿔요.",
+   "idea": [
+    "02장에서 링크 카디널리티를 배웠죠. 이게 액션에서 그대로 차이가 나요.",
+    "1:다 링크(항공기 1 — 작업지시 다)는 작업지시 쪽에 aircraftId 같은 외래 키가 있어요. 그래서 링크를 바꾸려면 Modify object로 그 속성을 고쳐요.",
+    "다:다 링크(작업지시 — 정비사)는 조인 테이블로 뒷받침돼요. 그래서 Create link(s)/Delete link 규칙을 써요. 객체 생성과 다:다 링크를 한 액션에서 같이 할 수도 있어요."
+   ],
+   "hear": [
+    "\"그건 FK 링크라 modify로 바꿔야 해요.\"",
+    "\"다대다면 link 규칙을 따로 걸어요.\""
+   ],
+   "ask": [
+    "이 링크는 어떤 카디널리티인가요?",
+    "링크 변경도 감사 대상인가요?"
+   ],
+   "mine": "'정비사 배정' 액션은 WorkOrder–Mechanic 다:다 링크라 Create link 규칙, '항공기 변경'은 WorkOrder의 외래 키 Modify예요.",
+   "deep": [
+    "문서: 1:다·1:1 링크 생성/삭제는 객체 규칙으로 외래 키 속성을 수정해야 해요.",
+    "다:다 링크 생성은 양쪽 객체가 이미 있어야 하지만, Create object 규칙에 Add link를 붙이면 생성과 링크를 한 번에 할 수 있어요."
+   ],
+   "recall": {
+    "q": "1:다 링크를 액션으로 바꾸는 방법은?",
+    "a": "Modify object로 외래 키 속성을 고친다"
+   },
+   "quiz": [
+    {
+     "q": "작업지시–정비사(다:다) 배정을 액션으로 만들 때 쓰는 규칙은?",
+     "options": [
+      "Modify object",
+      "Create link(s)",
+      "Delete object"
+     ],
+     "answer": 1,
+     "why": "다:다 링크는 link 규칙으로 다뤄요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Rules",
+     "url": "https://www.palantir.com/docs/foundry/action-types/rules/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c06",
+   "day": 2,
+   "title": "값은 어디서 오나: 파라미터·정적 값·현재 사용자/시간",
+   "lead": "규칙의 각 속성 값은 파라미터, 객체 파라미터의 속성, 정적 값, 현재 사용자/시간 중 하나에서 와요.",
+   "idea": [
+    "From parameter: 사용자가 폼에 넣은 값. Object parameter property: 고른 객체의 속성 값을 그대로 복사.",
+    "Static value: 규칙 안에만 있는 고정값. '상태=CLOSED'처럼 사용자가 바꾸면 안 되는 값을 여기에 둬요.",
+    "Current User/Time: 마감자, 마감 시각처럼 '누가, 언제'를 사람이 적게 하지 않아요. 사람이 적으면 틀리거나 속일 수 있으니까요."
+   ],
+   "hear": [
+    "\"마감자 칸을 폼에 두지 마세요. current user로 채워요.\"",
+    "\"상태값은 static으로 박아요.\""
+   ],
+   "ask": [
+    "이 값을 사용자가 고칠 수 있어야 하나요?",
+    "시각은 액션 시작 시각이면 충분한가요?"
+   ],
+   "mine": "Close Work Order: status=CLOSED(정적), closedBy=Current User, closedAt=Current Time, note=파라미터.",
+   "deep": [
+    "문서: Current Time 값은 액션 실행 '시작' 시각으로 고정돼, action log의 커밋 타임스탬프와 다를 수 있어요.",
+    "Static·Current User/Time 값은 제출할 때 사용자가 건드릴 수 없어요."
+   ],
+   "recall": {
+    "q": "'누가 했는지'를 사람이 입력하게 하면 안 되는 이유는?",
+    "a": "틀리거나 꾸밀 수 있어서. Current User로 시스템이 채워요."
+   },
+   "quiz": [
+    {
+     "q": "closedAt을 Current Time으로 채웠을 때, 이 값은?",
+     "options": [
+      "액션 실행 시작 시각",
+      "사용자가 폼을 연 시각",
+      "데이터셋 빌드 시각"
+     ],
+     "answer": 0,
+     "why": "문서상 실행 시작 시각으로 고정돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Rules",
+     "url": "https://www.palantir.com/docs/foundry/action-types/rules/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Object edits · Enable user edit history",
+     "url": "https://www.palantir.com/docs/foundry/object-edits/user-edit-history/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c07",
+   "day": 2,
+   "title": "Submission criteria: 언제 제출할 수 있나",
+   "lead": "Submission criteria(예전 이름 validations)는 액션을 제출할 수 있는 조건이에요. 업무 규칙을 편집 권한에 녹여요.",
+   "idea": [
+    "조건(condition)은 두 값을 비교하는 한 문장이고, 연산자(operator)로 여러 조건을 묶고 중첩해요. 모든 조건이 통과해야만 제출돼요.",
+    "템플릿은 세 가지예요. Current user(누가), Parameter(무엇에 대해), Execution context(Ontology Scenario 안에서 실행 중인지).",
+    "문서의 예가 바로 항공사예요. 항공편에 배정된 항공기를 바꾸는 액션은 운항관제사 그룹만, 그리고 항공기가 '운항 중' 상태일 때만 제출되게 해요."
+   ],
+   "steps": [
+    {
+     "k": "1",
+     "t": "조건: 값 A 연산 값 B"
+    },
+    {
+     "k": "2",
+     "t": "AND/OR로 묶기"
+    },
+    {
+     "k": "3",
+     "t": "모두 통과해야 제출"
+    }
+   ],
+   "hear": [
+    "\"이건 권한이 아니라 업무 규칙이라 criteria로 걸어요.\"",
+    "\"버튼은 보이는데 회색이면 criteria에 걸린 거예요.\""
+   ],
+   "ask": [
+    "누가 이 액션을 해도 되나요? 어떤 상태일 때만인가요?",
+    "실패하면 사용자에게 어떤 메시지를 보여 줄까요?"
+   ],
+   "mine": "Close Work Order 조건: (사용자 ∈ 정비 반장 그룹) AND (작업지시.상태 = IN_PROGRESS) AND (조치 내용 비어 있지 않음).",
+   "deep": [
+    "문서: submission criteria는 액션 type을 '편집'할 권한과는 별개예요.",
+    "리스트 파라미터를 criteria에서 쓸 때는 원소 1,000개까지예요(Scale limits)."
+   ],
+   "recall": {
+    "q": "submission criteria의 세 템플릿은?",
+    "a": "Current user, Parameter, Execution context"
+   },
+   "quiz": [
+    {
+     "q": "'항공기가 운항 중일 때만'이라는 조건은 어떤 템플릿으로 만들까요?",
+     "options": [
+      "Current user",
+      "Parameter",
+      "Execution context"
+     ],
+     "answer": 1,
+     "why": "항공기 객체 파라미터의 상태를 비교해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Submission criteria",
+     "url": "https://www.palantir.com/docs/foundry/action-types/submission-criteria/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Scale and property limits",
+     "url": "https://www.palantir.com/docs/foundry/action-types/scale-property-limits/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c08",
+   "day": 2,
+   "title": "NOT 조건의 함정과 사용자 속성",
+   "lead": "그룹·마킹·조직 소속에 NOT 조건을 쓰면 오히려 권한이 넓어질 수 있어요.",
+   "idea": [
+    "Current user로는 사용자 ID, 그룹(직접·상속), 조직 같은 multipass 속성을 볼 수 있어요.",
+    "문서는 '그룹·마킹·조직 소속에 NOT을 쓰는 건 잘못된 설정'이라고 분명히 써요. 일부 권한만 담은 scoped token에는 그 속성이 아예 없을 수 있어, 'X 그룹이 아니면'이 통과돼 버리거든요.",
+    "원리: 허용 목록(allow-list)은 정보가 빠지면 닫히고, 금지 목록(deny-list)은 정보가 빠지면 열려요. 보안은 닫히는 쪽으로 설계해요."
+   ],
+   "hear": [
+    "\"외주 인력 빼고 다 허용하죠\" — \"그건 NOT이라 위험해요.\"",
+    "\"허용 그룹을 하나 만들어요.\""
+   ],
+   "ask": [
+    "'누구 빼고'를 '누구만'으로 바꿀 수 있나요?",
+    "API·자동화로 호출될 때도 같은 사용자 속성이 있나요?"
+   ],
+   "mine": "하린(보안)은 '협력사 정비사 제외'를 '자사 인증 정비사 그룹만 허용'으로 바꾸자고 해요.",
+   "deep": [
+    "문서: 사용자가 접근권이 없는 속성으로 조건을 걸면 그 사용자는 조건에 실패해요.",
+    "문서: scoped token은 사용자 권한의 일부만 담아, NOT 조건이 의도보다 넓게 통과할 수 있어요."
+   ],
+   "recall": {
+    "q": "왜 deny-list(NOT)보다 allow-list가 안전한가요?",
+    "a": "정보가 빠졌을 때 allow-list는 거부, NOT은 허용되기 때문"
+   },
+   "quiz": [
+    {
+     "q": "'협력사 그룹이 아니면 허용'을 더 안전하게 바꾸면?",
+     "options": [
+      "그대로 둔다",
+      "'자사 정비사 그룹이면 허용'으로 바꾼다",
+      "조건을 없앤다"
+     ],
+     "answer": 1,
+     "why": "허용 목록 방식이 닫힌 실패(fail-closed)예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Submission criteria",
+     "url": "https://www.palantir.com/docs/foundry/action-types/submission-criteria/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c09",
+   "day": 3,
+   "title": "Side effects ① 알림",
+   "lead": "Side effect는 액션이 적용된 뒤 Foundry 밖으로 무언가를 내보내는 기능이에요. 첫째가 알림(Notifications)이에요.",
+   "idea": [
+    "실시간 업무에서는 '바뀌었다'는 걸 사람에게 바로 알려야 다음 행동을 해요.",
+    "알림은 액션이 적용될 때 누구에게 어떻게 알릴지 설정해요. 플랫폼 사용자에게 이메일을 보내는 것도 포함돼요.",
+    "알림은 편집 '이후'에 일어나요. 알림이 실패해도 편집은 이미 들어간 상태예요. 그래서 알림을 '기록'으로 쓰면 안 돼요."
+   ],
+   "hear": [
+    "\"AOG 지정하면 운항통제에 바로 알림 가게 해 주세요.\"",
+    "\"알림 폭탄 되지 않게 대상 줄여요.\""
+   ],
+   "ask": [
+    "누가 꼭 알아야 하나요? 누구는 몰라도 되나요?",
+    "알림이 안 가면 업무가 멈추나요?"
+   ],
+   "mine": "'AOG 지정' 액션 → 운항통제센터와 정비 계획 담당에게 알림.",
+   "deep": [
+    "문서: side effect는 알림(Notifications)과 웹훅(Webhooks) 두 종류예요.",
+    "문서 ACID 설명: 원자성은 알림·웹훅 같은 부수 효과까지 확장되지 않아요."
+   ],
+   "recall": {
+    "q": "알림이 실패하면 편집도 취소되나요?",
+    "a": "아니요. 알림은 편집 뒤에 실행되는 부수 효과예요."
+   },
+   "quiz": [
+    {
+     "q": "다음 중 side effect가 아닌 것은?",
+     "options": [
+      "이메일 알림",
+      "외부 REST API 호출(웹훅)",
+      "작업지시 상태 변경 규칙"
+     ],
+     "answer": 2,
+     "why": "상태 변경은 rule이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Side effects",
+     "url": "https://www.palantir.com/docs/foundry/action-types/side-effects-overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Consistency and isolation",
+     "url": "https://www.palantir.com/docs/foundry/action-types/consistency-guarantees/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c10",
+   "day": 3,
+   "title": "Side effects ② 웹훅: writeback vs side effect",
+   "lead": "웹훅은 writeback(편집 전, 실패하면 전부 중단)과 side effect(편집 후, 실패해도 편집 유지) 두 방식으로 걸 수 있어요.",
+   "idea": [
+    "외부 시스템(ERP, MRO 시스템)이 진짜 원본이면 Foundry만 바뀌어선 안 돼요. 문서는 이를 'decision orchestration'이라고 불러요.",
+    "writeback 웹훅은 다른 규칙보다 먼저 실행돼요. 실패하면 아무 변경도 하지 않고 사용자에게 오류를 보여 줘요. 그래서 액션당 하나만 걸 수 있어요.",
+    "side effect 웹훅은 편집 뒤에 실행돼요. 여러 개 걸 수 있지만 실패가 사용자에게 안 보일 수 있어요."
+   ],
+   "steps": [
+    {
+     "k": "writeback",
+     "t": "웹훅 → (성공 시) 규칙 → 성공 표시"
+    },
+    {
+     "k": "side effect",
+     "t": "규칙 → 성공 표시 → 웹훅(나중일 수도)"
+    }
+   ],
+   "hear": [
+    "\"SAP가 마스터니까 writeback으로 걸어요.\"",
+    "\"슬랙 알림은 side effect면 충분해요.\""
+   ],
+   "ask": [
+    "외부 시스템과 Foundry 중 어디가 원본인가요?",
+    "외부는 성공했는데 Foundry가 실패하면 어떻게 맞추죠?"
+   ],
+   "mine": "부품 재고는 사내 MRO 시스템이 원본이라 '부품 사용' 액션은 writeback 웹훅으로 MRO에 먼저 차감 요청을 보내요.",
+   "deep": [
+    "문서: writeback 웹훅은 외부 요청이 실패하면 온톨로지에 변경이 없음을 보장하지만, 외부는 성공하고 온톨로지 변경이 실패할 가능성은 남아요.",
+    "writeback 웹훅의 출력 파라미터를 뒤 규칙에서 쓸 수 있어요(예: 외부에서 받은 전표 번호)."
+   ],
+   "recall": {
+    "q": "writeback 웹훅을 액션당 하나만 걸 수 있는 이유는?",
+    "a": "실패하면 액션 전체가 멈추는 관문이라서"
+   },
+   "quiz": [
+    {
+     "q": "'외부가 실패하면 Foundry도 바꾸지 말 것'을 원하면?",
+     "options": [
+      "side effect 웹훅",
+      "writeback 웹훅",
+      "알림"
+     ],
+     "answer": 1,
+     "why": "writeback은 편집 전에 실행되고 실패 시 중단돼요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Webhooks",
+     "url": "https://www.palantir.com/docs/foundry/action-types/webhooks/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Side effects",
+     "url": "https://www.palantir.com/docs/foundry/action-types/side-effects-overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c11",
+   "day": 3,
+   "title": "액션은 트랜잭션이다 (ACID와 그 경계)",
+   "lead": "액션의 온톨로지 편집은 전부 아니면 전무로 들어가요. 하지만 알림·웹훅·외부 호출은 그 보장 밖이에요.",
+   "idea": [
+    "원자성: 편집이 한 묶음으로 들어가거나 하나도 안 들어가요. 일관성: 값 타입 제약·필수 속성을 만족해야 커밋돼요.",
+    "격리성: 동시에 같은 객체를 바꾸는 액션끼리 어떻게 보일지 정해요. 지속성: 커밋된 뒤 시작한 질의는 그 편집을 봐요.",
+    "경계가 중요해요. '반쯤 성공'은 온톨로지 안에선 없지만, 외부로 나간 메일이나 API 호출은 되돌려지지 않아요."
+   ],
+   "hear": [
+    "\"웹훅까지 롤백되는 줄 알았어요.\"",
+    "\"동시에 두 명이 마감 누르면 어떻게 돼요?\""
+   ],
+   "ask": [
+    "두 사람이 같은 객체를 동시에 바꾸면 어떻게 되길 원하나요?",
+    "외부로 나간 효과는 어떻게 보상하나요?"
+   ],
+   "mine": "준호와 다른 반장이 같은 작업지시를 동시에 마감하려 할 때를 테스트 시나리오에 넣어요.",
+   "deep": [
+    "문서: 원자성은 알림·웹훅, 그리고 백킹 함수의 외부 호출 같은 부수 효과로 확장되지 않아요.",
+    "OSv2는 객체 버전 일관성을 확인해, 잘못된 버전의 객체에 액션이 적용되는 걸 막는 장치가 있어요(How user edits are applied)."
+   ],
+   "recall": {
+    "q": "액션 원자성이 보장하지 않는 것은?",
+    "a": "알림·웹훅·외부 API 호출 같은 부수 효과"
+   },
+   "quiz": [
+    {
+     "q": "액션이 커밋된 직후 시작된 질의는?",
+     "options": [
+      "편집을 못 볼 수도 있다",
+      "그 편집을 본다",
+      "6시간 뒤에 본다"
+     ],
+     "answer": 1,
+     "why": "지속성 보장: 이후 시작한 질의는 편집을 봐요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Consistency and isolation",
+     "url": "https://www.palantir.com/docs/foundry/action-types/consistency-guarantees/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Object edits · How user edits are applied",
+     "url": "https://www.palantir.com/docs/foundry/object-edits/how-edits-applied/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c12",
+   "day": 3,
+   "title": "Writeback: 편집은 어디에 저장되나",
+   "lead": "액션 편집은 객체 DB 인덱스에 바로 적용되고, Funnel이 관리하는 데이터셋으로 주기적으로 영구 저장돼요.",
+   "idea": [
+    "원본 데이터셋(백킹 데이터)은 그대로 두고, 사용자 편집을 따로 쌓아 둔 뒤 둘을 합쳐 객체를 보여 줘요. 그래서 파이프라인이 다시 돌아도 사람의 결정이 지워지지 않아요.",
+    "합쳐진 최신 상태는 object type의 writeback dataset에서 볼 수 있어요. 다른 파이프라인이 이걸 입력으로 다시 쓸 수 있어요.",
+    "편집이 쌓인 데이터는 '추가 편집'으로만 바꿀 수 있어요. 개별 편집을 직접 지우는 기능은 없고, 테스트 편집 전체를 지우는 'Delete edits'(OSv2 스키마 마이그레이션)만 있어요."
+   ],
+   "hear": [
+    "\"파이프라인 재빌드했는데 반장님 입력이 살아 있네요.\"",
+    "\"테스트 편집 다 지우고 운영 오픈해요.\""
+   ],
+   "ask": [
+    "원본과 사용자 편집이 충돌하면 무엇이 이기나요?",
+    "운영 전 테스트 편집은 어떻게 지우나요?"
+   ],
+   "mine": "파일럿 테스트 중 넣은 가짜 마감 기록은 운영 오픈 전에 Delete edits로 지우기로 해요.",
+   "deep": [
+    "문서: 액션 지시는 Funnel 서비스의 큐에 오프셋과 함께 저장되고, 편집 뒤의 객체 읽기는 그 편집을 포함하도록 보장돼요.",
+    "문서: 액션은 아직 Foundry stream 데이터소스를 쓰는 object type에서는 지원되지 않아요(Object edits overview)."
+   ],
+   "recall": {
+    "q": "원본 데이터셋을 다시 빌드해도 사용자 편집이 남는 이유는?",
+    "a": "편집을 따로 저장하고 원본과 합쳐 보여 주기 때문"
+   },
+   "quiz": [
+    {
+     "q": "단일 사용자 편집 하나만 직접 지우는 방법은?",
+     "options": [
+      "Delete edits 버튼",
+      "없다 — 추가 편집으로 고친다",
+      "원본 데이터셋 수정"
+     ],
+     "answer": 1,
+     "why": "문서: 개별 편집을 직접 되돌리는 메커니즘은 없어요(별도 revert 기능 제외)."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Object edits · How user edits are applied",
+     "url": "https://www.palantir.com/docs/foundry/object-edits/how-edits-applied/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Object edits · Overview",
+     "url": "https://www.palantir.com/docs/foundry/object-edits/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c13",
+   "day": 4,
+   "title": "Functions: 객체 위에서 도는 코드",
+   "lead": "Function은 TypeScript나 Python으로 쓴 코드로, 객체를 읽어 계산하거나 복잡한 편집을 만들어요.",
+   "idea": [
+    "쓰임새(공식): Workshop 차트용 값 계산, 함수 기반 액션으로 여러 객체를 한 번에 편집, Quiver의 사용자 지표, 외부 시스템 조회, LLM 스트리밍, Pipeline Builder의 Python 사이드카.",
+    "규칙(Rules)만으로 어려운 것: 조건 분기, 반복, 다른 객체를 찾아 계산하기. 예를 들어 '같은 부품 번호의 지난 90일 교체 횟수'를 세는 건 코드가 편해요.",
+    "Function은 버전이 있어요. 액션은 특정 버전을 가리키고, 함수 로직을 고쳐도 액션이 자동으로 따라가지 않아요."
+   ],
+   "hear": [
+    "\"그건 규칙으로 안 되고 function 써야 해요.\"",
+    "\"함수 버전 올렸는데 액션은 옛날 버전이에요.\""
+   ],
+   "ask": [
+    "규칙 조합으로 되나요, 아니면 분기·반복이 필요한가요?",
+    "누가 함수 코드를 리뷰하나요?"
+   ],
+   "mine": "태오는 'Part 반복 고장 점수'를 계산하는 함수를 만들어 Workshop 화면에 띄우기로 해요.",
+   "deep": [
+    "지원 언어: TypeScript와 Python (Functions overview).",
+    "문서: 함수 로직이 바뀌어도 액션은 기본적으로 자동 업데이트되지 않아요(Function-backed actions 시작 가이드)."
+   ],
+   "recall": {
+    "q": "Function을 쓰는 대표 이유 두 가지는?",
+    "a": "객체 기반 계산(지표·집계)과 복잡한 편집(함수 기반 액션)"
+   },
+   "quiz": [
+    {
+     "q": "Functions가 공식 지원하는 언어는?",
+     "options": [
+      "Java와 Go",
+      "TypeScript와 Python",
+      "SQL만"
+     ],
+     "answer": 1,
+     "why": "Functions overview 기준이에요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Functions · Overview",
+     "url": "https://www.palantir.com/docs/foundry/functions/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Function-backed actions · Getting started",
+     "url": "https://www.palantir.com/docs/foundry/action-types/function-actions-getting-started/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c14",
+   "day": 4,
+   "title": "Function-backed action",
+   "lead": "편집 함수를 액션의 Function rule로 연결하면, 함수가 계산한 편집을 액션의 권한·검증·로그와 함께 적용해요.",
+   "idea": [
+    "편집 함수만 실행하면 실제 데이터는 바뀌지 않아요. 문서는 '액션 밖에서 편집 함수를 돌리면 객체 데이터가 수정되지 않는다'고 해요.",
+    "Function rule이 있으면 다른 규칙은 같이 걸 수 없어요. 함수 코드가 다른 규칙이 하는 일을 모두 할 수 있으니까요.",
+    "함수 입력은 자동으로 액션 파라미터가 돼요. 그래서 폼·criteria·side effects·로그는 그대로 액션 쪽에서 관리해요. 계산은 코드, 통제는 액션 — 역할을 나누는 구조예요."
+   ],
+   "hear": [
+    "\"함수가 편집을 만들고, 액션이 그걸 승인된 경로로 넣어요.\"",
+    "\"Function rule 걸면 다른 rule은 못 붙여요.\""
+   ],
+   "ask": [
+    "함수 테스트에서 편집 결과를 검증했나요?",
+    "함수 버전 업그레이드 절차는?"
+   ],
+   "mine": "'정비 이월(Defer)' 액션은 MEL 기한 계산이 복잡해 함수 기반으로 만들어요. 기한 계산 로직은 가상 규칙이에요.",
+   "deep": [
+    "TypeScript v1에서는 편집 함수에 @OntologyEditFunction() 데코레이터를 써요(@Function()이 아니라).",
+    "함수 기반 액션을 배치로 호출하면, 함수가 batched execution이 아닐 때 한 번에 20회로 제한돼요(일반 액션은 10,000회)."
+   ],
+   "recall": {
+    "q": "편집 함수를 액션 없이 실행하면?",
+    "a": "편집이 실제 객체에 적용되지 않아요."
+   },
+   "quiz": [
+    {
+     "q": "Function rule과 Modify object rule을 한 액션에 같이 걸 수 있나요?",
+     "options": [
+      "예",
+      "아니요",
+      "인터페이스일 때만"
+     ],
+     "answer": 1,
+     "why": "Function rule은 단독이어야 해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Function-backed actions · Getting started",
+     "url": "https://www.palantir.com/docs/foundry/action-types/function-actions-getting-started/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Rules",
+     "url": "https://www.palantir.com/docs/foundry/action-types/rules/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Functions · TypeScript v2 Ontology edits",
+     "url": "https://www.palantir.com/docs/foundry/functions/typescript-v2-ontology-edits/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Scale and property limits",
+     "url": "https://www.palantir.com/docs/foundry/action-types/scale-property-limits/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c15",
+   "day": 4,
+   "title": "TypeScript v2로 편집 함수 읽기",
+   "lead": "TS v2 편집 함수는 '무엇을 편집할지' Edits 타입으로 먼저 선언하고, edit batch에 편집을 모아 돌려줘요.",
+   "idea": [
+    "타입으로 편집 범위를 선언하는 게 핵심이에요. 선언하지 않은 객체는 건드릴 수 없으니, 리뷰어는 타입 한 줄로 영향 범위를 알 수 있어요.",
+    "createEditBatch로 배치를 만들고, 생성·수정·링크 편집을 담아 마지막에 배치의 편집 목록을 반환해요.",
+    "edit batch는 같은 실행 안에서 방금 편집한 걸 검색하면 예상과 다를 수 있어요. 읽은 직후 쓰기를 봐야 하면 staged writes(베타)를 써요."
+   ],
+   "hear": [
+    "\"Edits 타입에 없는 객체를 고치려고 해서 컴파일 에러 났어요.\"",
+    "\"편집 직후 검색 결과가 안 맞아요 — batch 특성이에요.\""
+   ],
+   "ask": [
+    "이 함수가 편집하는 타입 목록이 Edits에 다 있나요?",
+    "편집 후 같은 실행에서 다시 읽나요?"
+   ],
+   "mine": "태오가 쓴 Defer 함수 초안(가상 객체 WorkOrder)을 아래처럼 리뷰해요.",
+   "deep": [
+    "문서 예시 패키지: @osdk/functions의 Edits, createEditBatch, 그리고 생성된 @ontology/sdk 타입.",
+    "staged writes는 같은 실행 안의 read-after-write를 보장하지만 베타라 환경에 따라 없을 수 있어요."
+   ],
+   "recall": {
+    "q": "TS v2에서 편집할 엔터티는 어떻게 선언하나요?",
+    "a": "Edits.Object<T> | Edits.Link<…> 같은 유니언 타입으로"
+   },
+   "quiz": [
+    {
+     "q": "edit batch 사용 시 편집 직후 검색이 이상한 이유는?",
+     "options": [
+      "버그",
+      "edit batch는 같은 실행 안의 read-after-write를 보장하지 않음",
+      "권한 부족"
+     ],
+     "answer": 1,
+     "why": "그게 staged writes가 따로 있는 이유예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Functions · TypeScript v2 Ontology edits",
+     "url": "https://www.palantir.com/docs/foundry/functions/typescript-v2-ontology-edits/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ],
+   "code": {
+    "lang": "typescript",
+    "text": "import { WorkOrder } from \"@ontology/sdk\";\nimport { Client } from \"@osdk/client\";\nimport { createEditBatch, Edits } from \"@osdk/functions\";\ntype E = Edits.Object<WorkOrder>;\nexport default function defer(client: Client, wo: WorkOrder, days: number): E[] {\n  const batch = createEditBatch<E>(client);\n  batch.update(wo, { status: \"DEFERRED\", deferDays: days });\n  return batch.getEdits(); }",
+    "read": "4행이 '이 함수는 WorkOrder만 고친다'는 선언이에요. 6행 배치를 만들고 7행에 수정 하나를 담고 8행에서 편집 목록을 돌려줘요. 실제 적용은 이 함수를 Function rule로 건 액션이 해요. WorkOrder·속성 이름은 가상 예시이고, 메서드 이름은 문서 예시를 단순화한 거라 실제 SDK 버전에서 확인해야 해요."
+   }
+  },
+  {
+   "id": "c16",
+   "day": 4,
+   "title": "한계 숫자로 설계하기",
+   "lead": "액션 한 번에 object type 50개, 객체 10,000개까지 편집할 수 있어요. 숫자를 알면 '한 버튼에 전부'를 피할 수 있어요.",
+   "idea": [
+    "편집 한도(공식): 한 제출에서 object type 50개, 객체 10,000개. 객체 하나의 편집 크기는 OSv1 32KB, OSv2 3MB.",
+    "배치 호출은 최대 10,000번, 함수 기반이고 batched execution이 아니면 20번이에요. 배치 전체가 한 묶음으로 한도를 계산해요.",
+    "그래서 '전 기단 점검 일괄 생성' 같은 큰 작업은 액션보다 파이프라인이나 Automate로, 사람의 결정은 액션으로 나누는 게 자연스러워요."
+   ],
+   "hear": [
+    "\"한 번에 3만 건 업데이트하는 버튼 만들어 주세요.\"",
+    "\"그건 액션이 아니라 파이프라인 일이에요.\""
+   ],
+   "ask": [
+    "이 버튼이 한 번에 바꾸는 객체는 최대 몇 개인가요?",
+    "사람의 결정인가요, 일괄 데이터 처리인가요?"
+   ],
+   "mine": "누리모빌리티 기단은 가상 수치로 항공기 80대, 열린 작업지시 1.2만 건이에요. '전체 재분류'는 액션 한도를 넘으니 파이프라인으로 해요.",
+   "deep": [
+    "Scale and property limits: 객체 10,000개 / object type 50개 / 배치 10,000회(미배치 함수 20회).",
+    "OSv2 문서: 한 액션에서 최대 10,000개 객체 편집이 가능하며, 더 필요하면 지원팀 변경 요청이 필요해요."
+   ],
+   "recall": {
+    "q": "한 액션 제출로 편집할 수 있는 최대 객체 수는?",
+    "a": "10,000개 (OSv2)"
+   },
+   "quiz": [
+    {
+     "q": "객체 하나의 편집 크기 한도(OSv2)는?",
+     "options": [
+      "32KB",
+      "3MB",
+      "1GB"
+     ],
+     "answer": 1,
+     "why": "OSv1은 32KB, OSv2는 3MB예요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Scale and property limits",
+     "url": "https://www.palantir.com/docs/foundry/action-types/scale-property-limits/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Ontology architecture (object backend)",
+     "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c17",
+   "day": 5,
+   "title": "Action log · Edit history · Action metrics",
+   "lead": "누가 왜 결정했나는 Action log, 객체가 어떻게 바뀌어 왔나는 Edit history, 성공·실패율은 Action metrics예요.",
+   "idea": [
+    "Action log는 액션 제출 하나를 객체로 남겨요. 이름은 '[Log] <액션 이름>'. 제출한 파라미터 값과 맥락까지 담아 '결정의 기록'이 돼요.",
+    "Action log는 성공한 제출만 기록하고 실패는 기록하지 않아요. 실패는 Action metrics에서 봐요.",
+    "경로가 중요해요. API·SDK로 액션을 불러도 로그가 남지만, 백킹 데이터소스에 직접 쓴 변경은 로그가 안 남아요. 모든 변경을 보려면 Edit history를 켜요."
+   ],
+   "hear": [
+    "\"감사팀이 '누가 이 부품 승인했냐' 물어요 — action log 보세요.\"",
+    "\"실패한 시도는 로그에 없어요, metrics 봐야 해요.\""
+   ],
+   "ask": [
+    "감사에서 묻는 질문이 '결정'인가요, '값의 변천'인가요?",
+    "실패 시도도 감사 대상인가요?"
+   ],
+   "mine": "하린은 항공 정비 기록 감사 대비로 Close Work Order와 부품 사용 액션에 action log를 켜자고 해요.",
+   "deep": [
+    "Action log 문서의 비교표: 결정·사람·시각·맥락 → Action log / 모든 편집 이력 → Edit history / 성공·실패·지연 → Action metrics / 되돌리기 → Undo or revert.",
+    "Edit history는 기능을 켠 뒤의 변경만 추적하고, 켜는 데 몇 분이 걸려요."
+   ],
+   "recall": {
+    "q": "Action log에 실패한 제출도 남나요?",
+    "a": "아니요, 성공한 제출만. 실패는 Action metrics"
+   },
+   "quiz": [
+    {
+     "q": "백킹 데이터셋에 직접 쓴 변경은?",
+     "options": [
+      "Action log에 남는다",
+      "Action log에 안 남는다",
+      "자동으로 되돌려진다"
+     ],
+     "answer": 1,
+     "why": "Action log는 액션 type 경로의 편집만 기록해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Action log",
+     "url": "https://www.palantir.com/docs/foundry/action-types/action-log/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Object edits · Enable user edit history",
+     "url": "https://www.palantir.com/docs/foundry/object-edits/user-edit-history/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c18",
+   "day": 5,
+   "title": "Undo와 revert: 되돌리기는 좁은 문",
+   "lead": "OSv2에서는 액션 직후 성공 메시지의 Undo로 되돌릴 수 있지만, 조건이 까다로워요.",
+   "idea": [
+    "되돌리기는 액션을 적용한 그 사용자만, 성공 토스트에서 할 수 있어요. 문서는 그 토스트가 '유일한 기회'라고 강조해요.",
+    "그 객체에 다른 편집이 하나라도 이어지면(다른 속성이라도) 되돌릴 수 없어요.",
+    "2024년 5월 이후 만든, OSv2 타입만 바꾸는 액션은 기본으로 되돌리기가 켜져 있어요. 그래서 진짜 안전장치는 되돌리기보다 submission criteria와 확인 단계예요."
+   ],
+   "hear": [
+    "\"삭제 눌렀는데 토스트 닫아 버렸어요.\"",
+    "\"그럼 보상 액션을 하나 더 만들어요.\""
+   ],
+   "ask": [
+    "되돌리기가 안 될 때의 보상 절차(반대 액션)가 있나요?",
+    "삭제 액션에 확인 단계가 있나요?"
+   ],
+   "mine": "작업지시 '삭제'는 아예 만들지 않고 '취소(Cancel)' 상태로 바꾸는 액션만 두기로 해요.",
+   "deep": [
+    "Revert 문서: OSv2 전용, 적용한 사용자만, 이후 편집이 있으면 실패.",
+    "2024년 5월 이후 생성된 OSv2 전용 액션은 'Allow revert after action submission'이 기본 켜짐."
+   ],
+   "recall": {
+    "q": "액션을 되돌릴 수 없게 되는 대표 경우는?",
+    "a": "그 객체에 이후 다른 편집이 생겼을 때"
+   },
+   "quiz": [
+    {
+     "q": "되돌리기를 할 수 있는 사람은?",
+     "options": [
+      "관리자 누구나",
+      "액션을 적용한 사용자",
+      "객체 소유자"
+     ],
+     "answer": 1,
+     "why": "현재는 적용한 사용자만 가능해요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Revert or undo actions",
+     "url": "https://www.palantir.com/docs/foundry/action-types/action-reverts/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c19",
+   "day": 5,
+   "title": "권한: 읽기 통제는 쓰기까지 따라가지 않는다",
+   "lead": "액션을 하려면 대상 타입과 데이터소스를 볼 수 있고 criteria를 통과해야 해요. 그런데 행·열 통제는 '읽을 때'만 걸려요.",
+   "idea": [
+    "적용 조건(공식): 편집하는 object/link type과 데이터소스를 볼 수 있을 것, submission criteria 통과. 액션 전용 편집 타입이면 볼 수 있는 모든 객체를 편집할 수 있어요.",
+    "Restricted view, object security policy, property security policy는 액션을 부를 때 '무엇을 읽나'만 걸러요. 액션이 쓰는 값에는 확장되지 않아요.",
+    "그래서 민감 데이터는 마킹이나 분류 기반 접근 통제(CBAC)와 함께 써야 아래로 흘러가도 보호돼요(04장에서 자세히)."
+   ],
+   "hear": [
+    "\"행 단위 권한 걸었으니 쓰기도 막히겠죠?\" — \"아니요.\"",
+    "\"Check access 패널로 확인해 봐요.\""
+   ],
+   "ask": [
+    "이 액션이 쓰는 값이 민감 데이터로 흘러가나요?",
+    "마킹이 같이 붙어 있나요?"
+   ],
+   "mine": "협력사 정비사는 자기 회사 작업지시만 보이게 restricted view를 썼지만, 하린은 '쓰기 경로도 따로 criteria로 막자'고 해요.",
+   "deep": [
+    "Permissions 문서: 'Read-time enforcement only' — 행·열 통제는 액션의 쓰기까지 확장되지 않아요.",
+    "Read and write authorizations로 액션이 읽거나 받을 수 있는 마킹 데이터를 제한할 수 있어요."
+   ],
+   "recall": {
+    "q": "Restricted view만으로 액션 쓰기를 막을 수 있나요?",
+    "a": "아니요. 읽기만 거르므로 criteria·마킹이 필요해요."
+   },
+   "quiz": [
+    {
+     "q": "액션 적용에 필요한 조건이 아닌 것은?",
+     "options": [
+      "대상 타입을 볼 수 있음",
+      "submission criteria 통과",
+      "Ontology Manager 관리자 역할"
+     ],
+     "answer": 2,
+     "why": "관리자 역할은 필요 없어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Permissions",
+     "url": "https://www.palantir.com/docs/foundry/action-types/permissions/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Submission criteria",
+     "url": "https://www.palantir.com/docs/foundry/action-types/submission-criteria/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "c20",
+   "day": 5,
+   "title": "왜 '행동까지 모델링'이 핵심인가",
+   "lead": "명사·동사·결정 기록이 한 곳에 있으면, 사람이든 AI든 같은 통제된 길로만 세상을 바꾸게 돼요.",
+   "idea": [
+    "고전 온톨로지(OWL)는 '무엇이 참인가'를 추론해요. Palantir 온톨로지는 추론기 대신 '무엇을 바꿀 수 있고, 누가, 언제'를 모델링해요. 목적이 다른 도구예요.",
+    "액션이 있으면 닫힌 고리가 생겨요: 데이터 → 결정 → 액션으로 편집 → 로그와 writeback → 다음 결정의 데이터.",
+    "06장 AIP에서 LLM은 이 액션을 도구로 써요. 액션에 이미 권한·criteria·로그가 있으니, AI가 제안해도 같은 문을 지나야 해요. 한계도 있어요: 잘못 설계된 액션은 AI도 그대로 잘못 쓰고, 외부 부수 효과는 되돌리기 어려워요."
+   ],
+   "hear": [
+    "\"AI한테 DB 쓰기 권한 주자고요?\" — \"아니요, 액션만 주죠.\"",
+    "\"결정이 데이터로 남아야 다음에 배워요.\""
+   ],
+   "ask": [
+    "이 액션을 AI가 제안해도 괜찮은 수준으로 criteria가 걸려 있나요?",
+    "결정 로그를 다음 분석에 쓰나요?"
+   ],
+   "mine": "TF는 금요일까지 '정비 결정 액션 설계서 v1'을 써요. 액션 5개, 각 criteria와 로그 여부, 외부 연동 방식을 정해요.",
+   "deep": [
+    "Ontology architecture 문서: 온톨로지는 시맨틱 요소(객체·속성·링크)와 키네틱 요소(액션·함수·동적 보안)를 모두 가진 '조직의 디지털 트윈'.",
+    "Action types 문서: 사용자의 결정과 통찰이 온톨로지 편집으로 쌓이며 데이터 자산의 가치가 커진다."
+   ],
+   "recall": {
+    "q": "액션이 AI 안전에 도움이 되는 이유는?",
+    "a": "AI도 권한·criteria·로그가 걸린 같은 액션 경로로만 데이터를 바꾸기 때문"
+   },
+   "quiz": [
+    {
+     "q": "Palantir 온톨로지와 OWL 온톨로지의 가장 큰 목적 차이는?",
+     "options": [
+      "둘 다 추론이 목적",
+      "Palantir는 운영 편집·권한, OWL은 논리 추론",
+      "OWL만 데이터를 저장"
+     ],
+     "answer": 1,
+     "why": "Palantir 온톨로지에는 DL 추론기가 없고 대신 키네틱 요소가 있어요."
+    }
+   ],
+   "sources": [
+    {
+     "title": "Palantir Docs — Ontology architecture (object backend)",
+     "url": "https://www.palantir.com/docs/foundry/object-backend/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "id": "airbus-a350-skywise",
+   "day": 2,
+   "title": "에어버스 A350: 공장의 결정을 한 데이터 모델에 모으다",
+   "when": "2015~2019",
+   "lead": "에어버스는 Palantir와 함께 A350 공급망·생산 데이터를 하나의 통합 데이터 모델로 묶었고, 이것이 Skywise의 출발점이 됐어요.",
+   "facts": [
+    {
+     "label": "출발점",
+     "value": "Skywise는 처음에 A350 공급망을 평가하려고 만들어졌다",
+     "src": "CIO.com 2019-11-08"
+    },
+    {
+     "label": "Palantir 역할",
+     "value": "모든 공급망 소스의 데이터를 하나의 통합 데이터 모델로",
+     "src": "CIO.com 2019-11-08"
+    },
+    {
+     "label": "규모(2019)",
+     "value": "항공기 8,000대 이상 데이터, 월 사용자 4만 명 이상",
+     "src": "CIO.com 2019-11-08 (회사 발표)"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2015 무렵",
+     "text": "A350 생산 증산 문제로 Palantir 협업 시작(보도 기준, 추정)"
+    },
+    {
+     "t": "2018",
+     "text": "United Airlines가 Palantir Foundry 사용 시작"
+    },
+    {
+     "t": "2019-06",
+     "text": "United가 Skywise 합류, 70개 이상 항공사 연결",
+     "hot": true
+    },
+    {
+     "t": "2019-11",
+     "text": "에어버스 CIO 인터뷰: 8,000대 이상 항공기 데이터"
+    }
+   ],
+   "causes": [
+    {
+     "stage": "문제",
+     "title": "결정이 흩어짐",
+     "text": "생산 계획·품질 보고가 시스템마다 따로 있어 병목을 늦게 알았어요."
+    },
+    {
+     "stage": "해법",
+     "title": "통합 모델",
+     "text": "데이터를 한 모델로 묶어 현장 문제와 조치를 같은 곳에서 봤어요."
+    },
+    {
+     "stage": "확장",
+     "title": "항공사로",
+     "text": "같은 플랫폼을 운항사 정비 데이터로 넓혔어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "공장의 '문제 해결 결정'을 액션으로 모델링한다면 어떤 Action type이 나올까요?",
+     "a": "결함 보고 생성, 조치 담당 배정, 조치 완료, 이월 같은 동사가 후보예요."
+    },
+    {
+     "q": "이 사례에서 우리가 확인하지 못한 것은?",
+     "a": "구체적 생산 속도 개선 수치는 1차 출처로 확인하지 못해 쓰지 않았어요."
+    },
+    {
+     "q": "누리모빌리티에 주는 교훈은?",
+     "a": "데이터 통합만이 아니라 현장 결정을 같은 모델에 남겨야 다음 판단이 빨라져요."
+    }
+   ],
+   "after": [
+    "Skywise는 항공사 정비·운항 데이터 플랫폼으로 넓어졌어요."
+   ],
+   "sources": [
+    {
+     "title": "CIO.com — Airbus CIO Luc Hennekens' plan to disrupt aviation with data",
+     "url": "https://www.cio.com/article/197665/airbus-cio-luc-hennekens-plan-to-disrupt-aviation-with-data.html",
+     "date": "2019-11-08"
+    },
+    {
+     "title": "Airbus — Airbus partners with United Airlines to manage aircraft data",
+     "url": "https://www.airbus.com/en/newsroom/press-releases/2019-06-airbus-partners-with-united-airlines-to-manage-aircraft-data-and",
+     "date": "2019-06-11"
+    }
+   ],
+   "caveat": "개선 수치(예: 증산 속도 %)는 2차 자료에만 있어 뺐어요. 숫자는 회사 발표 기준이에요."
+  },
+  {
+   "id": "united-skywise-mro",
+   "day": 4,
+   "title": "United Airlines: 정비 데이터를 제조사 플랫폼과 잇다",
+   "when": "2019-06",
+   "lead": "United는 2018년부터 쓰던 Palantir Foundry를 에어버스 Skywise와 연결해 에어버스 기단의 정비·엔지니어링을 개선하겠다고 발표했어요.",
+   "facts": [
+    {
+     "label": "발표일",
+     "value": "2019-06-11",
+     "src": "Airbus 보도자료"
+    },
+    {
+     "label": "Foundry 사용",
+     "value": "United는 2018년부터 Palantir Foundry 사용",
+     "src": "Airbus 보도자료"
+    },
+    {
+     "label": "Skywise 연결 항공사",
+     "value": "70곳 이상(당시)",
+     "src": "Airbus 보도자료"
+    }
+   ],
+   "timeline": [
+    {
+     "t": "2018",
+     "text": "United, Foundry 도입"
+    },
+    {
+     "t": "2019-06",
+     "text": "Skywise 합류 발표",
+     "hot": true
+    }
+   ],
+   "causes": [
+    {
+     "stage": "필요",
+     "title": "두 데이터의 결합",
+     "text": "항공사 정비 기록과 제조사 기술 데이터를 같이 봐야 예측 정비가 가능해요."
+    },
+    {
+     "stage": "구조",
+     "title": "플랫폼 연결",
+     "text": "두 플랫폼을 연결해 운영 신뢰성을 높이려 했어요."
+    }
+   ],
+   "questions": [
+    {
+     "q": "항공사 쪽 '정비 결정'이 제조사 플랫폼에도 반영돼야 한다면 어떤 웹훅 방식을 고를까요?",
+     "a": "원본이 어디인지에 따라 달라요. 항공사 MRO가 원본이면 writeback 웹훅으로 먼저 반영해요."
+    },
+    {
+     "q": "보도자료에서 알 수 없는 것은?",
+     "a": "구체적인 액션 설계나 성과 수치는 공개되지 않았어요."
+    },
+    {
+     "q": "데이터 소유권 문제는?",
+     "a": "여러 회사 데이터가 섞이므로 마킹·권한 설계가 먼저예요(04장)."
+    }
+   ],
+   "after": [
+    "이후 Skywise는 여러 항공사의 정비 데이터 서비스로 확장됐어요."
+   ],
+   "sources": [
+    {
+     "title": "Airbus — Airbus partners with United Airlines to manage aircraft data and enhance predictive maintenance capabilities",
+     "url": "https://www.airbus.com/en/newsroom/press-releases/2019-06-airbus-partners-with-united-airlines-to-manage-aircraft-data-and",
+     "date": "2019-06-11"
+    }
+   ],
+   "caveat": "보도자료 본문은 '예측 정비'를 제목에만 쓰고, 성과 수치는 없어요."
+  }
+ ],
+ "problems": [
+  {
+   "id": "p01",
+   "day": 1,
+   "title": "월요일, 마감을 엑셀로?",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "작업 끝나면 지금은 엑셀에 마감 표시해요."
+    },
+    {
+     "name": "민서",
+     "role": "TF장·운영본부",
+     "text": "온톨로지 화면은 다 만들었는데 왜 엑셀이죠?"
+    }
+   ],
+   "q": "가장 먼저 할 일은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "엑셀을 매일 업로드하는 파이프라인을 만든다",
+     "ok": false,
+     "why": "결정이 하루 늦게, 누가 했는지 없이 들어와요."
+    },
+    {
+     "k": "B",
+     "t": "'Close Work Order' 액션을 만들어 화면 버튼으로 마감하게 한다",
+     "ok": true,
+     "why": "결정이 바로, 사용자·시각과 함께 온톨로지에 들어가요."
+    },
+    {
+     "k": "C",
+     "t": "엑셀을 그대로 쓴다",
+     "ok": false,
+     "why": "온톨로지가 계속 낡아요."
+    }
+   ],
+   "explain": "결정은 액션으로 온톨로지에 직접 적어야 고리가 닫혀요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p02",
+   "day": 1,
+   "title": "상태값 두 번 클릭",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "상태 바꾸는 화면이랑 마감자 적는 화면을 따로 만들었어요."
+    }
+   ],
+   "q": "어떻게 고칠까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "그대로 두고 교육한다",
+     "ok": false,
+     "why": "반쯤 바뀐 상태가 계속 생겨요."
+    },
+    {
+     "k": "B",
+     "t": "한 액션에 상태·마감자·시각 규칙을 묶는다",
+     "ok": true,
+     "why": "한 트랜잭션으로 원자적으로 바뀌어요."
+    },
+    {
+     "k": "C",
+     "t": "마감자 칸을 없앤다",
+     "ok": false,
+     "why": "감사 정보를 잃어요."
+    }
+   ],
+   "explain": "업무 한 단위 = 액션 하나.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Consistency and isolation",
+     "url": "https://www.palantir.com/docs/foundry/action-types/consistency-guarantees/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p03",
+   "day": 1,
+   "title": "항공기 번호 오타",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "어제 HL8xxx를 잘못 쳐서 없는 항공기에 작업지시가 붙었어요."
+    }
+   ],
+   "q": "파라미터를 어떻게 바꿀까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "자유 텍스트 + 정규식 검사",
+     "ok": false,
+     "why": "형식은 맞아도 없는 항공기일 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "Aircraft object reference 파라미터로 바꾼다",
+     "ok": true,
+     "why": "존재하는 객체만 고를 수 있어요."
+    },
+    {
+     "k": "C",
+     "t": "입력 칸을 두 번 받는다",
+     "ok": false,
+     "why": "번거롭기만 해요."
+    }
+   ],
+   "explain": "객체를 고르게 하면 유령 키가 사라져요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Parameters",
+     "url": "https://www.palantir.com/docs/foundry/action-types/parameter-overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p04",
+   "day": 2,
+   "title": "외래 키 링크",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "작업지시의 항공기를 바꾸려는데 Create link 규칙이 안 먹어요."
+    }
+   ],
+   "q": "왜일까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "권한 문제",
+     "ok": false,
+     "why": "규칙 종류 문제예요."
+    },
+    {
+     "k": "B",
+     "t": "1:다 외래 키 링크라 Modify object로 FK 속성을 고쳐야 한다",
+     "ok": true,
+     "why": "문서상 FK 링크는 객체 규칙으로 바꿔요."
+    },
+    {
+     "k": "C",
+     "t": "링크는 액션으로 못 바꾼다",
+     "ok": false,
+     "why": "바꿀 수 있어요."
+    }
+   ],
+   "explain": "카디널리티에 따라 규칙이 달라요.",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Rules",
+     "url": "https://www.palantir.com/docs/foundry/action-types/rules/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p05",
+   "day": 2,
+   "title": "마감자 칸",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "마감자 칸에 가끔 다른 사람 이름을 써요. 바쁘면 대신 눌러 주거든요."
+    }
+   ],
+   "q": "설계를 어떻게 바꿀까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "마감자를 Current User로 채우고 폼에서 뺀다",
+     "ok": true,
+     "why": "시스템이 실제 제출자를 기록해요."
+    },
+    {
+     "k": "B",
+     "t": "이름 목록 드롭다운을 준다",
+     "ok": false,
+     "why": "여전히 남 이름을 고를 수 있어요."
+    },
+    {
+     "k": "C",
+     "t": "마감자 칸을 필수로만 한다",
+     "ok": false,
+     "why": "정확성은 그대로예요."
+    }
+   ],
+   "explain": "'누가'는 사람이 적지 않아요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Rules",
+     "url": "https://www.palantir.com/docs/foundry/action-types/rules/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p06",
+   "day": 2,
+   "title": "협력사 제외 조건",
+   "scene": [
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "criteria에 '협력사 그룹이 아니면 허용'이라고 걸려 있네요."
+    },
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "그게 제일 간단했어요."
+    }
+   ],
+   "q": "하린의 제안은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "그대로 둔다",
+     "ok": false,
+     "why": "scoped token 등에서 넓게 통과할 수 있어요."
+    },
+    {
+     "k": "B",
+     "t": "'자사 인증 정비사 그룹이면 허용'으로 바꾼다",
+     "ok": true,
+     "why": "allow-list는 정보가 없으면 거부돼요."
+    },
+    {
+     "k": "C",
+     "t": "조건을 지우고 교육한다",
+     "ok": false,
+     "why": "통제가 사라져요."
+    }
+   ],
+   "explain": "문서는 그룹·마킹 NOT 조건을 잘못된 설정이라고 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Submission criteria",
+     "url": "https://www.palantir.com/docs/foundry/action-types/submission-criteria/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p07",
+   "day": 3,
+   "title": "MRO 재고가 원본",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장·운영본부",
+     "text": "부품 재고 원본은 사내 MRO 시스템이에요."
+    },
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "Foundry에서 부품 사용 누르면 MRO도 차감돼야 해요."
+    }
+   ],
+   "q": "웹훅을 어떻게 걸까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "side effect 웹훅",
+     "ok": false,
+     "why": "MRO가 실패해도 Foundry는 이미 차감돼 어긋나요."
+    },
+    {
+     "k": "B",
+     "t": "writeback 웹훅",
+     "ok": true,
+     "why": "MRO 실패 시 Foundry 변경도 없어요."
+    },
+    {
+     "k": "C",
+     "t": "매일 밤 CSV 교환",
+     "ok": false,
+     "why": "하루 동안 재고가 틀려요."
+    }
+   ],
+   "explain": "외부가 원본이면 writeback 웹훅이 관문이에요. 그래도 반대 방향 실패는 모니터링해야 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Webhooks",
+     "url": "https://www.palantir.com/docs/foundry/action-types/webhooks/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p08",
+   "day": 3,
+   "title": "롤백됐나요?",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "액션은 실패했다는데 운항통제에 알림 메일은 갔대요."
+    }
+   ],
+   "q": "어떻게 설명할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "버그다",
+     "ok": false,
+     "why": "설계상 가능한 일이에요."
+    },
+    {
+     "k": "B",
+     "t": "알림 같은 부수 효과는 원자성 밖이라 생길 수 있다",
+     "ok": true,
+     "why": "문서상 원자성은 부수 효과로 확장되지 않아요."
+    },
+    {
+     "k": "C",
+     "t": "메일 서버 문제다",
+     "ok": false,
+     "why": "핵심 원인이 아니에요."
+    }
+   ],
+   "explain": "외부로 나간 효과는 되돌릴 수 없으니 보상 절차를 정해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Consistency and isolation",
+     "url": "https://www.palantir.com/docs/foundry/action-types/consistency-guarantees/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Side effects",
+     "url": "https://www.palantir.com/docs/foundry/action-types/side-effects-overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p09",
+   "day": 3,
+   "title": "테스트 편집 청소",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "파일럿 동안 가짜 마감을 300건 넣었어요."
+    },
+    {
+     "name": "민서",
+     "role": "TF장·운영본부",
+     "text": "다음 주 운영 오픈이에요."
+    }
+   ],
+   "q": "어떻게 할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "Ontology Manager의 Delete edits로 테스트 편집을 모두 지운다",
+     "ok": true,
+     "why": "OSv2의 drop all edits 마이그레이션이에요."
+    },
+    {
+     "k": "B",
+     "t": "한 건씩 Undo",
+     "ok": false,
+     "why": "토스트가 지나 불가능해요."
+    },
+    {
+     "k": "C",
+     "t": "원본 데이터셋을 지운다",
+     "ok": false,
+     "why": "편집은 따로 저장돼 그대로예요."
+    }
+   ],
+   "explain": "운영 전 편집 초기화는 Delete edits.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Object edits · How user edits are applied",
+     "url": "https://www.palantir.com/docs/foundry/object-edits/how-edits-applied/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "day": 4,
+   "title": "규칙으로 안 되는 계산",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "이월 기한은 결함 등급마다 다르게 계산돼요."
+    }
+   ],
+   "q": "무엇으로 구현할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "규칙 여러 개를 조합",
+     "ok": false,
+     "why": "분기를 표현하기 어려워요."
+    },
+    {
+     "k": "B",
+     "t": "편집 함수를 만들고 Function rule로 액션에 연결",
+     "ok": true,
+     "why": "계산은 코드, 통제는 액션."
+    },
+    {
+     "k": "C",
+     "t": "사용자가 기한을 직접 입력",
+     "ok": false,
+     "why": "실수와 편차가 생겨요."
+    }
+   ],
+   "explain": "복잡한 편집은 function-backed action.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Function-backed actions · Getting started",
+     "url": "https://www.palantir.com/docs/foundry/action-types/function-actions-getting-started/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "day": 4,
+   "title": "함수만 돌렸는데",
+   "scene": [
+    {
+     "name": "태오",
+     "role": "데이터 엔지니어",
+     "text": "편집 함수를 테스트로 실행했는데 객체가 안 바뀌어요."
+    }
+   ],
+   "q": "원인은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "권한 부족",
+     "ok": false,
+     "why": "설계상 정상이에요."
+    },
+    {
+     "k": "B",
+     "t": "편집 함수는 액션으로 적용해야 실제로 반영된다",
+     "ok": true,
+     "why": "문서상 액션 밖 실행은 데이터를 바꾸지 않아요."
+    },
+    {
+     "k": "C",
+     "t": "OSv1이라서",
+     "ok": false,
+     "why": "관계없어요."
+    }
+   ],
+   "explain": "편집은 액션이라는 통제된 문을 지나야 해요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Functions · TypeScript v2 Ontology edits",
+     "url": "https://www.palantir.com/docs/foundry/functions/typescript-v2-ontology-edits/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "day": 4,
+   "title": "3만 건 버튼",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장·운영본부",
+     "text": "전 기단 점검 항목 3만 건을 버튼 하나로 재분류하고 싶어요."
+    }
+   ],
+   "q": "어떻게 답할까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "액션 하나로 만든다",
+     "ok": false,
+     "why": "제출당 객체 10,000개 한도를 넘어요."
+    },
+    {
+     "k": "B",
+     "t": "일괄 재분류는 파이프라인으로 하고, 예외 결정만 액션으로 둔다",
+     "ok": true,
+     "why": "한도와 역할에 맞아요."
+    },
+    {
+     "k": "C",
+     "t": "배치 호출 20번",
+     "ok": false,
+     "why": "한도·감사가 꼬여요."
+    }
+   ],
+   "explain": "사람의 결정은 액션, 대량 처리는 파이프라인.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Scale and property limits",
+     "url": "https://www.palantir.com/docs/foundry/action-types/scale-property-limits/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "day": 5,
+   "title": "감사 질문",
+   "scene": [
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "감사팀이 '3월 5일 이 부품을 누가 왜 승인했나'를 물어요."
+    }
+   ],
+   "q": "무엇을 보여 줄까요?",
+   "options": [
+    {
+     "k": "A",
+     "t": "Action log 객체(파라미터·사용자·시각)",
+     "ok": true,
+     "why": "결정의 기록이에요."
+    },
+    {
+     "k": "B",
+     "t": "Action metrics",
+     "ok": false,
+     "why": "성공·실패율만 있어요."
+    },
+    {
+     "k": "C",
+     "t": "원본 데이터셋 diff",
+     "ok": false,
+     "why": "누가·왜가 없어요."
+    }
+   ],
+   "explain": "결정 = action log, 값 변천 = edit history.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Action log",
+     "url": "https://www.palantir.com/docs/foundry/action-types/action-log/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "day": 5,
+   "title": "토스트를 닫았어요",
+   "scene": [
+    {
+     "name": "준호",
+     "role": "정비 현장 반장",
+     "text": "실수로 작업지시를 취소했는데 Undo 토스트를 놓쳤어요."
+    }
+   ],
+   "q": "다음 행동은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "관리자에게 Undo 요청",
+     "ok": false,
+     "why": "적용한 사용자만, 토스트에서만 돼요."
+    },
+    {
+     "k": "B",
+     "t": "'취소 철회' 보상 액션으로 되돌리고 로그를 남긴다",
+     "ok": true,
+     "why": "추가 편집으로 고치는 게 정석이에요."
+    },
+    {
+     "k": "C",
+     "t": "데이터셋을 직접 수정",
+     "ok": false,
+     "why": "로그가 안 남아요."
+    }
+   ],
+   "explain": "되돌리기는 좁은 문. 보상 액션을 설계해 둬요.",
+   "mixed": false,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Revert or undo actions",
+     "url": "https://www.palantir.com/docs/foundry/action-types/action-reverts/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Object edits · How user edits are applied",
+     "url": "https://www.palantir.com/docs/foundry/object-edits/how-edits-applied/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "day": 5,
+   "title": "AI에게 무엇을 줄까",
+   "scene": [
+    {
+     "name": "민서",
+     "role": "TF장·운영본부",
+     "text": "다음 단계에 AI 비서가 작업지시를 정리하게 하고 싶어요."
+    },
+    {
+     "name": "하린",
+     "role": "보안·법무",
+     "text": "DB 쓰기 권한을 주면 안 돼요."
+    }
+   ],
+   "q": "가장 좋은 방향은?",
+   "options": [
+    {
+     "k": "A",
+     "t": "AI 전용 서비스 계정에 데이터셋 쓰기 권한",
+     "ok": false,
+     "why": "통제·로그를 우회해요."
+    },
+    {
+     "k": "B",
+     "t": "AI는 기존 액션만 제안하고, criteria·로그를 그대로 지나게 한다",
+     "ok": true,
+     "why": "사람과 같은 통제된 문이에요."
+    },
+    {
+     "k": "C",
+     "t": "AI를 읽기 전용으로만",
+     "ok": false,
+     "why": "가능하지만 가치가 작아요."
+    }
+   ],
+   "explain": "행동까지 모델링해 두면 AI도 같은 규칙을 따라요(06장).",
+   "mixed": true,
+   "sources": [
+    {
+     "title": "Palantir Docs — Action types · Overview",
+     "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+     "date": "n.d. (2026-10-21 확인)"
+    },
+    {
+     "title": "Palantir Docs — Action types · Action log",
+     "url": "https://www.palantir.com/docs/foundry/action-types/action-log/",
+     "date": "n.d. (2026-10-21 확인)"
+    }
+   ]
+  }
+ ],
+ "lectures": [
+  {
+   "id": "l1",
+   "title": "Palantir Docs — Action types (Overview → Rules → Submission criteria)",
+   "url": "https://www.palantir.com/docs/foundry/action-types/overview/",
+   "min": 40,
+   "lang": "en",
+   "what": "액션의 정의·규칙·조건을 공식 용어로 읽어요. 항공사 예시가 나와요.",
+   "day": 1
+  },
+  {
+   "id": "l2",
+   "title": "Palantir Learning — Introduction to Actions (APPDEV 07)",
+   "url": "https://www.palantir.com/docs/foundry/learning-application-appdev-07/01/",
+   "min": 60,
+   "lang": "en",
+   "what": "writeback 켜기, 파라미터·criteria 설정, Workshop에 액션 붙이기를 따라 해요.",
+   "day": 2
+  },
+  {
+   "id": "l3",
+   "title": "Palantir Docs — Webhooks (writeback vs side effect)",
+   "url": "https://www.palantir.com/docs/foundry/action-types/webhooks/",
+   "min": 20,
+   "lang": "en",
+   "what": "외부 시스템 연동의 두 방식과 실패 처리를 비교해요.",
+   "day": 3
+  },
+  {
+   "id": "l4",
+   "title": "Palantir Docs — TypeScript v2 Ontology edits",
+   "url": "https://www.palantir.com/docs/foundry/functions/typescript-v2-ontology-edits/",
+   "min": 30,
+   "lang": "en",
+   "what": "Edits 타입과 edit batch, staged writes 차이를 코드로 봐요.",
+   "day": 4
+  },
+  {
+   "id": "l5",
+   "title": "Palantir Docs — Action log",
+   "url": "https://www.palantir.com/docs/foundry/action-types/action-log/",
+   "min": 20,
+   "lang": "en",
+   "what": "Action log·Edit history·Metrics를 언제 쓰는지 표로 정리돼 있어요.",
+   "day": 5
+  }
+ ],
+ "write": {
+  "title": "금요일에 쓸 것",
+  "task": "정비 결정 액션 설계서 v1을 1~2쪽으로 써 보세요. 현장 결정 5개를 액션으로 만들고 통제·감사 방식을 정해요.",
+  "template": [
+   "상태 (제안 / 승인)",
+   "배경: 엑셀 마감 문제와 감사 요구",
+   "액션 목록 5개 (동사 이름, 대상 object type)",
+   "각 액션의 parameters (object reference 여부)",
+   "rules와 값 출처 (static / current user·time)",
+   "submission criteria (allow-list 그룹 + 상태 조건)",
+   "외부 연동: writeback 웹훅 vs side effect, 실패 시 보상 절차",
+   "함수 기반 액션이 필요한 곳과 함수 버전 관리",
+   "Action log·Edit history 설정, 되돌리기 정책",
+   "한도 점검: 제출당 객체 수, 대량 처리 분리"
+  ]
+ },
+ "check": [
+  "Story (누리모빌리티, 80 aircraft, 12,000 open work orders, 300 test edits, Defer/MEL rule) is fictional.",
+  "Action/rule/criteria/side-effect/webhook/action-log/revert/permissions/limits facts read directly from palantir.com/docs pages on 2026-10-21 (curl + text extraction).",
+  "Limits: 10,000 objects, 50 object types per submission; 32KB OSv1 / 3MB OSv2 per object edit; batch 10,000 calls (20 for non-batched function-backed); list params 10,000 / 1,000 — from Scale and property limits page.",
+  "Revert: OSv2 only, applying user only, default on for OSv2-only actions created after May 2024 — Revert page.",
+  "TS v2 code in c15 is a simplified illustration; Edits/createEditBatch names come from the docs, but update/getEdits call shapes should be checked against the current SDK.",
+  "Cases: Airbus facts from CIO.com 2019-11-08 and Airbus press release 2019-06-11. Dropped the widely repeated 'A350 ramp 33% faster' figure (only secondary/PDF not readable).",
+  "Lectures: all URLs returned HTTP 200 on 2026-10-21; the learning page is JS-rendered so content was not text-checked."
+ ]
+}

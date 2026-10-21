@@ -7,6 +7,8 @@ import { COURSES, getJSON, progressOf, nextCards, nightBtn } from "./data.js";
 const LIST = [
   { c: COURSES.vg, vol: "1권", line: "글을 숫자(벡터)로 바꾸고, 가까운 것을 빨리 찾고, 관계(그래프)로 엮어 AI가 답하게 해요.", span: "8장 · 임베딩에서 GraphRAG까지" },
   { c: COURSES.dev, vol: "2권", line: "아이디어가 문서가 되고, 화면과 서버가 되고, 고객에게 닿고, 고장 나고, 다시 좋아지는 흐름을 따라가요.", span: "12장 · 가상 회사 두런과 함께" },
+  { c: COURSES.onto, vol: "3권", line: "세상을 '무엇이 있고 어떻게 이어지는지'로 적어 기계가 뜻을 알게 해요. 원리부터 왜 지금 뜨는지까지.", span: "8장 · 논리에서 AI 시대 세계 동향까지" },
+  { c: COURSES.aip, vol: "4권", line: "회사를 객체 · 링크 · 액션으로 옮기고, 그 위에서 LLM 이 일하게 하는 Palantir 의 방식을 뜯어봐요.", span: "8장 · 온톨로지에서 AIP 에이전트 · 사례 · 한계까지" },
 ];
 
 export function mountSw(host, ctx) {
@@ -15,7 +17,7 @@ export function mountSw(host, ctx) {
   function draw() {
     host.innerHTML = `<header class="dv-top"><nav class="dv-crumbs" aria-label="지금 위치"><b aria-current="page">SW 과정</b></nav><nav class="dv-nav" aria-label="보기">${nightBtn()}</nav></header>
       <div class="sw-home">
-        <header class="sw-home-h"><h1>SW 과정</h1><p>두 권을 하루 30~60분씩 읽어요. 카드 몇 장, 어제 것 복습, 그리고 회의실 문제 하나.</p></header>
+        <header class="sw-home-h"><h1>SW 과정</h1><p>책마다 하루 30~60분씩 읽어요. 카드 몇 장, 어제 것 복습, 그리고 회의실 문제 하나.</p></header>
         <div class="sw-books">${LIST.map(({ c, vol, line, span }, k) => {
           const x = info[k], pct = x ? Math.round(x.ratio * 100) : 0;
           return `<article class="sw-book" data-course="${c.key}">
