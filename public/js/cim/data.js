@@ -12,7 +12,8 @@ function indexChapter(c) {
   const qs = [];
   c.sec.forEach((s) => s.p.forEach((p) => {
     p.key = `${id}-${p.n}`;
-    p.q.forEach((q, i) => { const o = { ...q, id: `${p.key}-${i}`, ch: id, s: c.s, pt: p }; qs.push(o); QI[o.id] = o; });
+    // q.k: 다른 카드로 옮겨진 문제는 예전 id 를 그대로 써요 (저장된 정답·오답 기록이 같은 문제에 붙어 있게)
+    p.q.forEach((q, i) => { const o = { ...q, id: q.k || `${p.key}-${i}`, ch: id, s: c.s, pt: p }; qs.push(o); QI[o.id] = o; });
   }));
   QS_BY[id] = qs;
   return c;

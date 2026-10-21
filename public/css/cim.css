@@ -296,6 +296,9 @@ a.cd-sub { color: var(--cim-acc-ink); }
 .cc-tag.rev { color: var(--cim-warn); background: var(--cim-warn-soft); box-shadow: none; }
 .cc-tag.seen { color: var(--cim-ok); background: var(--cim-ok-soft); box-shadow: none; }
 .cc-tag.acc { color: var(--cim-acc-ink); background: var(--cim-acc-soft); box-shadow: none; }
+.cc-tag.my { color: var(--cim-warn); box-shadow: inset 0 0 0 1px var(--cim-warn-soft); }
+/* 내 밑줄 — 교재에 연필로 그은 자리: 형광펜처럼 아래쪽만 옅게 */
+.cc-my { color: inherit; background: linear-gradient(transparent 62%, var(--cim-warn-soft) 62%); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--cim-warn) 55%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; border-radius: 1px; }
 .cc-body, .cb-strat .cc-body { font-size: 16.5px; line-height: 1.72; color: var(--cim-ink2); max-width: 68ch; }
 .cc-body p { margin: 0 0 .55em; }
 .cc-body .cc-li { padding-left: 1.4em; text-indent: -1.4em; }
