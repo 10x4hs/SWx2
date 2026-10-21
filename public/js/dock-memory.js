@@ -1,11 +1,11 @@
 // Dock 앱마다 '보던 곳 그대로' — 다른 앱(예: Plan)에 잠깐 갔다 와도 마지막 화면 · 스크롤 위치로 돌아와요 (2026-10-20)
-//   · 기억하는 앱: Obsidian · Study · Newsletter · Message · MBA · Code Flow (Home · Plan(늘 오늘) · Diary 는 그대로)
+//   · 기억하는 앱: Obsidian · Study · Newsletter · Message · MBA · Code Flow · CIM (Home · Plan(늘 오늘) · Diary 는 그대로)
 //   · 12시간이 지나면 잊고 그 앱의 첫 화면으로 · 지금 그 앱 안에서 아이콘을 한 번 더 누르면 한 칸 위(그 앱의 첫 화면)로
 //   · 같은 기록(뒤로 · 앞으로 · 새로 고침)으로 돌아오면 history.state 에 적어 둔 스크롤로
 import * as studyView from "./views/study.js";
 
 const KEY = "trio-dock-last", TTL = 12 * 3600e3;
-export const REMEMBER = new Set(["brain", "study", "news", "room", "biz", "dev"]);
+export const REMEMBER = new Set(["brain", "study", "news", "room", "biz", "dev", "cim"]);
 let mem = {};
 try { mem = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { mem = {}; }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch {} };
@@ -28,6 +28,10 @@ function upOf(n, hash) {
     if (m) return m[2] ? `#/sw/${m[1]}` : "#/sw";
     const old = hash.match(/^#\/dev(\/.+)?$/);
     return old?.[1] ? "#/sw/dev" : "#/sw";
+  }
+  if (n.key === "cim") { // CIM: 장(카드) → 교과서 차례, 문제 풀이 → 문제 설정, 탭 → 오늘
+    const m = hash.match(/^#\/cim\/([a-z]+)(\/.+)?$/);
+    return m?.[2] ? `#/cim/${m[1]}` : "#/cim";
   }
   if (n.key === "study") {
     const m = hash.match(/^#\/(english|papers|books)\b/) || hash.match(/^#\/(study\/[^/]+)/);

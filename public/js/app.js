@@ -32,6 +32,7 @@ import { setHiddenMe } from "./hidden-pages.js";
 import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js"; // Dock 우클릭 → 내 CSS · HTML · JS
 import * as roomView from "./views/room.js";
 import * as newsView from "./views/news.js"; // 뉴스 Signal Map (#/news · #/news/item/<id> · #/news/thread/<id>)
+import * as cimView from "./views/cim.js"; // 투자자산운용사 2주 완성 (#/cim · #/cim/book/<장> · #/cim/figs · #/cim/quiz · #/cim/mock · #/cim/table) — 누구나
 import * as mbaView from "./views/mba.js"; // 경영 마이크로디그리 (#/mba · #/mba/today · #/mba/company · #/mba/words · #/mba/<모듈>/<카드>)
 import * as devView from "./views/dev.js"; // SW 공간 (#/sw 과정 목록 · #/sw/<과정>/… 개발 흐름 · Vector & Graph — today · docs · <모듈>/<카드> · case · practice)
 import { mountAuth } from "./views/auth.js";
@@ -187,6 +188,7 @@ const NAV = [
   { key: "diary", hash: "#/diary", label: "Diary", img: "/assets/dock/journal.png" }, // 누구나 · 일기 친구(초대 · 수락)끼리 공개한 날을 서로 봐요
   { key: "biz", hash: "#/mba", label: "MBA", img: "/assets/dock/stocks.png" }, // 경영 마이크로디그리 (24주 · 하루 1~2시간)
   { key: "dev", hash: "#/sw", label: "Code Flow", img: "/assets/dock/vscode.png" }, // SW 과정 (Vector & Graph · Dev Flow) — 첫 화면은 과정 두 권
+  { key: "cim", hash: "#/cim", label: "CIM", img: "/assets/dock/cim.svg" }, // 투자자산운용사 2주 완성 — 교과서 · 그림 · 문제 · 모의고사 · 숫자표 (누구나, 기록은 사람별 서버 저장)
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 
@@ -372,6 +374,7 @@ function parseRoute() {
   if (a === "books") return { view: "books", nav: "study", id: b || null, sub: c || null }; // AI 공부책 — #/books · #/books/<book>/<chapter> · #/books/review · #/books/words
   if (a === "sw") return { view: "dev", nav: "dev", course: b || null, id: c || null, sub: d || null, item: e || null }; // SW 공간 — 과정 목록 · 과정 안
   if (a === "dev") return { view: "dev", nav: "dev", course: "dev", id: b || null, sub: c || null, item: d || null }; // 옛 주소 (#/dev/…) = #/sw/dev/…
+  if (a === "cim") return { view: "cim", nav: "cim", tab: b || null, id: c || null, sub: d || null, item: e || null }; // 투자자산운용사
   if (a === "mba") return { view: "mba", nav: "biz", id: b || null, sub: c || null, item: d || null }; // 경영 마이크로디그리
   if (a === "news") return { view: "news", nav: "news", sub: ["item", "world", "co", "talk", "board", "library", "history", "ai-trend", "hw-trend"].includes(b) ? b : null, id: c || null, day: /^\d{4}-\d{2}-\d{2}$/.test(b || "") ? b : null }; // #/news · #/news/<day> · #/news/item/<id>
   if (a === "room" && b === "help") return { view: "room", nav: "room", tab: "chat", help: c || "me" }; // 관리자 문의방 (관리자는 #/room/help/<회원 id>)
@@ -380,7 +383,7 @@ function parseRoute() {
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, admin: adminView, teams: teamsView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, cim: cimView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, admin: adminView, teams: teamsView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {
@@ -417,6 +420,7 @@ function route(redraw = false) {
   if (lastView === "study" && inStudy) { studyView.update(r); return; } // 영어 ↔ 논문 ↔ 과목 탭, 전환은 껍데기를 그대로
   if (lastView === "page" && r.view === "page" && !inStudy) { pageView.update(r); return; } // 페이지 사이 이동은 껍데기를 그대로
   if (lastView === "news" && r.view === "news") { newsView.update(r); return; } // 지구본은 그대로, 패널만
+  if (lastView === "cim" && r.view === "cim") { cimView.update(r); return; } // 탭 · 장 사이 이동은 껍데기를 그대로
   if (lastView === "mba" && r.view === "mba") { mbaView.update(r); return; } // 모듈 · 카드 사이 이동은 껍데기를 그대로
   if (lastView === "dev" && r.view === "dev") { devView.update(r); return; } // 주 · 카드 사이 이동도 껍데기를 그대로
   if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요
