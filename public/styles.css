@@ -3179,7 +3179,7 @@ button.adm-stat:hover { border-color: rgba(127,127,127,.35); }
 
 /* 새 버전 · 안 본 업데이트 표시: 프로필 둘레 주황 고리 */
 .me-dot { display: none; }
-.me-btn.has-new .me-dot, body.app-upd .me-btn .me-dot { display: block; position: absolute; z-index: 2; inset: 1px; border-radius: 50%; border: 2px solid #ff8a00; box-shadow: 0 0 8px rgba(255, 138, 0, .55); pointer-events: none; } /* 업데이트 = 프로필 둘레 주황 고리 (오른쪽 위 점은 활동 상태 — working 이 주황이라 헷갈리지 않게) */
+.me-btn.has-new .me-dot, body.app-upd .me-btn .me-dot { display: block; position: absolute; z-index: 0; inset: 1px; border-radius: 50%; border: 2px solid #ff8a00; box-shadow: 0 0 8px rgba(255, 138, 0, .55); pointer-events: none; } /* 업데이트 = 프로필 둘레 주황 고리 (오른쪽 위 점은 활동 상태 — working 이 주황이라 헷갈리지 않게) */
 .me-upd { display: none !important; }
 body.app-upd .me-upd { display: flex !important; align-items: center; gap: 8px; color: #ff9a2e; font-weight: 600; }
 .me-upd-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff8a00; flex: none; }
@@ -3200,3 +3200,5 @@ body.app-upd .me-upd { display: flex !important; align-items: center; gap: 8px; 
 select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 :root[data-theme="dark"] select option, :root[data-theme="dark"] select optgroup { background-color: #1f1f22; color: #f2f2f4; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) select option, :root:not([data-theme="light"]) select optgroup { background-color: #1f1f22; color: #f2f2f4; } }
+.me-btn .av { z-index: 1; } .me-btn .av .av-st { z-index: 3; } /* 활동 상태(코딩 도구 캐릭터)는 업데이트 고리 위에 */
+.me-btn.has-new .av-st.chars, body.app-upd .me-btn .av-st.chars { top: -13px; right: -15px; } /* 고리가 있으면 캐릭터를 고리 바깥으로 */
