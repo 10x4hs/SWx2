@@ -21,6 +21,7 @@
 //   ⑰ 계획 복사 · 붙여넣기 — 마우스 올리고 ⌘C · 붙일 시각에 ⌘V(우선순위까지) · ⌘Z 되돌리기 · Shift+클릭 여러 개(간격 그대로) · 다른 앱의 "07:00–07:30 이름" 줄 · 그냥 글은 무시 · 홈 시계 링 시각 (2026-10-16)
 //   ⑱ 일기 친구 — 친구 없으면 탭 하나 · 같은 팀도 403 · 아이디로 초대 → 친구 화면의 초대 띠에서 수락 → 탭 둘 · 새 일기 기본 공개 → 친구가 읽음 · 비공개면 자물쇠만(글은 서버에서도 안 와요)
 //      · 지난 일기 비공개 · 친구 탭 읽기 · 친구 아닌 사람은 403 · 일기는 누구나(자물쇠 없음, 2026-10-21) · 끊기 → 다시 403 (2026-10-19)
+//   ⑲ CIM 투자자산운용사 — Dock 'CIM' · 오늘 · 교과서(카드 · 왜 이 공식 · 그림 · 이야기 · 카드 안 문제) · 그림 조작 · 문제(키보드 · 서버 저장 · 새로 고침) · 모의고사 시작 · 제출 · 숫자표 · Dock 으로 돌아오면 보던 카드 · 스크롤 (2026-10-21)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -856,6 +857,64 @@ try {
       ok(/^#\/calendar\//.test(away) && back.hash === "#/sw/vg/vg-embeddings/c06" && Math.abs(back.top - 700) < 40 && up === "#/sw/vg" && !errs.length,
         `${tv} · 보던 곳 그대로 — Plan(${away}) 갔다 Code Flow → ${back.hash} · 스크롤 ${back.top} · 한 번 더 누르면 ${up}${errs.length ? " — " + errs[0] : ""}`);
       await p.evaluate(() => { localStorage.removeItem("trio-dock-last"); localStorage.removeItem("sw-ai-size"); localStorage.setItem("sw-theme", "paper"); });
+    }
+
+    // ---------- ⑲ CIM 투자자산운용사 — Dock 아이콘 · 오늘 · 교과서(카드 · 왜 이 공식 · 그림) · 그림 조작 · 문제 저장(서버) · 모의고사 시작/제출 · 숫자표 · Dock 기억 (2026-10-21) ----------
+    {
+      errs = [];
+      const over = () => p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1 || document.querySelector("#main").scrollWidth > document.querySelector("#main").clientWidth + 1);
+      await go("#/", 1800);
+      const tip = await p.evaluate(() => document.querySelector('a.rail-btn[data-nav="cim"]')?.dataset.tip || "");
+      await p.click('a.rail-btn[data-nav="cim"]'); await p.waitForSelector(".cd-hero", { timeout: 10000 }).catch(() => {}); await sleep(500);
+      const d0 = await p.evaluate(() => ({ h: location.hash, kpi: document.querySelectorAll(".cd-kpi").length, days: document.querySelectorAll(".cd-days button").length, subj: document.querySelectorAll(".cd-s").length, heat: document.querySelectorAll(".cd-grid7 i").length }));
+      ok(tip === "CIM" && d0.h === "#/cim" && d0.kpi === 5 && d0.days === 14 && d0.subj === 3 && d0.heat === 84 && !(await over()) && !errs.length, `${tv} · CIM 오늘 — Dock '${tip}' → ${d0.h} · 요약 ${d0.kpi} · 14일 ${d0.days} · 과목 ${d0.subj} · 12주 ${d0.heat}칸${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/cim/book/s3c6", ".cc", 600);
+      const bk = await p.evaluate(() => ({ cards: document.querySelectorAll(".cc").length, why: document.querySelectorAll(".cw").length, fig: document.querySelectorAll(".cc-fig .cf-svg").length, story: document.querySelectorAll(".cs").length }));
+      await p.click(".cc [data-pq]"); await sleep(200); await p.click(".cc .cc-pq .cq-o"); await sleep(200);
+      const inl = await p.evaluate(() => !!document.querySelector(".cc .cc-pq .cq-x"));
+      ok(bk.cards === 24 && bk.why === 1 && bk.fig === 1 && bk.story === 1 && inl && !(await over()) && !errs.length, `${tv} · CIM 교과서 — 카드 ${bk.cards} · 왜 이 공식 ${bk.why} · 그림 ${bk.fig} · 이야기 ${bk.story} · 카드 안 문제 ${inl}${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/cim/figs", ".cf-list .cf-svg", 500);
+      const f0 = await p.evaluate(() => ({ n: document.querySelectorAll(".cf-list > li").length, cap: document.querySelector("#fig-bond .cf-cap")?.textContent }));
+      await p.click('#fig-bond [data-s="1"]'); await sleep(120);
+      await p.click('#fig-opt [data-pre="스트래들 매수"]'); await sleep(120);
+      const f1 = await p.evaluate(() => ({ cap: document.querySelector("#fig-bond .cf-cap")?.textContent, opt: document.querySelector("#fig-opt .cf-read")?.textContent || "" }));
+      ok(f0.n === 10 && f1.cap !== f0.cap && /손익분기 90, 110/.test(f1.opt) && !(await over()) && !errs.length, `${tv} · CIM 그림 — ${f0.n}개 · 단계 넘김 ${f1.cap !== f0.cap} · 스트래들 "${f1.opt}"${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/cim/quiz/ch/s2c3/10", "#cqz-box .cq-o", 400);
+      await p.keyboard.press("1"); await sleep(150); await p.keyboard.press("Enter"); await sleep(150); await p.click("#cqz-box .cq-o"); await sleep(1500);
+      const sv = await (await ctx.request.get(BASE + "/api/apps/cim/state", { headers: H })).json();
+      const nAns = Object.keys(sv.data?.ans || {}).filter((k) => k.startsWith("s2c3-")).length;
+      await p.reload(); await sleep(2200); await hop("#/cim/quiz", ".cqz-tbl", 300);
+      const seen = await p.evaluate(() => document.querySelector('#cqz-ch option[value="s2c3"]')?.textContent || "");
+      ok(nAns === 2 && /\(2\/100\)/.test(seen) && !(await over()) && !errs.length, `${tv} · CIM 문제 — 키보드로 풀기 · 서버 저장 ${nAns}개 · 새로 고침 뒤 "${seen}"${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      p.once("dialog", (d) => d.accept());
+      await hop("#/cim/mock", "#cm-go", 200); await p.click("#cm-go"); await p.waitForSelector(".cm-run .cq-o", { timeout: 30000 }).catch(() => {}); await sleep(300);
+      await p.click(".cm-run .cq-o"); await sleep(200);
+      const m0 = await p.evaluate(() => ({ t: document.querySelector("#cm-tm")?.textContent || "", ans: document.querySelector(".cm-ans b")?.textContent, grid: document.querySelectorAll(".cm-grid button").length }));
+      await p.click("#cm-sub"); await p.waitForSelector(".cm-res", { timeout: 8000 }).catch(() => {}); await sleep(1300);
+      const m1 = await p.evaluate(() => ({ rows: document.querySelectorAll(".cm-res tbody tr").length, wrong: document.querySelectorAll(".cm-w").length }));
+      const sm = await (await ctx.request.get(BASE + "/api/apps/cim/state", { headers: H })).json();
+      ok(/^1[01]\d:\d\d$/.test(m0.t) && m0.ans === "1" && m0.grid === 100 && m1.rows === 4 && m1.wrong >= 99 && sm.data.run === null && sm.data.mocks.length === 1 && !(await over()) && !errs.length, `${tv} · CIM 모의고사 — 타이머 ${m0.t} · 답 ${m0.ans} · 지도 ${m0.grid} · 제출 → 표 ${m1.rows}줄 · 해설 ${m1.wrong} · 서버 기록 ${sm.data.mocks.length}회${errs.length ? " — " + errs[0] : ""}`);
+      errs = [];
+      await hop("#/cim/table", "#ct-card", 200); await p.click("#ct-card"); await sleep(100);
+      const tb = await p.evaluate(() => ({ rows: document.querySelectorAll(".ct-tbl tr").length, back: document.querySelector("#ct-card").classList.contains("back") }));
+      ok(tb.rows === 21 && tb.back && !(await over()) && !errs.length, `${tv} · CIM 숫자표 — ${tb.rows}줄 · 플래시카드 뒤집기 ${tb.back}${errs.length ? " — " + errs[0] : ""}`);
+      // 보던 곳 그대로 — 카드를 읽다 Plan 에 갔다가 CIM 을 누르면 그 카드 · 그 스크롤로, 한 번 더 누르면 교과서 차례로
+      errs = [];
+      await hop("#/cim/book/s3c7/12", "#k-s3c7-12", 800);
+      await p.evaluate(() => document.querySelector("#main").scrollTo(0, 1500)); await sleep(500);
+      const top0 = await p.evaluate(() => Math.round(document.querySelector("#main").scrollTop));
+      await p.click('a.rail-btn[data-nav="calendar"]'); await sleep(1300);
+      await p.click('a.rail-btn[data-nav="cim"]'); await sleep(2000);
+      const back = await p.evaluate(() => ({ h: location.hash, top: Math.round(document.querySelector("#main").scrollTop) }));
+      await p.click('a.rail-btn[data-nav="cim"]'); await sleep(800);
+      const up = await p.evaluate(() => location.hash);
+      ok(back.h === "#/cim/book/s3c7/12" && Math.abs(back.top - top0) < 60 && up === "#/cim/book" && !errs.length, `${tv} · CIM 보던 곳 그대로 — ${back.h} · 스크롤 ${top0}→${back.top} · 한 번 더 → ${up}${errs.length ? " — " + errs[0] : ""}`);
+      await p.evaluate(() => localStorage.removeItem("trio-dock-last"));
+      await ctx.request.put(BASE + "/api/apps/cim/state", { headers: H, data: { data: { v: 2 }, at: sm.updated_at } }).catch(() => {}); // 폰 차례도 빈 기록에서 (같은 임시 계정)
     }
 
     // ---------- ⑭ 영상 노트 한 화면 — 맨 위 인용에 YouTube 영상이 있으면 왼쪽 영상 · 목차 · 접힌 스크립트, 오른쪽 정리 (2026-10-14) ----------

@@ -190,6 +190,8 @@ export const api = {
   booksState: () => request("GET", "/books/state"),
   bookRead: (book, chapter, recall, total) => request("PUT", "/books/read", { book, chapter, recall, total }),
   bookReview: (results) => request("PUT", "/books/review", { results }),
+  appState: (app) => request("GET", `/apps/${app}/state`), // 내장 Dock 앱의 사람별 저장소 (CIM)
+  saveAppState: (app, data, at) => request("PUT", `/apps/${app}/state`, { data, at }), // 409 = 다른 기기가 먼저 씀 → err.data 에 서버 값
   mbaState: () => request("GET", "/mba/state"),
   mbaRead: (module, card, correct, total) => request("PUT", "/mba/read", { module, card, correct, total }),
   mbaReview: (results) => request("PUT", "/mba/review", { results }),

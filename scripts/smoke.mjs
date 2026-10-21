@@ -101,6 +101,7 @@ r = await call("l", "GET", "/diary?day=2026-09-28"); ok(r.status === 200, "free:
 r = await call("l", "GET", "/ai/models"); ok(r.status === 200, "free: AI for planning — model list open");
 r = await call("l", "POST", "/ai/command", {}); ok(r.status !== 403, `free: AI for planning — /ai/command not locked (${r.status})`);
 r = await call("l", "GET", "/ai/chats"); ok(r.status === 403 && r.data.locked === "ai", "locked: AI tab chats still need the ai feature");
+r = await call("l", "GET", "/apps/cim/state"); ok(r.status === 200 && r.data.updated_at === 0, "free: CIM (투자자산운용사) state is open to everyone (no feature lock)");
 d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
 // 관리자 두 사람: 기능 신청은 둘 다 승인해야 열림 · 시간 추가 · 추천 보너스 (로컬 진짜 관리자는 잠깐 member 로 내렸다가 되돌려요)
 {
@@ -235,6 +236,16 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("a", "PUT", "/books/task", { task: "big/data-tokens/1", done: false }); ok(r.status === 200 && !r.data.tasks.includes("big/data-tokens/1"), "books: task undone");
   r = await call("a", "PUT", "/books/task", { task: "../x" }); ok(r.status === 400, "books: bad task → 400");
   r = await call("b", "GET", "/books/state"); ok(r.status === 200 && !r.data.items.some((x) => x.book === "big"), "books: private per user");
+  // CIM (#/cim): 사람별 저장 (user_app_state) — 통째로 쓰고, 다른 기기가 먼저 썼으면 409 + 서버 값 (화면이 합쳐서 다시 보내요)
+  r = await call("a", "GET", "/apps/cim/state"); ok(r.status === 200 && r.data.data === null && r.data.updated_at === 0, "cim: empty state");
+  r = await call("a", "PUT", "/apps/cim/state", { data: { v: 2, ans: { "s3c6-13-0": [1, 0, 1] } }, at: 0 }); const cimAt = r.data.updated_at; ok(r.status === 200 && cimAt > 0, "cim: first save");
+  r = await call("a", "GET", "/apps/cim/state"); ok(r.status === 200 && r.data.data.ans["s3c6-13-0"][0] === 1 && r.data.updated_at === cimAt, "cim: state round-trips");
+  r = await call("a", "PUT", "/apps/cim/state", { data: { v: 2 }, at: 0 }); ok(r.status === 409 && r.data.updated_at === cimAt && r.data.data.ans["s3c6-13-0"], "cim: stale write → 409 with the server copy");
+  r = await call("a", "PUT", "/apps/cim/state", { data: { v: 2, ans: { "s3c6-13-0": [1, 1, 0] } }, at: cimAt }); ok(r.status === 200 && r.data.updated_at > cimAt, "cim: write on the latest copy");
+  r = await call("a", "PUT", "/apps/cim/state", { data: [1], at: 0 }); ok(r.status === 400, "cim: data must be an object");
+  r = await call("a", "PUT", "/apps/cim/state", { data: { big: "x".repeat(600_001) }, at: 0 }); ok(r.status === 413, "cim: too big → 413");
+  r = await call("a", "GET", "/apps/nope/state"); ok(r.status === 404, "cim: unknown app → 404");
+  r = await call("b", "GET", "/apps/cim/state"); ok(r.status === 200 && r.data.data === null, "cim: private per user");
   // 경영 마이크로디그리: 카드 읽음 → 복습(1 → 3 → 7 → 21 → 60일) → 하루 기록 (모듈 · 카드 id 는 public/mba/index.json 에 있어야 해요)
   r = await call("a", "GET", "/mba/state"); ok(r.status === 200 && Array.isArray(r.data.items) && Array.isArray(r.data.due) && Array.isArray(r.data.days), "mba: state");
   r = await call("a", "PUT", "/mba/read", { module: "accounting", card: "profit-vs-revenue", correct: 2, total: 3 });
