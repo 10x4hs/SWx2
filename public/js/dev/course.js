@@ -1,7 +1,8 @@
 // 과정 목차 (#/sw/vg · #/sw/dev) — 교과서 첫 장처럼: 제목 · 진도 → 오늘 할 일 하나(큰 버튼) → 목차(장마다 진도) → 하루 순서 · 현황 · 왜 이렇게 배우나 · 그림 모아 보기
 //   2026-10-20: 나선 3D 갤러리 대신 종이 위 목차. 지금 장이 맨 먼저 눈에 들어오게 표시해요.
 import { esc } from "../util.js";
-import { index, state, minutes, setMinutes, MINUTES, split, steps, cardsPerDay, nextCards, position, progressOf, metrics, kday, WHY, topbar, C } from "./data.js";
+import { index, state, minutes, setMinutes, MINUTES, split, steps, cardsPerDay, nextCards, position, progressOf, metrics, kday, WHY, topbar, readSet, C } from "./data.js";
+import { mountDepth, fitStage, listPref } from "./depth.js";
 import { figCount } from "../figs/catalog.js";
 
 const LINE = {
@@ -13,7 +14,9 @@ const LINE = {
 const VOL = { vg: "1권", dev: "2권", onto: "3권", aip: "4권" };
 
 export function mountCourse(host, ctx, key) {
-  let alive = true, idx = null, st = null, mins = minutes(), figs = 0;
+  let alive = true, idx = null, st = null, mins = minutes(), figs = 0, depth = null, unfit = null, asList = listPref.get("toc"), k3 = 0;
+  const viewBtn = () => `<button type="button" class="dv-night dp-view" data-view aria-pressed="${asList}">${asList ? "3D로 보기" : "목록으로 보기"}</button>`;
+  const stop3d = () => { depth?.destroy(); depth = null; unfit?.(); unfit = null; };
   host.innerHTML = `${topbar("")}<p class="dv-loading">불러오는 중…</p>`;
   (async () => {
     [idx, st] = await Promise.all([index(), state()]);
@@ -35,8 +38,55 @@ export function mountCourse(host, ctx, key) {
       </section>`;
   }
   function draw() {
+    stop3d();
+    if (!asList) return draw3d();
+    host.classList.remove("dv-deep");
+    drawList();
+  }
+  // 3D 깊이 길: 장마다 판 하나. 위에는 제목 · 진도 몇 개 · 오늘 할 일(작게), 아래는 무대 + 지금 장 패널
+  function draw3d() {
+    const M = metrics(idx, st, mins), pos = position(idx, st), N = cardsPerDay(mins), fresh = nextCards(idx, st, N), due = (st.due || []).length;
+    host.classList.add("dv-deep");
+    host.innerHTML = `${topbar("", viewBtn())}
+      <header class="dp-head">
+        <div class="dp-head-t"><p class="toc-label">${VOL[key] || ""} · ${idx.modules.length}장</p><h1>${esc(C.name)}</h1></div>
+        <dl class="dp-stats">${[["진도", `${Math.round(M.ratio * 100)}%`], ["카드", `${M.got.cards}/${M.tot.cards}`], ["정답률", M.acc == null ? "—" : `${Math.round(M.acc * 100)}%`], ["끝나는 날", kday(M.finish)]].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
+        <a class="dp-today" id="dv-today-sec" href="${C.base}/today"><span>오늘 할 일 · ${mins}분 · 새 카드 ${fresh.length || N}장${due ? ` · 복습 ${due}장` : ""}</span><b>시작 →</b></a>
+      </header>
+      <div class="dp" data-kind="mods"><section class="dp-panel" aria-live="polite"></section><p class="dp-hint" aria-hidden="true">휠 · 스와이프 · ↑↓ 로 다음 장</p></div>
+      ${figs ? `<a class="dp-figs" href="${C.base}/figs">그림 ${figs}개 →</a>` : ""}`;
+    const stage = host.querySelector(".dp"), read = readSet(st);
+    unfit = fitStage(stage);
+    const pk = "sw-depth:" + key;
+    let start = pos.i || 0; try { const v = sessionStorage.getItem(pk); if (v != null) start = Number(v) || 0; } catch {}
+    start = Math.max(0, Math.min(idx.modules.length - 1, start));
+    const panel = (i) => {
+      const m = idx.modules[i], s = stateOf(i, pos), p = progressOf(m, st), pct = Math.round(p.ratio * 100);
+      const nc = m.cards.find((c) => !read.has(m.id + "/" + c.id));
+      const href = nc ? `${C.base}/${m.id}/${nc.id}` : `${C.base}/${m.id}`;
+      return `<p class="dp-k">${esc(m.no)} <span>/ ${idx.modules.length}</span>${s === "now" ? '<em class="dp-now">지금</em>' : s === "done" ? '<em class="dp-done">끝</em>' : ""}</p>
+        <h1 class="dp-t">${esc(m.title)}</h1>
+        <p class="dp-line">“${esc(m.q)}”</p>
+        ${m.sub ? `<p class="dp-sub">${esc(m.sub)}</p>` : ""}
+        <div class="dp-prog"><div class="dp-bar" role="progressbar" aria-label="${esc(m.title)} 진도" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span>${pct}%</span></div>
+        <p class="dp-next">카드 ${p.cards}/${p.nCards} · 사례 ${p.cases}/${p.nCases} · 회의실 ${p.probs}/${p.nProbs}</p>
+        <div class="dp-acts"><a class="dv-btn" href="${href}">${!nc ? "이 장 다시 보기" : p.cards ? "이어서 하기" : "이 장 시작"}</a><a class="dv-link" href="${C.base}/${m.id}">장 개요 →</a></div>`;
+    };
+    const paint = () => { const el = host.querySelector(".dp-panel"); if (el) el.innerHTML = panel(k3); };
+    k3 = start; paint();
+    mountDepth(stage, idx.modules.map((m, i) => {
+      const p = progressOf(m, st);
+      return { dot: `${m.no} ${m.title}`, face: { top: `${m.no}${stateOf(i, pos) === "now" ? "  · 지금" : ""}`, title: m.title, sub: m.short || "", ratio: p.ratio } };
+    }), {
+      shape: [4.2, 2.6], start, label: `${C.name} 장 — 휠 · 스와이프 · 위아래 화살표로 다음 장, Enter 로 열기`,
+      onFocus: (i) => { k3 = i; paint(); try { sessionStorage.setItem(pk, String(i)); } catch {} },
+      onOpen: (i) => { location.hash = `${C.base}/${idx.modules[i].id}`; },
+    }).then((d) => { if (!alive || !stage.isConnected) d.destroy(); else depth = d; })
+      .catch(() => { if (!alive || !stage.isConnected) return; unfit?.(); unfit = null; host.classList.remove("dv-deep"); drawList(); });
+  }
+  function drawList() {
     const M = metrics(idx, st, mins), pos = position(idx, st), S = split(mins), plan = steps(mins);
-    host.innerHTML = `${topbar("")}
+    host.innerHTML = `${topbar("", viewBtn())}
       <div class="toc">
         <header class="toc-h">
           <p class="toc-label">${VOL[key] || ""} · ${idx.modules.length}장 · 하루 ${mins}분</p>
@@ -66,5 +116,6 @@ export function mountCourse(host, ctx, key) {
     bindMins();
   }
   function bindMins() { host.querySelectorAll("[data-min]").forEach((b) => b.addEventListener("click", () => { mins = Number(b.dataset.min); setMinutes(mins); host.querySelector("#dv-today-sec").outerHTML = todaySec(); bindMins(); })); }
-  return () => { alive = false; };
+  host.addEventListener("click", (e) => { if (!e.target.closest("[data-view]") || !idx) return; asList = !asList; listPref.set("toc", asList); draw(); });
+  return () => { alive = false; stop3d(); };
 }
