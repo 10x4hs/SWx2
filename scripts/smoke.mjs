@@ -98,6 +98,9 @@ for (const [p, f] of [["/mba/state", "biz"], ["/dev/state", "dev"], ["/vg/state"
 r = await call("l", "PUT", "/mba/read", { module: "accounting", card: "profit-vs-revenue" }); ok(r.status === 403, "locked: mba write → 403");
 r = await call("l", "GET", "/plans?periods=D:2026-09-28"); ok(r.status === 200, "locked: plans stay open");
 r = await call("l", "GET", "/diary?day=2026-09-28"); ok(r.status === 200, "free: diary is open to everyone (not a locked feature)");
+r = await call("l", "GET", "/ai/models"); ok(r.status === 200, "free: AI for planning — model list open");
+r = await call("l", "POST", "/ai/command", {}); ok(r.status !== 403, `free: AI for planning — /ai/command not locked (${r.status})`);
+r = await call("l", "GET", "/ai/chats"); ok(r.status === 403 && r.data.locked === "ai", "locked: AI tab chats still need the ai feature");
 d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
 // 관리자 두 사람: 기능 신청은 둘 다 승인해야 열림 · 시간 추가 · 추천 보너스 (로컬 진짜 관리자는 잠깐 member 로 내렸다가 되돌려요)
 {
