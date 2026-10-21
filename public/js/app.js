@@ -38,7 +38,7 @@ import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
 import { startLive, stopLive } from "./live.js";
 import { openPassword, initPassword } from "./password.js";
-import { initDock, refreshUnread, loadDockPages, drawDock, pageMenu } from "./dock.js";
+import { initDock, refreshUnread, loadDockPages, drawDock, dropDock } from "./dock.js";
 import { enter as enterRoute, navHref, watchScroll, restoreTop } from "./dock-memory.js"; // Dock 앱마다 보던 곳 그대로
 import { openPalette, initPalette } from "./palette.js";
 import { timer, renderTimer, initTimer } from "./focus-timer.js";
@@ -222,13 +222,9 @@ function renderShell() {
   renderTimer();
   drawDock();
   wireDockDrag($("#dock-list"), {
-    onDrop: async (keys) => {
-      const prev = ctx.me.dock_order;
-      ctx.me.dock_order = keys;
-      try { const r = await api.updateMe({ dock_order: keys }); ctx.me.dock_order = r.user.dock_order; }
-      catch (err) { ctx.me.dock_order = prev; drawDock(); toast(err.message || "순서를 저장하지 못했어요.", "err"); }
-    },
-    onHoldMenu: (el) => { if (!el.dataset.page) return; const r = el.getBoundingClientRect(); pageMenu({ clientX: r.right, clientY: r.top + r.height / 2, preventDefault() {} }, el.dataset.page); },
+    onDrop: dropDock, // 순서 + 폴더 (dock.js · dock-folders.js)
+    // 길게 누르고 떼면 오른쪽 클릭과 같은 메뉴 (페이지 · 메뉴 아이콘 · 폴더 타일 모두) — 폰에서 '폴더에 넣기' 하는 길
+    onHoldMenu: (el) => { const t = el.matches("[data-folder]") ? el.querySelector(".dock-fold-btn") : el, r = t.getBoundingClientRect(); t.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.right, clientY: r.top + r.height / 2 })); },
   });
 }
 

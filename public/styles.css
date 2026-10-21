@@ -3222,3 +3222,35 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
   .rm-compose .btn.rm-bell { font-size: 0; width: 30px; height: 30px; padding: 0; justify-content: center; border-radius: 50%; } /* 폰은 종 아이콘만 */
   .rm-compose .btn.rm-bell::before { content: "🔔"; font-size: 14px; }
 }
+
+/* ---------- Dock 폴더 (dock-folders.js · Discord 서버 폴더처럼) ---------- */
+.dock-folder { display: grid; justify-items: center; gap: 8px; border-radius: 16px; transition: background .2s var(--ease, ease); position: relative; }
+.dock-folder.open { background: color-mix(in srgb, var(--ink) 7%, transparent); padding-bottom: 4px; }
+.dock-folder:not(.open) > .dock-fold-items { display: none; }
+.dock-fold-items { display: grid; justify-items: center; gap: 8px; }
+.dock-folder.open > .dock-fold-items { animation: fold-in .2s var(--ease, ease) both; }
+@keyframes fold-in { from { opacity: 0; transform: translateY(-4px); } }
+.fold-grid { display: grid; grid-template-columns: 15px 15px; grid-auto-rows: 15px; align-content: center; justify-content: center; gap: 3px; background: color-mix(in srgb, var(--ink) 12%, transparent); }
+.fold-grid::after { display: none; }
+.fold-mini { position: relative; width: 15px; height: 15px; }
+.fold-mini > .app-ic { position: absolute; left: 0; top: 0; transform: scale(.34) !important; transform-origin: 0 0; transition: none; }
+.dock-folder.open > .dock-fold-btn .fold-grid { background: color-mix(in srgb, var(--ink) 18%, transparent); }
+.dock-folder.open > .dock-fold-btn .dock-ping { display: none !important; } /* 펼치면 안의 아이콘이 직접 보여 줘요 */
+.dock-folder.open > .dock-fold-btn.has-unread .app-ic { box-shadow: none; }
+.dock-folder:not(.open):has(.dock-fold-items [aria-current]) > .dock-fold-btn::before { content: ""; position: absolute; left: -9px; top: 50%; width: 5px; height: 5px; border-radius: 50%; transform: translateY(-50%); background: var(--ink); }
+.dock-folder:not(.open):has(.dock-fold-items [aria-current]) > .dock-fold-btn.has-unread::before { display: none; }
+/* 끌어서 가운데에 0.4초 머물면: 여기 놓으면 폴더가 돼요 */
+.dock-list > .dock-merge { outline: 2px solid var(--accent, #0a84ff); outline-offset: 2px; border-radius: 14px; transform: scale(1.06); }
+.dock-list > .dock-folder.dock-merge { border-radius: 16px; }
+.dock-fold-items > [data-dock] { -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; touch-action: manipulation; transition: transform .18s var(--ease, ease), opacity .18s; }
+.dock-fold-items > .dock-held { transform: scale(1.1); }
+.dock-fold-items > .dock-dragging { transform: scale(1.16); opacity: .9; z-index: 10; position: relative; filter: drop-shadow(0 6px 14px rgba(0,0,0,.35)); }
+@media (max-width: 860px) {
+  .dock-folder, .dock-fold-items { display: flex; gap: 6px; align-items: center; flex: none; }
+  .dock-folder.open { padding: 0 4px 0 0; }
+  .fold-grid { grid-template-columns: 13px 13px; grid-auto-rows: 13px; gap: 2px; }
+  .fold-mini { width: 13px; height: 13px; }
+  .fold-mini > .app-ic { transform: scale(.325) !important; }
+  .dock-folder:not(.open):has(.dock-fold-items [aria-current]) > .dock-fold-btn::before { left: 50%; top: auto; bottom: -4px; transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) { .dock-folder, .dock-folder.open > .dock-fold-items, .dock-fold-items > [data-dock], .dock-list > .dock-merge { animation: none; transition: none; } }
