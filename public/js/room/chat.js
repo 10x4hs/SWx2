@@ -9,6 +9,24 @@ import { richText, firstUrl, timeOf, dayKey, dayLabel, thumbHTML, KIND_LABEL, ar
 
 const GROUP_GAP = 5 * 60 * 1000; // 같은 사람이 5분 안에 이어 쓰면 한 묶음
 const NEAR = 120;                 // 바닥에서 이만큼 안쪽이면 "바닥에 있다" 고 봐요
+// 사진 · 영상: 사진은 긴 변 2048px 로 줄여서(gif 는 그대로) 10MB, 영상은 50MB 까지
+const IMG_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"], VID_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+const IMG_MAX = 10 * 1024 * 1024, VID_MAX = 50 * 1024 * 1024, IMG_SIDE = 2048;
+const mediaSrc = (key) => "/api/room/media/" + encodeURIComponent(key);
+// 큰 사진 줄이기 (작으면 · gif 면 그대로). png 는 png 로, 나머지는 jpeg 0.86
+async function shrink(file) {
+  if (file.type === "image/gif") return file;
+  const bmp = await createImageBitmap(file).catch(() => null);
+  if (!bmp) return file;
+  const k = Math.min(1, IMG_SIDE / Math.max(bmp.width, bmp.height));
+  if (k === 1 && file.size <= IMG_MAX) { bmp.close?.(); return file; }
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); bmp.close?.();
+  const type = file.type === "image/png" ? "image/png" : "image/jpeg";
+  let out = await new Promise((r) => c.toBlob(r, type, 0.86));
+  if (out && out.size > IMG_MAX && type === "image/png") out = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.86)); // png 가 너무 크면 jpeg 로
+  return out || file;
+}
 
 // env: { ctx, getAiName(), onAiName(name), toLibrary(url), viewItem(id), getRoom(), onRoomInfo(r) }
 // 방은 'all'(우리 셋) 또는 'dm:<id>:<id>'. setRoom() 으로 바꾸면 목록을 비우고 새로 받아요.
@@ -27,6 +45,8 @@ export function mountChat(el, env) {
       <form class="rm-compose" id="rm-compose" autocomplete="off">
         <div class="rm-chip" id="rm-chip" hidden role="listbox" aria-label="부를 사람"><span id="rm-chip-list"></span><span class="faint">Tab · ↑↓ 로 고르기</span></div>
         <div class="rm-compose-box">
+          <button class="icon-btn sm rm-attach" type="button" id="rm-attach" title="사진 · 영상 보내기 (끌어다 놓기 · 붙여넣기도 돼요)" aria-label="사진 · 영상 보내기">${icon.image(16)}</button>
+          <input type="file" id="rm-file" accept="${[...IMG_TYPES, ...VID_TYPES].join(",")}" multiple hidden>
           <textarea id="rm-ta" rows="1" placeholder="메시지… Enter 보냄 · Shift+Enter 줄바꿈" aria-label="메시지 입력" maxlength="2000"></textarea>
           <button class="btn ghost sm rm-call" type="button" id="rm-call" title="AI 이름을 넣어 불러요">${icon.spark(13)}AI 부르기</button>
           <button class="btn ghost sm rm-bell" type="button" id="rm-bell" hidden title="새 메시지가 오면 이 기기에 알림을 보내요">🔔 알림 켜기</button>
@@ -86,6 +106,7 @@ export function mountChat(el, env) {
     let body;
     if (ai) body = `<div class="rm-bubble md rm-md">${renderMarkdown(m.body)}</div>`;
     else if (m.kind === "share") body = shareHTML(m);
+    else if (m.kind === "image" || m.kind === "video") body = mediaHTML(m);
     else body = `<div class="rm-bubble">${richText(m.body, aiName(), mentionNames())}</div>`;
     const tools = [
       url ? `<button type="button" class="icon-btn sm" data-lib="${esc(url)}" aria-label="창고에 넣기" title="창고에 넣기">${icon.plus(14)}</button>` : "",
@@ -100,6 +121,16 @@ export function mountChat(el, env) {
         ${err}
       </div>
     </article>`;
+  }
+  // 사진 · 영상 말풍선 (캡션은 아래). pending = 올리는 중 (진행률 막대)
+  function mediaHTML(m) {
+    const src = m.local || mediaSrc(m.ref_id);
+    const media = m.kind === "image"
+      ? `<img class="rm-img" src="${esc(src)}" alt="${esc(m.body || "사진")}" loading="lazy" decoding="async"${m.pending ? "" : ` data-zoom="${esc(src)}"`}>`
+      : `<video class="rm-vid" src="${esc(src)}" controls preload="metadata" playsinline></video>`;
+    const bar = m.pending ? `<div class="rm-up" aria-label="올리는 중"><i style="width:${Math.round((m.progress || 0) * 100)}%"></i></div>` : "";
+    const cap = m.body ? `<div class="rm-bubble rm-cap">${richText(m.body, aiName(), mentionNames())}</div>` : "";
+    return `<div class="rm-media${m.pending ? " pending" : ""}">${media}${bar}${cap}</div>`;
   }
   function shareHTML(m) {
     const it = m.item;
@@ -200,6 +231,40 @@ export function mountChat(el, env) {
     } catch (e) { toast(e.message || "보내지 못했어요.", "err"); ta.value = body; grow(); }
     finally { S.busy = false; typing.hidden = true; if (el.isConnected) { $("#rm-send", el).disabled = false; ta.focus(); } }
   }
+  // 사진 · 영상 보내기: 글상자 내용은 첫 파일의 캡션. 올리는 동안 내 쪽에 임시 말풍선 (진행률)
+  async function sendFiles(files) {
+    files = [...files].filter(Boolean);
+    if (!files.length) return;
+    let caption = ta.value.trim();
+    for (const f of files) {
+      const isImg = IMG_TYPES.includes(f.type), isVid = VID_TYPES.includes(f.type);
+      if (!isImg && !isVid) { toast("사진(jpg · png · webp · gif)이나 영상(mp4 · webm · mov)만 보낼 수 있어요.", "err"); continue; }
+      let blob = f;
+      if (isImg) { try { blob = await shrink(f); } catch {} if (blob.size > IMG_MAX) { toast("사진이 너무 커요. 줄여도 10MB 가 넘어요.", "err"); continue; } }
+      else if (f.size > VID_MAX) { toast("영상이 너무 커요. 50MB 까지 보낼 수 있어요.", "err"); continue; }
+      const cap = caption; if (cap) { caption = ""; ta.value = ""; draft.clear(); grow(); }
+      const tmp = { id: "up-" + Math.random().toString(36).slice(2), user_id: me(), kind: isImg ? "image" : "video", body: cap, created_at: Date.now(), pending: true, progress: 0, local: URL.createObjectURL(blob) };
+      S.msgs.set(tmp.id, tmp); render(); toBottom();
+      const bar = () => msgsEl.querySelector(`[data-id="${tmp.id}"] .rm-up i`);
+      try {
+        const r = await api.sendRoomMedia(blob, { room: room(), caption: cap || undefined }, (p) => { tmp.progress = p; const b = bar(); if (b) b.style.width = Math.round(p * 100) + "%"; });
+        S.msgs.delete(tmp.id); if (r.message) S.msgs.set(r.message.id, r.message);
+      } catch (e) { S.msgs.delete(tmp.id); toast(e.message || "보내지 못했어요.", "err"); if (cap && !ta.value) { ta.value = cap; grow(); } }
+      finally { URL.revokeObjectURL(tmp.local); }
+      if (el.isConnected) { render(); toBottom(); }
+    }
+  }
+  // 사진 크게 보기 (Esc · 바깥 누르면 닫혀요)
+  function lightbox(src) {
+    const box = document.createElement("div");
+    box.className = "rm-lb"; box.setAttribute("role", "dialog"); box.setAttribute("aria-label", "사진 크게 보기");
+    box.innerHTML = `<img src="${esc(src)}" alt=""><button type="button" class="icon-btn rm-lb-x" aria-label="닫기">${icon.x(18)}</button>`;
+    const close = () => { box.remove(); document.removeEventListener("keydown", onKey, true); };
+    const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+    box.addEventListener("click", (e) => { if (e.target.tagName !== "IMG") close(); });
+    document.addEventListener("keydown", onKey, true);
+    document.body.append(box); box.querySelector(".rm-lb-x").focus();
+  }
   async function retryAi(id) {
     $("#rm-typing-t", el).textContent = `${aiName()}가 쓰는 중…`; typing.hidden = false;
     try { const { ai } = await api.retryRoomAi(id, room()); if (ai) S.msgs.set(ai.id, ai); S.aiErr = null; render(); toBottom(); }
@@ -248,11 +313,21 @@ export function mountChat(el, env) {
   $("#rm-call", el).addEventListener("click", () => { if (mentions(ta.value)) ta.focus(); else insertMention(); });
   $("#rm-compose", el).addEventListener("submit", (e) => { e.preventDefault(); send(); });
 
+  const fileIn = $("#rm-file", el);
+  $("#rm-attach", el).addEventListener("click", () => fileIn.click());
+  fileIn.addEventListener("change", () => { const f = [...fileIn.files]; fileIn.value = ""; sendFiles(f); });
+  ta.addEventListener("paste", (e) => { const f = [...(e.clipboardData?.files || [])]; if (f.length) { e.preventDefault(); sendFiles(f); } });
+  const chatBox = $(".rm-chat", el);
+  chatBox.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { e.preventDefault(); chatBox.classList.add("drop"); } });
+  chatBox.addEventListener("dragleave", (e) => { if (!chatBox.contains(e.relatedTarget)) chatBox.classList.remove("drop"); });
+  chatBox.addEventListener("drop", (e) => { if (!e.dataTransfer?.files?.length) return; e.preventDefault(); chatBox.classList.remove("drop"); sendFiles(e.dataTransfer.files); });
+
   list.addEventListener("scroll", () => { if (nearBottom()) { pill.hidden = true; markRead(); } });
   pill.addEventListener("click", () => { toBottom(); markRead(); });
   el.addEventListener("click", async (e) => {
-    const t = e.target.closest("[data-del],[data-lib],[data-view],[data-retry],#rm-retry");
+    const t = e.target.closest("[data-del],[data-lib],[data-view],[data-retry],[data-zoom],#rm-retry");
     if (!t) return;
+    if (t.dataset.zoom) return lightbox(t.dataset.zoom);
     if (t.id === "rm-retry") return poll(true);
     if (t.dataset.retry) return retryAi(t.dataset.retry);
     if (t.dataset.lib) return env.toLibrary(t.dataset.lib);

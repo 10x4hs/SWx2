@@ -2,7 +2,9 @@
 //   GET  /room?room=&since=&limit=   메시지 (since 뒤 것만) + ai_name + unread + now
 //   POST /room { room?, body, reply_to? }  내 메시지 저장 → AI 이름/@ai 를 불렀으면 AI 답도 같이
 //   POST /room/ai { message_id }     AI 답 다시 시도 (사람마다 30초에 한 번)
-//   DELETE /room/:id                 내 것만
+//   DELETE /room/:id                 내 것만 (사진 · 영상이면 R2 파일도 같이)
+//   POST /room/media?room=&caption=&reply_to=  파일 그대로(JSON 아님) → kind 'image' | 'video', ref_id = R2 키, body = 캡션
+//   GET  /room/media/:key            그 방에 들어갈 수 있는 사람만 · Range 지원(영상 넘겨 보기)
 //   PUT  /room/read { room?, at? }   여기까지 읽음 · GET /room/unread?room= → { unread, rooms:{...} }
 //   GET/PUT /room/settings { ai_name }  AI 이름 (방 공통, 2~12자) → 'all' 에 system 메시지
 // 방 권한: 팀 방('all' = 첫 팀 SWx2, 'team:<id>')은 그 팀 사람만, dm 방은 같은 팀인 두 사람만 (아니면 403). room 을 안 주면 'all'.
@@ -28,6 +30,18 @@ const TEAM_RE = /^team:[A-Za-z0-9-]{1,64}$/;
 export const HELP_RE = new RegExp(`^help:(${UUID})$`);
 export const helpRoom = (userId) => "help:" + userId;
 const adminIds = async (env) => (await env.DB.prepare("SELECT id FROM users WHERE role = 'admin' AND state = 'active'").all()).results.map((r) => r.id);
+
+// 사진 · 영상 (R2 FILES, 키 room-<uuid>.<ext>, 방은 customMetadata.room — 메시지를 지우면 파일도 지워져서 따로 표가 필요 없어요)
+const MEDIA = { "image/jpeg": ["image", "jpg"], "image/png": ["image", "png"], "image/webp": ["image", "webp"], "image/gif": ["image", "gif"], "video/mp4": ["video", "mp4"], "video/webm": ["video", "webm"], "video/quicktime": ["video", "mov"] };
+const MEDIA_MAX = { image: 10 * 1024 * 1024, video: 50 * 1024 * 1024 };
+const MEDIA_KEY = /^room-[0-9a-f-]{36}\.(?:jpg|png|webp|gif|mp4|webm|mov)$/;
+// 첫 바이트로 진짜 그 형식인지 (확장자 · content-type 만 믿지 않게)
+const sniff = (b, ext) => {
+  const at = (i, ...v) => v.every((x, j) => b[i + j] === x), str = (i, t) => [...t].every((c, j) => b[i + j] === c.charCodeAt(0));
+  return ext === "jpg" ? at(0, 0xff, 0xd8, 0xff) : ext === "png" ? at(0, 0x89, 0x50, 0x4e, 0x47) : ext === "gif" ? str(0, "GIF8") : ext === "webp" ? str(0, "RIFF") && str(8, "WEBP")
+    : ext === "webm" ? at(0, 0x1a, 0x45, 0xdf, 0xa3) : str(4, "ftyp"); // mp4 · mov 는 4바이트 뒤 'ftyp'
+};
+export const MEDIA_LABEL = { image: "📷 사진", video: "🎬 영상" };
 
 const AT_AI_RE = /@ai(?![a-z0-9])/i;
 // 이름을 불렀나: 한글은 단어 경계가 없어서 이름 문자열이 들어 있으면 부른 것으로 봐요 (대소문자 무시). '@ai' 도 됨
@@ -129,7 +143,7 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     const KIND = { book: "책", link: "링크", video: "영상" };
     const lines = msgs.results.reverse().map((m) => {
       const who = m.kind === "ai" ? `${name}(AI)` : m.kind === "system" ? "시스템" : nameOf.get(m.user_id) || "떠난 멤버";
-      const text = m.kind === "share" ? `[창고에 올림] ${m.body}` : m.body;
+      const text = m.kind === "share" ? `[창고에 올림] ${m.body}` : MEDIA_LABEL[m.kind] ? `[${MEDIA_LABEL[m.kind]}을 보냄]${m.body ? " " + m.body : ""}` : m.body; // AI 는 사진 · 영상 내용은 못 봐요
       return `${who}: ${text}`;
     });
     const shelf = items.results.length
@@ -210,11 +224,63 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     catch (e) { fail(e.status && e.status >= 400 && e.status < 600 ? e.status : 502, e.message || "AI 답을 받지 못했어요."); }
   });
 
+  // ---------- 사진 · 영상 ----------
+  on("POST", "/room/media", async ({ req, env, q, user, ec }) => {
+    const room = await roomOf(env, q.get("room"), user);
+    const type = (req.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    const [kind, ext] = MEDIA[type] || [];
+    if (!kind) fail(400, "사진(jpg · png · webp · gif)이나 영상(mp4 · webm · mov)만 보낼 수 있어요.");
+    if (!env.FILES) fail(500, "파일 저장소가 없어요.");
+    if (Number(req.headers.get("content-length")) > MEDIA_MAX[kind]) fail(413, kind === "image" ? "사진이 너무 커요 (10MB 까지)." : "영상이 너무 커요 (50MB 까지).");
+    const caption = (q.get("caption") || "").trim();
+    if (caption.length > MAX_BODY) fail(400, `메시지는 ${MAX_BODY}자까지 쓸 수 있어요.`);
+    const buf = await req.arrayBuffer();
+    if (!buf.byteLength) fail(400, "빈 파일이에요.");
+    if (buf.byteLength > MEDIA_MAX[kind]) fail(413, kind === "image" ? "사진이 너무 커요 (10MB 까지)." : "영상이 너무 커요 (50MB 까지).");
+    if (!sniff(new Uint8Array(buf, 0, Math.min(16, buf.byteLength)), ext)) fail(400, "파일 내용이 형식과 달라요.");
+    const rt = q.get("reply_to"), reply_to = rt && rt.length <= 64 ? rt : null;
+    const key = `room-${uid()}.${ext}`;
+    await env.FILES.put(key, buf, { httpMetadata: { contentType: type }, customMetadata: { room, owner: user.id } });
+    let message;
+    try { message = await postRoomMessage(env, { id: uid(), room, user_id: user.id, kind, body: caption, ref_id: key, reply_to, created_at: now() }); }
+    catch (e) { await env.FILES.delete(key); throw e; } // 메시지를 못 넣었으면 파일도 남기지 않아요
+    const [, members] = await Promise.all([markRead(env, user.id, room, message.created_at), roomMembers(env, room, user.id)]);
+    pushUsers(env, ec, members, { room });
+    return json({ message }, 201); // 캡션에 AI 이름이 있어도 사진은 못 보니 답하지 않아요
+  });
+
+  on("GET", "/room/media/:key", async ({ req, env, user, params }) => {
+    const key = decodeURIComponent(params.key);
+    if (!MEDIA_KEY.test(key) || !env.FILES) fail(404, "없는 파일이에요.");
+    const head = await env.FILES.head(key);
+    if (!head) fail(404, "없는 파일이에요.");
+    await roomOf(env, head.customMetadata?.room, user); // 그 방 사람이 아니면 403
+    // Range: 'bytes=a-b' · 'bytes=a-' · 'bytes=-n' (영상 넘겨 보기 · 사파리는 꼭 필요해요)
+    const size = head.size, m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get("range") || "");
+    let range = null;
+    if (m && (m[1] || m[2])) {
+      const start = m[1] ? Number(m[1]) : Math.max(0, size - Number(m[2])), end = m[1] && m[2] ? Math.min(Number(m[2]), size - 1) : size - 1;
+      if (start >= size || start > end) return new Response(null, { status: 416, headers: { "content-range": `bytes */${size}` } });
+      range = { offset: start, length: end - start + 1 };
+    }
+    const obj = await env.FILES.get(key, range ? { range } : {});
+    if (!obj) fail(404, "없는 파일이에요.");
+    const h = new Headers();
+    obj.writeHttpMetadata(h);
+    h.set("etag", obj.httpEtag); h.set("accept-ranges", "bytes");
+    h.set("cache-control", "private, max-age=86400"); // 키가 바뀌지 않는 파일이라 내 브라우저에만 하루
+    h.set("x-content-type-options", "nosniff");
+    if (range) { h.set("content-range", `bytes ${range.offset}-${range.offset + range.length - 1}/${size}`); h.set("content-length", String(range.length)); }
+    else h.set("content-length", String(size));
+    return new Response(obj.body, { status: range ? 206 : 200, headers: h });
+  });
+
   on("DELETE", "/room/:id", async ({ env, params, user }) => {
-    const msg = await env.DB.prepare("SELECT id, user_id FROM room_messages WHERE id = ?").bind(params.id).first();
+    const msg = await env.DB.prepare("SELECT id, user_id, kind, ref_id FROM room_messages WHERE id = ?").bind(params.id).first();
     if (!msg) fail(404, "메시지를 찾을 수 없어요.");
     if (msg.user_id !== user.id) fail(403, "내 메시지만 지울 수 있어요.");
     await env.DB.prepare("DELETE FROM room_messages WHERE id = ?").bind(params.id).run();
+    if (MEDIA_LABEL[msg.kind] && MEDIA_KEY.test(msg.ref_id || "") && env.FILES) await env.FILES.delete(msg.ref_id);
     return json({ ok: true });
   });
 
@@ -258,7 +324,7 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
     const m = total ? lastRes.results[0] : null;
     if (m) {
       const low = String(m.body || "").toLowerCase(), me = [user.display_name, user.username].filter(Boolean).map((x) => "@" + x.toLowerCase());
-      last = { room: m.room, who: m.kind === "ai" ? m.ai_name || "마피아" : m.who || "누군가", body: String(m.body || "").slice(0, 140), mention: me.some((x) => low.includes(x)), dm: m.room.startsWith("dm:"), help: m.room.startsWith("help:"), forAdmin: m.room.startsWith("help:") && m.room !== "help:" + user.id };
+      last = { room: m.room, who: m.kind === "ai" ? m.ai_name || "마피아" : m.who || "누군가", body: (String(m.body || "") || MEDIA_LABEL[m.kind] || "").slice(0, 140), mention: me.some((x) => low.includes(x)), dm: m.room.startsWith("dm:"), help: m.room.startsWith("help:"), forAdmin: m.room.startsWith("help:") && m.room !== "help:" + user.id };
     }
     return json({ room, unread: rooms[room] || 0, rooms, total, last });
   });

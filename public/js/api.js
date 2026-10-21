@@ -254,6 +254,16 @@ export const api = {
   room: (since, limit, room) => request("GET", "/room?" + qs({ since, limit, room })),
   sendRoom: (b) => request("POST", "/room", b),
   retryRoomAi: (message_id, room) => request("POST", "/room/ai", { message_id, room }),
+  // 사진 · 영상: 파일 그대로 올려요 (XHR 이라 진행률 onProgress(0~1) 을 받아요) → { message }
+  sendRoomMedia: (blob, { room, caption, reply_to } = {}, onProgress) => new Promise((ok, no) => {
+    const x = new XMLHttpRequest();
+    x.open("POST", "/api/room/media?" + qs({ room, caption, reply_to }));
+    x.setRequestHeader("content-type", blob.type); x.setRequestHeader("x-trio", "1");
+    if (onProgress) x.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+    x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch {} x.status < 300 ? ok(d) : no(new ApiError(x.status, d.error || (x.status === 413 ? "파일이 너무 커요." : "보내지 못했어요."), d)); };
+    x.onerror = () => no(new ApiError(0, "서버에 연결할 수 없어요. 인터넷 연결을 확인해 주세요."));
+    x.send(blob);
+  }),
   deleteRoomMessage: (id, room) => request("DELETE", "/room/" + encodeURIComponent(id) + "?" + qs({ room })),
   readRoom: (at, room) => request("PUT", "/room/read", { at, room }),
   roomUnread: () => request("GET", "/room/unread"),
