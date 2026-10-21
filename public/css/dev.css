@@ -495,3 +495,60 @@ input.dv-plan-in { min-height: 48px; }
   .figs { padding: 24px 12px 60px; }
 }
 @media (prefers-reduced-motion: reduce) { .dv *, .fig-dlg * { transition: none !important; animation: none !important; } }
+
+/* ---------- 깊이 길 (#/sw 책 · #/sw/<과정> 장) — 2026-10-21 ----------
+   한 번에 판 하나만 또렷하게. 선은 가늘게, 강조는 잉크 파랑 하나. 글은 WebGL 밖 패널에 (명조 제목 + Pretendard). */
+.dv.dv-deep { padding-bottom: 0; }
+.main:has(.dv-deep) { overflow: hidden; }
+.dp { position: relative; overflow: hidden; min-height: 380px; background: var(--pp-bg); }
+.dp-c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+.dp-c:focus-visible { box-shadow: inset 0 0 0 2px var(--pp-acc); }
+.dp-panel { position: absolute; left: clamp(20px, 4vw, 56px); top: 50%; transform: translateY(-50%); z-index: 2; width: min(400px, 40%); pointer-events: none; }
+.dp-panel a, .dp-panel button { pointer-events: auto; }
+.dp-k { margin: 0; display: flex; align-items: center; gap: 10px; font: 600 13px/1.4 var(--pp-mono); color: var(--pp-acc); letter-spacing: .02em; }
+.dp-k span { color: var(--pp-mute); }
+.dp-k em { font: 600 12px var(--pp-ko); font-style: normal; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.dp-now { color: var(--pp-acc); }
+.dp-done { color: var(--pp-ok); }
+.dv .dp-t { margin: 10px 0 12px; font: 700 clamp(28px, 3.4vw, 40px)/1.2 var(--pp-serif); }
+.dp-line { margin: 0; font-size: 16px; line-height: 1.7; color: var(--pp-ink2); }
+.dp-sub { margin: 8px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--pp-mute); }
+.dp-prog { display: flex; align-items: center; gap: 12px; margin-top: 20px; font: 600 13px var(--pp-ko); color: var(--pp-sub); }
+.dp-bar { flex: 0 0 160px; height: 2px; background: var(--pp-line); }
+.dp-bar i { display: block; height: 100%; background: var(--pp-acc); }
+.dp-next { margin: 8px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--pp-sub); }
+.dp-acts { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 20px; }
+.dp-dots { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); z-index: 3; display: flex; flex-direction: column; gap: 2px; }
+.dp-dots button { display: flex; align-items: center; justify-content: flex-end; gap: 10px; height: 26px; padding: 0 6px; border: 0; background: none; cursor: pointer; color: var(--pp-mute); font: 500 12px var(--pp-ko); }
+.dp-dots i { order: 2; width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--pp-line2); transition: all .2s; }
+.dp-dots span { opacity: 0; transition: opacity .15s; white-space: nowrap; }
+.dp-dots button:hover span, .dp-dots button:focus-visible span { opacity: 1; }
+.dp-dots button.on i { background: var(--pp-acc); border-color: var(--pp-acc); transform: scale(1.3); }
+.dp-dots button.on { color: var(--pp-ink); }
+.dp-hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); margin: 0; z-index: 2; font: 500 12px var(--pp-ko); color: var(--pp-mute); pointer-events: none; }
+.dp-view { font-size: 13px; }
+.dp-head { display: flex; align-items: center; gap: 12px 28px; flex-wrap: wrap; padding: 14px clamp(20px, 4vw, 56px); border-bottom: 1px solid var(--pp-line); }
+.dv .dp-head h1 { font: 700 22px/1.3 var(--pp-serif); }
+.dp-head-t { margin-right: auto; }
+.dp-stats { display: flex; gap: 22px; margin: 0; }
+.dp-stats dt { font: 500 11.5px var(--pp-ko); color: var(--pp-mute); }
+.dp-stats dd { margin: 2px 0 0; font: 700 15px var(--pp-ko); color: var(--pp-ink); }
+.dv a.dp-today { display: inline-flex; align-items: center; gap: 12px; height: 40px; padding: 0 6px 0 14px; border: 1px solid var(--pp-line2); border-radius: 10px; text-decoration: none; color: var(--pp-ink); font: 500 13.5px var(--pp-ko); }
+.dp-today b { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 7px; background: var(--pp-acc); color: var(--pp-on-acc); font-weight: 600; }
+.dv a.dp-today:hover { border-color: var(--pp-acc); color: var(--pp-ink); }
+.dv a.dp-figs { position: absolute; right: 18px; bottom: 14px; z-index: 3; font: 500 12.5px var(--pp-ko); color: var(--pp-sub); text-decoration: none; }
+.dv-deep { position: relative; }
+@media (max-width: 760px) {
+  .dp-panel { left: 0; right: 0; top: auto; bottom: 0; transform: none; width: auto; padding: 36px 16px 16px; background: linear-gradient(to bottom, transparent, var(--pp-bg) 32px); }
+  .dv .dp-t { font-size: 26px; margin: 6px 0 8px; }
+  .dp-line { font-size: 14.5px; }
+  .dp-sub, .dp-hint { display: none; }
+  .dp-prog { margin-top: 12px; }
+  .dp-acts { margin-top: 14px; }
+  .dp-dots { right: 4px; top: 30%; }
+  .dp-dots span { display: none; }
+  .dp-head { padding: 10px 16px; gap: 8px 16px; }
+  .dp-stats { gap: 14px; }
+  .dp-stats div:nth-child(n+3) { display: none; }
+  .dv a.dp-figs { display: none; }
+}

@@ -14,7 +14,7 @@
 //   ⑪-b 노트 우클릭 — 목록 · Brain 점 · Brain 목록에서 (폰은 길게 누르기, 키보드 Shift+F10): 이름 바꾸기(다른 노트 [[링크]] 도) · 새 하위 노트(Edit) · 옮기기 · 지우기 Undo / 5초 뒤 · 화면을 떠나면 바로 (2026-10-15)
 //   ⑫ 뉴스 — 하루 한 호 (가독성 · 한국어) · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13)
 //   ⑬ 경영 마이크로디그리 — 모듈 지도 · 현황판 · 하루 60/90/120분 · 2주 계획 · 카드(정적 이익 지도 · 더 자세히 · 퀴즈 · AI 튜터) · 케이스(내 답 먼저) · 연습문제 채점 · 오늘 · 회사 세우기 세금 계산 · 용어 찾기 (2026-10-14)
-//   ⑬-3 SW 과정 — 종이 교과서(책 두 권 · 목차 · 3D 없음) · 카드 속 설명 그림(단계 · 끌기 · 영상) · 밤 · 튜터 크기 · 그림 모아 보기 · Dock 으로 돌아오면 보던 카드 · 스크롤 그대로 (2026-10-20)
+//   ⑬-3 SW 과정 — 첫 화면 · 목차는 3D 깊이 길(목록 보기 = 예전 종이 목록) · 책 네 권 · 카드 속 설명 그림(단계 · 끌기 · 영상) · 밤 · 튜터 크기 · 그림 모아 보기 · Dock 으로 돌아오면 보던 카드 · 스크롤 그대로 (2026-10-20)
 //   ⑭ 홈 오늘 링 끌기 — 마우스를 대면 선 · 끌면 +분 · 놓으면 이름 칸(Enter 저장 · Esc 취소) · 거꾸로 · 겹침 · 그냥 누르면 원래대로 · 전체 쪽 오늘 링 · 친구 차트 · 터치는 그대로 (2026-10-15)
 //   ⑮ 하루 계획표 짧은 일정 — 맞닿은 일정은 위아래로(5분 휴식 + 바로 뒤 시험) · 붙어 있으면 그 칸만 30px 로 늘어남 · 진짜 겹침은 나란히 · 늘어난 칸의 빈 칸 시각 · 끌기 시각 (2026-10-15)
 //   ⑯ 홈 Day 쪽 ‹ 날짜 › — › 내일(바늘 없음 · 오늘로) · 내일에 끌어 넣기 → 그 날짜 · 새로 열어도 고른 날 · 지난 기억은 오늘 · ‹ 어제 점수 · 링 누르면 그날 계획표 (2026-10-15)
@@ -721,12 +721,19 @@ try {
     {
       errs = [];
       await go("#/sw/dev", 2500);
-      // 과정 목차(종이 교과서, 2026-10-20): 오늘 할 일 하나 + 목차 12장(지금 장 하나 표시) + 하루 순서 · 학습 설계 · 하루 시간 — 3D 캔버스 없음
+      // 과정 목차 3D 깊이 길 (2026-10-21): 캔버스 하나 + 장마다 점 12개 + ↓ 키로 다음 장 · 위에 작은 '오늘 할 일'
+      await p.evaluate(() => { try { localStorage.removeItem("sw-list:toc"); } catch {} }); await go("#/sw/dev", 3000);
+      await p.locator(".dp-c").first().focus().catch(() => {}); await p.keyboard.press("ArrowDown"); await sleep(1100);
+      const d3 = await p.evaluate(() => ({ canvas: document.querySelectorAll(".host-dev canvas.dp-c").length, dots: document.querySelectorAll(".dp-dots button").length, cur: [...document.querySelectorAll(".dp-dots button")].findIndex((b) => b.classList.contains("on")), today: !!document.querySelector(".dp-head a, .dp-head .dv-btn"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      ok(d3.canvas === 1 && d3.dots === 12 && d3.cur >= 1 && d3.today && !d3.over && !errs.length, `${tv} · 개발 목차 3D — 캔버스 ${d3.canvas} · 장 점 ${d3.dots} · ↓ 뒤 ${d3.cur + 1}번째 · 오늘 할 일 ${d3.today} · 가로 넘침 ${d3.over}${errs.length ? " — " + errs[0] : ""}`);
+      // 목록으로 보기 = 예전 종이 목차: 오늘 할 일 하나 + 목차 12장(지금 장 하나 표시) + 하루 순서 · 학습 설계 · 하루 시간
+      await p.evaluate(() => { try { localStorage.setItem("sw-list:toc", "1"); } catch {} }); errs = []; await go("#/sw/dev", 2500);
       const dh = await p.evaluate(() => ({ dock: !!document.querySelector('[data-nav="dev"]'), today: /오늘/.test(document.querySelector(".toc-today .dv-btn")?.textContent || ""), now: document.querySelectorAll(".toc-list .dv-mod.now").length, canvas: document.querySelectorAll(".host-dev canvas").length,
         plan: document.querySelectorAll(".dv-plan li").length, why: document.querySelectorAll(".dv-why .dv-panel").length, mods: document.querySelectorAll(".toc-list .dv-mod").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await p.click('.dv [data-min="60"]').catch(() => {}); await sleep(250);
       const d60 = await p.evaluate(() => /60분/.test(document.querySelector("#dv-today-h")?.textContent || "") && document.querySelector('[data-min="60"]')?.getAttribute("aria-pressed") === "true");
       await p.click('.dv [data-min="45"]').catch(() => {});
+      await p.evaluate(() => { try { localStorage.removeItem("sw-list:toc"); } catch {} });
       ok(dh.dock && dh.today && dh.now === 1 && dh.canvas === 0 && dh.plan === 5 && dh.why === 6 && dh.mods === 12 && d60 && !dh.over && !errs.length, `${tv} · 개발 목차 — 독 ${dh.dock} · 오늘 할 일 ${dh.today} · 지금 장 ${dh.now} · 3D 캔버스 ${dh.canvas} · 순서 ${dh.plan} · 학습 설계 ${dh.why} · 장 ${dh.mods} · 60분 ${d60} · 가로 넘침 ${dh.over}${errs.length ? " — " + errs[0] : ""}`);
       const di = await (await ctx.request.get(BASE + "/dev/index.json")).json(), sm = di.modules.find((m) => m.id === "security");
       const sd = await (await ctx.request.get(BASE + "/dev/security.json")).json();
@@ -774,14 +781,19 @@ try {
     // ---------- ⑬-3 SW 과정 — 책 두 권 · 옛 #/dev 주소 · VG 목차 · 카드 속 설명 그림(단계 · 끌기 · 영상) · 밤 · 튜터 크기 · 그림 모아 보기 · Dock 으로 돌아오면 보던 곳 그대로 (2026-10-20) ----------
     {
       errs = [];
-      await go("#/sw", 2200);
+      await go("#/sw", 3000);
+      // 첫 화면 3D: 책 네 권 = 점 네 개 · 캔버스 하나 · 패널에 지금 책 이름
+      const s3 = await p.evaluate(() => ({ canvas: document.querySelectorAll(".host-dev canvas.dp-c").length, dots: document.querySelectorAll(".dp-dots button").length, title: document.querySelector(".dp-panel .dp-t")?.textContent || "" }));
+      ok(s3.canvas === 1 && s3.dots === 4 && !!s3.title && !errs.length, `${tv} · SW 첫 화면 3D — 캔버스 ${s3.canvas} · 책 점 ${s3.dots} · 지금 책 ${s3.title}${errs.length ? " — " + errs[0] : ""}`);
+      await p.evaluate(() => { try { localStorage.setItem("sw-list:home", "1"); localStorage.setItem("sw-list:toc", "1"); } catch {} }); errs = []; await go("#/sw", 2200);
       const sw = await p.evaluate(() => ({ books: [...document.querySelectorAll(".sw-book .sw-cover")].map((a) => a.getAttribute("href")), canvas: document.querySelectorAll(".host-dev canvas").length, theme: document.querySelector(".dv")?.dataset.swTheme, over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await hop("#/dev/security", ".dv-days", 600);
       const old = await p.evaluate(() => !!document.querySelector('a[href="#/sw/dev/ask/security"]'));
       await hop("#/sw/vg", ".toc-list .dv-mod", 600);
       const vg = await p.evaluate(() => ({ mods: document.querySelectorAll(".toc-list .dv-mod").length, nav: document.querySelectorAll(".dv-nav a").length, figs: !!document.querySelector('.toc-figlink[href="#/sw/vg/figs"]'), over: document.documentElement.scrollWidth > innerWidth + 1 }));
-      ok(sw.books.join() === "#/sw/vg,#/sw/dev" && sw.canvas === 0 && sw.theme === "paper" && !sw.over && old && vg.mods === 8 && vg.nav === 3 && vg.figs && !vg.over && !errs.length,
-        `${tv} · SW 과정 — 책 ${sw.books.length} · 3D 캔버스 ${sw.canvas} · 바탕 ${sw.theme} · 옛 주소 ${old} · VG 장 ${vg.mods} · 메뉴 ${vg.nav} · 그림 모아 보기 ${vg.figs}${errs.length ? " — " + errs[0] : ""}`);
+      await p.evaluate(() => { try { localStorage.removeItem("sw-list:home"); localStorage.removeItem("sw-list:toc"); } catch {} });
+      ok(sw.books.join() === "#/sw/vg,#/sw/dev,#/sw/onto,#/sw/aip" && sw.canvas === 0 && sw.theme === "paper" && !sw.over && old && vg.mods === 8 && vg.nav === 3 && vg.figs && !vg.over && !errs.length,
+        `${tv} · SW 과정 (목록) — 책 ${sw.books.length} · 3D 캔버스 ${sw.canvas} · 바탕 ${sw.theme} · 옛 주소 ${old} · VG 장 ${vg.mods} · 메뉴 ${vg.nav} · 그림 모아 보기 ${vg.figs}${errs.length ? " — " + errs[0] : ""}`);
 
       // 카드 속 설명 그림 — '그림 1-n' · 다음 단계면 설명이 바뀌고 · B 끝점을 끌면 계산이 바뀌고 · 영상은 그 자리에서
       errs = [];
