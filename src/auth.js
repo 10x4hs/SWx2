@@ -100,7 +100,7 @@ export async function requireUser(req, env) {
   const token = sessionToken(req);
   if (!token) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.hidden_pages, u.graph_prefs, u.diary_circle, u.role, u.state, u.last_seen_at, u.trial_until, s.imp_by, (SELECT group_concat(feature) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > ?2)) AS feature_list, (SELECT username FROM users a WHERE a.id = s.imp_by) AS imp_name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?1 AND s.expires_at > ?2"
+    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.dock_folders, u.hidden_pages, u.graph_prefs, u.diary_circle, u.role, u.state, u.last_seen_at, u.trial_until, s.imp_by, (SELECT group_concat(feature) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > ?2)) AS feature_list, (SELECT username FROM users a WHERE a.id = s.imp_by) AS imp_name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?1 AND s.expires_at > ?2"
   ).bind(await sha256(token), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
   if (row.state !== "active") fail(401, STATE_MSG[row.state] || "들어올 수 없는 계정이에요.");
@@ -112,8 +112,23 @@ export async function requireUser(req, env) {
 // 활동 상태: 정해진 단어만 · coding 이면 쓰는 AI 도구(여럿)
 const STATUSES = ["coding", "working", "studying", "reading", "resting", "sleeping", "away"], TOOLS = ["claude", "codex", "gemini"];
 const readStatus = (raw) => { try { const o = typeof raw === "string" ? JSON.parse(raw) : raw; return o && STATUSES.includes(o.s) ? { s: o.s, tools: o.s === "coding" ? (o.tools || []).filter((t) => TOOLS.includes(t)) : [], at: o.at || null } : null; } catch { return null; } };
-const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true, ai_model: u.ai_model || null, dock_order: readList(u.dock_order), hidden_pages: readList(u.hidden_pages), graph_prefs: readObj(u.graph_prefs), diary_circle: u.diary_circle === 1, role: u.role || "member", impersonated_by: u.imp_name || null, features: u.features || [], trial_until: u.trial_until > Date.now() ? u.trial_until : null }); // 본인에게만 (로그인 · /me)
+const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true, ai_model: u.ai_model || null, dock_order: readList(u.dock_order), dock_folders: readObj(u.dock_folders) || {}, hidden_pages: readList(u.hidden_pages), graph_prefs: readObj(u.graph_prefs), diary_circle: u.diary_circle === 1, role: u.role || "member", impersonated_by: u.imp_name || null, features: u.features || [], trial_until: u.trial_until > Date.now() ? u.trial_until : null }); // 본인에게만 (로그인 · /me)
 function readObj(v) { try { const o = JSON.parse(v || "null"); return o && typeof o === "object" && !Array.isArray(o) ? o : null; } catch { return null; } }
+const DOCK_KEY = /^(nav:[a-z-]{1,20}|page:[A-Za-z0-9-]{1,64})$/;
+function folderMap(v) {
+  if (!v || typeof v !== "object" || Array.isArray(v)) fail(400, "Dock 폴더 모양이 아니에요.");
+  const ids = Object.keys(v); if (ids.length > 20) fail(400, "Dock 폴더는 20개까지예요.");
+  const seen = new Set(), out = {};
+  for (const id of ids) {
+    const f = v[id];
+    if (!/^[a-z0-9]{1,12}$/.test(id) || !f || typeof f !== "object" || typeof f.name !== "string" || !Array.isArray(f.items) || !f.items.length || f.items.length > 30) fail(400, "Dock 폴더 모양이 아니에요.");
+    const name = f.name.replace(/\s+/g, " ").trim();
+    if (!name || [...name].length > 20) fail(400, "폴더 이름은 1~20자예요.");
+    if (!f.items.every((k) => typeof k === "string" && DOCK_KEY.test(k) && !seen.has(k) && seen.add(k))) fail(400, "Dock 폴더 모양이 아니에요.");
+    out[id] = { name, items: f.items };
+  }
+  return JSON.stringify(out);
+}
 function readList(v) { try { const a = JSON.parse(v || "[]"); return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; } catch { return []; } }
 
 export function registerAuth(on) {
@@ -210,7 +225,9 @@ export function registerAuth(on) {
     // 내 AI 모델: "" · null = 자동. 모르는 id 는 400
     // Dock 순서 · 숨긴 친구 페이지: 문자열 배열. 모양이 틀리면 400
     const list = (v, re, max, name) => (Array.isArray(v) && v.length <= max && v.every((x) => typeof x === "string" && re.test(x)) ? JSON.stringify([...new Set(v)]) : fail(400, `${name} 모양이 아니에요.`));
-    const dockOrder = b.dock_order === undefined ? (user.dock_order ?? null) : b.dock_order === null ? null : list(b.dock_order, /^(nav:[a-z-]{1,20}|page:[A-Za-z0-9-]{1,64})$/, 120, "Dock 순서");
+    const dockOrder = b.dock_order === undefined ? (user.dock_order ?? null) : b.dock_order === null ? null : list(b.dock_order, /^(nav:[a-z-]{1,20}|page:[A-Za-z0-9-]{1,64}|folder:[a-z0-9]{1,12})$/, 120, "Dock 순서");
+    // Dock 폴더: { id: { name, items } } — 20개 · 폴더마다 30개 · 이름 20자까지. 한 아이콘은 한 폴더에만
+    const dockFolders = b.dock_folders === undefined ? (user.dock_folders ?? null) : b.dock_folders === null ? null : folderMap(b.dock_folders);
     const hiddenPages = b.hidden_pages === undefined ? (user.hidden_pages ?? null) : b.hidden_pages === null ? null : list(b.hidden_pages, /^[A-Za-z0-9-]{1,64}$/, 300, "숨긴 페이지");
     // 그래프 설정: 작은 객체 하나 (4KB 까지)
     const graphPrefs = b.graph_prefs === undefined ? (user.graph_prefs ?? null) : b.graph_prefs === null ? null : b.graph_prefs && typeof b.graph_prefs === "object" && !Array.isArray(b.graph_prefs) && JSON.stringify(b.graph_prefs).length <= 4000 ? JSON.stringify(b.graph_prefs) : fail(400, "그래프 설정 모양이 아니에요.");
@@ -235,8 +252,8 @@ export function registerAuth(on) {
       else { status = readStatus({ ...b.status, at: Date.now() }); if (!status) fail(400, "상태 형식이 올바르지 않아요."); }
     }
     const plans_open = b.plans_open !== undefined ? !!b.plans_open : user.plans_open !== 0;
-    await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ?, status = ?, plans_open = ?, ai_model = ?, dock_order = ?, hidden_pages = ?, graph_prefs = ? WHERE id = ?").bind(display, goal, color, bio, avatar, status ? JSON.stringify(status) : null, plans_open ? 1 : 0, aiModel, dockOrder, hiddenPages, graphPrefs, user.id).run();
-    return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar, status, plans_open, ai_model: aiModel, dock_order: readList(dockOrder), hidden_pages: readList(hiddenPages), graph_prefs: readObj(graphPrefs) } });
+    await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ?, status = ?, plans_open = ?, ai_model = ?, dock_order = ?, dock_folders = ?, hidden_pages = ?, graph_prefs = ? WHERE id = ?").bind(display, goal, color, bio, avatar, status ? JSON.stringify(status) : null, plans_open ? 1 : 0, aiModel, dockOrder, dockFolders, hiddenPages, graphPrefs, user.id).run();
+    return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar, status, plans_open, ai_model: aiModel, dock_order: readList(dockOrder), dock_folders: readObj(dockFolders) || {}, hidden_pages: readList(hiddenPages), graph_prefs: readObj(graphPrefs) } });
   });
 
   // 같은 팀 사람(나 포함)만

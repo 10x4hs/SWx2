@@ -6,6 +6,7 @@ import { api } from "./api.js";
 import { esc, toast } from "./util.js";
 import { icon, appIcon } from "./icons.js";
 import { openMenu } from "./ctxmenu.js";
+import { folderItems, folderPick } from "./dock-folders.js";
 
 let ctx, map = {};
 // 버튼(ui:*) 칸 → 셀렉터 · 이름 · 원본 파일
@@ -27,8 +28,8 @@ export async function initCustomize(c) {
     const slot = slotOf(e.target); if (!slot) return;
     openMenu(e, {
       title: nameOf(slot),
-      items: [{ k: "name", label: "Rename & icon…" }, { k: "edit", label: "Customize…" }, ...(map[slot] ? [{ sep: true }, { k: "reset", label: "Reset to original", danger: true }] : [])],
-      onPick: (k) => (k === "name" ? openRename(slot) : k === "edit" ? openEditor(slot) : reset(slot)),
+      items: [{ k: "name", label: "Rename & icon…" }, { k: "edit", label: "Customize…" }, ...(map[slot] ? [{ sep: true }, { k: "reset", label: "Reset to original", danger: true }] : []), ...folderItems(slot)],
+      onPick: (k) => (k.startsWith("fold-") ? folderPick(k, slot, e) : k === "name" ? openRename(slot) : k === "edit" ? openEditor(slot) : reset(slot)),
     });
   });
 }

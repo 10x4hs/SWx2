@@ -203,6 +203,13 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("b", "GET", "/me"); ok(!r.data.user.dock_order.length && !r.data.user.hidden_pages.length, "dock: per user");
   r = await call("a", "GET", "/users"); ok(r.data.users.every((u) => u.dock_order === undefined && u.hidden_pages === undefined), "dock: not exposed to friends");
   r = await call("a", "PATCH", "/me", { dock_order: null, hidden_pages: [] }); ok(r.status === 200 && !r.data.user.dock_order.length, "dock: reset");
+  // Dock 폴더: { id: { name, items } } + dock_order 의 folder:<id>
+  r = await call("a", "PATCH", "/me", { dock_order: ["folder:f1", "nav:home"], dock_folders: { f1: { name: " 공부  폴더 ", items: ["nav:room", "page:abc-123"] } } }); ok(r.status === 200 && r.data.user.dock_folders.f1?.name === "공부 폴더" && r.data.user.dock_folders.f1.items.length === 2 && r.data.user.dock_order[0] === "folder:f1", "dock folders: save");
+  r = await call("a", "PATCH", "/me", { bio: "폴더 유지 검사" }); ok(r.data.user.dock_folders.f1?.items[0] === "nav:room", "dock folders: other edits keep folders");
+  for (const [bad, why] of [[{ F1: { name: "a", items: ["nav:home"] } }, "bad id"], [{ f1: { name: "", items: ["nav:home"] } }, "empty name"], [{ f1: { name: "가".repeat(21), items: ["nav:home"] } }, "long name"], [{ f1: { name: "a", items: ["x:<b>"] } }, "bad key"], [{ f1: { name: "a", items: [] } }, "empty items"], [{ f1: { name: "a", items: Array.from({ length: 31 }, (_, i) => "page:p" + i) } }, "31 items"], [Object.fromEntries(Array.from({ length: 21 }, (_, i) => ["f" + i, { name: "a", items: ["page:q" + i] }])), "21 folders"], [{ f1: { name: "a", items: ["nav:home"] }, f2: { name: "b", items: ["nav:home"] } }, "same key twice"], [["nav:home"], "array"]]) {
+    r = await call("a", "PATCH", "/me", { dock_folders: bad }); ok(r.status === 400, `dock folders: ${why} → 400`);
+  }
+  r = await call("a", "PATCH", "/me", { dock_order: null, dock_folders: null }); ok(r.status === 200 && !Object.keys(r.data.user.dock_folders).length, "dock folders: reset");
   r = await call("a", "PATCH", "/me", { graph_prefs: { basis: "tier", node: 1.5 } }); ok(r.status === 200 && r.data.user.graph_prefs.basis === "tier", "graph prefs: save");
   r = await call("a", "PATCH", "/me", { graph_prefs: [1, 2] }); ok(r.status === 400, "graph prefs: array → 400");
   r = await call("a", "PATCH", "/me", { graph_prefs: { big: "x".repeat(5000) } }); ok(r.status === 400, "graph prefs: too big → 400");
