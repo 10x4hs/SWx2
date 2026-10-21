@@ -1,5 +1,5 @@
 // CIM 교과서 — 차례(#/cim/book) · 장(#/cim/book/<장>) · 카드로 바로(#/cim/book/<장>/<핵심 번호>)
-// 카드: 본문 · TIP · '개정 확인' · 어려운 공식에만 '왜 이 공식' · 이야기 · 그림 · 문제 5개 · 읽음
+// 카드: 본문(+ 사진에서 옮긴 '내 밑줄') · TIP · '개정 확인' · 어려운 공식에만 '왜 이 공식' · 이야기 · 그림 · 문제 5개 · 읽음
 import { st, save } from "./store.js";
 import { CHS, CH, ORDER, SUBJ, chShort } from "./meta.js";
 import { chapter, QS_BY } from "./data.js";
@@ -14,9 +14,13 @@ const FILTERS = ["전체", "★★ 이상", "★★★만"];
 let filt = 0; // 이번 접속 동안 기억
 
 // 교재 본문 → 읽기 쉬운 HTML (TIP · ▶ 소제목 · ① 항목 · ㉠ 하위 항목 · '|' 표)
-export function renderBody(txt) {
+// marks: 교재 사진에서 옮긴 '내 밑줄' 구절 — 본문에서 찾아 살짝 표시해요 (TIP 은 빼고)
+export function renderBody(txt, marks) {
   const L = String(txt || "").split("\n"); let h = "", tip = [], mode = "", tbl = [];
-  const flush = () => { if (tbl.length) { h += `<div class="cim-tscroll"><table class="cim-tbl">${tbl.map((r, i) => `<tr>${r.map((c) => (i ? `<td>${esc(c)}</td>` : `<th scope="col">${esc(c)}</th>`)).join("")}</tr>`).join("")}</table></div>`; tbl = []; } };
+  const re = marks?.length ? new RegExp([...marks].sort((a, b) => b.length - a.length).map((m) => esc(m).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g") : null;
+  const seen = new Set(); // 같은 구절은 처음 나온 자리만 (교재에서 그은 곳이 한 군데라서)
+  const E = (t) => (re ? esc(t).replace(re, (m) => (seen.has(m) ? m : (seen.add(m), `<mark class="cc-my" title="내 밑줄">${m}</mark>`))) : esc(t));
+  const flush = () => { if (tbl.length) { h += `<div class="cim-tscroll"><table class="cim-tbl">${tbl.map((r, i) => `<tr>${r.map((c) => (i ? `<td>${E(c)}</td>` : `<th scope="col">${E(c)}</th>`)).join("")}</tr>`).join("")}</table></div>`; tbl = []; } };
   for (const raw of L) {
     const l = raw.trim();
     if (l === "TIP") { mode = "tip"; continue; }
@@ -24,11 +28,11 @@ export function renderBody(txt) {
     if (/^\S.*\|\s*$/.test(l) && l.includes(" | ")) { tbl.push(l.replace(/\|\s*$/, "").split(" | ").map((c) => c.trim())); continue; }
     flush();
     if (!l || l.startsWith("▶ 핵심포인트 해설")) continue;
-    if (l.startsWith("▶")) h += `<h5 class="cc-sub">${esc(l.replace(/^▶\s*/, ""))}</h5>`;
-    else if (/^[①-⑳]/.test(l)) h += `<p class="cc-li">${esc(l)}</p>`;
-    else if (/^[㉠-㉭ⓐ-ⓩ·•\-]/.test(l)) h += `<p class="cc-li2">${esc(l)}</p>`;
-    else if (/^\(\d+\)/.test(l)) h += `<h5 class="cc-sub">${esc(l)}</h5>`;
-    else h += `<p>${esc(l)}</p>`;
+    if (l.startsWith("▶")) h += `<h5 class="cc-sub">${E(l.replace(/^▶\s*/, ""))}</h5>`;
+    else if (/^[①-⑳]/.test(l)) h += `<p class="cc-li">${E(l)}</p>`;
+    else if (/^[㉠-㉭ⓐ-ⓩ·•\-]/.test(l)) h += `<p class="cc-li2">${E(l)}</p>`;
+    else if (/^\(\d+\)/.test(l)) h += `<h5 class="cc-sub">${E(l)}</h5>`;
+    else h += `<p>${E(l)}</p>`;
   }
   flush();
   return (tip.length ? `<div class="cc-tip"><span class="cc-tag">TIP</span><p>${esc(tip.join(" "))}</p></div>` : "") + `<div class="cc-body">${h}</div>`;
@@ -78,8 +82,8 @@ export function mountBook(host, r) {
         const rev = REV.test(p.b) || p.q.some((q) => REV.test(q.q + q.x));
         outline += `<li><a href="#/cim/book/${c.id}/${p.n}" data-ol="${p.key}" class="${S.read[p.key] ? "read" : ""}"><span class="cim-num">${pad2(p.n)}</span><span>${esc(p.t)}</span></a></li>`;
         cards += `<article class="cc" id="k-${p.key}">
-          <header class="cc-h"><span class="cc-n cim-num">핵심 ${pad2(p.n)}</span><h3>${esc(p.t)}</h3><span class="cc-tags">${p.st ? `<span class="cc-st" aria-label="중요도 ${p.st}" title="중요도 ${p.st}">${"★".repeat(p.st)}</span>` : ""}${rev ? `<span class="cc-tag rev" title="최근 바뀐 숫자가 있을 수 있어요. 숫자표에서 확인하세요.">개정 확인</span>` : ""}${S.read[p.key] ? `<span class="cc-tag seen">읽음</span>` : ""}</span></header>
-          ${renderBody(p.b)}
+          <header class="cc-h"><span class="cc-n cim-num">핵심 ${pad2(p.n)}</span><h3>${esc(p.t)}</h3><span class="cc-tags">${p.st ? `<span class="cc-st" aria-label="중요도 ${p.st}" title="중요도 ${p.st}">${"★".repeat(p.st)}</span>` : ""}${rev ? `<span class="cc-tag rev" title="최근 바뀐 숫자가 있을 수 있어요. 숫자표에서 확인하세요.">개정 확인</span>` : ""}${p.marks?.length ? `<span class="cc-tag my" title="교재에 직접 그은 밑줄을 옮겨 왔어요">내 밑줄</span>` : ""}${S.read[p.key] ? `<span class="cc-tag seen">읽음</span>` : ""}</span></header>
+          ${renderBody(p.b, p.marks)}
           ${N.WHY[p.key] ? whyBox(N.WHY[p.key]) : ""}
           ${N.FIGS[p.key] ? `<div class="cc-fig" data-fig="${N.FIGS[p.key]}"></div>` : ""}
           ${N.STORY[p.key] ? `<aside class="cs"><span class="cc-tag">이야기</span><p>${esc(N.STORY[p.key])}</p></aside>` : ""}
