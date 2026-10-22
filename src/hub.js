@@ -16,11 +16,14 @@ export class RoomHub extends DurableObject {
       return new Response(null, { status: 101, webSocket: pair[0] });
     }
     if (url.pathname === "/notify" && req.method === "POST") {
-      const { users, payload } = await req.json();
-      const msg = JSON.stringify(payload || { type: "room" });
-      const targets = Array.isArray(users) && users.length ? users.flatMap((u) => this.ctx.getWebSockets(u)) : this.ctx.getWebSockets();
+      const d = await req.json();
+      // { users, payload } 하나 또는 { list: [{ users, payload }, ...] } 여러 개 (관리자 단체 메시지 — 사람마다 다른 방 신호를 한 번에)
       let sent = 0;
-      for (const ws of targets) { try { ws.send(msg); sent++; } catch {} }
+      for (const { users, payload } of Array.isArray(d.list) ? d.list : [d]) {
+        const msg = JSON.stringify(payload || { type: "room" });
+        const targets = Array.isArray(users) && users.length ? users.flatMap((u) => this.ctx.getWebSockets(u)) : Array.isArray(d.list) ? [] : this.ctx.getWebSockets();
+        for (const ws of targets) { try { ws.send(msg); sent++; } catch {} }
+      }
       return Response.json({ sent });
     }
     return new Response("not found", { status: 404 });
@@ -37,6 +40,11 @@ const hub = (env) => env.ROOM_HUB?.get(env.ROOM_HUB.idFromName("hub"));
 export async function hubNotify(env, users, payload) {
   const h = hub(env); if (!h) return;
   try { await h.fetch("https://hub/notify", { method: "POST", body: JSON.stringify({ users, payload }) }); } catch (e) { console.warn("hub notify", e.message); }
+}
+// 여러 신호를 왕복 한 번에: list = [{ users, payload }, ...] (users 가 비면 그 신호는 건너뛰어요)
+export async function hubNotifyMany(env, list) {
+  const h = hub(env); if (!h || !list.length) return;
+  try { await h.fetch("https://hub/notify", { method: "POST", body: JSON.stringify({ list }) }); } catch (e) { console.warn("hub notify", e.message); }
 }
 export function hubConnect(env, req, userId) {
   const h = hub(env); if (!h) return new Response("실시간 연결을 쓸 수 없어요.", { status: 503 });

@@ -20,7 +20,7 @@ const AI_TIMEOUT = 45e3;      // AI 답 기다리는 최대 시간 (웹 검색 �
 const RETRY_GAP = 30e3;       // 다시 시도는 사람마다 30초에 한 번
 const CONTEXT_MSGS = 40;      // AI가 보는 최근 메시지 수
 const CONTEXT_ITEMS = 80;     // AI가 보는 창고 항목 수
-const MAX_BODY = 2000;
+export const MAX_BODY = 2000;
 const DEFAULT_LIMIT = 50, MAX_LIMIT = 200;
 export const ALL = "all";
 const UUID = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
@@ -29,7 +29,7 @@ const TEAM_RE = /^team:[A-Za-z0-9-]{1,64}$/;
 // 관리자 문의방: 'help:<회원 id>' — 그 회원과 관리자 모두(HSK · GYK)가 같이 봐요. 팀이 달라도 돼요
 export const HELP_RE = new RegExp(`^help:(${UUID})$`);
 export const helpRoom = (userId) => "help:" + userId;
-const adminIds = async (env) => (await env.DB.prepare("SELECT id FROM users WHERE role = 'admin' AND state = 'active'").all()).results.map((r) => r.id);
+export const adminIds = async (env) => (await env.DB.prepare("SELECT id FROM users WHERE role = 'admin' AND state = 'active'").all()).results.map((r) => r.id);
 
 // 사진 · 영상 (R2 FILES, 키 room-<uuid>.<ext>, 방은 customMetadata.room — 메시지를 지우면 파일도 지워져서 따로 표가 필요 없어요)
 const MEDIA = { "image/jpeg": ["image", "jpg"], "image/png": ["image", "png"], "image/webp": ["image", "webp"], "image/gif": ["image", "gif"], "video/mp4": ["video", "mp4"], "video/webm": ["video", "webm"], "video/quicktime": ["video", "mov"] };

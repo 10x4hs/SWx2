@@ -62,6 +62,7 @@ export const api = {
   adminPlans: (id, from, to) => request("GET", `/admin/users/${id}/plans?from=${from}&to=${to}`),
   adminAnnounce: (body) => request("POST", "/admin/announcements", { body }),
   adminAnnounceOff: (id) => request("DELETE", `/admin/announcements/${id}`),
+  adminMessage: (text, ids) => request("POST", "/admin/message", ids ? { text, ids } : { text }),
   adminNewsExcuse: (id, day) => request("POST", `/admin/users/${id}/news-excuse`, { day }),
   adminUsers: () => request("GET", "/admin/users"),
   adminApprove: (id) => request("POST", `/admin/users/${id}/approve`),

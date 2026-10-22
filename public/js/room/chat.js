@@ -147,7 +147,9 @@ export function mountChat(el, env) {
   function render() {
     const arr = sorted();
     if (!arr.length) {
-      msgsEl.innerHTML = `<div class="rm-empty"><span class="rm-ai-av lg">${icon.spark(18)}</span><p><b>아직 메시지가 없어요.</b><br>첫 인사를 남겨 보세요. <b>@${esc(aiName())}</b> 를 부르면 AI가 끼어들어요.</p></div>`;
+      // 문의방엔 AI 가 끼지 않아요 — 회원과 관리자(HSK · GYK)만
+      const help = room().startsWith("help:"), forAdmin = help && room() !== "help:" + me();
+      msgsEl.innerHTML = `<div class="rm-empty"><span class="rm-ai-av lg">${icon.spark(18)}</span><p><b>아직 메시지가 없어요.</b><br>${forAdmin ? "첫 메시지를 보내 보세요. 이 방은 이 회원과 관리자만 봐요." : help ? "궁금한 걸 남기면 관리자(HSK · GYK)가 답해요." : `첫 인사를 남겨 보세요. <b>@${esc(aiName())}</b> 를 부르면 AI가 끼어들어요.`}</p></div>`;
       return;
     }
     const stick = nearBottom();

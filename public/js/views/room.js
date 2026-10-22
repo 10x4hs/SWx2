@@ -64,10 +64,13 @@ export function mount(root, ctx, r) {
     roomsEl.innerHTML = isAdmin ? all + dms + help : help + all + dms;
     if (!all && !dms && !isAdmin) roomsEl.insertAdjacentHTML("beforeend", `<p class="faint rm-none">팀이 생기면 팀 대화방도 여기에 보여요. 프로필 메뉴 → <b>팀</b>에서 만들거나 초대 코드로 들어가요.</p>`);
   }
-  if (isAdmin) api.roomHelp().then((d) => { helpRooms = d.rooms || []; drawRooms(); }).catch(() => {});
+  // 관리자가 아직 글이 없는 문의방을 열면(관리자 화면 ⋯ → 메시지 보내기) 목록 맨 위에 넣어 둬요 — 글을 쓰면 서버 목록에도 들어가요
+  const keepHelp = (room, u) => { if (u && !helpRooms.some((h) => h.room === room)) helpRooms = [{ room, last_at: Date.now(), user: u }, ...helpRooms]; };
+  if (isAdmin) api.roomHelp().then((d) => { const srv = d.rooms || [], mine = helpRooms.filter((h) => !srv.some((x) => x.room === h.room)); helpRooms = [...mine, ...srv]; drawRooms(); }).catch(() => {});
   // rooms: { all: n, "dm:..": n } — GET /room 응답마다 같이 오고, 읽음 처리 뒤(trio:changed room)엔 따로 한 번 받아요
   function takeRooms(r) {
     if (!r) return;
+    if (isAdmin && r.people && r.room === roomId && roomId?.startsWith("help:")) keepHelp(roomId, r.people[roomId.slice(5)]);
     if (r.rooms) unreadMap = { ...r.rooms };
     else if (typeof r.unread === "number") unreadMap.all = r.unread;
     unreadMap[roomId] = 0; // 지금 보고 있는 방은 읽는 중
