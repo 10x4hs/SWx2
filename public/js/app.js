@@ -32,7 +32,7 @@ import { setHiddenMe } from "./hidden-pages.js";
 import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js"; // Dock 우클릭 → 내 CSS · HTML · JS
 import * as roomView from "./views/room.js";
 import * as newsView from "./views/news.js"; // 뉴스 Signal Map (#/news · #/news/item/<id> · #/news/thread/<id>)
-import * as cimView from "./views/cim.js"; // 투자자산운용사 2주 완성 (#/cim · #/cim/book/<장> · #/cim/figs · #/cim/quiz · #/cim/mock · #/cim/table) — 누구나
+import * as cimView from "./views/cim.js"; // 투자자산운용사 2주 완성 (#/cim 오늘 · #/cim/go 오늘 공부 · #/cim/study[/<장>[/<n>]] 공부 · #/cim/exam[/…] 시험 · 옛 주소는 바꿔 줘요) — 누구나
 import * as mbaView from "./views/mba.js"; // 경영 마이크로디그리 (#/mba · #/mba/today · #/mba/company · #/mba/words · #/mba/<모듈>/<카드>)
 import * as devView from "./views/dev.js"; // SW 공간 (#/sw 과정 목록 · #/sw/<과정>/… 개발 흐름 · Vector & Graph — today · docs · <모듈>/<카드> · case · practice)
 import { mountAuth } from "./views/auth.js";
@@ -188,7 +188,7 @@ const NAV = [
   { key: "diary", hash: "#/diary", label: "Diary", img: "/assets/dock/journal.png" }, // 누구나 · 일기 친구(초대 · 수락)끼리 공개한 날을 서로 봐요
   { key: "biz", hash: "#/mba", label: "MBA", img: "/assets/dock/stocks.png" }, // 경영 마이크로디그리 (24주 · 하루 1~2시간)
   { key: "dev", hash: "#/sw", label: "Code Flow", img: "/assets/dock/vscode.png" }, // SW 과정 (Vector & Graph · Dev Flow) — 첫 화면은 과정 두 권
-  { key: "cim", hash: "#/cim", label: "CIM", img: "/assets/dock/cim.svg" }, // 투자자산운용사 2주 완성 — 교과서 · 그림 · 문제 · 모의고사 · 숫자표 (누구나, 기록은 사람별 서버 저장)
+  { key: "cim", hash: "#/cim", label: "CIM", img: "/assets/dock/cim.svg" }, // 투자자산운용사 2주 완성 — 오늘 · 공부 · 시험 + AI 튜터 (누구나, 기록은 사람별 서버 저장)
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
 

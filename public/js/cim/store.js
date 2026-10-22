@@ -13,6 +13,7 @@ export const diff = (a, b) => Math.round((new Date(b + "T00:00:00Z") - new Date(
 // ans[id] = [맞힌 수, 틀린 수, 마지막 맞음 1/0] · wrong[id] = { st: 단계, due: 다시 볼 날 } · days[날] = 푼 수
 // hist[날] = { 1: [맞음, 틀림], 2: …, 3: … } (과목별 정답률 흐름) · done[계획 일차][할 일] = true · read[핵심 key] = 1
 // mocks = [{ date, by, total, pass, rid }] · run = 진행 중인 모의고사 { rid, ids, picks, end, cur }
+// today = 오늘 공부(#/cim/go) 진행 { d: 날, day: 계획 일차, step: 0 읽기 · 1 문제 · 2 오답 · 3 떠올리기 · 4 끝, i, cards, qs, wq, p1, p2, rc } · intro = 처음 안내를 봤으면 1
 const blank = () => ({ v: 2, exam: "", start: today(), done: {}, ans: {}, wrong: {}, days: {}, hist: {}, read: {}, mocks: [], run: null });
 const obj = (x) => (x && typeof x === "object" && !Array.isArray(x) ? x : {});
 function norm(x) {
@@ -20,6 +21,7 @@ function norm(x) {
   for (const k of ["done", "ans", "wrong", "days", "hist", "read"]) s[k] = obj(s[k]);
   if (!Array.isArray(s.mocks)) s.mocks = [];
   if (s.run && (!Array.isArray(s.run.ids) || !s.run.ids.length)) s.run = null;
+  if (s.today && (typeof s.today !== "object" || !Array.isArray(s.today.cards) || !Array.isArray(s.today.qs))) s.today = null;
   return s;
 }
 
@@ -54,6 +56,10 @@ export function merge(L, R) {
     out.hist[d] = m;
   }
   out.read = { ...R.read, ...L.read };
+  out.intro = L.intro || R.intro || 0;
+  // 오늘 공부: 더 최근 날 · 같은 날이면 더 많이 나간 쪽
+  const prog = (t) => (t ? [t.d || "", t.step || 0, t.i || 0] : ["", -1, -1]), a = prog(L.today), b = prog(R.today);
+  out.today = (a[0] !== b[0] ? a[0] > b[0] : a[1] !== b[1] ? a[1] > b[1] : a[2] >= b[2]) ? L.today || null : R.today || null;
   out.done = { ...R.done };
   for (const [d, x] of Object.entries(L.done)) out.done[d] = { ...(R.done[d] || {}), ...x };
   const mk = (m) => `${m.rid || ""}|${m.date}|${m.total}|${JSON.stringify(m.by)}`, seen = new Set();

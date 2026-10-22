@@ -246,6 +246,8 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("a", "PUT", "/apps/cim/state", { data: { big: "x".repeat(600_001) }, at: 0 }); ok(r.status === 413, "cim: too big → 413");
   r = await call("a", "GET", "/apps/nope/state"); ok(r.status === 404, "cim: unknown app → 404");
   r = await call("b", "GET", "/apps/cim/state"); ok(r.status === 200 && r.data.data === null, "cim: private per user");
+  // CIM AI 튜터 (POST /apps/cim/ask): 질문이 없으면 400 (AI 를 부르기 전에 막아요)
+  r = await call("a", "POST", "/apps/cim/ask", { messages: [], context: { kind: "card", title: "검사" } }); ok(r.status === 400, "cim ask: empty question → 400");
   // 경영 마이크로디그리: 카드 읽음 → 복습(1 → 3 → 7 → 21 → 60일) → 하루 기록 (모듈 · 카드 id 는 public/mba/index.json 에 있어야 해요)
   r = await call("a", "GET", "/mba/state"); ok(r.status === 200 && Array.isArray(r.data.items) && Array.isArray(r.data.due) && Array.isArray(r.data.days), "mba: state");
   r = await call("a", "PUT", "/mba/read", { module: "accounting", card: "profit-vs-revenue", correct: 2, total: 3 });

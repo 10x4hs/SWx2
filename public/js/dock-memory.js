@@ -29,7 +29,7 @@ function upOf(n, hash) {
     const old = hash.match(/^#\/dev(\/.+)?$/);
     return old?.[1] ? "#/sw/dev" : "#/sw";
   }
-  if (n.key === "cim") { // CIM: 장(카드) → 교과서 차례, 문제 풀이 → 문제 설정, 탭 → 오늘
+  if (n.key === "cim") { // CIM: 읽던 카드(#/cim/study/<장>/<n>) → 공부 목록, 시험 안(문제 · 모의고사 · 숫자) → 시험, 오늘 공부 · 기록 · 탭 → 오늘
     const m = hash.match(/^#\/cim\/([a-z]+)(\/.+)?$/);
     return m?.[2] ? `#/cim/${m[1]}` : "#/cim";
   }
