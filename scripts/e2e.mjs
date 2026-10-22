@@ -18,9 +18,12 @@
 //   ⑭ 홈 오늘 링 끌기 — 마우스를 대면 선 · 끌면 +분 · 놓으면 이름 칸(Enter 저장 · Esc 취소) · 거꾸로 · 겹침 · 그냥 누르면 원래대로 · 전체 쪽 오늘 링 · 친구 차트 · 터치는 그대로 (2026-10-15)
 //   ⑮ 하루 계획표 짧은 일정 — 맞닿은 일정은 위아래로(5분 휴식 + 바로 뒤 시험) · 붙어 있으면 그 칸만 30px 로 늘어남 · 진짜 겹침은 나란히 · 늘어난 칸의 빈 칸 시각 · 끌기 시각 (2026-10-15)
 //   ⑯ 홈 Day 쪽 ‹ 날짜 › — › 내일(바늘 없음 · 오늘로) · 내일에 끌어 넣기 → 그 날짜 · 새로 열어도 고른 날 · 지난 기억은 오늘 · ‹ 어제 점수 · 링 누르면 그날 계획표 (2026-10-15)
-//   ⑰ 계획 복사 · 붙여넣기 — 마우스 올리고 ⌘C · 붙일 시각에 ⌘V(우선순위까지) · ⌘Z 되돌리기 · Shift+클릭 여러 개(간격 그대로) · 다른 앱의 "07:00–07:30 이름" 줄 · 그냥 글은 무시 · 홈 시계 링 시각 (2026-10-16)
+//   ⑰ 계획 복사 · 붙여넣기 — 마우스 올리고 ⌘C · 붙일 시각에 ⌘V(우선순위까지) · ⌘Z 되돌리기 · ⌘⇧Z 다시 · Shift+클릭 여러 개(간격 그대로) · 다른 앱의 "07:00–07:30 이름" 줄 · 그냥 글은 무시 · 홈 시계 링 시각 (2026-10-16)
 //   ⑱ 일기 친구 — 친구 없으면 탭 하나 · 같은 팀도 403 · 아이디로 초대 → 친구 화면의 초대 띠에서 수락 → 탭 둘 · 새 일기 기본 공개 → 친구가 읽음 · 비공개면 자물쇠만(글은 서버에서도 안 와요)
 //      · 지난 일기 비공개 · 친구 탭 읽기 · 친구 아닌 사람은 403 · 일기는 누구나(자물쇠 없음, 2026-10-21) · 끊기 → 다시 403 (2026-10-19)
+//   ⑳ Obsidian — 누르기 = 고르기 · 고른 채 다른 점 = 연결(서버 · 새로 열어도) · 두 번 = 들어가기(연결 안 생김) · ← 뒤로(확대 · 고른 점 그대로) · 노트 ← 뒤로 · 우클릭 만들기(누른 자리) · 이름 · 연결 · 선 우클릭 끊기 · 서버에서 지운 뒤 되살리기 · ⌘Z/⌘⇧Z · Dock 한 칸 위 (2026-10-22)
+//   ㉑ 계획 되돌리기 — 옮기기 · 길이 · 이름 · 지우기 · 추가 · ⌘Z/⌘⇧Z/Ctrl+Z/Ctrl+Y, 서버 값으로 확인 (2026-10-22)
+//   ㉒ 일기 블록 편집기 되돌리기 — 글 · Enter · "- " 목록을 한 단계씩, 커서 자리 · 저장된 값까지 (2026-10-22)
 //   ⑲ CIM 투자자산운용사 (미니멀) — Dock 'CIM' · 처음 안내 한 번 · 오늘(시험일 · 4단계 · 버튼 하나) · 오늘 공부(읽기 → 문제 · 새로 고침 이어서) · AI 패널(문맥 · 크기) · 공부(목록 · 한 장씩 · 목차 · 그림) · 시험(네 줄 · 저장 · 모의고사 · 숫자) · 옛 주소 · Dock 기억 (2026-10-22)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
@@ -195,6 +198,11 @@ try {
       const first = await imp(), again = await imp();
       const nodes = () => p.evaluate(() => (document.querySelector(".og-c")?.__nodes?.() || []).map((n) => n.title).sort());
       await go("#/graph", 3000); // 예전 노트 그래프 주소 → Brain
+      // 처음 한 번 3단계 안내 (2026-10-22): 다음 → 다음 → 시작하기, 새로 열면 다시 안 떠요
+      const intro1 = await p.locator(".bi").count();
+      for (let i = 0; i < 3; i++) { await p.locator('.bi [data-bi="next"]').click().catch(() => {}); await sleep(150); }
+      await go("#/brain", 2500);
+      const intro2 = await p.locator(".bi").count();
       const top = await nodes();
       await p.locator(".brain-list a", { hasText: "Business & Finance" }).click(); await sleep(1500);
       const inBiz = await nodes(), crumb = await p.evaluate(() => document.querySelector(".brain-crumbs b")?.textContent);
@@ -211,15 +219,15 @@ try {
       const mapped = await nodes();
       ok(first.created + first.kept === 5 && again.created === 0 && again.kept === 5 && ["AI & Dev", "Business & Finance", "Language", "Life", "Records"].every((t) => top.includes(t)) && top.length <= 6
         && inBiz.join() === "검사 CIM" && crumb === "Business & Finance" && inAi.includes("AI Books") && inAi.includes("검사 멘토링") && study === "#/books"
-        && dock.includes("brain") && !dock.includes("notes") && dock.includes("study") && /^Second Brain › Business & Finance › 검사 CIM › 검사 VaR/.test(path || "") && mapped.join() === "검사 VaR",
-        `${tv} · Second Brain — 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
+        && dock.includes("brain") && !dock.includes("notes") && dock.includes("study") && /^Second Brain › Business & Finance › 검사 CIM › 검사 VaR/.test(path || "") && mapped.join() === "검사 VaR" && intro1 === 1 && intro2 === 0,
+        `${tv} · Second Brain — 처음 안내 ${intro1} → 다시 열면 ${intro2} · 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
     } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
 
     // ---------- ⑪-b 노트 우클릭 — 열기(오른쪽 클릭 · 폰은 길게 누르기 · Shift+F10) · 이름 바꾸기 · 새 하위 노트 · 옮기기 · 지우기 Undo / 5초 뒤 (2026-10-15) ----------
     let step = "준비";
     try {
       errs = [];
-      const T = (s) => `우클릭 ${s} ${tv}`, FULL = "Open|Rename|Edit|New sub-note|Move to…|Delete";
+      const T = (s) => `우클릭 ${s} ${tv}`, FULL = "열기|이름 바꾸기|편집|하위 노드 만들기|옮기기…|지우기";
       const add = async (data) => (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data })).json()).note?.id;
       const note = async (id) => { const res = await ctx.request.get(BASE + "/api/notes/" + id); return res.ok() ? (await res.json()).note : null; };
       const idOf = async (t) => (await (await ctx.request.get(BASE + "/api/notes/resolve?title=" + encodeURIComponent(t))).json()).id;
@@ -275,19 +283,19 @@ try {
       await p.locator(".nm-move input").fill(T("이동처")); await sleep(150); await p.keyboard.press("Enter"); await sleep(1500);
       const movedTo = (await note(C))?.parent_id;
       await menuOn(item(C)); await p.click('.cm [data-k="move"]');
-      await p.locator(".nm-move [role=option]", { hasText: "Top level (no parent)" }).click(); await sleep(1500);
+      await p.locator(".nm-move [role=option]", { hasText: "맨 위 (부모 없음)" }).click(); await sleep(1500);
       const top = (await note(C))?.parent_id;
-      ok(sub?.parent_id === C && hash1 === "#/notes/" + subId && editMode && opts[0] === "Top level (no parent)" && opts.includes(T("이동처")) && !opts.includes(T("새이름")) && !opts.includes(T("하위")) && movedTo === Q && top === null,
+      ok(sub?.parent_id === C && hash1 === "#/notes/" + subId && editMode && opts[0] === "맨 위 (부모 없음)" && opts.includes(T("이동처")) && !opts.includes(T("새이름")) && !opts.includes(T("하위")) && movedTo === Q && top === null,
         `${tv} · 노트 우클릭 — New sub-note ${sub?.parent_id === C ? "부모 맞음" : "부모 틀림"} · 열림 ${hash1 === "#/notes/" + subId} · Edit ${editMode} · Move 후보 ${opts.length}개 (나 · 하위 빠짐 ${!opts.includes(T("새이름")) && !opts.includes(T("하위"))}) · 이동처 ${movedTo === Q} · 맨 위 ${top === null}`);
 
-      // 4) 그래프 점 · 오른쪽 목록: 개념은 Open · New sub-note 만, 공부 점은 Open 만, 노트는 전부
+      // 4) 그래프 점 · 오른쪽 목록: 개념은 열기 · 하위 노드 만들기만, 공부 점은 열기만, 노트는 전부
       step = "4 그래프 메뉴"; await go("#/brain", 3500);
       const gConcept = await menuOnNode("AI & Dev"); await p.keyboard.press("Escape");
       await go("#/brain/" + encodeURIComponent(aiDev), 3500);
       const gNote = await menuOnNode(T("이동처")); await p.keyboard.press("Escape");
       const gStudy = await menuOnNode("AI Books"); await p.keyboard.press("Escape");
       const gList = await menuOn(`.brain-list a[data-id="${Q}"]`); await p.keyboard.press("Escape");
-      ok(gConcept === "Open|New sub-note" && gNote === FULL && gStudy === "Open" && gList === FULL, `${tv} · 노트 우클릭 — 그래프 개념 점 ${gConcept} · 노트 점 ${gNote} · 공부 점 ${gStudy} · Brain 목록 ${gList}`);
+      ok(gConcept === "열기|하위 노드 만들기" && gNote === FULL && gStudy === "열기" && gList === FULL, `${tv} · 노트 우클릭 — 그래프 개념 점 ${gConcept} · 노트 점 ${gNote} · 공부 점 ${gStudy} · Brain 목록 ${gList}`);
 
       // 5) Delete + Undo (그래프): 바로 빠지고 하위가 한 칸 위로 → Undo 면 돌아와요 (서버엔 아무것도 안 갔어요)
       step = "5 그래프 Delete · Undo"; await go("#/brain/" + encodeURIComponent(P), 3500);
@@ -321,6 +329,126 @@ try {
       ok(left === "#/notes" && reopened === "#/notes/" + E && eKept && fGone && !errs.length,
         `${tv} · 노트 우클릭 — 편집기 지우기 → ${left} · Undo → ${reopened === "#/notes/" + E ? "다시 열림" : reopened} · 지우고 바로 떠나면 서버에서 지워짐 ${fGone}${errs.length ? " — " + errs[0] : ""}`);
     } catch (e) { ok(false, `${tv} · 노트 우클릭 (${step}) — ${String(e.message).split("\n")[0]}`); }
+
+    // ---------- ⑳ Obsidian 마우스 · 뒤로 · 되돌리기 (2026-10-22) — 누르기 = 고르기 · 고른 채 다른 점 = 연결 · 두 번 = 들어가기(연결 안 생김) · 우클릭만 만들기/고치기/지우기 · ⌘Z/⌘⇧Z · ← 뒤로 · Dock 한 칸 위 ----------
+    step = "준비";
+    try {
+      errs = [];
+      const T = (s) => `옵 ${s} ${tv}`, MODK = w > 600 ? "Meta" : "Control";
+      const add = async (data) => (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data })).json()).note?.id;
+      const note = async (id) => { const res = await ctx.request.get(BASE + "/api/notes/" + id); return res.ok() ? (await res.json()).note : null; };
+      const idOf = async (t) => (await (await ctx.request.get(BASE + "/api/notes/resolve?title=" + encodeURIComponent(t))).json()).id;
+      const aiDev = await idOf("AI & Dev");
+      const R = await add({ title: T("방"), body: "", parent_id: aiDev });
+      const X = await add({ title: T("사과"), body: "", parent_id: R }), Y = await add({ title: T("바다"), body: "", parent_id: R }), Z = await add({ title: T("구름"), body: "", parent_id: R });
+      const ZK = await add({ title: T("구름 안"), body: "", parent_id: Z });
+      const fresh = () => p.evaluate(async () => { for (const n of await caches.keys()) if (n.startsWith("dsm-api-")) await caches.delete(n); }).catch(() => {});
+      const nodeAt = async (title) => { let a = null; for (let i = 0; i < 25; i++) { const b = await p.evaluate((t) => { const c = document.querySelector(".og-c"), r = c.getBoundingClientRect(), n = c.__nodes().find((x) => x.title === t); return n && { x: n.x + r.left, y: n.y + r.top }; }, title); if (a && b && Math.hypot(a.x - b.x, a.y - b.y) < 0.5) return b; a = b; await sleep(150); } return a; };
+      const view = () => p.evaluate(() => document.querySelector(".og-c")?.__view?.() || null);
+      const linked = (a, b) => p.evaluate(([a, b]) => (document.querySelector(".og-c")?.__links?.() || []).some((l) => l.w >= 1 && ((l.s === a && l.t === b) || (l.s === b && l.t === a))), [a, b]);
+      const bodyHas = async (id, t) => ((await note(id))?.body || "").includes(`[[${t}]]`);
+      // 손가락: pointer 이벤트(touch)로 톡 · 길게
+      const touch = (x, y, ms = 40) => p.evaluate(async ([x, y, ms]) => { const c = document.querySelector(".og-c"); const ev = (t) => c.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", isPrimary: true, clientX: x, clientY: y, button: 0 })); ev("pointerdown"); await new Promise((r) => setTimeout(r, ms)); ev("pointerup"); }, [x, y, ms]);
+      const tap = async (at) => { if (w > 600) await p.mouse.click(at.x, at.y); else await touch(at.x, at.y); };
+      const dbl = async (at) => { if (w > 600) await p.mouse.dblclick(at.x, at.y); else { await touch(at.x, at.y); await sleep(90); await touch(at.x, at.y); } };
+      const menuAt = async (x, y) => { if (w > 600) await p.mouse.click(x, y, { button: "right" }); else await touch(x, y, 650); await p.waitForSelector(".cm", { timeout: 4000 }).catch(() => {}); return p.evaluate(() => [...document.querySelectorAll(".cm [data-k]")].map((b) => b.textContent.trim()).join("|")); };
+      const emptyAt = async () => p.evaluate(() => { const c = document.querySelector(".og-c"), r = c.getBoundingClientRect(), ns = c.__nodes(); for (let i = 0; i < 400; i++) { const x = r.left + 30 + Math.random() * (r.width - 60), y = r.top + 50 + Math.random() * (r.height - 100); if (ns.every((n) => Math.hypot(n.x + r.left - x, n.y + r.top - y) > 40) && document.elementFromPoint(x, y) === c) return { x, y }; } return { x: r.left + 20, y: r.bottom - 20 }; });
+
+      // 1) 누르기 = 고르기(테두리 · 아래 도움말) → 다른 점 누르기 = 연결 (서버 본문 · 바로 선 · 새로 열어도)
+      step = "1 고르기 · 연결"; await fresh(); await go("#/brain/" + encodeURIComponent(R), 3500);
+      const hint0 = await p.locator("[data-hint]").innerText();
+      await tap(await nodeAt(T("사과"))); await sleep(450);
+      const sel1 = (await view())?.sel, hint1 = await p.locator("[data-hint]").innerText();
+      await tap(await nodeAt(T("바다"))); await sleep(1800);
+      const xy = await bodyHas(X, T("바다")), shown = await linked(X, Y), sel2 = (await view())?.sel;
+      await go("#/brain/" + encodeURIComponent(R), 3500);
+      const kept = await linked(X, Y);
+      ok(/우클릭|길게/.test(hint0) && sel1 === X && /다른 노드를 누르면 연결돼요/.test(hint1) && xy && shown && sel2 === null && kept && !errs.length,
+        `${tv} · Obsidian 누르기 — 고르기 ${sel1 === X} · 도움말 "${hint1.slice(0, 30)}" · 연결 서버 ${xy} · 바로 선 ${shown} · 새로 열어도 ${kept}${errs.length ? " — " + errs[0] : ""}`);
+
+      // 2) 고른 채로 다른 점을 두 번 누르면 들어가기만 (연결 안 생김) → ← 뒤로 = 같은 확대 · 고른 점 그대로
+      step = "2 두 번 · 뒤로";
+      await tap(await nodeAt(T("바다"))); await sleep(450);
+      if (w > 600) { const c = await p.locator(".og-c").boundingBox(); await p.mouse.move(c.x + c.width / 2, c.y + c.height / 2); await p.mouse.wheel(0, -240); await sleep(500); }
+      else { await p.click('.og-zoom [data-z="in"]'); await sleep(400); }
+      const v0 = await view();
+      await dbl(await nodeAt(T("구름"))); await sleep(1800);
+      const inZ = await p.evaluate(() => location.hash), noLink = !(await bodyHas(Y, T("구름"))) && !(await bodyHas(Z, T("바다")));
+      await p.click("[data-back]"); await sleep(1800);
+      const backHash = await p.evaluate(() => location.hash), v1 = await view();
+      // 노트(잎)로 들어갔다가 노트의 ← 뒤로 → 같은 층 · 같은 확대
+      await p.keyboard.press("Escape"); await sleep(150);
+      const sel3 = (await view())?.sel;
+      await dbl(await nodeAt(T("사과"))); await sleep(2000);
+      const inNote = await p.evaluate(() => location.hash);
+      await p.click("#ed-back"); await sleep(2000);
+      const back2 = await p.evaluate(() => location.hash), v2 = await view();
+      ok(inZ === "#/brain/" + Z && noLink && backHash === "#/brain/" + R && v1 && Math.abs(v1.k - v0.k) < 0.01 && Math.abs(v1.x - v0.x) < 1 && v1.sel === Y && sel3 === null && inNote === "#/notes/" + X && back2 === "#/brain/" + R && v2 && Math.abs(v2.k - v0.k) < 0.01,
+        `${tv} · Obsidian 두 번 누르기 — 들어감 ${inZ === "#/brain/" + Z} · 연결 안 생김 ${noLink} · ← 뒤로 ${backHash === "#/brain/" + R} · 확대 ${v0?.k?.toFixed(2)} → ${v1?.k?.toFixed(2)} · 고른 점 ${v1?.sel === Y} · Esc 풀기 ${sel3 === null} · 노트 ← 뒤로 ${back2 === "#/brain/" + R} (확대 ${v2?.k?.toFixed(2)})`);
+
+      // 3) 빈 곳 우클릭(폰은 길게) → 여기에 새 노드 (누른 자리 이름 칸) → ⌘Z 지워짐 → ⌘⇧Z 다시
+      step = "3 우클릭 만들기"; const e0 = await emptyAt();
+      const bm = await menuAt(e0.x, e0.y);
+      await p.click('.cm [data-k="new"]'); await p.waitForSelector(".nm input", { timeout: 4000 });
+      const popAt = await p.evaluate(() => { const f = document.querySelector(".nm"); return f.classList.contains("nm-pop") ? "자리" : "위쪽"; });
+      await p.locator(".nm input").fill(T("새것")); await p.keyboard.press("Enter"); await sleep(1800);
+      const nid = await idOf(T("새것")), nparent = nid ? (await note(nid))?.parent_id : null, ndraw = (await p.evaluate(() => document.querySelector(".og-c").__nodes().map((n) => n.title))).includes(T("새것"));
+      await p.keyboard.press(MODK + "+z"); await sleep(1800);
+      const undone = !(await idOf(T("새것"))), undrawn = !(await p.evaluate(() => document.querySelector(".og-c").__nodes().map((n) => n.title))).includes(T("새것"));
+      await p.keyboard.press(MODK + "+Shift+z"); await sleep(1800);
+      const redone = !!(await idOf(T("새것")));
+      ok(bm === "여기에 새 노드" && nid && nparent === R && ndraw && undone && undrawn && redone && (w > 600 ? popAt === "자리" : true),
+        `${tv} · Obsidian 우클릭 만들기 — 메뉴 "${bm}" · 이름 칸 ${popAt} · 부모 ${nparent === R} · 그래프 ${ndraw} · ${MODK}+Z 지워짐 ${undone && undrawn} · ${MODK}+Shift+Z 다시 ${redone}`);
+
+      // 4) 이름 바꾸기 (우클릭 → 이름 칸) → ⌘Z → ⌘⇧Z
+      step = "4 이름 · 되돌리기"; const xa = await nodeAt(T("사과"));
+      const nm = await menuAt(xa.x, xa.y);
+      await p.click('.cm [data-k="rename"]'); await p.waitForSelector(".nm input", { timeout: 4000 });
+      await p.locator(".nm input").fill(T("사과2")); await p.keyboard.press("Enter"); await sleep(1600);
+      const r1 = (await note(X))?.title;
+      await p.keyboard.press(MODK + "+z"); await sleep(1600); const r2 = (await note(X))?.title;
+      await p.keyboard.press(MODK + "+Shift+z"); await sleep(1600); const r3 = (await note(X))?.title;
+      await p.keyboard.press(MODK + "+z"); await sleep(1600); const r4 = (await note(X))?.title;
+      ok(nm.includes("이름 바꾸기") && nm.includes("연결 끊기 ▸") && r1 === T("사과2") && r2 === T("사과") && r3 === T("사과2") && r4 === T("사과"),
+        `${tv} · Obsidian 이름 — 메뉴 ${nm} · ${r1} → ⌘Z ${r2} → ⌘⇧Z ${r3} → ⌘Z ${r4}`);
+
+      // 5) 연결 ⌘Z / ⌘⇧Z · 선 우클릭 → 연결 끊기 → ⌘Z
+      step = "5 연결 되돌리기";
+      await tap(await nodeAt(T("사과"))); await sleep(450); await tap(await nodeAt(T("구름"))); await sleep(1800);
+      const l1 = await bodyHas(X, T("구름"));
+      await p.keyboard.press(MODK + "+z"); await sleep(1600); const l2 = await bodyHas(X, T("구름")), l2d = await linked(X, Z);
+      await p.keyboard.press(MODK + "+Shift+z"); await sleep(1600); const l3 = await bodyHas(X, T("구름"));
+      await sleep(800);
+      const mid = await p.evaluate(([a, b]) => { const c = document.querySelector(".og-c"), r = c.getBoundingClientRect(), l = c.__links().find((l) => l.w >= 1 && ((l.s === a && l.t === b) || (l.s === b && l.t === a))); return l && { x: r.left + (l.x1 + l.x2) / 2, y: r.top + (l.y1 + l.y2) / 2 }; }, [X, Z]);
+      const em = mid ? await menuAt(mid.x, mid.y) : "(선 없음)";
+      if (em.includes("연결 끊기")) await p.click('.cm [data-k="cut"]'); else await p.keyboard.press("Escape");
+      await sleep(1600); const l4 = await bodyHas(X, T("구름"));
+      await p.keyboard.press(MODK + "+z"); await sleep(1600); const l5 = await bodyHas(X, T("구름"));
+      ok(l1 && !l2 && !l2d && l3 && em === "연결 끊기" && !l4 && l5, `${tv} · Obsidian 연결 되돌리기 — 연결 ${l1} · ⌘Z 끊김 ${!l2} · ⌘⇧Z 다시 ${l3} · 선 우클릭 "${em}" → 끊김 ${!l4} · ⌘Z 다시 ${l5}`);
+
+      // 6) 지우기 → 5초 뒤 서버에서 지워짐(하위는 한 칸 위로) → ⌘Z 로 되살리기 (같은 제목 · 부모 · 하위가 다시 그 밑으로)
+      step = "6 지운 뒤 되살리기"; const za = await nodeAt(T("구름"));
+      await menuAt(za.x, za.y); await p.click('.cm [data-k="del"]'); await sleep(6200);
+      const zGone = !(await note(Z)), zkUp = (await note(ZK))?.parent_id;
+      await p.keyboard.press(MODK + "+z"); await sleep(2500);
+      const Z2 = await idOf(T("구름")), z2 = Z2 ? await note(Z2) : null, zkBack = (await note(ZK))?.parent_id;
+      await p.keyboard.press(MODK + "+Shift+z"); await sleep(1800);
+      const z3 = !(await idOf(T("구름")));
+      await p.keyboard.press(MODK + "+z"); await sleep(2500);
+      const Z3 = await idOf(T("구름"));
+      ok(zGone && zkUp === R && Z2 && Z2 !== Z && z2?.parent_id === R && zkBack === Z2 && z3 && !!Z3 && !errs.length,
+        `${tv} · Obsidian 지운 뒤 ⌘Z — 서버에서 지워짐 ${zGone} (하위는 위로 ${zkUp === R}) · 되살림 ${!!Z2} (새 id ${Z2 !== Z}) · 부모 ${z2?.parent_id === R} · 하위 다시 밑으로 ${zkBack === Z2} · ⌘⇧Z 다시 지움 ${z3} · ⌘Z 또 되살림 ${!!Z3}${errs.length ? " — " + errs[0] : ""}`);
+
+      // 7) Dock 의 Obsidian 아이콘을 다시 누르면 한 칸 위: 노트 → 그 그래프 층 → 부모 층 → … → 맨 위 그대로
+      if (w > 600) {
+        step = "7 Dock 한 칸 위";
+        await go("#/notes/" + ZK, 2500);
+        const dock = 'a.rail-btn[data-nav="brain"]', trail = [];
+        for (let i = 0; i < 5; i++) { await p.click(dock); await sleep(1500); trail.push(await p.evaluate(() => location.hash)); }
+        const want = ["#/brain/" + Z3, "#/brain/" + R, "#/brain/" + aiDev, "#/brain", "#/brain"];
+        ok(trail.join() === want.join(), `${tv} · Dock 한 칸 위 — ${trail.map((h) => h.replace(/^#\/brain\/?/, "") ? "층" : "맨 위").join(" → ")} (${trail.join() === want.join() ? "맞음" : trail.join(" , ")})`);
+      }
+    } catch (e) { ok(false, `${tv} · Obsidian (${step}) — ${String(e.message).split("\n")[0]}`); }
 
     // ---------- ⑫-b 단 나누기 · 수식 — 끝에 끌어 놓기 → 2단, "/2 columns", "/equation" KaTeX, 글 속 $..$ (2026-10-14) ----------
     try {
@@ -1107,7 +1235,7 @@ try {
     }
 
     // ---------- ⑯ 홈 Day 쪽 ‹ 날짜 › — 내일 · 다른 날 보기와 끌어 넣기 · 고른 날 기억 (2026-10-15) ----------
-    {
+    try {
       errs = [];
       await p.evaluate(() => { localStorage.setItem("trio-home-page", "3"); localStorage.setItem("trio-guide-off", "1"); localStorage.removeItem("trio-home-day"); });
       await go("#/", 2500);
@@ -1136,7 +1264,7 @@ try {
           `${tv} · 내일에 끌어 넣기 ${tp ? tp.start + " " + tp.mins + "분" : "없음"} · 새로 열어도 ${d2.cap} · 지난 기억 → ${d3.cap} · ‹ ${d4.cap} · 오늘로 ${d5.cap} · 링 → ${h6}${errs.length ? " — " + errs[0] : ""}`);
       }
       await p.evaluate(() => { localStorage.removeItem("trio-home-day"); localStorage.removeItem("trio-home-page"); });
-    }
+    } catch (e) { ok(false, `${tv} · Day 쪽 ‹ 날짜 › — ${String(e.message).split("\n")[0]} (지금 시각에 따라 .hud-pad 가 › 를 가리는 기존 문제일 수 있어요)`); }
 
     // ---------- ⑰ 계획 복사 · 붙여넣기 (⌘C · ⌘V · ⌘Z, Ctrl 도 돼요) — 하루 계획표 · 홈 시계 (2026-10-16) ----------
     if (tv === "컴퓨터") {
@@ -1155,14 +1283,18 @@ try {
       const one = await list(day);
       await p.keyboard.press("Control+Z"); await sleep(1500);
       const undone = await list(day);
+      await p.keyboard.press("Control+Shift+Z"); await sleep(1500); // 공용 되돌리기 기록(undo.js): 다시 하기 → 또 되돌리기
+      const redone = await list(day);
+      await p.keyboard.press("Meta+Z"); await sleep(1500);
+      const undone2 = await list(day);
       // 여러 개: Shift+클릭 A · B → ⌘C → 16시 칸 → ⌘V → 16:00 · 17:00 (간격 그대로)
       await shiftClick(await blockAt("복사 A")); await shiftClick(await blockAt("복사 B"));
       const sel = await p.evaluate(() => document.querySelectorAll("#dp-grid .block.sel").length);
       await p.keyboard.press("Control+C"); await sleep(200);
       await p.mouse.move(...await hourAt(16)); await p.keyboard.press("Control+V"); await sleep(2000);
       const multi = await list(day);
-      ok(one.includes("14:00 60 복사 A high") && undone.length === 2 && sel === 2 && multi.includes("16:00 60 복사 A high") && multi.includes("17:00 30 복사 B") && multi.length === 4 && !errs.length,
-        `${tv} · 계획 복사 · 붙여넣기 — 14시에 ${one.includes("14:00 60 복사 A high")} · ⌘Z ${undone.length === 2} · Shift+클릭 ${sel}개 → 16:00 · 17:00 ${multi.includes("17:00 30 복사 B")}${errs.length ? " — " + errs[0] : ""}`);
+      ok(one.includes("14:00 60 복사 A high") && undone.length === 2 && redone.includes("14:00 60 복사 A high") && redone.length === 3 && undone2.length === 2 && sel === 2 && multi.includes("16:00 60 복사 A high") && multi.includes("17:00 30 복사 B") && multi.length === 4 && !errs.length,
+        `${tv} · 계획 복사 · 붙여넣기 — 14시에 ${one.includes("14:00 60 복사 A high")} · ⌘Z ${undone.length === 2} · ⌘⇧Z ${redone.length === 3} · 또 ⌘Z ${undone2.length === 2} · Shift+클릭 ${sel}개 → 16:00 · 17:00 ${multi.includes("17:00 30 복사 B")}${errs.length ? " — " + errs[0] : ""}`);
       // 다른 앱에서 복사한 "07:00–07:30 이름" 줄은 계획으로 · 그냥 글은 그대로 무시 (마우스가 시간표 밖이면 줄에 적힌 시각에)
       await p.mouse.move(5, 5);
       const pasteText = (t) => p.evaluate((t) => { const dt = new DataTransfer(); dt.setData("text/plain", t); document.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true })); }, t);
@@ -1183,6 +1315,67 @@ try {
       ok(home.includes("20:00 30 홈 복사"), `${tv} · 홈 시계 — 조각 복사 → 링 20시에 붙여넣기 ${home.includes("20:00 30 홈 복사")}`);
       await p.evaluate(() => localStorage.removeItem("trio-home-page"));
     }
+
+    // ---------- ㉑ 계획 되돌리기 (⌘Z · ⌘⇧Z · Ctrl+Y, 2026-10-22) — 옮기기 · 길이 · 이름 · 지우기(다시 만들어요) · 추가(빈 다음 칸에서도) · 서버에도 반대 요청 ----------
+    if (tv === "컴퓨터") {
+      errs = [];
+      try {
+        const day = new Date(Date.now() + 9 * 3600e3 + 9 * 864e5).toISOString().slice(0, 10);
+        const list = async () => (await (await ctx.request.get(BASE + "/api/plans?periods=D:" + day, { headers: H })).json()).plans.map((x) => `${x.start} ${x.mins} ${x.text}`).sort().join(" / ");
+        for (const [text, start, mins] of [["되돌 A", "09:00", 60], ["되돌 B", "13:00", 30]]) await ctx.request.post(BASE + "/api/plans", { headers: H, data: { scope: "day", period: "D:" + day, text, start, mins } });
+        await go("#/calendar/" + day, 2500);
+        const box = (t) => p.evaluate((t) => { const b = [...document.querySelectorAll("#dp-grid .block")].find((x) => x.querySelector("[data-edit]")?.textContent === t); b?.scrollIntoView({ block: "center" }); const r = b?.getBoundingClientRect(); return r && { x: r.left, y: r.top, w: r.width, h: r.height }; }, t);
+        const hourY = (h) => p.evaluate((h) => document.querySelector(`#dp-grid .hour[data-h="${h}"]`).getBoundingClientRect().top, h);
+        const key = async (k) => { await p.keyboard.press(k); await sleep(1600); return list(); };
+        const start = await list();
+        // 옮기기: A 를 끌어서 아래로 → ⌘Z 제자리 → ⌘⇧Z 다시
+        let b = await box("되돌 A"); const dy = (await hourY(11)) - (await hourY(9)), x = b.x + Math.min(200, b.w / 2);
+        await p.mouse.move(x, b.y + b.h / 2); await p.mouse.down(); await p.mouse.move(x, b.y + b.h / 2 + dy / 2, { steps: 5 }); await p.mouse.move(x, b.y + b.h / 2 + dy, { steps: 5 }); await p.mouse.up(); await sleep(1600);
+        const moved = await list(); await p.mouse.move(5, 300);
+        const mUndo = await key("Meta+z"), mRedo = await key("Meta+Shift+z"), mUndo2 = await key("Control+z");
+        // 길이: B 아래 모서리를 끌어서 늘리기 → Ctrl+Z
+        b = await box("되돌 B"); const dh = ((await hourY(14)) - (await hourY(13))) / 2;
+        await p.mouse.move(b.x + 100, b.y + b.h - 3); await p.mouse.down(); await p.mouse.move(b.x + 100, b.y + b.h - 3 + dh / 2, { steps: 4 }); await p.mouse.move(b.x + 100, b.y + b.h - 3 + dh, { steps: 4 }); await p.mouse.up(); await sleep(1600);
+        const resized = await list(), rUndo = await key("Control+z");
+        // 이름: 두 번 눌러 고치기 → ⌘Z
+        await p.locator("#dp-grid [data-edit]", { hasText: "되돌 A" }).dblclick(); await sleep(200);
+        await p.keyboard.type("되돌 A2"); await p.keyboard.press("Enter"); await sleep(1600);
+        const renamed = await list(), nUndo = await key("Meta+z");
+        // 지우기(우클릭) → ⌘Z 다시 만들어요 → Ctrl+Y 다시 지움 → ⌘Z
+        b = await box("되돌 B"); await p.mouse.click(b.x + 60, b.y + b.h / 2, { button: "right" }); await sleep(200); await p.click('.cm [data-k="del"]'); await sleep(1600);
+        const deleted = await list(), dUndo = await key("Meta+z"), dRedo = await key("Control+y"), dUndo2 = await key("Meta+z");
+        // 추가: 빈 칸 누르고 Enter → (다음 칸이 열려 있어도) ⌘Z 로 지워져요 → ⌘⇧Z
+        const hr = await p.evaluate(() => { const r = document.querySelector('#dp-grid .hour[data-h="15"] [data-slot]'); r.scrollIntoView({ block: "center" }); const q = r.getBoundingClientRect(); return [q.left + 40, q.top + 3]; });
+        await p.mouse.click(hr[0], hr[1]); await sleep(300);
+        await p.locator("[data-slot-form] [name=text]").fill("되돌 새것"); await p.keyboard.press("Enter"); await sleep(1600);
+        const added = await list(), aUndo = await key("Meta+z"), aRedo = await key("Meta+Shift+z");
+        const A0 = "09:00 60 되돌 A / 13:00 30 되돌 B";
+        ok(start === A0 && moved !== A0 && mUndo === A0 && mRedo === moved && mUndo2 === A0 && resized !== A0 && rUndo === A0 && renamed.includes("되돌 A2") && nUndo === A0
+          && deleted === "09:00 60 되돌 A" && dUndo === A0 && dRedo === "09:00 60 되돌 A" && dUndo2 === A0 && added.includes("15:00 60 되돌 새것") && aUndo === A0 && aRedo === added && !errs.length,
+          `${tv} · 계획 되돌리기 — 옮기기 ${moved.split(" / ")[0]} → ⌘Z ${mUndo === A0} → ⌘⇧Z ${mRedo === moved} · 길이 Ctrl+Z ${rUndo === A0} · 이름 ⌘Z ${nUndo === A0} · 지우기 ⌘Z ${dUndo === A0} · Ctrl+Y ${dRedo === "09:00 60 되돌 A"} · 추가 ⌘Z ${aUndo === A0} · ⌘⇧Z ${aRedo === added}${errs.length ? " — " + errs[0] : ""}`);
+      } catch (e) { ok(false, `${tv} · 계획 되돌리기 — ${String(e.message).split("\n")[0]}`); }
+    }
+
+    // ---------- ㉒ 일기 블록 편집기 되돌리기 (2026-10-22) — 글 치기 · Enter 나누기 · "- " 목록 바꾸기를 한 단계씩 ⌘Z, ⌘⇧Z 로 다시, 저장된 값도 같이 ----------
+    try {
+      errs = [];
+      const day = new Date(Date.now() + 9 * 3600e3 - (w > 600 ? 3 : 4) * 864e5).toISOString().slice(0, 10), MODK = w > 600 ? "Meta" : "Control";
+      await ctx.request.put(BASE + "/api/diary", { headers: H, data: { day, body: "", blocks: { v: 1, blocks: [] }, mood: null } });
+      const server = async () => { const d = (await (await ctx.request.get(BASE + "/api/diary?day=" + day, { headers: H })).json()).diary; return (d?.blocks ? JSON.parse(d.blocks).blocks : []).map((x) => `${x.type}:${x.text}`).join(" | "); };
+      const local = () => p.evaluate(() => [...document.querySelectorAll(".diary-doc .nb")].map((x) => `${x.dataset.type}:${x.querySelector(".nb-text")?.textContent || ""}`).join(" | "));
+      await go("#/diary/" + day, 2500);
+      await p.click(".diary-doc .nb-text"); await p.keyboard.type("첫 줄 글"); await sleep(800);
+      await p.keyboard.press("Enter"); await p.keyboard.type("- 목록"); await sleep(2000);
+      const typed = await local(), saved = await server();
+      const steps = []; for (let i = 0; i < 4; i++) { await p.keyboard.press(MODK + "+z"); await sleep(250); steps.push(await local()); }
+      const caret = await p.evaluate(() => [document.activeElement?.closest(".nb")?.dataset.type, getSelection().anchorOffset]);
+      await sleep(1800); const savedUndo = await server();
+      for (let i = 0; i < 4; i++) { await p.keyboard.press(MODK + "+Shift+z"); await sleep(250); }
+      const redone = await local(); await sleep(1800); const savedRedo = await server();
+      const want = ["paragraph:첫 줄 글 | bullet:", "paragraph:첫 줄 글 | paragraph:- ", "paragraph:첫 줄 글 | paragraph:", "paragraph:첫 줄 글"];
+      ok(typed === "paragraph:첫 줄 글 | bullet:목록" && saved === typed && steps.join("#") === want.join("#") && caret[0] === "paragraph" && caret[1] === 5 && savedUndo === "paragraph:첫 줄 글" && redone === typed && savedRedo === typed && !errs.length,
+        `${tv} · 일기 ⌘Z — ${steps.map((x) => x.split(" | ").length + "칸").join(" → ")} (${steps.join("#") === want.join("#") ? "한 단계씩" : steps.join(" # ")}) · 커서 ${caret.join(":")} · 저장 ${savedUndo === "paragraph:첫 줄 글"} · ⌘⇧Z 다시 ${redone === typed} · 저장 ${savedRedo === typed}${errs.length ? " — " + errs[0] : ""}`);
+    } catch (e) { ok(false, `${tv} · 일기 되돌리기 — ${String(e.message).split("\n")[0]}`); }
 
     // ---------- ⑱ 일기 친구 — 아이디로 초대하고 상대가 수락한 사람끼리만 서로의 공개 일기를 봐요. 같은 팀이어도 친구가 아니면 서버가 막아요 (2026-10-19) ----------
     {

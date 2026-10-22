@@ -11,8 +11,14 @@ export const GRAPH_DEFAULTS = { basis: "deg", node: 1, text: 12, line: 1, fade: 
 const TIER_R = [11, 7, 4.5, 3.2];
 
 // onClick(node, e)?: 있으면 왼쪽 클릭이 열기 대신 이것 (두 번 빨리 누르면 열기) · onBlank(e)?: 빈 곳 왼쪽 클릭
-export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank, prefs: p0, savePrefs, empty, scope = "" }) {
+// select: true = Obsidian(Brain) 방식 (2026-10-22) — 한 번 누르기 = 고르기(테두리) · 고른 채 다른 점 = onConnect(고른 점, 누른 점)
+//   · 두 번 누르기 = onOpen (첫 번째 누르기는 고르기만 해서 연결이 생기지 않아요 — 연결은 두 번 누르기 시간(300ms)이 지난 뒤에 정해요)
+//   · 빈 곳 누르기 = 고르기 풀기 · 오른쪽 클릭(폰은 길게): 점 = onMenu, 선 = onEdgeMenu(link, e), 빈 곳 = onBlankMenu(e, world)
+//   · onSelect(node | null) · initial = { k, x, y, sel, pos } (돌아왔을 때 확대 · 위치 · 고른 점 그대로)
+// 돌려주는 stop() 에 붙은 것: stop.state() · stop.setData(data, types?, spawn?) · stop.select(id) · stop.worldAt(clientX, clientY)
+export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank, prefs: p0, savePrefs, empty, scope = "", select = false, onSelect, onConnect, onEdgeMenu, onBlankMenu, initial = null }) {
   let lastTap = { n: null, t: 0 };
+  const DBL = 300;
   const P = { ...GRAPH_DEFAULTS, open: innerWidth > 760, ...(p0 || {}) }; // 폰은 설정 패널을 접고 시작해요
   const hidden = () => new Set(P.hide?.[scope] || []);
   host.innerHTML = `
@@ -50,14 +56,16 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
   const canvas = $(".og-c"), g = canvas.getContext("2d");
   let W = 0, H = 0, dpr = 1, raf = 0, alpha = 1, alive = true;
   const view = { x: 0, y: 0, k: 1 };
-  let hover = null, pinned = null, drag = null, pan = null, query = "", focusType = null, moved = false;
+  let hover = null, pinned = null, drag = null, pan = null, query = "", focusType = null, moved = false, sel = null, pendT = 0;
 
   // ---------- 데이터 ----------
-  const byId = new Map();
-  const all = data.nodes.map((n, i) => { const a = i * 2.39996, r = 14 * Math.sqrt(i + 1); const o = { ...n, x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0, deg: 0 }; byId.set(n.id, o); return o; }); // 해바라기 씨앗처럼 고르게 퍼진 원에서 시작
-  const allLinks = (data.links || []).map((l) => ({ ...l, s: byId.get(l.s), t: byId.get(l.t) })).filter((l) => l.s && l.t && l.s !== l.t);
+  let byId = new Map();
+  const saved = initial?.pos || {};
+  let all = data.nodes.map((n, i) => { const a = i * 2.39996, r = 14 * Math.sqrt(i + 1), sp = saved[n.id]; const o = { ...n, x: sp ? sp[0] : Math.cos(a) * r, y: sp ? sp[1] : Math.sin(a) * r, vx: 0, vy: 0, deg: 0 }; byId.set(n.id, o); return o; }); // 해바라기 씨앗처럼 고르게 퍼진 원에서 시작
+  const linksOf = (d) => (d.links || []).map((l) => ({ ...l, s: byId.get(l.s), t: byId.get(l.t) })).filter((l) => l.s && l.t && l.s !== l.t);
+  let allLinks = linksOf(data);
   let nodes = [], links = [], adj = new Map();
-  function apply() {
+  function apply(heat = 0.6) {
     const hide = hidden(), orph = P.orphans !== false;
     const vis = (n) => !hide.has(n.type);
     links = allLinks.filter((l) => vis(l.s) && vis(l.t));
@@ -69,7 +77,7 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     $("[data-stat]").textContent = `${nodes.length} node${nodes.length === 1 ? "" : "s"} · ${links.length} link${links.length === 1 ? "" : "s"}`;
     $("[data-empty]").hidden = all.length > 0;
     drawGroups();
-    alpha = Math.max(alpha, 0.6); kick();
+    alpha = Math.max(alpha, heat); kick();
   }
   const typeOf = (n) => types[n.type] || { label: n.type, color: "#9aa0a6", tier: 2 };
   const radius = (n) => {
@@ -137,7 +145,7 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     const ink = css("--ink") || "#ddd", ink2 = css("--ink-2") || "#aaa", line = css("--line-2") || "#555", accent = css("--og-accent") || "#8b7cf6";
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
     g.translate(W / 2 + view.x, H / 2 + view.y); g.scale(view.k, view.k);
-    const focus = hover || pinned, near = focus ? adj.get(focus) : null;
+    const focus = hover || sel || pinned, near = focus ? adj.get(focus) : null;
     const lit = (n) => (focus ? n === focus || near?.has(n) : query ? n.title.toLowerCase().includes(query) : focusType ? n.type === focusType : true);
     const dim = !!(focus || query || focusType);
     for (const l of links) {
@@ -151,6 +159,10 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
       g.globalAlpha = on ? 1 : 0.14;
       g.beginPath(); g.arc(n.x, n.y, r, 0, Math.PI * 2);
       g.fillStyle = n === focus ? accent : typeOf(n).color; g.fill();
+    }
+    if (sel && nodes.includes(sel)) { // 고른 점: 바깥 테두리
+      g.globalAlpha = 1; g.strokeStyle = accent; g.lineWidth = 2.2 / view.k;
+      g.beginPath(); g.arc(sel.x, sel.y, radius(sel) + 4.5 / view.k, 0, Math.PI * 2); g.stroke();
     }
     // 이름: 확대가 '이름 보이는 확대' 를 넘으면 서서히, 고른 점 · 이웃 · 찾은 점은 늘
     const fs = P.text / Math.max(0.6, view.k), fadeIn = Math.max(0, Math.min(1, (view.k - P.fade) / 0.4 + 0.15));
@@ -197,10 +209,31 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     hover = null; showTip(null); kick();
     onMenu(n, e);
   };
+  // 선 찾기: 점에서 선분까지 거리 (화면에서 6px 안)
+  const hitEdge = (w) => {
+    let best = null, bd = 6 / view.k;
+    for (const l of [...links].sort((a, b) => (b.w >= 1) - (a.w >= 1))) { // 진짜 연결(w ≥ 1)을 먼저 — 옅은 선(제목이 비슷함)은 그다음
+      if (best && best.w >= 1 && !(l.w >= 1)) break;
+      const dx = l.t.x - l.s.x, dy = l.t.y - l.s.y, L2 = dx * dx + dy * dy || 1;
+      const u = Math.max(0, Math.min(1, ((w.x - l.s.x) * dx + (w.y - l.s.y) * dy) / L2));
+      const d = Math.hypot(w.x - (l.s.x + u * dx), w.y - (l.s.y + u * dy));
+      if (d < bd && u > 0.02 && u < 0.98) { best = l; bd = d; }
+    }
+    return best;
+  };
+  const edgeOut = (l) => ({ s: l.s.id, t: l.t.id, w: l.w, sTitle: l.s.title, tTitle: l.t.title });
+  // 빈 곳 · 선 위에서 메뉴 (오른쪽 클릭 · 길게 누르기)
+  const spaceMenu = (e, w) => {
+    const l = onEdgeMenu ? hitEdge(w) : null;
+    hover = null; showTip(null); kick();
+    if (l) onEdgeMenu(edgeOut(l), e); else onBlankMenu?.(e, w);
+  };
   canvas.addEventListener("contextmenu", (e) => {
-    if (!onMenu) return;
+    if (!onMenu && !onBlankMenu && !onEdgeMenu) return;
     if (held) return e.preventDefault(); // 길게 누르기로 이미 띄웠어요 (안드로이드는 contextmenu 가 또 와요)
-    const n = hit(world(e)); if (!n) return;
+    const w = world(e), n = hit(w);
+    if (!n) { if (onBlankMenu || onEdgeMenu) { e.preventDefault(); spaceMenu(e, w); } return; }
+    if (!onMenu) return;
     e.preventDefault(); menu(n, e, !!hold || !!drag?.touch);
   });
   canvas.addEventListener("pointerdown", (e) => {
@@ -210,6 +243,10 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     if (n) { drag = { node: n, ox: n.x - w.x, oy: n.y - w.y, touch: e.pointerType !== "mouse" }; alpha = Math.max(alpha, 0.3); }
     else pan = { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y };
     if (n && onMenu && e.pointerType !== "mouse") { x0 = e.clientX; y0 = e.clientY; clearTimeout(hold); hold = setTimeout(() => menu(n, { clientX: x0, clientY: y0, preventDefault() {}, hold: true }, true), 500); }
+    else if (!n && select && (onBlankMenu || onEdgeMenu) && e.pointerType !== "mouse") { // 빈 곳 · 선을 길게 누르기
+      x0 = e.clientX; y0 = e.clientY; clearTimeout(hold);
+      hold = setTimeout(() => { hold = 0; held = true; pan = null; spaceMenu({ clientX: x0, clientY: y0, preventDefault() {}, hold: true }, w); }, 500);
+    }
   });
   canvas.addEventListener("pointermove", (e) => {
     const w = world(e);
@@ -225,7 +262,8 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     drag = null; pan = null;
     if (held) { held = false; return; }
     if (moved) return;
-    if (!n) { pinned = null; showTip(null); kick(); if (onBlank && hit(w) == null) onBlank({ clientX: e.clientX, clientY: e.clientY, preventDefault() {} }); return; }
+    if (!n) { pinned = null; showTip(null); if (select) { clearTimeout(pendT); pendT = 0; setSel(null); } kick(); if (onBlank && hit(w) == null) onBlank({ clientX: e.clientX, clientY: e.clientY, preventDefault() {} }); return; }
+    if (select) { tapNode(n); return; }
     // 마우스: 한 번 누르면 열기 · 손가락: 처음엔 이웃을 밝게(이름표), 같은 점을 다시 누르면 열기
     if (wasTouch && pinned !== n) { pinned = n; showTip(n, w); kick(); return; }
     if (onClick) {
@@ -238,13 +276,61 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     onOpen?.(n);
   });
   canvas.addEventListener("pointercancel", () => { clearTimeout(hold); hold = 0; drag = null; pan = null; });
+  // ---------- 고르기 · 연결 (select) ----------
+  function setSel(n, quiet = false) {
+    if (sel === n) return;
+    sel = n || null; kick();
+    if (!quiet) onSelect?.(sel);
+  }
+  function tapNode(n) {
+    const t = performance.now(), dbl = lastTap.n === n && t - lastTap.t < DBL;
+    // 두 번 누르기: 첫 번째 누르기가 바꾼 고르기는 되돌리고 들어가요 (돌아왔을 때 실수로 연결되지 않게)
+    if (dbl) { clearTimeout(pendT); pendT = 0; setSel(lastTap.before, true); lastTap = { n: null, t: 0 }; onOpen?.(n); return; }
+    lastTap = { n, t, before: sel };
+    if (sel && sel !== n && onConnect) {
+      // 연결은 두 번 누르기 시간이 지난 뒤에 — 그 사이 같은 점을 한 번 더 누르면 연결 대신 들어가기
+      const a = sel; clearTimeout(pendT);
+      pendT = setTimeout(() => { pendT = 0; if (alive) onConnect(a, n); }, DBL);
+      return;
+    }
+    setSel(n);
+  }
   canvas.addEventListener("pointerleave", () => { if (!drag) { hover = null; showTip(null); kick(); } });
   canvas.addEventListener("wheel", (e) => { e.preventDefault(); touched = true; const w = world(e); zoomAt(w.sx, w.sy, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
   // 자동 검사용: 화면 좌표로 점 위치
   canvas.__nodes = () => nodes.map((n) => ({ id: n.id, title: n.title, type: n.type, r: radius(n) * view.k, x: W / 2 + view.x + n.x * view.k, y: H / 2 + view.y + n.y * view.k }));
+  canvas.__links = () => links.map((l) => ({ s: l.s.id, t: l.t.id, w: l.w, x1: W / 2 + view.x + l.s.x * view.k, y1: H / 2 + view.y + l.s.y * view.k, x2: W / 2 + view.x + l.t.x * view.k, y2: H / 2 + view.y + l.t.y * view.k }));
+  canvas.__view = () => ({ ...view, sel: sel?.id || null });
 
-  drawTypes(); outs(); apply();
-  for (let i = 0; i < 160; i++) step(); // 처음 배치를 미리 풀어 두고
-  setTimeout(fit, 30); setTimeout(fit, 900);
-  return () => { alive = false; ro.disconnect(); cancelAnimationFrame(raf); clearTimeout(saveT); clearTimeout(hold); };
+  drawTypes(); outs();
+  const back = initial && typeof initial.k === "number";
+  if (back) { Object.assign(view, { k: initial.k, x: initial.x || 0, y: initial.y || 0 }); touched = true; settledFit = true; }
+  const allSaved = back && all.length && all.every((n) => saved[n.id]);
+  apply(allSaved ? 0.02 : 0.6);
+  if (!allSaved) for (let i = 0; i < 160; i++) step(); // 처음 배치를 미리 풀어 두고
+  if (!back) { setTimeout(fit, 30); setTimeout(fit, 900); }
+  if (initial?.sel && byId.has(initial.sel)) setSel(byId.get(initial.sel), true);
+  const stop = () => { alive = false; ro.disconnect(); cancelAnimationFrame(raf); clearTimeout(saveT); clearTimeout(hold); clearTimeout(pendT); };
+  // 지금 모습 (돌아올 때 그대로 그리려고)
+  stop.state = () => ({ k: view.k, x: view.x, y: view.y, sel: sel?.id || null, pos: Object.fromEntries(all.map((n) => [n.id, [Math.round(n.x * 10) / 10, Math.round(n.y * 10) / 10]])) });
+  // 같은 층에서 점 · 선만 바뀌었을 때: 있던 점은 그 자리, 새 점은 spawn[id] = { x, y } (없으면 가운데 근처) — 확대 · 고른 점 그대로
+  stop.setData = (d, ty, spawn = {}) => {
+    if (ty) types = ty;
+    const old = byId, cx = all.reduce((a, n) => a + n.x, 0) / (all.length || 1), cy = all.reduce((a, n) => a + n.y, 0) / (all.length || 1);
+    byId = new Map();
+    all = d.nodes.map((n) => {
+      const o0 = old.get(n.id), sp = spawn[n.id];
+      const o = o0 ? Object.assign(o0, n) : { ...n, x: sp ? sp.x : cx + (Math.random() - 0.5) * 60, y: sp ? sp.y : cy + (Math.random() - 0.5) * 60, vx: 0, vy: 0, deg: 0 };
+      byId.set(n.id, o); return o;
+    });
+    allLinks = linksOf(d);
+    if (sel && !byId.has(sel.id)) setSel(null);
+    if (hover && !byId.has(hover.id)) hover = null;
+    if (drag && !byId.has(drag.node.id)) drag = null;
+    drawTypes(); apply(0.25);
+  };
+  stop.select = (id) => setSel(id ? byId.get(id) || null : null);
+  stop.selected = () => sel?.id || null;
+  stop.worldAt = (clientX, clientY) => { const w = world({ clientX, clientY }); return { x: w.x, y: w.y }; };
+  return stop;
 }

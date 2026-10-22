@@ -2765,7 +2765,9 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .brain-actions { display: flex; gap: 8px; }
 .brain-body { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 240px; grid-template-rows: minmax(0, 1fr); gap: 10px; }
 .brain-graph { position: relative; min-height: 360px; min-width: 0; }
-.brain-graph > .og { position: absolute; inset: 0; height: auto; min-height: 0; box-sizing: border-box; }
+.brain-graph > .og, .brain-graph-in > .og { position: absolute; inset: 0; height: auto; min-height: 0; box-sizing: border-box; }
+.brain-graph-in { position: absolute; inset: 0; }
+.brain .og-stat { display: none; } /* 단순하게: 그래프 · 목록 · 경로만 (개수는 목록에) */
 .brain-list { overflow: auto; border-radius: 14px; background: var(--glass-2, rgba(127,127,127,.06)); padding: 6px; }
 .brain-list ul { list-style: none; margin: 0; padding: 0; }
 .brain-list a { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 9px; color: var(--ink); text-decoration: none; font-size: 13.5px; }
@@ -3254,3 +3256,33 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
   .dock-folder:not(.open):has(.dock-fold-items [aria-current]) > .dock-fold-btn::before { left: 50%; top: auto; bottom: -4px; transform: translateX(-50%); }
 }
 @media (prefers-reduced-motion: reduce) { .dock-folder, .dock-folder.open > .dock-fold-items, .dock-fold-items > [data-dock], .dock-list > .dock-merge { animation: none; transition: none; } }
+
+/* ---------- Obsidian 쉽게 (2026-10-22): ← 뒤로 · 아래 도움말 한 줄 · 처음 안내 3단계 · 누른 자리 이름 칸 ---------- */
+.brain-path { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.brain-back[hidden] { display: none; }
+.brain-back, .ed-back { flex: none; color: var(--ink-2); }
+.brain-more { font-size: 18px; letter-spacing: 1px; }
+.brain-hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 3; width: max-content; max-width: calc(100% - 24px); margin: 0; padding: 6px 12px; border-radius: 999px; font-size: 12.5px; line-height: 1.4; color: var(--ink-3); text-align: center; pointer-events: none; background: color-mix(in srgb, var(--paper-solid, #111) 80%, transparent); border: 1px solid var(--line); transition: color .15s, border-color .15s; }
+.brain-hint:empty { display: none; }
+.brain-hint.on { color: var(--ink); border-color: var(--line-2); }
+.brain-hint b { font-weight: 650; }
+.brain { position: relative; }
+.bi { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--paper-solid, #111) 55%, transparent); border-radius: 14px; }
+.bi-card { width: min(400px, 100%); padding: 22px 22px 18px; border-radius: 16px; background: var(--glass-3); border: 1px solid var(--lg-edge-hi, var(--line-2)); box-shadow: var(--lg-top, none), 0 24px 60px -24px rgba(0, 0, 0, .55); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); display: grid; gap: 10px; }
+.bi-step { font: 600 12px var(--font); color: var(--ink-3); }
+.bi-card h2 { margin: 0; font-size: 18px; line-height: 1.35; color: var(--ink); }
+.bi-card p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
+.bi-dots { display: flex; gap: 6px; margin-top: 2px; }
+.bi-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line-2); }
+.bi-dots i.on { background: var(--ink); }
+.bi-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.nm-pop-back { background: transparent; display: block; padding: 0; }
+.palette.nm.nm-pop { position: fixed; width: min(340px, calc(100vw - 16px)); border-radius: 14px; }
+.nm-pop .nm-head { padding: 12px 16px 0; }
+.palette.nm.nm-pop input { display: block; box-sizing: border-box; width: calc(100% - 32px); margin: 10px 16px 12px; padding: 8px 10px; font-size: 16px; border: 1px solid var(--line-2); border-radius: 9px; background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.palette.nm.nm-pop input:focus { border-color: color-mix(in srgb, var(--ink) 40%, var(--line-2)); }
+.nm-pop .foot .nm-k { display: none; }
+.nm-pick { display: flex; align-items: center; gap: 8px; padding: 0 16px 12px; font-size: 12.5px; color: var(--ink-3); }
+.palette:not(.nm-pop) .nm-pick { padding: 0 20px 12px; }
+.nm-pick select { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line-2); background: transparent; color: var(--ink); font: inherit; font-size: 13.5px; }
+@media (max-width: 760px) { .brain-hint { font-size: 11.5px; border-radius: 12px; } }

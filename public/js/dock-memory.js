@@ -3,6 +3,7 @@
 //   · 12시간이 지나면 잊고 그 앱의 첫 화면으로 · 지금 그 앱 안에서 아이콘을 한 번 더 누르면 한 칸 위(그 앱의 첫 화면)로
 //   · 같은 기록(뒤로 · 앞으로 · 새로 고침)으로 돌아오면 history.state 에 적어 둔 스크롤로
 import * as studyView from "./views/study.js";
+import { upHash } from "./brain-nav.js";
 
 const KEY = "trio-dock-last", TTL = 12 * 3600e3;
 export const REMEMBER = new Set(["brain", "study", "news", "room", "biz", "dev", "cim"]);
@@ -21,8 +22,9 @@ export function remember(nav, hash, top) {
 const lastOf = (nav) => { const m = mem[nav]; return m && Date.now() - m.at < TTL ? m : null; };
 const homeOf = (n) => (n.key === "study" ? studyView.lastHash() : n.hash);
 
-// 그 앱 안에서 한 칸 위: SW 는 카드 → 과정 목차 → 과정 목록, Study 는 그 탭의 첫 화면, 나머지는 첫 화면
+// 그 앱 안에서 한 칸 위: SW 는 카드 → 과정 목차 → 과정 목록, Study 는 그 탭의 첫 화면, Obsidian 은 노트 → 그 그래프 층 → 부모 층, 나머지는 첫 화면
 function upOf(n, hash) {
+  if (n.key === "brain") return upHash(hash);
   if (n.key === "dev") {
     const m = hash.match(/^#\/sw\/([a-z]+)(\/.+)?$/);
     if (m) return m[2] ? `#/sw/${m[1]}` : "#/sw";

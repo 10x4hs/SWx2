@@ -40,7 +40,8 @@ import { scrambleIn } from "./fx.js";
 import { startLive, stopLive } from "./live.js";
 import { openPassword, initPassword } from "./password.js";
 import { initDock, refreshUnread, loadDockPages, drawDock, dropDock } from "./dock.js";
-import { enter as enterRoute, navHref, watchScroll, restoreTop } from "./dock-memory.js"; // Dock 앱마다 보던 곳 그대로
+import { enter as enterRoute, navHref, watchScroll, restoreTop } from "./dock-memory.js";
+import { hasHistory } from "./undo.js"; // ⌘Z · ⌘⇧Z (계획 · 일기 · Obsidian) // Dock 앱마다 보던 곳 그대로
 import { openPalette, initPalette } from "./palette.js";
 import { timer, renderTimer, initTimer } from "./focus-timer.js";
 
@@ -455,7 +456,7 @@ navigator.serviceWorker?.addEventListener("message", (e) => {
     if (ps.includes("/api/pages")) loadDockPages();
     if (!ps.some((p) => p !== "/api/users" && p !== "/api/me")) return;
     const main = $("#main"), el = document.activeElement;
-    if (!main || redrawn || touchedAt > routedAt || (el && main.contains(el) && el.matches("input, textarea, select, [contenteditable]"))) return;
+    if (!main || redrawn || touchedAt > routedAt || hasHistory() || (el && main.contains(el) && el.matches("input, textarea, select, [contenteditable]"))) return; // 되돌리기 기록이 있으면 손댄 화면 (다시 그리면 기록이 사라져요)
     redrawn = true;
     const top = main.scrollTop;
     if (cleanup) { cleanup(); cleanup = null; }

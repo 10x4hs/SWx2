@@ -16,6 +16,7 @@ import { mountPad } from "../home-pad.js";
 import { openMenu } from "../ctxmenu.js";
 import { mountRingDrag } from "../ring-drag.js";
 import { mountPlanClip } from "../plan-clip.js";
+import { planUndo } from "../plan-undo.js"; // ⌘Z · ⌘⇧Z: 링에서 넣기 · 끝냄/못함 · 붙여넣기
 
 const greet = (h) => (h < 5 ? "Good night" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
 const daysLeft = (key) => Math.max(0, Math.ceil((periodEnd(key) - Date.now()) / 864e5));
@@ -78,6 +79,7 @@ export function mount(root, ctx) {
     pres: null, presAt: 0, cheers: { received: [], sent: [] }, cheering: false,
     wk: { off: 0, cache: {}, busy: false, error: null } };
   let alive = true;
+  const pu = planUndo(ctx);
 
   // 이번 달의 모든 날 + 이번 주의 모든 날 (주가 달을 넘어가도)
   const monthDays = [], weekDays = [];
@@ -391,7 +393,9 @@ export function mount(root, ctx) {
         if (k === "go") { ctx.go(timed ? `#/calendar/${(p.period || K.day).slice(2)}` : p.period?.startsWith("Y:") ? HREF.year : p.period?.startsWith("M:") ? HREF.month : p.period?.startsWith("W:") ? HREF.week : HREF.check); return; }
         if (k !== "done" && k !== "missed") return;
         try {
-          await api.updatePlan(p.id, k === "done" ? { done: !p.done } : { missed: !p.missed });
+          const after = k === "done" ? { done: !p.done } : { missed: !p.missed };
+          await api.updatePlan(p.id, after);
+          pu.patched(p.id, { done: p.done, missed: p.missed }, k === "done" ? { done: !p.done, missed: p.done ? p.missed : 0 } : { done: p.missed ? p.done : 0, missed: !p.missed }, k === "done" ? (p.done ? "끝냄 취소" : "끝냄") : (p.missed ? "못함 취소" : "못함"));
           toast(k === "done" ? (p.done ? "끝냄을 되돌렸어요." : "끝냈어요 ✓") : (p.missed ? "못함을 되돌렸어요." : "못 했다고 표시했어요."));
           ctx.changed("plans"); // 홈은 trio:changed 를 듣고 다시 그려요
         } catch (err) { toast(err.message || "바꾸지 못했어요."); }
@@ -439,7 +443,8 @@ export function mount(root, ctx) {
     blocks: () => (pageKey() === "day" ? dayData().blocks : S.data?.day?.blocks || []),
     save: async ({ start, mins, text }) => {
       const on = pageKey() === "day" ? S.day : todayStr; // Day 쪽은 고른 날, 전체 쪽 오늘 링은 오늘
-      await api.addPlan({ scope: "day", period: "D:" + on, text, start, mins });
+      const { plan } = await api.addPlan({ scope: "day", period: "D:" + on, text, start, mins });
+      pu.added([plan], "계획 넣기");
       toast(`넣었어요 · ${on === todayStr ? "" : relOf(on, todayStr) + " "}${start} ${hm(mins)} ${text}`);
       ctx.changed("plans"); // 홈은 trio:changed 로 다시 그려요 — 그때쯤엔 이름 칸이 닫혀 있어요
     },
@@ -574,12 +579,13 @@ export function mount(root, ctx) {
     pick: () => { const p = S.hoverPlan && findPlan(S.hoverPlan); return p ? [p] : []; },
     target: () => (mine() && !S.closed ? { at: drag.at() } : null),
     paste: async (list) => {
-      const on = pageKey() === "day" ? S.day : todayStr, ids = [];
-      for (const b of list) ids.push((await api.addPlan({ scope: "day", period: "D:" + on, text: b.text, start: b.start, mins: b.mins, ...(b.priority ? { priority: b.priority } : {}) })).plan.id);
+      const on = pageKey() === "day" ? S.day : todayStr;
+      const made = [];
+      for (const b of list) made.push((await api.addPlan({ scope: "day", period: "D:" + on, text: b.text, start: b.start, mins: b.mins, ...(b.priority ? { priority: b.priority } : {}) })).plan);
+      if (made.length) pu.added(made, made.length > 1 ? `붙여넣기 ${made.length}개` : "붙여넣기");
       ctx.changed("plans");
-      return ids;
+      return made.map((x) => x.id);
     },
-    remove: async (ids) => { await Promise.all(ids.map((id) => api.deletePlan(id))); ctx.changed("plans"); },
   });
 
   load(true);
@@ -590,5 +596,5 @@ export function mount(root, ctx) {
   // 프로필(이름 · 사진)을 바꾸면 오른쪽 아래 사람 고르기도 바로 새 모습으로
   const onMe = () => { $$("[data-who]", root).forEach((btn) => { const u = ctx.user(btn.dataset.who); const old = btn.querySelector(".av"); if (u && old) old.outerHTML = avatar(u, "sm"); }); pad.refresh?.(); };
   window.addEventListener("trio:me", onMe);
-  return () => { alive = false; drag.destroy(); stopClip(); stopAi?.(); pad.destroy(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); window.removeEventListener("trio:me", onMe); };
+  return () => { alive = false; drag.destroy(); stopClip(); pu.dispose(); stopAi?.(); pad.destroy(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); window.removeEventListener("trio:me", onMe); };
 }

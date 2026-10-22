@@ -13,6 +13,7 @@ import { openMenu, closeMenu } from "../ctxmenu.js";
 import { icon } from "../icons.js";
 import { BLOCKS } from "../english/data.js";
 import { mountPlanClip, MOD } from "../plan-clip.js";
+import { planUndo } from "../plan-undo.js"; // ⌘Z · ⌘⇧Z: 옮기기 · 길이 · 이름 · 끝냄 · 우선순위 · 미루기 · 지우기 · 추가 · 붙여넣기
 
 const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게). 짧은 계획 바로 뒤에 다음 계획이 붙어 있으면 그 자리만 늘어나요 (axis)
 const STEP = 5;     // 시간표를 누르거나 끌 때만 5분 칸 (적는 시각 · 길이는 1분 단위)
@@ -71,6 +72,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   const wk = isoWeek(date);
   let alive = true;
   const changed = (kind) => onChange?.(kind);
+  const pu = planUndo(ctx);
   const scroller = () => $("#dp-scroll", el); // 계획표만 따로 스크롤되는 칸
   const phone = () => matchMedia("(max-width: 720px)").matches;
 
@@ -380,10 +382,14 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     p.done = done ? 1 : 0; if (done) p.missed = 0; drawAll();
     try {
       await api.updatePlan(id, { done });
+      let logId = null;
       if (done && isToday) {
         const { log } = await api.addLog({ day, at: nowTime(), text: `완료 · ${p.text}`, kind: "done" });
+        logId = log?.id || null;
         S.logs.push(log); S.logs.sort((a, b) => a.at.localeCompare(b.at)); drawStudy();
       }
+      // 되돌리면 같이 적힌 '완료' 실행 기록도 지워요
+      pu.patched(id, { done: !done, missed: wasMissed }, { done, missed: done ? 0 : wasMissed }, done ? "끝냄" : "끝냄 취소", { undo: () => (logId ? api.deleteLog(logId).catch(() => {}) : null), redo: () => { logId = null; } });
       changed("plans");
     } catch (e) { p.done = done ? 0 : 1; p.missed = wasMissed; drawAll(); toast(e.message, "err"); }
   }
@@ -392,7 +398,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     const p = S.plans.find((x) => x.id === id); if (!p) return;
     const old = { done: p.done, missed: p.missed };
     p.missed = on ? 1 : 0; if (on) p.done = 0; drawAll();
-    try { await api.updatePlan(id, { missed: on }); changed("plans"); }
+    try { await api.updatePlan(id, { missed: on }); pu.patched(id, old, { done: on ? 0 : old.done, missed: on }, on ? "못함" : "못함 취소"); changed("plans"); }
     catch (e) { Object.assign(p, old); drawAll(); toast(e.message, "err"); }
   }
   function editInline(t, save) {
@@ -412,6 +418,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   }
   async function addPlan(b) {
     const { plan } = await api.addPlan({ scope: "day", period: key, ...b });
+    pu.added([plan], "계획 추가");
     S.plans.push(plan); drawAll(); changed("plans");
   }
 
@@ -459,7 +466,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       openPrioDrop(pr, p.priority || "", async (v) => {
         const nx = v || null, old = p.priority; if (nx === (old || null)) return;
         p.priority = nx; drawAll();
-        try { await api.updatePlan(p.id, { priority: nx }); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); }
+        try { await api.updatePlan(p.id, { priority: nx }); pu.patched(p.id, { priority: old }, { priority: nx }, "우선순위"); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); }
       });
       return;
     }
@@ -469,7 +476,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       openHoursDrop(hb, p.mins || null, async (m) => {
         const old = p.mins; if (m === (old || null)) return;
         p.mins = m; drawAll();
-        try { await api.updatePlan(p.id, { mins: m }); changed("plans"); } catch (ex) { p.mins = old; drawAll(); toast(ex.message, "err"); }
+        try { await api.updatePlan(p.id, { mins: m }); pu.patched(p.id, { mins: old }, { mins: m }, "예상 시간"); changed("plans"); } catch (ex) { p.mins = old; drawAll(); toast(ex.message, "err"); }
       });
       return;
     }
@@ -478,23 +485,24 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     if (play) { const p = S.plans.find((x) => x.id === play.dataset.play); if (p) ctx.timer?.startFor(p); return; }
     const del = e.target.closest("[data-del]");
     if (del) {
-      const id = del.dataset.del, keep = S.plans;
+      const id = del.dataset.del, keep = S.plans, gone = S.plans.find((p) => p.id === id);
       S.plans = S.plans.filter((p) => p.id !== id); drawAll();
-      try { await api.deletePlan(id); changed("plans"); } catch (ex) { S.plans = keep; drawAll(); toast(ex.message, "err"); }
+      try { await api.deletePlan(id); if (gone) pu.deleted(gone, "계획 지우기"); changed("plans"); } catch (ex) { S.plans = keep; drawAll(); toast(ex.message, "err"); }
       return;
     }
     const later = e.target.closest("[data-later]");
     if (later) {
-      const id = later.dataset.later;
-      try { await api.updatePlan(id, { period: "D:" + ymd(addDays(date, 1)) }); S.plans = S.plans.filter((p) => p.id !== id); drawAll(); toast("다음 날로 미뤘어요."); changed("plans"); }
+      const id = later.dataset.later, lp = S.plans.find((p) => p.id === id), next = "D:" + ymd(addDays(date, 1));
+      try { await api.updatePlan(id, { period: next }); pu.patched(id, { period: key, missed: lp?.missed }, { period: next, missed: 0 }, "다음 날로 미루기"); S.plans = S.plans.filter((p) => p.id !== id); drawAll(); toast("다음 날로 미뤘어요."); changed("plans"); }
       catch (ex) { toast(ex.message, "err"); }
       return;
     }
   }
   function onElDbl(e) {
     if (ro()) return;
-    const ed = e.target.closest("[data-edit]");
-    if (ed) return editInline(ed, async (text) => { await api.updatePlan(ed.dataset.edit, { text }); const p = S.plans.find((x) => x.id === ed.dataset.edit); if (p) p.text = text; changed("plans"); });
+    // 블록을 누르면 끌기용으로 포인터를 잡아서(setPointerCapture) dblclick 이 블록에 와요 — 누른 자리의 이름 칸을 직접 찾아요
+    const ed = e.target.closest("[data-edit]") || document.elementFromPoint(e.clientX, e.clientY)?.closest?.("#dp-grid [data-edit]");
+    if (ed) return editInline(ed, async (text) => { const p = S.plans.find((x) => x.id === ed.dataset.edit), old = p?.text; await api.updatePlan(ed.dataset.edit, { text }); if (p) { pu.patched(p.id, { text: old }, { text }, "이름 고치기"); p.text = text; } changed("plans"); });
   }
 
   $("#dp-goal-add", el)?.addEventListener("submit", async (e) => {
@@ -515,7 +523,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       const p = S.plans.find((x) => x.id === f.dataset.editId); if (!p) return;
       const old = { text: p.text, start: p.start, mins: p.mins, priority: p.priority };
       Object.assign(p, { text, start, mins, priority }); S.editSlot = null; S.editId = null; drawAll();
-      try { await api.updatePlan(p.id, { text, start, mins, priority }); changed("plans"); toast("계획을 고쳤어요."); }
+      try { await api.updatePlan(p.id, { text, start, mins, priority }); pu.patched(p.id, old, { text, start, mins, priority }, "계획 고치기"); changed("plans"); toast("계획을 고쳤어요."); }
       catch (ex) { Object.assign(p, old); drawAll(); toast(ex.message, "err"); }
       return;
     }
@@ -541,9 +549,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
         if (k === "edit") { S.editId = p.id; S.editSlot = p.start; drawGrid(); return; }
         if (k === "done") return toggle(p.id, !p.done);
         if (k === "miss") return setMissed(p.id, !p.missed);
-        if (k === "prio") { const old = p.priority; p.priority = v || null; drawAll(); try { await api.updatePlan(p.id, { priority: p.priority }); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); } return; }
-        if (k === "later") { try { await api.updatePlan(p.id, { period: "D:" + ymd(addDays(date, 1)) }); S.plans = S.plans.filter((x) => x.id !== p.id); drawAll(); toast("다음 날로 미뤘어요."); changed("plans"); } catch (ex) { toast(ex.message, "err"); } return; }
-        if (k === "del") { const keep = S.plans; S.plans = S.plans.filter((x) => x.id !== p.id); drawAll(); try { await api.deletePlan(p.id); changed("plans"); toast("삭제했어요."); } catch (ex) { S.plans = keep; drawAll(); toast(ex.message, "err"); } }
+        if (k === "prio") { const old = p.priority; p.priority = v || null; drawAll(); try { await api.updatePlan(p.id, { priority: p.priority }); pu.patched(p.id, { priority: old }, { priority: p.priority }, "우선순위"); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); } return; }
+        if (k === "later") { const next = "D:" + ymd(addDays(date, 1)); try { await api.updatePlan(p.id, { period: next }); pu.patched(p.id, { period: key, missed: p.missed }, { period: next, missed: 0 }, "다음 날로 미루기"); S.plans = S.plans.filter((x) => x.id !== p.id); drawAll(); toast("다음 날로 미뤘어요."); changed("plans"); } catch (ex) { toast(ex.message, "err"); } return; }
+        if (k === "del") { const keep = S.plans; S.plans = S.plans.filter((x) => x.id !== p.id); drawAll(); try { await api.deletePlan(p.id); pu.deleted(p, "계획 지우기"); changed("plans"); toast(`삭제했어요 · ${MOD}Z 되돌리기`); } catch (ex) { S.plans = keep; drawAll(); toast(ex.message, "err"); } }
       },
     });
   });
@@ -612,7 +620,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     const p = S.plans.find((x) => x.id === g.id); if (!p) return;
     const old = { start: p.start, mins: p.mins };
     p.start = toTime(g.ns); p.mins = g.ne - g.ns; drawAll();
-    try { await api.updatePlan(p.id, { start: p.start, mins: p.mins }); changed("plans"); toast(`${p.text} · ${span2(p.start, g.ne)}`); }
+    try { await api.updatePlan(p.id, { start: p.start, mins: p.mins }); pu.patched(p.id, old, { start: p.start, mins: p.mins }, g.mode === "move" ? "계획 이동" : "길이 바꾸기"); changed("plans"); toast(`${p.text} · ${span2(p.start, g.ne)}`); }
     catch (ex) { Object.assign(p, old); drawAll(); toast(ex.message, "err"); }
   };
   el.addEventListener("pointerup", endDrag);
@@ -672,12 +680,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     paste: async (list) => {
       const made = [];
       for (const b of list) made.push((await api.addPlan({ scope: "day", period: key, text: b.text, start: b.start, mins: b.mins, ...(b.priority ? { priority: b.priority } : {}) })).plan);
+      if (made.length) pu.added(made, made.length > 1 ? `붙여넣기 ${made.length}개` : "붙여넣기");
       S.plans.push(...made); S.sel = new Set(made.map((p) => p.id)); drawAll(); changed("plans");
       return made.map((p) => p.id);
-    },
-    remove: async (ids) => {
-      await Promise.all(ids.map((id) => api.deletePlan(id)));
-      S.plans = S.plans.filter((p) => !ids.includes(p.id)); ids.forEach((id) => S.sel.delete(id)); drawAll(); changed("plans");
     },
   });
 
@@ -688,7 +693,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     el.removeEventListener("change", onElChange);
     el.removeEventListener("click", onElClick);
     el.removeEventListener("dblclick", onElDbl);
-    stopClip(); document.removeEventListener("keydown", onSelKey);
+    stopClip(); pu.dispose(); document.removeEventListener("keydown", onSelKey);
     clearInterval(tick);
   };
 }

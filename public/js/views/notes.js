@@ -11,6 +11,8 @@ import { mountDatabase, pill } from "../blocks/db.js";
 import { mountAiPick, aiPrefs } from "../ai-pick.js";
 import { attachImages } from "../imgattach.js";
 import { bindNoteMenu, deleteWithUndo, isGone } from "../note-menu.js";
+import { undoScope } from "../undo.js";
+import { back as brainBack, upHash, learnParents, syncDock } from "../brain-nav.js";
 
 let live = null; // the mounted notes view, so route changes can swap notes without remounting
 
@@ -60,6 +62,7 @@ export function mount(root, ctx, r) {
   const S = { notes: [], filter: "", tag: null, cur: null, backlinks: [], tags: [], children: [], crumbs: [], mode: getMode(), status: "", listOpen: getListOpen(), pick: null }; // pick = 보기 방식을 직접 고른 노트 (영상 노트는 그 전까지 보기로 열어요)
   let ED = null; // 블록 편집기
   let VN = null; // 영상 노트 한 화면 (보기)
+  const us = undoScope("brain"); // ⌘Z: 목록 우클릭(이름 · 옮기기 · 지우기 …) — Obsidian 그래프와 같은 기록. 편집기 안의 글은 편집기가 따로
 
   root.innerHTML = `
     <div class="notes${S.listOpen ? "" : " list-hidden"}" id="notes">
@@ -154,7 +157,7 @@ export function mount(root, ctx, r) {
     $("#notes", root).classList.add("has-note");
     $("#ed", root).innerHTML = `
       <div class="ed-bar">
-        <a class="icon-btn sm only-m" href="#/notes" aria-label="목록으로" id="ed-back">${icon.left(16)}</a>
+        <a class="btn ghost sm ed-back" href="${esc(upHash(location.hash))}" aria-label="뒤로 (전 화면으로)" title="뒤로 — 들어오기 전 화면으로" id="ed-back">← 뒤로</a>
         <button class="icon-btn sm only-d" type="button" id="ed-list" aria-label="${S.listOpen ? "찾기 패널 접기" : "찾기 패널 펴기"}" aria-expanded="${S.listOpen}" title="${S.listOpen ? "찾기 패널 접기" : "찾기 패널 펴기"}">${S.listOpen ? icon.left(15) : icon.right(15)}</button>
         <span class="status" id="ed-status">${own ? esc(S.status || "Edited " + fmt(n.updated_at)) : `${esc(u?.display_name || "누군가")}의 노트 · 보기 전용`}</span>
         ${own ? `
@@ -170,7 +173,7 @@ export function mount(root, ctx, r) {
       </div>
       ${own ? `<form class="ai-refine" id="ed-refine" title="AI 와 이 페이지를 같이 고쳐요"><span class="ai-refine-ic">${icon.spark(14)}</span><input class="input" id="ed-refine-in" maxlength="1000" placeholder="Ask AI: make this a table · add a review section · shorter" aria-label="AI 에게 고쳐 달라고 하기"><button class="btn sm accent" type="submit">Apply</button></form>` : ""}
       <div class="ed-body"><div class="ed-inner" style="${mode === "md" ? "max-width:1180px" : vn ? "max-width:1240px" : ""}">
-        <nav class="crumbs" aria-label="Path"><a href="#/brain">Second Brain</a><span>›</span>${S.crumbs.map((c) => `<a href="#/notes/${c.id}">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b><a class="crumb-map" href="#/brain/${encodeURIComponent(S.children.length ? n.id : S.crumbs.at(-1)?.id || "")}" title="See this page in the Brain graph">◎ Map</a></nav>
+        <nav class="crumbs" aria-label="Path"><a href="#/brain">Second Brain</a><span>›</span>${S.crumbs.map((c) => `<a href="#/brain/${encodeURIComponent(c.id)}" title="그래프에서 보기">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b><a class="crumb-map" href="#/brain/${encodeURIComponent(S.children.length ? n.id : S.crumbs.at(-1)?.id || "")}" title="See this page in the Brain graph">◎ Map</a></nav>
         <input class="ed-title" id="ed-title" value="${esc(n.title)}" aria-label="노트 제목" ${own ? "" : "readonly"} maxlength="120">
         <div class="row faint" style="font-size:12px;gap:10px">
           <span class="row" style="gap:6px">${avatar({ ...(u || {}), color: u?.color || "#999" }, "sm")}${esc(u?.display_name || "")}</span>
@@ -342,7 +345,9 @@ export function mount(root, ctx, r) {
     $("#ed-hist", root)?.addEventListener("click", openHistory);
     // 지우기: 우클릭 메뉴와 같이 바로 빠지고 5초 동안 Undo (note-menu.js) — 목록으로 나가는 건 아래 trio:changed 가 해요
     const del = $("#ed-del", root);
-    if (del) del.addEventListener("click", async () => { const n = S.cur; if (!n) return; save.flush(); await chain; deleteWithUndo({ id: n.id, title: n.title, parent_id: n.parent_id }, ctx); });
+    if (del) del.addEventListener("click", async () => { const n = S.cur; if (!n) return; save.flush(); await chain; deleteWithUndo({ id: n.id, title: n.title, parent_id: n.parent_id }, ctx, us); });
+    // ← 뒤로: 바로 전 화면이 그래프 · 노트면 그대로(확대 · 위치까지), 아니면 이 노트가 보이는 그래프 층
+    $("#ed-back", root)?.addEventListener("click", (e) => { e.preventDefault(); save.flush(); brainBack(upHash(location.hash), ctx.go); });
     if (title && mine()) {
       title.addEventListener("input", () => { setStatus("입력 중…"); save(); });
       title.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); ta?.focus(); } });
@@ -472,6 +477,7 @@ export function mount(root, ctx, r) {
       const { note, backlinks, tags, children = [], crumbs = [] } = d;
       ED?.destroy(); ED = null; DBV?.destroy(); DBV = null;
       S.cur = note; S.backlinks = backlinks; S.tags = tags; S.children = children; S.crumbs = crumbs; S.status = "";
+      learnParents({ ["n:" + note.id]: note.parent_id || null }); syncDock(); // Dock 아이콘 · ← 뒤로 = 이 노트가 보이는 그래프 층
       drawEditor(); drawList();
     };
     const hit = noteCache.get(id);
@@ -540,7 +546,7 @@ export function mount(root, ctx, r) {
   $("#filter", root).addEventListener("input", (e) => { S.filter = e.target.value.trim(); drawList(); });
   // 우클릭 메뉴 (note-menu.js): 오른쪽 클릭 · 길게 누르기 · ContextMenu 키 / Shift+F10
   bindNoteMenu($("#nl", root), "a[href^='#/notes/']", (a) => { const n = S.notes.find((x) => a.getAttribute("href") === "#/notes/" + x.id); return n && { id: n.id, title: n.title, parent_id: n.parent_id, note: true }; }, {
-    ctx, open: (n) => ctx.go("#/notes/" + n.id),
+    ctx, open: (n) => ctx.go("#/notes/" + n.id), undo: us,
     before: async () => { save.flush(); await chain; }, // 열린 노트에 저장 안 된 글이 있으면 먼저 보내요
     edit: (id) => { if (S.cur?.id !== id) { S.mode = "block"; S.pick = id; setMode("block"); ctx.go("#/notes/" + id); } else if (S.mode !== "block" || S.pick !== id) $('[data-mode="block"]', root)?.click(); }, // 영상 노트도 Edit 를 고르면 편집으로
   });
@@ -550,6 +556,7 @@ export function mount(root, ctx, r) {
     const c = e.detail?.kind === "notes" && e.detail.note; if (!c) return;
     if (c.op === "hide" && S.cur?.id === c.id) { leftFor = c.id; S.cur = null; ctx.go("#/notes"); }
     else if (c.op === "show" && c.id === leftFor) { leftFor = null; if (location.hash === "#/notes") ctx.go("#/notes/" + c.id); }
+    else if (c.op === "create" && c.restoredFrom && c.restoredFrom === leftFor) { leftFor = null; if (location.hash === "#/notes") ctx.go("#/notes/" + c.id); } // 서버에서 지운 뒤 ⌘Z 로 되살렸어요 (새 id)
     if (c.local) return drawList();
     loadList();
     // 열린 노트 · 그 경로 · 하위 페이지가 서버에서 바뀌었으면(이름 · 링크 · 옮기기 · 지우기) 새로 받아요
@@ -561,7 +568,7 @@ export function mount(root, ctx, r) {
   live = { route };
   loadList(); open(r.id);
 
-  return () => { save.flush(); closeSuggest(); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; VN?.destroy(); VN = null; live = null; window.removeEventListener("trio:changed", onChanged); };
+  return () => { save.flush(); us.dispose(); closeSuggest(); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; VN?.destroy(); VN = null; live = null; window.removeEventListener("trio:changed", onChanged); };
 }
 
 // "· 웹 검색 2 · 페이지 1 · 이미지 1" 처럼 AI 가 무엇을 찾아봤는지
