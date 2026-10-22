@@ -11,6 +11,7 @@
 
 const VERSION = "dev"; // deploy.sh 가 배포마다 "v<시각>" 으로 찍어요
 const PRECACHE = []; // deploy.sh 가 코드 파일 전체 목록을 찍어요 (node scripts/assets.mjs --list)
+const HASHES = {}; // deploy.sh 가 파일마다 내용 지문을 찍어요 (node scripts/assets.mjs --hashes) — 설치 때 받은 게 이번 배포본인지 맞춰 봐요
 const DEV = VERSION === "dev";
 const STATIC_CACHE = `dsm-static-${VERSION}`;
 const API_CACHE = `dsm-api-${VERSION}`;
@@ -26,14 +27,15 @@ let gen = 0; // 저장이 지나갈 때마다 +1 → 그 전에 출발한 '뒤�
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(STATIC_CACHE);
+    // 배포 직후 1분쯤은 엣지가 옛 파일과 새 파일을 섞어 줘요. 그걸 그대로 담으면 다음 배포까지 '옛 화면 코드 + 새 CSS' 처럼 깨져요.
+    // 그래서 지문(HASHES)이 맞을 때까지 다시 받고, 끝내 안 맞으면 설치를 실패시켜요 → 브라우저는 옛 SW(한 벌로 맞는 옛 버전)를 쓰다가 나중에 다시 설치해요.
     // "/" 는 꼭 필요 (오프라인 첫 화면). /index.html 은 307 → "/" 라서 같은 본문을 두 키에 넣어요.
-    await putDocument(cache, await fetch("/", { cache: "reload" }));
-    // 나머지는 하나가 없어져도 설치는 되게 (다른 작업으로 파일이 옮겨질 수 있어요)
+    await putDocument(cache, await fetchFresh("/"));
+    // 나머지는 하나가 없어져도 설치는 되게 (다른 작업으로 파일이 옮겨질 수 있어요) — 단, 받은 게 옛 버전이면 실패
     await Promise.all([...new Set([...SHELL, ...PRECACHE])].map(async (url) => {
-      try {
-        const res = await fetch(url, { cache: "reload" });
-        if (res.ok) await cache.put(url, res);
-      } catch {}
+      let res;
+      try { res = await fetchFresh(url); } catch (e) { if (e && e.stale) throw e; return; }
+      if (res.ok) await cache.put(url, res);
     }));
     await self.skipWaiting();
   })());
@@ -227,6 +229,19 @@ async function putDocument(cache, res) {
   await cache.put("/index.html", new Response(body, init));
 }
 const timeout = (ms) => new Promise((r) => setTimeout(() => r(null), ms));
+// 설치용 받기: 지문이 있으면 이번 배포본이 올 때까지 다시 받아요 (2 · 4 · 8 · 16 · 30 · 30초 — 엣지가 새 파일로 바뀌는 1분 남짓을 넘겨요)
+async function fetchFresh(url) {
+  const want = HASHES[url];
+  for (const wait of [0, 2000, 4000, 8000, 16000, 30000, 30000]) {
+    if (wait) await timeout(wait);
+    const res = await fetch(url, { cache: "reload" });
+    if (!want || !res.ok) return res;
+    const buf = await res.clone().arrayBuffer();
+    const got = [...new Uint8Array(await crypto.subtle.digest("SHA-256", buf))].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+    if (got === want) return res;
+  }
+  const err = new Error("stale " + url); err.stale = true; throw err;
+}
 
 let netOk = null; // 모름 → SW 가 다시 켜진 뒤 첫 결과는 항상 알려요
 // 네트워크 상태가 바뀔 때만 페이지에 알려요 (pwa.js 가 오프라인 띠를 켜고 꺼요)
