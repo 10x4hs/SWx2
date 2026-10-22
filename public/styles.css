@@ -3087,6 +3087,12 @@ body:has(.ann-bar) .trial-bar { top: auto; bottom: max(16px, env(safe-area-inset
 /* 24시간 무료체험 띠 */
 .trial-bar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 9997; display: flex; gap: 10px; align-items: center; max-width: calc(100% - 32px); padding: 7px 16px; border-radius: 999px; background: linear-gradient(135deg, rgba(155,123,255,.92), rgba(70,224,208,.88)); color: #0a0c18; font-size: 13px; box-shadow: 0 10px 30px -10px rgba(110,90,255,.6); }
 .trial-bar b { font-weight: 800; }
+.trial-x { border: 0; background: rgba(10,12,24,.12); color: inherit; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; line-height: 1; cursor: pointer; margin-right: -8px; flex: none; }
+.trial-x:hover { background: rgba(10,12,24,.24); }
+.trial-x:focus-visible { outline: 2px solid #0a0c18; outline-offset: 2px; }
+.me-left-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; font-size: 13px; color: var(--ink-2); }
+.me-left-row b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.me-left-row small { grid-column: 1 / -1; color: var(--ink-3); font-size: 11.5px; }
 .adm-trial { color: #b9a6ff !important; opacity: 1 !important; }
 
 /* 대화방 — 관리자 문의방 */
