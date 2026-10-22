@@ -10,10 +10,11 @@ export function featureOfRoute(r) {
   if (["english", "papers", "books"].includes(r.view) || (r.view === "page" && r.place === "study")) return "study";
   if (r.view === "mba") return "biz";
   if (r.view === "dev") return "dev";
+  if (r.view === "cim") return "cim";
   if (r.view === "page") return "pages";
   return null;
 }
-export const NAV_FEATURE = { study: "study", news: "news", biz: "biz", dev: "dev" };
+export const NAV_FEATURE = { study: "study", news: "news", biz: "biz", dev: "dev", cim: "cim" };
 export const isOpen = (ctx, f) => !f || ctx.me?.role === "admin" || (ctx.features?.open || []).includes(f);
 
 export async function loadFeatures(ctx) {

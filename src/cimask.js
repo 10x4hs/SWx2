@@ -3,7 +3,7 @@
 //   화면이 지금 보는 내용(카드 본문 · 문제와 내 답)을 context 로 같이 보내고, 학생은 질문만 적어요.
 //   답은 다른 튜터(/mba/ask · /books/ask)처럼 글자 단위 SSE: {type:"delta"|"reset"|"end"|"error"}.
 //   하루 사용량은 worker.js 의 AI_PATH(aiQuota) 가 세요 — 첫 팀(SWx2) 밖은 하루 AI_DAILY 번.
-//   기능 잠금 없음: CIM 은 누구나 쓰는 앱이에요 (features.js MAP 에 없음).
+//   기능 잠금: "cim" 기능이 있어야 해요 (features.js MAP · /apps/cim/*).
 import { aiText } from "./ai.js";
 
 const MAX_TURNS = 12;
