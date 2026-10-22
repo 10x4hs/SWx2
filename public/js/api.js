@@ -335,6 +335,10 @@ export function streamMbaAsk(module, card, messages, onEvent, signal, level, con
 export function streamCourseAsk(k, module, card, messages, onEvent, signal, level, context) {
   return streamAsk(`/api/${k}/ask`, { module, card, messages, ...(level ? { level } : {}), ...(context ? { context } : {}) }, onEvent, signal);
 }
+// CIM 튜터 옆 패널 — /apps/cim/ask. context = 지금 화면 내용(카드 본문 · 문제와 내 답)
+export function streamCimAsk(context, messages, onEvent, signal) {
+  return streamAsk("/api/apps/cim/ask", { context, messages }, onEvent, signal);
+}
 export function streamPaperAsk(paper, messages, onEvent, signal, level) {
   return streamAsk("/api/papers/ask", { paper, messages, ...(level ? { level } : {}) }, onEvent, signal);
 }
