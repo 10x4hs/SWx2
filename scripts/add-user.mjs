@@ -30,7 +30,7 @@ const sql = `INSERT INTO users (id, username, display_name, color, pw_hash, pw_s
 VALUES (${q(randomUUID())}, ${q(username)}, ${q(name)}, ${colorSql}, ${q(hash)}, ${q(salt.toString("hex"))}, 1, ${Date.now()})
 ON CONFLICT(username) DO UPDATE SET display_name = excluded.display_name, pw_hash = excluded.pw_hash, pw_salt = excluded.pw_salt, must_change_pw = 1, fail_count = 0, locked_until = 0${color ? ", color = excluded.color" : ""};
 DELETE FROM sessions WHERE user_id = (SELECT id FROM users WHERE username = ${q(username)});${flags.team ? `
-INSERT OR IGNORE INTO team_members (team_id, user_id, joined_at) SELECT ${q(flags.team)}, id, ${Date.now()} FROM users WHERE username = ${q(username)} AND EXISTS (SELECT 1 FROM teams WHERE id = ${q(flags.team)});` : ""}${flags.features === "all" ? ["study", "ai", "biz", "dev", "pages", "mcp", "news"].map((f) => `
+INSERT OR IGNORE INTO team_members (team_id, user_id, joined_at) SELECT ${q(flags.team)}, id, ${Date.now()} FROM users WHERE username = ${q(username)} AND EXISTS (SELECT 1 FROM teams WHERE id = ${q(flags.team)});` : ""}${flags.features === "all" ? ["study", "ai", "biz", "dev", "pages", "mcp", "news", "cim"].map((f) => `
 INSERT OR IGNORE INTO user_features (user_id, feature, at) SELECT id, ${q(f)}, ${Date.now()} FROM users WHERE username = ${q(username)};`).join("") : ""}`;
 
 execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", flags.remote ? "--remote" : "--local", "--command", sql], { stdio: ["ignore", "ignore", "inherit"] });

@@ -4,7 +4,7 @@ import { api } from "../api.js";
 import { esc, toast } from "../util.js";
 import { timeForm, addTime } from "../features.js";
 
-const FEAT_SHORT = { study: "공부", ai: "AI", biz: "경영", dev: "개발", pages: "페이지", mcp: "MCP", news: "뉴스" };
+const FEAT_SHORT = { study: "공부", ai: "AI", biz: "경영", dev: "개발", pages: "페이지", mcp: "MCP", news: "뉴스", cim: "CIM" };
 const until = (t) => { const d = new Date(t); return `~${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}까지`; };
 const STATE = { pending: "승인 대기", active: "활성", suspended: "정지" };
 const ago = (t) => {

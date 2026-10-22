@@ -94,14 +94,14 @@ r = await call("a", "GET", "/me"); ok(r.status === 200 && r.data.user.display_na
 // 기능 잠금: 열린 기능이 없는 사람은 경영 · SW 과정 API 도 403 (Dock 자물쇠와 같게), 계획은 그대로
 execFileSync("node", ["scripts/add-user.mjs", "t_l" + tag, "잠긴사람", "password1", "--team=swx2"], { stdio: "ignore" });
 await call("l", "POST", "/auth/login", { username: "t_l" + tag });
-for (const [p, f] of [["/mba/state", "biz"], ["/dev/state", "dev"], ["/vg/state", "dev"], ["/news/map", "news"]]) { r = await call("l", "GET", p); ok(r.status === 403 && r.data.locked === f, `locked: ${p} → 403 (${f})`); }
+for (const [p, f] of [["/mba/state", "biz"], ["/dev/state", "dev"], ["/vg/state", "dev"], ["/news/map", "news"], ["/apps/cim/state", "cim"]]) { r = await call("l", "GET", p); ok(r.status === 403 && r.data.locked === f, `locked: ${p} → 403 (${f})`); }
 r = await call("l", "PUT", "/mba/read", { module: "accounting", card: "profit-vs-revenue" }); ok(r.status === 403, "locked: mba write → 403");
 r = await call("l", "GET", "/plans?periods=D:2026-09-28"); ok(r.status === 200, "locked: plans stay open");
 r = await call("l", "GET", "/diary?day=2026-09-28"); ok(r.status === 200, "free: diary is open to everyone (not a locked feature)");
 r = await call("l", "GET", "/ai/models"); ok(r.status === 200, "free: AI for planning — model list open");
 r = await call("l", "POST", "/ai/command", {}); ok(r.status !== 403, `free: AI for planning — /ai/command not locked (${r.status})`);
 r = await call("l", "GET", "/ai/chats"); ok(r.status === 403 && r.data.locked === "ai", "locked: AI tab chats still need the ai feature");
-r = await call("l", "GET", "/apps/cim/state"); ok(r.status === 200 && r.data.updated_at === 0, "free: CIM (투자자산운용사) state is open to everyone (no feature lock)");
+r = await call("l", "POST", "/apps/cim/ask", { messages: [{ role: "user", content: "?" }] }); ok(r.status === 403 && r.data.locked === "cim", "locked: CIM AI tutor needs the cim feature");
 d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
 // 관리자 두 사람: 기능 신청은 둘 다 승인해야 열림 · 시간 추가 · 추천 보너스 (로컬 진짜 관리자는 잠깐 member 로 내렸다가 되돌려요)
 {
