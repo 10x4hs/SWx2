@@ -35,15 +35,16 @@ const navItem = (n) => `<a class="rail-btn${isOpen(ctx, NAV_FEATURE[n.key]) ? ""
 // ---------- Dock 배지: 대화방 안 읽은 개수 ----------
 // 로그인해 있으면 60초마다. 대화방이 열려 있을 땐 그 화면이 스스로 폴링하니 여기선 쉬어요.
 export async function refreshUnread() {
-  const el = $("#room-badge");
-  if (!ctx.me || !el) return;
-  if (getLastView() === "room") { el.hidden = true; ping(false); return; }
+  if (!ctx.me || !$("#room-badge")) return;
+  if (getLastView() === "room") { $("#room-badge").hidden = true; ping(false); return; }
   try {
     const r = await api.roomUnread();
     const n = Number(r.total ?? r.unread) || 0; // 우리 셋 + 1:1 전부 합친 수
-    el.textContent = n > 9 ? "9+" : String(n);
+    unreadText = n ? (n > 9 ? "9+" : String(n)) : "";
+    // 기다리는 사이 Dock 이 다시 그려졌을 수 있어요 (페이지 목록이 먼저 오면) — 그래서 지금 있는 배지를 다시 찾아요
+    const el = $("#room-badge"); if (!el) return;
+    el.textContent = unreadText || "0";
     el.hidden = n === 0;
-    unreadText = n ? el.textContent : "";
     ping(n > 0);
   } catch {}
 }

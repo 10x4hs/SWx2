@@ -142,6 +142,31 @@ d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
     r = await call("r", "GET", "/dev/state"); ok(r.status === 403, "time: expired grant locks again");
     r = await call("h", "POST", `/admin/users/${rid}/time`, { scope: "all", hours: 168 }); ok(Math.abs(r.data.until - Date.now() - 168 * 3600e3) < 120e3, "time: all = trial +7d");
     r = await call("r", "GET", "/features"); ok(r.data.trial_until === d1(`SELECT trial_until FROM users WHERE id = '${rid}'`)[0].trial_until && r.data.open.includes("news"), "time: trial opens every feature");
+    // 관리자 메시지: 글이 없던 회원 문의방에 관리자가 먼저 쓰기 · 단체 메시지는 회원마다 자기 문의방에 따로 (관리자 · 대신 들어간 세션은 못 보냄)
+    {
+      const hid = idOf(H), gid = idOf(G);
+      await call("f", "POST", "/auth/login", { username: REF, password: "password1" });
+      r = await call("h", "GET", `/room?room=help:${refId}`); ok(r.status === 200 && r.data.messages.length === 0 && r.data.people?.[refId]?.username === REF, "admin msg: admin opens a help room with no messages (people included)");
+      r = await call("h", "POST", "/room", { room: "help:" + refId, body: "안녕하세요, 관리자예요" }); ok(r.status === 201 && r.data.message.user_id === hid, "admin msg: admin posts first in any help room as themselves");
+      r = await call("h", "GET", "/room/help"); ok(r.data.rooms.some((x) => x.room === "help:" + refId), "admin msg: help room now in admin's 문의 list");
+      r = await call("f", "GET", "/room/unread"); ok(r.data.rooms["help:" + refId] >= 1, "admin msg: user sees unread in their help room");
+      r = await call("r", "POST", "/admin/message", { text: "x" }); ok(r.status === 403, "admin msg: non-admin POST /admin/message → 403");
+      r = await call("h", "POST", "/admin/message", { text: "   " }); ok(r.status === 400, "admin msg: empty text → 400");
+      r = await call("h", "POST", "/admin/message", { text: "가".repeat(2001) }); ok(r.status === 400, "admin msg: over 2000 chars → 400");
+      r = await call("h", "POST", "/admin/message", { text: "x", ids: "all" }); ok(r.status === 400, "admin msg: bad ids → 400");
+      const text = "단체 공지 " + tag;
+      r = await call("h", "POST", "/admin/message", { text, ids: [rid, refId, gid] }); ok(r.status === 201 && r.data.sent === 2, `admin msg: broadcast to the chosen ids skips admins (sent ${r.data?.sent})`);
+      ok([rid, refId].every((id) => d1(`SELECT user_id FROM room_messages WHERE room = 'help:${id}' AND body = '${text}' AND kind = 'text'`)[0]?.user_id === hid), "admin msg: each target's help room has the admin-authored message (D1)");
+      ok(!d1(`SELECT 1 FROM room_messages WHERE room = 'help:${gid}' AND body = '${text}'`).length, "admin msg: no copy in an admin's help room");
+      r = await call("r", "GET", `/room?room=help:${rid}`); ok(r.status === 200 && r.data.messages.some((m) => m.body === text && m.user_id === hid) && r.data.people?.[hid]?.username === H, "admin msg: user reads it in their own help room (admin's name)");
+      r = await call("r", "GET", `/room?room=help:${refId}`); ok(r.status === 403, "admin msg: another user can't read someone else's help room");
+      r = await call("r", "POST", "/room", { room: "help:" + refId, body: "엿보기" }); ok(r.status === 403, "admin msg: another user can't post in someone else's help room");
+      r = await call("g", "GET", `/room?room=help:${refId}`); ok(r.status === 200 && r.data.messages.some((m) => m.body === text), "admin msg: the other admin sees it too");
+      await call("hi", "POST", "/auth/login", { username: H, password: "password1" });
+      await call("hi", "POST", `/admin/users/${rid}/impersonate`);
+      r = await call("hi", "POST", "/admin/message", { text: "x", ids: [rid] }); ok(r.status === 403, "admin msg: not while impersonating → 403");
+      r = await call("hi", "GET", `/room?room=help:${refId}`); ok(r.status === 403, "admin msg: impersonated session can't read other help rooms");
+    }
     // 추천
     r = await call("x", "POST", "/auth/signup", { username: NEW, password: "password1", referrer: NEW }); ok(r.status === 400, "referral: not yourself");
     r = await call("x", "POST", "/auth/signup", { username: NEW, password: "password1", referrer: "t_h" }); ok(r.status === 400, "referral: unknown id rejected");

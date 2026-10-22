@@ -3131,6 +3131,19 @@ button.adm-stat:hover { border-color: rgba(127,127,127,.35); }
 .adm-stat.k-active b { color: #3ccf7f; } .adm-stat.k-pending b { color: #f0b54a; } .adm-stat.k-suspended b { color: #b5b5b5; } .adm-stat.k-week b { color: #6aa8ff; }
 .adm-stat span { opacity: .8; font-size: 13px; }
 .adm-tools { margin: 0 0 8px; } .adm-search { width: min(320px, 100%); }
+/* 모두에게 메시지 — 찾기 옆 버튼 · 아래로 펼치는 쓰기 칸 · 보내기 전 확인 */
+.adm-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .adm-search { flex: 0 1 320px; min-width: 0; }
+.adm-tools .btn.sm[data-bc-toggle] { color: var(--ink); }
+.adm-tools .btn.sm[data-bc-toggle][aria-expanded="true"] { background: rgba(47,111,237,.22); border-color: #2f6fed; color: var(--ink); }
+.adm-bc { display: grid; gap: 8px; margin: 0 0 12px; padding: 14px 16px; border-radius: 12px; background: var(--glass-2, rgba(127,127,127,.08)); border: 1px solid rgba(127,127,127,.22); }
+.adm-bc[hidden] { display: none; }
+.adm-bc-lab { font-size: 14px; font-weight: 600; } .adm-bc-lab small { font-weight: 400; margin-left: 6px; }
+.adm-bc-text { width: 100%; resize: vertical; min-height: 72px; font: inherit; }
+.adm-bc-row { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.adm-bc-to { display: inline-flex; gap: 6px; align-items: center; font-size: 13.5px; cursor: pointer; }
+.adm-bc-note { margin: 0; font-size: 12.5px; }
+.adm-bc-ask { margin: 0; font-size: 14px; }
+.adm-bc-quote { margin: 0; padding: 8px 12px; border-left: 3px solid #2f6fed; background: rgba(127,127,127,.08); border-radius: 0 8px 8px 0; white-space: pre-wrap; word-break: break-word; font-size: 13.5px; max-height: 180px; overflow: auto; }
 .adm-table { font-size: 14px; }
 .adm-table thead th { position: sticky; top: 0; z-index: 1; background: var(--bg, #161616); font-size: 12.5px; opacity: .75; }
 .adm-table td { vertical-align: middle; }

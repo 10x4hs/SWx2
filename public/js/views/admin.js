@@ -21,7 +21,10 @@ export function mount(root, ctx) {
   const body = root.querySelector(".adm-body");
 
   let tab = "users", filter = "all", q = "", open = "", timeFor = "";
+  // 단체 메시지: 열림 · 글 · 받는 사람('all' | 'shown') · 확인 단계
+  const bc = { open: false, text: "", to: "all", confirm: false, busy: false };
   const MENU = (u) => `<details class="adm-more"><summary class="btn sm ghost" aria-label="@${esc(u.username)} 더 보기" title="더 보기">⋯</summary><div class="adm-menu">
+      ${u.role !== "admin" && u.state !== "pending" ? `<button type="button" data-act="message" title="그 회원의 'SWx2 관리자' 방에서 내 이름으로 대화해요">메시지 보내기</button>` : ""}
       ${u.state !== "pending" ? `<button type="button" data-act="plans">일정 보기</button>` : ""}
       <button type="button" data-act="excuse" title="그날은 뉴스 연속 출석이 끊기지 않아요">출석 인정</button>
       ${u.role !== "admin" && u.state === "active" ? `<button type="button" data-act="time">시간 추가</button>` : ""}
@@ -52,7 +55,40 @@ export function mount(root, ctx) {
   // 기능 신청도 관리자 모두가 승인해야 열려요 — 관리자마다 ✓ / 대기
   const reqAps = (r) => `<div class="adm-aps" aria-label="관리자 승인 ${(r.approvals || []).length}/${(feats.admins || []).length}">${(feats.admins || []).map((a) => { const ok = (r.approvals || []).includes(a), t = r.approval_at?.[a]; return `<span class="adm-ap${ok ? " ok" : ""}${a === ctx.me.username ? " me" : ""}" title="${ok && t ? new Date(t).toLocaleString("ko-KR") : "아직"}"><b>${esc(a.toUpperCase())}</b>${ok ? "✓ 승인" : "대기"}</span>`; }).join("")}</div>`;
   const shown = () => data.users.filter((u) => (filter === "all" || u.state === filter) && (!q || `${u.username} ${u.display_name || ""}`.toLowerCase().includes(q)));
+  // 단체 메시지를 받을 수 있는 사람: 활성 회원(관리자 빼고) · 'shown' 이면 지금 필터 · 찾기 결과 안에서만
+  const bcAll = () => data.users.filter((u) => u.role !== "admin" && u.state === "active");
+  const bcShown = () => shown().filter((u) => u.role !== "admin" && u.state === "active");
+  const bcTargets = () => (bc.to === "shown" ? bcShown() : bcAll());
+  const drawBc = () => {
+    const el = body.querySelector(".adm-bc"); if (!el) return;
+    el.hidden = !bc.open;
+    body.querySelector("[data-bc-toggle]")?.setAttribute("aria-expanded", String(bc.open));
+    if (!bc.open) { el.innerHTML = ""; return; }
+    const n = bcTargets().length, na = bcAll().length, ns = bcShown().length;
+    el.innerHTML = bc.confirm
+      ? `<p class="adm-bc-ask"><b>${n}명</b>에게 보낼까요? 회원마다 'SWx2 관리자' 방에 따로 가서 서로는 못 봐요.</p>
+        <blockquote class="adm-bc-quote">${esc(bc.text)}</blockquote>
+        <div class="adm-bc-row"><button type="button" class="btn sm accent" data-bc="go" ${bc.busy ? "disabled" : ""}>${bc.busy ? "보내는 중…" : "보내기"}</button><button type="button" class="btn sm ghost" data-bc="back" ${bc.busy ? "disabled" : ""}>고치기</button></div>`
+      : `<label class="adm-bc-lab" for="adm-bc-text">모두에게 메시지 <small class="faint">회원마다 'SWx2 관리자' 방에 내 이름으로 따로 가요</small></label>
+        <textarea class="input adm-bc-text" id="adm-bc-text" rows="3" maxlength="2000" placeholder="보낼 내용 (2000자까지)">${esc(bc.text)}</textarea>
+        <div class="adm-bc-row" role="radiogroup" aria-label="받는 사람">
+          <label class="adm-bc-to"><input type="radio" name="adm-bc-to" value="all" ${bc.to === "all" ? "checked" : ""}> 모두 <small class="faint" data-bc-n="all">${na}명</small></label>
+          <label class="adm-bc-to"><input type="radio" name="adm-bc-to" value="shown" ${bc.to === "shown" ? "checked" : ""}> 지금 보이는 사람들 <small class="faint" data-bc-n="shown">${ns}명</small></label>
+        </div>
+        <p class="faint adm-bc-note">관리자 · 승인 대기 · 정지 회원은 빠져요.</p>
+        <div class="adm-bc-row"><button type="button" class="btn sm accent" data-bc="next" ${bc.text.trim() && n ? "" : "disabled"}>보내기</button><button type="button" class="btn sm ghost" data-bc="close">닫기</button></div>`;
+  };
+  // 필터 · 찾기가 바뀌면 사람 수만 고쳐요 (쓰던 글 · 커서는 그대로)
+  const bcCounts = () => {
+    const el = body.querySelector(".adm-bc"); if (!el || !bc.open) return;
+    if (bc.confirm) { bc.confirm = false; drawBc(); return; } // 확인 중에 대상이 바뀌면 다시 확인
+    const a = el.querySelector('[data-bc-n="all"]'), sh = el.querySelector('[data-bc-n="shown"]'), nx = el.querySelector('[data-bc="next"]');
+    if (a) a.textContent = bcAll().length + "명";
+    if (sh) sh.textContent = bcShown().length + "명";
+    if (nx) nx.disabled = !bc.text.trim() || !bcTargets().length;
+  };
   const drawRows = () => {
+    bcCounts();
     const tb = body.querySelector(".adm-table tbody"); if (!tb) return;
     const list = shown();
     tb.innerHTML = list.length ? list.map(row).join("") : `<tr><td colspan="6" class="faint adm-empty">맞는 회원이 없어요.</td></tr>`;
@@ -66,7 +102,8 @@ export function mount(root, ctx) {
       <section class="adm-pane" data-pane="users" ${tab === "users" ? "" : "hidden"}>
         <div class="adm-stats">${[["all", "가입자", s.total], ["active", "활성", s.active], ["pending", "승인 대기", s.pending], ["suspended", "정지", s.suspended]].map(([k, l, v]) => `<button type="button" class="adm-stat k-${k}" data-filter="${k}" aria-selected="${filter === k}"><b>${v}</b><span>${l}</span></button>`).join("")}<div class="adm-stat k-week"><b>${s.seen_week}</b><span>최근 7일 접속</span></div></div>
         <p class="adm-temp" hidden></p>
-        <div class="adm-tools"><input class="input adm-search" type="search" placeholder="이름 · 아이디 찾기" value="${esc(q)}" aria-label="회원 찾기"></div>
+        <div class="adm-tools"><input class="input adm-search" type="search" placeholder="이름 · 아이디 찾기" value="${esc(q)}" aria-label="회원 찾기"><button type="button" class="btn sm" data-bc-toggle aria-expanded="${bc.open}" aria-controls="adm-bc">모두에게 메시지</button></div>
+        <div class="adm-bc" id="adm-bc" hidden></div>
         <div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>회원</th><th>상태</th><th class="adm-col-team">팀</th><th>기능</th><th class="adm-col-seen">최근 접속</th><th></th></tr></thead><tbody></tbody></table></div>
         <section class="adm-sec" id="adm-plans" hidden></section>
       </section>
@@ -75,9 +112,12 @@ export function mount(root, ctx) {
         <div class="adm-ann-now"></div>
         <form class="adm-ann"><input class="input" maxlength="300" placeholder="공지 내용 (300자까지)" required><button class="btn sm">올리기</button></form></section>
       <section class="adm-pane" data-pane="teams" ${tab === "teams" ? "" : "hidden"}><div class="adm-teams"><p class="faint">불러오는 중…</p></div></section>`;
-    drawRows(); drawAnn(); loadTeams();
+    drawRows(); drawBc(); drawAnn(); loadTeams();
   };
-  body.addEventListener("input", (e) => { if (e.target.matches(".adm-search")) { q = e.target.value.trim().toLowerCase(); drawRows(); } });
+  body.addEventListener("input", (e) => {
+    if (e.target.matches(".adm-search")) { q = e.target.value.trim().toLowerCase(); drawRows(); }
+    if (e.target.matches(".adm-bc-text")) { bc.text = e.target.value; bcCounts(); }
+  });
   // 공지
   let ann = null;
   const drawAnn = () => { const el = body.querySelector(".adm-ann-now"); if (el) el.innerHTML = ann ? `<p class="adm-ann-cur">지금 공지: <b>${esc(ann.body)}</b> <button type="button" class="btn sm ghost" data-ann-off="${esc(ann.id)}">내리기</button></p>` : `<p class="faint">지금 공지 없음</p>`; };
@@ -109,12 +149,30 @@ export function mount(root, ctx) {
       sec.querySelector("p.faint").outerHTML = Object.keys(byDay).length ? Object.entries(byDay).map(([d, ps]) => `<div class="adm-day"><b>${d}</b><ul>${ps.map((p) => `<li class="${p.done ? "done" : ""}">${p.start ? `<span class="mono">${esc(p.start)}</span> ` : ""}${esc(p.text)}${p.mins ? ` <small class="faint">${p.mins}분</small>` : ""}${p.done ? " ✓" : ""}</li>`).join("")}</ul></div>`).join("") : '<p class="faint">이 기간에 계획이 없어요.</p>';
     } catch (err) { toast(err.message, "err"); }
   }
+  body.addEventListener("change", (e) => { if (e.target.name === "adm-bc-to") { bc.to = e.target.value; bcCounts(); } });
   body.addEventListener("change", (e) => { const i = e.target.closest("[data-plans-from]"); if (i?.value) { const sec = body.querySelector("#adm-plans"); showPlans(sec.dataset.id, sec.dataset.name, i.value); } });
   const load = () => Promise.all([api.adminUsers(), api.adminFeatureRequests().catch(() => feats)]).then(([d, fr]) => { if (!alive) return; data = d; feats = fr; draw(); }).catch((e) => { body.innerHTML = `<p class="faint">${esc(e.message)}</p>`; });
 
   body.addEventListener("click", async (e) => {
     const t = e.target.closest("[data-tab]");
     if (t) { tab = t.dataset.tab; body.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", x === t)); body.querySelectorAll("[data-pane]").forEach((p) => { p.hidden = p.dataset.pane !== tab; }); return; }
+    if (e.target.closest("[data-bc-toggle]")) { bc.open = !bc.open; bc.confirm = false; drawBc(); if (bc.open) body.querySelector(".adm-bc-text")?.focus(); return; }
+    const bcb = e.target.closest("[data-bc]");
+    if (bcb) {
+      const a = bcb.dataset.bc;
+      if (a === "close") { bc.open = false; bc.confirm = false; drawBc(); body.querySelector("[data-bc-toggle]")?.focus(); }
+      if (a === "next" && bc.text.trim() && bcTargets().length) { bc.confirm = true; drawBc(); body.querySelector('[data-bc="go"]')?.focus(); }
+      if (a === "back") { bc.confirm = false; drawBc(); body.querySelector(".adm-bc-text")?.focus(); }
+      if (a === "go" && !bc.busy) {
+        bc.busy = true; drawBc();
+        try {
+          const { sent } = await api.adminMessage(bc.text.trim(), bc.to === "shown" ? bcShown().map((u) => u.id) : null);
+          toast(`${sent}명에게 보냈어요.`);
+          Object.assign(bc, { open: false, text: "", confirm: false, busy: false }); drawBc();
+        } catch (err) { bc.busy = false; drawBc(); toast(err.message, "err"); }
+      }
+      return;
+    }
     const f = e.target.closest("[data-filter]");
     if (f) { filter = f.dataset.filter; drawRows(); return; }
     const tg = e.target.closest("[data-toggle]");
@@ -130,6 +188,7 @@ export function mount(root, ctx) {
     if (hb) { if (await addTime(hb, hb.closest("tr").dataset.id)) { timeFor = ""; await load(); } return; }
     const b = e.target.closest("[data-act]"); if (!b) return;
     if (b.dataset.act === "time") { const id = b.closest("tr").dataset.id; timeFor = timeFor === id ? "" : id; drawRows(); return; }
+    if (b.dataset.act === "message") { location.hash = "#/room/help/" + encodeURIComponent(b.closest("tr").dataset.id); return; }
     if (b.dataset.act === "plans") { const tr = b.closest("tr"); showPlans(tr.dataset.id, tr.dataset.name); return; }
     if (b.dataset.act === "excuse") {
       const tr = b.closest("tr"), y = new Date(Date.now() + 9 * 3600e3 - 864e5).toISOString().slice(0, 10);

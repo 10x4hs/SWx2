@@ -5,6 +5,8 @@ import { fail, json, now, uid, body } from "./http.js";
 import { startSession, sessionId, hashPassword } from "./auth.js";
 import { pushUsers } from "./push.js";
 import { TRIAL_MS, DEMO_IDS, kst, tellUser } from "./features.js";
+import { helpRoom, adminIds, MAX_BODY } from "./room.js";
+import { hubNotifyMany } from "./hub.js";
 
 // 대신 들어간 세션에서는 관리자 기능을 못 써요 (회원 화면만)
 const needAdmin = (user) => { if (user.role !== "admin" || user.imp_by) fail(403, "관리자만 쓸 수 있어요."); };
@@ -95,6 +97,31 @@ export function registerAdmin(on) {
     needAdmin(user);
     await env.DB.prepare("UPDATE announcements SET active = 0 WHERE id = ?").bind(params.id).run();
     return json({ ok: true });
+  });
+  // 단체 메시지: 받는 사람마다 그 사람의 관리자 문의방(help:<id>)에 관리자 이름으로 보통 메시지 한 줄씩 (서로는 못 봐요) + 푸시.
+  // ids 를 주면 그 사람들만(관리자 화면의 지금 필터), 없으면 활성 회원 모두. 관리자 · 승인 대기 · 정지는 빼요
+  on("POST", "/admin/message", async ({ env, user, req, ec }) => {
+    needAdmin(user);
+    const b = await body(req);
+    const text = typeof b.text === "string" ? b.text.trim() : "";
+    if (!text) fail(400, "메시지를 입력해 주세요.");
+    if (text.length > MAX_BODY) fail(400, `메시지는 ${MAX_BODY}자까지 쓸 수 있어요.`);
+    if (b.ids != null && (!Array.isArray(b.ids) || b.ids.length > 2000 || b.ids.some((x) => typeof x !== "string" || x.length > 64))) fail(400, "받는 사람 목록이 올바르지 않아요.");
+    const only = b.ids ? new Set(b.ids) : null;
+    const { results } = await env.DB.prepare("SELECT id FROM users WHERE role != 'admin' AND state = 'active'").all();
+    const to = results.map((r) => r.id).filter((id) => !only || only.has(id));
+    if (!to.length) fail(400, "보낼 사람이 없어요.");
+    const t = now(), stmts = [];
+    for (const id of to) {
+      stmts.push(env.DB.prepare("INSERT INTO room_messages (id, room, user_id, kind, body, ref_id, reply_to, created_at) VALUES (?, ?, ?, 'text', ?, NULL, NULL, ?)").bind(uid(), helpRoom(id), user.id, text, t));
+      stmts.push(env.DB.prepare("INSERT INTO room_reads (user_id, room, last_read_at) VALUES (?, ?, ?) ON CONFLICT(user_id, room) DO UPDATE SET last_read_at = MAX(last_read_at, excluded.last_read_at)").bind(user.id, helpRoom(id), t));
+    }
+    for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
+    // 실시간: 회원마다 자기 문의방 신호 + 관리자들(다른 탭 · 다른 관리자)에게 한 번 — 허브 왕복은 한 번
+    const admins = await adminIds(env);
+    await hubNotifyMany(env, [...to.map((id) => ({ users: [id], payload: { type: "room", room: helpRoom(id), from: user.id, kind: "text" } })), { users: admins, payload: { type: "room", room: helpRoom(to[0]), from: user.id, kind: "text" } }]);
+    pushUsers(env, ec, to, { room: "help" });
+    return json({ sent: to.length }, 201);
   });
   // 모든 사람: 지금 공지 (없으면 null)
   on("GET", "/announcement", async ({ env }) => {
