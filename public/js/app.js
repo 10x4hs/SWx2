@@ -83,7 +83,13 @@ const MEMBER_TONES = ["var(--m0)", "var(--m1)", "var(--m2)"];
 const toned = (users) => users.map((u, i) => ({ ...u, color: MEMBER_TONES[i % MEMBER_TONES.length] }));
 // 관리자 공지: 맨 위 띠 (닫으면 이 브라우저에서 그 공지만 숨겨요)
 // 24시간 무료체험: 남은 시간 띠 + 끝나는 순간 잠긴 기능을 다시 잠가요 (새로 고침 없이)
+// ✕ 로 닫으면 숨겨요 → 끝나기 1시간 전에 한 번만 다시 떠요 (그것도 닫으면 끝). 남은 시간은 언제든 프로필 메뉴에서 봐요
 let trialTimer = 0;
+const LAST_HOUR = 3600e3;
+const trialHideKey = (until) => `trio-trial-hide:${ctx.me?.id}:${until}`; // 체험이 늘어나면(until 이 바뀌면) 다시 보여요
+const trialHidden = (until) => { try { return localStorage.getItem(trialHideKey(until)) || ""; } catch { return ""; } }; // "" · "1"(닫음) · "2"(마지막 1시간 띠도 닫음)
+const leftText = (ms) => { const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 3600e3), m = Math.floor((ms % 3600e3) / 60e3); return d ? `${d}일 ${h}시간` : h ? `${h}시간 ${m}분` : `${Math.max(1, m)}분`; };
+const untilText = (t) => { const d = new Date(t), same = d.toDateString() === new Date().toDateString(); return (same ? "오늘 " : `${d.getMonth() + 1}월 ${d.getDate()}일 `) + d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) + "까지"; };
 function trialBar() {
   clearInterval(trialTimer); document.querySelector(".trial-bar")?.remove();
   const until = ctx.features?.trial_until; if (!until || until <= Date.now()) return;
@@ -92,11 +98,26 @@ function trialBar() {
   const paint = () => {
     const ms = until - Date.now();
     if (ms <= 0) { clearInterval(trialTimer); bar.remove(); loadFeatures(ctx).then(() => { drawDock(); route(true); toast("무료 체험이 끝났어요 · 더 쓰려면 '사용 신청'을 하거나 Message 의 SWx2 관리자에게 물어봐요"); }); return; }
-    const h = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
-    bar.innerHTML = `<b>무료 체험 중</b><span>${h}시간 ${m}분 남음 · 모든 기능을 써 볼 수 있어요</span>`;
+    const hid = trialHidden(until), last = ms <= LAST_HOUR;
+    if (hid === "2" || (hid === "1" && !last)) { bar.remove(); return; } // 닫아 둔 동안은 숨김 — 마지막 1시간이 되면 한 번 더
+    bar.innerHTML = `<b>무료 체험 중</b><span>${leftText(ms)} 남음 · ${last ? "곧 끝나요" : "모든 기능을 써 볼 수 있어요"}</span><button type="button" class="trial-x" aria-label="체험 안내 닫기" title="닫기 · 남은 시간은 프로필 메뉴에서 볼 수 있어요">✕</button>`;
+    if (!bar.isConnected) document.body.append(bar);
   };
+  bar.addEventListener("click", (e) => {
+    if (!e.target.closest(".trial-x")) return;
+    try { localStorage.setItem(trialHideKey(until), until - Date.now() <= LAST_HOUR ? "2" : "1"); } catch {}
+    bar.remove(); toast("닫았어요 · 남은 시간은 프로필 메뉴에서 볼 수 있어요");
+  });
   paint(); trialTimer = setInterval(paint, 30e3);
-  document.body.append(bar);
+}
+// 프로필 메뉴의 '남은 시간': 무료 체험 + 관리자가 시간을 정해 열어 준 기능 (메뉴를 열 때마다 다시 계산)
+function timeLeftHTML() {
+  const f = ctx.features || {}, now = Date.now(), rows = [];
+  if (f.trial_until > now) rows.push([ "무료 체험 · 모든 기능", f.trial_until ]);
+  for (const [k, t] of Object.entries(f.expires || {})) if (t > now) rows.push([ (f.all || {})[k] || k, t ]);
+  if (!rows.length) return "";
+  rows.sort((a, b) => a[1] - b[1]);
+  return `<span class="me-st-h">남은 시간</span>${rows.map(([n, t]) => `<div class="me-left-row"><span>${esc(n)}</span><b>${leftText(t - now)}</b><small>${untilText(t)}</small></div>`).join("")}`;
 }
 // 관리자가 시간을 늘려 주거나 기능을 열어 주면: 화면으로 돌아올 때 다시 읽어서 Dock 자물쇠 · 체험 띠를 새로 고침 없이 바꿔요
 async function refreshFeatures() {
@@ -244,6 +265,7 @@ function renderMeRow() {
       <button type="button" role="menuitem" class="me-upd" id="me-upd"><span class="me-upd-dot" aria-hidden="true"></span>새 버전이 있어요 · 새로 고침</button>
       <button type="button" role="menuitem" class="me-head" id="me-head" title="프로필 바꾸기">${avatar(ctx.me, "")}<span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small>${ctx.me.bio ? `<small class="me-bio">${esc(ctx.me.bio)}</small>` : ""}</span><span class="me-edit" aria-hidden="true">${icon.edit(14)}</span></button>
       <div class="me-open"><span class="me-st-h">day plans</span><span class="st-row"><button type="button" class="st-chip" data-open="1" aria-pressed="${ctx.me.plans_open !== false}" title="친구들이 내 하루 계획표를 볼 수 있어요">open</button><button type="button" class="st-chip" data-open="0" aria-pressed="${ctx.me.plans_open === false}" title="내 계획표는 나만 봐요">not open</button></span></div>
+      <div class="me-st me-left" id="me-left" hidden></div>
       <div class="me-st"><span class="me-st-h">status${ctx.me.status ? ` <b>${esc(statusText(ctx.me.status))}</b>` : ""}</span>${statusPicker(ctx.me.status)}</div>
       <button type="button" role="menuitem" id="prof-btn">${icon.edit(16)}프로필 바꾸기</button>
       <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
@@ -260,7 +282,8 @@ function renderMeRow() {
   // 메뉴는 화면 맨 위층(body)에 붙여요 — Dock 안에 두면 좁은 화면에서 본문 아래로 깔려 눌리지 않았어요
   document.querySelectorAll("body > #me-menu").forEach((m) => m !== menu && m.remove());
   document.body.append(menu);
-  btn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute("aria-expanded", String(!menu.hidden)); });
+  const paintLeft = () => { const box = $("#me-left"); if (!box) return; const h = timeLeftHTML(); box.innerHTML = h; box.hidden = !h; };
+  btn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute("aria-expanded", String(!menu.hidden)); if (!menu.hidden) paintLeft(); });
   if (!renderMeRow.bound) { // 바깥을 누르면 닫기 (한 번만 걸어요)
     renderMeRow.bound = true;
     document.addEventListener("click", (e) => { const m = $("#me-menu"); if (m && !m.hidden && !e.target.closest("#me-menu")) { m.hidden = true; $("#me-btn")?.setAttribute("aria-expanded", "false"); } });
