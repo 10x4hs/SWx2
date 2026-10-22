@@ -1,6 +1,9 @@
 // Notion-style block editor over { v: 1, blocks } (docs/blocks-schema.md).
 // One contenteditable per text block: raw inline markdown while focused, rendered when not.
 // Enter / Backspace / Tab / Shift-Tab, "/" menu, ⋮⋮ drag handle, markdown shortcuts, [[ autocomplete, toggles that remember open state.
+// ⌘Z / Ctrl+Z · ⌘⇧Z / Ctrl+Shift+Z / Ctrl+Y: its own history of doc snapshots (the browser's undo breaks once blocks re-render).
+//   Typing in one block within 600ms is one step; Enter · Backspace-join · "/" · markdown shortcuts · drags are their own steps.
+//   Undo puts the caret back where it was before that step, then calls onChange (so the page saves).
 import { renderInline } from "../md.js";
 import { esc } from "../util.js";
 import { block, canNest, mdToBlocks, MAX_COLS } from "./md.js";
@@ -104,7 +107,52 @@ export function createBlockEditor(host, opts) {
   root.className = "nb-doc" + (ro ? " ro" : "");
   host.innerHTML = ""; host.appendChild(root);
   let menu = null, sug = null, dragId = null;
-  const changed = () => { tidy(); opts.onChange?.(doc); };
+  const changed = () => { tidy(); record(); opts.onChange?.(doc); };
+
+  // ---------- history (undo · redo) ----------
+  // state = { json, pre, post } — pre: caret just before this step (inside the previous state), post: caret right after it
+  const H = { past: [], future: [], cur: null, typing: false, at: 0, forceNew: false };
+  let preCaret = null;
+  const caretNow = () => {
+    const a = document.activeElement;
+    if (!a || !root.contains(a) || !a.classList?.contains("nb-text")) return null;
+    const w = a.closest(".nb"); return w ? { id: w.dataset.id, off: caretOffset(a) } : null;
+  };
+  function record() {
+    const json = JSON.stringify(doc);
+    if (!H.cur) { H.cur = { json, pre: null, post: null }; return; }
+    if (json === H.cur.json) return;
+    const now = Date.now(), pre = preCaret || caretNow();
+    // 같은 블록에서 쉬지 않고(600ms 안) 친 글자는 한 단계
+    const merge = H.typing && H.cur.typing && !H.forceNew && now - H.at < 600 && H.cur.pre?.id && pre?.id === H.cur.pre.id && H.cur.block === pre.id;
+    if (merge) H.cur.json = json;
+    else { H.past.push(H.cur); if (H.past.length > 100) H.past.shift(); H.cur = { json, pre, post: null, typing: H.typing, block: pre?.id }; }
+    H.future = []; H.at = now; H.forceNew = false; preCaret = null;
+    const st = H.cur; queueMicrotask(() => { st.post = caretNow() || st.post; }); // render(focus) 가 끝난 뒤의 자리
+  }
+  function restore(st, caret) {
+    closeMenu(); closeSug();
+    doc = JSON.parse(st.json);
+    if (!doc.blocks.length) doc.blocks.push(block("paragraph"));
+    const ok = caret && find(caret.id) && flat().some((b) => b.id === caret.id);
+    render(ok ? { id: caret.id, off: caret.off } : undefined);
+    opts.onChange?.(doc); // 저장은 화면 쪽이 (다시 기록하지는 않아요)
+  }
+  function undo() {
+    if (!H.past.length) return false;
+    const cur = H.cur, prev = H.past.pop();
+    cur.post = caretNow() || cur.post;
+    H.future.push(cur); H.cur = prev; H.typing = false; H.forceNew = true;
+    restore(prev, cur.pre || prev.post);
+    return true;
+  }
+  function redo() {
+    if (!H.future.length) return false;
+    const next = H.future.pop();
+    H.past.push(H.cur); H.cur = next; H.typing = false; H.forceNew = true;
+    restore(next, next.post || next.pre);
+    return true;
+  }
   // 단 정리: 빈 단은 지우고, 단이 하나만 남으면 단 나누기를 풀어요
   function tidy(list = doc.blocks) {
     for (let i = 0; i < list.length; i++) {
@@ -387,10 +435,11 @@ export function createBlockEditor(host, opts) {
     if (el.classList.contains("nb-eqsrc")) return eqPreview(b, el);
     if (!el.classList.contains("nb-text")) return;
     b.text = readText(el);
+    H.typing = true;
     if (b.type === "paragraph" && !el.classList.contains("nb-code") && shortcut(b, el)) return;
     // 한글 조합 중(compositionstart~end)에는 바꾸지 않고, 조합이 끝나면 compositionend 에서 그려요
     if (!e.isComposing && !composing && !el.classList.contains("nb-code") && !el.classList.contains("nb-comment")) paintLive(el, b.text, caretOffset(el));
-    changed();
+    changed(); H.typing = false;
     slashCheck(b, el);
     linkCheck(b, el);
   });
@@ -402,10 +451,23 @@ export function createBlockEditor(host, opts) {
     const b = blockOf(el); if (!b) return;
     setTimeout(() => { if (document.activeElement === el) { b.text = readText(el); paintLive(el, b.text, caretOffset(el)); } }, 0);
   });
+  // 바뀌기 직전 커서 자리 (되돌리면 여기로)
+  root.addEventListener("keydown", (e) => {
+    if (/^(Shift|Meta|Control|Alt|CapsLock)$/.test(e.key)) return;
+    if (/^(Arrow|Home|End|Page)/.test(e.key)) { preCaret = null; H.forceNew = true; return; } // 커서를 옮기면 다음 글자는 새 단계
+    preCaret = caretNow();
+  }, true);
+  root.addEventListener("beforeinput", () => { if (!preCaret) preCaret = caretNow(); }, true);
+  root.addEventListener("mousedown", () => { preCaret = null; H.typing = false; H.forceNew = true; }, true);
   root.addEventListener("keydown", (e) => {
     if (e.target.closest?.(".db-host")) return;
     if (ro) return;
     const el = e.target;
+    { // ⌘Z · ⌘⇧Z · Ctrl+Y — 수식 · 주소 같은 작은 입력 칸은 브라우저 것 그대로
+      const k = (e.key || "").toLowerCase(), mod = (e.metaKey || e.ctrlKey) && !e.altKey;
+      const dir = mod && k === "z" ? (e.shiftKey ? "redo" : "undo") : mod && k === "y" && e.ctrlKey && !e.metaKey ? "redo" : null;
+      if (dir && !/^(INPUT|TEXTAREA)$/.test(el.tagName) && !e.isComposing) { e.preventDefault(); e.stopPropagation(); if (dir === "undo") undo(); else redo(); return; }
+    }
     if (el.classList.contains("nb-url") && e.key === "Enter") {
       e.preventDefault(); const b = blockOf(el), v = el.value.trim(); if (!v) return;
       if (b.type === "image") b.props.src = v; else if (b.type === "file") b.props.src = v; else b.props.url = v;
@@ -491,6 +553,7 @@ export function createBlockEditor(host, opts) {
     const rules = [[/^#\s/, "h1"], [/^##\s/, "h2"], [/^###\s/, "h3"], [/^[-*+]\s/, "bullet"], [/^1[.)]\s/, "number"], [/^\[ ?\]\s/, "todo"], [/^\[x\]\s/i, "todo"], [/^>\s/, "quote"], [/^▸\s|^>>\s/, "toggle"], [/^```$/, "code"], [/^---$/, "divider"]];
     for (const [re, type] of rules) {
       const m = re.exec(t); if (!m) continue;
+      record(); H.typing = false; H.forceNew = true; preCaret = caretNow(); // "- " 까지 친 상태를 먼저 남기고, 바뀐 것은 따로 한 단계
       const checked = /^\[x\]/i.test(t);
       b.text = t.slice(m[0].length);
       convert(b, type);
@@ -791,9 +854,14 @@ export function createBlockEditor(host, opts) {
   root.addEventListener("dragend", endDrag);
 
   render();
+  record();
   return {
+    undo: () => (ro ? false : undo()),
+    redo: () => (ro ? false : redo()),
+    canUndo: () => H.past.length > 0,
+    historySize: () => H.past.length + H.future.length,
     getDoc: () => doc,
-    setDoc: (d) => { doc = d; if (!doc.blocks.length) doc.blocks.push(block("paragraph")); render(); },
+    setDoc: (d) => { doc = d; if (!doc.blocks.length) doc.blocks.push(block("paragraph")); render(); H.typing = false; record(); },
     focus: (where) => { const vis = flat().filter(editable); const b = where === "end" ? vis.at(-1) : vis[0]; if (b) render({ id: b.id, off: where === "end" ? "end" : 0 }); },
     destroy: () => { closeMenu(); closeSug(); closeTb(); document.removeEventListener("selectionchange", onSel); host.innerHTML = ""; },
   };

@@ -4,6 +4,7 @@
 import { api } from "./api.js";
 import { esc, debounce, nowTime, toast } from "./util.js";
 import { createBlockEditor } from "./blocks/editor.js";
+import { undoScope } from "./undo.js";
 
 export const MOODS = [ // 기분은 UI라서 무채색 (색은 차트에만)
   { v: 5, label: "최고", color: "var(--t-ink)" },
@@ -58,6 +59,8 @@ export function mountDiary(el, day, { onSaved, rows = 7, share = "" } = {}) {
   const drawCount = () => { const n = plain().length; count.textContent = n ? `${n.toLocaleString()}자` : ""; };
   const hasContent = () => (S.mode === "text" ? !!ta.value.trim() : (S.doc?.blocks || []).some((b) => b.text?.trim() || b.type !== "paragraph" || b.children?.length));
   const shareBtn = el.querySelector("[data-share]");
+  // ⌘Z · ⌘⇧Z: 편집기 안에서는 편집기가 직접, 바깥(빈 곳을 누른 뒤)에서도 같은 기록으로 (undo.js)
+  const us = undoScope("diary", { undo: () => !!ed?.undo(), redo: () => !!ed?.redo(), size: () => ed?.historySize?.() || 0 });
   const drawShare = () => { if (!shareBtn) return; shareBtn.setAttribute("aria-pressed", String(S.shared)); shareBtn.innerHTML = S.shared ? `<i></i>공개 · ${esc(share)}도 봐요` : `<i></i>비공개 · 나만 봐요`; shareBtn.title = S.shared ? "누르면 비공개 — 상대에겐 자물쇠만 보여요" : "누르면 공개"; };
   const drawSize = () => {
     const host = bodyEl.querySelector(".diary-doc"); if (!host) return;
@@ -129,7 +132,7 @@ export function mountDiary(el, day, { onSaved, rows = 7, share = "" } = {}) {
     drawMood(); drawCount(); drawShare();
   }).catch((e) => { status.textContent = "불러오지 못했어요"; toast(e.message, "err"); });
 
-  return () => { save.flush(); ed?.destroy(); };
+  return () => { save.flush(); us.dispose(); ed?.destroy(); };
 }
 
 // 읽기 전용(상대의 공개 일기): 블록이면 편집기와 같은 모양, 아니면 글 그대로
