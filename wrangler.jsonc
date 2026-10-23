@@ -28,6 +28,15 @@
   // 실시간 대화: 웹소켓을 붙잡아 두는 Durable Object 하나 (src/hub.js)
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "dsm-mafia-files" }], // 노트 이미지 · 첨부 (Notion 에서 옮긴 사진 등)
   "durable_objects": { "bindings": [{ "name": "ROOM_HUB", "class_name": "RoomHub" }] },
+  // 뜻으로 찾기 (src/rag.js): Workers AI 임베딩 @cf/baai/bge-m3 (1024차원). wrangler dev 에서도 늘 원격이라 계정의 무료 뉴런(하루 10,000)을 써요
+  "ai": { "binding": "AI" },
+  // 벡터 색인 둘 (cosine · 1024): 배포본은 VECTORS(swx2-chunks) 만, wrangler dev 는 VECTORS_DEV(swx2-chunks-dev, remote) 만 써요 (src/rag.js vecIndex — 로컬 표시 PASSWORDLESS=1).
+  // VECTORS 는 remote 가 아니라서 로컬에서는 배포 색인에 닿지 않아요 → 개발 중 넣은 노트 · 시험 벡터가 배포 색인을 더럽히지 않아요.
+  // 메타데이터 색인(kind · user_id)은 벡터를 넣기 전에 만들어 뒀어요. 무료 저장 5M 차원은 계정 전체 몫 (두 색인 합)
+  "vectorize": [
+    { "binding": "VECTORS", "index_name": "swx2-chunks" },
+    { "binding": "VECTORS_DEV", "index_name": "swx2-chunks-dev", "remote": true }
+  ],
   "migrations": [{ "tag": "hub-v1", "new_sqlite_classes": ["RoomHub"] }],
   "vars": { "PASSWORDLESS": "0", "VAPID_PUBLIC_KEY": "BM5EpcANa6q_5MpqXGMuxMIwwNlNfPCUoxf10NSsSEg6dBxu3pSZVgohkTtdDZ3fFHORgFThI9gEOTcRPR0T-h4" } // 배포본은 비밀번호 필수. 로컬은 .dev.vars 의 PASSWORDLESS=1 이 덮어써요
 }

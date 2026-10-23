@@ -102,6 +102,7 @@ r = await call("l", "GET", "/ai/models"); ok(r.status === 200, "free: AI for pla
 r = await call("l", "POST", "/ai/command", {}); ok(r.status !== 403, `free: AI for planning — /ai/command not locked (${r.status})`);
 r = await call("l", "GET", "/ai/chats"); ok(r.status === 403 && r.data.locked === "ai", "locked: AI tab chats still need the ai feature");
 r = await call("l", "POST", "/apps/cim/ask", { messages: [{ role: "user", content: "?" }] }); ok(r.status === 403 && r.data.locked === "cim", "locked: CIM AI tutor needs the cim feature");
+r = await call("l", "GET", "/search/semantic?q=" + encodeURIComponent("증권거래세 세율")); ok(r.status === 200 && Array.isArray(r.data.results) && !r.data.results.some((x) => x.type === "cim"), "semantic search: open to everyone (notes) · CIM cards only with the cim feature");
 d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
 // 관리자 두 사람: 기능 신청은 둘 다 승인해야 열림 · 시간 추가 · 추천 보너스 (로컬 진짜 관리자는 잠깐 member 로 내렸다가 되돌려요)
 {
@@ -273,6 +274,39 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("b", "GET", "/apps/cim/state"); ok(r.status === 200 && r.data.data === null, "cim: private per user");
   // CIM AI 튜터 (POST /apps/cim/ask): 질문이 없으면 400 (AI 를 부르기 전에 막아요)
   r = await call("a", "POST", "/apps/cim/ask", { messages: [], context: { kind: "card", title: "검사" } }); ok(r.status === 400, "cim ask: empty question → 400");
+  // ---------- 뜻으로 찾기 (GET /search/semantic) · 근거 달린 튜터 (src/rag.js · migrations/0067) ----------
+  {
+    const { terms, chunkNote, cimRows, cimHref, checkCites } = await import("../src/lib/rag-text.js"); // 바깥 의존 없는 글 다루기만 (rag.js 는 워커 전용)
+    ok(JSON.stringify(terms("국세기본법에서 기한은 공휴일이면")) === JSON.stringify(["국세기본법", "기한", "공휴일이면"]) && terms("a b").length === 0, "rag: query terms split on spaces, trailing particles stripped, <2 chars dropped");
+    const ch = chunkNote("긴 노트", "# 가\n" + "첫 문단입니다. ".repeat(40) + "\n\n## 나\n둘째 절 내용\n\n![](x.png) [[링크 노트|별칭]]");
+    ok(ch.length >= 2 && ch[0].path === "긴 노트 > 가" && ch.some((c) => c.path === "긴 노트 > 가 > 나" && /별칭/.test(c.text) && !/x\.png/.test(c.text)) && ch.every((c) => c.text.length <= 1400), "rag: notes chunked by heading path (≤1400 chars, images dropped, wikilink label kept)");
+    ok(chunkNote("빈 노트", "").length === 1, "rag: empty note still gets one title chunk");
+    const rows = cimRows({ s: 1, c: 1, t: "장", sec: [{ t: "절", p: [{ n: 3, t: "카드", b: "▶ 핵심포인트 해설 · 카드\n본문", q: [{ q: "문제?", o: ["가", "나"], a: 0, x: "해설" }, { k: "s1c1-9-0", q: "옮긴 문제", o: [], a: 0 }] }] }] });
+    ok(rows[0].id === "cim:s1c1-3" && rows[0].text === "본문" && rows[0].path === "CIM > 1과목 1장 장 > 절 > 카드" && rows[1].id === "cimq:s1c1-3-0" && rows[2].id === "cimq:s1c1-9-0" && rows[2].source_id === "s1c1-3" && cimHref("s3c10-12") === "#/cim/study/s3c10/12", "rag: CIM card = one chunk (boilerplate stripped) · question ids match data.js (q.k kept) · card href");
+    const cc = checkCites("세율은 0.05%예요 [1]. 지어낸 번호 [7]. 둘 다 [1, 2].", 2);
+    ok(cc.text === "세율은 0.05%예요 [1]. 지어낸 번호. 둘 다 [1][2]." && [...cc.used].join() === "1,2", "cim ask: citations outside the source list are dropped, lists normalized");
+    r = await call("anon", "GET", "/search/semantic?q=x"); ok(r.status === 401, "semantic search: login required");
+    r = await call("a", "GET", "/search/semantic?q=" + encodeURIComponent("   ")); ok(r.status === 400, "semantic search: empty query → 400");
+    r = await call("b", "GET", "/rag/status"); ok(r.status === 403, "rag admin API: members get 403");
+    const secret = "zq" + tag + "비밀노트";
+    r = await call("a", "POST", "/notes", { title: "듀레이션 메모 " + tag, body: `${secret} 채권 가격이 금리에 얼마나 민감한지 나타내요.` });
+    const sNote = r.data?.note?.id;
+    let seen = null;
+    for (let i = 0; i < 20 && !seen; i++) { await new Promise((res) => setTimeout(res, 300)); r = await call("a", "GET", "/search/semantic?q=" + encodeURIComponent(secret)); seen = r.data?.results?.find((x) => x.id === sNote); }
+    ok(seen && seen.type === "note" && seen.href === "#/notes/" + sNote && seen.via.includes("fts"), "semantic search: my new note is found right after saving (D1 FTS, before vectors arrive)");
+    r = await call("b", "GET", "/search/semantic?q=" + encodeURIComponent(secret)); ok(r.status === 200 && !r.data.results.some((x) => x.id === sNote), "semantic search: user B never sees user A's note");
+    r = await call("b", "GET", "/search/semantic?q=" + encodeURIComponent("채권 가격 금리 민감 듀레이션 " + tag)); ok(r.status === 200 && !r.data.results.some((x) => x.type === "note" && x.id === sNote), "semantic search: isolation holds for meaning-style queries too");
+    const aId = (await call("a", "GET", "/me")).data.user.id;
+    const ck = d1(`SELECT user_id, source_type FROM chunks WHERE source_id = '${sNote}'`);
+    ok(ck.length >= 1 && ck.every((c) => c.source_type === "note" && c.user_id === aId), "rag: note chunks stored in D1 with the owner's user_id");
+    r = await call("a", "DELETE", "/notes/" + sNote);
+    let left = 1;
+    for (let i = 0; i < 20 && left; i++) { await new Promise((res) => setTimeout(res, 300)); left = d1(`SELECT COUNT(*) n FROM chunks WHERE source_id = '${sNote}'`)[0].n; }
+    ok(left === 0, "rag: deleting a note removes its chunks (vectors go to rag_tomb)");
+    // 근거 달린 튜터: 지금 카드(key)는 언제나 [1], 근거 칩 주소는 카드 화면으로
+    r = await call("a", "POST", "/apps/cim/ask?stream=0", { messages: [{ role: "user", content: "기한이 공휴일이면 언제까지예요?" }], context: { kind: "card", key: "s1c1-1", chapter: "1과목 1장", title: "기간과 기한 및 서류의 송달" } });
+    ok(r.status === 200 && Array.isArray(r.data.sources) && r.data.sources[0]?.n === 1 && r.data.sources[0].href === "#/cim/study/s1c1/1" && r.data.sources.every((x) => !("text" in x)) && typeof r.data.text === "string", `cim ask: returns numbered sources with hrefs (${r.status} · ${r.data?.sources?.length} sources · cited ${r.data?.sources?.filter((x) => x.cited).length})`);
+  }
   // 경영 마이크로디그리: 카드 읽음 → 복습(1 → 3 → 7 → 21 → 60일) → 하루 기록 (모듈 · 카드 id 는 public/mba/index.json 에 있어야 해요)
   r = await call("a", "GET", "/mba/state"); ok(r.status === 200 && Array.isArray(r.data.items) && Array.isArray(r.data.due) && Array.isArray(r.data.days), "mba: state");
   r = await call("a", "PUT", "/mba/read", { module: "accounting", card: "profit-vs-revenue", correct: 2, total: 3 });

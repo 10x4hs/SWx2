@@ -3,6 +3,9 @@ import { fail, json, body, now, uid, str } from "./http.js";
 // 블록 ⇄ 마크다운은 브라우저 편집기와 같은 파일을 써요 (wrangler 가 함께 묶어요)
 import { remindAt } from "../public/js/blocks/dbview.js";
 import { blocksToMd, validateDoc, MAX_BLOCKS_JSON, validateDb, defaultDb, cleanRowProps, dbToMd } from "../public/js/blocks/md.js";
+// 뜻으로 찾기 색인: 저장 · 지우기 뒤에 응답은 그대로 보내고 뒤에서(waitUntil) 조각을 맞춰요. 다른 길(Brain · MCP …)로 바뀐 노트는 크론 · 검색 때 따라잡아요
+import { syncNoteSoon } from "./rag.js";
+const ragSync = (ec, env, id) => { try { ec?.waitUntil(syncNoteSoon(env, id)); } catch {} };
 
 export const MAX_NOTE = 200_000;
 
@@ -177,7 +180,7 @@ export function registerNotes(on) {
 
   // 한꺼번에 가져오기 (Brain → Import): items = [{ title, body, parent_title }] 를 위에서부터 (부모가 먼저).
   // 같은 제목이 이미 있으면 새로 만들지 않고, 그 노트가 맨 위(부모 없음)일 때만 parent_title 아래로 옮겨요 → 다시 올려도 안전해요.
-  on("POST", "/notes/import", async ({ req, env, user }) => {
+  on("POST", "/notes/import", async ({ req, env, user, ec }) => {
     const b = await body(req);
     const items = Array.isArray(b.items) ? b.items.slice(0, 40) : fail(400, "items 가 필요해요.");
     const list = items.map((it) => ({ title: noteTitle(it?.title, "제목"), body: typeof it?.body === "string" ? it.body.slice(0, MAX_NOTE) : "", parent: typeof it?.parent_title === "string" && it.parent_title.trim() ? it.parent_title.trim() : null }));
@@ -189,6 +192,7 @@ export function registerNotes(on) {
     }
     const stmts = [];
     let created = 0, moved = 0, kept = 0;
+    const newIds = [];
     for (const x of list) {
       const parent = x.parent ? ids.get(x.parent.toLowerCase()) : null;
       const have = ids.get(x.title.toLowerCase());
@@ -199,9 +203,11 @@ export function registerNotes(on) {
       const n = { id: uid(), title: x.title, parent_id: parent?.id || null, t: now() };
       stmts.push(env.DB.prepare("INSERT INTO notes (id, user_id, title, body, shared, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?, ?)").bind(n.id, user.id, n.title, x.body, n.parent_id, n.t, n.t), ...indexStmts(env, n.id, x.body));
       ids.set(x.title.toLowerCase(), { id: n.id, parent_id: n.parent_id });
+      newIds.push(n.id);
       created++;
     }
     if (stmts.length) await env.DB.batch(stmts);
+    if (created) ec?.waitUntil((async () => { for (const id of newIds) await syncNoteSoon(env, id); })());
     return json({ created, moved, kept });
   });
 
@@ -238,7 +244,7 @@ export function registerNotes(on) {
     return json({ note: n, backlinks: back.results, tags: tags.results.map((t) => t.tag), children: children.results, crumbs: up.results });
   });
 
-  on("POST", "/notes", async ({ req, env, user }) => {
+  on("POST", "/notes", async ({ req, env, user, ec }) => {
     // 보통 노트 · 블록 노트(blocks) · 데이터베이스(kind: "database") · 데이터베이스 행(parent 가 데이터베이스 + props)
     const b = await body(req);
     let title = noteTitle(b.title, "제목");
@@ -261,10 +267,11 @@ export function registerNotes(on) {
       .bind(n.id, n.user_id, n.title, n.body, n.shared, n.parent_id, n.created_at, n.updated_at, n.blocks, n.kind, n.props, n.db, n.remind_at).run();
     await indexNote(env, n.id, text);
     if (pdb) await refreshDbMirror(env, pdb.id, user.id);
+    ragSync(ec, env, n.id);
     return json({ note: n }, 201);
   });
 
-  on("PUT", "/notes/:id", async ({ req, env, user, params }) => {
+  on("PUT", "/notes/:id", async ({ req, env, user, params, ec }) => {
     const n = await visibleNote(env, params.id, user);
     const b = await body(req);
     // 다른 탭 · 기기에서 먼저 고쳤으면 덮어쓰지 않아요 (base_updated_at = 내가 마지막으로 받은 updated_at)
@@ -315,6 +322,7 @@ export function registerNotes(on) {
     await env.DB.prepare("UPDATE notes SET title = ?, body = ?, shared = ?, parent_id = ?, updated_at = ?, blocks = ?, props = ?, db = ?, remind_at = ?, reminded_at = ?, remind_seen = ? WHERE id = ?")
       .bind(next.title, next.body, next.shared, next.parent_id ?? null, next.updated_at, next.blocks ?? null, next.props ?? null, next.db ?? null, next.remind_at ?? null, next.reminded_at ?? null, next.remind_seen ?? null, n.id).run();
     if (bodyChanged) await indexNote(env, n.id, next.body);
+    if (bodyChanged || next.title !== n.title || b.db !== undefined) ragSync(ec, env, n.id);
     if (pdb && (b.props !== undefined || next.title !== n.title)) await refreshDbMirror(env, pdb.id, user.id);
     if (b.db !== undefined) { await refreshDbMirror(env, n.id, user.id); next.body = (await env.DB.prepare("SELECT body FROM notes WHERE id = ?").bind(n.id).first())?.body ?? next.body; }
     // 제목이 바뀌면 내 다른 노트의 [[링크]] 도 따라가요 (relinked = 고친 노트 id — 열려 있으면 화면이 새로 불러와요)
@@ -341,7 +349,7 @@ export function registerNotes(on) {
     const n = await visibleNote(env, params.id, user);
     return json({ version: await versionOf(env, n, params.vid) });
   });
-  on("POST", "/notes/:id/versions/:vid/restore", async ({ env, user, params }) => {
+  on("POST", "/notes/:id/versions/:vid/restore", async ({ env, user, params, ec }) => {
     const n = await visibleNote(env, params.id, user);
     const v = await versionOf(env, n, params.vid);
     // 제목이 그 사이 다른 노트와 겹치면 지금 제목을 그대로 둬요
@@ -352,9 +360,10 @@ export function registerNotes(on) {
       env.DB.prepare("UPDATE notes SET title = ?, body = ?, blocks = ?, updated_at = ? WHERE id = ?").bind(next.title, next.body, next.blocks, next.updated_at, n.id),
       ...indexStmts(env, n.id, next.body),
     ]);
+    ragSync(ec, env, n.id);
     return json({ note: next, kept_title: !!dup });
   });
-  on("POST", "/notes/:id/link", async ({ req, env, user, params }) => {
+  on("POST", "/notes/:id/link", async ({ req, env, user, params, ec }) => {
     const n = await visibleNote(env, params.id, user);
     const b = await body(req);
     const title = noteTitle(b.title, "연결할 노트 제목");
@@ -362,18 +371,22 @@ export function registerNotes(on) {
     const text = addLinkLine(n.body || "", title);
     if (text === null) return json({ note: n, added: false });
     if (text.length > MAX_NOTE) fail(400, "노트가 너무 길어요.");
-    return json({ note: await relink(env, n, text), added: true });
+    const note = await relink(env, n, text);
+    ragSync(ec, env, n.id);
+    return json({ note, added: true });
   });
-  on("DELETE", "/notes/:id/link", async ({ env, user, params, q }) => {
+  on("DELETE", "/notes/:id/link", async ({ env, user, params, q, ec }) => {
     const n = await visibleNote(env, params.id, user);
     const title = String(q.get("title") || "").trim();
     if (!title) fail(400, "끊을 연결의 제목을 알려 주세요.");
     const text = removeLink(n.body || "", title);
     if (text === n.body) return json({ note: n, removed: false });
-    return json({ note: await relink(env, n, text), removed: true });
+    const note = await relink(env, n, text);
+    ragSync(ec, env, n.id);
+    return json({ note, removed: true });
   });
 
-  on("DELETE", "/notes/:id", async ({ env, user, params }) => {
+  on("DELETE", "/notes/:id", async ({ env, user, params, ec }) => {
     const parent = await env.DB.prepare("SELECT parent_id FROM notes WHERE id = ? AND user_id = ?").bind(params.id, user.id).first();
     if (!parent) fail(404, "노트를 찾을 수 없어요.");
     // 하위 노트는 지운 노트의 부모 밑으로 한 칸 올려요 (맨 위로 흩어지지 않게) — 같은 batch 라 한꺼번에
@@ -383,6 +396,7 @@ export function registerNotes(on) {
     ]);
     if (!r.meta.changes) fail(404, "노트를 찾을 수 없어요.");
     if (parent?.parent_id && await parentDb(env, parent.parent_id, user.id)) await refreshDbMirror(env, parent.parent_id, user.id);
+    ragSync(ec, env, params.id); // 지운 노트의 조각 · 벡터도 지워요
     return json({ ok: true });
   });
 

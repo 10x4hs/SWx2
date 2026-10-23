@@ -130,6 +130,7 @@ export const api = {
   raw: request, // 사용자 페이지 브리지가 그대로 넘겨요
   tags: () => request("GET", "/tags"),
   search: (q) => request("GET", "/search?" + qs({ q })),
+  searchSemantic: (q) => request("GET", "/search/semantic?" + qs({ q, limit: 6 })), // 뜻으로 찾기 (내 노트 + CIM 카드)
   focus: (from, to, user) => request("GET", "/logs/focus?" + qs({ from, to, user })),
 
   custom: () => request("GET", "/custom"),

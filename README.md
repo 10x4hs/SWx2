@@ -123,6 +123,20 @@ PASSWORDLESS=1             # 로컬 전용
 
 키는 브라우저로 나가지 않고 Worker 비밀값에만 있어요. 사람당 하루 200개 질문 제한(`src/ai.js` 의 `DAILY_LIMIT`).
 
+## 뜻으로 찾기 · 근거 달린 CIM 튜터 (`src/rag.js`)
+
+글자 찾기(D1 FTS5 trigram)와 뜻 찾기(Workers AI `@cf/baai/bge-m3` 1024차원 + Vectorize cosine)를 RRF(k=60)로 섞어요.
+D1 `chunks` 표가 원본이고 Vectorize 는 다시 만들 수 있는 색인이라, 벡터가 늦게 보이거나(쓰기 후 30초~몇 분) 실패해도 글자 찾기는 바로 돼요.
+
+- **무엇을 넣나**: CIM 카드 399장(모두 같이, namespace `cim`) · 내 노트(namespace `u:<내 id>`, 서버가 세션 사람으로 정해요). CIM 문제 1,995개는 벡터 없이 글자 찾기만(맞으면 그 카드로). 일기는 안 넣어요.
+- **어디에 보이나**: ⌘K 팔레트의 '뜻으로 찾기' 칸(`GET /api/search/semantic?q=`, 노트는 누구나 · CIM 카드는 cim 기능이 있는 사람만) · CIM AI 튜터의 [1] 근거 링크와 '근거' 칩(`POST /api/apps/cim/ask`).
+- **벡터 색인 둘**: 배포본 `VECTORS` = `swx2-chunks`, `wrangler dev` = `VECTORS_DEV` = `swx2-chunks-dev`(`remote: true`). `VECTORS` 는 remote 가 아니라 로컬에서는 아예 닿지 않아요(로컬 표시 `PASSWORDLESS=1` 로 고름 — `vecIndex`). 두 색인 모두 메타데이터 색인 `kind` · `user_id` 가 있어요.
+- **채우기**: 노트는 저장 · 지우기 때 뒤에서(`waitUntil`) 바뀐 조각만 다시 임베딩. 다른 길(Brain · MCP)로 바뀐 노트와 CIM 은 매시 크론(`ragCron`)이 천천히 — 처음엔 CIM 2장씩, 노트 40개 · 임베딩 96조각씩. 빨리 채우려면 `BASE=… node scripts/rag-index.mjs`(관리자).
+- **무료 한도**: 저장 5M 차원(계정 전체) ≈ 4,880개 → 노트 벡터는 `RAG_NOTE_VEC_MAX`(기본 3000) · 사람마다 `RAG_USER_VEC_MAX`(1500)까지, 넘는 조각은 `skip`(글자 찾기만). 크론 임베딩은 하루 `RAG_DAILY_NEURONS`(4000, 무료 10,000 중) 어림값 안에서.
+- **평가**: `BASE=http://127.0.0.1:8797 node scripts/rag-eval.mjs` — CIM 문제 → 그 카드 150개로 recall@1/5/10 · MRR. 2026-10-23 결과로 고른 기본값: 섞기(hybrid, RRF 같은 무게) · 글자 찾기는 낱말을 trigram 조각으로(어미가 붙어도 맞게) · 문제 행 벌점 2.0 · reranker 끔(`bge-reranker-base` 가 한국어에서 오히려 떨어뜨렸어요) · 노트 이웃(1-hop 링크) 끔 · '근거 있음' 기준 코사인 0.47 (상관없는 질문 최고 0.455, CIM 질문 하위 10% 0.556). 바꾸려면 `RAG_RERANK=1` · `RAG_NEIGHBORS=1` · `RAG_MIN_COS=…`.
+- **개인 자료**: 튜터 근거에 내 노트가 들어가면 무료 데이터로 학습하지 않는 Groq 로만 보내요. 거기가 안 되면 노트를 빼고 CIM 근거로만 다시 물어요.
+- **주의 — `wrangler d1 export`**: D1 내보내기는 가상 표(FTS5)가 있으면 실패해요. 내보내기 전에 `DROP TABLE chunks_fts;` → 내보내기 → `migrations/0067_chunks.sql` 의 `CREATE VIRTUAL TABLE` · 트리거 셋을 다시 실행하고 `INSERT INTO chunks_fts(chunks_fts) VALUES('rebuild');` (내용은 `chunks` 에 다 있어요).
+
 ## 캘린더
 
 `#/calendar` — 한 달 달력에서 날짜를 누르면 그날 한 페이지가 열려요. 앞으로 할 일을 날짜에 미리 적어 두고, 지난날은 일기와 그날 한 공부(끝낸 일 · 집중 시간 · 영어 · 노트 · 하루 점수)를 같이 봐요. API: `GET /api/calendar?from=&to=` (43일까지, 날마다 요약), `GET /api/calendar/day?day=` (그날 전부). 할 일 쓰기는 기존 `/api/plans` (scope `day`). 본인 것만 보여요. 날마다 `study_mins`(집중 기록 + 영어 분)도 같이 와요.

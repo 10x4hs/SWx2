@@ -1019,15 +1019,17 @@ try {
       // AI 패널: 문제 화면에서 열면 지금 문제 · 내 답이 같이 가요 (답은 받지 않고 요청만 봐요)
       errs = [];
       let asked = null;
-      await p.route("**/api/apps/cim/ask", (rt) => { asked = JSON.parse(rt.request().postData() || "{}"); rt.fulfill({ status: 200, contentType: "text/event-stream", body: `data: ${JSON.stringify({ type: "delta", text: "**쉽게** 말하면" })}\n\ndata: ${JSON.stringify({ type: "end", text: "**쉽게** 말하면 이래요." })}\n\n` }); });
+      await p.route("**/api/apps/cim/ask", (rt) => { asked = JSON.parse(rt.request().postData() || "{}"); rt.fulfill({ status: 200, contentType: "text/event-stream", body: `data: ${JSON.stringify({ type: "delta", text: "**쉽게** 말하면" })}\n\ndata: ${JSON.stringify({ type: "end", text: "**쉽게** 말하면 이래요 [1].", sources: [{ n: 1, type: "cim", id: "s3c6-13", title: "근거 카드", path: "CIM > 3과목 6장", href: "#/cim/study/s3c6/13", cited: true }, { n: 2, type: "cim", id: "s3c6-12", title: "안 쓴 카드", path: "CIM", href: "#/cim/study/s3c6/12", cited: false }] })}\n\n` }); });
       await p.click(".c-v [data-ai-open]"); await sleep(300);
       const chips = await p.$$eval("#c-ai-quick [data-ai-q]", (e) => e.map((x) => x.textContent));
       await p.click("#c-ai-quick [data-ai-q]"); await sleep(600);
       const ans = await p.evaluate(() => document.querySelector(".c-ai-msg.bot strong")?.textContent || "");
+      // 근거: 답 속 [1] 은 카드로 가는 링크, 아래 칩은 실제로 단 근거(cited)만
+      const cite = await p.evaluate(() => ({ link: document.querySelector(".c-ai-msg.bot a.c-cite")?.getAttribute("href") || "", chips: [...document.querySelectorAll(".c-ai-src .c-src")].map((x) => x.getAttribute("href")) }));
       let sized = true;
       if (w > 760) { await p.click('[data-sz="s"]'); await sleep(300); sized = (await p.$eval("#c-ai", (e) => Math.round(e.getBoundingClientRect().width))) === 340; await p.click('[data-sz="m"]'); }
       await p.click("[data-ai-x]"); await p.unroute("**/api/apps/cim/ask");
-      ok(asked?.context?.kind === "quiz" && asked.context.options?.length === 4 && Number.isInteger(asked.context.picked) && chips.length === 2 && ans === "쉽게" && sized && !errs.length, `${tv} · CIM AI 패널 — 빠른 질문 [${chips.join(" · ")}] · 문맥 ${asked?.context?.kind} · 내 답 ${asked?.context?.picked} · 굵게 "${ans}" · 크기 ${sized}${errs.length ? " — " + errs[0] : ""}`);
+      ok(asked?.context?.kind === "quiz" && /^s\dc\d+-\d+$/.test(asked.context.key || "") && asked.context.options?.length === 4 && Number.isInteger(asked.context.picked) && chips.length === 2 && ans === "쉽게" && cite.link === "#/cim/study/s3c6/13" && cite.chips.join() === "#/cim/study/s3c6/13" && sized && !errs.length, `${tv} · CIM AI 패널 — 빠른 질문 [${chips.join(" · ")}] · 문맥 ${asked?.context?.kind} (${asked?.context?.key}) · 내 답 ${asked?.context?.picked} · 굵게 "${ans}" · 근거 [1]→${cite.link} · 칩 ${cite.chips.join(",")} · 크기 ${sized}${errs.length ? " — " + errs[0] : ""}`);
       // 공부: 목록 19장 → 장 → 카드 한 장씩(그림 · 왜 이 공식) → 목차로 이동
       errs = [];
       await hop("#/cim/study", ".c-list .c-row", 300);

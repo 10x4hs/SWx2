@@ -56,7 +56,7 @@ export function mountStudy(host, r) {
       ${all.strat ? `<details class="c-strat"><summary>이 장 공부법</summary>${renderBody(String(all.strat).replace(/^▶ 학습전략\s*/, ""))}</details>` : ""}
       <div class="c-toc-l">${all.map((x, j) => `<button type="button" class="c-row press${j === idx ? " cur" : ""}" data-j="${j}"><span class="n num">${x.n}</span><b>${esc(x.t)}</b><span class="p">${S.read[x.key] ? "✓" : x.st >= 3 ? "★★★" : ""}</span></button>`).join("")}</div></dialog>`;
     mountFigs(host);
-    setAi({ kind: "card", chapter: `${chLabel(cur)} ${c.t}`, title: p.t, body: cardText(p) });
+    setAi({ kind: "card", key: p.key, chapter: `${chLabel(cur)} ${c.t}`, title: p.t, body: cardText(p) });
   }
   const goCard = (j) => { if (j < 0 || j >= all.length) return; location.replace(`#/cim/study/${cur}/${all[j].n}`); };
   const pass = () => { const S = st(), k = all[idx]?.key; if (k && !S.read[k]) { S.read[k] = 1; save(); } };

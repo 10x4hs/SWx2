@@ -369,6 +369,14 @@ a.c-row:hover b, button.c-row:hover b { text-decoration: underline; text-underli
 .c-ai-msg.err { border-left: 3px solid var(--c-bad); padding: 2px 0 2px 12px; font-size: 14.5px; }
 .c-ai-msg.err b { color: var(--c-bad); display: block; }
 .c-ai-msg.err p { color: var(--c-sub); }
+/* 근거: 답 속 [1] 링크 · 아래 칩 (카드 → #/cim/study/<장>/<번호>, 노트 → #/notes/<id>) */
+.c-cite { display: inline-block; min-width: 1.35em; padding: 0 .3em; margin: 0 1px; border-radius: 6px; background: var(--c-soft); color: var(--c-ink); font-size: .72em; font-weight: 700; line-height: 1.5; text-align: center; vertical-align: .25em; text-decoration: none; }
+a.c-cite:hover { background: var(--c-lime); color: var(--c-lime-ink); }
+.c-ai-src { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.c-ai-src > span { font-size: 12.5px; font-weight: 700; color: var(--c-faint); margin-right: 2px; }
+.c-src { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 10px 4px 5px; border: 1px solid var(--c-line); border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--c-body); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-src b { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 999px; background: var(--c-soft); color: var(--c-ink); font-size: 11.5px; }
+a.c-src:hover { border-color: var(--c-ink); color: var(--c-ink); }
 .c-ai-dots { display: inline-flex; gap: 4px; padding: 8px 0; }
 .c-ai-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--c-faint); }
 @media (prefers-reduced-motion: no-preference) {

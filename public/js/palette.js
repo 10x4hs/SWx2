@@ -1,4 +1,5 @@
 // SWx2 — 명령 팔레트 (Cmd/Ctrl+K · app.js 에서 나눴어요).
+// 글자가 똑같이 맞는 결과(노트 · 계획 · 명령)를 먼저 그리고, '뜻으로 찾기'(/api/search/semantic — 내 노트 + CIM 카드)는 조금 뒤 도착하면 그 아래에 끼워요.
 import { api } from "./api.js";
 import { $, esc, debounce, ymd, today, planHash } from "./util.js";
 import * as notesView from "./views/notes.js";
@@ -30,6 +31,24 @@ export function openPalette() {
   document.body.appendChild(back);
   const input = $("#pal-input", back), list = $("#pal-list", back);
   let items = [], sel = 0, seq = 0;
+  // 뜻으로 찾기: 타자를 멈춘 뒤에만 (벡터 검색은 무료 한도가 있어서), 늦게 온 답은 버려요
+  const semantic = debounce(async (q, my) => {
+    let r;
+    try { r = await api.searchSemantic(q); } catch { return; }
+    if (my !== seq || !r?.results?.length) return;
+    const have = new Set(items.filter((it) => it.noteId).map((it) => it.noteId));
+    const extra = r.results.filter((x) => !(x.type === "note" && have.has(x.id))).map((x) => ({
+      grp: "뜻으로 찾기", t: x.title, s: (x.snippet || x.path || "").replace(/\s+/g, " "), sem: true,
+      ic: x.type === "cim" ? `<span class="pal-tag">CIM</span>` : `<span class="dot" style="--c:${esc(ctx.me?.color || "#999")}"></span>`,
+      run: () => ctx.go(x.href),
+    }));
+    if (!extra.length) return;
+    const at = items.findIndex((it) => it.grp !== "노트" && it.grp !== "내 계획");
+    const pos = at < 0 ? items.length : at;
+    items.splice(pos, 0, ...extra);
+    if (sel >= pos && items.length > extra.length) sel += extra.length;
+    draw();
+  }, 260);
 
   const commands = () => [
     { grp: "이동", t: "홈", s: "차트 · 서로의 현황", run: () => ctx.go("#/") },
@@ -75,15 +94,16 @@ export function openPalette() {
     if (my !== seq) return;
     const scopeName = { year: "올해", month: "월간", week: "주간", day: "하루" };
     items = [
-      ...found.notes.map((n) => ({ grp: "노트", t: n.title, s: (n.snippet || "").replace(/\s+/g, " "), ic: `<span class="dot" style="--c:${esc(ctx.user(n.user_id)?.color || "#999")}"></span>`, run: () => ctx.go("#/notes/" + n.id) })),
+      ...found.notes.map((n) => ({ grp: "노트", noteId: n.id, t: n.title, s: (n.snippet || "").replace(/\s+/g, " "), ic: `<span class="dot" style="--c:${esc(ctx.user(n.user_id)?.color || "#999")}"></span>`, run: () => ctx.go("#/notes/" + n.id) })),
       ...found.plans.map((p) => ({ grp: "내 계획", t: p.text, s: `${scopeName[p.scope]} · ${p.period.slice(2)}${p.done ? " · 완료" : ""}`, run: () => ctx.go(planHash(p)) })),
       ...cmds,
       ...(q && !found.notes.some((n) => n.title.toLowerCase() === q.toLowerCase()) ? [{ grp: "만들기", t: `새 노트: ${q}`, s: "Enter로 만들기", run: () => notesView.createNote(ctx, q) }] : []),
     ];
     sel = 0;
     draw();
+    if (q.length >= 2) semantic(q, my);
   }, 120);
-  const close = () => { paletteOpen = false; back.remove(); document.removeEventListener("keydown", onKey, true); if (prevFocus && prevFocus.focus) prevFocus.focus(); };
+  const close = () => { paletteOpen = false; seq++; semantic.cancel(); back.remove(); document.removeEventListener("keydown", onKey, true); if (prevFocus && prevFocus.focus) prevFocus.focus(); };
   const runSel = () => { const it = items[sel]; if (it) { close(); it.run(); } };
   const onKey = (e) => {
     if (e.key === "Escape") { e.preventDefault(); close(); }

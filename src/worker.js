@@ -11,6 +11,7 @@ import { registerBooks } from "./books.js";
 import { registerMba, registerDev, registerVg, registerOnto } from "./mba.js";
 import { registerAppState } from "./appstate.js";
 import { registerCimAsk } from "./cimask.js";
+import { registerRag } from "./rag.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth } from "./oauth.js";
 import { registerHomePad } from "./homepad.js";
@@ -158,7 +159,8 @@ registerDev(on, { json, body, fail, now }); // 개발 흐름 마이크로디그�
 registerVg(on, { json, body, fail, now }); // Vector & Graph 과정 (#/sw/vg) — 같은 모양, vg_* 표
 registerOnto(on, { json, body, fail, now }); // 온톨로지 (#/sw/onto) · Palantir AIP (#/sw/aip) — 같은 모양, onto_* · aip_* 표
 registerAppState(on, { json, body, fail, now }); // 내장 Dock 앱의 사람별 저장소 (#/cim 투자자산운용사)
-registerCimAsk(on, { json, body, fail }); // CIM AI 튜터 옆 패널 (POST /apps/cim/ask · 하루 사용량은 AI_PATH)
+registerCimAsk(on, { json, body, fail }); // CIM AI 튜터 옆 패널 (POST /apps/cim/ask · 하루 사용량은 AI_PATH) — 근거 [1]..[n] 은 rag.js 에서
+registerRag(on, { json, fail }); // 뜻으로 찾기 (GET /search/semantic) · 색인 관리 (/rag/*, 관리자)
 registerMcpTokens(on, { json, body, fail, now });
 registerApiKeys(on); // 개인 API 키 (/api/v1 은 위 fetch 에서 따로)
 registerHomePad(on, { json, body, fail, now });

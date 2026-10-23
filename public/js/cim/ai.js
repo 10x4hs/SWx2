@@ -4,6 +4,7 @@
 //   · 폰(≤760px)은 아래에서 올라오는 판, 위 손잡이를 끌어 높이
 //   · 열림 · 크기는 이 기기에 기억(localStorage cim-ai-open · cim-ai-size), 대화는 이번 접속 동안(sessionStorage)
 //   · 답은 /api/apps/cim/ask 에서 글자 단위로(SSE), 도는 동안 '멈추기'. Enter 보내기 · Shift+Enter 줄바꿈
+//   · 근거: 서버가 찾은 CIM 카드 · 내 노트에 [1]..[n] 번호를 붙여 보내고, 답의 [1] 은 그 자료로 가는 링크 · 아래 '근거' 칩 (단 번호만 진하게)
 import { streamCimAsk } from "../api.js";
 import { renderMarkdown as renderMd } from "../md.js";
 import { esc } from "./ui.js";
@@ -17,6 +18,14 @@ const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || "nul
 const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 // **굵게** 는 미리 <strong> 으로 — 한글 조사가 바로 붙거나 '?' 로 끝나도 굵어지게 (마크다운 규칙으로는 안 굵어지는 자리). 결과는 DOMPurify 가 걸러요
 const md = (s) => renderMd(String(s || "").replace(/\*\*(?=\S)([^*\n]+?)(?<=\S)\*\*/g, "<strong>$1</strong>"));
+// 답 속 [1] → 그 근거로 가는 작은 링크 (근거가 없는 번호는 서버가 이미 지웠어요)
+const cites = (html, src) => (src?.length ? html.replace(/\[(\d{1,2})\]/g, (m, n) => { const x = src.find((y) => y.n === +n); return x?.href ? `<a class="c-cite" href="${esc(x.href)}" title="${esc(x.title || "")}">${n}</a>` : x ? `<sup class="c-cite">${n}</sup>` : m; }) : html);
+// 칩은 답이 실제로 단 근거만. 하나도 안 달았으면 찾은 자료를 '참고'로 — 단 "자료에 근거가 없어요" 답이면 칩도 없어요
+const srcChips = (src, text) => {
+  if (!src?.length || (!src.some((x) => x.cited) && /^\s*자료에 근거가 없어요/.test(text || ""))) return "";
+  const shown = src.some((x) => x.cited) ? src.filter((x) => x.cited) : src;
+  return `<div class="c-ai-src" aria-label="근거"><span>${src.some((x) => x.cited) ? "근거" : "참고"}</span>${shown.map((x) => `${x.href ? `<a class="c-src press" href="${esc(x.href)}"` : `<span class="c-src"`} title="${esc(x.path || "")}"><b class="num">${x.n}</b>${x.type === "note" ? "노트 · " : ""}${esc(x.title || "")}${x.href ? "</a>" : "</span>"}`).join("")}</div>`;
+};
 // 화면(카드 · 문제)이 바뀌면 대화 흐름도 새로: 같은 화면에서 나눈 말만 AI 에 보내요 (앞 화면 이야기에 끌려가지 않게)
 const keyOf = (c) => (c.kind === "card" ? "card:" + (c.chapter || "") + (c.title || "") : c.kind === "quiz" ? "quiz:" + (c.question || "").slice(0, 80) : "general");
 
@@ -63,7 +72,7 @@ export function mountAi(root) {
   const saveChat = () => { try { sessionStorage.setItem(CHAT_KEY, JSON.stringify(chat.slice(-24))); } catch {} };
   const paint = (live = -1) => {
     log.innerHTML = chat.length ? chat.map((m, i) => (m.role === "user" && i && chat[i - 1].k !== m.k ? `<p class="c-ai-sep">${esc(m.t || "새 화면")}</p>` : "") + (m.role === "user" ? `<div class="c-ai-msg me"><p>${esc(m.content)}</p></div>`
-      : `<div class="c-ai-msg bot${i === live ? " live" : ""}"><div class="md">${m.content ? md(m.content) : `<span class="c-ai-dots" aria-label="답을 쓰는 중"><i></i><i></i><i></i></span>`}</div></div>`)).join("")
+      : `<div class="c-ai-msg bot${i === live ? " live" : ""}"><div class="md">${m.content ? cites(md(m.content), m.sources) : `<span class="c-ai-dots" aria-label="답을 쓰는 중"><i></i><i></i><i></i></span>`}</div>${i === live ? "" : srcChips(m.sources, m.content)}</div>`)).join("")
       + (errMsg ? `<div class="c-ai-msg err" role="alert"><b>답을 받지 못했어요</b><p>${esc(errMsg)}</p></div>` : "")
       : `<div class="c-ai-empty">${errMsg ? `<div class="c-ai-msg err" role="alert"><b>답을 받지 못했어요</b><p>${esc(errMsg)}</p></div>` : "지금 화면 내용을 같이 보내요. 질문만 적으면 돼요."}</div>`;
     log.scrollTop = log.scrollHeight;
@@ -77,7 +86,7 @@ export function mountAi(root) {
     ai.querySelector("#c-ai-quick").innerHTML = list.map((q) => `<button type="button" class="c-chip press" data-ai-q="${esc(q)}">${esc(q)}</button>`).join("");
   };
   let raf = 0;
-  const paintLive = (i, text) => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; const el = log.querySelector(".c-ai-msg.live .md"); if (!el) return paint(i); el.innerHTML = md(text); log.scrollTop = log.scrollHeight; }); };
+  const paintLive = (i, text) => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; const el = log.querySelector(".c-ai-msg.live .md"); if (!el) return busy ? paint(i) : undefined; el.innerHTML = md(text); log.scrollTop = log.scrollHeight; }); };
 
   async function ask(text) {
     const q = String(text || "").trim();
@@ -94,7 +103,8 @@ export function mountAi(root) {
       await streamCimAsk(ctxNow, thread, (ev) => {
         if (ev.type === "delta") { got += ev.text; chat[at].content = got; paintLive(at, got); }
         else if (ev.type === "reset") { got = ""; chat[at].content = ""; paint(at); }
-        else if (ev.type === "end") chat[at].content = ev.text || got;
+        else if (ev.type === "sources") chat[at].sources = ev.sources;
+        else if (ev.type === "end") { chat[at].content = ev.text || got; if (ev.sources) chat[at].sources = ev.sources; }
         else if (ev.type === "error") throw new Error(ev.message);
       }, ctrl.signal);
       if (!chat[at].content && !ctrl.signal.aborted) throw new Error("AI 답이 비어 있어요.");
@@ -102,6 +112,7 @@ export function mountAi(root) {
       if (e.name !== "AbortError") errMsg = e.message || "AI 답을 받지 못했어요.";
     } finally {
       if (!chat[at]?.content) chat.splice(at, 1); // 빈 답은 지우고 내 질문은 남겨요 (다시 물을 수 있게)
+      if (raf) { cancelAnimationFrame(raf); raf = 0; } // 늦게 도는 글자 그리기가 끝난 답(근거 칩)을 '쓰는 중' 모양으로 덮지 않게
       busy = false; ctrl = null; paint(); saveChat();
     }
   }
