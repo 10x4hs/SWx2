@@ -75,7 +75,7 @@ export function mountSession(host, r, env) {
       host.innerHTML = `<div class="c-session">${head(`1 읽기 · ${T.i + 1} / ${T.cards.length}`)}<div id="c-step">${cardHtml(p)}
         <div class="c-navrow"><button type="button" class="c-btn press" data-prev ${T.i ? "" : "disabled"} aria-label="이전 카드">←</button><button type="button" class="c-btn dark press" data-next>${T.i < T.cards.length - 1 ? "다음 카드" : "다 읽었어요 · 문제로"}</button></div></div></div>`;
       mountFigs(host);
-      setAi({ kind: "card", chapter: chLabel(chOf(p.key)), title: p.t, body: cardText(p) });
+      setAi({ kind: "card", key: p.key, chapter: chLabel(chOf(p.key)), title: p.t, body: cardText(p) });
     } else if (st0 === 1 || st0 === 2) {
       const ids = st0 === 1 ? T.qs : T.wq, picks = st0 === 1 ? T.p1 : T.p2, q = QI[ids[T.i]];
       if (!q) return st0 === 1 ? (T.i + 1 < ids.length ? go(1, T.i + 1) : enterWrong()) : go(T.i + 1 < ids.length ? 2 : 3, T.i + 1 < ids.length ? T.i + 1 : 0);
@@ -95,7 +95,7 @@ export function mountSession(host, r, env) {
         <p class="c-recall-hint">무슨 내용이었는지 먼저 떠올려 보세요.</p>
         <div class="c-reveal" ${revealed ? "" : "hidden"}><div class="c-box tip"><span class="bl">한 줄</span><p>${esc(summary(p))}</p></div></div>
         <div class="c-navrow c-col2">${revealed ? `<button type="button" class="c-btn press" data-rc="0">다시 볼게요</button><button type="button" class="c-btn lime press" data-rc="1">기억났어요</button>` : `<button type="button" class="c-btn dark press wide" data-reveal>눌러서 확인</button>`}</div></div></div>`;
-      setAi({ kind: "card", chapter: chLabel(chOf(p.key)), title: p.t, body: cardText(p) });
+      setAi({ kind: "card", key: p.key, chapter: chLabel(chOf(p.key)), title: p.t, body: cardText(p) });
     } else {
       const r1 = rightOf(T.qs, T.p1), r2 = T.wq ? rightOf(T.wq, T.p2) : 0, nw = T.wq?.length || 0, rc = Object.values(T.rc).filter((v) => v === 1).length;
       (S.done[T.day] ||= {}).go = true; save();

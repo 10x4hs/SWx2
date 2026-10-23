@@ -16,7 +16,7 @@ export function mountQ(box, q, o = {}) {
     <div class="c-opts" role="group" aria-label="보기">${q.o.map((t, k) => `<button type="button" class="c-opt" data-k="${k}"><span class="k num" aria-hidden="true">${k + 1}</span><span>${esc(t)}</span></button>`).join("")}</div>
     <div class="c-expl" aria-live="polite"><div><div class="in"></div></div></div>
     <div class="c-qnav"></div>`;
-  const ctx = (picked) => setAi({ kind: "quiz", chapter: `${chLabel(q.ch)} · ${q.pt.t}`, question: q.q, options: q.o, answer: q.a, picked, explain: picked == null ? "" : q.x });
+  const ctx = (picked) => setAi({ kind: "quiz", key: q.pt?.key, chapter: `${chLabel(q.ch)} · ${q.pt.t}`, question: q.q, options: q.o, answer: q.a, picked, explain: picked == null ? "" : q.x });
   const C = { done: false };
   const show = (k, anim) => {
     C.done = true;

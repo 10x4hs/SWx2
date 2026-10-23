@@ -3,6 +3,7 @@
 //   "0 13 * * SUN" 일요일 22:00 (한국) — 주간 회고 미리 만들기
 //   "0 23 * * *"   매일 08:00 (한국) — 뉴스 요약 + 오늘 신문 초안 + 브리핑
 //   "10 * * * *"   매시 10분 — DB 행 알림 + 뉴스 수집(피드 10) · 요약 5편 · 지난 60일 되채우기 한 걸음(5편) (예전 "0 * * * *" + "20 * * * *" 를 합쳤어요)
+//                  + 뜻으로 찾기 색인 한 걸음 (src/rag.js ragCron: CIM 장 · 바뀐 노트 40개 · 임베딩 96조각, 하루 뉴런 어림값 안에서)
 //   "10 14 * * *"  매일 23:10 (한국) — 오늘 신문 마감 (closed)
 // 무료 플랜은 호출 한 번에 바깥 요청(fetch·AI) 50개까지 → 크론은 lib/budget.js 로 40개 안에서만 돌아요.
 import { newsHourly, newsCron, newsClose, NEWS_BUDGET } from "./news.js";
@@ -12,6 +13,7 @@ import { autoSaveYesterday } from "./records.js";
 import { cleanupPaperNotes } from "./papers.js";
 import { kstToday } from "./lib/day.js";
 import { withBudget } from "./lib/budget.js";
+import { ragCron } from "./rag.js";
 
 export const CRON = { SAVE: "5 15 * * *", WEEKLY: "0 13 * * SUN", NEWS_AM: "0 23 * * *", HOURLY: "10 * * * *", NEWS_CLOSE: "10 14 * * *" };
 
@@ -20,7 +22,9 @@ export async function runCron(env, cron) {
   if (cron === CRON.HOURLY) return withBudget(NEWS_BUDGET, async () => {
     const reminders = await remindersCron(env).catch((e) => ({ error: String(e?.message || e) }));
     const news = await newsHourly(env).catch((e) => ({ error: String(e?.message || e) }));
-    return { reminders, news };
+    // 뜻으로 찾기 색인 한 걸음 (CIM 장 · 바뀐 노트 · 임베딩) — Workers AI · Vectorize 는 바인딩이라 위 fetch 예산과 따로예요
+    const rag = await ragCron(env).catch((e) => ({ error: String(e?.message || e) }));
+    return { reminders, news, rag };
   });
   if (cron === CRON.NEWS_AM) return withBudget(NEWS_BUDGET, () => newsCron(env, kstToday(0)));
   if (cron === CRON.NEWS_CLOSE) return withBudget(NEWS_BUDGET, () => newsClose(env, kstToday(0)));
