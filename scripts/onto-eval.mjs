@@ -117,6 +117,10 @@ if (what === "all" || what === "rel") {
     const falseSugg = rows.filter((r) => r.none && r.choice !== "none" && r.choice !== "unknown" && !r.ok && r.conf >= 0.66).length;
     out.rel.llm = { ...s, at66: s66.at_thr, false_suggestions_on_none_pairs: falseSugg, none_pairs: rows.filter((r) => r.none).length, misses: rows.filter((r) => r.ok === false).map((r) => `${r.pair}: ${r.choice} (정답 ${r.want}, ${r.conf})`) };
     console.log(`  정답 none 인 쌍 ${out.rel.llm.none_pairs}개 중 잘못 제안될 것(확신≥0.66): ${falseSugg}`);
+    const s50 = summary(rows, 0.5).at_thr;
+    out.rel.llm.at50 = s50;
+    out.rel.llm.direction_only_misses = rows.filter((r) => r.ok === false && r.choice !== "none" && r.want !== "none" && r.choice.replace(/_inv$/, "") === r.want.replace(/_inv$/, "")).length;
+    console.log(`  ≥0.5: 정확 ${pct(s50.precision)} / 덮음 ${pct(s50.coverage)} (${s50.n}) · 방향만 틀림 ${out.rel.llm.direction_only_misses}`);
   }
   // 기준선: 쌍 글 벡터 + 관계 원형(설명 + 다른 쌍들 평균, 나 빼고)
   const crit = relCriteria(), keys = Object.keys(crit);
@@ -128,6 +132,47 @@ if (what === "all" || what === "rel") {
     return { ok: isOk(p, r.choice), conf: r.confidence, choice: r.choice };
   });
   const s = summary(rows); show("embed-proto (쌍 벡터 · LOO, 기준선)", s); out.rel.embed_proto = s;
+}
+
+// ---------- 관계 종류 — 새 판정 (2026-10-25: 종류 → 방향 나눠 묻기 · 근거 문장 · 사용자 예시 few-shot) ----------
+//   서버 /onto/rel-judge = suggestForNote 가 쓰는 judgePairs 그대로. 예시는 '사용자가 확인한 관계' 를 흉내 내요:
+//   같은 정답지의 다른 쌍(이번 묶음 8개는 빼고 — 답 새는 것 막기) 중 쌍 벡터가 가장 비슷한 것 · 정답 none 쌍은 '거절한 제안' 으로.
+if ((what === "all" || what === "rel" || what === "rel-new") && !noLlm) {
+  console.log("\n[관계 — 새 판정 · 쌍 " + D.pairs.length + "개]");
+  const by = new Map(D.notes.map((n) => [n.t, n]));
+  const isOk = (p, choice) => (choice === "unknown" ? null : p.ok.includes(choice));
+  const pv = await embedAll(D.pairs.map((p) => `「${p.a}」 ${by.get(p.a).b}\n→ 「${p.b}」 ${by.get(p.b).b}`));
+  const cosv = (a, b) => { let x = 0, na = 0, nb = 0; for (let i = 0; i < a.length; i++) { x += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } return x / Math.sqrt(na * nb); };
+  const shotsFor = (idx) => {
+    const ban = new Set(idx), pos = [], neg = [];
+    const rank = D.pairs.map((q, m) => [q, m, Math.max(...idx.map((i) => cosv(pv[i], pv[m])))]).filter(([, m]) => !ban.has(m)).sort((x, y) => y[2] - x[2]);
+    for (const [q] of rank) {
+      if (q.ok[0] === "none") { if (neg.length < 2) neg.push({ a: q.a, b: q.b, rel: null }); continue; }
+      if (pos.length >= 6) continue;
+      const k = q.ok[0], inv = k.endsWith("_inv"), rel = inv ? k.slice(0, -4) : k;
+      pos.push(inv ? { a: q.b, b: q.a, rel } : { a: q.a, b: q.b, rel });
+    }
+    return { pos, neg };
+  };
+  out.rel_new = {};
+  for (const [name, withShots] of [["split", false], ["split+shots", true]]) {
+    const rows = [];
+    for (let i = 0; i < D.pairs.length; i += 8) {
+      const part = D.pairs.slice(i, i + 8), idx = part.map((_, j) => i + j);
+      const pairs = part.map((p) => ({ a: { title: p.a, body: by.get(p.a).b }, b: { title: p.b, body: by.get(p.b).b } }));
+      const r = await api("/onto/rel-judge", { pairs, examples: withShots ? shotsFor(idx) : null });
+      part.forEach((p, j) => { const a = r.results[j]; rows.push({ ok: isOk(p, a.choice), conf: a.confidence, choice: a.choice, want: p.ok[0], pair: p.a + " → " + p.b, none: p.ok[0] === "none", type: a.type?.choice, dir: a.dir?.choice, quote: !!a.quote }); });
+      console.log(`  ${name} ${Math.min(i + 8, D.pairs.length)}/${D.pairs.length} (${r.meta?.used || r.meta?.error}, 토큰 ${r.meta?.tokens || 0})`);
+      await sleep(PAUSE * 2); // Groq 두 번 (종류 · 방향)
+    }
+    const s = summary(rows); show(name, s);
+    const at = Object.fromEntries([0.5, 0.66, 0.85].map((t) => [t, summary(rows, t).at_thr]));
+    console.log("    " + Object.entries(at).map(([t, x]) => `≥${t}: 정확 ${pct(x.precision)} / 덮음 ${pct(x.coverage)} (${x.n})`).join(" · "));
+    const falseSugg = rows.filter((r) => r.none && r.choice !== "none" && r.choice !== "unknown" && !r.ok && r.conf >= 0.66).length;
+    const dirMiss = rows.filter((r) => r.ok === false && r.choice !== "none" && r.want !== "none" && r.choice.replace(/_inv$/, "") === r.want.replace(/_inv$/, "")).length;
+    console.log(`    방향만 틀림 ${dirMiss} · 정답 none 에 잘못 제안(≥0.66) ${falseSugg}`);
+    out.rel_new[name] = { ...s, at, direction_only_misses: dirMiss, false_suggestions_on_none_pairs: falseSugg, misses: rows.filter((r) => r.ok === false).map((r) => `${r.pair}: ${r.choice} (정답 ${r.want}, ${r.conf}; 종류 ${r.type} 방향 ${r.dir})`) };
+  }
 }
 
 // ---------- AI 길 (CIM 튜터) ----------

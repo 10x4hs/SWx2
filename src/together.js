@@ -214,8 +214,9 @@ async function makeReview(env, userId, w) {
   if (!facts) return { empty: true };
   let data;
   const pick = await env.DB.prepare("SELECT ai_model FROM users WHERE id = ?").bind(userId).first().catch(() => null);
-  try { ({ data } = await aiJson(env, SYSTEM, facts, pick?.ai_model || null)); }
+  try { ({ data } = await aiJson(env, SYSTEM, facts, pick?.ai_model || null, { private: true })); } // 계획 · 기록 · 노트 제목 → Groq 만
   catch (e) {
+    if (e.private) return { status: e.status || 502, error: e.message };
     if (e.status === 503) return { status: 503, error: "AI 키가 없어서 회고를 만들 수 없어요. 숫자 회고는 그대로 볼 수 있어요." };
     return { status: 502, error: e.message || "AI 답을 받지 못했어요. 잠시 뒤 다시 시도해 주세요." };
   }

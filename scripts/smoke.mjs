@@ -1506,6 +1506,9 @@ if (!process.env.SKIP_AI) {
   await call("a", "DELETE", "/plans/" + plan.id);
 }
 
+// 개인 자료 공급사 (서버 없이 — fetch 를 잠깐 가짜로 바꿔서 확인해요)
+{ const { privacyChecks } = await import("./privacy-check.mjs"); await privacyChecks(ok); }
+
 r = await call("a", "POST", "/auth/logout"); r = await call("a", "GET", "/me"); ok(r.status === 401, "logout");
 
 execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", "DELETE FROM users WHERE username LIKE 't\\_%' ESCAPE '\\'"], { stdio: "ignore" });

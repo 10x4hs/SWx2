@@ -10,14 +10,14 @@
 //     → decide() 의 choice 질문 (관계 8 + 반대 방향 6 + none + unknown) 을 llm 엔진(Groq 만, 3표)으로 → auto · suggested · 아무것도 안 함
 //     하루 제안 ONTO_DAILY_SUGGEST(30) · 노트마다 3 · 하루 묻는 쌍 ONTO_DAILY_ASK(120)
 //   새 노트 자리 제안(concept_sort): 맨 위(Unsorted) 노트 → 개념 5개 + unknown 을 embed-proto 로 → 확신 ≥ ONTO_SORT_MIN 이면 화면에 '‘AI & Dev’에 둘까요?' (옮기기는 사람이 눌러야)
-import { decide, recordOutcome, meanVec, UNKNOWN } from "./decide.js";
-import { embed, vecIndex, nsOf, addNeurons, neuronsFor } from "./rag.js";
+import { decide, recordOutcome, meanVec, logDecision, UNKNOWN } from "./decide.js";
+import { embed, vecIndex, nsOf, addNeurons, neuronsFor, noteVectors } from "./rag.js";
 import { chunkNote } from "./lib/rag-text.js";
 import { kstToday } from "./lib/day.js";
 import { fail, json, body, now, uid } from "./http.js";
 
 // 관계 · 개념 이름표는 src/lib/onto-vocab.js (node 평가 스크립트도 같이 써요)
-import { REL, REL_KEYS, SYMMETRIC, relCriteria, readRelChoice, outcomeLabel, CONCEPTS } from "./lib/onto-vocab.js";
+import { REL, REL_KEYS, SYMMETRIC, relCriteria, readRelChoice, outcomeLabel, CONCEPTS, TYPE_CRIT, dirCriteria, combineRel, exampleLine } from "./lib/onto-vocab.js";
 export { REL, REL_KEYS, relCriteria, readRelChoice, outcomeLabel, CONCEPTS };
 const STATUS = new Set(["suggested", "auto", "confirmed", "rejected"]);
 const ORIGIN = new Set(["human", "ai", "embedding"]);
@@ -33,6 +33,8 @@ export const ontoSettings = (env) => ({
   dayAsk: num(env, "ONTO_DAILY_ASK", 120),
   dayGuess: num(env, "ONTO_DAILY_GUESS", 80),
   neighborCos: num(env, "ONTO_NEIGHBOR_COS", 0.5),
+  shotsPos: num(env, "ONTO_SHOTS_POS", 0),         // few-shot: 사용자가 확인한 비슷한 쌍 — 기본 꺼짐: 평가(2026-10-25, qwen)에서 덮음 57%→39% 로 줄고 정확도도 96%→88% (흉내 낸 예시라 실제 확인 데이터로 다시 재요). 4 · 2 로 켜요
+  shotsNeg: num(env, "ONTO_SHOTS_NEG", 0),         // few-shot: 사용자가 거절한 비슷한 제안
 });
 const dayStart = () => Date.parse(kstToday(0) + "T00:00:00+09:00");
 const short = (title, body, n) => { const c = chunkNote(title, body || "")[0]; return (c?.text || "").replace(/\s+/g, " ").trim().slice(0, n); };
@@ -119,10 +121,74 @@ async function vecNeighbors(env, userId, vec, selfId, k = 8, minCos = 0.5) {
   }
   return [...best].map(([id, cos]) => ({ id, cos })).sort((a, b) => b.cos - a.cos).slice(0, k * 2);
 }
-function relState(a, cands) {
-  return [`노트 A 「${a.title}」\n${short(a.title, a.body, 600) || "(본문 없음)"}`, "", "후보 노트:", ...cands.map((c, i) => `[${i + 1}] 「${c.title}」 ${short(c.title, c.body, 260) || "(본문 없음)"}`)].join("\n");
+// ---------- 관계 판정 (나눠 묻기 · few-shot · 근거 문장) — 2026-10-25 ----------
+// ① 종류만 (TYPE_CRIT, 방향 없음) + 근거 quote (두 노트 본문에 글자 그대로 있어야 표가 살아요)
+// ② 방향이 있는 종류만 방향 질문 (forward / backward) — 한 번 더 Groq 3표
+// 확신 = ① 확신 × ② 확신 (대칭 관계는 ① 만). 사용자 예시(확인한 쌍 · 거절한 제안)는 자료 맨 위에.
+const noteBlock = (t, body, n) => `「${t}」 ${short(t, body, n) || "(본문 없음)"}`;
+function pairState(pairs, examples, n = 420) {
+  const seen = new Map();
+  for (const p of pairs) for (const x of [p.a, p.b]) if (!seen.has(x.title)) seen.set(x.title, noteBlock(x.title, x.body, n));
+  const pos = examples?.pos || [], neg = examples?.neg || [];
+  return [
+    pos.length ? "[사용자가 직접 확인한 관계 — 종류와 방향을 고를 때 참고]\n" + pos.map((x) => exampleLine(x)).join("\n") : "",
+    neg.length ? "[사용자가 거절한 제안 — 비슷한 쌍에 같은 답을 고르지 마]\n" + neg.map((x) => exampleLine(x, true)).join("\n") : "",
+    "[노트]\n" + [...seen.values()].join("\n"),
+  ].filter(Boolean).join("\n\n");
 }
-const relQuestion = (a, c, i) => ({ type: "choice", instructions: `노트 A 「${a.title}」에서 후보 [${i + 1}] 「${c.title}」(= B)로 가는 관계는 무엇인가요? A와 B를 바꿔 읽어야 맞으면 _inv 를 골라요.`, criteria: relCriteria() });
+/**
+ * 쌍 여러 개의 관계 (Groq 만, private). pairs: [{ a: { title, body }, b: { title, body } }] (A → B 로 물어요)
+ * 돌려주는 것: { results: [{ choice(relCriteria 이름 | none | unknown), confidence, why, quote, type, dir }], meta }
+ */
+export async function judgePairs(env, pairs, { examples = null, samples } = {}) {
+  const state = pairState(pairs, examples);
+  const tq = {};
+  pairs.forEach((p, i) => {
+    tq["t" + i] = { type: "choice", criteria: TYPE_CRIT, evidence: `${p.a.title}\n${p.a.body || ""}\n${p.b.title}\n${p.b.body || ""}`,
+      instructions: `「${p.a.title}」와 「${p.b.title}」 사이의 관계 종류는? (방향은 묻지 않아요 — 종류만)` };
+  });
+  const r1 = await decide(env, { state, questions: tq, engine: "llm", private: true, samples });
+  const dq = {};
+  pairs.forEach((p, i) => {
+    const t = r1.answers["t" + i];
+    if (t && REL[t.choice] && !SYMMETRIC.has(t.choice) && t.confidence > 0)
+      dq["d" + i] = { type: "choice", criteria: dirCriteria(t.choice), instructions: `A=「${p.a.title}」, B=「${p.b.title}」. 두 노트의 관계는 '${REL[t.choice].ko}' 예요. 어느 방향으로 읽어야 맞나요? (forward = A → B 문장이 맞음 · backward = B → A 문장이 맞음)` };
+  });
+  const r2 = Object.keys(dq).length ? await decide(env, { state, questions: dq, engine: "llm", private: true, samples }) : { answers: {}, meta: {} };
+  const results = pairs.map((p, i) => {
+    const t = r1.answers["t" + i] || { choice: UNKNOWN, confidence: 0 };
+    const d = r2.answers["d" + i] || null;
+    const choice = combineRel(t.choice, d?.choice);
+    const conf = !REL[t.choice] || SYMMETRIC.has(t.choice) ? t.confidence : choice === UNKNOWN ? 0 : Math.round(t.confidence * (d?.confidence || 0) * 1000) / 1000;
+    return { choice, confidence: t.choice === "none" ? t.confidence : conf, why: d?.why || t.why || "", quote: t.quote || "", type: { choice: t.choice, confidence: t.confidence, dropped: t.dropped || 0 }, dir: d ? { choice: d.choice, confidence: d.confidence } : null };
+  });
+  const tokens = (r1.meta?.tokens || 0) + (r2.meta?.tokens || 0);
+  return { results, meta: { used: [r1.meta?.used, r2.meta?.used].filter(Boolean).join(",") || r1.meta?.error || "", tokens, calls: (r1.meta?.calls || 0) + (r2.meta?.calls || 0), error: r1.meta?.error || r2.meta?.error || null } };
+}
+const unit = (v) => { if (!v) return null; const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
+const cos = (a, b) => { let x = 0; for (let i = 0; i < a.length; i++) x += a[i] * b[i]; return x; };
+/** few-shot: 사용자가 확인(confirmed)한 관계 · 거절(rejected)한 제안 중 지금 쌍들과 가장 비슷한 것 (쌍 벡터 = 두 노트 벡터 평균, Vectorize 에 있는 것 재사용) */
+async function relExamples(env, userId, targets, S) {
+  if (!S.shotsPos && !S.shotsNeg) return null;
+  const { results: rows } = await env.DB.prepare(
+    `SELECT r.src_id, r.dst_id, r.rel, r.status, s.title st, d.title dt FROM note_rel r JOIN notes s ON s.id = r.src_id JOIN notes d ON d.id = r.dst_id
+     WHERE r.user_id = ? AND r.status IN ('confirmed', 'rejected') ORDER BY r.updated_at DESC LIMIT 40`).bind(userId).all();
+  if (!rows.length) return null;
+  const skip = new Set(targets.flatMap((t) => [t.a.id + ">" + t.b.id, t.b.id + ">" + t.a.id]));
+  const ex = rows.filter((r) => !skip.has(r.src_id + ">" + r.dst_id));
+  if (!ex.length) return null;
+  const ids = [...new Set([...ex.flatMap((r) => [r.src_id, r.dst_id]), ...targets.flatMap((t) => [t.a.id, t.b.id])])];
+  let vec = new Map();
+  try { const vs = await noteVectors(env, userId, ids.map((id) => ({ id })), { maxEmbed: 0 }); ids.forEach((id, i) => vs[i] && vec.set(id, vs[i])); }
+  catch (e) { console.log("onto shots vectors", String(e?.message || e)); }
+  const pv = (a, b) => (vec.has(a) && vec.has(b) ? unit(vec.get(a).map((x, k) => x + vec.get(b)[k])) : null);
+  const tv = targets.map((t) => pv(t.a.id, t.b.id)).filter(Boolean);
+  const score = (r) => { const v = pv(r.src_id, r.dst_id); return v && tv.length ? Math.max(...tv.map((t) => cos(t, v))) : -1; }; // 벡터가 없으면 최근 것 순서
+  const ranked = ex.map((r, i) => ({ r, s: score(r), i })).sort((x, y) => y.s - x.s || x.i - y.i);
+  const pick = (st, k) => ranked.filter((x) => x.r.status === st).slice(0, k).map(({ r }) => ({ a: r.st, b: r.dt, rel: r.rel }));
+  const out = { pos: pick("confirmed", S.shotsPos), neg: pick("rejected", S.shotsNeg) };
+  return out.pos.length || out.neg.length ? out : null;
+}
 
 /**
  * 노트 하나의 관계 제안. force = 지문 · 20분 간격을 무시 (하루 몫은 그대로).
@@ -165,18 +231,22 @@ export async function suggestForNote(env, noteId, { force = false, ec = null } =
   const { results: cn } = await env.DB.prepare(`SELECT id, title, body FROM notes WHERE user_id = ? AND id IN (${inList(pick.length)})`).bind(n.user_id, ...pick).all();
   const by = new Map(cn.map((c) => [c.id, c]));
   const cands = pick.map((id) => by.get(id)).filter(Boolean);
-  const questions = {}, subjects = {};
-  cands.forEach((c, i) => { questions["p" + i] = relQuestion(n, c, i); subjects["p" + i] = `${n.id}>${c.id}`; });
-  const { answers, meta } = await decide(env, { state: relState(n, cands), questions, engine: "llm", private: true, log: { userId: n.user_id, kind: "rel_type", subjects }, ec });
+  const pairs = cands.map((c) => ({ a: { id: n.id, title: n.title, body: n.body }, b: { id: c.id, title: c.title, body: c.body } }));
+  const examples = await relExamples(env, n.user_id, pairs, S).catch((e) => { console.log("onto shots", String(e?.message || e)); return null; });
+  const { results: judged, meta } = await judgePairs(env, pairs, { examples });
   // 정하기: 링크 있는 쌍 + 확신 높음 → auto, 나머지 확신 ≥ suggestMin → suggested (노트마다 3, 하루 몫 안에서)
-  const out = { asked: cands.length, auto: 0, suggested: 0, engine: meta.used || meta.error || "" };
+  const out = { asked: cands.length, auto: 0, suggested: 0, engine: meta.used || meta.error || "", shots: examples ? examples.pos.length + examples.neg.length : 0 };
   const sugg = [];
   for (const [i, c] of cands.entries()) {
-    const a = answers["p" + i], rc = readRelChoice(a?.choice);
+    const a = judged[i];
+    // 판정 기록 (사람이 확인 · 거절하면 recordOutcome 이 outcome 을 붙여요 — 물은 방향 n → c 기준)
+    const logId = await logDecision(env, { userId: n.user_id, kind: "rel_type", subject: `${n.id}>${c.id}`, engine: "llm-split", answer: a.choice, confidence: a.confidence, probabilities: { [a.choice]: a.confidence } }).catch(() => null);
+    const rc = readRelChoice(a.choice);
     if (!rc) continue;
     const src = rc.swap ? c.id : n.id, dst = rc.swap ? n.id : c.id;
     const isLinked = linkIds.has(c.id) || (await linked(env, n.id, c.id));
-    const row = { src_id: src, dst_id: dst, rel: rc.rel, origin: "ai", confidence: a.confidence, evidence: a.why || null, decide_id: a.log_id || null };
+    const evidence = (a.quote ? `“${a.quote}”${a.why ? " — " + a.why : ""}` : a.why || "").slice(0, 300) || null;
+    const row = { src_id: src, dst_id: dst, rel: rc.rel, origin: "ai", confidence: a.confidence, evidence, decide_id: logId };
     if (isLinked && rc.rel === "related") continue; // 링크 = 이미 '관련' 이에요
     if (isLinked && a.confidence >= S.autoMin) sugg.push({ ...row, status: "auto" });
     else if (a.confidence >= S.suggestMin) sugg.push({ ...row, status: "suggested" });
@@ -311,6 +381,16 @@ export function registerRels(on) {
     try { return json(await decide(env, { state: String(b.state || "").slice(0, 9000), questions: b.questions, engine: b.engine || "auto", private: b.private !== false, vec: Array.isArray(b.vec) ? b.vec : null, samples: Math.max(1, Math.min(5, Number(b.samples) || 3)), log: { userId: user.id, kind: "test", subjects: {} }, ec }).then(({ answers, meta }) => ({ answers, meta }))); }
     catch (e) { fail(400, String(e?.message || e)); }
   });
+  // 관리자 평가용: 실제 제안과 같은 판정(judgePairs — 나눠 묻기 · few-shot · 근거 문장). 기록 안 남겨요
+  on("POST", "/onto/rel-judge", async ({ req, env, user }) => {
+    needAdmin(user);
+    const b = await body(req);
+    const note = (x) => ({ title: String(x?.title || "").slice(0, 120), body: String(x?.body || "").slice(0, 2000) });
+    const pairs = Array.isArray(b.pairs) ? b.pairs.slice(0, 10).map((p) => ({ a: note(p.a), b: note(p.b) })) : fail(400, "pairs");
+    const ex = (xs) => (Array.isArray(xs) ? xs.slice(0, 8).map((x) => ({ a: String(x.a || "").slice(0, 120), b: String(x.b || "").slice(0, 120), rel: REL[x.rel] ? x.rel : null })) : []);
+    const examples = b.examples ? { pos: ex(b.examples.pos), neg: ex(b.examples.neg) } : null;
+    return json(await judgePairs(env, pairs, { examples, samples: Math.max(1, Math.min(5, Number(b.samples) || 3)) }));
+  });
   on("POST", "/decide/route-eval", async ({ req, env, user }) => {
     needAdmin(user);
     const { routeRules, routeAsk } = await import("./airoute.js");
@@ -386,9 +466,12 @@ export function registerRels(on) {
     const { results } = await env.DB.prepare(`SELECT id, title, body FROM notes WHERE user_id = ? AND id IN (?, ?)`).bind(user.id, a, b).all();
     const A = results.find((x) => x.id === a), B = results.find((x) => x.id === b);
     if (!A || !B) fail(404, "노트를 찾을 수 없어요.");
-    const { answers } = await decide(env, { state: relState(A, [B]), questions: { p0: relQuestion(A, B, 0) }, engine: "llm", private: true, log: { userId: user.id, kind: "rel_guess", subjects: { p0: `${a}>${b}` } }, ec });
-    const x = answers.p0, rc = readRelChoice(x.choice);
-    return json({ rel: rc?.rel || null, src_id: rc?.swap ? b : a, dst_id: rc?.swap ? a : b, choice: x.choice, confidence: x.confidence, why: x.why || "", log_id: x.log_id || null, probabilities: x.probabilities });
+    const pairs = [{ a: A, b: B }];
+    const examples = await relExamples(env, user.id, pairs, S).catch(() => null);
+    const x = (await judgePairs(env, pairs, { examples })).results[0], rc = readRelChoice(x.choice);
+    const probabilities = { [x.choice]: x.confidence };
+    const logId = await logDecision(env, { userId: user.id, kind: "rel_guess", subject: `${a}>${b}`, engine: "llm-split", answer: x.choice, confidence: x.confidence, probabilities }).catch(() => null);
+    return json({ rel: rc?.rel || null, src_id: rc?.swap ? b : a, dst_id: rc?.swap ? a : b, choice: x.choice, confidence: x.confidence, why: x.why || "", quote: x.quote || "", log_id: logId, probabilities });
   });
   // 이 노트의 관계 제안을 지금 (내 노트만 · 하루 몫은 그대로)
   on("POST", "/rels/suggest/:id", async ({ env, user, params, ec }) => {

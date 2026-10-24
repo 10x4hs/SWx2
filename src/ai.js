@@ -49,6 +49,18 @@ const MODELS = {
 // 한 번에 답 받는 순서 (뒤의 셋은 느리거나 JSON 모드가 없어서 마지막)
 const JSON_ORDER = ["gemini", "groq", "cohere", "mimo", "zhipu", "openrouter", "kilo", "ollama"];
 export const TEXT_ORDER = ["groq", "gemini", "cohere", "mimo", "zhipu", "openrouter", "kilo", "ollama"];
+// 개인 자료(노트 · 일기 · 계획 · 하루 기록)를 보낼 수 있는 공급사: 무료 API 입력으로 모델을 학습하지 않는 곳만 (2026-10-25 한곳으로 모음).
+// Gemini 무료 등급 · OpenRouter/Kilo 무료 · MiMo · GLM 은 빼요. Cohere 는 체험 키 데이터 정책이 분명하지 않아서 뺐어요.
+// 개인 호출은 이 목록 밖으로 절대 넘어가지 않아요 — Groq 가 안 되면 privateError 로 분명히 알려요 (Gemini 로 몰래 넘어가지 않게).
+export const PRIVATE_SAFE = ["groq"];
+export const isPrivateSafe = (provider) => PRIVATE_SAFE.includes(provider);
+export const providerOf = (id) => MODELS[id]?.provider || null;
+export function privateError(cause = null) {
+  const e = new Error("개인 노트 · 계획은 입력을 학습하지 않는 Groq 로만 보내요. 지금 Groq 가 답하지 않아서 멈췄어요 — 잠시 뒤 다시 해 주세요." + (cause?.message ? ` (${String(cause.message).slice(0, 120)})` : ""));
+  e.status = !cause || cause.status === 503 ? 503 : 502;
+  e.private = true;
+  return e;
+}
 // 사용자가 고른 모델을 맨 앞에 (없거나 모르는 id 면 기본 순서). 그 모델이 막히면 뒤의 것들로 넘어가요.
 export const orderFrom = (prefer, base = TEXT_ORDER) => (prefer && MODELS[prefer] ? [prefer, ...base.filter((p) => p !== prefer)] : base);
 const modelLabel = (id) => MODELS[id]?.label || id;
@@ -165,6 +177,12 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
       system += `\n\n[지금 실제로 저장된 계획 — 이것만 사실이야. 앞 대화에서 '넣었다'고 한 말과 달라도 이걸 믿어. 여기 없는 건 아직 안 들어간 거야]\n${viewDay} (보고 있는 날짜)\n${fmt(p0)}\n계획을 넣으라고 하면 항목마다 add_plan 을 한 번씩만 불러 — 날짜는 하나야. 같은 항목을 다른 날짜에 또 넣지 마. 다른 날짜의 계획은 day_plans 로 확인해.`;
     }
 
+    // 개인 자료(노트 · 계획 · 기록)는 PRIVATE_SAFE(Groq) 대상에게만. 다른 모델은 일반 튜터 프롬프트 + 웹 도구만 받아요 (노트 · 계획 도구 없음)
+    const PUBLIC_TOOLS = ["web_search", "read_page"];
+    const publicSystem = basePrompt(user) + "\n\n" + toolPrompt(PUBLIC_TOOLS, 4)
+      + "\n\n이 모델에는 사용자의 노트 · 계획을 보내지 않아요 (입력을 학습할 수 있는 무료 등급이라서). 내 노트 · 계획에 대한 질문이면 'Groq 모델로 바꾸면 내 기록을 보고 답할 수 있어요' 라고 짧게 알려 줘.";
+    const forTarget = (t) => (isPrivateSafe(MODELS[t].provider) ? { sys: system, tools: TOOLS } : { sys: publicSystem, tools: PUBLIC_TOOLS });
+
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const enc = new TextEncoder();
@@ -187,7 +205,8 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
         // 모델마다 자기 답만 이어서 기억해요 (비교 모드에서 서로 섞이지 않게)
         const history = past.filter((m) => m.role === "user" || m.model === t).slice(-16);
         try {
-          const r = await runToolLoop(env, user, t, system, history, ask, TOOLS, b.periods, (o) => send({ ...o, model: t }));
+          const { sys, tools } = forTarget(t);
+          const r = await runToolLoop(env, user, t, sys, history, ask, tools, b.periods, (o) => send({ ...o, model: t }));
           await send({ type: "done", model: t, used: r.used, fallback: r.used !== MODELS[t].chain[0], changed: r.changed }); // fallback = 첫 모델이 아닌 걸로 답함
           return { t, text: r.text };
         } catch (e) {
@@ -338,10 +357,12 @@ async function contextPrompt(env, user, b, message) {
 // ---------- JSON 한 번에 받기 (노트 정리·생성용) ----------
 // Gemini(JSON 모드) → Groq → Cohere → MiMo 순서. 키가 하나도 없으면 503.
 // 한 회사 안에서는 붐빌 때만 다음 모델로, 그 회사가 아예 안 되면(키·요청 오류) 다음 회사로 넘어가요.
-export async function aiJson(env, system, prompt, prefer = null) {
+// opts.private = true → PRIVATE_SAFE(Groq) 만. 고른 모델이 Groq 가 아니면 무시해요. 다 안 되면 privateError.
+export async function aiJson(env, system, prompt, prefer = null, { private: priv = false } = {}) {
   const JSON_RUN = { gemini: geminiJson, groq: openaiJson("groq"), cohere: cohereJson, mimo: openaiJson("mimo"), zhipu: openaiJson("zhipu"), openrouter: openaiJson("openrouter"), kilo: openaiJson("kilo"), ollama: openaiJson("ollama") };
   const pv = prefer && MODELS[prefer] ? MODELS[prefer].provider : null; // 고른 모델의 회사를 맨 앞에
-  const groups = orderFrom(pv, JSON_ORDER).filter((p) => hasKey(env, p));
+  const groups = orderFrom(pv, JSON_ORDER).filter((p) => hasKey(env, p) && (!priv || isPrivateSafe(p)));
+  if (!groups.length && priv) throw privateError();
   if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
   let lastErr = null;
   for (const p of groups) {
@@ -353,6 +374,7 @@ export async function aiJson(env, system, prompt, prefer = null) {
       catch (e) { lastErr = e; if (!e.retry) break; }
     }
   }
+  if (priv) throw privateError(lastErr);
   throw lastErr || new Error("AI 답을 받지 못했어요.");
 }
 
@@ -547,8 +569,10 @@ const RUN = { gemini, mimo, groq, cohere, zhipu: openaiLike("zhipu"), openrouter
 // 스트리밍 함수를 그대로 쓰되 글자는 모아서 한 번에 돌려줘요. messages = [{ role: 'user'|'assistant', content }], 마지막은 user.
 // 회사 순서는 order 로 (기본 Groq → Gemini → Cohere → MiMo → Zhipu → OpenRouter → Kilo). 붐비면 다음 모델, 그 회사가 아예 안 되면 다음 회사로.
 // onToken(text) 을 주면 글자가 나오는 대로 불러요 (스트리밍). 모델이 바뀌어 다시 시작하면 onToken("", { reset: true }) 로 알려요.
-export async function aiText(env, system, messages, order = TEXT_ORDER, onToken = null) {
-  const groups = order.filter((p) => MODELS[p] && hasKey(env, p));
+// opts.private = true → order 에서 PRIVATE_SAFE 만 남겨요. 다 안 되면 privateError (다른 회사로 넘어가지 않아요).
+export async function aiText(env, system, messages, order = TEXT_ORDER, onToken = null, { private: priv = false } = {}) {
+  const groups = order.filter((p) => MODELS[p] && hasKey(env, p) && (!priv || isPrivateSafe(p)));
+  if (!groups.length && priv) throw privateError();
   if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
   const history = messages.slice(0, -1), last = messages[messages.length - 1]?.content || "";
   const quiet = async () => {};
@@ -561,5 +585,6 @@ export async function aiText(env, system, messages, order = TEXT_ORDER, onToken 
       catch (e) { lastErr = e; if (!e.retry) break; }
     }
   }
+  if (priv) throw privateError(lastErr);
   throw lastErr || new Error("AI 답을 받지 못했어요.");
 }
