@@ -44,6 +44,8 @@ import { enter as enterRoute, navHref, watchScroll, restoreTop } from "./dock-me
 import { hasHistory } from "./undo.js"; // ⌘Z · ⌘⇧Z (계획 · 일기 · Obsidian) // Dock 앱마다 보던 곳 그대로
 import { openPalette, initPalette } from "./palette.js";
 import { timer, renderTimer, initTimer } from "./focus-timer.js";
+import { syncUi, signedOut as uiSignedOut } from "./theme.js"; // 화면 꾸미기 — 테마 · 배경 · 강조 색 (첫 화면 전에 index.html 이 먼저 맞춰요)
+import { openThemePanel } from "./theme-panel.js";
 
 const app = $("#app");
 const ctx = {
@@ -72,6 +74,7 @@ function showAuth() {
   if (cleanup) { cleanup(); cleanup = null; }
   if (ctx.me && timer.running) timer.stop(); // 로그아웃하면 타이머도 멈춰요
   ctx.me = null;
+  uiSignedOut(); // 로그아웃 화면은 이 기기에 남은 꾸미기 그대로
   stopLive();
   lastView = null;
   document.querySelector(".pw-back")?.remove();
@@ -158,6 +161,7 @@ async function enter(user) {
   setHiddenMe(ctx.me); // 내 화면에서 숨긴 친구 페이지
   document.documentElement.style.setProperty("--me", ctx.me.color);
   renderShell();
+  syncUi(ctx.me); // 계정에 저장된 화면 꾸미기로 맞춰요 (이 기기 사본은 이미 칠해져 있어요)
   loadCustom();
   impBar();
   annBar();
@@ -255,7 +259,6 @@ function renderShell() {
 function renderMeRow() {
   const el = $("#me-row");
   if (!el || !ctx.me) return;
-  const dark = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
   el.className = "rail-me";
   // 내 프로필 → 작은 메뉴 (테마 · 로그아웃)
   el.innerHTML = `
@@ -268,7 +271,7 @@ function renderMeRow() {
       <div class="me-st me-left" id="me-left" hidden></div>
       <div class="me-st"><span class="me-st-h">status${ctx.me.status ? ` <b>${esc(statusText(ctx.me.status))}</b>` : ""}</span>${statusPicker(ctx.me.status)}</div>
       <button type="button" role="menuitem" id="prof-btn">${icon.edit(16)}프로필 바꾸기</button>
-      <button type="button" role="menuitem" id="theme-btn">${dark ? icon.sun(16) + "밝은 화면으로" : icon.moon(16) + "어두운 화면으로"}</button>
+      <button type="button" role="menuitem" id="theme-btn">${icon.image(16)}화면 꾸미기</button>
       <button type="button" role="menuitem" id="pw-btn">${icon.lock(16)}비밀번호 바꾸기</button>
       ${ctx.me.role === "admin" && !ctx.me.impersonated_by ? `<a role="menuitem" class="me-link" id="adm-btn" href="#/admin">${icon.lock(16)}관리자</a>` : ""}
       <a role="menuitem" class="me-link" id="teams-btn" href="#/teams">${icon.share(16)}팀</a>
@@ -288,12 +291,7 @@ function renderMeRow() {
     renderMeRow.bound = true;
     document.addEventListener("click", (e) => { const m = $("#me-menu"); if (m && !m.hidden && !e.target.closest("#me-menu")) { m.hidden = true; $("#me-btn")?.setAttribute("aria-expanded", "false"); } });
   }
-  $("#theme-btn").addEventListener("click", () => {
-    const next = dark ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem("trio-theme", next); } catch {}
-    renderMeRow();
-  });
+  $("#theme-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openThemePanel(); }); // 밝게 · 어둡게 · 자동도 이 창 안에
   $("#pw-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openPassword(); });
   $("#adm-btn")?.addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
   $("#teams-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });

@@ -1,0 +1,155 @@
+/* 화면 꾸미기 (js/theme.js · js/theme-panel.js) — <html> 의 data-* 하나씩만 읽어요. 기본값이면 속성이 없어서 아래 규칙은 하나도 안 걸려요 (= 예전 화면 그대로).
+   data-accent  강조 색: --accent · --accent-soft · --on-accent 를 바꾸고, 원래 글자색(ink)으로 칠하던 체크 · 스위치 · 고른 탭 · Dock 점도 강조 색으로
+   data-wall    배경화면: 그림 파일 없이 CSS 그라디언트만. 유리 판(.main · Dock · 창)이 반투명이라 그 너머로 비쳐요
+   data-glass   clear = 판을 더 투명하게 (색 입힘이 기본 = 지금 값)
+   data-solid   투명도 줄이기: 판을 불투명하게, 흐림(backdrop-filter) 없이 — 기기 설정 prefers-reduced-transparency 도 JS 가 여기로 넣어요
+   화면마다 (2026-10-24 결정):
+   - CIM(#/cim) · SW 종이 교과서(#/sw) · MBA(#/mba) · 뉴스(#/news) 는 자기 바탕색 · 자기 색표를 그대로 둬요. 바탕은 원래부터 불투명(!important)이라
+     배경화면 · 유리 설정이 안 닿고, 강조 색도 그 안에서는 원래 글자색으로 되돌려요 (설계된 색표 · 읽기 대비를 지키려고).
+   - 그 밖의 화면(홈 · Plan · Obsidian · Study · Message · Diary …)은 모두 따라가요.
+   선택자 앞의 :root:root 는 tokens.css 의 :root[data-theme] 규칙(0,2,0)보다 확실히 이기려고 겹쳐 쓴 거예요. */
+
+/* ---------- 강조 색 ---------- */
+/* 밝은 화면: 흰 글자를 얹어도 · 글자로 써도 4.5:1 이 넘는 짙은 값 / 어두운 화면: 밝은 값 + 짙은 글자 (지금 다크의 흰 버튼 + 검은 글자와 같은 결) */
+:root {
+  --ac-blue: #0066CC; --ac-purple: #8E3FBF; --ac-pink: #C8204E; --ac-orange: #AD4E00; --ac-green: #1C7A37; --ac-graphite: #5C5C63;
+}
+:root[data-theme="dark"] {
+  --ac-blue: #5AA9FF; --ac-purple: #C99BF5; --ac-pink: #FF7A9A; --ac-orange: #FFAA4D; --ac-green: #5ED38A; --ac-graphite: #B4B4BC;
+}
+:root:root[data-accent="blue"] { --ac: var(--ac-blue); }
+:root:root[data-accent="purple"] { --ac: var(--ac-purple); }
+:root:root[data-accent="pink"] { --ac: var(--ac-pink); }
+:root:root[data-accent="orange"] { --ac: var(--ac-orange); }
+:root:root[data-accent="green"] { --ac: var(--ac-green); }
+:root:root[data-accent="graphite"] { --ac: var(--ac-graphite); }
+:root:root[data-accent] {
+  --accent: var(--ac);
+  --accent-soft: color-mix(in srgb, var(--ac) 16%, transparent);
+  --on-accent: #FFFFFF;
+  --sel: color-mix(in srgb, var(--ac) 28%, transparent);
+}
+:root:root[data-accent][data-theme="dark"] { --accent-soft: color-mix(in srgb, var(--ac) 22%, transparent); --on-accent: #111114; --sel: color-mix(in srgb, var(--ac) 34%, transparent); }
+/* 자기 색표가 있는 화면은 원래대로 (위 머리말) */
+:root[data-accent] :is(.host-cim, .host-dev, .host-mba, .host-news) {
+  --accent: var(--ink); --accent-soft: color-mix(in srgb, var(--ink) 8%, transparent); --on-accent: var(--on-ink); --sel: var(--accent-soft);
+}
+
+:root[data-accent] ::selection { background: var(--sel, var(--accent-soft)); }
+:root[data-accent] .check:checked { background: var(--accent); border-color: var(--accent); }
+:root[data-accent] .check:checked::after { border-color: var(--on-accent); }
+:root[data-accent] .switch input:checked + span { background: var(--accent); }
+:root[data-accent] .switch input:focus-visible + span { outline-color: var(--accent); }
+:root[data-accent] :is(.md input[type="checkbox"], .rm-check input, .pl-plan input, .obs-panel .chk input, .obs-panel input[type="range"], .prof-range) { accent-color: var(--accent); }
+:root[data-accent] :is(.input, .select, .textarea):focus { border-color: var(--accent); box-shadow: var(--lg-top), 0 0 0 4px var(--accent-soft); }
+:root[data-accent] .seg :is([aria-selected="true"], [aria-current="page"], [aria-checked="true"]) { color: var(--accent); }
+:root[data-accent] :is(.me-menu .st-chip[aria-pressed="true"], .dr-tabs a[aria-selected="true"]) { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+:root[data-accent] .rail-btn[aria-current="page"]::before { background: var(--accent); }
+:root[data-accent] .rail-btn[aria-current="page"] .app-ic { box-shadow: 0 0 0 2px var(--accent), 0 6px 14px -8px rgba(0, 0, 0, .4); }
+
+/* ---------- 배경화면 ---------- */
+/* 색 네 개(바탕 + 빛 덩어리 셋). 밝은 화면은 옅은 파스텔, 어두운 화면은 깊은 색 — 그 위 유리 판 글자 대비가 기본 배경과 비슷하게 남아요.
+   [data-wp] 는 꾸미기 창의 작은 그림이 같은 색을 쓰게 해요. */
+:root[data-wall="ash"], [data-wp="ash"] { --wp-base: #E6E6E9; --wp-1: #F7F7F9; --wp-2: #D2D2D8; --wp-3: #C9C9D0; }
+:root[data-wall="sand"], [data-wp="sand"] { --wp-base: #F0E7D8; --wp-1: #F9F2E6; --wp-2: #E6D0AC; --wp-3: #DCC39C; }
+:root[data-wall="sage"], [data-wp="sage"] { --wp-base: #E3EAE0; --wp-1: #F1F5EE; --wp-2: #C4D6BD; --wp-3: #B2C8AA; }
+:root[data-wall="aurora"], [data-wp="aurora"] { --wp-base: #E8EDF6; --wp-1: #B6E8D4; --wp-2: #CCC3F4; --wp-3: #B3D5F6; }
+:root[data-wall="smoke"], [data-wp="smoke"] { --wp-base: #E2E6EC; --wp-1: #F0F2F6; --wp-2: #C8D0DC; --wp-3: #BAC4D2; }
+:root[data-wall="tide"], [data-wp="tide"] { --wp-base: #E1EDF3; --wp-1: #B1D8EA; --wp-2: #CFE3F8; --wp-3: #A5D1D6; }
+:root[data-wall="bloom"], [data-wp="bloom"] { --wp-base: #F6E8EE; --wp-1: #F4C4D5; --wp-2: #F8DAC8; --wp-3: #E3C1EC; }
+:root[data-wall="ember"], [data-wp="ember"] { --wp-base: #F6E6DC; --wp-1: #F6C09E; --wp-2: #F2D3BA; --wp-3: #EFAE9C; }
+:root[data-wall="grove"], [data-wp="grove"] { --wp-base: #DFEAE1; --wp-1: #B5D5BC; --wp-2: #CDE2C6; --wp-3: #A0C7AC; }
+:root[data-wall="dusk"], [data-wp="dusk"] { --wp-base: #EDE5F2; --wp-1: #D5C0EE; --wp-2: #F5CBB4; --wp-3: #C6C3EF; }
+
+:root[data-theme="dark"][data-wall="ash"], [data-theme="dark"] [data-wp="ash"] { --wp-base: #111113; --wp-1: #2C2C31; --wp-2: #1D1D21; --wp-3: #37373E; }
+:root[data-theme="dark"][data-wall="sand"], [data-theme="dark"] [data-wp="sand"] { --wp-base: #15120D; --wp-1: #3D3121; --wp-2: #2A2318; --wp-3: #4B3B25; }
+:root[data-theme="dark"][data-wall="sage"], [data-theme="dark"] [data-wp="sage"] { --wp-base: #0E1310; --wp-1: #253A2D; --wp-2: #1A2820; --wp-3: #304A38; }
+:root[data-theme="dark"][data-wall="aurora"], [data-theme="dark"] [data-wp="aurora"] { --wp-base: #0A0D15; --wp-1: #0F5A49; --wp-2: #3C2B7E; --wp-3: #123B6E; }
+:root[data-theme="dark"][data-wall="smoke"], [data-theme="dark"] [data-wp="smoke"] { --wp-base: #0D0F13; --wp-1: #28303B; --wp-2: #1A1F27; --wp-3: #333C4B; }
+:root[data-theme="dark"][data-wall="tide"], [data-theme="dark"] [data-wp="tide"] { --wp-base: #07111A; --wp-1: #0F3E5C; --wp-2: #0D2D48; --wp-3: #11535D; }
+:root[data-theme="dark"][data-wall="bloom"], [data-theme="dark"] [data-wp="bloom"] { --wp-base: #160C12; --wp-1: #5C1F3D; --wp-2: #4A2A22; --wp-3: #44245A; }
+:root[data-theme="dark"][data-wall="ember"], [data-theme="dark"] [data-wp="ember"] { --wp-base: #150B07; --wp-1: #632511; --wp-2: #4A1F0D; --wp-3: #6E3016; }
+:root[data-theme="dark"][data-wall="grove"], [data-theme="dark"] [data-wp="grove"] { --wp-base: #06100A; --wp-1: #13432C; --wp-2: #1C3B1A; --wp-3: #0F503B; }
+:root[data-theme="dark"][data-wall="dusk"], [data-theme="dark"] [data-wp="dusk"] { --wp-base: #0F0A16; --wp-1: #402566; --wp-2: #5C2C2F; --wp-3: #2B2B6E; }
+
+/* 그리기: 앱 뒤(.bg) · 꾸미기 창의 작은 그림. :where 로 낮춰 둬서 CIM · SW · MBA · 뉴스의 `body:has(.host-…) .bg` (흐리게 · 옅게)는 그대로 이겨요 */
+:where(:root[data-wall]) .bg, .thm-sw:not([data-wp="default"]), .thm-pv-wall:not([data-wp="default"]) {
+  background:
+    radial-gradient(58% 55% at 12% 14%, var(--wp-1), transparent 70%),
+    radial-gradient(52% 58% at 90% 18%, var(--wp-2), transparent 72%),
+    radial-gradient(78% 62% at 58% 106%, var(--wp-3), transparent 74%),
+    var(--wp-base);
+}
+:where(:root[data-wall]) .bg { filter: none; }
+:where(:root[data-wall]) .bg::after { background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .3)); }
+:where(:root[data-wall][data-theme="dark"]) .bg::after { background: linear-gradient(180deg, rgba(0, 0, 0, .04), rgba(0, 0, 0, .3)); }
+
+/* ---------- 유리: 맑게 ---------- */
+:root:root[data-glass="clear"] { --glass: rgba(250, 250, 252, .42); --paper: rgba(255, 255, 255, .56); --panel: rgba(255, 255, 255, .38); --glass-3: rgba(255, 255, 255, .86); }
+:root:root[data-glass="clear"][data-theme="dark"] { --glass: rgba(28, 28, 31, .38); --paper: rgba(24, 24, 27, .58); --panel: rgba(255, 255, 255, .04); --glass-3: rgba(38, 38, 42, .88); }
+
+/* ---------- 투명도 줄이기: 불투명한 판 · 흐림 없음 (맑게보다 우선) ---------- */
+:root:root:root[data-solid] { --glass: #F4F4F6; --glass-3: #FFFFFF; --paper: var(--paper-solid); --panel: rgba(0, 0, 0, .03); --blur: none; --blur-lg: none; }
+:root:root:root[data-solid][data-theme="dark"] { --glass: #1C1C1F; --glass-3: #26262A; --paper: var(--paper-solid); --panel: rgba(255, 255, 255, .04); }
+:root[data-solid] *, :root[data-solid] *::before, :root[data-solid] *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+
+/* ---------- 꾸미기 창 ---------- */
+/* 뒤 화면이 바로 바뀌는 게 보이게: 어둡게 · 흐리게 덮지 않아요 */
+.pw-back.thm-back { background: rgba(0, 0, 0, .14); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.thm-dialog { width: min(480px, 100%); max-height: calc(100dvh - 32px); grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 16px; }
+.thm-scroll { overflow-y: auto; min-height: 0; display: grid; gap: 20px; margin: 0 -6px; padding: 2px 6px 4px; overscroll-behavior: contain; }
+.thm-sec h3 { margin: 0 0 9px; font: 600 13px/1.2 var(--font); color: var(--ink-2); letter-spacing: 0; }
+.thm-hint { margin: 7px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+
+/* 미리보기: 고른 배경 위 유리 카드 하나 (강조 색 · 유리 · 투명도가 앱과 같은 토큰으로) */
+.thm-preview { position: relative; height: 136px; flex: none; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); isolation: isolate; }
+.thm-pv-wall { position: absolute; inset: 0; z-index: -1; }
+.thm-pv-wall[data-wp="default"], .thm-sw[data-wp="default"] { background: var(--wall-scrim), var(--page-bg) var(--wall) center 35% / cover no-repeat; }
+.thm-pv-wall[data-wp="default"] { filter: grayscale(1) blur(3px); transform: scale(1.08); }
+.thm-sw[data-wp="default"] { filter: grayscale(1); }
+.thm-pv-card { position: absolute; left: 14px; top: 14px; bottom: 14px; width: min(64%, 250px); display: grid; align-content: start; gap: 5px; padding: 9px 12px;
+  border-radius: 12px; background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--glass-edge); box-shadow: var(--glass-hi); font-size: 12px; color: var(--ink-2); }
+.thm-pv-card b { font: 700 12.5px/1.2 var(--font); color: var(--ink); }
+.thm-pv-row { display: flex; align-items: center; gap: 7px; }
+.thm-pv-check { width: 13px; height: 13px; flex: none; border-radius: 4px; border: 1.5px solid var(--line-2); position: relative; }
+.thm-pv-check.on { background: var(--accent); border-color: var(--accent); }
+.thm-pv-check.on::after { content: ""; position: absolute; left: 3.5px; top: .5px; width: 3px; height: 7px; border: solid var(--on-accent); border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); }
+.thm-pv-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
+.thm-pv-toggle { width: 26px; height: 15px; border-radius: 8px; background: var(--accent); position: relative; }
+.thm-pv-toggle::after { content: ""; position: absolute; right: 2px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.thm-pv-btn { padding: 3px 11px; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: 11.5px; }
+
+.thm-seg { display: flex; }
+.thm-seg button { flex: 1; }
+
+.thm-walls { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 12px 10px; }
+.thm-wall, .thm-ac { border: 0; background: none; padding: 3px 0; display: grid; justify-items: center; gap: 6px; font: 500 12px/1.2 var(--font); color: var(--ink-2); cursor: pointer; border-radius: 12px; }
+.thm-sw { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; border: 1px solid var(--line-2); overflow: hidden; }
+.thm-wall[aria-checked="true"] .thm-sw { box-shadow: 0 0 0 2px var(--glass-3), 0 0 0 4px var(--accent); }
+.thm-wall[aria-checked="true"], .thm-ac[aria-checked="true"] { color: var(--ink); font-weight: 650; }
+
+.thm-accents { display: flex; flex-wrap: wrap; gap: 6px 2px; }
+.thm-ac { width: 50px; }
+.thm-dot { display: block; width: 26px; height: 26px; border-radius: 50%; background: var(--dot); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.thm-dot[data-ac="default"] { --dot: var(--ink); background: linear-gradient(135deg, var(--ink) 50%, var(--paper-solid) 50%); box-shadow: inset 0 0 0 1px var(--line-2); }
+.thm-dot[data-ac="blue"] { --dot: var(--ac-blue); } .thm-dot[data-ac="purple"] { --dot: var(--ac-purple); } .thm-dot[data-ac="pink"] { --dot: var(--ac-pink); }
+.thm-dot[data-ac="orange"] { --dot: var(--ac-orange); } .thm-dot[data-ac="green"] { --dot: var(--ac-green); } .thm-dot[data-ac="graphite"] { --dot: var(--ac-graphite); }
+.thm-ac[aria-checked="true"] .thm-dot { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 0 0 2px var(--glass-3), 0 0 0 4px var(--dot); }
+
+.thm-switch { gap: 10px; }
+.thm-switch b { font-size: 14px; font-weight: 600; color: var(--ink); }
+.thm-solid .thm-hint { margin-left: 44px; }
+.thm-switch input:disabled + span { opacity: .6; }
+.thm-foot { align-items: center; flex-wrap: wrap; }
+.thm-sync { margin-right: auto; font-size: 12px; color: var(--ink-3); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .thm-sw, .thm-dot { transition: box-shadow .18s var(--ease); }
+}
+@media (max-width: 520px) {
+  .thm-dialog { padding: 18px 16px; gap: 14px; }
+  .thm-walls { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px; }
+  .thm-ac { width: calc((100% - 12px) / 7); min-width: 40px; font-size: 11px; }
+  .thm-accents { gap: 6px 2px; justify-content: space-between; }
+  .thm-sync { flex-basis: 100%; }
+}
