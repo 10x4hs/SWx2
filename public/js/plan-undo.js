@@ -12,7 +12,9 @@ const pickOld = (p, keys) => Object.fromEntries(keys.map((k) => [k, norm(k, p?.[
 
 // 지운 계획을 다시: POST 는 끝냄 · 못함을 받지 않아서 만든 뒤 PATCH
 export async function recreatePlan(s) {
-  const { plan } = await api.addPlan({ scope: s.scope || "day", period: s.period, text: s.text, ...(s.start ? { start: s.start } : {}), ...(s.mins ? { mins: s.mins } : {}), ...(s.color ? { color: s.color } : {}), ...(s.priority ? { priority: s.priority } : {}) });
+  // 보드 칸 · 프로젝트 · 마감일 · 작은 할 일 · 메모 · 순서도 그대로 (할 일 보드, 2026-10-24)
+  const board = { ...(s.status ? { status: s.status } : {}), ...(s.project ? { project: s.project } : {}), ...(s.due ? { due: s.due } : {}), ...(Array.isArray(s.subtasks) && s.subtasks.length ? { subtasks: s.subtasks } : {}), ...(s.note ? { note: s.note } : {}), ...(Number.isFinite(s.sort) ? { sort: s.sort } : {}) };
+  const { plan } = await api.addPlan({ scope: s.scope || "day", period: s.period, text: s.text, ...(s.start ? { start: s.start } : {}), ...(s.mins ? { mins: s.mins } : {}), ...(s.color ? { color: s.color } : {}), ...(s.priority ? { priority: s.priority } : {}), ...board });
   if (s.done) await api.updatePlan(plan.id, { done: true });
   else if (s.missed) await api.updatePlan(plan.id, { missed: true });
   remap(s.id, plan.id);

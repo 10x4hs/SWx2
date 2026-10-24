@@ -10,19 +10,44 @@ import { prioDonut, prioLegend } from "../charts/prio.js";
 import { keepDraft } from "../draft.js";
 import { mountCommand } from "../ai-command.js";
 import { openMenu, closeMenu } from "../ctxmenu.js";
+import { mountBoard, modeSeg, flipList } from "../board/board.js";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const rel = (d) => { const t = ymd(today()); if (d === t) return "오늘"; if (d === ymd(addDays(today(), 1))) return "내일"; if (d === ymd(addDays(today(), -1))) return "어제"; return ""; };
 
-let inst = null;
-export function update(r) { inst?.update(r); }
+let inst = null, outer = null;
+export function update(r) { outer?.update(r); }
 
+// [보드 | 목록] — 고른 보기는 사람마다 기억해요 (localStorage). 주소에 날짜가 있으면(#/checklist/2026-10-20) 그날 목록으로 열어요.
+const modeKey = (ctx) => "trio.ck.mode." + (ctx.me?.id || "me");
+const readMode = (ctx) => { try { return localStorage.getItem(modeKey(ctx)) === "board" ? "board" : "list"; } catch { return "list"; } };
 export function mount(root, ctx, r) {
+  let stop = null, mode = null;
+  const show = (m, rr = r) => {
+    if (m === mode) return;
+    stop?.(); closeMenu(); mode = m;
+    const sub = document.createElement("div"); sub.className = "ck-host"; root.replaceChildren(sub); // 보기마다 새 칸 — 손 이벤트가 쌓이지 않게
+    if (m === "board") { const b = mountBoard(sub, ctx); stop = () => b.dispose(); }
+    else stop = mountList(sub, ctx, rr);
+  };
+  const onMode = (e) => {
+    const b = e.target.closest("[data-mode]"); if (!b || !root.contains(b)) return;
+    const m = b.dataset.mode; try { localStorage.setItem(modeKey(ctx), m); } catch {}
+    if (m === "list" && mode === "board") r = { ...r, day: null }; // 보드에서 목록으로 = 오늘
+    show(m);
+  };
+  root.addEventListener("click", onMode);
+  show(DAY_RE.test(r.day || "") ? "list" : readMode(ctx));
+  outer = { update(rr) { r = rr; if (DAY_RE.test(rr.day || "") && mode === "board") return show("list", rr); if (mode === "list") inst?.update(rr); } };
+  return () => { root.removeEventListener("click", onMode); stop?.(); outer = null; };
+}
+
+function mountList(root, ctx, r) {
   const S = { day: DAY_RE.test(r.day || "") ? r.day : ymd(today()), list: null, busy: false };
   root.innerHTML = `
     <div class="ck">
       <header class="gl-top">
-        <span class="row" style="gap:8px"><button type="button" class="icon-btn back-btn" id="ck-back" aria-label="뒤로">${icon.left(18)}</button><span class="eyebrow">체크리스트</span></span>
+        <span class="row" style="gap:8px"><button type="button" class="icon-btn back-btn" id="ck-back" aria-label="뒤로">${icon.left(18)}</button><span class="eyebrow">체크리스트</span>${modeSeg("list")}</span>
         <div class="gl-nav">
           <a class="icon-btn sm" id="ck-prev" aria-label="전날">${icon.left(16)}</a>
           <a class="btn sm ghost" id="ck-now">오늘</a>
@@ -132,7 +157,7 @@ export function mount(root, ctx, r) {
   root.addEventListener("change", async (e) => {
     const t = e.target.closest("[data-toggle]"); if (!t || !S.list) return;
     const p = S.list.find((x) => x.id === t.dataset.toggle); if (!p) return;
-    const v = t.checked, wm = p.missed; p.done = v ? 1 : 0; if (v) p.missed = 0; drawList();
+    const v = t.checked, wm = p.missed; p.done = v ? 1 : 0; if (v) p.missed = 0; flipList($("#ck-list", root), drawList); // 체크하면 줄 긋고 아래로 미끄러져요
     try { await api.updatePlan(p.id, { done: v }); changed(); } catch (err) { p.done = v ? 0 : 1; p.missed = wm; drawList(); toast(err.message, "err"); }
   });
   root.addEventListener("click", async (e) => {

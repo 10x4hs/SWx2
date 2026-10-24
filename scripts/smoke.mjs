@@ -513,6 +513,71 @@ r = await call("a", "GET", "/notes/" + n1); ok(r.data.children.length === 1 && r
 r = await call("a", "POST", "/notes", { title: "부모 없음", parent_id: "nope" }); ok(r.status === 404, "page: unknown parent → 404");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: pg }); ok(r.status === 400, "page: self parent → 400");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status === 200 && r.data.note.parent_id === null, "page: move to top");
+// ---------- 할 일 보드 (2026-10-24): 새 칸(칸 · 프로젝트 · 마감일 · 작은 할 일 · 메모 · 순서) · 검사 · 남의 것 · '완료' 칸 = done ----------
+{
+  const M = await import("../public/js/board/model.js");
+  const P = (b) => call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-28", text: "보드 검사", ...b });
+  let r = await P({ project: "  논문  ", due: "2026-09-30", subtasks: [{ t: " 읽기 ", d: true }, { t: "정리" }], note: "메모", status: "doing", sort: 5 });
+  const bp = r.data?.plan;
+  ok(r.status === 201 && bp.project === "논문" && bp.due === "2026-09-30" && bp.status === "doing" && bp.note === "메모" && bp.sort === 5 && bp.done === 0, "board: POST takes status · project · due · note · sort");
+  ok(Array.isArray(bp?.subtasks) && bp.subtasks.length === 2 && bp.subtasks[0].t === "읽기" && bp.subtasks[0].d === 1 && bp.subtasks[1].d === 0, "board: subtasks trimmed + d as 0/1");
+  r = await P({ status: "done" }); const bd = r.data?.plan;
+  ok(r.status === 201 && bd.done === 1 && bd.done_at > 0 && bd.status === "done", "board: POST into 완료 → done 1 + done_at");
+  r = await P({}); const old = r.data?.plan;
+  ok(r.status === 201 && old.status === null && old.project === null && old.due === null && old.subtasks === null && old.note === null, "board: old-style POST leaves new fields empty");
+  const bad = [[{ project: "x".repeat(31) }, "project > 30"], [{ due: "2026-9-1" }, "due format"], [{ subtasks: Array.from({ length: 21 }, (_, i) => ({ t: "s" + i })) }, "subtasks > 20"], [{ subtasks: ["str"] }, "subtask not object"],
+    [{ subtasks: [{ t: "x".repeat(101) }] }, "subtask > 100"], [{ subtasks: [{ t: "  " }] }, "empty subtask"], [{ subtasks: { t: "a" } }, "subtasks not list"], [{ note: "x".repeat(2001) }, "note > 2000"], [{ status: "Bad Id!" }, "status format"], [{ sort: "abc" }, "sort NaN"]];
+  for (const [b, why] of bad) { r = await call("a", "PATCH", "/plans/" + bp.id, b); ok(r.status === 400, "board: PATCH rejects " + why); }
+  r = await P({ due: "2026-13-01" }); ok(r.status === 400, "board: POST rejects bad due");
+  // '완료' 칸 ↔ done 맞추기
+  r = await call("a", "PATCH", "/plans/" + bp.id, { status: "done" }); ok(r.status === 200 && r.data.plan.done === 1 && r.data.plan.done_at > 0 && r.data.plan.status === "done", "board: move into 완료 → done 1");
+  r = await call("a", "PATCH", "/plans/" + bp.id, { status: "doing", sort: 7.5 }); ok(r.status === 200 && r.data.plan.done === 0 && r.data.plan.done_at === null && r.data.plan.sort === 7.5, "board: move out of 완료 → done 0 + sort saved");
+  r = await call("a", "PATCH", "/plans/" + bp.id, { done: true }); ok(r.data?.plan?.status === "done" && r.data.plan.done === 1, "board: list check → status done");
+  r = await call("a", "PATCH", "/plans/" + bp.id, { done: false }); ok(r.data?.plan?.status === null && r.data.plan.done === 0, "board: list uncheck → back to 할 일 (status null)");
+  r = await call("a", "PATCH", "/plans/" + bp.id, { status: "done" }); r = await call("a", "PATCH", "/plans/" + bp.id, { missed: true }); ok(r.data?.plan?.status === null && r.data.plan.done === 0 && r.data.plan.missed === 1, "board: 못함 from 완료 → status cleared");
+  r = await call("a", "PATCH", "/plans/" + bp.id, { missed: false, status: null, subtasks: [{ t: "a", d: 1 }, { t: "b", d: 1 }, { t: "c", d: 0 }], project: "", note: null }); ok(r.status === 200 && r.data.plan.project === null && r.data.plan.subtasks.length === 3, "board: PATCH subtasks · empty project → null");
+  r = await call("a", "PATCH", "/plans/" + old.id, { done: true }); ok(r.data?.plan?.done === 1 && r.data.plan.status === "done", "board: old row check still works");
+  r = await call("a", "GET", "/plans?periods=D:2026-09-28"); ok(r.status === 200 && Array.isArray(r.data.plans.find((x) => x.id === bp.id)?.subtasks), "board: GET /plans returns subtasks as a list");
+  // 보드 목록: 열린 일 + 끝낸 일, 시간 있는 일정 · 못함은 빼요 · 내 것만
+  const timed = (await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-28", text: "시간 일정", start: "09:00", mins: 30 })).data.plan;
+  const far = (await call("a", "POST", "/plans", { scope: "day", period: "D:2026-01-02", text: "먼 옛날", due: "2026-01-05" })).data.plan;
+  const farNo = (await call("a", "POST", "/plans", { scope: "day", period: "D:2026-01-02", text: "먼 옛날 그냥" })).data.plan;
+  r = await call("a", "GET", "/plans/board?since=2026-09-01&done_since=0"); const ids = (r.data?.plans || []).map((x) => x.id);
+  ok(r.status === 200 && ids.includes(bp.id) && ids.includes(bd.id) && ids.includes(old.id) && ids.includes(far.id) && !ids.includes(farNo.id) && !ids.includes(timed.id), "board: GET /plans/board = open since · due/status any day · done · no timed");
+  r = await call("a", "GET", "/plans/board?since=2026-09-01&done_since=" + (Date.now() + 60000)); ok(!(r.data?.plans || []).some((x) => x.id === bd.id), "board: done_since hides older done");
+  r = await call("a", "GET", "/plans/board?since=bad"); ok(r.status === 400, "board: bad since 400");
+  r = await call("b", "GET", "/plans/board?since=2026-01-01&done_since=0"); ok(r.status === 200 && !(r.data?.plans || []).some((x) => x.id === bp.id), "board: others can't see my board items");
+  r = await call("b", "PATCH", "/plans/" + bp.id, { status: "doing" }); ok(r.status === 403, "board: others can't move my card");
+  r = await call("b", "PATCH", "/plans/" + bp.id, { subtasks: [] }); ok(r.status === 403, "board: others can't edit my subtasks");
+  // 칸 설정
+  r = await call("a", "GET", "/plans/board/cols"); ok(r.status === 200 && r.data.cols.map((c) => c.id).join() === "todo,doing,done" && r.data.updated_at === 0, "board cols: default 할 일 · 진행 중 · 완료");
+  r = await call("a", "PUT", "/plans/board/cols", { cols: [{ id: "todo", name: "할 일" }, { id: "doing", name: "진행" }] }); ok(r.status === 400, "board cols: can't remove 완료");
+  r = await call("a", "PUT", "/plans/board/cols", { cols: [{ id: "todo", name: "할 일" }, { id: "todo", name: "또" }, { id: "done", name: "완료" }] }); ok(r.status === 400, "board cols: duplicate id 400");
+  r = await call("a", "PUT", "/plans/board/cols", { cols: [{ id: "todo", name: "" }, { id: "done", name: "완료" }] }); ok(r.status === 400, "board cols: empty name 400");
+  r = await call("a", "PUT", "/plans/board/cols", { cols: Array.from({ length: 9 }, (_, i) => ({ id: i ? (i === 8 ? "done" : "c-" + i) : "todo", name: "칸" + i })) }); ok(r.status === 400, "board cols: max 8");
+  r = await call("a", "PUT", "/plans/board/cols", { tags: { 논문: "neon" } }); ok(r.status === 400, "board cols: bad tag color 400");
+  r = await call("a", "PUT", "/plans/board/cols", { cols: [{ id: "todo", name: "할 것" }, { id: "doing", name: "진행 중" }, { id: "c-review", name: "검토" }, { id: "done", name: "완료" }], tags: { 논문: "violet" } });
+  ok(r.status === 200 && r.data.cols.length === 4 && r.data.cols[0].name === "할 것" && r.data.tags.논문 === "violet", "board cols: rename + custom column + tag color");
+  await call("a", "PATCH", "/plans/" + bp.id, { status: "c-review" });
+  r = await call("a", "PUT", "/plans/board/cols", { cols: [{ id: "todo", name: "할 것" }, { id: "doing", name: "진행 중" }, { id: "done", name: "완료" }] });
+  ok(r.status === 200 && r.data.moved === 1 && r.data.tags.논문 === "violet", "board cols: removing a column moves its cards (tags kept)");
+  r = await call("a", "GET", "/plans?periods=D:2026-09-28"); ok(r.data.plans.find((x) => x.id === bp.id)?.status === null, "board cols: moved card is back in 할 일");
+  r = await call("b", "GET", "/plans/board/cols"); ok(r.status === 200 && r.data.cols.length === 3 && r.data.cols[0].name === "할 일" && !r.data.tags.논문, "board cols: per user");
+  // 계산 (화면 없이)
+  const t = new Date(2026, 9, 21); // 수요일
+  const L = [{ id: "1", period: "D:2026-10-21", done: 0, sort: 2 }, { id: "2", period: "D:2026-10-10", due: "2026-10-20", done: 0, status: "doing", sort: 1, project: "논문", priority: "max" },
+    { id: "3", period: "D:2026-10-21", done: 1, done_at: new Date(2026, 9, 20).getTime(), status: "done", project: "영어" }, { id: "4", period: "D:2026-10-30", due: "2026-10-25", done: 0, status: "gone", subtasks: [{ t: "검토", d: 1 }, { t: "b", d: 0 }] }];
+  const k = M.kpis(L, t);
+  ok(k.open === 3 && k.dueWeek === 2 && k.late === 1 && k.doneWeek === 1 && k.projects === 1, "board model: KPIs (open · due this week · late · done this week)");
+  const ids3 = ["todo", "doing", "done"];
+  ok(M.colOf(L[0], ids3) === "todo" && M.colOf(L[1], ids3) === "doing" && M.colOf(L[2], ids3) === "done" && M.colOf(L[3], ids3) === "todo", "board model: column of a card (unknown column → 할 일)");
+  ok(M.filterList(L, { range: "today" }, t).map((x) => x.id).join() === "1,2,3" && M.filterList(L, { range: "week" }, t).map((x) => x.id).join() === "1,2,3,4", "board model: 오늘 / 이번 주 (late shows in both)");
+  ok(M.filterList(L, { project: "-" }, t).length === 2 && M.filterList(L, { prio: "urgent" }, t).length === 1 && M.filterList(L, { q: "검토" }, t)[0]?.id === "4" && M.filterList(L, { kpi: "late" }, t)[0]?.id === "2", "board model: project · priority · search (subtasks) · KPI filter");
+  ok(M.sortBetween(1, 3) === 2 && M.sortBetween(null, 10) < 10 && M.sortBetween(10, null) > 10 && M.sortBetween(null, null, 99) === 99 && M.sortBetween(4, 4) > 4, "board model: sort between neighbours");
+  ok(M.subProgress(L[3]).join("/") === "1/2" && M.tagColor("논문") === M.tagColor("논문") && M.tagColor("논문", { 논문: "teal" }) === "teal", "board model: subtask progress · stable tag colours");
+  for (const x of [bp, bd, old, timed, far, farNo]) await call("a", "DELETE", "/plans/" + x.id);
+}
+
 // ---------- 노트 우클릭 메뉴 (note-menu.js) — 이름 바꾸기는 내 다른 노트의 [[링크]] 도 · 지우면 하위는 한 칸 위로 · 내 하위 아래로 옮기기는 400 ----------
 {
   const T = (s) => `${s} ${tag}`, OLD = T("옛 이름"), NEW = T("새 이름");
