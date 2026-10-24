@@ -2785,6 +2785,57 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
   .brain-list { max-height: none; }
 }
 
+/* AI 판정 (관리자) */
+.adm-h3 { font: 650 14px var(--font); margin: 14px 0 6px; }
+.adm-decide-cfg { margin-top: 12px; font-size: 12px; }
+/* ---------- 관계 종류 (rel.js · 2026-10-24): '어떤 관계예요?' 작은 창 · AI 제안함 옆 시트 · 새 노트 자리 칩 ---------- */
+.brain-ai b { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 2px; border-radius: 9px; background: var(--accent); color: var(--on-accent, #fff); font-size: 11px; font-variant-numeric: tabular-nums; }
+.relpop { position: fixed; z-index: 95; width: min(340px, calc(100vw - 16px)); box-sizing: border-box; padding: 10px 12px 12px; border-radius: 14px; display: grid; gap: 8px;
+  background: var(--glass-3); border: 1px solid var(--lg-edge-hi); box-shadow: var(--lg-top), 0 20px 44px -16px rgba(0, 0, 0, .55); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); animation: cm-in .12s var(--ease); font-size: 13px; color: var(--ink); }
+.relpop-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.relpop-h b { font: 600 13.5px var(--font); }
+.relpop-x { border: 0; background: transparent; color: var(--ink-3); font-size: 14px; width: 26px; height: 26px; border-radius: 8px; cursor: pointer; }
+.relpop-x:hover { background: var(--hover); color: var(--ink); }
+.relpop-dir { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--ink-2); font-size: 12.5px; }
+.relpop-dir span { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.relpop-dir span:last-child { text-align: right; }
+.relpop-dir button { flex: none; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2); border-radius: 8px; padding: 2px 8px; font: 500 12px var(--font); cursor: pointer; }
+.relpop-dir button:hover { color: var(--ink); background: var(--hover); }
+.relpop-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.relpop-chips button { --rc: var(--ink-3); display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 11px; border-radius: 16px; border: 1px solid var(--line-2); background: transparent; color: var(--ink); font: 500 13px var(--font); cursor: pointer; }
+.relpop-chips button i { width: 8px; height: 8px; border-radius: 50%; background: var(--rc); flex: none; }
+.relpop-chips button:hover, .relpop-chips button:focus-visible { background: var(--hover); outline: none; }
+.relpop-chips button[aria-pressed="true"] { border-color: var(--ink-2); background: var(--hover); font-weight: 650; }
+.relpop-chips button.ai { border-color: var(--rc); box-shadow: 0 0 0 1px var(--rc) inset; }
+.relpop-chips small { font: 700 10px var(--font); color: var(--rc); letter-spacing: .02em; }
+.relpop-ai { margin: 0; font-size: 12px; color: var(--ink-3); line-height: 1.45; }
+.relsheet { position: fixed; z-index: 9000; /* 앱 틀(Dock · 머리줄 · 옆 목록) 위 — 토스트 · 공지 띠(9997+) 아래 */ top: 0; right: 0; bottom: 0; width: min(420px, 100vw); box-sizing: border-box; overflow: auto; padding: 16px 16px 24px; display: flex; flex-direction: column; gap: 10px;
+  background: var(--paper-solid, #1c1d21); border-left: 1px solid var(--lg-edge-hi); box-shadow: -20px 0 44px -24px rgba(0, 0, 0, .5); color: var(--ink); animation: rs-in .16s var(--ease); }
+@keyframes rs-in { from { transform: translateX(16px); } } /* 움직임만 — 투명해지지 않게 (뒤의 목록 · 버튼이 비쳐 보이지 않게) */
+.rs-h { display: flex; align-items: center; justify-content: space-between; }
+.rs-h b { font: 650 16px var(--font); }
+.rs-sub { margin: 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+.rs-tabs { display: flex; gap: 6px; }
+.rs-tabs button { border: 1px solid var(--line-2); background: transparent; color: var(--ink-2); border-radius: 16px; padding: 4px 12px; font: 500 13px var(--font); cursor: pointer; }
+.rs-tabs button[aria-selected="true"] { color: var(--ink); background: var(--hover); border-color: var(--ink-3); }
+.rs-tabs b { font-variant-numeric: tabular-nums; margin-left: 2px; }
+.rs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rs-list li { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--glass-2, rgba(127,127,127,.06)); display: grid; gap: 6px; }
+.rs-pair { font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.rs-rel { font-weight: 650; white-space: nowrap; }
+.rs-meta { font-size: 12px; color: var(--ink-3); line-height: 1.45; }
+.rs-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.rs-empty { padding: 12px 2px; }
+.sort-host:empty { display: none; }
+.sort-chip { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; padding: 6px 8px 6px 10px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--glass-2, rgba(127,127,127,.06)); font-size: 13px; color: var(--ink); }
+.sort-ai { font: 700 10px var(--font); letter-spacing: .03em; color: var(--accent); border: 1px solid currentColor; border-radius: 6px; padding: 1px 5px; }
+.og-legend ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 5px; }
+.og-legend li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.og-legend svg { flex: none; }
+.og-legend-ai { color: var(--ink-3); font-size: 11.5px !important; }
+.og-legend-ai b { font-size: 10px; border: 1px solid currentColor; border-radius: 5px; padding: 0 4px; }
+@media (max-width: 760px) { .relsheet { top: auto; height: 78dvh; border-left: 0; border-top: 1px solid var(--lg-edge-hi); border-radius: 16px 16px 0 0; } }
+
 /* ======================================================================
    Brain graph (#/brain/graph) — 옵시디언 그래프 뷰 느낌: 늘 어두운 캔버스, 회색 점, 가는 선, 접는 설정 패널
    ====================================================================== */

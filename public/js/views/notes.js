@@ -12,6 +12,7 @@ import { mountAiPick, aiPrefs } from "../ai-pick.js";
 import { attachImages } from "../imgattach.js";
 import { bindNoteMenu, deleteWithUndo, isGone } from "../note-menu.js";
 import { undoScope } from "../undo.js";
+import { sortChip } from "../rel.js";
 import { back as brainBack, upHash, learnParents, syncDock } from "../brain-nav.js";
 
 let live = null; // the mounted notes view, so route changes can swap notes without remounting
@@ -174,6 +175,7 @@ export function mount(root, ctx, r) {
       ${own ? `<form class="ai-refine" id="ed-refine" title="AI 와 이 페이지를 같이 고쳐요"><span class="ai-refine-ic">${icon.spark(14)}</span><input class="input" id="ed-refine-in" maxlength="1000" placeholder="Ask AI: make this a table · add a review section · shorter" aria-label="AI 에게 고쳐 달라고 하기"><button class="btn sm accent" type="submit">Apply</button></form>` : ""}
       <div class="ed-body"><div class="ed-inner" style="${mode === "md" ? "max-width:1180px" : vn ? "max-width:1240px" : ""}">
         <nav class="crumbs" aria-label="Path"><a href="#/brain">Second Brain</a><span>›</span>${S.crumbs.map((c) => `<a href="#/brain/${encodeURIComponent(c.id)}" title="그래프에서 보기">${esc(c.title)}</a><span>›</span>`).join("")}<b>${esc(n.title)}</b><a class="crumb-map" href="#/brain/${encodeURIComponent(S.children.length ? n.id : S.crumbs.at(-1)?.id || "")}" title="See this page in the Brain graph">◎ Map</a></nav>
+        ${own && !n.parent_id && n.kind !== "database" ? `<div class="sort-host" id="ed-sort" aria-live="polite"></div>` : ""}
         <input class="ed-title" id="ed-title" value="${esc(n.title)}" aria-label="노트 제목" ${own ? "" : "readonly"} maxlength="120">
         <div class="row faint" style="font-size:12px;gap:10px">
           <span class="row" style="gap:6px">${avatar({ ...(u || {}), color: u?.color || "#999" }, "sm")}${esc(u?.display_name || "")}</span>
@@ -196,6 +198,9 @@ export function mount(root, ctx, r) {
       </div></div>`;
     if (mode === "block" || n.kind === "database") mountBlocks(own); else { drawPreview(); if (n.props) drawRowProps(); }
     bindEditor();
+    // 맨 위(Unsorted) 노트: AI 가 확신할 때만 '‘AI & Dev’에 둘까요?' 칩 — 누를 때만 옮겨요 (src/onto.js sortSuggest · rel.js sortChip)
+    const sh = $("#ed-sort", root);
+    if (sh) sortChip(sh, n, { ctx, undo: us, onMoved: () => { noteCache.delete(n.id); if (S.cur?.id === n.id) open(n.id); } });
   }
   const parseJ = (t) => { try { return t ? JSON.parse(t) : null; } catch { return null; } };
   let DBV = null, lastSaved = ""; // 데이터베이스 보기 · 마지막으로 저장한 블록 JSON

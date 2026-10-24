@@ -1,6 +1,8 @@
 // Brain 그래프 데이터 — 노트(부모-자식) + 공부 화면을 큰 개념 5개 아래 한 나무로 묶고, 지금 들어와 있는 층만 그려요.
 //   buildBrain({ notes, edges, subjects }) → tree     levelOf(tree, focus) → { data, crumbs, items }
 //   notes: GET /graph 의 nodes (id, title, parent_id) · edges: { src_id, dst_title } · subjects: place=study 페이지
+//   rels: GET /graph 의 rels (note_rel 의 auto · confirmed — src/onto.js). 링크가 없는 쌍도 관계가 있으면 선이 돼요.
+//         두 점이 바로 그 노트일 때만 선에 관계를 달아요 (link.rel · status · origin · from = 화살표가 시작하는 점)
 // 한 층의 선 = 그 층 두 점의 '하위 전체' 사이에 있는 링크 수 (w). 그래서 맨 위에선 개념끼리의 연결만 굵게 보여요.
 
 import { similarPairs } from "./concepts.js";
@@ -21,8 +23,9 @@ const STUDY = [
 ];
 
 const low = (s) => String(s || "").trim().toLowerCase();
+export const pairKey = (a, b) => (a < b ? a + "|" + b : b + "|" + a);
 
-export function buildBrain({ notes = [], edges = [], subjects = [], study = true }) {
+export function buildBrain({ notes = [], edges = [], subjects = [], study = true, rels = [] }) {
   const N = new Map(); // id → { id, title, parent, kind, href? }
   const conceptId = new Map(); // 개념 제목(소문자) → id
   for (const c of CONCEPTS) {
@@ -54,7 +57,14 @@ export function buildBrain({ notes = [], edges = [], subjects = [], study = true
   const byTitle = new Map(); for (const n of notes) if (!byTitle.has(low(n.title))) byTitle.set(low(n.title), n.id);
   const links = [];
   for (const e of edges) { const t = byTitle.get(low(e.dst_title)); if (t && t !== e.src_id && N.has(e.src_id)) links.push([e.src_id, t]); }
-  return { N, kids, size, links };
+  const relOf = new Map(), seen = new Set(links.map(([a, b]) => pairKey(a, b)));
+  for (const r of rels) {
+    if (!N.has(r.src_id) || !N.has(r.dst_id) || r.src_id === r.dst_id) continue;
+    const k = pairKey(r.src_id, r.dst_id);
+    relOf.set(k, r);
+    if (!seen.has(k)) { seen.add(k); links.push([r.src_id, r.dst_id]); }
+  }
+  return { N, kids, size, links, relOf };
 }
 
 export function levelOf(tree, focus) {
@@ -85,6 +95,9 @@ export function levelOf(tree, focus) {
   const crumbs = []; { let cur = at, hop = 0; while (cur && hop++ < 40) { const n = N.get(cur); crumbs.unshift({ id: cur, title: n.title, note: n.note }); cur = n.parent; } }
   // 하위 층: 링크가 없는 형제끼리도 제목이 비슷하면 약한 선으로 (따로 노는 점이 되지 않게)
   if (at && nodes.length > 1) for (const { a, b } of similarPairs(nodes)) { const k = a < b ? a + "|" + b : b + "|" + a; if (!w.has(k)) w.set(k, 0.5); }
-  const data = { nodes, links: [...w].map(([k, c]) => { const [s, t] = k.split("|"); return { s, t, w: c }; }) };
+  const data = { nodes, links: [...w].map(([k, c]) => {
+    const [s, t] = k.split("|"), r = tree.relOf?.get(k);
+    return r ? { s, t, w: c, rel: r.rel, status: r.status, origin: r.origin, from: r.src_id, relId: r.id || null } : { s, t, w: c };
+  }) };
   return { data, types, crumbs, items: nodes, here: at ? N.get(at) : null };
 }

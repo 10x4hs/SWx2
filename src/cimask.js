@@ -12,6 +12,8 @@
 import { aiText, TEXT_ORDER } from "./ai.js";
 import { retrieve, settings, hrefOf } from "./rag.js";
 import { checkCites } from "./lib/rag-text.js";
+// 길 고르기 (src/airoute.js): 규칙 먼저 · 애매하면 embed-proto. 기본은 기록만(DECIDE_ROUTE 비어 있음 = log), DECIDE_ROUTE=1 이면 프롬프트 한 줄 + 내 자료 질문의 노트 근거 4개
+import { routeAsk, routeMode, ROUTES } from "./airoute.js";
 
 const MAX_TURNS = 12;
 const MAX_SOURCES = 5, MAX_NOTE_SOURCES = 2;
@@ -37,7 +39,7 @@ function material(c) {
 }
 
 /** 질문 + 화면 → 근거 목록 [{n, type, id, title, path, text, href}] */
-export async function findSources(env, user, ctx, question) {
+export async function findSources(env, user, ctx, question, { maxNotes = MAX_NOTE_SOURCES } = {}) {
   ctx = ctx && typeof ctx === "object" ? ctx : {};
   const S = settings(env), out = [];
   const key = typeof ctx.key === "string" && KEY_RE.test(ctx.key) ? ctx.key : null;
@@ -56,7 +58,7 @@ export async function findSources(env, user, ctx, question) {
     // 뜻이 가까운 것만 (벡터가 없을 때는 글자 찾기 위쪽 3개만)
     const strong = vecOk ? (it.cos ?? 0) >= S.minCos : it.kw !== null && it.kw <= 3;
     if (!strong) continue;
-    if (it.source_type === "note") { if (notes >= MAX_NOTE_SOURCES) continue; notes++; }
+    if (it.source_type === "note") { if (notes >= maxNotes) continue; notes++; }
     out.push(it);
   }
   // 색인이 아직 없거나(배포 직후) 옛 화면이라 key 가 없으면: 화면이 보낸 카드 본문을 [1] 로
@@ -71,14 +73,14 @@ function sourceBlock(list) {
   if (!list.length) return "[근거]\n(없음 — 이 질문에 맞는 교재 카드나 노트를 찾지 못했어요)";
   return "[근거]\n" + list.map((x) => `[${x.n}] ${x.type === "note" ? "내 노트" : "CIM 카드"} · ${x.path}\n${s(x.text, x.n === 1 ? 2500 : 1200)}`).join("\n\n");
 }
-function systemPrompt(ctx, list) {
+function systemPrompt(ctx, list, route = null) {
   return `너는 투자자산운용사(CIM) 시험을 2주 안에 준비하는 학생의 튜터야.
 규칙: 쉬운 한국어 해요체, 짧은 문단(3~6문장), 필요하면 짧은 목록. 처음 쓰는 용어는 그 자리에서 한 줄로 풀어 줘.
 근거: 아래 [근거]의 번호 자료로만 사실을 말하고, 사실을 말한 문장 끝에 [1] 처럼 근거 번호를 붙여. 여러 개면 [1][2]. [근거]에 없는 번호는 쓰지 마.
 [근거]에 없는 세율 · 한도 · 법 조문 · 통계 숫자는 지어내지 마. [근거]로 답할 수 없는 질문이면 첫 문장을 "자료에 근거가 없어요."로 시작하고, 무엇을 교재에서 찾아보면 되는지만 짧게 말해.
 계산이 나오면 한 줄씩 숫자로 보여 줘. 문제를 물으면 왜 정답이 맞는지, 학생이 고른 답이 왜 틀렸는지(헷갈리게 만든 함정)를 짚어 줘.
 '비슷한 문제'를 부탁하면 4지선다 한 문제를 내고 정답과 해설은 맨 끝에 따로 적어. 외우는 법을 부탁하면 짧은 기억 훅(앞글자 · 비유)을 하나 줘.
-${material(ctx)}
+${route && ROUTES[route] ? ROUTES[route].hint + "\n" : ""}${material(ctx)}
 
 ${sourceBlock(list)}`.replace(/\*\*/g, "");
 }
@@ -92,16 +94,20 @@ export function registerCimAsk(on, { json, body, fail }) {
     const clean = msgs.filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
       .map((m) => ({ role: m.role, content: m.content.slice(0, 3000) }));
     if (!clean.length || clean[clean.length - 1].role !== "user") fail(400, "질문을 적어 주세요.");
-    let list = await findSources(env, user, b.context, clean[clean.length - 1].content);
+    const ask = clean[clean.length - 1].content, mode = routeMode(env), ckind = ["card", "quiz", "general"].includes(b.context?.kind) ? b.context.kind : "general";
+    let route = null;
+    if (mode === "apply") route = (await routeAsk(env, user, ask, ckind).catch(() => null))?.choice || null;
+    else if (mode === "log") ec.waitUntil(routeAsk(env, user, ask, ckind).catch(() => null)); // 기록만 — 답은 지금과 같아요
+    let list = await findSources(env, user, b.context, ask, { maxNotes: route === "my_notes" ? 4 : MAX_NOTE_SOURCES });
     const hasNotes = () => list.some((x) => x.type === "note");
     const withoutNotes = () => { list = list.filter((x) => x.type !== "note").map((x, i) => ({ ...x, n: i + 1 })); };
     // 노트가 있으면 안전한 공급사로만. 실패하면(키 없음 · 막힘) 노트를 빼고 보통 순서로 다시
     const run = async (onTok) => {
       if (hasNotes()) {
-        try { return await aiText(env, systemPrompt(b.context, list), clean, PRIVATE_SAFE, onTok); }
+        try { return await aiText(env, systemPrompt(b.context, list, route), clean, PRIVATE_SAFE, onTok); }
         catch (e) { console.log("cim ask private provider failed → CIM only", String(e?.message || e)); withoutNotes(); if (onTok) await onTok("", { reset: true, sources: true }); }
       }
-      return aiText(env, systemPrompt(b.context, list), clean, TEXT_ORDER, onTok);
+      return aiText(env, systemPrompt(b.context, list, route), clean, TEXT_ORDER, onTok);
     };
     if (q.get("stream") === "0") {
       try {

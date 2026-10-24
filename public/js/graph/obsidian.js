@@ -15,8 +15,10 @@ const TIER_R = [11, 7, 4.5, 3.2];
 //   · 두 번 누르기 = onOpen (첫 번째 누르기는 고르기만 해서 연결이 생기지 않아요 — 연결은 두 번 누르기 시간(300ms)이 지난 뒤에 정해요)
 //   · 빈 곳 누르기 = 고르기 풀기 · 오른쪽 클릭(폰은 길게): 점 = onMenu, 선 = onEdgeMenu(link, e), 빈 곳 = onBlankMenu(e, world)
 //   · onSelect(node | null) · initial = { k, x, y, sel, pos } (돌아왔을 때 확대 · 위치 · 고른 점 그대로)
-// 돌려주는 stop() 에 붙은 것: stop.state() · stop.setData(data, types?, spawn?) · stop.select(id) · stop.worldAt(clientX, clientY)
-export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank, prefs: p0, savePrefs, empty, scope = "", select = false, onSelect, onConnect, onEdgeMenu, onBlankMenu, initial = null }) {
+// 돌려주는 stop() 에 붙은 것: stop.state() · stop.setData(data, types?, spawn?) · stop.select(id) · stop.worldAt(clientX, clientY) · stop.screenOf(id)
+// 관계 종류 (2026-10-24): edgeStyle(link) → { color, dash, label, arrow } | null — 선 색 · 점선 · 화살표(from → 다른 점). 이름표는 마우스를 올린 선 · 고른 점의 선에만
+//   legend: [{ label, color, dash }] → 설정 패널 '관계' 칸
+export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank, prefs: p0, savePrefs, empty, scope = "", select = false, onSelect, onConnect, onEdgeMenu, onBlankMenu, initial = null, edgeStyle = null, legend = null }) {
   let lastTap = { n: null, t: 0 };
   const DBL = 300;
   const P = { ...GRAPH_DEFAULTS, open: innerWidth > 760, ...(p0 || {}) }; // 폰은 설정 패널을 접고 시작해요
@@ -41,6 +43,7 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
           <label class="og-row">선 두께<input type="range" min=".3" max="3" step=".1" data-p="line"><output></output></label>
           <label class="og-row">이름 보이는 확대<input type="range" min=".2" max="2.5" step=".1" data-p="fade"><output></output></label>
         </details>
+        ${legend?.length ? `<details open class="og-legend"><summary>관계</summary><ul>${legend.map((l) => `<li><svg width="28" height="8" aria-hidden="true"><line x1="1" y1="4" x2="27" y2="4" stroke="${esc(l.color)}" stroke-width="2"${l.dash ? ` stroke-dasharray="${l.dash.join(" ")}"` : ""}/></svg>${esc(l.label)}</li>`).join("")}<li class="og-legend-ai"><b>AI</b> AI 가 정한 관계 · 우클릭으로 바꿔요</li></ul></details>` : ""}
         <details><summary>힘</summary>
           <label class="og-row">가운데로 모이는 힘<input type="range" min="0" max="3" step=".1" data-p="center"><output></output></label>
           <label class="og-row">밀어내는 힘<input type="range" min=".2" max="3" step=".1" data-p="repel"><output></output></label>
@@ -56,13 +59,13 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
   const canvas = $(".og-c"), g = canvas.getContext("2d");
   let W = 0, H = 0, dpr = 1, raf = 0, alpha = 1, alive = true;
   const view = { x: 0, y: 0, k: 1 };
-  let hover = null, pinned = null, drag = null, pan = null, query = "", focusType = null, moved = false, sel = null, pendT = 0;
+  let hover = null, pinned = null, drag = null, pan = null, query = "", focusType = null, moved = false, sel = null, pendT = 0, hoverEdge = null;
 
   // ---------- 데이터 ----------
   let byId = new Map();
   const saved = initial?.pos || {};
   let all = data.nodes.map((n, i) => { const a = i * 2.39996, r = 14 * Math.sqrt(i + 1), sp = saved[n.id]; const o = { ...n, x: sp ? sp[0] : Math.cos(a) * r, y: sp ? sp[1] : Math.sin(a) * r, vx: 0, vy: 0, deg: 0 }; byId.set(n.id, o); return o; }); // 해바라기 씨앗처럼 고르게 퍼진 원에서 시작
-  const linksOf = (d) => (d.links || []).map((l) => ({ ...l, s: byId.get(l.s), t: byId.get(l.t) })).filter((l) => l.s && l.t && l.s !== l.t);
+  const linksOf = (d) => (d.links || []).map((l) => ({ ...l, s: byId.get(l.s), t: byId.get(l.t), st: edgeStyle ? edgeStyle(l) : null })).filter((l) => l.s && l.t && l.s !== l.t);
   let allLinks = linksOf(data);
   let nodes = [], links = [], adj = new Map();
   function apply(heat = 0.6) {
@@ -148,11 +151,20 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     const focus = hover || sel || pinned, near = focus ? adj.get(focus) : null;
     const lit = (n) => (focus ? n === focus || near?.has(n) : query ? n.title.toLowerCase().includes(query) : focusType ? n.type === focusType : true);
     const dim = !!(focus || query || focusType);
+    const named = []; // 이름표를 달 선 (마우스를 올린 선 · 고른 점의 선)
     for (const l of links) {
-      const on = focus && (l.s === focus || l.t === focus);
-      g.globalAlpha = on ? 0.9 : dim ? 0.05 : 0.32;
-      g.strokeStyle = on ? accent : line; g.lineWidth = ((on ? 1.4 : 0.8) * P.line * Math.min(4, Math.sqrt(l.w || 1))) / view.k; // w = 묶인 연결 수
+      const on = (focus && (l.s === focus || l.t === focus)) || l === hoverEdge, st = l.st;
+      g.globalAlpha = on ? 0.95 : dim ? 0.05 : st ? 0.62 : 0.32;
+      g.strokeStyle = st ? st.color : on ? accent : line; g.lineWidth = ((on ? 1.4 : st ? 1.1 : 0.8) * P.line * Math.min(4, Math.sqrt(l.w || 1))) / view.k; // w = 묶인 연결 수
+      if (st?.dash) g.setLineDash(st.dash.map((x) => (x * 1.4) / view.k));
       g.beginPath(); g.moveTo(l.s.x, l.s.y); g.lineTo(l.t.x, l.t.y); g.stroke();
+      if (st?.dash) g.setLineDash([]);
+      if (st?.arrow) { // 화살표: from → 다른 점, 그 점 테두리 바로 앞
+        const [a, b] = l.from === l.t.id ? [l.t, l.s] : [l.s, l.t], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+        const tipR = radius(b) + 2 / view.k, hx = b.x - ux * tipR, hy = b.y - uy * tipR, s2 = 5.5 / view.k;
+        if (d > tipR + s2 * 2) { g.fillStyle = st.color; g.beginPath(); g.moveTo(hx, hy); g.lineTo(hx - ux * s2 * 1.6 - uy * s2, hy - uy * s2 * 1.6 + ux * s2); g.lineTo(hx - ux * s2 * 1.6 + uy * s2, hy - uy * s2 * 1.6 - ux * s2); g.closePath(); g.fill(); }
+      }
+      if (on && st?.label) named.push(l);
     }
     for (const n of nodes) {
       const on = lit(n), r = radius(n);
@@ -174,6 +186,16 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
       const t = n.title.length > 28 ? n.title.slice(0, 27) + "…" : n.title;
       g.globalAlpha = a; g.fillStyle = n === focus ? ink : ink2;
       g.fillText(t, n.x, n.y + radius(n) + 4 / view.k);
+    }
+    // 관계 이름표: 선 가운데 작은 띠
+    if (named.length) {
+      const fs2 = 11 / view.k, bg = css("--paper-solid") || css("--bg") || "#111";
+      g.font = `600 ${fs2}px -apple-system, "SF Pro Text", "Pretendard Variable", sans-serif`; g.textBaseline = "middle";
+      for (const l of named) {
+        const mx = (l.s.x + l.t.x) / 2, my = (l.s.y + l.t.y) / 2, tw = g.measureText(l.st.label).width, px = 5 / view.k, h2 = fs2 * 0.8;
+        g.globalAlpha = 0.92; g.fillStyle = bg; g.beginPath(); g.roundRect?.(mx - tw / 2 - px, my - h2, tw + px * 2, h2 * 2, 4 / view.k); if (!g.roundRect) g.rect(mx - tw / 2 - px, my - h2, tw + px * 2, h2 * 2); g.fill();
+        g.globalAlpha = 1; g.fillStyle = l.st.color || ink; g.fillText(l.st.label, mx, my);
+      }
     }
     g.globalAlpha = 1;
   }
@@ -221,7 +243,7 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     }
     return best;
   };
-  const edgeOut = (l) => ({ s: l.s.id, t: l.t.id, w: l.w, sTitle: l.s.title, tTitle: l.t.title });
+  const edgeOut = (l) => ({ s: l.s.id, t: l.t.id, w: l.w, sTitle: l.s.title, tTitle: l.t.title, rel: l.rel || null, status: l.status || null, origin: l.origin || null, from: l.from || null, relId: l.relId || null });
   // 빈 곳 · 선 위에서 메뉴 (오른쪽 클릭 · 길게 누르기)
   const spaceMenu = (e, w) => {
     const l = onEdgeMenu ? hitEdge(w) : null;
@@ -253,7 +275,11 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     if (hold && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) { clearTimeout(hold); hold = 0; }
     if (drag) { if (Math.hypot(drag.node.x - (w.x + drag.ox), drag.node.y - (w.y + drag.oy)) > 2 / view.k) moved = true; drag.node.x = w.x + drag.ox; drag.node.y = w.y + drag.oy; kick(); return; }
     if (pan) { if (Math.hypot(e.clientX - pan.sx, e.clientY - pan.sy) > 3) moved = true; view.x = pan.vx + e.clientX - pan.sx; view.y = pan.vy + e.clientY - pan.sy; kick(); return; }
-    if (e.pointerType === "mouse") { const n = hit(w); if (n !== hover) { hover = n; canvas.style.cursor = n ? "pointer" : "grab"; kick(); } showTip(n, w); }
+    if (e.pointerType === "mouse") {
+      const n = hit(w); if (n !== hover) { hover = n; canvas.style.cursor = n ? "pointer" : "grab"; kick(); } showTip(n, w);
+      const he = !n && edgeStyle ? hitEdge(w) : null, hs = he?.st ? he : null; // 관계가 있는 선에 올리면 이름표
+      if (hs !== hoverEdge) { hoverEdge = hs; kick(); }
+    }
   });
   canvas.addEventListener("pointerup", (e) => {
     if (side(e)) return;
@@ -295,11 +321,11 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     }
     setSel(n);
   }
-  canvas.addEventListener("pointerleave", () => { if (!drag) { hover = null; showTip(null); kick(); } });
+  canvas.addEventListener("pointerleave", () => { if (!drag) { hover = null; hoverEdge = null; showTip(null); kick(); } });
   canvas.addEventListener("wheel", (e) => { e.preventDefault(); touched = true; const w = world(e); zoomAt(w.sx, w.sy, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
   // 자동 검사용: 화면 좌표로 점 위치
   canvas.__nodes = () => nodes.map((n) => ({ id: n.id, title: n.title, type: n.type, r: radius(n) * view.k, x: W / 2 + view.x + n.x * view.k, y: H / 2 + view.y + n.y * view.k }));
-  canvas.__links = () => links.map((l) => ({ s: l.s.id, t: l.t.id, w: l.w, x1: W / 2 + view.x + l.s.x * view.k, y1: H / 2 + view.y + l.s.y * view.k, x2: W / 2 + view.x + l.t.x * view.k, y2: H / 2 + view.y + l.t.y * view.k }));
+  canvas.__links = () => links.map((l) => ({ s: l.s.id, t: l.t.id, w: l.w, rel: l.rel || null, status: l.status || null, from: l.from || null, color: l.st?.color || null, dash: !!l.st?.dash, x1: W / 2 + view.x + l.s.x * view.k, y1: H / 2 + view.y + l.s.y * view.k, x2: W / 2 + view.x + l.t.x * view.k, y2: H / 2 + view.y + l.t.y * view.k }));
   canvas.__view = () => ({ ...view, sel: sel?.id || null });
 
   drawTypes(); outs();
@@ -325,6 +351,7 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     });
     allLinks = linksOf(d);
     if (sel && !byId.has(sel.id)) setSel(null);
+    hoverEdge = null;
     if (hover && !byId.has(hover.id)) hover = null;
     if (drag && !byId.has(drag.node.id)) drag = null;
     drawTypes(); apply(0.25);
@@ -332,5 +359,7 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
   stop.select = (id) => setSel(id ? byId.get(id) || null : null);
   stop.selected = () => sel?.id || null;
   stop.worldAt = (clientX, clientY) => { const w = world({ clientX, clientY }); return { x: w.x, y: w.y }; };
+  // 점의 화면 좌표 (작은 창을 그 근처에 띄울 때)
+  stop.screenOf = (id) => { const n = byId.get(id); if (!n) return null; const r = canvas.getBoundingClientRect(); return { x: r.left + W / 2 + view.x + n.x * view.k, y: r.top + H / 2 + view.y + n.y * view.k }; };
   return stop;
 }

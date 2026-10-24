@@ -307,6 +307,79 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
     r = await call("a", "POST", "/apps/cim/ask?stream=0", { messages: [{ role: "user", content: "기한이 공휴일이면 언제까지예요?" }], context: { kind: "card", key: "s1c1-1", chapter: "1과목 1장", title: "기간과 기한 및 서류의 송달" } });
     ok(r.status === 200 && Array.isArray(r.data.sources) && r.data.sources[0]?.n === 1 && r.data.sources[0].href === "#/cim/study/s1c1/1" && r.data.sources.every((x) => !("text" in x)) && typeof r.data.text === "string", `cim ask: returns numbered sources with hrefs (${r.status} · ${r.data?.sources?.length} sources · cited ${r.data?.sources?.filter((x) => x.cited).length})`);
   }
+  // ---------- 관계 종류 · decide() (src/onto.js · src/decide.js · migrations/0068) ----------
+  {
+    const D = await import("../src/decide.js");
+    const V = await import("../src/lib/onto-vocab.js");
+    const Q = D.normalizeQuestions({ x: { type: "choice", instructions: "?", criteria: { a: "A", b: "B" } } });
+    ok(Object.keys(Q.x.criteria).join() === "a,b,unknown", "decide: choice questions always get 'unknown'");
+    let threw = false; try { D.normalizeQuestions({ x: { type: "nope" } }); } catch { threw = true; } ok(threw, "decide: unknown question type is rejected");
+    const protos = { a: [1, 0, 0], b: [0, 1, 0] };
+    const p1 = D.protoProbs([0.9, 0.1, 0], protos), p2 = D.protoProbs([0.9, 0.1, 0], protos);
+    ok(JSON.stringify(p1) === JSON.stringify(p2) && p1.choice === "a" && "unknown" in p1.probabilities && p1.confidence > 0.5, `decide embed-proto: deterministic, picks nearest prototype, unknown in probabilities (conf ${p1.confidence})`);
+    ok(D.protoProbs([0, 0, 1], protos).choice === "unknown", "decide embed-proto: far from every prototype → unknown");
+    // 개인 자료(private) 길: Groq 만. 키가 없으면 아무 데도 보내지 않고 unknown
+    const realFetch = globalThis.fetch, hits = [];
+    globalThis.fetch = async (u, o) => { hits.push(String(u)); if (String(u).includes("api.groq.com")) { const k = hits.filter((h) => h.includes("groq")).length; return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ answers: { x: { answer: k === 3 ? "b" : "a", why: "근거" } } }) } }], usage: { total_tokens: 10 } }), { status: 200, headers: { "content-type": "application/json" } }); } return new Response("{}", { status: 500 }); };
+    const qx = { x: { type: "choice", instructions: "?", criteria: { a: "A", b: "B" } } };
+    try {
+      let d = await D.decide({}, { state: "비밀 노트", questions: qx, engine: "llm" });
+      ok(d.answers.x.choice === "unknown" && d.answers.x.confidence === 0 && hits.length === 0, "decide private: no Groq key → unknown, nothing sent anywhere");
+      d = await D.decide({ GROQ_API_KEY: "k", GEMINI_API_KEY: "g" }, { state: "비밀 노트", questions: qx, engine: "llm" });
+      ok(hits.length === 3 && hits.every((h) => h.includes("api.groq.com")) && d.answers.x.choice === "a" && Math.abs(d.answers.x.confidence - 0.667) < 0.01 && d.answers.x.probabilities.unknown === 0, `decide private: 3 Groq samples only → vote share confidence (${d.answers.x.confidence})`);
+      hits.length = 0;
+      d = await D.decide({ JEV_API_KEY: "j", DECIDE_SHADOW: "laya", LAYA_URL: "http://laya" }, { state: "비밀 노트", questions: qx, engine: "jev" });
+      ok(d.answers.x.choice === "unknown" && !hits.some((h) => h.includes("typesafe") || h.includes("laya")), "decide private: Jev/Laya (main or shadow) never get private text without DECIDE_EXT_PRIVATE=1");
+      d = await D.decide({}, { questions: qx, engine: "jev" });
+      ok(d.answers.x.choice === "unknown" && hits.length === 0, "decide: Jev engine without JEV_API_KEY → unknown");
+    } finally { globalThis.fetch = realFetch; }
+    ok(JSON.stringify(V.readRelChoice("example_of_inv")) === JSON.stringify({ rel: "example_of", swap: true }) && V.readRelChoice("none") === null && V.readRelChoice("unknown") === null && V.outcomeLabel("x", "y", "y", "x", "part_of") === "part_of_inv" && V.outcomeLabel("x", "y", "y", "x", "related") === "related", "onto vocab: _inv choices flip direction · outcome labels follow the asked direction");
+
+    const n1 = (await call("a", "POST", "/notes", { title: "콜옵션 " + tag, body: "정해진 가격(행사가)에 기초자산을 살 수 있는 권리예요. 주가가 행사가보다 오르면 이익이고, 손실은 낸 프리미엄까지예요." })).data.note;
+    const n2 = (await call("a", "POST", "/notes", { title: "파생상품 " + tag, body: "가치가 기초자산에서 나오는 상품이에요." })).data.note;
+    const n3 = (await call("a", "POST", "/notes", { title: "풋옵션 " + tag, body: "정해진 가격에 팔 수 있는 권리예요.", parent_id: n2.id })).data.note;
+    r = await call("a", "PUT", "/rels", { src_id: n1.id, dst_id: n2.id, rel: "example_of" });
+    ok(r.status === 200 && r.data.rel.rel === "example_of" && r.data.rel.status === "confirmed" && r.data.prev === null, "rels: set a typed relation on my own notes");
+    r = await call("a", "PUT", "/rels", { src_id: n1.id, dst_id: n2.id, rel: "friend_of" }); ok(r.status === 400, "rels: unknown relation → 400");
+    r = await call("b", "PUT", "/rels", { src_id: n1.id, dst_id: n2.id, rel: "is_a" }); ok(r.status === 404, "rels: someone else's notes → 404");
+    r = await call("a", "PUT", "/rels", { src_id: n2.id, dst_id: n1.id, rel: "is_a" });
+    ok(r.status === 200 && r.data.prev?.rel === "example_of" && d1(`SELECT COUNT(*) n FROM note_rel WHERE src_id IN ('${n1.id}','${n2.id}') AND dst_id IN ('${n1.id}','${n2.id}')`)[0].n === 1, "rels: one row per pair, reversing the direction updates it (prev returned for undo)");
+    r = await call("a", "PUT", "/rels", { ...r.data.prev, restore: true });
+    ok(r.status === 200 && r.data.rel.rel === "example_of" && r.data.rel.src_id === n1.id, "rels: restore puts the previous row back (undo)");
+    ok((await call("a", "GET", "/notes/" + n1.id)).data.note.body === "정해진 가격(행사가)에 기초자산을 살 수 있는 권리예요. 주가가 행사가보다 오르면 이익이고, 손실은 낸 프리미엄까지예요.", "rels: setting a relation never changes the note body");
+    r = await call("a", "GET", "/graph");
+    ok(r.data.rels?.some((x) => x.src_id === n1.id && x.dst_id === n2.id && x.rel === "example_of") && typeof r.data.rel_suggested === "number", "graph: confirmed relations come with the graph (+ inbox count)");
+    r = await call("b", "GET", "/graph"); ok(!r.data.rels?.some((x) => x.src_id === n1.id), "graph: other people's relations stay hidden");
+    // AI 제안 (제안함): 확정 · 다른 종류 · 거절 — 거절한 쌍은 남아서 다시 제안되지 않아요
+    const aId = (await call("a", "GET", "/me")).data.user.id, s1 = "rs1" + tag, s2 = "rs2" + tag, t0 = Date.now();
+    d1(`INSERT INTO note_rel (id, user_id, src_id, dst_id, rel, status, origin, confidence, evidence, created_at, updated_at) VALUES ('${s1}', '${aId}', '${n3.id}', '${n2.id}', 'part_of', 'suggested', 'ai', 0.82, '근거 한 줄', ${t0}, ${t0}), ('${s2}', '${aId}', '${n3.id}', '${n1.id}', 'contrasts_with', 'suggested', 'ai', 0.7, NULL, ${t0}, ${t0})`);
+    r = await call("a", "GET", "/rels");
+    ok(r.status === 200 && r.data.counts.suggested === 2 && r.data.rels[0].id === s1 && r.data.rels[0].src_title === "풋옵션 " + tag && r.data.rels[0].ko === "부분", "inbox: suggestions listed with titles · Korean label · highest confidence first");
+    r = await call("b", "GET", "/rels"); ok(!r.data.rels.some((x) => x.id === s1), "inbox: only my own suggestions");
+    r = await call("b", "PATCH", "/rels/" + s1, { action: "confirm" }); ok(r.status === 404, "inbox: can't confirm someone else's suggestion");
+    r = await call("a", "PATCH", "/rels/" + s1, { action: "confirm", rel: "example_of" });
+    ok(r.status === 200 && r.data.rel.status === "confirmed" && r.data.rel.rel === "example_of" && r.data.rel.origin === "ai", "inbox: '다른 종류' confirms with the human's type");
+    r = await call("a", "PATCH", "/rels/" + s2, { action: "reject" });
+    ok(r.status === 200 && r.data.rel.status === "rejected", "inbox: reject");
+    r = await call("a", "GET", "/rels?status=all");
+    ok(!r.data.rels.some((x) => x.id === s2) && d1(`SELECT status FROM note_rel WHERE id = '${s2}'`)[0]?.status === "rejected", "inbox: rejected pair kept (never re-suggested) but hidden from lists and graph");
+    r = await call("a", "DELETE", `/rels/pair?a=${n2.id}&b=${n1.id}`); ok(r.status === 200 && r.data.prev?.rel === "example_of", "rels: delete by pair (undo of a fresh relation)");
+    // 새 노트 자리 제안 · 판정 기록
+    r = await call("a", "GET", `/notes/${n3.id}/sort`); ok(r.status === 200 && r.data.show === false && r.data.reason === "not-root", "sort chip: only for top-level (Unsorted) notes");
+    r = await call("a", "GET", `/notes/${n2.id}/sort`); ok(r.status === 200 && r.data.show === false && r.data.reason === "short", "sort chip: one-line notes never get a chip (cold-start prototypes misjudge short text)");
+    r = await call("a", "GET", `/notes/${n1.id}/sort`); ok(r.status === 200 && typeof r.data.show === "boolean" && (r.data.reason === "no-ai" || (r.data.log_id && "unknown" in (r.data.probabilities || {}))), `sort chip: embed-proto over 5 concepts + unknown (${r.data.concept} ${r.data.confidence})`);
+    if (r.data.log_id) {
+      const lid = r.data.log_id;
+      r = await call("b", "POST", `/notes/${n1.id}/sort`, { log_id: lid, picked: "AI & Dev" }); ok(r.status === 404, "sort chip: can't answer someone else's suggestion");
+      r = await call("a", "POST", `/notes/${n1.id}/sort`, { log_id: lid, picked: null });
+      ok(r.status === 200 && d1(`SELECT outcome FROM decide_log WHERE id = '${lid}'`)[0]?.outcome === "rejected", "sort chip: '아니요' is recorded as the human outcome");
+      r = await call("a", "GET", `/notes/${n1.id}/sort`); ok(r.data.show === false && r.data.reason === "answered", "sort chip: never asked again once answered");
+    }
+    r = await call("a", "GET", "/decide/stats"); ok(r.status === 403, "decide stats: admins only");
+    r = await call("a", "POST", "/decide/run", { questions: qx }); ok(r.status === 403, "decide run (eval API): admins only");
+    await call("a", "DELETE", "/notes/" + n3.id); await call("a", "DELETE", "/notes/" + n1.id); await call("a", "DELETE", "/notes/" + n2.id);
+    ok(d1(`SELECT COUNT(*) n FROM note_rel WHERE id IN ('${s1}','${s2}')`)[0].n === 0, "rels: deleting a note removes its relations");
+  }
   // 경영 마이크로디그리: 카드 읽음 → 복습(1 → 3 → 7 → 21 → 60일) → 하루 기록 (모듈 · 카드 id 는 public/mba/index.json 에 있어야 해요)
   r = await call("a", "GET", "/mba/state"); ok(r.status === 200 && Array.isArray(r.data.items) && Array.isArray(r.data.due) && Array.isArray(r.data.days), "mba: state");
   r = await call("a", "PUT", "/mba/read", { module: "accounting", card: "profit-vs-revenue", correct: 2, total: 3 });

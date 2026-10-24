@@ -12,6 +12,8 @@ import { registerMba, registerDev, registerVg, registerOnto } from "./mba.js";
 import { registerAppState } from "./appstate.js";
 import { registerCimAsk } from "./cimask.js";
 import { registerRag } from "./rag.js";
+import { registerRels } from "./onto.js";
+import { registerDecide } from "./decide.js";
 import { handleMcp, registerMcpTokens } from "./mcp.js";
 import { handleOAuth } from "./oauth.js";
 import { registerHomePad } from "./homepad.js";
@@ -160,6 +162,8 @@ registerVg(on, { json, body, fail, now }); // Vector & Graph 과정 (#/sw/vg) �
 registerOnto(on, { json, body, fail, now }); // 온톨로지 (#/sw/onto) · Palantir AIP (#/sw/aip) — 같은 모양, onto_* · aip_* 표
 registerAppState(on, { json, body, fail, now }); // 내장 Dock 앱의 사람별 저장소 (#/cim 투자자산운용사)
 registerCimAsk(on, { json, body, fail }); // CIM AI 튜터 옆 패널 (POST /apps/cim/ask · 하루 사용량은 AI_PATH) — 근거 [1]..[n] 은 rag.js 에서
+registerRels(on); // 관계 종류 · 제안함 · 새 노트 자리 제안 (/rels/* · /notes/:id/sort) — src/onto.js
+registerDecide(on, { json, fail }); // decide() 판정 통계 (GET /decide/stats, 관리자) — src/decide.js
 registerRag(on, { json, fail }); // 뜻으로 찾기 (GET /search/semantic) · 색인 관리 (/rag/*, 관리자)
 registerMcpTokens(on, { json, body, fail, now });
 registerApiKeys(on); // 개인 API 키 (/api/v1 은 위 fetch 에서 따로)
