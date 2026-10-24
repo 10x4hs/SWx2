@@ -1481,6 +1481,48 @@ try {
 
     await ctx.close();
   }
+
+  // ---------- 공지 마크다운: 관리자가 쓰고 미리보기 → 올리기 → 회원 띠에 제목 · 자세히 시트에 굵게 · 목록 · 안전한 링크 (스크립트는 안 돌아요) ----------
+  {
+    const adm = "t_e2a" + tag, sq = (q) => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", q], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    execFileSync("node", ["scripts/add-user.mjs", adm, "공지검사", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" });
+    sq(`UPDATE users SET role = 'admin' WHERE username = '${adm}'`);
+    const prev = JSON.parse(sq("SELECT id FROM announcements WHERE active = 1"))[0].results.map((x) => x.id);
+    const ac = await browser.newContext({ viewport: { width: 1300, height: 900 } }), mc = await browser.newContext({ viewport: { width: 1300, height: 900 } });
+    try {
+      await ac.request.post(BASE + "/api/auth/login", { headers: H, data: { username: adm, password: "password1" } });
+      await mc.request.post(BASE + "/api/auth/login", { headers: H, data: { username: user } });
+      const ap = await ac.newPage(), errs = [];
+      ap.on("pageerror", (e) => errs.push(e.message));
+      await ap.goto(BASE + "/#/admin"); await sleep(2500);
+      await ap.click('.adm-tabs [data-tab="ann"]');
+      await sleep(400);
+      await ap.fill(".adm-ann textarea", "# 제목\n- **굵게** [링크](https://example.com)\n- [나쁜](javascript:alert(1))\n<script>window.__annX=1</script><img src=x onerror=\"window.__annX=2\">");
+      await ap.click("[data-ann-pv]"); await sleep(300);
+      const pv = await ap.evaluate(() => { const el = document.querySelector(".adm-ann-pv"); return { h1: el.querySelector("h1")?.textContent, b: el.querySelector("li strong")?.textContent, script: !!el.querySelector("script,img") }; });
+      ok(pv.h1 === "제목" && pv.b === "굵게" && !pv.script, `공지 미리보기 — 제목 ${pv.h1} · 굵게 ${pv.b} · 스크립트/이미지 없음 ${!pv.script}`);
+      await ap.click(".adm-ann button:not([type])"); await sleep(1500);
+      const mp = await mc.newPage(); mp.on("pageerror", (e) => errs.push(e.message));
+      await mp.addInitScript(() => { try { localStorage.removeItem("trio-ann-hidden"); } catch {} });
+      await mp.goto(BASE + "/#/home"); await mp.waitForSelector(".ann-bar", { timeout: 8000 }).catch(() => {});
+      const bar = await mp.evaluate(() => document.querySelector(".ann-bar span")?.textContent || "");
+      await mp.click(".ann-bar .ann-more").catch(() => {}); await sleep(400);
+      const sh = await mp.evaluate(() => { const el = document.querySelector(".ann-sheet .ann-md"); const a = el?.querySelectorAll("a") || []; return { b: el?.querySelector("li strong")?.textContent, li: el?.querySelectorAll("li").length, links: [...a].map((x) => x.getAttribute("href") + "|" + x.target + "|" + x.rel), bad: !!el?.querySelector("script,img"), x: window.__annX }; });
+      ok(bar.includes("제목") && !bar.includes("#") && sh.b === "굵게" && sh.li === 2 && sh.links.length === 1 && sh.links[0] === "https://example.com|_blank|noopener noreferrer" && !sh.bad && sh.x === undefined && !errs.length,
+        `공지 띠 · 자세히 — 띠 "${bar}" · 굵게 ${sh.b} · 목록 ${sh.li} · 링크 ${sh.links.join(",")} · 스크립트 안 돎 ${sh.x === undefined && !sh.bad}${errs.length ? " — " + errs[0] : ""}`);
+      // 예전 한 줄 공지는 그대로: 자세히 버튼 없이 글자만
+      await ac.request.post(BASE + "/api/admin/announcements", { headers: H, data: { body: "그냥 한 줄 공지" } });
+      await mp.reload(); await mp.waitForSelector(".ann-bar", { timeout: 8000 }).catch(() => {});
+      const plain = await mp.evaluate(() => ({ t: document.querySelector(".ann-bar span")?.textContent, more: !!document.querySelector(".ann-bar .ann-more") }));
+      ok(plain.t === "📢 그냥 한 줄 공지" && !plain.more, `한 줄 공지는 예전처럼 — "${plain.t}" · 자세히 ${plain.more}`);
+    } finally {
+      await ac.close(); await mc.close();
+      sq(`UPDATE announcements SET active = 0 WHERE created_by = (SELECT id FROM users WHERE username = '${adm}')`);
+      if (prev.length) sq(`UPDATE announcements SET active = 1 WHERE id IN (${prev.map((x) => `'${x}'`).join(",")})`);
+      sq(`DELETE FROM announcements WHERE created_by = (SELECT id FROM users WHERE username = '${adm}')`);
+      sq(`DELETE FROM users WHERE username = '${adm}'`);
+    }
+  }
 } finally {
   await browser.close();
   try { cleanup(); } catch {}

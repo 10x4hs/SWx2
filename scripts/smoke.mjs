@@ -118,6 +118,15 @@ d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
   try {
     for (const [k, u] of [["h", H], ["g", G], ["r", R]]) await call(k, "POST", "/auth/login", { username: u, password: "password1" });
     const rid = idOf(R), refId = idOf(REF);
+    // 공지: 마크다운 원문 그대로 저장 · 돌려줘요 (그릴 때 HTML · 스크립트는 클라이언트에서 지워요 — e2e 가 확인)
+    const annSrc = "# 제목\n- **굵게** [링크](https://example.com)\n<script>alert(1)</script>";
+    const prevAnn = (await call("h", "GET", "/announcement")).data.announcement;
+    r = await call("h", "POST", "/admin/announcements", { body: annSrc });
+    const annGot = (await call("r", "GET", "/announcement")).data.announcement;
+    ok(r.status === 201 && annGot?.body === annSrc, `announcement: markdown stored raw and returned (${r.status})`);
+    r = await call("r", "POST", "/admin/announcements", { body: "x" }); ok(r.status === 403, "announcement: members cannot post");
+    if (annGot) await call("h", "DELETE", "/admin/announcements/" + annGot.id);
+    if (prevAnn) d1(`UPDATE announcements SET active = 1 WHERE id = '${prevAnn.id}'`);
     await call("r", "POST", "/features/request", { feature: "biz" });
     const req = (await call("h", "GET", "/admin/feature-requests")).data.requests.find((x) => x.user_id === rid && x.feature === "biz");
     r = await call("h", "POST", `/admin/feature-requests/${req.id}/approve`); ok(r.status === 200 && r.data.granted === false, "feature request: one admin approval is not enough");

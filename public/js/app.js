@@ -129,15 +129,35 @@ async function refreshFeatures() {
   if (JSON.stringify(ctx.features) === before) return;
   drawDock(); trialBar(); route(true);
 }
+// 공지는 마크다운 원문: 띠에는 첫 줄(제목)만 글자로, 더 있으면 '자세히' → 전체를 그린 시트
+function annTitle(src) {
+  const line = String(src || "").split("\n").map((l) => l.trim()).find(Boolean) || "";
+  return line.replace(/^#{1,6}\s+/, "").replace(/^[-*+]\s+|^\d+\.\s+|^>\s*/, "").replace(/\*\*|__|`|~~/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
+}
+function annSheet(src) {
+  document.querySelector(".ann-sheet")?.remove();
+  const box = document.createElement("div");
+  box.className = "ann-sheet"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", "공지");
+  box.innerHTML = `<div class="ann-card"><button type="button" class="ann-close" aria-label="닫기">✕</button><div class="ann-md"></div></div>`;
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  box.addEventListener("click", (e) => { if (e.target === box || e.target.closest(".ann-close")) close(); });
+  document.addEventListener("keydown", onKey);
+  document.body.append(box);
+  box.querySelector(".ann-close").focus();
+  box.querySelector(".ann-md").innerHTML = adminView.annHtml(src);
+}
 function annBar() {
   api.announcement().then(({ announcement: a }) => {
     document.querySelector(".ann-bar")?.remove();
     let hid = ""; try { hid = localStorage.getItem("trio-ann-hidden") || ""; } catch {}
     if (!a || a.id === hid) return;
+    const title = annTitle(a.body), more = title !== a.body.trim();
     const bar = document.createElement("div");
     bar.className = "ann-bar"; bar.setAttribute("role", "alert");
-    bar.innerHTML = `<span>📢 ${esc(a.body)}</span><button type="button" class="ann-x" aria-label="공지 닫기" title="닫기">✕</button>`;
-    bar.querySelector("button").addEventListener("click", () => { try { localStorage.setItem("trio-ann-hidden", a.id); } catch {} bar.remove(); });
+    bar.innerHTML = `<span>📢 ${esc(title)}</span>${more ? `<button type="button" class="ann-more">자세히</button>` : ""}<button type="button" class="ann-x" aria-label="공지 닫기" title="닫기">✕</button>`;
+    bar.querySelector(".ann-x").addEventListener("click", () => { try { localStorage.setItem("trio-ann-hidden", a.id); } catch {} bar.remove(); });
+    bar.querySelector(".ann-more")?.addEventListener("click", () => annSheet(a.body));
     document.body.append(bar);
   }).catch(() => {});
 }

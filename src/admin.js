@@ -85,7 +85,7 @@ export function registerAdmin(on) {
     needAdmin(user);
     const b = await body(req);
     const text = String(b.body || "").trim();
-    if (!text || text.length > 300) fail(400, "공지는 1~300자로 써 주세요.");
+    if (!text || text.length > 4000) fail(400, "공지는 1~4000자로 써 주세요."); // 마크다운 원문 그대로 저장
     const a = { id: uid(), body: text, created_at: now() };
     await env.DB.batch([
       env.DB.prepare("UPDATE announcements SET active = 0 WHERE active = 1"),
