@@ -22,12 +22,14 @@
 //   ⑱ 일기 친구 — 친구 없으면 탭 하나 · 같은 팀도 403 · 아이디로 초대 → 친구 화면의 초대 띠에서 수락 → 탭 둘 · 새 일기 기본 공개 → 친구가 읽음 · 비공개면 자물쇠만(글은 서버에서도 안 와요)
 //      · 지난 일기 비공개 · 친구 탭 읽기 · 친구 아닌 사람은 403 · 일기는 누구나(자물쇠 없음, 2026-10-21) · 끊기 → 다시 403 (2026-10-19)
 //   ⑳ Obsidian — 누르기 = 고르기 · 고른 채 다른 점 = 연결(서버 · 새로 열어도) · 두 번 = 들어가기(연결 안 생김) · ← 뒤로(확대 · 고른 점 그대로) · 노트 ← 뒤로 · 우클릭 만들기(누른 자리) · 이름 · 연결 · 선 우클릭 끊기 · 서버에서 지운 뒤 되살리기 · ⌘Z/⌘⇧Z · Dock 한 칸 위 (2026-10-22)
+//   ㉓ 관계 종류 — 연결 → '어떤 관계예요?' 칩 → 색 · 점선 선 · ⌘Z · 선 우클릭 관계 바꾸기 · Esc = 관련 · AI 제안함 확정/거절 · 맨 위 노트 자리 칩 (2026-10-24, e2e-onto.mjs)
 //   ㉑ 계획 되돌리기 — 옮기기 · 길이 · 이름 · 지우기 · 추가 · ⌘Z/⌘⇧Z/Ctrl+Z/Ctrl+Y, 서버 값으로 확인 (2026-10-22)
 //   ㉒ 일기 블록 편집기 되돌리기 — 글 · Enter · "- " 목록을 한 단계씩, 커서 자리 · 저장된 값까지 (2026-10-22)
 //   ⑲ CIM 투자자산운용사 (미니멀) — Dock 'CIM' · 처음 안내 한 번 · 오늘(시험일 · 4단계 · 버튼 하나) · 오늘 공부(읽기 → 문제 · 새로 고침 이어서) · AI 패널(문맥 · 크기) · 공부(목록 · 한 장씩 · 목차 · 그림) · 시험(네 줄 · 저장 · 모의고사 · 숫자) · 옛 주소 · Dock 기억 (2026-10-22)
 // 처음 한 번: `npm install` 후 `npx playwright install chromium`. 임시 계정(t_e2e…)을 만들었다가 지워요.
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
+import { ontoE2E } from "./e2e-onto.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
 const { chromium } = createRequire(import.meta.url)("playwright"); // NODE_PATH 로 다른 곳의 playwright 도 쓸 수 있어요
@@ -424,7 +426,7 @@ try {
       if (em.includes("연결 끊기")) await p.click('.cm [data-k="cut"]'); else await p.keyboard.press("Escape");
       await sleep(1600); const l4 = await bodyHas(X, T("구름"));
       await p.keyboard.press(MODK + "+z"); await sleep(1600); const l5 = await bodyHas(X, T("구름"));
-      ok(l1 && !l2 && !l2d && l3 && em === "연결 끊기" && !l4 && l5, `${tv} · Obsidian 연결 되돌리기 — 연결 ${l1} · ⌘Z 끊김 ${!l2} · ⌘⇧Z 다시 ${l3} · 선 우클릭 "${em}" → 끊김 ${!l4} · ⌘Z 다시 ${l5}`);
+      ok(l1 && !l2 && !l2d && l3 && /연결 끊기/.test(em) && !l4 && l5, `${tv} · Obsidian 연결 되돌리기 — 연결 ${l1} · ⌘Z 끊김 ${!l2} · ⌘⇧Z 다시 ${l3} · 선 우클릭 "${em}" → 끊김 ${!l4} · ⌘Z 다시 ${l5}`);
 
       // 6) 지우기 → 5초 뒤 서버에서 지워짐(하위는 한 칸 위로) → ⌘Z 로 되살리기 (같은 제목 · 부모 · 하위가 다시 그 밑으로)
       step = "6 지운 뒤 되살리기"; const za = await nodeAt(T("구름"));
@@ -449,6 +451,10 @@ try {
         ok(trail.join() === want.join(), `${tv} · Dock 한 칸 위 — ${trail.map((h) => h.replace(/^#\/brain\/?/, "") ? "층" : "맨 위").join(" → ")} (${trail.join() === want.join() ? "맞음" : trail.join(" , ")})`);
       }
     } catch (e) { ok(false, `${tv} · Obsidian (${step}) — ${String(e.message).split("\n")[0]}`); }
+
+    // ---------- ㉓ 관계 종류 (2026-10-24, scripts/e2e-onto.mjs) — 연결 → '어떤 관계예요?' → 예시 → 색 선 · 선 우클릭 관계 바꾸기 · AI 제안함 · 새 노트 자리 칩 ----------
+    errs = [];
+    await ontoE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs: () => errs, shots: process.env.SHOTS || null });
 
     // ---------- ⑫-b 단 나누기 · 수식 — 끝에 끌어 놓기 → 2단, "/2 columns", "/equation" KaTeX, 글 속 $..$ (2026-10-14) ----------
     try {

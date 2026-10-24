@@ -107,6 +107,16 @@ export const api = {
   pushSubscribe: (b) => request("POST", "/push/subscribe", b),
   pushUnsubscribe: (b) => request("DELETE", "/push/subscribe", b),
   graph: () => request("GET", "/graph"),
+  // 관계 종류 (src/onto.js) — 제안함 · 정하기 · 되돌리기 · AI 짐작 · 새 노트 자리 제안
+  rels: (status = "suggested") => request("GET", "/rels?" + qs({ status })),
+  setRel: (b) => request("PUT", "/rels", b),
+  patchRel: (id, b) => request("PATCH", "/rels/" + id, b),
+  deleteRelPair: (a, b) => request("DELETE", "/rels/pair?" + qs({ a, b })),
+  guessRel: (src, dst) => request("GET", "/rels/guess?" + qs({ src, dst })),
+  suggestRels: (id) => request("POST", "/rels/suggest/" + id),
+  sortSuggest: (id) => request("GET", "/notes/" + id + "/sort"),
+  sortOutcome: (id, log_id, picked) => request("POST", "/notes/" + id + "/sort", { log_id, picked }),
+  decideStats: () => request("GET", "/decide/stats"),
   organize: (note_id, model) => request("POST", "/ai/organize", { note_id, model }),
   generate: (b) => request("POST", "/ai/generate", b),
   aiPage: (b) => request("POST", "/ai/page", b), // { purpose, hub? } 새 페이지 · { note_id, instruction } 고쳐 쓰기

@@ -96,7 +96,7 @@ export function mount(root, ctx) {
   };
   const draw = () => {
     const s = data.stats, n = feats.requests.length;
-    const TABS = [["users", "회원", s.pending], ["reqs", "기능 신청", n], ["ann", "공지", 0], ["teams", "팀", 0]];
+    const TABS = [["users", "회원", s.pending], ["reqs", "기능 신청", n], ["ann", "공지", 0], ["teams", "팀", 0], ["decide", "AI 판정", 0]];
     body.innerHTML = `
       <nav class="adm-tabs" role="tablist">${TABS.map(([k, l, c]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}${c ? ` <span class="adm-count">${c}</span>` : ""}</button>`).join("")}</nav>
       <section class="adm-pane" data-pane="users" ${tab === "users" ? "" : "hidden"}>
@@ -111,8 +111,9 @@ export function mount(root, ctx) {
       <section class="adm-pane" data-pane="ann" ${tab === "ann" ? "" : "hidden"}><p class="faint">모든 사람 화면 맨 위에 빨간 띠로 떠요. 새로 올리면 예전 공지는 내려가요.</p>
         <div class="adm-ann-now"></div>
         <form class="adm-ann"><input class="input" maxlength="300" placeholder="공지 내용 (300자까지)" required><button class="btn sm">올리기</button></form></section>
-      <section class="adm-pane" data-pane="teams" ${tab === "teams" ? "" : "hidden"}><div class="adm-teams"><p class="faint">불러오는 중…</p></div></section>`;
-    drawRows(); drawBc(); drawAnn(); loadTeams();
+      <section class="adm-pane" data-pane="teams" ${tab === "teams" ? "" : "hidden"}><div class="adm-teams"><p class="faint">불러오는 중…</p></div></section>
+      <section class="adm-pane" data-pane="decide" ${tab === "decide" ? "" : "hidden"}><div class="adm-decide"><p class="faint">불러오는 중…</p></div></section>`;
+    drawRows(); drawBc(); drawAnn(); loadTeams(); loadDecide();
   };
   body.addEventListener("input", (e) => {
     if (e.target.matches(".adm-search")) { q = e.target.value.trim().toLowerCase(); drawRows(); }
@@ -134,6 +135,20 @@ export function mount(root, ctx) {
     el.innerHTML = teams.length ? teams.map((t) => `<div class="adm-team"><b>${esc(t.name)}</b> <small class="faint">팀장 @${esc(t.owner || "—")} · 코드 ${esc(t.code)} · ${day(t.created_at)}</small>
       <div class="adm-team-m">${t.members.map((m) => `<span>${esc(m.display_name || m.username)} <small class="faint">@${esc(m.username)}</small></span>`).join("")}</div></div>`).join("") : '<p class="faint">아직 팀이 없어요.</p>';
   }).catch(() => {});
+  // AI 판정 (src/decide.js · GET /decide/stats): 엔진 · 질문 종류별로 사람 결과와 맞은 비율 · 확신 구간별 정확도
+  const KIND = { rel_type: "관계 제안", rel_guess: "연결할 때 짐작", concept_sort: "새 노트 자리", route: "튜터 길 고르기", test: "평가" };
+  const pc = (x) => (x == null ? "—" : Math.round(x * 100) + "%");
+  const loadDecide = () => api.decideStats().then((d) => {
+    const el = body.querySelector(".adm-decide"); if (!el) return;
+    const tbl = (head, rows) => `<div class="adm-table-wrap"><table class="adm-table"><thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("") || `<tr><td colspan="${head.length}" class="faint">아직 기록이 없어요</td></tr>`}</tbody></table></div>`;
+    const c = d.config || {};
+    el.innerHTML = `<p class="faint">지난 ${d.days}일 · 맞음 = 사람이 확정 · 거절 · 다른 종류로 고른 답과 같은 비율. 노트 글은 적지 않아요.</p>
+      ${tbl(["질문", "엔진", "판정", "사람 결과", "맞음", "평균 확신", "모름"], d.engines.map((r) => `<tr><td>${esc(KIND[r.kind] || r.kind)}</td><td class="mono">${esc(r.engine)}</td><td>${r.n}</td><td>${r.judged}</td><td><b>${pc(r.accuracy)}</b></td><td>${pc(r.avg_conf)}</td><td>${r.unknowns}</td></tr>`))}
+      <h3 class="adm-h3">확신 구간별</h3>
+      ${tbl(["질문", "엔진", "확신", "사람 결과", "맞음"], d.calibration.map((r) => `<tr><td>${esc(KIND[r.kind] || r.kind)}</td><td class="mono">${esc(r.engine)}</td><td class="mono">${esc(r.bucket)}</td><td>${r.judged}</td><td>${pc(r.accuracy)}</td></tr>`))}
+      ${d.shadow.length ? `<h3 class="adm-h3">그림자 비교</h3>${tbl(["질문", "그림자 엔진", "판정", "같은 답", "맞음"], d.shadow.map((r) => `<tr><td>${esc(KIND[r.kind] || r.kind)}</td><td class="mono">${esc(r.engine)}</td><td>${r.n}</td><td>${pc(r.agreement)}</td><td>${pc(r.accuracy)}</td></tr>`))}` : ""}
+      <p class="faint adm-decide-cfg">설정 · 그림자 ${esc(c.shadow || "끔")} · Jev ${c.jev ? "있음" : "없음"} · Laya ${c.laya ? "있음" : "없음"} · 개인 자료 바깥 전송 ${c.ext_private ? "허용" : "막음"} · 튜터 길 ${esc(c.route || "log")} · embed-proto T=${c.proto?.T} floor=${c.proto?.floor}</p>`;
+  }).catch((e) => { const el = body.querySelector(".adm-decide"); if (el) el.innerHTML = `<p class="faint">${esc(e.message || "불러오지 못했어요.")}</p>`; });
   // 한 회원의 일정: 오늘부터 7일
   const ymdK = (t) => new Date(t + 9 * 3600e3).toISOString().slice(0, 10);
   async function showPlans(id, name, from = ymdK(Date.now())) {

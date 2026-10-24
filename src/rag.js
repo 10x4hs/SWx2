@@ -51,11 +51,11 @@ async function batchAll(env, stmts, size = 50) {
 
 // ---------- 하루 뉴런 어림값 (크론 · 색인용 임베딩만 세요. 검색어 임베딩은 아주 작아서 안 세요) ----------
 const neuronKey = () => "neu:" + kstToday(0);
-async function neuronsToday(env) {
+export async function neuronsToday(env) {
   const r = await env.DB.prepare("SELECT v FROM rag_meta WHERE k = ?").bind(neuronKey()).first();
   return Number(r?.v || 0);
 }
-async function addNeurons(env, n) {
+export async function addNeurons(env, n) {
   await env.DB.prepare("INSERT INTO rag_meta (k, v) VALUES (?1, ?2) ON CONFLICT(k) DO UPDATE SET v = CAST(CAST(v AS REAL) + ?2 AS TEXT)").bind(neuronKey(), String(n)).run();
 }
 export const neuronsFor = (chars) => (chars / CHARS_PER_TOKEN) * NEURONS_PER_MTOK / 1e6;

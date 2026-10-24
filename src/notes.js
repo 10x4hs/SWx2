@@ -5,7 +5,9 @@ import { remindAt } from "../public/js/blocks/dbview.js";
 import { blocksToMd, validateDoc, MAX_BLOCKS_JSON, validateDb, defaultDb, cleanRowProps, dbToMd } from "../public/js/blocks/md.js";
 // 뜻으로 찾기 색인: 저장 · 지우기 뒤에 응답은 그대로 보내고 뒤에서(waitUntil) 조각을 맞춰요. 다른 길(Brain · MCP …)로 바뀐 노트는 크론 · 검색 때 따라잡아요
 import { syncNoteSoon } from "./rag.js";
-const ragSync = (ec, env, id) => { try { ec?.waitUntil(syncNoteSoon(env, id)); } catch {} };
+// 관계 제안(src/onto.js): 색인 다음에 이어서 — 같은 노트는 20분에 한 번 · 하루 몫 안에서 (나머지는 매시 크론)
+import { suggestSoon, graphRels } from "./onto.js";
+const ragSync = (ec, env, id) => { try { ec?.waitUntil(syncNoteSoon(env, id).then(() => suggestSoon(env, id, ec))); } catch {} };
 
 export const MAX_NOTE = 200_000;
 
@@ -405,7 +407,9 @@ export function registerNotes(on) {
       env.DB.prepare(`SELECT n.id, n.user_id, n.title, n.topic, n.parent_id, (SELECT group_concat(t.tag) FROM note_tags t WHERE t.note_id = n.id) AS tags FROM notes n WHERE ${VISIBLE}`).bind(user.id),
       env.DB.prepare(`SELECT l.src_id, l.dst_title FROM note_links l JOIN notes n ON n.id = l.src_id WHERE ${VISIBLE}`).bind(user.id),
     ]);
-    return json({ nodes: nodes.results, edges: edges.results });
+    // 관계 종류(note_rel): auto · confirmed 만 그려요 + 제안함 수 (머리줄 'AI 제안 N')
+    const { rels, rel_suggested } = await graphRels(env, user.id).catch(() => ({ rels: [], rel_suggested: 0 }));
+    return json({ nodes: nodes.results, edges: edges.results, rels, rel_suggested });
   });
 
   on("GET", "/tags", async ({ env, user }) => {
