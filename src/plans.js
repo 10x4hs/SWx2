@@ -1,6 +1,7 @@
 // 계획(plans) · 기간 요약(summary) · 실행 기록(logs). 계획은 모두가 읽고 주인만 써요.
 import { fail, json, body, now, uid, str, dayParam, yearParam } from "./http.js";
 import { PEERS } from "./teams.js";
+import { registerBoard, boardFields, syncDone, outPlan } from "./board.js";
 
 const PERIOD_RE = {
   year: /^Y:\d{4}$/,
@@ -41,6 +42,7 @@ async function ownPlan(env, id, user) {
 }
 
 export function registerPlans(on) {
+  registerBoard(on); // 할 일 보드 (/plans/board · /plans/board/cols) — /plans/:id 보다 먼저
   on("GET", "/plans", async ({ env, q, user }) => {
     const periods = (q.get("periods") || "").split(",").filter(Boolean).slice(0, 20);
     // days=YYYY-MM-DD..YYYY-MM-DD : 그 사이 날마다의 계획을 한 번에 (홈 차트가 요청 여러 번 대신 한 번으로). 최대 62일
@@ -57,12 +59,12 @@ export function registerPlans(on) {
     if (who !== user.id) {
       const [o, l] = await env.DB.batch([env.DB.prepare(`SELECT plans_open FROM users WHERE id = ?1 AND id IN ${PEERS("?2")}`).bind(who, user.id), list]);
       if (!o.results[0] || o.results[0].plans_open === 0) return json({ plans: [], closed: true });
-      return json({ plans: l.results });
+      return json({ plans: l.results.map(outPlan) });
     }
     const { results } = await list.all();
     // focus_mins = 그 할 일에 쌓인 집중 기록 분의 합 (logs.plan_id)
     // 친구 계획: open 한 사람 것은 내용까지 그대로 보여요 (not open 이면 위에서 이미 빈 목록)
-    return json({ plans: results });
+    return json({ plans: results.map(outPlan) });
   });
 
   // Mac 위젯이 몇 초마다 묻는 '바뀐 게 있나' — 그 날들의 계획 수 + 마지막 수정 시각 (누구 것이든). 값이 달라지면 위젯이 다시 그려요
@@ -76,11 +78,13 @@ export function registerPlans(on) {
   on("POST", "/plans", async ({ req, env, user }) => {
     const b = await body(req);
     checkPeriod(b.scope, b.period);
-    const p = { id: uid(), user_id: user.id, scope: b.scope, period: b.period, text: str(b.text, 200, "내용"), done: 0, start: null, mins: null, color: b.color === undefined ? null : tone(b.color), priority: b.priority === undefined ? null : prio(b.priority), sort: now(), created_at: now(), updated_at: now(), done_at: null };
+    const p = { id: uid(), user_id: user.id, scope: b.scope, period: b.period, text: str(b.text, 200, "내용"), done: 0, missed: 0, start: null, mins: null, color: b.color === undefined ? null : tone(b.color), priority: b.priority === undefined ? null : prio(b.priority), sort: now(), created_at: now(), updated_at: now(), done_at: null, status: null, project: null, due: null, subtasks: null, note: null };
     if (b.scope === "day") checkSlot(b, p);
-    await env.DB.prepare("INSERT INTO plans (id, user_id, scope, period, text, done, start, mins, color, priority, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(p.id, p.user_id, p.scope, p.period, p.text, p.start, p.mins, p.color, p.priority, p.sort, p.created_at, p.updated_at).run();
-    return json({ plan: p }, 201);
+    boardFields(b, p); // 보드: 칸 · 프로젝트 · 마감일 · 작은 할 일 · 메모 · 순서 (없으면 예전 그대로)
+    if (p.status === "done") { p.done = 1; p.done_at = now(); }
+    await env.DB.prepare("INSERT INTO plans (id, user_id, scope, period, text, done, done_at, start, mins, color, priority, sort, created_at, updated_at, status, project, due, subtasks, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(p.id, p.user_id, p.scope, p.period, p.text, p.done, p.done_at, p.start, p.mins, p.color, p.priority, p.sort, p.created_at, p.updated_at, p.status, p.project, p.due, p.subtasks, p.note).run();
+    return json({ plan: outPlan(p) }, 201);
   });
 
   on("PATCH", "/plans/:id", async ({ req, env, user, params }) => {
@@ -95,10 +99,12 @@ export function registerPlans(on) {
     if (p.scope === "day") checkSlot(b, next);
     if (b.color !== undefined) next.color = tone(b.color);
     if (b.priority !== undefined) next.priority = prio(b.priority);
+    boardFields(b, next);
+    syncDone(b, p, next); // '완료' 칸 ↔ done 을 같게
     next.updated_at = now();
-    await env.DB.prepare("UPDATE plans SET text = ?, done = ?, done_at = ?, missed = ?, period = ?, start = ?, mins = ?, color = ?, priority = ?, updated_at = ? WHERE id = ?")
-      .bind(next.text, next.done, next.done_at, next.missed ? 1 : 0, next.period, next.start, next.mins, next.color, next.priority ?? null, next.updated_at, p.id).run();
-    return json({ plan: next });
+    await env.DB.prepare("UPDATE plans SET text = ?, done = ?, done_at = ?, missed = ?, period = ?, start = ?, mins = ?, color = ?, priority = ?, status = ?, project = ?, due = ?, subtasks = ?, note = ?, sort = ?, updated_at = ? WHERE id = ?")
+      .bind(next.text, next.done, next.done_at, next.missed ? 1 : 0, next.period, next.start, next.mins, next.color, next.priority ?? null, next.status ?? null, next.project ?? null, next.due ?? null, next.subtasks ?? null, next.note ?? null, next.sort, next.updated_at, p.id).run();
+    return json({ plan: outPlan(next) });
   });
 
   on("DELETE", "/plans/:id", async ({ env, user, params }) => {
