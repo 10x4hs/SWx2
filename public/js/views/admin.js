@@ -9,8 +9,16 @@ import DOMPurify from "/vendor/purify.es.mjs";
 // 공지 마크다운 → 안전한 HTML (미리보기 · 맨 위 띠의 '자세히' 시트가 같이 써요). 원문 HTML 은 버리고, 링크는 http(s)·mailto 만 새 탭으로
 const annMd = new Marked({ gfm: true, breaks: true });
 annMd.use({ renderer: { html: () => "" } });
+export const ANN_IMG_SRC = /^\/api\/ann\/img\/[0-9a-f-]{8,64}\.(png|jpg|webp|gif)$/;
 export function annHtml(src) {
-  const frag = DOMPurify.sanitize(annMd.parse(String(src || "")), { RETURN_DOM_FRAGMENT: true, FORBID_TAGS: ["img", "style", "form", "input", "iframe"], FORBID_ATTR: ["style"] });
+  const frag = DOMPurify.sanitize(annMd.parse(String(src || "")), { RETURN_DOM_FRAGMENT: true, FORBID_TAGS: ["style", "form", "input", "iframe", "picture", "source", "svg"], FORBID_ATTR: ["style", "srcset"] });
+  // 사진은 우리 공지 사진 주소(/api/ann/img/…)만 남겨요
+  frag.querySelectorAll("img").forEach((im) => {
+    const src = im.getAttribute("src") || "";
+    if (!ANN_IMG_SRC.test(src)) return im.remove();
+    for (const a of [...im.attributes]) if (!["src", "alt"].includes(a.name)) im.removeAttribute(a.name);
+    im.loading = "lazy"; im.className = "ann-img";
+  });
   frag.querySelectorAll("a").forEach((a) => {
     if (!/^(https?:|mailto:)/i.test(a.getAttribute("href") || "")) return a.replaceWith(...a.childNodes);
     a.target = "_blank"; a.rel = "noopener noreferrer";
@@ -127,8 +135,8 @@ export function mount(root, ctx) {
         <div class="adm-ann-now"></div>
         <form class="adm-ann"><textarea class="input adm-ann-text" rows="6" maxlength="4000" placeholder="# 제목&#10;내용을 마크다운으로 써요" required></textarea>
           <div class="adm-ann-pv ann-md" hidden></div>
-          <p class="faint adm-ann-hint"># 제목 · **굵게** · *기울임* · - 목록 · [글자](https://주소) · \`코드\` — 첫 줄이 띠에 떠요</p>
-          <div class="adm-acts"><button type="button" class="btn sm ghost" data-ann-pv aria-pressed="false">미리보기</button><button class="btn sm">올리기</button></div></form></section>
+          <p class="faint adm-ann-hint"># 제목 · **굵게** · *기울임* · - 목록 · [글자](https://주소) · \`코드\` · 사진은 끌어다 놓거나 붙여 넣어도 돼요 — 첫 줄이 띠에 떠요</p>
+          <div class="adm-acts"><button type="button" class="btn sm ghost" data-ann-img>사진 넣기</button><input type="file" class="adm-ann-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden><button type="button" class="btn sm ghost" data-ann-pv aria-pressed="false">미리보기</button><button class="btn sm">올리기</button></div></form></section>
       <section class="adm-pane" data-pane="teams" ${tab === "teams" ? "" : "hidden"}><div class="adm-teams"><p class="faint">불러오는 중…</p></div></section>
       <section class="adm-pane" data-pane="decide" ${tab === "decide" ? "" : "hidden"}><div class="adm-decide"><p class="faint">불러오는 중…</p></div></section>`;
     drawRows(); drawBc(); drawAnn(); loadTeams(); loadDecide();
@@ -154,6 +162,23 @@ export function mount(root, ctx) {
     pv.hidden = !on; f.querySelector("textarea").hidden = on; b.setAttribute("aria-pressed", on); b.textContent = on ? "고쳐 쓰기" : "미리보기";
     if (on) pv.innerHTML = annHtml(f.querySelector("textarea").value) || '<p class="faint">비어 있어요</p>';
   };
+  // 사진: 버튼 · 끌어다 놓기 · 붙여 넣기 → 올리고 커서 자리에 ![](주소)
+  const annImgs = async (files) => {
+    const ta = body.querySelector(".adm-ann textarea"); if (!ta) return;
+    for (const f of files) {
+      if (!f.type.startsWith("image/")) continue;
+      try {
+        const { src } = await api.annImage(f);
+        const at = ta.selectionStart ?? ta.value.length, md = `${at && ta.value[at - 1] !== "\n" ? "\n" : ""}![](${src})\n`;
+        ta.setRangeText(md, at, ta.selectionEnd ?? at, "end"); ta.focus();
+      } catch (err) { toast(err.message, "err"); }
+    }
+  };
+  body.addEventListener("click", (e) => { if (e.target.closest("[data-ann-img]")) body.querySelector(".adm-ann-file")?.click(); });
+  body.addEventListener("change", (e) => { if (e.target.matches(".adm-ann-file")) { annImgs([...e.target.files]); e.target.value = ""; } });
+  body.addEventListener("paste", (e) => { if (!e.target.matches(".adm-ann textarea")) return; const fs = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith("image/")); if (fs.length) { e.preventDefault(); annImgs(fs); } });
+  body.addEventListener("dragover", (e) => { if (e.target.matches(".adm-ann textarea")) e.preventDefault(); });
+  body.addEventListener("drop", (e) => { if (!e.target.matches(".adm-ann textarea") || !e.dataTransfer?.files?.length) return; e.preventDefault(); annImgs([...e.dataTransfer.files]); });
   body.addEventListener("click", (e) => { const b = e.target.closest("[data-ann-pv]"); if (b) annPv(b.getAttribute("aria-pressed") !== "true"); });
   // 팀 전체
   const loadTeams = () => api.adminTeams().then(({ teams }) => {

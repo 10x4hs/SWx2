@@ -126,6 +126,17 @@ d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
     ok(r.status === 201 && annGot?.body === annSrc, `announcement: markdown stored raw and returned (${r.status})`);
     r = await call("r", "POST", "/admin/announcements", { body: "x" }); ok(r.status === 403, "announcement: members cannot post");
     if (annGot) await call("h", "DELETE", "/admin/announcements/" + annGot.id);
+    // 공지 사진: 관리자만 · 이미지 4종만 · 5MB 까지, 올린 사진은 일반 회원도 받아요
+    const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==", "base64");
+    const up = async (who, type, buf) => { const x = await fetch(BASE + "/api/admin/ann-img", { method: "POST", headers: { "content-type": type, "x-trio": "1", cookie: jar[who] || "" }, body: buf }); return { status: x.status, data: await x.json().catch(() => null) }; };
+    r = await up("r", "image/png", PNG); ok(r.status === 403, `ann image: members cannot upload (${r.status})`);
+    r = await up("h", "text/html", Buffer.from("<b>x</b>")); ok(r.status === 400, `ann image: non-image type rejected (${r.status})`);
+    r = await up("h", "image/png", Buffer.alloc(5 * 1024 * 1024 + 1)); ok(r.status === 400, `ann image: over 5MB rejected (${r.status})`);
+    r = await up("h", "image/png", PNG);
+    const img = r.data?.src ? await fetch(BASE + r.data.src, { headers: { cookie: jar.r } }) : null;
+    const anon = r.data?.src ? await fetch(BASE + r.data.src) : null;
+    ok(r.status === 201 && /^\/api\/ann\/img\/[0-9a-f-]+\.png$/.test(r.data.src) && img?.status === 200 && img.headers.get("content-type") === "image/png" && (await img.arrayBuffer()).byteLength === PNG.length && anon?.status === 401,
+      `ann image: admin upload ${r.status} → member fetch ${img?.status} · logged-out ${anon?.status}`);
     if (prevAnn) d1(`UPDATE announcements SET active = 1 WHERE id = '${prevAnn.id}'`);
     await call("r", "POST", "/features/request", { feature: "biz" });
     const req = (await call("h", "GET", "/admin/feature-requests")).data.requests.find((x) => x.user_id === rid && x.feature === "biz");

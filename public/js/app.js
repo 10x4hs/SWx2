@@ -146,16 +146,18 @@ function annSheet(src) {
   document.body.append(box);
   box.querySelector(".ann-close").focus();
   box.querySelector(".ann-md").innerHTML = adminView.annHtml(src);
+  box.querySelector(".ann-md").addEventListener("click", (e) => { const im = e.target.closest("img.ann-img"); if (im) window.open(im.src, "_blank", "noopener"); });
 }
 function annBar() {
   api.announcement().then(({ announcement: a }) => {
     document.querySelector(".ann-bar")?.remove();
     let hid = ""; try { hid = localStorage.getItem("trio-ann-hidden") || ""; } catch {}
     if (!a || a.id === hid) return;
-    const title = annTitle(a.body), more = title !== a.body.trim();
+    const title = annTitle(a.body).replace(/!\[[^\]]*\]\([^)]*\)/g, "").trim(), more = title !== a.body.trim();
+    const thumb = (a.body.match(/!\[[^\]]*\]\((\/api\/ann\/img\/[^)\s]+)\)/) || [])[1];
     const bar = document.createElement("div");
     bar.className = "ann-bar"; bar.setAttribute("role", "alert");
-    bar.innerHTML = `<span>📢 ${esc(title)}</span>${more ? `<button type="button" class="ann-more">자세히</button>` : ""}<button type="button" class="ann-x" aria-label="공지 닫기" title="닫기">✕</button>`;
+    bar.innerHTML = `${thumb && adminView.ANN_IMG_SRC.test(thumb) ? `<img class="ann-thumb" src="${esc(thumb)}" alt="">` : ""}<span>📢 ${esc(title)}</span>${more ? `<button type="button" class="ann-more">자세히</button>` : ""}<button type="button" class="ann-x" aria-label="공지 닫기" title="닫기">✕</button>`;
     bar.querySelector(".ann-x").addEventListener("click", () => { try { localStorage.setItem("trio-ann-hidden", a.id); } catch {} bar.remove(); });
     bar.querySelector(".ann-more")?.addEventListener("click", () => annSheet(a.body));
     document.body.append(bar);

@@ -3091,6 +3091,8 @@ html.rd-dragging, html.rd-dragging * { cursor: crosshair !important; -webkit-use
 .ann-md h1, .ann-md h2, .ann-md h3 { line-height: 1.3; margin: 1em 0 .4em; }
 .ann-md h1 { font-size: 1.35em; } .ann-md h2 { font-size: 1.2em; } .ann-md h3 { font-size: 1.05em; }
 .ann-md ul, .ann-md ol { padding-left: 1.4em; }
+.ann-md img.ann-img { display: block; max-width: 100%; height: auto; margin: .6em 0; border-radius: 10px; cursor: zoom-in; }
+.ann-bar .ann-thumb { flex: none; width: 30px; height: 30px; object-fit: cover; border-radius: 6px; }
 .ann-md a { color: #d93636; text-decoration: underline; }
 .ann-md code { font-family: var(--mono); font-size: .9em; padding: 1px 5px; border-radius: 5px; background: var(--hover); }
 .ann-md pre { padding: 10px 12px; border-radius: 8px; background: var(--hover); overflow: auto; } .ann-md pre code { padding: 0; background: none; }

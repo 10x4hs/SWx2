@@ -14,7 +14,7 @@ for (const t of ["pointerdown", "keydown"]) addEventListener(t, () => { swrUntil
 async function request(method, path, body) {
   let res;
   const headers = { "content-type": "application/json", "x-trio": "1" };
-  if (method === "GET" && performance.now() < swrUntil && !path.startsWith("/room")) headers["x-swr"] = "1";
+  if (method === "GET" && performance.now() < swrUntil && !path.startsWith("/room") && path !== "/announcement") headers["x-swr"] = "1";
   try {
     res = await fetch("/api" + path, {
       method,
@@ -61,6 +61,15 @@ export const api = {
   adminTeams: () => request("GET", "/admin/teams"),
   adminPlans: (id, from, to) => request("GET", `/admin/users/${id}/plans?from=${from}&to=${to}`),
   adminAnnounce: (body) => request("POST", "/admin/announcements", { body }),
+  // 공지 사진: 파일 그대로 올려요 → { src: "/api/ann/img/…" }
+  annImage: async (blob) => {
+    let res;
+    try { res = await fetch("/api/admin/ann-img", { method: "POST", credentials: "same-origin", headers: { "content-type": blob.type || "image/png", "x-trio": "1" }, body: blob }); }
+    catch { throw new ApiError(0, "서버에 연결할 수 없어요. 인터넷 연결을 확인해 주세요."); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(res.status, data.error || "사진을 올리지 못했어요.", data);
+    return data;
+  },
   adminAnnounceOff: (id) => request("DELETE", `/admin/announcements/${id}`),
   adminMessage: (text, ids) => request("POST", "/admin/message", ids ? { text, ids } : { text }),
   adminNewsExcuse: (id, day) => request("POST", `/admin/users/${id}/news-excuse`, { day }),

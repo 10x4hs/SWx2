@@ -1515,6 +1515,29 @@ try {
       await mp.reload(); await mp.waitForSelector(".ann-bar", { timeout: 8000 }).catch(() => {});
       const plain = await mp.evaluate(() => ({ t: document.querySelector(".ann-bar span")?.textContent, more: !!document.querySelector(".ann-bar .ann-more") }));
       ok(plain.t === "📢 그냥 한 줄 공지" && !plain.more, `한 줄 공지는 예전처럼 — "${plain.t}" · 자세히 ${plain.more}`);
+      // 공지 사진: 관리자가 글상자에 붙여 넣기 → 미리보기에 보이고 → 올리기 → 회원 자세히에서 사진이 실제로 떠요
+      await ap.click("[data-ann-pv]").catch(() => {}); await sleep(200);
+      if (await ap.evaluate(() => document.querySelector(".adm-ann textarea").hidden)) await ap.click("[data-ann-pv]");
+      await ap.fill(".adm-ann textarea", "# 사진 공지\n");
+      await ap.evaluate(async () => {
+        const b64 = "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAEklEQVR42mP8z8DwnwEJMBF2AwAk6gMBxyF5nQAAAABJRU5ErkJggg==";
+        const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)), dt = new DataTransfer();
+        dt.items.add(new File([bin], "a.png", { type: "image/png" }));
+        const ta = document.querySelector(".adm-ann textarea"); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+        ta.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+      });
+      await ap.waitForFunction(() => /!\[\]\(\/api\/ann\/img\//.test(document.querySelector(".adm-ann textarea").value), null, { timeout: 8000 }).catch(() => {});
+      const md = await ap.evaluate(() => document.querySelector(".adm-ann textarea").value);
+      await ap.click("[data-ann-pv]"); await ap.waitForFunction(() => document.querySelector(".adm-ann-pv img")?.complete, null, { timeout: 5000 }).catch(() => {});
+      const pvImg = await ap.evaluate(() => document.querySelector(".adm-ann-pv img.ann-img")?.naturalWidth || 0);
+      ok(/!\[\]\(\/api\/ann\/img\/[0-9a-f-]+\.png\)/.test(md) && pvImg > 0, `공지 사진 붙여 넣기 → 미리보기 — 글 ${JSON.stringify(md)} · 너비 ${pvImg}`);
+      await ap.click(".adm-ann button:not([type])"); await sleep(1500);
+      await mp.reload(); await mp.waitForSelector(".ann-bar", { timeout: 8000 }).catch(() => {});
+      const thumb = await mp.evaluate(() => !!document.querySelector(".ann-bar img.ann-thumb"));
+      await mp.click(".ann-bar .ann-more").catch(() => {});
+      await mp.waitForFunction(() => document.querySelector(".ann-sheet img.ann-img")?.complete, null, { timeout: 5000 }).catch(() => {});
+      const mImg = await mp.evaluate(() => { const im = document.querySelector(".ann-sheet img.ann-img"); return im ? { w: im.naturalWidth, mw: getComputedStyle(im).maxWidth } : null; });
+      ok(mImg?.w > 0 && mImg.mw === "100%" && thumb && !errs.length, `회원 자세히에서 공지 사진 — 너비 ${mImg?.w} · max-width ${mImg?.mw} · 띠 썸네일 ${thumb}${errs.length ? " — " + errs[0] : ""}`);
     } finally {
       await ac.close(); await mc.close();
       sq(`UPDATE announcements SET active = 0 WHERE created_by = (SELECT id FROM users WHERE username = '${adm}')`);
