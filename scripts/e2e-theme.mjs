@@ -3,6 +3,8 @@
 //   1) 기본값이면 css/theme.css 를 빼도 계산된 색이 똑같아요 (= 예전 화면 그대로)
 //   2) 프로필 메뉴 → '화면 꾸미기' → 강조 색(파랑) · 배경화면(세이지) · 투명도 줄이기 → 버튼 · 체크 · 배경 · 흐림이 바로 바뀌어요
 //   3) 계정에 저장(/api/apps/ui/state) → 새로 열어도 그대로 · 이 기기 사본을 지워도 서버 값으로 돌아와요
+//   5) v2: 리퀴드 글래스 세기(강하게) · 글씨체(둥근 고딕 — 그때만 웹 글꼴 받음) · 글자 크기(아주 크게 — 가로로 넘치지 않음) · 모서리 · 언어 자리
+//      + 배경화면 20개 × 밝게/어둡게 × 리퀴드 글래스 강하게 · 맑게 에서 글자 대비 (판 색을 배경 색 위에 겹쳐 계산 · 글자 4.5:1 이상)
 //   4) 키보드: 라디오 묶음에서 → 로 다음 색 · Esc 로 닫기 · '기본으로' → 처음 화면
 import { execFileSync } from "node:child_process";
 
@@ -15,11 +17,13 @@ export async function themeE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots 
     const cs = (el, pr) => (el ? getComputedStyle(el)[pr] : null), root = document.documentElement;
     const main = document.querySelector("#main"), bg = document.querySelector(".bg");
     return {
-      attrs: { theme: root.dataset.theme || "", wall: root.dataset.wall || "", accent: root.dataset.accent || "", glass: root.dataset.glass || "", solid: root.dataset.solid || "" },
+      attrs: { theme: root.dataset.theme || "", wall: root.dataset.wall || "", accent: root.dataset.accent || "", glass: root.dataset.glass || "", solid: root.dataset.solid || "",
+        fx: root.dataset.fx || "", font: root.dataset.font || "", size: root.dataset.size || "", radius: root.dataset.radius || "" },
       accent: getComputedStyle(root).getPropertyValue("--accent").trim(),
       bgImage: cs(bg, "backgroundImage"), bgFilter: cs(bg, "filter"),
       mainBg: cs(main, "backgroundColor"), mainBlur: cs(main, "backdropFilter"),
       body: cs(document.body, "backgroundColor"),
+      font: cs(document.body, "fontFamily"), zoom: cs(document.querySelector("#main > .host"), "zoom"),
     };
   });
   const server = async () => (await (await ctx.request.get(BASE + "/api/apps/ui/state", { headers: H })).json());
@@ -42,7 +46,7 @@ export async function themeE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots 
     // 2) 창 열기 → 강조 색 · 배경화면 · 투명도 줄이기
     step = "2 창";
     await openPanel();
-    const radios = await p.evaluate(() => ["theme", "wall", "accent", "glass"].map((g) => document.querySelectorAll(`[data-group="${g}"][role=radiogroup] [role=radio]`).length));
+    const radios = await p.evaluate(() => ["theme", "wall", "accent", "glass", "fx", "font", "size", "radius"].map((g) => document.querySelectorAll(`[data-group="${g}"][role=radiogroup] [role=radio]`).length));
     await p.click('.thm-dialog [data-group=accent] [data-v="blue"]'); await sleep(100);
     await p.click('.thm-dialog [data-group=wall] [data-v="sage"]'); await sleep(100);
     await p.click(".thm-switch"); await sleep(250);
@@ -50,17 +54,17 @@ export async function themeE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots 
     const btnBg = await p.evaluate(() => getComputedStyle(document.querySelector(".thm-dialog .btn.accent")).backgroundColor);
     await shot("panel");
     const accentOk = c.accent && c.accent !== a.accent && btnBg !== "rgba(0, 0, 0, 0)" && /rgb\(0, 102, 204\)|rgb\(90, 169, 255\)/.test(btnBg);
-    ok(radios.join() === "3,11,7,2" && c.attrs.accent === "blue" && c.attrs.wall === "sage" && c.attrs.solid === "1" && accentOk && /radial-gradient/.test(c.bgImage) && c.bgImage !== a.bgImage && c.mainBlur === "none" && c.mainBg !== a.mainBg,
+    ok(radios.join() === "3,21,12,2,4,7,4,3" && c.attrs.accent === "blue" && c.attrs.wall === "sage" && c.attrs.solid === "1" && accentOk && /radial-gradient/.test(c.bgImage) && c.bgImage !== a.bgImage && c.mainBlur === "none" && c.mainBg !== a.mainBg,
       `${tv} · 꾸미기 바로 적용 — 라디오 ${radios.join("/")} · 강조 ${c.attrs.accent} (버튼 ${btnBg}) · 배경 ${c.attrs.wall} ${/radial-gradient/.test(c.bgImage)} · 불투명 ${c.attrs.solid} (흐림 ${c.mainBlur} · 판 ${c.mainBg})`);
 
     // 키보드: 강조 색 묶음에서 → 로 다음(보라), 다시 ← 로 파랑 · Esc 로 닫고 포커스는 메뉴 버튼으로
     step = "2 키보드";
     await p.focus('.thm-dialog [data-group=accent] [data-v="blue"]'); await p.keyboard.press("ArrowRight"); await sleep(120);
-    const k1 = await p.evaluate(() => [document.documentElement.dataset.accent, document.activeElement?.dataset.v, document.querySelector('.thm-dialog [data-group=accent] [data-v="purple"]').getAttribute("aria-checked")]);
+    const k1 = await p.evaluate(() => [document.documentElement.dataset.accent, document.activeElement?.dataset.v, document.querySelector('.thm-dialog [data-group=accent] [data-v="indigo"]').getAttribute("aria-checked")]);
     await p.keyboard.press("ArrowLeft"); await sleep(120);
     await p.keyboard.press("Escape"); await sleep(200);
     const closed = await p.evaluate(() => !document.querySelector(".thm-dialog"));
-    ok(k1.join() === "purple,purple,true" && closed, `${tv} · 꾸미기 키보드 — → 다음 색 ${k1.join("/")} · Esc 닫기 ${closed}`);
+    ok(k1.join() === "indigo,indigo,true" && closed, `${tv} · 꾸미기 키보드 — → 다음 색 ${k1.join("/")} · Esc 닫기 ${closed}`);
 
     // 3) 계정에 저장 → 새로 열어도 · 이 기기 사본을 지워도
     step = "3 저장";
@@ -86,6 +90,82 @@ export async function themeE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots 
     const srv2 = await server();
     ok(f === "orange" && srv2.data.accent === "orange", `${tv} · 꾸미기 409 — 다른 기기 값으로 맞춤 (화면 ${f} · 서버 ${srv2.data.accent})`);
 
+    // 5) v2 — 리퀴드 글래스 · 글씨체 · 글자 크기 · 모서리
+    step = "5 v2";
+    const fontLinkBefore = await p.evaluate(() => !!document.getElementById("thm-font-round"));
+    await p.click(".thm-switch"); await sleep(150); // 투명도 줄이기 끄기 (켜져 있으면 흐림이 없어요)
+    await p.click('.thm-dialog [data-group=fx] [data-v="strong"]'); await sleep(80);
+    await p.click('.thm-dialog [data-group=glass] [data-v="clear"]'); await sleep(80);
+    await p.click('.thm-dialog [data-group=wall] [data-v="hills"]'); await sleep(80);
+    await p.click('.thm-dialog [data-group=font] [data-v="round"]'); await sleep(80);
+    await p.click('.thm-dialog [data-group=size] [data-v="xl"]'); await sleep(80);
+    await p.click('.thm-dialog [data-group=radius] [data-v="round"]'); await sleep(900);
+    const v = await look();
+    const extra = await p.evaluate(async () => {
+      const main = document.querySelector("#main"), dock = document.querySelector(".rail.dock, .rail");
+      await document.fonts.ready;
+      return {
+        link: !!document.getElementById("thm-font-round"), fontOk: document.fonts.check('16px "Gowun Dodum"', "가"),
+        dockShadow: dock ? getComputedStyle(dock).boxShadow : "", r: getComputedStyle(document.documentElement).getPropertyValue("--r").trim(),
+        slot: !!document.querySelector('.thm-dialog [data-slot="lang"]'), solidOff: !document.documentElement.dataset.solid,
+      };
+    });
+    await shot("v2-panel");
+    ok(v.attrs.fx === "strong" && v.attrs.font === "round" && v.attrs.size === "xl" && v.attrs.radius === "round" && extra.solidOff
+      && /blur\(51px\)/.test(v.mainBlur) && /saturate\(2\.4\)|saturate\(240%\)/.test(v.mainBlur) && /inset/.test(extra.dockShadow)
+      && /Gowun Dodum/.test(v.font) && extra.link && !fontLinkBefore && v.zoom === (w < 520 ? "1.12" : "1.25") && extra.fontOk && extra.r === "28px" && extra.slot,
+      `${tv} · 꾸미기 v2 바로 적용 — 리퀴드 ${v.attrs.fx} (흐림 ${v.mainBlur}) · 글씨체 ${v.attrs.font} (링크 ${fontLinkBefore}→${extra.link} · 받음 ${extra.fontOk}) · 크기 ${v.attrs.size} (zoom ${v.zoom}) · 모서리 ${extra.r} · 언어 자리 ${extra.slot}`);
+    // 아주 크게여도 화면들이 가로로 넘치지 않아요 (창을 닫고 몇 화면 돌아봐요)
+    await p.click(".thm-foot [data-close]"); await sleep(300);
+    const over = [], pre = [];
+    for (const h of ["#/", "#/calendar", "#/diary", "#/notes", "#/study"]) {
+      await go(h, 1800);
+      // 보통 크기에서도 원래 옆으로 밀리는 화면(예: 폰 Diary 잔디)은 그만큼은 봐줘요 — 크게 해서 더 넘치는 것만 잡아요
+      const o = await p.evaluate(() => {
+        const m = document.querySelector("#main"), host = m?.querySelector(".host"), d = document.documentElement.dataset;
+        const r = { sw: m?.scrollWidth || 0, cw: m?.clientWidth || 0, doc: document.documentElement.scrollWidth - innerWidth, zoom: host ? getComputedStyle(host).zoom : "" };
+        const sz = d.size; delete d.size; r.base = m ? m.scrollWidth : 0; d.size = sz;
+        return r;
+      });
+      const z = w < 520 ? "1.12" : "1.25"; // 폰은 덜 키워요 (theme.css)
+      if (o.base > o.cw + 2) pre.push(`${h} ${o.base}/${o.cw}`); // 보통에서도 이미 넘쳐요 (이 PR 과 무관 — 따로 알려만)
+      else if (o.sw > o.cw + 2 || o.doc > 1 || o.zoom !== z) over.push(`${h} ${o.sw}/${o.cw} doc+${o.doc} z${o.zoom}`);
+      if (h === "#/calendar") await shot("v2-xl-plan");
+    }
+    ok(!over.length, `${tv} · 글자 아주 크게 — 가로 넘침 없음${over.length ? " — " + over.join(" · ") : ""}${pre.length ? " (보통 크기에서도 원래 넘치는 곳: " + pre.join(" · ") + ")" : ""}`);
+    // 글자 대비: 배경화면 20개 × 밝게/어둡게 × 리퀴드 글래스 강하게 + 맑게 (가장 비치는 조합)
+    const cr = await p.evaluate(() => {
+      const root = document.documentElement, d = root.dataset, keep = { ...d };
+      const probe = document.createElement("i"); document.body.append(probe);
+      const rgba = (s) => { const m = s.match(/[\d.]+/g)?.map(Number) || [0, 0, 0]; if (/^color\(srgb/.test(s)) return [m[0] * 255, m[1] * 255, m[2] * 255, m[3] ?? 1]; return [m[0], m[1], m[2], m[3] ?? 1]; };
+      const col = (v) => { probe.style.color = ""; probe.style.color = v; return rgba(getComputedStyle(probe).color); };
+      const lum = ([r, g, b]) => { const f = (c) => { c /= 255; return c <= .03928 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+      const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+      const over = ([r, g, b, a], [R, G, B]) => [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a)];
+      const walls = [...document.querySelectorAll('[data-group=wall] [data-v]')].map((b) => b.dataset.v).filter(Boolean);
+      const list = walls.length ? walls : ["ash","sand","sage","aurora","smoke","tide","bloom","ember","grove","dusk","hills","bay","dune","peach","lagoon","nebula","prism","flow","lava","drift"];
+      let worst = { r: 99 };
+      d.fx = "strong"; d.glass = "clear"; delete d.solid;
+      for (const th of ["light", "dark"]) for (const w of list) {
+        d.theme = th; d.wall = w;
+        const cs = getComputedStyle(root), glass = col("var(--glass)"), ink = col("var(--ink)");
+        for (const k of ["--wp-base", "--wp-1", "--wp-2", "--wp-3", "--s1", "--s2", "--s3", "--s4", "--s5"]) {
+          const v = cs.getPropertyValue(k).trim(); if (!v) continue;
+          const r = ratio(ink, over(glass, col(v)));
+          if (r < worst.r) worst = { r: +r.toFixed(2), th, w, k };
+        }
+      }
+      probe.remove();
+      for (const k of Object.keys(d)) delete d[k]; Object.assign(d, keep);
+      return worst;
+    });
+    ok(cr.r >= 4.5, `${tv} · 리퀴드 글래스 강하게 · 맑게 글자 대비 — 가장 낮은 곳 ${cr.r}:1 (${cr.th} ${cr.w} ${cr.k})`);
+    let srv4 = null;
+    for (let i = 0; i < 15; i++) { srv4 = await server(); if (srv4.data?.size === "xl") break; await sleep(300); }
+    ok(srv4?.data?.fx === "strong" && srv4.data.font === "round" && srv4.data.size === "xl" && srv4.data.radius === "round" && JSON.stringify(srv4.data).length < 4000,
+      `${tv} · 꾸미기 v2 저장 — 서버 ${JSON.stringify(srv4?.data)}`);
+    await openPanel();
+
     // 4) 기본으로 → 처음 화면 그대로
     step = "4 기본으로";
     await p.click("#thm-reset"); await sleep(200);
@@ -96,7 +176,7 @@ export async function themeE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots 
     const back = JSON.stringify({ ...g, attrs: 0 }) === JSON.stringify({ ...a, attrs: 0 });
 
     const realErrs = () => getErrs().filter((e) => !/409 \(Conflict\)/.test(e)); // 409 = 다른 기기 값과 맞추는 정상 흐름 (theme.js 가 서버 값을 받아요)
-    ok(!g.attrs.wall && !g.attrs.accent && !g.attrs.solid && back && srv3?.data?.accent === "default" && srv3.data.wall === "default" && srv3.data.solid === false && !realErrs().length,
+    ok(!g.attrs.wall && !g.attrs.accent && !g.attrs.solid && !g.attrs.fx && !g.attrs.font && !g.attrs.size && !g.attrs.radius && back && srv3?.data?.accent === "default" && srv3.data.wall === "default" && srv3.data.solid === false && !realErrs().length,
       `${tv} · 꾸미기 기본으로 — 속성 없음 · 처음 색 그대로 ${back} · 서버 ${srv3?.data?.accent}/${srv3?.data?.wall}${realErrs().length ? " — " + realErrs()[0] : ""}`);
   } catch (e) { ok(false, `${tv} · 화면 꾸미기 (${step}) — ${String(e.message).split("\n")[0]}`); }
   finally { await p.keyboard.press("Escape").catch(() => {}); }

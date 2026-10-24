@@ -7,15 +7,20 @@
    - CIM(#/cim) · SW 종이 교과서(#/sw) · MBA(#/mba) · 뉴스(#/news) 는 자기 바탕색 · 자기 색표를 그대로 둬요. 바탕은 원래부터 불투명(!important)이라
      배경화면 · 유리 설정이 안 닿고, 강조 색도 그 안에서는 원래 글자색으로 되돌려요 (설계된 색표 · 읽기 대비를 지키려고).
    - 그 밖의 화면(홈 · Plan · Obsidian · Study · Message · Diary …)은 모두 따라가요.
+   v2 (2026-10-25): data-fx 리퀴드 글래스 세기 · data-font 글씨체 · data-size 글자 크기 · data-radius 모서리 · 배경화면 20개(사진 같은 장면 · 움직이는 것 3개) · 강조 색 12개.
+   - 글씨체: CIM · SW · MBA · 뉴스 · 쉽게 읽기(.ezw)는 자기 글꼴을 그대로 둬요 (읽기용으로 고른 글꼴이라서 · 손글씨/고정폭으로 긴 글을 읽으면 힘들어요).
+   - 글자 크기: 그 화면들도 따라가요 (본문 판 .main 안의 .host 를 zoom 으로 — px 로 쓴 크기 · 간격도 같이 커지고 줄이 다시 흘러요). Dock · 창 · 메뉴는 그대로.
    선택자 앞의 :root:root 는 tokens.css 의 :root[data-theme] 규칙(0,2,0)보다 확실히 이기려고 겹쳐 쓴 거예요. */
 
 /* ---------- 강조 색 ---------- */
 /* 밝은 화면: 흰 글자를 얹어도 · 글자로 써도 4.5:1 이 넘는 짙은 값 / 어두운 화면: 밝은 값 + 짙은 글자 (지금 다크의 흰 버튼 + 검은 글자와 같은 결) */
 :root {
   --ac-blue: #0066CC; --ac-purple: #8E3FBF; --ac-pink: #C8204E; --ac-orange: #AD4E00; --ac-green: #1C7A37; --ac-graphite: #5C5C63;
+  --ac-indigo: #4B47C9; --ac-red: #C42B1C; --ac-yellow: #7F6300; --ac-teal: #00727F;
 }
 :root[data-theme="dark"] {
   --ac-blue: #5AA9FF; --ac-purple: #C99BF5; --ac-pink: #FF7A9A; --ac-orange: #FFAA4D; --ac-green: #5ED38A; --ac-graphite: #B4B4BC;
+  --ac-indigo: #9C9AFF; --ac-red: #FF7B6E; --ac-yellow: #FFD54A; --ac-teal: #4FD3DF;
 }
 :root:root[data-accent="blue"] { --ac: var(--ac-blue); }
 :root:root[data-accent="purple"] { --ac: var(--ac-purple); }
@@ -23,6 +28,11 @@
 :root:root[data-accent="orange"] { --ac: var(--ac-orange); }
 :root:root[data-accent="green"] { --ac: var(--ac-green); }
 :root:root[data-accent="graphite"] { --ac: var(--ac-graphite); }
+:root:root[data-accent="indigo"] { --ac: var(--ac-indigo); }
+:root:root[data-accent="red"] { --ac: var(--ac-red); }
+:root:root[data-accent="yellow"] { --ac: var(--ac-yellow); }
+:root:root[data-accent="teal"] { --ac: var(--ac-teal); }
+:root:root[data-accent="multi"] { --ac: var(--ac-blue); } /* 여러 색 = macOS 처럼: 기본은 파랑, 화면마다 자기 색 (아래) */
 :root:root[data-accent] {
   --accent: var(--ac);
   --accent-soft: color-mix(in srgb, var(--ac) 16%, transparent);
@@ -30,6 +40,14 @@
   --sel: color-mix(in srgb, var(--ac) 28%, transparent);
 }
 :root:root[data-accent][data-theme="dark"] { --accent-soft: color-mix(in srgb, var(--ac) 22%, transparent); --on-accent: #111114; --sel: color-mix(in srgb, var(--ac) 34%, transparent); }
+/* 여러 색: 화면마다 자기 색 (Plan 초록 · Diary 분홍 · Obsidian 보라 · Study 주황 · 나머지 파랑) */
+:root[data-accent="multi"] .host-plan { --ac: var(--ac-green); }
+:root[data-accent="multi"] .host-diary { --ac: var(--ac-pink); }
+:root[data-accent="multi"] :is(.host-graph, .host-notes) { --ac: var(--ac-purple); }
+:root[data-accent="multi"] .host-study { --ac: var(--ac-orange); }
+:root[data-accent="multi"] :is(.host-plan, .host-diary, .host-graph, .host-notes, .host-study) {
+  --accent: var(--ac); --accent-soft: color-mix(in srgb, var(--ac) 16%, transparent); --sel: color-mix(in srgb, var(--ac) 28%, transparent);
+}
 /* 자기 색표가 있는 화면은 원래대로 (위 머리말) */
 :root[data-accent] :is(.host-cim, .host-dev, .host-mba, .host-news) {
   --accent: var(--ink); --accent-soft: color-mix(in srgb, var(--ink) 8%, transparent); --on-accent: var(--on-ink); --sel: var(--accent-soft);
@@ -72,13 +90,85 @@
 :root[data-theme="dark"][data-wall="grove"], [data-theme="dark"] [data-wp="grove"] { --wp-base: #06100A; --wp-1: #13432C; --wp-2: #1C3B1A; --wp-3: #0F503B; }
 :root[data-theme="dark"][data-wall="dusk"], [data-theme="dark"] [data-wp="dusk"] { --wp-base: #0F0A16; --wp-1: #402566; --wp-2: #5C2C2F; --wp-3: #2B2B6E; }
 
+/* ---------- 배경화면 v2: 사진 같은 장면 (메시 그라디언트 · 그림 파일 없이) ----------
+   --wp-1 은 리퀴드 글래스 판에 비치는 색(틴트)으로도 써요. 밝은/어두운 화면마다 색만 바꾸고 모양은 같아요. */
+[data-wp] { --wp-img: initial; } /* 작은 그림(견본)이 앱 배경의 장면을 물려받지 않게 — 장면 견본은 아래에서 다시 넣어요 */
+/* 언덕 — 맑은 하늘 아래 겹친 초록 언덕 (macOS Sonoma 결) */
+:root[data-wall="hills"], [data-wp="hills"] { --wp-base: #BFD9F2; --wp-1: #9CC79A; --s1: #EAF3FB; --s2: #F7E3C4; --s3: #8DBE88; --s4: #5E9E6A; --s5: #3F7F55; }
+:root[data-theme="dark"][data-wall="hills"], [data-theme="dark"] [data-wp="hills"] { --wp-base: #0C1426; --wp-1: #1F4A36; --s1: #1B2C4F; --s2: #4A3352; --s3: #1F4A36; --s4: #163828; --s5: #0D251B; }
+:root[data-wall="hills"], [data-wp="hills"] { --wp-img:
+  radial-gradient(140% 70% at 90% 128%, var(--s5) 0 52%, transparent 52.4%),
+  radial-gradient(120% 60% at 10% 120%, var(--s4) 0 50%, transparent 50.4%),
+  radial-gradient(150% 62% at 60% 118%, var(--s3) 0 52%, transparent 52.4%),
+  radial-gradient(70% 40% at 70% 52%, var(--s2), transparent 70%),
+  linear-gradient(180deg, var(--s1), var(--wp-base) 70%); }
+/* 바닷가 — 해 질 녘 바다와 수평선 (Big Sur 결) */
+:root[data-wall="bay"], [data-wp="bay"] { --wp-base: #F4D6C6; --wp-1: #8FB8DA; --s1: #FBE7D2; --s2: #F6B9A5; --s3: #7FB1D6; --s4: #3F79AE; }
+:root[data-theme="dark"][data-wall="bay"], [data-theme="dark"] [data-wp="bay"] { --wp-base: #1A1030; --wp-1: #123A63; --s1: #3A1E4A; --s2: #7A2E4A; --s3: #123A63; --s4: #08203E; }
+:root[data-wall="bay"], [data-wp="bay"] { --wp-img:
+  radial-gradient(30% 22% at 64% 56%, var(--s2), transparent 70%),
+  linear-gradient(180deg, transparent 58%, var(--s3) 58.2%, var(--s4) 100%),
+  linear-gradient(180deg, var(--s1), var(--wp-base) 58%); }
+/* 사막 — 모래 언덕의 부드러운 곡선 */
+:root[data-wall="dune"], [data-wp="dune"] { --wp-base: #F2D9B8; --wp-1: #E0B488; --s1: #FBEBD5; --s2: #E9C49A; --s3: #D7A273; --s4: #C08458; }
+:root[data-theme="dark"][data-wall="dune"], [data-theme="dark"] [data-wp="dune"] { --wp-base: #150D08; --wp-1: #5A3420; --s1: #2A1A12; --s2: #4A2C1B; --s3: #5A3420; --s4: #733F22; }
+:root[data-wall="dune"], [data-wp="dune"] { --wp-img:
+  radial-gradient(90% 55% at 20% 112%, var(--s4) 0 49%, transparent 50%),
+  radial-gradient(110% 60% at 85% 104%, var(--s3) 0 50%, transparent 51%),
+  radial-gradient(130% 58% at 40% 96%, var(--s2) 0 50%, transparent 51%),
+  linear-gradient(180deg, var(--s1), var(--wp-base)); }
+/* 복숭아 · 석호 · 성운 — iOS 기본 배경 같은 큰 색 덩어리 */
+:root[data-wall="peach"], [data-wp="peach"] { --wp-base: #FFE3D3; --wp-1: #FFB59A; --s1: #FF9E8A; --s2: #FFD29A; --s3: #F59CC0; }
+:root[data-theme="dark"][data-wall="peach"], [data-theme="dark"] [data-wp="peach"] { --wp-base: #1C0E10; --wp-1: #7A2E2A; --s1: #8A2F2E; --s2: #7A4A1E; --s3: #6A1F4A; }
+:root[data-wall="lagoon"], [data-wp="lagoon"] { --wp-base: #D8F1EE; --wp-1: #6FD0C8; --s1: #6FD0C8; --s2: #A9E4F5; --s3: #F6F0DC; }
+:root[data-theme="dark"][data-wall="lagoon"], [data-theme="dark"] [data-wp="lagoon"] { --wp-base: #041415; --wp-1: #0B5552; --s1: #0B5552; --s2: #0C3C5A; --s3: #1E2A24; }
+:root[data-wall="nebula"], [data-wp="nebula"] { --wp-base: #E9E3F7; --wp-1: #C6A9F0; --s1: #C6A9F0; --s2: #F4B4D8; --s3: #A8C4F5; }
+:root[data-theme="dark"][data-wall="nebula"], [data-theme="dark"] [data-wp="nebula"] { --wp-base: #07060F; --wp-1: #3E1E70; --s1: #4A1E80; --s2: #6E1A55; --s3: #13306E; }
+:root:is([data-wall="peach"], [data-wall="lagoon"], [data-wall="nebula"]), :is([data-wp="peach"], [data-wp="lagoon"], [data-wp="nebula"]) { --wp-img:
+  radial-gradient(60% 70% at 0% 0%, var(--s1), transparent 70%),
+  radial-gradient(55% 65% at 100% 10%, var(--s2), transparent 70%),
+  radial-gradient(70% 70% at 30% 100%, var(--s3), transparent 72%),
+  radial-gradient(50% 50% at 90% 95%, var(--s1), transparent 70%),
+  var(--wp-base); }
+/* 프리즘 — 빛이 갈라지는 무지개 (가장자리는 바탕색으로 흐려져요) */
+:root[data-wall="prism"], [data-wp="prism"] { --wp-base: #EEF0F8; --wp-1: #B9C8F2; --s-a: .5; }
+:root[data-theme="dark"][data-wall="prism"], [data-theme="dark"] [data-wp="prism"] { --wp-base: #0A0B12; --wp-1: #2A2E66; --s-a: .38; }
+:root[data-wall="prism"], [data-wp="prism"] { --wp-img:
+  radial-gradient(80% 80% at 50% 50%, transparent 30%, var(--wp-base) 78%),
+  conic-gradient(from 200deg at 60% 40%, rgb(255 94 98 / var(--s-a)), rgb(255 196 87 / var(--s-a)), rgb(110 220 150 / var(--s-a)), rgb(90 170 255 / var(--s-a)), rgb(190 120 255 / var(--s-a)), rgb(255 94 98 / var(--s-a))),
+  var(--wp-base); }
+/* 움직이는 셋 (흐르는 빛 · 용암 · 물빛) — 아주 천천히 (44~70초). 움직임 줄이기 · 절전(data-still)이면 멈춘 그림.
+   transform 만 움직여서 다시 그리기는 합성 단계에서만 일어나요 */
+:root[data-wall="flow"], [data-wp="flow"] { --wp-base: #E4ECFA; --wp-1: #9FD7E8; --s1: #9FD7E8; --s2: #C8B5F5; --s3: #F6C6DD; }
+:root[data-theme="dark"][data-wall="flow"], [data-theme="dark"] [data-wp="flow"] { --wp-base: #06091A; --wp-1: #0E4A66; --s1: #0E4A66; --s2: #3A1F7A; --s3: #6A1E4E; }
+:root[data-wall="lava"], [data-wp="lava"] { --wp-base: #FBE2D2; --wp-1: #FF9A6B; --s1: #FF9A6B; --s2: #FFC36B; --s3: #F06B8A; }
+:root[data-theme="dark"][data-wall="lava"], [data-theme="dark"] [data-wp="lava"] { --wp-base: #120604; --wp-1: #7A1E0E; --s1: #8A2A0E; --s2: #6A3A06; --s3: #6E0E2A; }
+:root[data-wall="drift"], [data-wp="drift"] { --wp-base: #DDF0EC; --wp-1: #8AD8C2; --s1: #8AD8C2; --s2: #9CC2F2; --s3: #D2F0A8; }
+:root[data-theme="dark"][data-wall="drift"], [data-theme="dark"] [data-wp="drift"] { --wp-base: #03100E; --wp-1: #0A5146; --s1: #0A5146; --s2: #0E2F66; --s3: #2E4A0E; }
+:root:is([data-wall="flow"], [data-wall="lava"], [data-wall="drift"]), :is([data-wp="flow"], [data-wp="lava"], [data-wp="drift"]) { --wp-img:
+  radial-gradient(45% 55% at 20% 25%, var(--s1), transparent 70%),
+  radial-gradient(45% 50% at 80% 30%, var(--s2), transparent 70%),
+  radial-gradient(55% 55% at 50% 85%, var(--s3), transparent 70%),
+  radial-gradient(35% 40% at 85% 85%, var(--s1), transparent 70%),
+  var(--wp-base); }
+:root:is([data-wall="flow"], [data-wall="lava"], [data-wall="drift"]) .bg { inset: -18%; }
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-wall="flow"]:not([data-still]) .bg { animation: thm-flow 56s ease-in-out infinite alternate; }
+  :root[data-wall="lava"]:not([data-still]) .bg { animation: thm-lava 44s ease-in-out infinite alternate; }
+  :root[data-wall="drift"]:not([data-still]) .bg { animation: thm-flow 70s ease-in-out infinite alternate-reverse; }
+  /* 자기 바탕이 있는 화면(CIM · SW · MBA · 뉴스)에서는 안 보이니 멈춰요 */
+  body:has(:is(.host-cim, .host-dev, .host-mba, .host-news)) .bg { animation-play-state: paused; }
+}
+@keyframes thm-flow { from { transform: translate3d(-4%, -3%, 0) rotate(-4deg) scale(1.05); } to { transform: translate3d(4%, 3%, 0) rotate(5deg) scale(1.15); } }
+@keyframes thm-lava { 0% { transform: translate3d(3%, -4%, 0) scale(1.08) rotate(0deg); } 50% { transform: translate3d(-4%, 2%, 0) scale(1.16) rotate(8deg); } 100% { transform: translate3d(2%, 4%, 0) scale(1.06) rotate(-6deg); } }
+
 /* 그리기: 앱 뒤(.bg) · 꾸미기 창의 작은 그림. :where 로 낮춰 둬서 CIM · SW · MBA · 뉴스의 `body:has(.host-…) .bg` (흐리게 · 옅게)는 그대로 이겨요 */
 :where(:root[data-wall]) .bg, .thm-sw:not([data-wp="default"]), .thm-pv-wall:not([data-wp="default"]) {
-  background:
+  background: var(--wp-img,
     radial-gradient(58% 55% at 12% 14%, var(--wp-1), transparent 70%),
     radial-gradient(52% 58% at 90% 18%, var(--wp-2), transparent 72%),
     radial-gradient(78% 62% at 58% 106%, var(--wp-3), transparent 74%),
-    var(--wp-base);
+    var(--wp-base));
 }
 :where(:root[data-wall]) .bg { filter: none; }
 :where(:root[data-wall]) .bg::after { background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .3)); }
@@ -87,6 +177,96 @@
 /* ---------- 유리: 맑게 ---------- */
 :root:root[data-glass="clear"] { --glass: rgba(250, 250, 252, .42); --paper: rgba(255, 255, 255, .56); --panel: rgba(255, 255, 255, .38); --glass-3: rgba(255, 255, 255, .86); }
 :root:root[data-glass="clear"][data-theme="dark"] { --glass: rgba(28, 28, 31, .38); --paper: rgba(24, 24, 27, .58); --panel: rgba(255, 255, 255, .04); --glass-3: rgba(38, 38, 42, .88); }
+
+/* ---------- 리퀴드 글래스 (data-fx: soft · medium · strong — 없으면 예전 유리) ----------
+   Apple Liquid Glass 에서 가져온 것: 위쪽 반사광 + 가장자리 빛(안쪽 1px 하이라이트 네 면 + 안쪽 은은한 빛) · 더 센 흐림 + 채도 올림(굴절처럼 색이 번져 보여요) ·
+   배경화면 색이 비치는 반투명 판(--wp-1 로 살짝 물들여요) · 부드러운 깊이 그림자 · 연속 곡률 모서리(corner-shape 를 아는 브라우저만).
+   토큰만 바꿔서 Dock · 위 막대 · 본문 판 · 카드 · 메뉴 · 시트 · 팝오버가 같이 바뀌어요. 투명도 줄이기(data-solid, 아래)가 늘 이겨요. */
+:root:root[data-fx] {
+  --fx-base: 250 250 252; --fx-k: 1;
+  --fx-tint: color-mix(in srgb, rgb(var(--fx-base)) 86%, var(--wp-1, rgb(var(--fx-base))));
+  --glass: color-mix(in srgb, var(--fx-tint) calc(var(--fx-a) * var(--fx-k) * 100%), transparent);
+  --glass-3: color-mix(in srgb, var(--fx-tint) calc(var(--fx-a3) * 100%), transparent);
+  --paper: color-mix(in srgb, rgb(255 255 255) calc(min(1, var(--fx-a) * var(--fx-k) + .12) * 100%), transparent);
+  --glass-edge: rgba(255, 255, 255, var(--fx-rim));
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, calc(var(--fx-rim) + .15)), inset 0 -1px 0 rgba(255, 255, 255, calc(var(--fx-rim) * .35)),
+    inset 1px 0 0 rgba(255, 255, 255, calc(var(--fx-rim) * .4)), inset -1px 0 0 rgba(255, 255, 255, calc(var(--fx-rim) * .4)),
+    inset 0 0 22px rgba(255, 255, 255, calc(var(--fx-rim) * .3));
+  --shadow: var(--glass-hi), 0 1px 2px rgba(0, 0, 0, .05), 0 22px 50px -24px rgba(0, 0, 0, .32);
+  --blur: saturate(var(--fx-sat)) blur(var(--fx-blur));
+  --blur-lg: saturate(var(--fx-sat)) blur(calc(var(--fx-blur) * 1.5)) brightness(1.02);
+  --lg-edge: rgba(255, 255, 255, calc(var(--fx-rim) * .6)); --lg-edge-hi: rgba(255, 255, 255, var(--fx-rim));
+  --lg-top: inset 0 1px 0 rgba(255, 255, 255, calc(var(--fx-rim) + .15)), inset 0 0 14px rgba(255, 255, 255, calc(var(--fx-rim) * .25));
+  --lg-lift: 0 1px 2px rgba(0, 0, 0, .05), 0 14px 34px -18px rgba(0, 0, 0, .3);
+  --fx-sheen: linear-gradient(155deg, rgba(255, 255, 255, calc(var(--fx-rim) * .5)) 0%, rgba(255, 255, 255, 0) 34%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, calc(var(--fx-rim) * .22)) 100%);
+}
+:root:root[data-fx][data-theme="dark"] {
+  --fx-base: 30 30 34;
+  --paper: color-mix(in srgb, rgb(24 24 27) calc(min(1, var(--fx-a) * var(--fx-k) + .14) * 100%), transparent);
+  --glass-edge: rgba(255, 255, 255, calc(var(--fx-rim) * .5));
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, calc(var(--fx-rim) * .7)), inset 0 -1px 0 rgba(255, 255, 255, calc(var(--fx-rim) * .14)),
+    inset 1px 0 0 rgba(255, 255, 255, calc(var(--fx-rim) * .2)), inset -1px 0 0 rgba(255, 255, 255, calc(var(--fx-rim) * .2)),
+    inset 0 0 22px rgba(255, 255, 255, calc(var(--fx-rim) * .1));
+  --shadow: var(--glass-hi), 0 1px 2px rgba(0, 0, 0, .3), 0 26px 60px -26px rgba(0, 0, 0, .75);
+  --lg-edge: rgba(255, 255, 255, calc(var(--fx-rim) * .3)); --lg-edge-hi: rgba(255, 255, 255, calc(var(--fx-rim) * .55));
+  --lg-top: inset 0 1px 0 rgba(255, 255, 255, calc(var(--fx-rim) * .6)), inset 0 0 14px rgba(255, 255, 255, calc(var(--fx-rim) * .08));
+  --lg-lift: 0 1px 2px rgba(0, 0, 0, .3), 0 16px 38px -18px rgba(0, 0, 0, .7);
+  --fx-sheen: linear-gradient(155deg, rgba(255, 255, 255, calc(var(--fx-rim) * .22)) 0%, rgba(255, 255, 255, 0) 32%, rgba(255, 255, 255, 0) 72%, rgba(255, 255, 255, calc(var(--fx-rim) * .08)) 100%);
+}
+/* 세기: 판 진하기(a) · 메뉴 진하기(a3) · 흐림 · 채도 · 테 빛. 맑게(data-glass=clear)는 판 진하기에 .72 를 곱해요 */
+:root:root[data-fx="soft"] { --fx-a: .8; --fx-a3: .95; --fx-blur: 18px; --fx-sat: 160%; --fx-rim: .55; }
+:root:root[data-fx="medium"] { --fx-a: .62; --fx-a3: .88; --fx-blur: 26px; --fx-sat: 200%; --fx-rim: .7; }
+:root:root[data-fx="strong"] { --fx-a: .46; --fx-a3: .8; --fx-blur: 34px; --fx-sat: 240%; --fx-rim: .85; }
+:root:root[data-fx="soft"][data-theme="dark"] { --fx-a: .76; --fx-a3: .95; }
+:root:root[data-fx="medium"][data-theme="dark"] { --fx-a: .58; --fx-a3: .9; }
+:root:root[data-fx="strong"][data-theme="dark"] { --fx-a: .44; --fx-a3: .84; }
+:root:root[data-fx][data-glass="clear"] { --fx-k: .72; }
+/* 큰 판 · 메뉴에는 비스듬한 반사광 한 겹 (배경색 위에 얹어서 원래 색은 그대로) */
+:root[data-fx] :is(.main.glass, .main:has(.host-home), .rail.dock, .pw-dialog, .palette, .me-menu, .cm, .relpop) { background-image: var(--fx-sheen); }
+:root[data-fx] :is(.me-menu, .cm, .relpop) { box-shadow: var(--glass-hi), var(--e-4); }
+@supports (corner-shape: superellipse(1.5)) {
+  :root[data-fx] :is(.main.glass, .main:has(.host-home), .rail.dock, .glass, .me-menu, .palette, .cm, .relpop, .toast) { corner-shape: superellipse(1.5); }
+}
+/* 흐림을 못 하는 브라우저: 판을 거의 불투명하게 (글자가 배경 위에 바로 앉지 않게) */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root:root[data-fx] { --fx-a: .94 !important; --fx-a3: .98 !important; --fx-k: 1 !important; }
+}
+
+/* ---------- 글씨체 (data-font) — 고른 글꼴만 받아요 (theme.js loadFont · index.html 머리 스크립트) ---------- */
+:root:root[data-font="pretendard"] { --font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif; --font-display: var(--font); }
+:root:root[data-font="system"] { --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+:root:root[data-font="round"] { --font: "Gowun Dodum", "Pretendard Variable", -apple-system, sans-serif; --font-display: var(--font); }
+:root:root[data-font="serif"] { --font: "Noto Serif KR", "Apple SD Gothic Neo", serif; --font-display: var(--font); }
+:root:root[data-font="hand"] { --font: "Gaegu", "Pretendard Variable", cursive; --font-display: var(--font); }
+:root:root[data-font="mono"] { --font: "JetBrains Mono", D2Coding, "Pretendard Variable", ui-monospace, monospace; --font-display: var(--font); }
+/* 손글씨(Gaegu)는 글자 키가 작아서 같은 px 이면 작아 보여요 → 키 높이를 맞춰요 (font-size-adjust 를 아는 브라우저만 · 크기 줄은 그대로) */
+:root[data-font="hand"] body { font-size-adjust: .54; }
+:root[data-font="hand"] :is(.host-cim, .host-dev, .host-mba, .host-news) { font-size-adjust: none; }
+/* 공부 화면은 자기 글꼴 그대로 (머리말) — 원래 --font 값으로 되돌려요 */
+:root[data-font] :is(.host-cim, .host-dev, .host-mba, .host-news) {
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Pretendard Variable", "Geist", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Pretendard Variable", "Geist", "Apple SD Gothic Neo", system-ui, sans-serif;
+}
+
+/* ---------- 글자 크기 (data-size) — 본문 판 안의 화면만 zoom (px 로 쓴 크기 · 간격이 같이 커지고 너비에 맞춰 다시 흘러요) ---------- */
+:root[data-size="s"] { --font-scale: .92; }
+:root[data-size="l"] { --font-scale: 1.12; }
+:root[data-size="xl"] { --font-scale: 1.25; }
+:root[data-size] .main > .host { zoom: var(--font-scale); }
+/* 폰: 화면이 좁아서 많이 키우면 한 줄에 들어갈 자리가 모자라요 (390px 에서 1.25 면 CSS 너비가 291px — 가장 작은 폰보다 좁아요). 그래서 덜 키워요 */
+@media (max-width: 520px) {
+  :root[data-size="l"] { --font-scale: 1.06; }
+  :root[data-size="xl"] { --font-scale: 1.12; }
+}
+
+/* ---------- 모서리 (data-radius) — 토큰(--r …)을 쓰는 판 + Dock · 프로필 메뉴 ---------- */
+:root:root[data-radius="round"] { --r: 28px; --r-xl: 30px; --r-lg: 22px; --r-md: 15px; --r-sm: 10px; --r-xs: 6px; }
+:root:root[data-radius="square"] { --r: 10px; --r-xl: 12px; --r-lg: 9px; --r-md: 7px; --r-sm: 5px; --r-xs: 3px; }
+:root[data-radius="round"] .rail.dock { border-radius: 32px; }
+:root[data-radius="square"] .rail.dock { border-radius: 12px; }
+:root[data-radius="round"] .me-menu { border-radius: 20px; }
+:root[data-radius="square"] .me-menu { border-radius: 9px; }
 
 /* ---------- 투명도 줄이기: 불투명한 판 · 흐림 없음 (맑게보다 우선) ---------- */
 :root:root:root[data-solid] { --glass: #F4F4F6; --glass-3: #FFFFFF; --paper: var(--paper-solid); --panel: rgba(0, 0, 0, .03); --blur: none; --blur-lg: none; }
@@ -152,4 +332,32 @@
   .thm-ac { width: calc((100% - 12px) / 7); min-width: 40px; font-size: 11px; }
   .thm-accents { gap: 6px 2px; justify-content: space-between; }
   .thm-sync { flex-basis: 100%; }
+}
+
+/* ---------- 꾸미기 창 v2: 리퀴드 글래스 세기 · 글씨체 · 글자 크기 · 모서리 · 끼워 넣는 줄(언어) ---------- */
+.thm-sub { margin: 12px 0 7px; font: 600 12px/1.2 var(--font); color: var(--ink-3); }
+.thm-pv-card { zoom: var(--font-scale, 1); }
+.thm-fonts { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.thm-font { display: grid; gap: 4px; justify-items: start; padding: 9px 11px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--panel);
+  font: 500 11.5px/1.2 var(--font); color: var(--ink-3); cursor: pointer; text-align: left; }
+.thm-font .thm-fs { font-size: 17px; line-height: 1.25; color: var(--ink); white-space: nowrap; }
+.thm-font[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); color: var(--ink-2); }
+.thm-font[data-v="default"] .thm-fs { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Pretendard Variable", "Apple SD Gothic Neo", system-ui, sans-serif; }
+.thm-font[data-v="pretendard"] .thm-fs { font-family: "Pretendard Variable", Pretendard, sans-serif; }
+.thm-font[data-v="system"] .thm-fs { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+.thm-font[data-v="round"] .thm-fs { font-family: "Gowun Dodum", sans-serif; }
+.thm-font[data-v="serif"] .thm-fs { font-family: "Noto Serif KR", serif; }
+.thm-font[data-v="hand"] .thm-fs { font-family: "Gaegu", cursive; font-size: 19px; }
+.thm-font[data-v="mono"] .thm-fs { font-family: "JetBrains Mono", D2Coding, ui-monospace, monospace; font-size: 15px; }
+.thm-sw { position: relative; }
+.thm-mv, .thm-mv-key { display: inline-block; width: 0; height: 0; border-style: solid; border-width: 4px 0 4px 6px; border-color: transparent transparent transparent currentColor; }
+.thm-mv { position: absolute; right: 5px; bottom: 5px; color: rgba(255, 255, 255, .95); filter: drop-shadow(0 0 2px rgba(0, 0, 0, .5)); }
+.thm-mv-key { color: var(--ink-3); }
+.thm-dot[data-ac="indigo"] { --dot: var(--ac-indigo); } .thm-dot[data-ac="red"] { --dot: var(--ac-red); } .thm-dot[data-ac="yellow"] { --dot: var(--ac-yellow); }
+.thm-dot[data-ac="teal"] { --dot: var(--ac-teal); }
+.thm-dot[data-ac="multi"] { --dot: var(--ac-blue); background: conic-gradient(var(--ac-red), var(--ac-orange), var(--ac-yellow), var(--ac-green), var(--ac-teal), var(--ac-blue), var(--ac-purple), var(--ac-pink), var(--ac-red)); }
+@media (max-width: 520px) {
+  .thm-ac { width: calc((100% - 10px) / 6); }
+  .thm-fonts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .thm-seg button { padding-inline: 4px; }
 }
