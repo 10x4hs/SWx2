@@ -94,8 +94,10 @@ export async function themeE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots 
     let srv3 = null;
     for (let i = 0; i < 10; i++) { srv3 = await server(); if (srv3.data?.accent === "default") break; await sleep(300); }
     const back = JSON.stringify({ ...g, attrs: 0 }) === JSON.stringify({ ...a, attrs: 0 });
-    ok(!g.attrs.wall && !g.attrs.accent && !g.attrs.solid && back && srv3?.data?.accent === "default" && srv3.data.wall === "default" && srv3.data.solid === false && !getErrs().length,
-      `${tv} · 꾸미기 기본으로 — 속성 없음 · 처음 색 그대로 ${back} · 서버 ${srv3?.data?.accent}/${srv3?.data?.wall}${getErrs().length ? " — " + getErrs()[0] : ""}`);
+
+    const realErrs = () => getErrs().filter((e) => !/409 \(Conflict\)/.test(e)); // 409 = 다른 기기 값과 맞추는 정상 흐름 (theme.js 가 서버 값을 받아요)
+    ok(!g.attrs.wall && !g.attrs.accent && !g.attrs.solid && back && srv3?.data?.accent === "default" && srv3.data.wall === "default" && srv3.data.solid === false && !realErrs().length,
+      `${tv} · 꾸미기 기본으로 — 속성 없음 · 처음 색 그대로 ${back} · 서버 ${srv3?.data?.accent}/${srv3?.data?.wall}${realErrs().length ? " — " + realErrs()[0] : ""}`);
   } catch (e) { ok(false, `${tv} · 화면 꾸미기 (${step}) — ${String(e.message).split("\n")[0]}`); }
   finally { await p.keyboard.press("Escape").catch(() => {}); }
 }
