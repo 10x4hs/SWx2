@@ -1,0 +1,149 @@
+/* 집중 섬 — 화면 맨 위 가운데의 검은 알약(Dynamic Island 모양). js/focus-timer.js 가 그려요.
+   #timer[hidden] = 접힘(세션이 있으면 작은 알약) · hidden 없음 = 펼친 카드. 라이트 · 다크 모두 섬은 검은색 그대로예요.
+   맨 위 가운데 쌓는 순서: 사칭 띠(.imp-bar, 맨 위 전체) → 섬 → 공지(.ann-bar) → 무료 체험 띠(.trial-bar, 공지가 있으면 아래쪽으로). */
+
+:root {
+  --isl-top: max(10px, env(safe-area-inset-top));
+  --isl-h: 36px;
+  --isl-gap: 8px;
+  --isl-below: calc(var(--isl-top) + var(--isl-h) + var(--isl-gap)); /* 섬 바로 밑 */
+  --isl-bg: #0b0b0d;
+  --isl-ink: #f5f5f7;
+  --isl-ink-2: rgba(235, 235, 245, .62);
+  --isl-ink-3: rgba(235, 235, 245, .38);
+  --isl-line: rgba(255, 255, 255, .1);
+  --isl-accent: #30d158;  /* 숫자 · 링 */
+  --isl-amber: #ff9f0a;   /* 일시정지 */
+  --isl-red: #ff453a;     /* 멈추기 */
+  --isl-spring: cubic-bezier(.34, 1.36, .64, 1);
+}
+body:has(.imp-bar) { --isl-top: 44px; }
+@media (max-width: 860px) { :root { --isl-top: max(8px, env(safe-area-inset-top)); --isl-h: 32px; } }
+
+/* ---------- 자리 ---------- */
+#timer.island {
+  position: fixed; top: var(--isl-top); left: 50%; z-index: 10000;
+  transform: translateX(-50%);
+  display: block; width: max-content; max-width: calc(100vw - 24px);
+  color: var(--isl-ink); font-family: var(--font);
+}
+/* 쉬는 중 · 접힘 = 아무것도 없음. 세션이 있으면 hidden 이어도 알약으로 보여요 (styles.css 의 [hidden] !important 를 이겨야 해서 !important) */
+#timer.island.is-live[hidden] { display: block !important; }
+#timer.island[hidden] .isl-card { display: none; }       /* 접힘 = 알약만 */
+#timer.island:not([hidden]) .isl-pill { display: none; } /* 펼침 = 카드만 */
+
+/* 섬이 떠 있는 동안 다른 맨 위 띠는 섬 밑으로 */
+body:has(#timer.is-live) .ann-bar { top: var(--isl-below); }
+body:has(#timer.is-live):not(:has(.ann-bar)) .trial-bar { top: var(--isl-below); }
+body:has(#timer.is-live) .pwa-net { top: var(--isl-below); }
+/* 섬 자리만큼 앱을 아래로 내려서 각 화면의 맨 위 머리줄(고정 머리줄 · 가운데 탭 포함)을 가리지 않아요.
+   공지 · 체험 띠는 원래처럼 화면 위에 떠요 (섬이 없을 때와 같아요) */
+.shell { transition: padding-top .3s var(--ease, ease); }
+body:has(#timer.is-live) .shell { padding-top: var(--isl-below); }
+@media (max-width: 860px) {
+  /* 공지 + 체험 띠가 같이 있으면 체험 띠는 아래로 가는데, 폰에선 Dock 위에 둬요 */
+  body:has(#timer.is-live):has(.ann-bar) .trial-bar { bottom: calc(max(12px, env(safe-area-inset-bottom)) + 76px); }
+}
+
+/* ---------- 작은 알약 ---------- */
+.isl-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: var(--isl-h); padding: 0 14px 0 8px; border-radius: 999px;
+  border: 1px solid var(--isl-line); background: var(--isl-bg); color: var(--isl-ink);
+  box-shadow: 0 10px 28px -12px rgba(0, 0, 0, .6), 0 2px 6px rgba(0, 0, 0, .18);
+  font: 600 13px/1 var(--font); letter-spacing: -.01em; white-space: nowrap; cursor: pointer;
+  interpolate-size: allow-keywords; /* 글이 바뀔 때 너비가 부드럽게 (지원하는 브라우저) */
+  transition: width .3s var(--isl-spring), transform .18s var(--ease, ease);
+  transform-origin: 50% 0;
+}
+.isl-pill:hover { transform: scale(1.03); }
+.isl-pill:active { transform: scale(.97); }
+.isl-pill:focus-visible { outline: 2px solid var(--isl-accent); outline-offset: 3px; }
+.isl-word { color: var(--isl-ink-2); max-width: 50vw; overflow: hidden; text-overflow: ellipsis; }
+.isl-time { font: 650 14px/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em; color: var(--isl-accent); }
+.island[data-phase="pause"] .isl-time { color: var(--isl-amber); }
+.island.flash .isl-word { color: var(--isl-ink); }
+.island[data-phase="done"] .isl-pill { padding-left: 10px; cursor: default; }
+.isl-ok { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--isl-accent); color: #04140a; }
+.isl-ok svg { stroke-width: 3; }
+.isl-msg { color: var(--isl-ink); }
+
+/* 진행 링 */
+.isl-ring { flex: none; transform: rotate(-90deg); }
+.isl-ring circle { fill: none; stroke-width: 4; }
+.isl-ring .trk { stroke: rgba(255, 255, 255, .14); }
+.isl-ring .prog { stroke: var(--isl-accent); stroke-linecap: round; transition: stroke-dashoffset .3s linear; }
+.island[data-phase="pause"] .isl-ring .prog { stroke: var(--isl-amber); }
+.isl-ring.sm { width: 20px; height: 20px; }
+.isl-ring.lg { width: 44px; height: 44px; }
+.isl-ring.lg circle { stroke-width: 3.2; }
+
+/* ---------- 펼친 카드 ---------- */
+.isl-card {
+  width: min(360px, calc(100vw - 24px)); box-sizing: border-box;
+  display: grid; gap: 12px; padding: 14px 16px 16px;
+  border-radius: 28px; border: 1px solid var(--isl-line); background: var(--isl-bg); color: var(--isl-ink);
+  box-shadow: 0 24px 60px -18px rgba(0, 0, 0, .7), 0 4px 14px rgba(0, 0, 0, .25);
+  transform-origin: 50% 0;
+}
+.isl-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.isl-title { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--isl-ink-2); letter-spacing: -.005em; }
+.isl-x { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .08); color: var(--isl-ink-2); cursor: pointer; }
+.isl-x:hover { background: rgba(255, 255, 255, .16); color: var(--isl-ink); }
+.isl-label {
+  width: 100%; box-sizing: border-box; margin: -6px 0 0; padding: 6px 10px; border-radius: 10px;
+  border: 1px solid transparent; background: rgba(255, 255, 255, .06); color: var(--isl-ink);
+  font: 500 13.5px/1.3 var(--font);
+}
+.isl-label::placeholder { color: var(--isl-ink-3); }
+.isl-label:hover { background: rgba(255, 255, 255, .09); }
+.isl-label:focus { outline: none; border-color: rgba(48, 209, 88, .55); background: rgba(255, 255, 255, .1); }
+.isl-big { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 2px 0; }
+.isl-clock { font: 300 54px/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.05em; color: var(--isl-accent); }
+.island[data-phase="pause"] .isl-clock { color: var(--isl-amber); }
+.isl-big.idle .isl-clock { color: var(--isl-ink); }
+.isl-acts { display: flex; align-items: center; gap: 10px; }
+.isl-gap { flex: 1; }
+.isl-btn {
+  height: 44px; padding: 0 18px; border-radius: 999px; border: 0;
+  background: rgba(255, 255, 255, .12); color: var(--isl-ink); font: 650 14px/1 var(--font); cursor: pointer;
+}
+.isl-btn:hover { background: rgba(255, 255, 255, .2); }
+.isl-round { width: 48px; height: 48px; display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer; }
+.isl-round svg { stroke-width: 2.6; }
+.isl-round.amber { background: rgba(255, 159, 10, .2); color: var(--isl-amber); }
+.isl-round.amber:hover { background: rgba(255, 159, 10, .3); }
+.isl-round.red { background: rgba(255, 69, 58, .2); color: var(--isl-red); }
+.isl-round.red:hover { background: rgba(255, 69, 58, .3); }
+.isl-card .tm-plan { margin: -2px 0 0; font-size: 12px; color: var(--isl-ink-3); }
+.isl-link { border: 0; padding: 0; background: none; color: var(--isl-ink-2); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.isl-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.isl-chip {
+  height: 36px; border-radius: 12px; border: 1px solid var(--isl-line); background: rgba(255, 255, 255, .06);
+  color: var(--isl-ink-2); font: 600 13px/1 var(--font); cursor: pointer;
+}
+.isl-chip:hover { background: rgba(255, 255, 255, .12); color: var(--isl-ink); }
+.isl-chip[aria-pressed="true"] { background: var(--isl-ink); border-color: var(--isl-ink); color: #0b0b0d; }
+.isl-go {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px;
+  border: 0; border-radius: 999px; background: var(--isl-accent); color: #04140a; font: 700 14.5px/1 var(--font); cursor: pointer;
+}
+.isl-go:hover { filter: brightness(1.08); }
+.isl-card :is(button, input):focus-visible { outline: 2px solid var(--isl-accent); outline-offset: 2px; }
+.isl-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- 움직임 (0.3초 안팎의 스프링) ---------- */
+.island.opening .isl-card { animation: isl-open .32s var(--isl-spring) both; }
+.island.opening .isl-card > * { animation: isl-fade .2s .08s ease-out both; }
+.island.closing .isl-pill { animation: isl-close .3s var(--isl-spring) both; }
+.island.appearing[hidden] .isl-pill { animation: isl-pop .34s var(--isl-spring) both; }
+.island.leaving .isl-pill { animation: isl-out .26s ease-in forwards; }
+@keyframes isl-open { from { transform: scale(.42, .16); opacity: .2; border-radius: 999px; } }
+@keyframes isl-fade { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes isl-close { from { transform: scale(1.7, 1.9); opacity: .3; } }
+@keyframes isl-pop { from { transform: scale(.55); opacity: 0; } }
+@keyframes isl-out { to { transform: scale(.55); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .island .isl-card, .island .isl-card > *, .island .isl-pill { animation: none !important; transition: none !important; }
+  .shell { transition: none; }
+}

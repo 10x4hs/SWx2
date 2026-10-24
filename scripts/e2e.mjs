@@ -24,6 +24,7 @@
 //   ⑳ Obsidian — 누르기 = 고르기 · 고른 채 다른 점 = 연결(서버 · 새로 열어도) · 두 번 = 들어가기(연결 안 생김) · ← 뒤로(확대 · 고른 점 그대로) · 노트 ← 뒤로 · 우클릭 만들기(누른 자리) · 이름 · 연결 · 선 우클릭 끊기 · 서버에서 지운 뒤 되살리기 · ⌘Z/⌘⇧Z · Dock 한 칸 위 (2026-10-22)
 //   ㉓ 관계 종류 — 연결 → '어떤 관계예요?' 칩 → 색 · 점선 선 · ⌘Z · 선 우클릭 관계 바꾸기 · Esc = 관련 · AI 제안함 확정/거절 · 맨 위 노트 자리 칩 (2026-10-24, e2e-onto.mjs)
 //   ㉔ 화면 꾸미기 — 기본값은 theme.css 를 빼도 같은 색 · 프로필 메뉴 창에서 강조 색 · 배경화면 · 투명도 줄이기 바로 적용 · 키보드 · 계정 저장(새로 열기 · 사본 없이) · 409 면 서버 값 · 기본으로 (2026-10-24, e2e-theme.mjs)
+//   ㉔ 집중 섬 — 집중 중에만 맨 위 가운데 검은 알약 · 눌러서 카드(+5분 · 일시정지 · 멈추기) · 다른 화면 · 체험 띠/공지와 안 겹침 · 끝 알약 (2026-10-24, e2e-island.mjs)
 //   ㉑ 계획 되돌리기 — 옮기기 · 길이 · 이름 · 지우기 · 추가 · ⌘Z/⌘⇧Z/Ctrl+Z/Ctrl+Y, 서버 값으로 확인 (2026-10-22)
 //   ㉒ 일기 블록 편집기 되돌리기 — 글 · Enter · "- " 목록을 한 단계씩, 커서 자리 · 저장된 값까지 (2026-10-22)
 //   ⑲ CIM 투자자산운용사 (미니멀) — Dock 'CIM' · 처음 안내 한 번 · 오늘(시험일 · 4단계 · 버튼 하나) · 오늘 공부(읽기 → 문제 · 새로 고침 이어서) · AI 패널(문맥 · 크기) · 공부(목록 · 한 장씩 · 목차 · 그림) · 시험(네 줄 · 저장 · 모의고사 · 숫자) · 옛 주소 · Dock 기억 (2026-10-22)
@@ -32,6 +33,7 @@ import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import { ontoE2E } from "./e2e-onto.mjs";
 import { themeE2E } from "./e2e-theme.mjs";
+import { islandE2E } from "./e2e-island.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
 const { chromium } = createRequire(import.meta.url)("playwright"); // NODE_PATH 로 다른 곳의 playwright 도 쓸 수 있어요
@@ -461,6 +463,9 @@ try {
     // ---------- ㉔ 화면 꾸미기 (2026-10-24, scripts/e2e-theme.mjs) — 기본값은 예전 그대로 · 강조 색 · 배경화면 · 투명도 줄이기 바로 적용 · 계정 저장 · 409 · 기본으로 ----------
     errs = [];
     await themeE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs: () => errs, shots: process.env.SHOTS || null });
+    // ---------- ㉔ 집중 섬 (2026-10-24, scripts/e2e-island.mjs) — Dock ⏱ 시작 · 두 화면 · +5분 · 일시정지 · Esc · 띠 겹침 없음 · 멈추기 · 끝 ----------
+    errs = [];
+    await islandE2E({ p, go, ok, tv, w, getErrs: () => errs, shots: process.env.SHOTS || null });
 
     // ---------- ⑫-b 단 나누기 · 수식 — 끝에 끌어 놓기 → 2단, "/2 columns", "/equation" KaTeX, 글 속 $..$ (2026-10-14) ----------
     try {
