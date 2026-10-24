@@ -38,10 +38,18 @@
   <link rel="stylesheet" href="/css/mba.css">
   <link rel="stylesheet" href="/css/dev.css">
   <link rel="stylesheet" href="/css/cim.css">
+  <link rel="stylesheet" href="/css/theme.css"><!-- 화면 꾸미기: 강조 색 · 배경화면 · 유리 (js/theme.js) -->
   <script>
-    // 기본은 다크 (레퍼런스 영상 4개 중 3개가 어두운 무대). 밝게를 고르면 그걸 기억해요.
-    let t = null; try { t = localStorage.getItem("trio-theme"); } catch {}
-    document.documentElement.dataset.theme = t || "dark";
+    // 화면 꾸미기를 첫 화면 전에 맞춰요 (깜빡임 없이) — js/theme.js 와 같은 규칙. 기본은 다크 (레퍼런스 영상 4개 중 3개가 어두운 무대).
+    (function () {
+      var d = document.documentElement, p = {}, mq = function (q) { try { return matchMedia(q).matches; } catch (e) { return false; } };
+      try { p = JSON.parse(localStorage.getItem("trio-ui") || "null") || { theme: localStorage.getItem("trio-theme") }; } catch (e) {}
+      d.dataset.theme = p.theme === "auto" ? (mq("(prefers-color-scheme: light)") ? "light" : "dark") : p.theme === "light" ? "light" : "dark";
+      if (/^(ash|sand|sage|aurora|smoke|tide|bloom|ember|grove|dusk)$/.test(p.wall)) d.dataset.wall = p.wall;
+      if (/^(blue|purple|pink|orange|green|graphite)$/.test(p.accent)) d.dataset.accent = p.accent;
+      if (p.glass === "clear") d.dataset.glass = "clear";
+      if (p.solid === true || mq("(prefers-reduced-transparency: reduce)")) d.dataset.solid = "1";
+    })();
   </script>
   <!-- modulepreload:start (node scripts/assets.mjs 가 써요) -->
   <link rel="modulepreload" href="/js/ai-command.js">
@@ -165,6 +173,8 @@
   <link rel="modulepreload" href="/js/room/library.js">
   <link rel="modulepreload" href="/js/room/shared.js">
   <link rel="modulepreload" href="/js/status.js">
+  <link rel="modulepreload" href="/js/theme-panel.js">
+  <link rel="modulepreload" href="/js/theme.js">
   <link rel="modulepreload" href="/js/undo.js">
   <link rel="modulepreload" href="/js/util.js">
   <link rel="modulepreload" href="/js/video-note.js">
