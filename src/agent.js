@@ -2,7 +2,7 @@
 // 모델이 답 대신 <<tool>>{"name":"web_search","args":{"q":"…"}}<</tool>> 한 줄을 내면 그 도구를 실행하고 결과를 넣어 다시 물어요. 최대 maxSteps 번.
 // 어느 회사 모델이든(Gemini·Groq·Cohere·MiMo·GLM·OpenRouter·Kilo·Ollama) 같은 방식으로 돼요 — 회사별 함수 호출 API 를 쓰지 않고 글로만 주고받아요.
 // 도구: web_search(웹 검색) · read_page(페이지 읽기) · search_notes(내 노트 찾기) · read_note(내 노트 읽기) · my_plans(내 계획 보기)
-import { aiText, TEXT_ORDER, orderFrom } from "./ai.js";
+import { aiText, TEXT_ORDER, orderFrom, PRIVATE_SAFE } from "./ai.js";
 
 // 모델이 꺾쇠를 하나 빼먹는 일이 잦아요(<<tool>…, …<</tool>, <tool>…</tool>) — 다 알아봐요
 const TOOL_RE = /<{1,2}\s*tool\s*>{1,2}\s*([\s\S]*?)\s*<{1,2}\s*\/\s*tool\s*>{1,2}/;
@@ -295,8 +295,10 @@ export function parseToolCall(text) {
 
 // system: 역할 프롬프트 · messages: [{role, content}] (마지막이 user) · tools: 쓸 도구 이름들 · prefer: 모델 id (없으면 기본 순서)
 // onStep({ name, args, summary }) 로 도구 실행을 알려줘요. 돌려주는 값: { text, model, steps }
-export async function runAgent(env, user, { system, messages, tools = Object.keys(TOOL_DOCS), prefer = null, maxSteps = 4, onStep = null, periods = [], preSearch = "auto", researchOn = null }) {
-  const order = orderFrom(prefer, TEXT_ORDER);
+export async function runAgent(env, user, { system, messages, tools = Object.keys(TOOL_DOCS), prefer = null, maxSteps = 4, onStep = null, periods = [], preSearch = "auto", researchOn = null, private: priv = false }) {
+  // private = 노트 · 계획 도구가 있거나 개인 글을 보내요 → PRIVATE_SAFE(Groq) 만, 안 되면 privateError (다른 회사로 넘어가지 않아요)
+  const order = priv ? PRIVATE_SAFE : orderFrom(prefer, TEXT_ORDER);
+  const opt = { private: priv };
   const sys = tools.length ? `${system}\n\n${toolPrompt(tools, maxSteps)}` : system;
   const convo = messages.map((m) => ({ role: m.role, content: m.content }));
   const steps = [];
@@ -308,7 +310,7 @@ export async function runAgent(env, user, { system, messages, tools = Object.key
     if (pre.note) convo[convo.length - 1] = { role: "user", content: `${convo[convo.length - 1].content}\n\n${pre.note}` };
   }
   for (let i = 0; i <= maxSteps; i++) {
-    const r = await aiText(env, sys, convo, order);
+    const r = await aiText(env, sys, convo, order, null, opt);
     used = r.used;
     const call = i < maxSteps ? parseToolCall(r.text) : null;
     if (!call || !tools.includes(call.name)) {
@@ -323,6 +325,6 @@ export async function runAgent(env, user, { system, messages, tools = Object.key
     convo.push({ role: "assistant", content: `<<tool>>${JSON.stringify(call)}<</tool>>` });
     convo.push({ role: "user", content: `[도구 결과 ${call.name}]\n${JSON.stringify(result).slice(0, 9000)}\n\n이 결과를 참고해서 계속해. (도구가 더 필요하면 한 줄만, 아니면 최종 답을 써. 최종 답에는 이번에 도구로 실제로 한 일과 그 결과만 써 — 앞 대화나 다른 날의 계획을 다시 나열하지 마.)` });
   }
-  const r = await aiText(env, sys, convo, order);
+  const r = await aiText(env, sys, convo, order, null, opt);
   return { text: stripToolLines(r.text), model: r.used, steps };
 }

@@ -84,6 +84,37 @@ async function embedQuery(env, q) {
   return v;
 }
 
+/**
+ * 노트마다 벡터 하나 (첫 조각 note:<id>:0) — Vectorize 에 이미 있는 벡터를 다시 써요. 없는 노트만 bge-m3 로 (저장은 안 해요 · 크론이 따로 넣어요).
+ * notes: [{ id, title, body }] · text(n): 없는 노트를 임베딩할 글. 돌려주는 것: notes 와 같은 순서의 길이 1 벡터 (못 구하면 null)
+ * 개인 노트 글은 Workers AI(내 계정) 밖으로 나가지 않아요 — 예전 brain.js 의 Cohere 임베딩을 대신해요 (2026-10-25)
+ */
+export async function noteVectors(env, userId, notes, { text = (n) => n.title + "\n" + (n.body || ""), maxEmbed = 80 } = {}) {
+  const out = new Array(notes.length).fill(null);
+  if (!notes.length) return out;
+  const vi = vecIndex(env), at = new Map(notes.map((n, i) => ["note:" + n.id + ":0", i]));
+  if (vi) {
+    const ids = [...at.keys()], done = [];
+    for (let i = 0; i < ids.length; i += 80) {
+      const part = ids.slice(i, i + 80);
+      const { results } = await env.DB.prepare(`SELECT id FROM chunks WHERE vec_state = 'done' AND user_id = ? AND id IN (${inList(part.length)})`).bind(userId, ...part).all();
+      done.push(...results.map((r) => r.id));
+    }
+    for (let i = 0; i < done.length; i += 20) {
+      try { for (const v of await vi.getByIds(done.slice(i, i + 20))) if (v?.values?.length && at.has(v.id)) out[at.get(v.id)] = Array.from(v.values); }
+      catch (e) { console.log("noteVectors getByIds", String(e?.message || e)); }
+    }
+  }
+  const miss = out.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0).slice(0, maxEmbed);
+  if (miss.length && env.AI) {
+    const texts = miss.map((i) => String(text(notes[i]) || " ").slice(0, EMBED_CHARS));
+    const vs = await embed(env, texts);
+    miss.forEach((i, j) => { out[i] = vs[j]; });
+    await addNeurons(env, neuronsFor(texts.reduce((a, t) => a + t.length, 0))).catch(() => {});
+  }
+  return out.map((v) => { if (!v) return null; const len = Math.hypot(...v) || 1; return v.map((x) => x / len); });
+}
+
 // ---------- 조각 만들기 ----------
 const embedText = (row) => (row.path + "\n" + row.text).slice(0, EMBED_CHARS);
 

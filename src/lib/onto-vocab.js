@@ -41,3 +41,30 @@ export const CONCEPTS = {
   Language: "외국어 공부 · 영어 단어 · 숙어 · 문법 · 시제 · 가정법 · 예문 · 표현 · 회화 · 발음 · 번역 · 토익 · 일본어 · 중국어",
   Life: "일상 생활 · 건강 · 운동 루틴 · 헬스 · 식단 · 요리 레시피 · 여행 계획 · 취미 · 가족 · 친구 · 감정 · 마음 · 잠 · 집안일 · 쇼핑",
 };
+
+// ---------- 나눠 묻기 (2026-10-25): ① 관계 종류만(방향 없이) → ② 방향만 (Jev 식 '작은 질문으로 쪼개기') ----------
+// 평가에서 가장 큰 실수가 방향(_inv)이라, 15개 선택지 한 질문에서 둘을 같이 묻지 않아요.
+export const TYPE_CRIT = {
+  is_a: "한 노트가 다른 노트의 한 종류예요 (예: 사과 · 과일)",
+  part_of: "한 노트가 다른 노트를 이루는 한 부분이에요 (예: 바퀴 · 자동차)",
+  example_of: "한 노트가 다른 노트의 구체적인 예시예요 (예: 삼성전자 · 대형주)",
+  causes: "한 노트가 다른 노트를 일으키거나 그 원인이에요 (예: 금리 인상 · 채권 가격 하락)",
+  contrasts_with: REL.contrasts_with.d,
+  prerequisite_of: "한 노트를 먼저 알아야 다른 노트를 이해할 수 있어요",
+  defined_by: "한 노트의 뜻이 다른 노트(개념 · 식)로 정의돼요",
+  related: REL.related.d,
+  none: "두 노트는 거의 관련이 없어요",
+};
+/** 방향 질문의 선택지 (forward = A → B 로 읽힘 · backward = B → A) */
+export const dirCriteria = (rel) => ({ forward: REL[rel].d, backward: REL[rel].inv });
+/** 종류 + 방향 → relCriteria 이름 (rel | rel_inv | none | unknown) */
+export function combineRel(rel, dir) {
+  if (!rel || rel === "none" || rel === UNKNOWN) return rel || UNKNOWN;
+  if (SYMMETRIC.has(rel)) return rel;
+  return dir === "forward" ? rel : dir === "backward" ? rel + "_inv" : UNKNOWN;
+}
+/** few-shot 한 줄 — 사용자가 확인한 관계(pos) · 거절한 제안(neg). rel 이 없으면 '관계 없음' */
+export function exampleLine(x, neg = false) {
+  if (!x.rel) return `- 「${x.a}」 · 「${x.b}」: 관계 없음${neg ? " (사용자가 관계 제안을 거절)" : ""}`;
+  return `- A=「${x.a}」 B=「${x.b}」: ${x.rel} (${REL[x.rel]?.d || ""})${neg ? " ← 사용자가 이 제안을 거절했어요. 비슷한 쌍에 같은 답을 고르지 마." : ""}`;
+}

@@ -1,6 +1,7 @@
 // AI 두뇌: 내 노트를 옵시디언처럼 정리하고(주제·#태그·[[링크]]·목차 노트), 새 개념 노트를 만들어요.
 // AI가 쓰는 부분은 노트 끝의 표시된 구역에만 들어가고, 다시 돌리면 그 구역만 바뀌어요.
 import { aiJson } from "./ai.js";
+import { noteVectors } from "./rag.js";
 import { runAgent, WRITE_TOOLS, runAgentTool, toolSummary, autoResearch } from "./agent.js";
 import { cleanImages, withImages } from "./vision.js";
 import { kstToday } from "./lib/day.js";
@@ -11,11 +12,8 @@ const AI_BLOCK_RE = /\n*<!-- ai:start -->[\s\S]*?<!-- ai:end -->\n*/g;
 const MOC_PREFIX = "MOC · ";
 const MAX_ORGANIZE = 80;          // 한 번에 정리하는 노트 수
 const PROMPT_BUDGET = 28_000;     // AI에게 보내는 본문 글자 수
-const EMBED_URL = "https://api.cohere.com/v2/embed";
-const EMBED_MODEL = "embed-multilingual-v3.0";
-const EMBED_BATCH = 96;           // Cohere 한 번에 최대 96개
-const EMBED_CHARS = 800;          // 노트마다 제목 + 앞부분만
-// 이 모델은 상관없는 한국어 노트끼리도 0.35~0.45가 나와요 (관련 노트는 0.5~0.8) → 0.5부터 후보로
+const EMBED_CHARS = 800;          // 벡터가 없는 노트는 제목 + 앞부분만 임베딩
+// bge-m3: 상관없는 한국어 노트끼리 0.35~0.47 쯤 (rag.js minCos 0.47 · onto.js 이웃 0.5 와 같은 눈금) → 0.5부터 후보로
 const SIM_MIN = 0.5;
 const SIM_TOP = 3;
 
@@ -25,29 +23,15 @@ const cleanTopic = (s) => cleanTitle(s).slice(0, 16);
 const cleanTag = (s) => String(s || "").replace(/^#/, "").trim().replace(/\s+/g, "_").replace(/[^\p{L}\p{N}_\-/]/gu, "").slice(0, 30);
 const isMoc = (n) => n.body.startsWith(MOC_MARK);
 
-// ---------- 비슷한 노트 찾기 (Cohere 임베딩) ----------
-// 키가 없거나 실패하면 null → 그냥 예전처럼 AI 혼자 링크를 골라요
-async function embedNotes(env, notes) {
-  if (!env.COHERE_API_KEY || notes.length < 2) return null;
-  const texts = notes.map((n) => `${n.title}\n${stripAi(n.body).slice(0, EMBED_CHARS)}`);
-  const out = [];
+// ---------- 비슷한 노트 찾기 (Workers AI bge-m3 — rag.js noteVectors) ----------
+// 노트 글은 Cohere 같은 바깥 회사로 보내지 않아요 (2026-10-25). 저장된 Vectorize 벡터를 다시 쓰고, 없는 노트만 bge-m3 로.
+// 실패하면 null → 그냥 예전처럼 AI 혼자 링크를 골라요
+async function embedNotes(env, userId, notes) {
+  if (notes.length < 2) return null;
   try {
-    for (let i = 0; i < texts.length; i += EMBED_BATCH) {
-      const batch = texts.slice(i, i + EMBED_BATCH);
-      const res = await fetch(EMBED_URL, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${env.COHERE_API_KEY}` },
-        body: JSON.stringify({ model: EMBED_MODEL, input_type: "search_document", embedding_types: ["float"], texts: batch, truncate: "END" }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!res.ok) return null;
-      const v = (await res.json()).embeddings?.float;
-      if (!Array.isArray(v) || v.length !== batch.length) return null;
-      out.push(...v);
-    }
-  } catch { return null; }
-  // 길이를 1로 맞춰 두면 코사인 유사도 = 내적
-  return out.map((v) => { const len = Math.hypot(...v) || 1; return v.map((x) => x / len); });
+    const vecs = await noteVectors(env, userId, notes, { text: (n) => `${n.title}\n${stripAi(n.body).slice(0, EMBED_CHARS)}` });
+    return vecs.some(Boolean) ? vecs : null;
+  } catch (e) { console.log("brain embed", String(e?.message || e)); return null; }
 }
 
 // 노트 id → 가장 비슷한 노트 제목 최대 3개
@@ -62,6 +46,7 @@ function similarMap(notes, vecs, targets) {
     notes.forEach((n, j) => {
       if (n.id === t.id) return;
       const b = vecs[j];
+      if (!b) return;
       let s = 0;
       for (let k = 0; k < a.length; k++) s += a[k] * b[k];
       if (s >= SIM_MIN) scored.push([s, n.title]);
@@ -80,7 +65,7 @@ const SYSTEM = [
 
 export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_NOTE }) {
   const ask = async (env, system, prompt, prefer = null) => {
-    try { return await aiJson(env, system, prompt, prefer); }
+    try { return await aiJson(env, system, prompt, prefer, { private: true }); } // 노트 제목 · 본문이 들어가요 → Groq 만
     catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
   };
 
@@ -151,7 +136,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
       const prefer = typeof b.model === "string" && b.model ? b.model : user.ai_model || null;
       // 늘 에이전트로: 필요하면 스스로 웹 검색 · 페이지 읽기 · 내 노트 찾기 (웹 토글이 켜져 있으면 먼저 한 번 검색하고 시작)
       const vis = await withImages(env, question, images);
-      const r = await runAgent(env, user, { system, messages: [{ role: "user", content: vis.text }], tools: ["web_search", "read_page", "search_notes", "read_note"], prefer, maxSteps: 4, preSearch: b.web === true ? true : "auto" });
+      const r = await runAgent(env, user, { system, messages: [{ role: "user", content: vis.text }], tools: ["web_search", "read_page", "search_notes", "read_note"], prefer, maxSteps: 4, preSearch: b.web === true ? true : "auto", private: true });
       return json({ text: r.text, model: r.model, steps: [vis.step, ...r.steps].filter(Boolean) });
     } catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
   });
@@ -166,7 +151,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     if (b.note_id && !one) fail(404, "정리할 노트를 찾을 수 없어요.");
     const targets = one ? [one] : notes.slice(0, MAX_ORGANIZE);
     const titles = notes.map((n) => n.title);
-    const [prev, vecs] = await Promise.all([knownTopics(env, user), embedNotes(env, notes)]);
+    const [prev, vecs] = await Promise.all([knownTopics(env, user), embedNotes(env, user.id, notes)]);
     const similar = similarMap(notes, vecs, targets);
 
     const per = Math.max(200, Math.floor(PROMPT_BUDGET / targets.length));
@@ -411,7 +396,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     const READ = new Set(["web_search", "read_page", "search_notes", "read_note"]);
     // 에이전트 바퀴: AI 가 research 를 내면 그 도구를 돌려 결과를 붙이고 다시 물어요 (최대 2번)
     for (let round = 0; ; round++) {
-      try { ({ data, used } = await aiJson(env, system, makePrompt(), typeof b.model === "string" && b.model ? b.model : user.ai_model || null)); }
+      try { ({ data, used } = await aiJson(env, system, makePrompt(), typeof b.model === "string" && b.model ? b.model : user.ai_model || null, { private: true })); } // 계획 · 노트 → Groq 만
       catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
       const want = (Array.isArray(data?.research) ? data.research : []).filter((r) => r && READ.has(r.name)).slice(0, 3);
       const acting = Array.isArray(data?.actions) && data.actions.some((a) => a && WRITE_TOOLS.has(a.name));
@@ -465,7 +450,7 @@ export function registerBrain(on, { json, body, fail, uid, now, indexStmts, MAX_
     try {
       const vis = await withImages(env, msgs[msgs.length - 1].content, images);
       if (vis.note) msgs[msgs.length - 1] = { role: "user", content: vis.text };
-      const r0 = await runAgent(env, user, { system, messages: msgs, tools: ["web_search", "read_page", "search_notes", "read_note", "day_plans", "add_plan", "update_plan", "delete_plan"], prefer: typeof b.model === "string" && b.model ? b.model : user.ai_model || null, maxSteps: 4, periods, preSearch: b.web === true ? true : "auto" });
+      const r0 = await runAgent(env, user, { system, messages: msgs, tools: ["web_search", "read_page", "search_notes", "read_note", "day_plans", "add_plan", "update_plan", "delete_plan"], prefer: typeof b.model === "string" && b.model ? b.model : user.ai_model || null, maxSteps: 4, periods, preSearch: b.web === true ? true : "auto", private: true });
       const r = { ...r0, steps: [vis.step, ...r0.steps].filter(Boolean) };
       let plan = null;
       const m = /```plan\s*([\s\S]*?)```/.exec(r.text);
