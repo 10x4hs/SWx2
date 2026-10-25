@@ -341,7 +341,7 @@ function renderMeRow() {
     } catch (x) { toast(x.message, "err"); }
   });
   // 상태 고르기: 누르면 바로 저장. coding 이면 도구(여럿)도 골라요. 메뉴는 열린 채로 다시 그려요
-  menu.querySelector(".me-st").addEventListener("click", async (e) => {
+  menu.querySelector(".me-st:not(.me-left)").addEventListener("click", async (e) => {
     e.stopPropagation();
     const b = e.target.closest("[data-st],[data-tool]"); if (!b) return;
     const cur = ctx.me.status;
