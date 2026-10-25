@@ -47,10 +47,18 @@
       var d = document.documentElement, p = {}, mq = function (q) { try { return matchMedia(q).matches; } catch (e) { return false; } };
       try { p = JSON.parse(localStorage.getItem("trio-ui") || "null") || { theme: localStorage.getItem("trio-theme") }; } catch (e) {}
       d.dataset.theme = p.theme === "auto" ? (mq("(prefers-color-scheme: light)") ? "light" : "dark") : p.theme === "light" ? "light" : "dark";
-      if (/^(ash|sand|sage|aurora|smoke|tide|bloom|ember|grove|dusk)$/.test(p.wall)) d.dataset.wall = p.wall;
-      if (/^(blue|purple|pink|orange|green|graphite)$/.test(p.accent)) d.dataset.accent = p.accent;
+      if (/^(ash|sand|sage|aurora|smoke|tide|bloom|ember|grove|dusk|hills|bay|dune|peach|lagoon|nebula|prism|flow|lava|drift)$/.test(p.wall)) d.dataset.wall = p.wall;
+      if (/^(multi|blue|indigo|purple|pink|red|orange|yellow|green|teal|graphite)$/.test(p.accent)) d.dataset.accent = p.accent;
       if (p.glass === "clear") d.dataset.glass = "clear";
       if (p.solid === true || mq("(prefers-reduced-transparency: reduce)")) d.dataset.solid = "1";
+      if (/^(soft|medium|strong)$/.test(p.fx)) d.dataset.fx = p.fx;
+      if (/^(s|l|xl)$/.test(p.size)) d.dataset.size = p.size;
+      if (/^(round|square)$/.test(p.radius)) d.dataset.radius = p.radius;
+      var gf = { round: "Gowun+Dodum", serif: "Noto+Serif+KR:wght@400;600;700", hand: "Gaegu:wght@400;700", mono: "JetBrains+Mono:wght@400;600" };
+      if (/^(pretendard|system|round|serif|hand|mono)$/.test(p.font)) {
+        d.dataset.font = p.font;
+        if (gf[p.font]) { var l = document.createElement("link"); l.rel = "stylesheet"; l.id = "thm-font-" + p.font; l.href = "https://fonts.googleapis.com/css2?family=" + gf[p.font] + "&display=swap"; document.head.appendChild(l); }
+      }
     })();
   </script>
   <!-- modulepreload:start (node scripts/assets.mjs 가 써요) -->
