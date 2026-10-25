@@ -454,6 +454,9 @@ iframe.pp-vid-frame { cursor: auto; }
 /* ---------- 홈: 오늘의 다짐 · 메모장 (js/home-pad.js) — 위쪽, 시계 왼쪽 ---------- */
 .hud-layer > .hud-pad { top: 34px; right: 190px; width: clamp(240px, 30%, 340px); z-index: 6; display: grid; gap: 8px; justify-items: stretch; }
 .hud-pad:empty { display: none; }
+/* 패드 상자 · 줄의 빈 자리는 클릭을 그냥 통과시켜요 — 넓은 화면에선 패드가 링 차트(SVG) 위에 떠 있어서, 빈 자리가 링 조각 · ‹ 날짜 › 를 가렸어요. 실제 입력칸 · 버튼 · 메모장만 클릭을 받아요 */
+.hud-layer > .hud-pad, .hud-pad .pad-pledge, .hud-pad .pad-row, .hud-pad .pad-friends, .hud-pad .pad-memo-wrap { pointer-events: none; }
+.hud-pad .pad-edit, .hud-pad .pad-text, .hud-pad .pad-friend, .hud-pad .pad-memo-btn, .hud-pad .pad-memo { pointer-events: auto; }
 .pad-pledge { display: grid; gap: 8px; }
 .pad-edit { position: relative; display: flex; align-items: center; border-bottom: 1px solid var(--line-2); transition: border-color var(--d-base); }
 .pad-edit:hover { border-bottom-color: var(--ink-3); }
