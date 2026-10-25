@@ -118,6 +118,26 @@ d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
   try {
     for (const [k, u] of [["h", H], ["g", G], ["r", R]]) await call(k, "POST", "/auth/login", { username: u, password: "password1" });
     const rid = idOf(R), refId = idOf(REF);
+    // 공지: 마크다운 원문 그대로 저장 · 돌려줘요 (그릴 때 HTML · 스크립트는 클라이언트에서 지워요 — e2e 가 확인)
+    const annSrc = "# 제목\n- **굵게** [링크](https://example.com)\n<script>alert(1)</script>";
+    const prevAnn = (await call("h", "GET", "/announcement")).data.announcement;
+    r = await call("h", "POST", "/admin/announcements", { body: annSrc });
+    const annGot = (await call("r", "GET", "/announcement")).data.announcement;
+    ok(r.status === 201 && annGot?.body === annSrc, `announcement: markdown stored raw and returned (${r.status})`);
+    r = await call("r", "POST", "/admin/announcements", { body: "x" }); ok(r.status === 403, "announcement: members cannot post");
+    if (annGot) await call("h", "DELETE", "/admin/announcements/" + annGot.id);
+    // 공지 사진: 관리자만 · 이미지 4종만 · 5MB 까지, 올린 사진은 일반 회원도 받아요
+    const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==", "base64");
+    const up = async (who, type, buf) => { const x = await fetch(BASE + "/api/admin/ann-img", { method: "POST", headers: { "content-type": type, "x-trio": "1", cookie: jar[who] || "" }, body: buf }); return { status: x.status, data: await x.json().catch(() => null) }; };
+    r = await up("r", "image/png", PNG); ok(r.status === 403, `ann image: members cannot upload (${r.status})`);
+    r = await up("h", "text/html", Buffer.from("<b>x</b>")); ok(r.status === 400, `ann image: non-image type rejected (${r.status})`);
+    r = await up("h", "image/png", Buffer.alloc(5 * 1024 * 1024 + 1)); ok(r.status === 400, `ann image: over 5MB rejected (${r.status})`);
+    r = await up("h", "image/png", PNG);
+    const img = r.data?.src ? await fetch(BASE + r.data.src, { headers: { cookie: jar.r } }) : null;
+    const anon = r.data?.src ? await fetch(BASE + r.data.src) : null;
+    ok(r.status === 201 && /^\/api\/ann\/img\/[0-9a-f-]+\.png$/.test(r.data.src) && img?.status === 200 && img.headers.get("content-type") === "image/png" && (await img.arrayBuffer()).byteLength === PNG.length && anon?.status === 401,
+      `ann image: admin upload ${r.status} → member fetch ${img?.status} · logged-out ${anon?.status}`);
+    if (prevAnn) d1(`UPDATE announcements SET active = 1 WHERE id = '${prevAnn.id}'`);
     await call("r", "POST", "/features/request", { feature: "biz" });
     const req = (await call("h", "GET", "/admin/feature-requests")).data.requests.find((x) => x.user_id === rid && x.feature === "biz");
     r = await call("h", "POST", `/admin/feature-requests/${req.id}/approve`); ok(r.status === 200 && r.data.granted === false, "feature request: one admin approval is not enough");
@@ -1505,6 +1525,9 @@ if (!process.env.SKIP_AI) {
   r = await v1("/plans/today", H); ok(r.status === 401, "v1: revoked key 401");
   await call("a", "DELETE", "/plans/" + plan.id);
 }
+
+// 개인 자료 공급사 (서버 없이 — fetch 를 잠깐 가짜로 바꿔서 확인해요)
+{ const { privacyChecks } = await import("./privacy-check.mjs"); await privacyChecks(ok); }
 
 r = await call("a", "POST", "/auth/logout"); r = await call("a", "GET", "/me"); ok(r.status === 401, "logout");
 

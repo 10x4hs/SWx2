@@ -9,7 +9,7 @@
 //   답은 다른 튜터(/mba/ask · /books/ask)처럼 글자 단위 SSE: {type:"sources"|"delta"|"reset"|"end"|"error"} — end 에 고친 text 와 sources(cited 표시)가 와요.
 //   하루 사용량은 worker.js 의 AI_PATH(aiQuota) 가 세요 — 첫 팀(SWx2) 밖은 하루 AI_DAILY 번. (근거 찾기의 임베딩은 세지 않아요)
 //   기능 잠금: "cim" 기능이 있어야 해요 (features.js MAP · /apps/cim/*).
-import { aiText, TEXT_ORDER } from "./ai.js";
+import { aiText, TEXT_ORDER, PRIVATE_SAFE } from "./ai.js";
 import { retrieve, settings, hrefOf } from "./rag.js";
 import { checkCites } from "./lib/rag-text.js";
 // 길 고르기 (src/airoute.js): 규칙 먼저 · 애매하면 embed-proto. 기본은 기록만(DECIDE_ROUTE 비어 있음 = log), DECIDE_ROUTE=1 이면 프롬프트 한 줄 + 내 자료 질문의 노트 근거 4개
@@ -17,9 +17,8 @@ import { routeAsk, routeMode, ROUTES } from "./airoute.js";
 
 const MAX_TURNS = 12;
 const MAX_SOURCES = 5, MAX_NOTE_SOURCES = 2;
-// 개인 자료(노트)를 보낼 수 있는 공급사: 무료 API 데이터로 모델을 학습하지 않는 곳만. Gemini 무료 등급 · OpenRouter/Kilo 무료 · MiMo · GLM 은 빼요.
-// Cohere 는 체험 키 데이터 정책이 분명하지 않아서 뺐어요.
-export const PRIVATE_SAFE = ["groq"];
+// 개인 자료(노트)를 보낼 수 있는 공급사 목록은 ai.js PRIVATE_SAFE 한곳에 있어요 (예전 이름 그대로 다시 내보내요)
+export { PRIVATE_SAFE };
 const s = (v, n) => (typeof v === "string" ? v.replace(/\s+\n/g, "\n").trim().slice(0, n) : "");
 const KEY_RE = /^s[1-3]c\d{1,2}-\d{1,3}$/;
 
@@ -104,7 +103,7 @@ export function registerCimAsk(on, { json, body, fail }) {
     // 노트가 있으면 안전한 공급사로만. 실패하면(키 없음 · 막힘) 노트를 빼고 보통 순서로 다시
     const run = async (onTok) => {
       if (hasNotes()) {
-        try { return await aiText(env, systemPrompt(b.context, list, route), clean, PRIVATE_SAFE, onTok); }
+        try { return await aiText(env, systemPrompt(b.context, list, route), clean, PRIVATE_SAFE, onTok, { private: true }); }
         catch (e) { console.log("cim ask private provider failed → CIM only", String(e?.message || e)); withoutNotes(); if (onTok) await onTok("", { reset: true, sources: true }); }
       }
       return aiText(env, systemPrompt(b.context, list, route), clean, TEXT_ORDER, onTok);

@@ -9,6 +9,9 @@ import { helpRoom, adminIds, MAX_BODY } from "./room.js";
 import { hubNotifyMany } from "./hub.js";
 
 // 대신 들어간 세션에서는 관리자 기능을 못 써요 (회원 화면만)
+const ANN_IMG_TYPES = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+const ANN_IMG_MAX = 5 * 1024 * 1024;
+export const ANN_IMG_KEY = /^[0-9a-f-]{8,64}\.(png|jpg|webp|gif)$/;
 const needAdmin = (user) => { if (user.role !== "admin" || user.imp_by) fail(403, "관리자만 쓸 수 있어요."); };
 const target = async (env, id) => (await env.DB.prepare("SELECT id, username, role, state FROM users WHERE id = ?").bind(id).first()) || fail(404, "없는 회원이에요.");
 const notAdmin = (u) => { if (u.role === "admin") fail(400, "관리자 계정에는 할 수 없어요."); };
@@ -85,13 +88,39 @@ export function registerAdmin(on) {
     needAdmin(user);
     const b = await body(req);
     const text = String(b.body || "").trim();
-    if (!text || text.length > 300) fail(400, "공지는 1~300자로 써 주세요.");
+    if (!text || text.length > 4000) fail(400, "공지는 1~4000자로 써 주세요."); // 마크다운 원문 그대로 저장
     const a = { id: uid(), body: text, created_at: now() };
     await env.DB.batch([
       env.DB.prepare("UPDATE announcements SET active = 0 WHERE active = 1"),
       env.DB.prepare("INSERT INTO announcements (id, body, created_by, created_at) VALUES (?, ?, ?, ?)").bind(a.id, a.body, user.id, a.created_at),
     ]);
     return json({ announcement: a }, 201);
+  });
+  // 공지 사진 (R2 FILES, 키 ann/<uuid>.<ext>): 올리기는 관리자만, 보기는 로그인한 누구나 — 공지는 모두에게 뜨니까요
+  on("POST", "/admin/ann-img", async ({ req, env, user }) => {
+    needAdmin(user);
+    const type = (req.headers.get("content-type") || "").split(";")[0].trim();
+    const ext = ANN_IMG_TYPES[type];
+    if (!ext) fail(400, "png · jpg · webp · gif 이미지만 올릴 수 있어요.");
+    if (!env.FILES) fail(500, "사진 저장소가 없어요.");
+    const buf = await req.arrayBuffer();
+    if (!buf.byteLength) fail(400, "빈 파일이에요.");
+    if (buf.byteLength > ANN_IMG_MAX) fail(400, "사진이 너무 커요 (5MB 까지).");
+    const name = `${uid()}.${ext}`;
+    await env.FILES.put("ann/" + name, buf, { httpMetadata: { contentType: type }, customMetadata: { owner: user.id } });
+    return json({ src: "/api/ann/img/" + name }, 201);
+  });
+  on("GET", "/ann/img/:key", async ({ env, params }) => {
+    const key = decodeURIComponent(params.key);
+    if (!ANN_IMG_KEY.test(key) || !env.FILES) fail(404, "없는 사진이에요.");
+    const obj = await env.FILES.get("ann/" + key);
+    if (!obj) fail(404, "없는 사진이에요.");
+    const h = new Headers();
+    obj.writeHttpMetadata(h);
+    h.set("etag", obj.httpEtag);
+    h.set("cache-control", "private, max-age=31536000, immutable");
+    h.set("x-content-type-options", "nosniff");
+    return new Response(obj.body, { headers: h });
   });
   on("DELETE", "/admin/announcements/:id", async ({ env, user, params }) => {
     needAdmin(user);

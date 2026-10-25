@@ -17,7 +17,7 @@
 export const UNKNOWN = "unknown";
 const UNKNOWN_DESC = "판단하기 어렵거나 자료가 부족해요 (사람이 보는 게 좋아요)";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_CHAIN = ["openai/gpt-oss-120b", "openai/gpt-oss-20b"];
+const GROQ_CHAIN = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]; // 하루 토큰(모델마다 20만)이 다 차면 다음 모델로 — ai.js groq 체인과 같아요
 export const LLM_SAMPLES = 3;
 const JEV_URL = "https://api.typesafe.ai/v1/systemone";
 
@@ -39,7 +39,8 @@ export function normalizeQuestions(questions) {
       if (!Object.hasOwn(criteria, UNKNOWN)) criteria[UNKNOWN] = UNKNOWN_DESC;
       const names = Object.keys(criteria);
       if (names.length < 2 || names.length > 255) throw new Error("choice 선택지는 2~255개예요");
-      out[id] = { type: "choice", instructions, criteria, protos: q.protos || null };
+      // evidence: 근거 문장을 찾을 글 (있으면 llm 이 quote 를 글자 그대로 옮겨야 하고, 그 글에 없는 quote 의 표는 버려요 · none/unknown 은 빼고)
+      out[id] = { type: "choice", instructions, criteria, protos: q.protos || null, evidence: typeof q.evidence === "string" && q.evidence.trim() ? q.evidence.slice(0, 8000) : null };
     } else if (q?.type === "score") {
       const levels = Array.isArray(q.criteria) ? q.criteria.map((x) => String(x).slice(0, 300)) : [];
       if (levels.length < 2 || levels.length > 11) throw new Error("score 수준은 2~11개예요");
@@ -88,10 +89,11 @@ function llmPrompt(state, Q) {
     for (const id of ids) { const x = Q[id]; lines.push(`[질문 ${id}] ${x.instructions}${x.type === "noul" ? ` (예/아니요 — 답은 0~1 숫자${x.criteria ? ". " + x.criteria : ""})` : ""}`); }
     lines.push("");
   }
-  const shape = Object.entries(Q).map(([id, q]) => `"${id}": {"answer": ${q.type === "choice" ? '"<선택지 이름>"' : q.type === "score" ? "<수준 번호>" : "<0~1 숫자>"}, "why": "<근거 한 문장, 40자 이내>"}`).join(", ");
+  const shape = Object.entries(Q).map(([id, q]) => `"${id}": {"answer": ${q.type === "choice" ? '"<선택지 이름>"' : q.type === "score" ? "<수준 번호>" : "<0~1 숫자>"}, ${q.evidence ? '"quote": "<자료의 노트 본문에서 글자 그대로 옮긴 근거 문장 하나>", ' : ""}"why": "<근거 한 문장, 40자 이내>"}`).join(", ");
+  const needQuote = Object.values(Q).some((q) => q.evidence);
   return {
     system: "너는 조심스러운 판정기야. 각 질문에 주어진 선택지 이름 중 정확히 하나만 고르고, 자료로 판단이 어려우면 unknown 을 골라. 지어내지 마. 근거(why)는 자료 속 표현을 짧게 인용하거나 요약해. 반드시 JSON 객체 하나만 출력해.",
-    user: `[자료]\n${String(state).slice(0, 9000)}\n\n${lines.join("\n")}\n출력 형식: {"answers": {${shape}}}`,
+    user: `[자료]\n${String(state).slice(0, 9000)}\n\n${lines.join("\n")}\n${needQuote ? "quote 는 반드시 노트 본문에 있는 문장을 한 글자도 바꾸지 말고 옮겨. 그런 문장이 없으면 none 이나 unknown 을 골라.\n" : ""}출력 형식: {"answers": {${shape}}}`,
   };
 }
 async function groqOnce(env, system, user, temperature) {
@@ -123,6 +125,9 @@ async function otherOnce(env, system, user) {
   const r = await aiJson(env, system, user);
   return { data: r.data, model: r.provider + ":" + r.model, usage: r.usage || null };
 }
+// 근거 문장 확인: 띄어쓰기 · 문장부호를 빼고 글 안에 있는지 (6글자 이상)
+const squash = (t) => String(t || "").toLowerCase().replace(/[\s"'“”‘’「」『』()\[\].,!?·…:;~\-]/g, "");
+export function quoteFound(quote, text) { const qq = squash(quote); return qq.length >= 6 && squash(text).includes(qq); }
 /** 한 표(sample)의 답을 질문 모양에 맞게 — 틀린 이름 · 범위 밖은 버려요 */
 function readVote(q, v) {
   const a = v && typeof v === "object" ? v.answer ?? v.choice ?? v.score ?? v.value : v;
@@ -142,13 +147,18 @@ async function runLlm(env, state, Q, { private: priv = true, samples = LLM_SAMPL
   const tokens = got.reduce((a, g) => a + (g.usage?.total_tokens || 0), 0);
   const answers = {};
   for (const [id, q] of Object.entries(Q)) {
-    const votes = [], whys = new Map();
+    const votes = [], whys = new Map(), quotes = new Map();
+    let dropped = 0;
     for (const g of got) {
       const raw = g.data?.answers?.[id] ?? g.data?.[id];
       const v = readVote(q, raw);
       if (v === null) continue;
+      // 근거를 요구한 질문: 관계를 골랐는데 quote 가 본문에 없으면 그 표는 버려요 (지어낸 근거)
+      const quote = raw && typeof raw.quote === "string" ? raw.quote.slice(0, 200) : "";
+      if (q.evidence && v !== "none" && v !== UNKNOWN && !quoteFound(quote, q.evidence)) { dropped++; continue; }
       votes.push(v);
       if (!whys.has(v) && raw && typeof raw.why === "string") whys.set(v, raw.why.slice(0, 160));
+      if (q.evidence && quote && !quotes.has(v)) quotes.set(v, quote);
     }
     if (q.type === "noul") {
       const value = votes.length ? round(votes.reduce((a, b) => a + b, 0) / votes.length, 3) : null;
@@ -165,7 +175,7 @@ async function runLlm(env, state, Q, { private: priv = true, samples = LLM_SAMPL
     const top = votes.length ? best[0] : q.type === "choice" ? UNKNOWN : null;
     const conf = votes.length ? round(best[1] / samples, 3) : 0;
     answers[id] = q.type === "choice"
-      ? { type: "choice", choice: top, probabilities, confidence: conf, engine: "llm", why: whys.get(top) || "", samples: votes.length }
+      ? { type: "choice", choice: top, probabilities, confidence: conf, engine: "llm", why: whys.get(top) || "", samples: votes.length, ...(q.evidence ? { quote: quotes.get(top) || "", dropped } : {}) }
       : { type: "score", score: top, legend: q.criteria, probabilities, confidence: conf, engine: "llm", why: whys.get(top) || "", samples: votes.length };
   }
   return { answers, meta: { used, tokens, calls: samples, ok: got.length } };
