@@ -47,16 +47,34 @@ async function viaOpenRouter(env, model, images, q) {
   return String(j.choices?.[0]?.message?.content || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
+// Workers AI 비전 — 첫 사용 때 Meta 라이선스 동의("agree")가 한 번 필요해요
+const WAI_VISION = "@cf/meta/llama-3.2-11b-vision-instruct";
+async function viaWorkersAI(env, images, q) {
+  const parts = [];
+  for (const [i, im] of images.entries()) {
+    const bytes = [...Uint8Array.from(atob(im.data), (c) => c.charCodeAt(0))];
+    const ask = () => env.AI.run(WAI_VISION, { messages: [{ role: "user", content: (images.length > 1 ? `이미지 ${i + 1}: ` : "") + PROMPT(q) }], image: bytes, max_tokens: 2048 });
+    let r;
+    try { r = await ask(); }
+    catch (e) { if (!/agree/i.test(String(e?.message || e))) throw Object.assign(e, { status: 503 }); await env.AI.run(WAI_VISION, { prompt: "agree" }).catch(() => {}); r = await ask(); }
+    parts.push(String(r?.response || "").trim());
+  }
+  return parts.filter(Boolean).join("\n\n");
+}
+
 // 이미지들 → 글. { text, model }. 볼 수 있는 모델이 다 막히면 503
 export async function describeImages(env, images, q = "") {
   const tries = [
-    ...(env.GEMINI_API_KEY ? GEMINI_CHAIN.map((m) => [m, () => viaGemini(env, m, images, q)]) : []),
-    ...(env.OPENROUTER_API_KEY ? OPENROUTER_CHAIN.map((m) => [m, () => viaOpenRouter(env, m, images, q)]) : []),
+    ...(env.GEMINI_API_KEY ? GEMINI_CHAIN.map((m) => ["gemini", m, () => viaGemini(env, m, images, q)]) : []),
+    ...(env.OPENROUTER_API_KEY ? OPENROUTER_CHAIN.map((m) => ["openrouter", m, () => viaOpenRouter(env, m, images, q)]) : []),
+    ...(env.AI ? [["workers-ai", WAI_VISION, () => viaWorkersAI(env, images, q)]] : []), // 마지막 대체: Cloudflare 안 (키 · 외부 한도 없이)
   ];
   if (!tries.length) throw Object.assign(new Error("이미지를 읽으려면 Gemini 또는 OpenRouter 키가 필요해요."), { status: 503 });
-  for (const [model, run] of tries) {
+  let skip = null;
+  for (const [co, model, run] of tries) {
+    if (co === skip) continue;
     try { const text = await run(); if (text) return { text: text.slice(0, 8000), model }; }
-    catch (e) { if (e.status && ![404, 429, 500, 502, 503, 504].includes(e.status)) break; } // 요청 자체가 틀렸으면(400) 다른 회사로
+    catch (e) { if (e.status && ![404, 429, 500, 502, 503, 504].includes(e.status)) skip = co; } // 요청이 그 회사에서 안 되면(400 · 403) 같은 회사의 나머지는 건너뛰고 다음 회사로 (예전엔 여기서 멈췄어요)
   }
   throw Object.assign(new Error("이미지를 읽는 AI 가 지금 붐벼요. 잠시 뒤 다시 보내 주세요."), { status: 503 });
 }
