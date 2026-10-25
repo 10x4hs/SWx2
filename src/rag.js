@@ -287,9 +287,12 @@ export async function ragCron(env) {
     const S = settings(env), left = S.dailyNeurons - (await neuronsToday(env));
     // 한도 안에서 skip 이었던 노트 조각은 자리가 나면 다시 pending 으로
     const tot = (await env.DB.prepare("SELECT COUNT(*) n FROM chunks WHERE source_type = 'note' AND vec_state = 'done'").first()).n;
-    if (tot < S.noteVecMax) await env.DB.prepare(
-      `UPDATE chunks SET vec_state = 'pending' WHERE id IN (SELECT c.id FROM chunks c WHERE c.vec_state = 'skip'
-         AND (SELECT COUNT(*) FROM chunks d WHERE d.user_id = c.user_id AND d.source_type = 'note' AND d.vec_state = 'done') < ?2 ORDER BY c.updated_at DESC LIMIT ?1)`
+    // skip 이 없으면 아무것도 안 해요. 있으면 사람마다 done 개수를 한 번만 세요 (예전엔 skip 조각마다 다시 세서 하루 수백만 행을 읽었어요 — 2026-10-26 D1 무료 한도 초과의 원인)
+    const skipN = tot < S.noteVecMax ? (await env.DB.prepare("SELECT COUNT(*) n FROM chunks WHERE vec_state = 'skip'").first()).n : 0;
+    if (skipN) await env.DB.prepare(
+      `UPDATE chunks SET vec_state = 'pending' WHERE id IN (SELECT c.id FROM chunks c
+         LEFT JOIN (SELECT user_id, COUNT(*) k FROM chunks WHERE source_type = 'note' AND vec_state = 'done' GROUP BY user_id) u ON u.user_id = c.user_id
+         WHERE c.vec_state = 'skip' AND COALESCE(u.k, 0) < ?2 ORDER BY c.updated_at DESC LIMIT ?1)`
     ).bind(Math.min(64, S.noteVecMax - tot), S.userVecMax).run();
     out.embed = left > 0 ? await embedPending(env, { limit: 96, budget: left }) : { embedded: 0, reason: "daily-neurons" };
   } catch (e) { out.embed = { error: String(e?.message || e) }; }
