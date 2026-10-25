@@ -273,7 +273,10 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
         <select class="select" name="mins" aria-label="걸리는 시간">${minsList.map((m) => `<option value="${m}" ${m === mins0 ? "selected" : ""}>${hm(m)}</option>`).join("")}<option value="custom">직접 입력…</option></select><input class="input slot-mins" name="mins_text" placeholder="${MINS_HINT}" aria-label="걸리는 시간 직접 입력" autocomplete="off" hidden>
         ${prioSelect("priority", ed ? ed.priority || "" : S.editPrio || "")}
         <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
-    const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${r2(yAt(nowM))}px" aria-hidden="true"></div>` : "";
+    // 지금 선: 짧은 계획은 보기 좋게 늘려 그려서(예: 5분 → 다음 계획 전까지), 이미 끝난 계획의 늘어난 칸 안에 선이 들어가면 그 계획이 아직 진행 중처럼 보여요 → 끝난 계획 아래로 내려요
+    let nowY = yAt(nowM);
+    for (const it of placed) if (nowM >= it.e && it.s <= nowM) { const bottom = yAt(it.s) + 1 + it.h; if (nowY < bottom) nowY = bottom + 1; }
+    const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${r2(nowY)}px" aria-hidden="true"></div>` : "";
     // 폰: 추가 · 고치기 창은 시간표 위가 아니라 화면 아래에서 올라오는 시트로 (손가락 · 키보드에 안 가려지게)
     el.classList.toggle("ro", ro());
     const u = ctx.users.find((x) => x.id === who);
