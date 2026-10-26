@@ -95,6 +95,8 @@ export async function islandE2E({ p, go, ok, tv, w, getErrs, shots = null }) {
     await sleep(300);
     const t2 = { isl: await box("#timer .isl-pill"), ann: await box(".ann-bar"), trial: await box(".trial-bar"), dock: await box(".rail.dock") };
     await shot("ann");
+    // 띠를 넣은 뒤 앱 머리줄이 내려가기까지 — 검사를 같이 돌려 느릴 때는 300ms 로 모자랐어요 (최대 3초 기다려요)
+    await p.waitForFunction((b) => document.querySelector("#main").getBoundingClientRect().y >= b, t1.isl.y + t1.isl.h, { timeout: 3000 }).catch(() => {});
     const main = await box("#main");
     const noOver = !overlap(t1.isl, t1.trial) && !overlap(t2.isl, t2.ann) && !overlap(t2.isl, t2.trial) && !overlap(t2.ann, t2.trial) && t1.trial.y > t1.isl.y;
     const dockOk = w > 600 || !overlap(t2.trial, t2.dock);

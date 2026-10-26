@@ -52,10 +52,13 @@ for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { a
 const VIEWPORTS = (process.env.E2E_VIEWPORTS || "desktop,phone").split(",");
 execFileSync("node", ["scripts/test-cleanup.mjs", "--stale"], { stdio: "ignore" }); // 지난번에 멈춘 실행이 남긴 2시간 넘은 t_… 계정
 const tag = Date.now().toString(36) + (process.env.E2E_WORKER || "").replace(/[^a-z0-9]/g, "").slice(0, 2), user = "t_e2e" + tag, friend = "t_e2f" + tag, outsider = "t_e2o" + tag; // outsider = ⑱ 같은 팀이지만 일기 기능이 없는 사람
-execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" });
-execFileSync("node", ["scripts/add-user.mjs", friend, "검사친구", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" }); // ⑨ 공개 페이지를 올리는 친구
-execFileSync("node", ["scripts/add-user.mjs", outsider, "모임밖", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" });
-const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username IN ('${user}', '${friend}', '${outsider}')`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
+// 컴퓨터 · 폰을 같이 돌릴 때는 실행마다 임시 팀을 따로 — 한 팀이면 서로의 집중 · 상태가 보여서 화면이 달라져요 (집중 섬 띠 검사가 그래서 실패했어요)
+const TEAM = process.env.E2E_WORKER ? "t_team_" + tag : "swx2";
+if (TEAM !== "swx2") execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `INSERT OR IGNORE INTO teams (id, name, code, created_at) VALUES ('${TEAM}', '검사 ${tag}', '${tag}', ${Date.now()})`], { stdio: "ignore" });
+execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" });
+execFileSync("node", ["scripts/add-user.mjs", friend, "검사친구", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" }); // ⑨ 공개 페이지를 올리는 친구
+execFileSync("node", ["scripts/add-user.mjs", outsider, "모임밖", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" });
+const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username IN ('${user}', '${friend}', '${outsider}'); DELETE FROM teams WHERE id = '${TEAM}' AND id <> 'swx2'`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
 
 // 과목 페이지: 화면을 꽉 채우는 한 장짜리 · 여러 파일(style.css · app.js)짜리
 const FULL = `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%}body{display:grid;place-items:center;background:#1b6}</style><p>꽉 차야 해요</p>`;
@@ -1606,7 +1609,7 @@ try {
   // ---------- 공지 마크다운 (컴퓨터 쪽을 돌릴 때만 — 공지는 모두가 같이 보는 것이라 두 실행이 같이 만지면 안 돼요): 관리자가 쓰고 미리보기 → 올리기 → 회원 띠에 제목 · 자세히 시트에 굵게 · 목록 · 안전한 링크 (스크립트는 안 돌아요) ----------
   if (VIEWPORTS.includes("desktop")) await section("announce", async () => {
     const adm = "t_e2a" + tag, sq = (q) => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", q], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-    execFileSync("node", ["scripts/add-user.mjs", adm, "공지검사", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" });
+    execFileSync("node", ["scripts/add-user.mjs", adm, "공지검사", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" });
     sq(`UPDATE users SET role = 'admin' WHERE username = '${adm}'`);
     const prev = JSON.parse(sq("SELECT id FROM announcements WHERE active = 1"))[0].results.map((x) => x.id);
     const ac = await browser.newContext({ viewport: { width: 1300, height: 900 } }), mc = await browser.newContext({ viewport: { width: 1300, height: 900 } });

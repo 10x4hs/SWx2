@@ -10,6 +10,6 @@ if (tag && !/^[a-z0-9_]+$/.test(tag)) { console.error("tag 는 영문 소문자 
 let where = "username LIKE 't\\_%' ESCAPE '\\'";
 if (tag) where += ` AND username LIKE '%${tag}%'`;
 if (stale) where += ` AND created_at < ${Date.now() - 2 * 3600e3}`;
-const out = execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", `DELETE FROM users WHERE ${where}; SELECT changes() AS n;`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-let n = "?"; try { n = JSON.parse(out).at(-1).results[0].n; } catch {}
+const out = execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", `DELETE FROM users WHERE ${where}; SELECT changes() AS n; DELETE FROM teams WHERE id LIKE 't\\_team\\_%' ESCAPE '\\' AND created_at < ${Date.now() - 600e3} AND NOT EXISTS (SELECT 1 FROM team_members m WHERE m.team_id = teams.id);`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+let n = "?"; try { n = JSON.parse(out).find((x) => x.results?.[0]?.n !== undefined).results[0].n; } catch {}
 console.log(`test-cleanup: 임시 계정 ${n}개 지웠어요 (${tag ? "tag " + tag : stale ? "2시간 넘은 것" : "t_… 전부"})`);

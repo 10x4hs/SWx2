@@ -80,6 +80,8 @@ node scripts/test.mjs quick --dry   # 무엇을 돌릴지만 보기
 - 가짜 AI (`AI_MOCK=1`): 서버가 Groq · Gemini · Workers AI 를 부르지 않고 정해진 답을 줘요 (`src/lib/aimock.js`). **`PASSWORDLESS=1` + localhost 주소일 때만** 켜져서 배포본에서는 켤 수 없어요. 진짜 AI 답을 봐야 하는 구역(`ai-real`)은 full 에서만 돌아요
 - 임시 계정(`t_…`)은 매번 시작 · 끝에 지워요 (시작 때는 2시간 넘은 것만 — 같이 도는 다른 검사 것은 남겨요). 손으로: `npm run test:clean`
 - 끝나면 표가 나와요: 실행별 구역 수 · 통과 · 실패 · 시간, 오래 걸린 구역, 실패한 구역, 로그 폴더
+- 이 컴퓨터에서 잰 시간 (2026-10-26): quick 1.5~2분 · normal(노트 하나 바꿈) 3분 · 전부 가짜 AI 13분 · full 14분 — 예전 smoke 9분 + e2e 20분 ≈ 30분
+- 앞 구역이 만든 것을 쓰는 구역은 `test-map.json` 의 `needs` 에 적어 두면 같이 돌아요 (예: 노트 우클릭 → Brain)
 - 이미 켜 둔 서버를 쓰려면 `--base=http://127.0.0.1:8787` (가짜 AI 는 그 서버를 `--var AI_MOCK:1` 로 켰을 때만). `.dev.vars` 가 다른 곳이면 `--env-file=…`
 
 ## 계정 만들기 (가입 화면 대신)
