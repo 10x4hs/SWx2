@@ -23,7 +23,7 @@ Block = `{ "id": "b_xxxxxxxx", "type": "...", "text": "inline md", "props": {}, 
 | divider | — | `---` |
 | code | lang | fenced block, text = code |
 | image | src, caption | `![caption](src)` |
-| file | src, name | `[📎 name](src)` |
+| file | src, name, bytes?, mime?, open? (uploaded: /api/notes/file/nf-…; open = PDF preview expanded) | `[📎 name](src)` |
 | bookmark / embed | url, caption? | `[caption or url](url)` |
 | equation | expr (LaTeX) | `$$expr$$` |
 | columns | — (children: 2–3 `column`) | each column's contents, one after another |

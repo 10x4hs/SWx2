@@ -36,7 +36,7 @@ function cleanProps(type, p) {
   if (type === "callout") o.icon = str(p.icon, 16) || "💡";
   if (type === "code") o.lang = str(p.lang, 30);
   if (type === "image") { o.src = str(p.src, 2000); o.caption = str(p.caption, 500); const w = Math.round(Number(p.width)); if (w >= 10 && w < 100) o.width = w; } // width = 줄 너비의 %
-  if (type === "file") { o.src = str(p.src, 2000); o.name = str(p.name, 200); }
+  if (type === "file") { o.src = str(p.src, 2000); o.name = str(p.name, 200); const n = Math.round(Number(p.bytes)); if (n > 0) o.bytes = n; if (p.mime) o.mime = str(p.mime, 100); if (p.open) o.open = true; } // bytes(크기) · mime · open(PDF 크게 보기): 노트에 올린 파일
   if (type === "bookmark" || type === "embed") { o.url = str(p.url, 2000); if (p.caption) o.caption = str(p.caption, 500); }
   if (type === "equation") o.expr = str(p.expr, 5000);
   if (type === "table") {

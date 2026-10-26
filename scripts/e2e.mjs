@@ -36,6 +36,7 @@ import { ontoE2E } from "./e2e-onto.mjs";
 import { themeE2E } from "./e2e-theme.mjs";
 import { islandE2E } from "./e2e-island.mjs";
 import { boardE2E } from "./e2e-board.mjs";
+import { noteFilesE2E } from "./e2e-notefiles.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
 const { chromium } = createRequire(import.meta.url)("playwright"); // NODE_PATH 로 다른 곳의 playwright 도 쓸 수 있어요
@@ -469,6 +470,8 @@ try {
     // ---------- ㉕ 집중 섬 (2026-10-24, scripts/e2e-island.mjs) — Dock ⏱ 시작 · 두 화면 · +5분 · 일시정지 · Esc · 띠 겹침 없음 · 멈추기 · 끝 ----------
     errs = [];
     await islandE2E({ p, go, ok, tv, w, getErrs: () => errs, shots: process.env.SHOTS || null });
+    // ---------- ㉗ 노트 사진 · 파일 (2026-10-26, scripts/e2e-notefiles.mjs) — 끌어다 놓기 PNG · 붙여 넣기 txt · PDF 미리보기 · ⌘Z · 25MB 알림 · 다시 열기 ----------
+    await noteFilesE2E({ p, ctx, ok, tv, BASE, H });
 
     // ---------- ⑫-b 단 나누기 · 수식 — 끝에 끌어 놓기 → 2단, "/2 columns", "/equation" KaTeX, 글 속 $..$ (2026-10-14) ----------
     try {

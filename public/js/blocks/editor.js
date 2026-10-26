@@ -32,6 +32,8 @@ export const MENU = [
   ["code", "Code", "Code snippet", "</>"],
   ["table", "Table", "Simple table", "▦"],
   ["image", "Image", "Embed an image by URL", "🖼"],
+  ["upload_image", "Photo", "사진 올리기 (25MB 까지) · /사진", "📷", "사진 이미지 photo"],
+  ["upload_file", "File", "파일 올리기 (PDF · 문서 · 아무 파일, 25MB 까지) · /파일", "📎", "파일 첨부 attach file upload"],
   ["bookmark", "Bookmark", "Link with a caption", "🔗"],
   ["equation", "Equation", "Block math", "∑"],
   ["columns2", "2 columns", "Side-by-side blocks", "▥"],
@@ -39,6 +41,20 @@ export const MENU = [
   ["page", "Page", "Sub-page inside this page", "📄"],
   ["database", "Database", "Table and board views", "▤"],
 ];
+const fmtSize = (n) => (n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(n < 10240 ? 1 : 0) + " KB" : (n / 1048576).toFixed(1) + " MB");
+function fileIcon(mime = "", name = "") {
+  const ext = (/\.([a-z0-9]+)$/i.exec(name)?.[1] || "").toLowerCase();
+  if (mime === "application/pdf" || ext === "pdf") return "📕";
+  if (/^image\//.test(mime)) return "🖼";
+  if (/^video\//.test(mime)) return "🎬";
+  if (/^audio\//.test(mime)) return "🎵";
+  if (/zip|compressed|tar|rar|7z/.test(mime) || /^(zip|rar|7z|gz|tgz|tar)$/.test(ext)) return "🗜";
+  if (/sheet|excel|csv/.test(mime) || /^(xlsx?|csv|numbers)$/.test(ext)) return "📊";
+  if (/presentation|powerpoint/.test(mime) || /^(pptx?|key)$/.test(ext)) return "📽";
+  if (/word|document|rtf/.test(mime) || /^(docx?|hwpx?|pages|rtf)$/.test(ext)) return "📝";
+  if (/^text\//.test(mime) || /^(txt|md|json|js|ts|py|html?|css|xml|yml|yaml)$/.test(ext)) return "📄";
+  return "📎";
+}
 const PH = { paragraph: "Type '/' for commands", h1: "Heading 1", h2: "Heading 2", h3: "Heading 3", bullet: "List", number: "List", todo: "To-do", toggle: "Toggle", callout: "Callout", quote: "Quote" };
 
 // toggles: which ones this viewer left open (per browser)
@@ -105,6 +121,7 @@ export function createBlockEditor(host, opts) {
   if (!doc.blocks.length) doc.blocks.push(block("paragraph"));
   const root = document.createElement("div");
   root.className = "nb-doc" + (ro ? " ro" : "");
+  if (!ro) root.tabIndex = -1;
   host.innerHTML = ""; host.appendChild(root);
   let menu = null, sug = null, dragId = null;
   const changed = () => { tidy(); record(); opts.onChange?.(doc); };
@@ -130,12 +147,15 @@ export function createBlockEditor(host, opts) {
     H.future = []; H.at = now; H.forceNew = false; preCaret = null;
     const st = H.cur; queueMicrotask(() => { st.post = caretNow() || st.post; }); // render(focus) 가 끝난 뒤의 자리
   }
+  // 글 칸에 초점이 없을 때(파일 · 위젯 블록을 넣은 뒤): 편집기 자체에 초점을 둬서 ⌘Z 가 화면 전체 되돌리기가 아니라 이 편집기로 오게
+  function holdFocus() { if (!root.contains(document.activeElement)) root.focus({ preventScroll: true }); }
   function restore(st, caret) {
     closeMenu(); closeSug();
     doc = JSON.parse(st.json);
     if (!doc.blocks.length) doc.blocks.push(block("paragraph"));
     const ok = caret && find(caret.id) && flat().some((b) => b.id === caret.id);
     render(ok ? { id: caret.id, off: caret.off } : undefined);
+    if (!ok) holdFocus();
     opts.onChange?.(doc); // 저장은 화면 쪽이 (다시 기록하지는 않아요)
   }
   function undo() {
@@ -262,10 +282,12 @@ export function createBlockEditor(host, opts) {
       case "image": {
         const f = document.createElement("figure"); f.className = "nb-body nb-img";
         if (p.src) f.innerHTML = `<div class="nb-imgbox"${p.width ? ` style="width:${p.width}%"` : ""}><img src="${esc(p.src)}" alt="${esc(p.caption || "")}" loading="lazy">${ro ? "" : '<span class="nb-resize" title="끌어서 크기 조절" aria-hidden="true"></span>'}</div><figcaption ${ro ? "" : 'contenteditable="true"'} class="nb-cap" data-ph="Add a caption">${esc(p.caption || "")}</figcaption>`;
-        else f.innerHTML = ro ? "" : `${opts.uploadImage ? `<button type="button" class="btn sm nb-pick">이미지 올리기</button>` : ""}<input class="input nb-url" placeholder="${opts.uploadImage ? "또는 이미지 주소를 붙여 넣고 Enter" : "Paste an image URL and press Enter"}" aria-label="Image URL">`;
+        else f.innerHTML = ro ? "" : `${opts.uploadImage || opts.uploadFile ? `<button type="button" class="btn sm nb-pick">이미지 올리기</button>` : ""}<input class="input nb-url" placeholder="${opts.uploadImage || opts.uploadFile ? "또는 이미지 주소를 붙여 넣고 Enter" : "Paste an image URL and press Enter"}" aria-label="Image URL">`;
         return f;
       }
-      case "bookmark": case "embed": case "file": {
+      case "file": if (p.bytes) return fileCard(b);
+      // falls through — Notion 에서 가져온 첨부(링크만)
+      case "bookmark": case "embed": {
         const url = p.url || p.src || "", label = p.caption || p.name || url;
         const d = document.createElement("div"); d.className = "nb-body nb-bm";
         d.innerHTML = url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${b.type === "file" ? "📎 " : "🔗 "}${esc(label)}</a><span class="faint">${esc(url.replace(/^https?:\/\//, "").slice(0, 60))}</span>`
@@ -287,6 +309,17 @@ export function createBlockEditor(host, opts) {
       }
       default: return textEl(b);
     }
+  }
+  // 노트에 올린 파일: 종류 아이콘 · 이름 · 크기 · 내려받기 (PDF 는 바로 아래 미리보기, 크게 보기 토글)
+  function fileCard(b) {
+    const p = b.props, pdf = p.mime === "application/pdf";
+    const d = document.createElement("div"); d.className = "nb-body nb-file" + (p.open ? " open" : "");
+    const dl = p.src + (p.src.includes("?") ? "&" : "?") + "dl=1";
+    d.innerHTML = `<div class="nb-file-row"><span class="nb-file-ic" aria-hidden="true">${fileIcon(p.mime, p.name)}</span><span class="nb-file-meta"><b title="${esc(p.name || "")}">${esc(p.name || "file")}</b><small>${fmtSize(p.bytes)}${pdf ? " · PDF" : ""}</small></span>`
+      + (pdf ? `<button type="button" class="btn sm nb-file-open" aria-expanded="${!!p.open}">${p.open ? "작게" : "크게 보기"}</button>` : "")
+      + `<a class="btn sm nb-file-dl" href="${esc(dl)}" download="${esc(p.name || "")}">내려받기</a></div>`
+      + (pdf ? `<iframe class="nb-file-pdf" src="${esc(p.src)}#view=FitH" title="${esc(p.name || "PDF")}" loading="lazy"></iframe>` : "");
+    return d;
   }
   function tableEl(b) {
     const p = b.props; if (!p.rows?.length) p.rows = [["", ""], ["", ""]];
@@ -396,6 +429,8 @@ export function createBlockEditor(host, opts) {
     if (hd) { openBlockMenu(blockOf(hd), hd); return; }
     const pick = e.target.closest(".nb-pick");
     if (pick) { pickImages(blockOf(pick)); return; }
+    const fo = e.target.closest(".nb-file-open");
+    if (fo) { const b = blockOf(fo); if (b.props.open) delete b.props.open; else b.props.open = true; changed(); render(); return; }
     // clicking empty space below the last block → focus/add a paragraph
     if (e.target === root) {
       const last = doc.blocks.at(-1);
@@ -468,6 +503,7 @@ export function createBlockEditor(host, opts) {
       const dir = mod && k === "z" ? (e.shiftKey ? "redo" : "undo") : mod && k === "y" && e.ctrlKey && !e.metaKey ? "redo" : null;
       if (dir && !/^(INPUT|TEXTAREA)$/.test(el.tagName) && !e.isComposing) { e.preventDefault(); e.stopPropagation(); if (dir === "undo") undo(); else redo(); return; }
     }
+    if (el === root) return; // 편집기 자체에 초점 (파일을 넣은 뒤 · 되돌린 뒤): ⌘Z 만 받아요
     if (el.classList.contains("nb-url") && e.key === "Enter") {
       e.preventDefault(); const b = blockOf(el), v = el.value.trim(); if (!v) return;
       if (b.type === "image") b.props.src = v; else if (b.type === "file") b.props.src = v; else b.props.url = v;
@@ -568,13 +604,14 @@ export function createBlockEditor(host, opts) {
   let slashAt = -1, menuItems = [], menuSel = 0, menuFor = null, menuMode = "insert";
   function slashCheck(b, el) {
     const off = caretOffset(el), before = b.text.slice(0, off);
-    const m = /(^|\s)\/([\w ]{0,20})$/.exec(before);
+    const m = /(^|\s)\/([\w\u3131-\u318e\uac00-\ud7a3 ]{0,20})$/.exec(before); // 한글 명령(/파일 · /사진)도
     if (!m) { if (menuMode === "insert") closeMenu(); return; }
     slashAt = off - m[2].length - 1; menuFor = b; menuMode = "insert";
     openMenu(el, m[2].toLowerCase());
   }
   function openMenu(anchor, q) {
-    menuItems = MENU.filter(([t]) => !opts.hide?.includes(t)).filter(([t, label]) => !q || label.toLowerCase().includes(q.trim()) || t.includes(q.trim()));
+    menuItems = MENU.filter(([t]) => !opts.hide?.includes(t) && (!t.startsWith("upload_") || opts.uploadFile)).filter(([t, label, , , alias]) => !q || label.toLowerCase().includes(q.trim()) || t.includes(q.trim()) || (alias || "").includes(q.trim()));
+    if (menuMode === "turn") menuItems = menuItems.filter(([t]) => !t.startsWith("upload_"));
     if (menuMode === "turn") menuItems = menuItems.filter(([t]) => !["page", "database", "columns2", "columns3"].includes(t));
     if (!menuItems.length) return closeMenu();
     menuSel = 0;
@@ -607,6 +644,10 @@ export function createBlockEditor(host, opts) {
       const cols = newColumns(type === "columns2" ? 2 : 3), at = find(target.id);
       at.list.splice(at.i, 1, cols); // target 은 늘 빈 줄 (글이 있으면 위에서 새 줄을 만들었어요)
       changed(); render({ id: cols.children[0].children[0].id }); return;
+    }
+    if (type === "upload_image" || type === "upload_file") { // 빈 줄은 그대로 두고 파일 고르기 → 올린 블록이 그 빈 줄 자리에
+      changed(); render({ id: target.id, off: "end" });
+      return pickFiles(target, type === "upload_image" ? "image/*" : "");
     }
     if (type === "page" || type === "database") {
       let note = null;
@@ -710,24 +751,52 @@ export function createBlockEditor(host, opts) {
   }
   document.addEventListener("selectionchange", onSel);
 
-  // ---------- 이미지 올리기 (opts.uploadImage(file) → src): 붙여 넣기 · 끌어다 놓기 · '이미지 올리기' 버튼 ----------
-  function imageFiles(list) { return opts.uploadImage ? [...(list || [])].filter((f) => /^image\//.test(f.type)) : []; }
+  // ---------- 사진 · 파일 올리기: 붙여 넣기 · 끌어다 놓기 · '/사진' '/파일' · '이미지 올리기' 버튼 ----------
+  // opts.uploadFile(file, { onProgress, signal }) → { src, name, size, mime, image } 가 있으면 무슨 파일이든 (노트),
+  // 없으면 opts.uploadImage(file) → src 로 사진만 (일기). 올리는 동안의 줄(진행 · 취소)은 문서 밖이라 되돌리기 기록에 안 들어가요.
+  // 다 올라간 블록 하나 = 되돌리기 한 단계 (⌘Z 로 빠져요. 파일은 서버에 남아서 ⌘⇧Z 로 다시 살아나요)
+  function imageFiles(list) {
+    const all = [...(list || [])];
+    if (opts.uploadFile) return all;
+    return opts.uploadImage ? all.filter((f) => /^image\//.test(f.type)) : [];
+  }
+  const MAX_UP = opts.maxFileSize || 0;
+  function upRow(f) {
+    const row = document.createElement("div"); row.className = "nb-up"; row.setAttribute("role", "status");
+    row.innerHTML = `<span class="nb-up-name">${esc(f.name || "file")}</span><span class="nb-up-bar"><i></i></span><span class="nb-up-pc">0%</span><button type="button" class="btn sm nb-up-x">취소</button>`;
+    root.appendChild(row); return row;
+  }
   async function addImages(files, afterId, into = null) {
     let prev = afterId;
     for (const f of files) {
-      let src;
-      try { src = await opts.uploadImage(f); } catch (err) { opts.onError?.(err); continue; }
-      if (into) { into.props.src = src; prev = into.id; into = null; changed(); render(); continue; }
-      const nb = block("image", "", { src, caption: "" });
-      if (prev && find(prev)) insertAfter(prev, nb); else doc.blocks.push(nb);
-      prev = nb.id; changed(); render();
+      if (MAX_UP && f.size > MAX_UP) { opts.onError?.(new Error(`'${f.name}' 은(는) 너무 커요 (한 개에 ${Math.round(MAX_UP / 1048576)}MB 까지).`)); continue; }
+      let nb;
+      if (opts.uploadFile) {
+        const ac = new AbortController(), row = upRow(f), bar = row.querySelector("i"), pc = row.querySelector(".nb-up-pc");
+        row.querySelector("button").onclick = () => ac.abort();
+        try {
+          const r = await opts.uploadFile(f, { signal: ac.signal, onProgress: (x) => { bar.style.width = Math.round(x * 100) + "%"; pc.textContent = Math.round(x * 100) + "%"; } });
+          nb = r.image ? block("image", "", { src: r.src, caption: "" }) : block("file", "", { src: r.src, name: r.name, bytes: r.size, mime: r.mime });
+        } catch (err) { if (err?.name !== "AbortError") opts.onError?.(err); continue; }
+        finally { row.remove(); }
+      } else {
+        let src;
+        try { src = await opts.uploadImage(f); } catch (err) { opts.onError?.(err); continue; }
+        nb = block("image", "", { src, caption: "" });
+      }
+      const ph = into && find(into.id) ? into : null; into = null;
+      if (ph && (ph.type === "image" && !ph.props.src || ph.type === "paragraph" && !ph.text)) { const at = find(ph.id); at.list.splice(at.i, 1, nb); }
+      else if (prev && find(prev)) insertAfter(prev, nb); else doc.blocks.push(nb);
+      H.typing = false; H.forceNew = true;
+      prev = nb.id; changed(); render(); holdFocus();
     }
   }
-  function pickImages(b) {
-    const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.multiple = true;
+  function pickFiles(b, accept = "") {
+    const inp = document.createElement("input"); inp.type = "file"; inp.multiple = true; if (accept) inp.accept = accept;
     inp.onchange = () => addImages(imageFiles(inp.files), b.id, b);
     inp.click();
   }
+  const pickImages = (b) => pickFiles(b, "image/*");
   // 이미지 크기: 오른쪽 아래 손잡이를 끌면 줄 너비의 % 로
   root.addEventListener("pointerdown", (e) => {
     const h = e.target.closest?.(".nb-resize"); if (!h || ro) return;
@@ -839,7 +908,7 @@ export function createBlockEditor(host, opts) {
     endDrag(); render();
   }
   root.addEventListener("dragover", (e) => {
-    if (!dragId) { if (!ro && opts.uploadImage && e.dataTransfer?.types?.includes("Files")) e.preventDefault(); return; }
+    if (!dragId) { if (!ro && (opts.uploadImage || opts.uploadFile) && e.dataTransfer?.types?.includes("Files")) e.preventDefault(); return; }
     if (showMarker(e.clientX, e.clientY, e.target.closest?.(".nb"))) e.preventDefault();
   });
   root.addEventListener("drop", (e) => {

@@ -751,6 +751,19 @@ r = await call("a", "PUT", "/custom/" + encodeURIComponent("evil slot"), { css: 
 r = await call("a", "DELETE", "/custom/" + encodeURIComponent("nav:brain")); r = await call("a", "GET", "/custom"); ok(!r.data.custom.length, "custom reset");
 r = await call("a", "GET", "/files/notion-missing.png"); ok(r.status === 404, "missing file 404");
 r = await call("x", "GET", "/files/notion-missing.png"); ok(r.status === 401, "files need login");
+// ---- note attachments (raw PUT body, owner-only read, risky types as attachment) ----
+{
+  const raw = (who, method, path, body, type) => fetch(BASE + "/api" + path, { method, headers: { "content-type": type, "x-trio": "1", cookie: jar[who] || "" }, body });
+  const nid = (await call("a", "POST", "/notes", { title: "smoke-files " + Date.now(), body: "" })).data.note.id;
+  let f = await raw("b", "PUT", `/notes/${nid}/files?name=a.txt`, "hi", "text/plain"); ok(f.status === 404, "note file: other user can't upload to my note");
+  f = await raw("a", "PUT", `/notes/${nid}/files?name=x.svg`, '<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>', "image/svg+xml");
+  const svg = await f.json(); ok(f.status === 201 && !svg.image, "note file: svg uploaded, not inline");
+  f = await raw("a", "GET", svg.src.slice(4)); ok(f.headers.get("content-type") === "application/octet-stream" && /^attachment/.test(f.headers.get("content-disposition")) && f.headers.get("x-content-type-options") === "nosniff", "note file: svg served as attachment");
+  f = await raw("b", "GET", svg.src.slice(4)); ok(f.status === 404, "note file: other user can't read");
+  f = await raw("b", "GET", "/files/" + svg.src.split("/").pop()); ok(f.status === 404, "note file: not readable via /files");
+  f = await raw("a", "PUT", `/notes/${nid}/files?name=big.bin`, new Uint8Array(25 * 1024 * 1024 + 1), "application/octet-stream"); ok(f.status === 413, "note file: >25MB → 413");
+  await call("a", "DELETE", "/notes/" + nid);
+}
 // ---- diary ----
 r = await call("a", "PUT", "/diary", { day: "2026-09-28", mood: 4, body: "오늘은 괜찮았다" }); ok(r.data.diary?.mood === 4, "diary saved");
 r = await call("a", "GET", "/diary?day=2026-09-28"); ok(r.data.diary?.body === "오늘은 괜찮았다", "diary read");
