@@ -875,11 +875,15 @@ export function createBlockEditor(host, opts) {
     if (!marker) { marker = document.createElement("div"); marker.className = "nb-drop"; }
     marker.dataset.target = w.dataset.id; marker.dataset.before = before ? "1" : "";
     const hr = root.getBoundingClientRect();
-    // 블록 왼쪽 · 오른쪽 끝에 놓으면 단 나누기 (단 안이면 그 옆에 새 단, 3단까지)
-    const edge = Math.min(48, r.width * 0.15), side = x < r.left + edge ? "left" : x > r.right - edge ? "right" : "";
+    // 토글 안으로: 제목 줄 아래쪽 반이나 그 아래(빈 토글 안내 · 펼친 자식 칸) — 예전엔 제목 줄만 재서 "뒤에 놓기"나 단 나누기가 됐어요
+    const fold = isFoldable(find(w.dataset.id)?.b || {}), inRow = y >= r.top && y <= r.bottom;
+    marker.dataset.inside = fold && !before && (!inRow || x > r.left + 40) ? "1" : "";
+    // 블록 왼쪽 · 오른쪽 끝에 놓으면 단 나누기 (단 안이면 그 옆에 새 단, 3단까지) — 제목 줄 위에서만
+    const edge = Math.min(48, r.width * 0.15), side = !inRow || marker.dataset.inside ? "" : x < r.left + edge ? "left" : x > r.right - edge ? "right" : "";
     marker.dataset.side = side && sideOk(w.dataset.id) ? side : "";
     marker.classList.toggle("side", !!marker.dataset.side);
-    if (marker.dataset.side) Object.assign(marker.style, { top: r.top - hr.top + "px", left: (side === "left" ? r.left : r.right) - hr.left - 1 + "px", width: "3px", height: r.height + "px" });
+    if (marker.dataset.inside) Object.assign(marker.style, { top: r.bottom - hr.top - 1 + "px", left: r.left + 28 - hr.left + "px", width: Math.max(40, r.width - 28) + "px", height: "" });
+    else if (marker.dataset.side) Object.assign(marker.style, { top: r.top - hr.top + "px", left: (side === "left" ? r.left : r.right) - hr.left - 1 + "px", width: "3px", height: r.height + "px" });
     else Object.assign(marker.style, { top: (before ? r.top : r.bottom) - hr.top - 1 + "px", left: r.left - hr.left + "px", width: r.width + "px", height: "" });
     if (!marker.isConnected) root.appendChild(marker);
     return true;
@@ -893,19 +897,21 @@ export function createBlockEditor(host, opts) {
   }
   function dropAtMarker() {
     if (!dragId || !marker?.dataset.target) return endDrag();
-    const tid = marker.dataset.target, before = marker.dataset.before === "1", side = marker.dataset.side;
+    const tid = marker.dataset.target, before = marker.dataset.before === "1", side = marker.dataset.side, inside = marker.dataset.inside === "1";
     const src = find(dragId);
     if (src && tid !== dragId && !(src.b.type === "columns" && find(tid)?.parent?.type === "column")) {
       src.list.splice(src.i, 1);
       const dst = find(tid);
-      if (side && dst.parent?.type === "column") { // 이미 단 안: 그 단 옆에 새 단
+      if (inside) { dst.b.children = [src.b, ...(dst.b.children || [])]; setOpen(dst.b.id, true); }
+      else if (side && dst.parent?.type === "column") { // 이미 단 안: 그 단 옆에 새 단
         const col = find(dst.parent.id);
         col.list.splice(side === "left" ? col.i : col.i + 1, 0, block("column", "", {}, [src.b]));
       } else if (side) dst.list.splice(dst.i, 1, newColumns(2, side === "left" ? [src.b, dst.b] : [dst.b, src.b]));
       else dst.list.splice(before ? dst.i : dst.i + 1, 0, src.b);
       changed();
     }
-    endDrag(); render();
+    // 다시 그리기는 dragend 뒤에: drop 안에서 끌던 손잡이를 지우면 dragend 가 떨어진 노드에서 나서 정리가 안 되고 끌기 그림이 남아요
+    endDrag(); setTimeout(() => render());
   }
   root.addEventListener("dragover", (e) => {
     if (!dragId) { if (!ro && (opts.uploadImage || opts.uploadFile) && e.dataTransfer?.types?.includes("Files")) e.preventDefault(); return; }
@@ -920,7 +926,50 @@ export function createBlockEditor(host, opts) {
     end: () => { if (dragId) endDrag(); },
   });
   const endDrag = () => { dragId = null; marker?.remove(); marker = null; root.querySelectorAll(".dragging").forEach((x) => x.classList.remove("dragging")); };
+  const docDragEnd = () => { if (dragId) endDrag(); };
+  document.addEventListener("dragend", docDragEnd); // 손잡이가 다시 그려져 떨어져 있어도 정리
   root.addEventListener("dragend", endDrag);
+
+  // ---------- 상자 선택 (Notion 처럼: 글 바깥 여백에서 끌면 파란 네모, 닿은 블록을 골라요) ----------
+  // 고른 뒤: Delete · Backspace 로 지우기 (⌘Z 로 되살리기 — 문서 기록에 남아요) · Esc 로 풀기
+  let picked = [], boxSt = null;
+  const clearPick = () => { picked = []; root.querySelectorAll(".nb-picked").forEach((x) => x.classList.remove("nb-picked")); };
+  const NOBOX = ".nb-text, td, input, textarea, button, select, a, .nb-handle, .db-host, .nb-menu, [contenteditable]";
+  // 편집기 안 빈 곳, 또는 편집기 옆 여백(좌우 160px 안, 편집기 높이 안)에서 시작해요
+  const onBoxDown = (e) => {
+    if (!root.isConnected || !root.offsetParent) return;
+    const r = root.getBoundingClientRect();
+    const near = e.clientY >= r.top && e.clientY <= r.bottom && e.clientX >= r.left - 160 && e.clientX <= r.right + 160;
+    if (!root.contains(e.target) && (!near || e.target.closest?.("button, a, input, textarea, select, [contenteditable], .nb-menu, nav, header"))) return;
+    if (ro || e.button !== 0 || e.target.closest?.(NOBOX)) { if (!e.target.closest?.(".nb-handle")) clearPick(); return; } // 글 안에서는 늘 하던 대로 글자 고르기
+    clearPick(); e.preventDefault(); if (root.contains(document.activeElement)) document.activeElement.blur(); holdFocus(); // 글 칸 초점을 빼야 Delete 가 글자가 아니라 블록을 지워요
+    boxSt = { x: e.clientX, y: e.clientY, el: null };
+  };
+  document.addEventListener("mousedown", onBoxDown);
+  const onBoxMove = (e) => {
+    if (!boxSt) return;
+    const x1 = Math.min(boxSt.x, e.clientX), y1 = Math.min(boxSt.y, e.clientY), x2 = Math.max(boxSt.x, e.clientX), y2 = Math.max(boxSt.y, e.clientY);
+    if (!boxSt.el && x2 - x1 + y2 - y1 < 6) return; // 그냥 누른 것
+    if (!boxSt.el) { boxSt.el = document.createElement("div"); boxSt.el.className = "nb-box"; document.body.appendChild(boxSt.el); }
+    Object.assign(boxSt.el.style, { left: x1 + "px", top: y1 + "px", width: x2 - x1 + "px", height: y2 - y1 + "px" });
+    clearPick();
+    for (const w of root.querySelectorAll(".nb")) {
+      if (w.parentElement.closest(".nb-picked")) continue; // 부모를 고르면 자식은 따라와요
+      const r = w.querySelector(":scope > .nb-row").getBoundingClientRect();
+      if (r.right > x1 && r.left < x2 && r.bottom > y1 && r.top < y2) { w.classList.add("nb-picked"); picked.push(w.dataset.id); }
+    }
+  };
+  const onBoxUp = () => { if (!boxSt) return; boxSt.el?.remove(); boxSt = null; };
+  const onPickKey = (e) => {
+    if (!picked.length) return;
+    if (e.key === "Escape") { e.preventDefault(); clearPick(); return; }
+    if ((e.key === "Delete" || e.key === "Backspace") && !/^(INPUT|TEXTAREA)$/.test(e.target.tagName) && !e.target.isContentEditable) {
+      e.preventDefault();
+      for (const id of picked) { const at = find(id); if (at) at.list.splice(at.i, 1); }
+      clearPick(); changed(); render(); holdFocus();
+    }
+  };
+  document.addEventListener("mousemove", onBoxMove); document.addEventListener("mouseup", onBoxUp); document.addEventListener("keydown", onPickKey);
 
   render();
   record();
@@ -932,6 +981,6 @@ export function createBlockEditor(host, opts) {
     getDoc: () => doc,
     setDoc: (d) => { doc = d; if (!doc.blocks.length) doc.blocks.push(block("paragraph")); render(); H.typing = false; record(); },
     focus: (where) => { const vis = flat().filter(editable); const b = where === "end" ? vis.at(-1) : vis[0]; if (b) render({ id: b.id, off: where === "end" ? "end" : 0 }); },
-    destroy: () => { closeMenu(); closeSug(); closeTb(); document.removeEventListener("selectionchange", onSel); host.innerHTML = ""; },
+    destroy: () => { closeMenu(); closeSug(); closeTb(); document.removeEventListener("selectionchange", onSel); document.removeEventListener("dragend", docDragEnd); document.removeEventListener("mousemove", onBoxMove); document.removeEventListener("mouseup", onBoxUp); document.removeEventListener("keydown", onPickKey); document.removeEventListener("mousedown", onBoxDown); host.innerHTML = ""; },
   };
 }
