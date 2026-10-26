@@ -1,33 +1,35 @@
 // CIM 오늘 공부 (#/cim/go) — 버튼 하나로 네 단계: 1 읽기 → 2 문제 → 3 오답 → 4 떠올리기 → 끝
-//   · 읽기: 오늘 장의 카드(안 읽은 ★★★ 먼저 → ★★ → ★), 한 화면에 한 장, 넘기면 읽음
-//   · 문제: 오늘 카드에 붙은 문제부터 20개 · 오답: 오늘 돌아온 틀린 문제(최대 15) · 떠올리기: 카드 제목 → 눌러서 한 줄 확인
+//   · 읽기: 교재 순서로 안 읽은 다음 카드(하루 분량은 시험일에 맞춰요 · plan.js), 한 화면에 한 장, 넘기면 읽음
+//   · 문제: 방금 읽은 카드에 붙은 문제 (최대 20개) · 오답: 오늘 돌아온 틀린 문제(최대 15) · 떠올리기: 카드 제목 → 눌러서 한 줄 확인
 //   · 진행은 S.today 에 저장 → 나갔다 와도(새로 고침 · 다른 기기) 같은 단계 · 같은 장에서 이어요
 //   · 키보드: ← → 넘기기 · 1–4 고르기 · Enter 다음
 import { st, save, today, record, dueIds } from "./store.js";
 import { chOf } from "./meta.js";
 import { chapters, QI, QS_BY, PI } from "./data.js";
-import { planDay, todayChs, todayRun, STEPS, READ_CAP, Q_CAP, W_CAP } from "./plan.js";
-import { cardHtml, mountFigs, summary, cardText, chLabel } from "./render.js";
+import { todayPlan, todayRun, STEPS, READ_CAP, Q_CAP, W_CAP } from "./plan.js";
+import { cardHtml, mountFigs, summary, chLabel, aiCard } from "./render.js";
 import { mountQ, qKeys } from "./quiz.js";
 import { setAi } from "./ai.js";
 import { esc, shuffle, loading, errorBox, typing } from "./ui.js";
 
 // 오늘 공부 새로 짜기 (장 내용은 이미 받은 상태)
-function build(S, chs) {
-  const all = chs.flatMap((id, ci) => Object.values(PI).filter((p) => p.key.startsWith(id + "-")).map((p) => ({ p, ci })));
-  const rank = (x) => [S.read[x.p.key] ? 1 : 0, -(x.p.st || 0), x.ci, x.p.n];
-  const cmp = (a, b) => { const A = rank(a), B = rank(b); for (let k = 0; k < A.length; k++) if (A[k] !== B[k]) return A[k] - B[k]; return 0; };
-  const sorted = all.sort(cmp);
-  let pick = sorted.filter((x) => !S.read[x.p.key]).slice(0, READ_CAP);
-  if (pick.length < 4) pick = pick.concat(sorted.filter((x) => S.read[x.p.key] && x.p.st >= 3).slice(0, 6 - pick.length)); // 다 읽은 장이면 ★★★ 다시
-  const cards = pick.map((x) => x.p.key);
-  // 문제: 오늘 카드마다 안 푼 문제 하나씩 돌아가며 → 그 장의 안 푼 문제 → 나머지
-  const pool = chs.flatMap((id) => QS_BY[id] || []), seen = (q) => !!S.ans[q.id], used = new Set(), qs = [];
-  const per = cards.map((k) => shuffle(pool.filter((q) => q.pt.key === k && !seen(q))));
-  while (qs.length < Q_CAP && per.some((a) => a.length)) for (const a of per) { const q = a.pop(); if (q && qs.length < Q_CAP) { qs.push(q.id); used.add(q.id); } }
-  for (const q of shuffle(pool.filter((q) => !seen(q) && !used.has(q.id)))) { if (qs.length >= Q_CAP) break; qs.push(q.id); used.add(q.id); }
-  for (const q of shuffle(pool.filter((q) => !used.has(q.id)))) { if (qs.length >= Q_CAP) break; qs.push(q.id); }
-  return { d: today(), day: planDay(S), step: 0, i: 0, cards, qs, wq: null, p1: {}, p2: {}, rc: {} };
+//   읽기 = 교재 순서로 안 읽은 다음 카드 plan.n 장 (복습 날 = 약한 장의 ★★★ 카드, 안 읽은 것 → 읽은 것)
+//   문제 = 방금 읽을 카드에 붙은 문제만 — 카드마다 안 푼 문제 하나씩 돌아가며 → 그 카드의 푼 문제
+function build(S, plan) {
+  let cards;
+  if (plan.mode === "read") cards = plan.keys.filter((k) => PI[k]);
+  else {
+    const all = plan.chs.flatMap((id) => Object.values(PI).filter((p) => p.key.startsWith(id + "-")));
+    const star = all.filter((p) => p.st >= 3), base = star.length >= 4 ? star : all;
+    cards = [...base.filter((p) => !S.read[p.key]), ...base.filter((p) => S.read[p.key])].slice(0, READ_CAP).map((p) => p.key);
+  }
+  const seen = (q) => !!S.ans[q.id], qs = [], used = new Set();
+  const byCard = (k) => (QS_BY[k.slice(0, k.indexOf("-"))] || []).filter((q) => q.pt.key === k);
+  for (const pass of [false, true]) {
+    const per = cards.map((k) => shuffle(byCard(k).filter((q) => seen(q) === pass)));
+    while (qs.length < Q_CAP && per.some((x) => x.length)) for (const x of per) { const q = x.pop(); if (q && qs.length < Q_CAP && !used.has(q.id)) { qs.push(q.id); used.add(q.id); } }
+  }
+  return { d: today(), day: today(), bk: 1, mode: plan.mode, step: 0, i: 0, cards, qs, wq: null, p1: {}, p2: {}, rc: {} };
 }
 const dueSorted = (S) => dueIds().sort((a, b) => (S.wrong[a].due < S.wrong[b].due ? -1 : 1)).slice(0, W_CAP);
 const rightOf = (ids, picks) => ids.reduce((n, id, i) => n + (QI[id] && picks[i] === QI[id].a ? 1 : 0), 0);
@@ -41,10 +43,11 @@ export function mountSession(host, r, env) {
     host.innerHTML = loading("오늘 공부 준비하는 중");
     try {
       T = todayRun(S);
-      const chs = T ? [...new Set([...T.cards.map(chOf), ...T.qs.map(chOf), ...(T.wq || []).map(chOf)])] : todayChs(S);
+      const plan = T ? null : todayPlan(S);
+      const chs = T ? [...new Set([...T.cards.map(chOf), ...T.qs.map(chOf), ...(T.wq || []).map(chOf)])] : plan.chs;
       await chapters(chs, (n, t) => { if (t > 1 && alive) host.innerHTML = loading(`오늘 공부 준비하는 중 <span class="num">${n}/${t}</span>`); });
       if (!alive) return;
-      if (!T) { T = S.today = build(S, chs); save(); }
+      if (!T) { T = S.today = build(S, plan); save(); }
       if (T.step === 2 && T.wq?.length && T.wq.some((id) => !QI[id])) await chapters(T.wq.map(chOf));
     } catch (e) { host.innerHTML = errorBox(esc(e.message)); return; }
     if (alive) draw();
@@ -75,7 +78,7 @@ export function mountSession(host, r, env) {
       host.innerHTML = `<div class="c-session">${head(`1 읽기 · ${T.i + 1} / ${T.cards.length}`)}<div id="c-step">${cardHtml(p)}
         <div class="c-navrow"><button type="button" class="c-btn press" data-prev ${T.i ? "" : "disabled"} aria-label="이전 카드">←</button><button type="button" class="c-btn dark press" data-next>${T.i < T.cards.length - 1 ? "다음 카드" : "다 읽었어요 · 문제로"}</button></div></div></div>`;
       mountFigs(host);
-      setAi({ kind: "card", key: p.key, chapter: chLabel(chOf(p.key)), title: p.t, body: cardText(p) });
+      setAi(aiCard(p, chLabel(chOf(p.key))));
     } else if (st0 === 1 || st0 === 2) {
       const ids = st0 === 1 ? T.qs : T.wq, picks = st0 === 1 ? T.p1 : T.p2, q = QI[ids[T.i]];
       if (!q) return st0 === 1 ? (T.i + 1 < ids.length ? go(1, T.i + 1) : enterWrong()) : go(T.i + 1 < ids.length ? 2 : 3, T.i + 1 < ids.length ? T.i + 1 : 0);
@@ -95,10 +98,10 @@ export function mountSession(host, r, env) {
         <p class="c-recall-hint">무슨 내용이었는지 먼저 떠올려 보세요.</p>
         <div class="c-reveal" ${revealed ? "" : "hidden"}><div class="c-box tip"><span class="bl">한 줄</span><p>${esc(summary(p))}</p></div></div>
         <div class="c-navrow c-col2">${revealed ? `<button type="button" class="c-btn press" data-rc="0">다시 볼게요</button><button type="button" class="c-btn lime press" data-rc="1">기억났어요</button>` : `<button type="button" class="c-btn dark press wide" data-reveal>눌러서 확인</button>`}</div></div></div>`;
-      setAi({ kind: "card", key: p.key, chapter: chLabel(chOf(p.key)), title: p.t, body: cardText(p) });
+      setAi(aiCard(p, chLabel(chOf(p.key))));
     } else {
       const r1 = rightOf(T.qs, T.p1), r2 = T.wq ? rightOf(T.wq, T.p2) : 0, nw = T.wq?.length || 0, rc = Object.values(T.rc).filter((v) => v === 1).length;
-      (S.done[T.day] ||= {}).go = true; save();
+      (S.done[T.d] ||= {}).go = true; save();
       setAi({ kind: "general", topic: `오늘 공부 끝 · 문제 ${r1}/${T.qs.length} · 오답 ${r2}/${nw}` });
       host.innerHTML = `<div class="c-session">${head("")}<div class="c-done"><span class="k">오늘 공부 끝</span><span class="big num">${r1}<small> / ${T.qs.length}</small></span>
         <p>카드 ${T.cards.length}장을 읽고 ${T.qs.length}문제를 풀었어요.${nw ? `<br>오답 ${nw}개 중 ${r2}개를 맞혔어요.` : ""}<br>떠올리기 ${rc} / ${T.cards.length}</p>

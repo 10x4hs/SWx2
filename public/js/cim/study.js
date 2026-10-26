@@ -1,5 +1,5 @@
 // CIM 공부 — 장 목록(#/cim/study) · 한 장씩 읽기(#/cim/study/<장>[/<핵심 번호>]) · 그림 모아 보기(#/cim/study/figs)
-//   목록: 과목별 19장, 읽은 만큼 막대 + %, 오늘 장은 라임 '오늘'
+//   목록: 교재 순서(1과목 1장 → 3과목 10장) 19장, 장마다 교재 시작 쪽 · 읽은 만큼 막대 + % · 맨 위 '이어 읽기'(교재에서 안 읽은 다음 카드)
 //   읽기: 한 화면에 카드 한 장(오늘 공부와 같은 모양), ← / 다음 카드, '목차'로 아무 카드나. 넘기면 읽음.
 //         주소를 바꾸지 않고 카드만 갈아 끼워요(location.replace) — Dock 기억 · 새로 고침이 그 카드로 돌아와요
 import { st, save } from "./store.js";
@@ -7,8 +7,8 @@ import { CHS, CH, ORDER, SUBJ, chName } from "./meta.js";
 import { chapter } from "./data.js";
 import { NOTES } from "./notes.js";
 import { FIGS } from "./figs.js";
-import { todayChs, readIn } from "./plan.js";
-import { cardHtml, mountFigs, cardText, chLabel, renderBody } from "./render.js";
+import { todayChs, readIn, nextKey, bookDone, BOOK } from "./plan.js";
+import { cardHtml, mountFigs, aiCard, chLabel, renderBody } from "./render.js";
 import { setAi } from "./ai.js";
 import { esc, loading, errorBox, typing, pad2 } from "./ui.js";
 
@@ -20,10 +20,12 @@ export function mountStudy(host, r) {
 
   function list() {
     cur = null;
-    const S = st(), now = todayChs(S);
+    const S = st(), now = todayChs(S), nk = nextKey(S);
+    const [nch, nn] = nk ? nk.split("-") : [];
     host.innerHTML = `<div class="c-list"><h1>공부</h1>
+      ${nk ? `<a class="c-go press c-cont" href="#/cim/study/${nch}/${nn}">이어 읽기 · ${esc(chLabel(nch))} 핵심 ${nn} <span class="num">${bookDone(S)}/${BOOK.length}장 →</span></a>` : `<p class="c-hint">교재를 다 읽었어요. 약한 장을 다시 보세요.</p>`}
       ${[1, 2, 3].map((s) => `<section class="c-grp"><div class="gh"><span>${SUBJ_T[s]}</span><span class="num">${SUBJ[s].q}문항</span></div>
-        ${CHS.filter((c) => c.s === s).map((c) => { const p = Math.round((readIn(c.id, S) / c.np) * 100); return `<a class="c-row press${now.includes(c.id) ? " now" : ""}" href="#/cim/study/${c.id}"><span class="n num">${c.c}</span><b>${esc(c.t)}</b><span class="p num">${p ? `<span class="c-mini" aria-hidden="true"><i style="width:${p}%"></i></span>${p}%` : "—"}</span></a>`; }).join("")}</section>`).join("")}
+        ${CHS.filter((c) => c.s === s).map((c) => { const p = Math.round((readIn(c.id, S) / c.np) * 100); return `<a class="c-row press${now.includes(c.id) ? " now" : ""}" href="#/cim/study/${c.id}"><span class="n num">${c.c}</span><b>${esc(c.t)} <span class="dim num">${esc(c.pg)}쪽~</span></b><span class="p num">${p ? `<span class="c-mini" aria-hidden="true"><i style="width:${p}%"></i></span>${p}%` : "—"}</span></a>`; }).join("")}</section>`).join("")}
       <p class="c-hint"><a class="c-link" href="#/cim/study/figs">그림 모아 보기</a></p></div>`;
     setAi({ kind: "general", topic: "공부 탭 · 장 목록" });
   }
@@ -54,9 +56,9 @@ export function mountStudy(host, r) {
     </div>
     <dialog class="c-sheet c-toc" id="c-toc" aria-label="이 장의 카드"><div class="c-sheet-h"><b>${esc(c.t)}</b><button type="button" class="c-ai-x press" data-close aria-label="닫기">✕</button></div>
       ${all.strat ? `<details class="c-strat"><summary>이 장 공부법</summary>${renderBody(String(all.strat).replace(/^▶ 학습전략\s*/, ""))}</details>` : ""}
-      <div class="c-toc-l">${all.map((x, j) => `<button type="button" class="c-row press${j === idx ? " cur" : ""}" data-j="${j}"><span class="n num">${x.n}</span><b>${esc(x.t)}</b><span class="p">${S.read[x.key] ? "✓" : x.st >= 3 ? "★★★" : ""}</span></button>`).join("")}</div></dialog>`;
+      <div class="c-toc-l">${all.map((x, j) => `<button type="button" class="c-row press${j === idx ? " cur" : ""}" data-j="${j}"><span class="n num">${x.n}</span><b>${esc(x.t)} <span class="dim num">${esc(x.pg || "")}쪽</span></b><span class="p">${S.read[x.key] ? "✓" : x.st >= 3 ? "★★★" : ""}</span></button>`).join("")}</div></dialog>`;
     mountFigs(host);
-    setAi({ kind: "card", key: p.key, chapter: `${chLabel(cur)} ${c.t}`, title: p.t, body: cardText(p) });
+    setAi(aiCard(p, `${chLabel(cur)} ${c.t}`));
   }
   const goCard = (j) => { if (j < 0 || j >= all.length) return; location.replace(`#/cim/study/${cur}/${all[j].n}`); };
   const pass = () => { const S = st(), k = all[idx]?.key; if (k && !S.read[k]) { S.read[k] = 1; save(); } };

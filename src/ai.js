@@ -481,12 +481,12 @@ async function* sse(res) {
   }
 }
 
-async function gemini(env, model, system, history, message, emit) {
+async function gemini(env, model, system, history, message, emit, o = {}) {
   const contents = [...history, { role: "user", content: message }].map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
   const res = await fetch(`${GEMINI_URL}${model}:streamGenerateContent?alt=sse`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: { temperature: 0.7, maxOutputTokens: 4096 } }),
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: o.fast ? { temperature: 0.3, maxOutputTokens: 900 } : { temperature: 0.7, maxOutputTokens: 4096 } }),
   });
   if (!res.ok) throw await providerError(res, "Gemini");
   let text = "";
@@ -531,8 +531,10 @@ function mimo(env, model, system, history, message, emit) {
   return openaiStream(MIMO_URL, env.MIMO_API_KEY, "MiMo", { model, messages: chatMessages(system, history, message), max_tokens: 8192, temperature: 0.7 }, emit);
 }
 
-function groq(env, model, system, history, message, emit) {
-  return openaiStream(GROQ_URL, env.GROQ_API_KEY, "Groq", { model, ...groqExtra(model), messages: chatMessages(system, history, message), max_tokens: 4096, temperature: 0.7 }, emit);
+// fast(짧은 튜터 답): 생각을 짧게(gpt-oss low · qwen none) · 답 길이도 짧게 — 첫 글자가 빨리 와요
+const groqFast = (model) => (model.startsWith("qwen/") ? { reasoning_effort: "none" } : { reasoning_effort: "low" });
+function groq(env, model, system, history, message, emit, o = {}) {
+  return openaiStream(GROQ_URL, env.GROQ_API_KEY, "Groq", { model, ...groqExtra(model), ...(o.fast ? groqFast(model) : {}), messages: chatMessages(system, history, message), max_tokens: o.fast ? 900 : 4096, temperature: o.fast ? 0.3 : 0.7 }, emit);
 }
 
 // Cohere v2: event 이름이 data 안의 type 에도 들어 있어요 → content-delta 만 글자로 받아요
@@ -570,7 +572,9 @@ const RUN = { gemini, mimo, groq, cohere, zhipu: openaiLike("zhipu"), openrouter
 // 회사 순서는 order 로 (기본 Groq → Gemini → Cohere → MiMo → Zhipu → OpenRouter → Kilo). 붐비면 다음 모델, 그 회사가 아예 안 되면 다음 회사로.
 // onToken(text) 을 주면 글자가 나오는 대로 불러요 (스트리밍). 모델이 바뀌어 다시 시작하면 onToken("", { reset: true }) 로 알려요.
 // opts.private = true → order 에서 PRIVATE_SAFE 만 남겨요. 다 안 되면 privateError (다른 회사로 넘어가지 않아요).
-export async function aiText(env, system, messages, order = TEXT_ORDER, onToken = null, { private: priv = false } = {}) {
+// fast = 짧은 답이 먼저 필요한 곳(CIM 튜터): 회사마다 첫 글자가 빠른 모델부터 (FAST_CHAIN) · 생각 · 길이를 짧게
+const FAST_CHAIN = { groq: ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b"], gemini: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-flash-latest"] };
+export async function aiText(env, system, messages, order = TEXT_ORDER, onToken = null, { private: priv = false, fast = false } = {}) {
   const groups = order.filter((p) => MODELS[p] && hasKey(env, p) && (!priv || isPrivateSafe(p)));
   if (!groups.length && priv) throw privateError();
   if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }
@@ -578,10 +582,10 @@ export async function aiText(env, system, messages, order = TEXT_ORDER, onToken 
   const quiet = async () => {};
   let lastErr = null, started = false;
   for (const p of groups) {
-    for (const model of MODELS[p].chain) {
+    for (const model of (fast && FAST_CHAIN[p]) || MODELS[p].chain) {
       // RUN 의 emit(kind, text) 중 delta 만 밖으로 (status · reasoning 은 조용히)
       const tok = onToken ? async (kind, t) => { if (kind !== "delta") return; started = true; await onToken(t); } : quiet;
-      try { if (started && onToken) await onToken("", { reset: true }); started = false; return { text: await RUN[p](env, model, system, history, last, tok), used: model }; }
+      try { if (started && onToken) await onToken("", { reset: true }); started = false; return { text: await RUN[p](env, model, system, history, last, tok, { fast }), used: model }; }
       catch (e) { lastErr = e; if (!e.retry) break; }
     }
   }

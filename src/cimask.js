@@ -9,6 +9,8 @@
 //   답은 다른 튜터(/mba/ask · /books/ask)처럼 글자 단위 SSE: {type:"sources"|"delta"|"reset"|"end"|"error"} — end 에 고친 text 와 sources(cited 표시)가 와요.
 //   하루 사용량은 worker.js 의 AI_PATH(aiQuota) 가 세요 — 첫 팀(SWx2) 밖은 하루 AI_DAILY 번. (근거 찾기의 임베딩은 세지 않아요)
 //   기능 잠금: "cim" 기능이 있어야 해요 (features.js MAP · /apps/cim/*).
+//   빠르게 (2026-10-26): 카드 화면의 짧은 질문은 그 카드 + 쉽게 보기만으로 답해요 (근거 찾기 건너뜀) · 그 밖의 찾기는 RETRIEVE_MS 안에 끝나야 해요(넘으면 카드만)
+//     · 공급사는 첫 글자가 빠른 모델부터 (aiText fast: Groq gpt-oss-20b → qwen → Gemini flash-lite) · 노트가 섞이면 Groq 만 (그대로)
 import { aiText, TEXT_ORDER, PRIVATE_SAFE } from "./ai.js";
 import { retrieve, settings, hrefOf } from "./rag.js";
 import { checkCites } from "./lib/rag-text.js";
@@ -21,13 +23,23 @@ const MAX_SOURCES = 5, MAX_NOTE_SOURCES = 2;
 export { PRIVATE_SAFE };
 const s = (v, n) => (typeof v === "string" ? v.replace(/\s+\n/g, "\n").trim().slice(0, n) : "");
 const KEY_RE = /^s[1-3]c\d{1,2}-\d{1,3}$/;
+const RETRIEVE_MS = 1500; // 근거 찾기(글자 + 벡터) 시간 한도 — 넘으면 지금 카드만으로 답해요
+const SHORT_Q = 40; // 카드 화면에서 이보다 짧은 질문("쉽게 설명해줘" · "예시 들어줘")은 그 카드 하나로 충분해요
+// 쉽게 보기(화면이 보낸 p.easy) → 프롬프트 몇 줄
+function easyBlock(e) {
+  if (!e || typeof e !== "object") return "";
+  const L = (a) => (Array.isArray(a) ? a.slice(0, 5).map((x) => s(x, 160)).filter(Boolean) : []);
+  const lines = L(e.lines), pts = L(e.points);
+  if (!lines.length) return "";
+  return `\n[쉽게 보기 — 이미 학생에게 보여 준 쉬운 설명]\n${lines.join("\n")}${s(e.analogy, 200) ? `\n비유: ${s(e.analogy, 200)}` : ""}${s(e.example, 240) ? `\n${s(e.example, 240)}` : ""}${pts.length ? `\n시험 포인트: ${pts.join(" / ")}` : ""}`;
+}
 
 // 화면 내용 → 프롬프트 자료 (모든 값은 길이를 잘라요)
 function material(c) {
   c = c && typeof c === "object" ? c : {};
   const kind = ["card", "quiz", "general"].includes(c.kind) ? c.kind : "general";
   const ch = s(c.chapter, 120);
-  if (kind === "card") return `[지금 읽는 카드] ${ch ? ch + " · " : ""}${s(c.title, 160)}`;
+  if (kind === "card") return `[지금 읽는 카드] ${ch ? ch + " · " : ""}${s(c.title, 160)}${easyBlock(c.easy)}`;
   if (kind === "quiz") {
     const opts = Array.isArray(c.options) ? c.options.slice(0, 5).map((o, i) => `${i + 1}) ${s(o, 300)}`).join("\n") : "";
     const ans = Number.isInteger(c.answer) ? `${c.answer + 1}번` : "모름";
@@ -49,7 +61,18 @@ export async function findSources(env, user, ctx, question, { maxNotes = MAX_NOT
   // 짧은 질문("쉽게 설명해줘")은 화면 제목이 뜻을 실어 줘요
   const qtext = [s(question, 500), s(ctx.title, 160), ctx.kind === "quiz" ? s(ctx.question, 300) : "", ctx.kind === "general" ? s(ctx.topic, 200) : ""].filter(Boolean).join("\n");
   let items = [], vecOk = false;
-  try { ({ items, vecOk } = await retrieve(env, user, qtext, { cim: true, notes: true })); } catch (e) { console.log("cim ask retrieve", String(e?.message || e)); }
+  // 카드 화면의 짧은 질문은 그 카드가 답이에요 — 찾기(임베딩 · 벡터 · 재정렬)를 건너뛰어 첫 글자를 빨리
+  const quick = (!!out.length || !!s(ctx.body, 50)) && ctx.kind === "card" && s(question, 500).length <= SHORT_Q;
+  if (!quick) {
+    let tm;
+    try {
+      ({ items, vecOk } = await Promise.race([
+        retrieve(env, user, qtext, { cim: true, notes: true, rerank: false }),
+        new Promise((_, no) => { tm = setTimeout(() => no(new Error("retrieve timeout")), RETRIEVE_MS); }),
+      ]));
+    } catch (e) { console.log("cim ask retrieve", String(e?.message || e)); }
+    clearTimeout(tm);
+  }
   let notes = 0;
   for (const it of items) {
     if (out.length >= MAX_SOURCES) break;
@@ -73,12 +96,15 @@ function sourceBlock(list) {
   return "[근거]\n" + list.map((x) => `[${x.n}] ${x.type === "note" ? "내 노트" : "CIM 카드"} · ${x.path}\n${s(x.text, x.n === 1 ? 2500 : 1200)}`).join("\n\n");
 }
 function systemPrompt(ctx, list, route = null) {
-  return `너는 투자자산운용사(CIM) 시험을 2주 안에 준비하는 학생의 튜터야.
-규칙: 쉬운 한국어 해요체, 짧은 문단(3~6문장), 필요하면 짧은 목록. 처음 쓰는 용어는 그 자리에서 한 줄로 풀어 줘.
-근거: 아래 [근거]의 번호 자료로만 사실을 말하고, 사실을 말한 문장 끝에 [1] 처럼 근거 번호를 붙여. 여러 개면 [1][2]. [근거]에 없는 번호는 쓰지 마.
-[근거]에 없는 세율 · 한도 · 법 조문 · 통계 숫자는 지어내지 마. [근거]로 답할 수 없는 질문이면 첫 문장을 "자료에 근거가 없어요."로 시작하고, 무엇을 교재에서 찾아보면 되는지만 짧게 말해.
+  return `너는 투자자산운용사(CIM) 시험을 준비하는 학생의 튜터야. 학생은 내용이 어렵다고 느껴. 중학생도 알아듣게 말해.
+말투: 쉬운 한국어 해요체. 기본은 짧게 — 6줄 이내. 어려운 용어는 바로 쉬운 말로 풀어 줘. 가능하면 일상 비유 한 줄 + 아주 작은 숫자 예 한 줄.
+학생이 "더 자세히"를 부탁할 때만 10~15줄까지 길게 써도 돼.
+근거: 아래 [근거]의 번호 자료(교재 카드 · 노트)로만 사실을 말하고, 사실을 말한 문장 끝에 [1] 처럼 근거 번호를 붙여. 여러 개면 [1][2]. [근거]에 없는 번호는 쓰지 마.
+숫자 규칙: 세율 · 한도 · 기간 · 비율 · 법 조문 같은 숫자는 [근거]에 그대로 있는 것만 써. 지어내지 마. 비유 · 계산 예시에서 쓰는 숫자는 "예를 들어"라고 밝히고 쓰고, 교재 기준처럼 말하지 마.
+확실하지 않은 부분은 지어내지 말고 그 자리에 "교재로 확인이 필요해요"라고 써. [근거]로 답할 수 없는 질문이면 첫 문장을 "자료에 근거가 없어요."로 시작하고, 교재에서 어떤 내용을 찾아보면 되는지만 짧게 말해 (장 · 쪽 번호는 [근거]에 있을 때만). 예시 · 비유 문장에는 근거 번호를 달지 마.
 계산이 나오면 한 줄씩 숫자로 보여 줘. 문제를 물으면 왜 정답이 맞는지, 학생이 고른 답이 왜 틀렸는지(헷갈리게 만든 함정)를 짚어 줘.
 '비슷한 문제'를 부탁하면 4지선다 한 문제를 내고 정답과 해설은 맨 끝에 따로 적어. 외우는 법을 부탁하면 짧은 기억 훅(앞글자 · 비유)을 하나 줘.
+LaTeX(\\[ \\] \\frac 같은 것)는 쓰지 마. 공식은 "듀레이션 = …" 처럼 글자로 한 줄.
 ${route && ROUTES[route] ? ROUTES[route].hint + "\n" : ""}${material(ctx)}
 
 ${sourceBlock(list)}`.replace(/\*\*/g, "");
@@ -103,10 +129,10 @@ export function registerCimAsk(on, { json, body, fail }) {
     // 노트가 있으면 안전한 공급사로만. 실패하면(키 없음 · 막힘) 노트를 빼고 보통 순서로 다시
     const run = async (onTok) => {
       if (hasNotes()) {
-        try { return await aiText(env, systemPrompt(b.context, list, route), clean, PRIVATE_SAFE, onTok, { private: true }); }
+        try { return await aiText(env, systemPrompt(b.context, list, route), clean, PRIVATE_SAFE, onTok, { private: true, fast: true }); }
         catch (e) { console.log("cim ask private provider failed → CIM only", String(e?.message || e)); withoutNotes(); if (onTok) await onTok("", { reset: true, sources: true }); }
       }
-      return aiText(env, systemPrompt(b.context, list, route), clean, TEXT_ORDER, onTok);
+      return aiText(env, systemPrompt(b.context, list, route), clean, TEXT_ORDER, onTok, { fast: true });
     };
     if (q.get("stream") === "0") {
       try {
