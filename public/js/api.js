@@ -14,7 +14,7 @@ for (const t of ["pointerdown", "keydown"]) addEventListener(t, () => { swrUntil
 async function request(method, path, body) {
   let res;
   const headers = { "content-type": "application/json", "x-trio": "1" };
-  if (method === "GET" && performance.now() < swrUntil && !path.startsWith("/room") && path !== "/announcement") headers["x-swr"] = "1";
+  if (method === "GET" && performance.now() < swrUntil && !path.startsWith("/room") && !path.startsWith("/announcement")) headers["x-swr"] = "1";
   try {
     res = await fetch("/api" + path, {
       method,
@@ -58,9 +58,14 @@ export const api = {
   updateTeam: (id, b) => request("PATCH", `/teams/${id}`, b),
   leaveTeam: (id, uid) => request("DELETE", `/teams/${id}/members/${uid}`),
   announcement: () => request("GET", "/announcement"),
+  // 공지 여러 개 → { announcements: [...] } (옛 서버면 /announcement 하나를 목록으로 바꿔요)
+  announcements: () => request("GET", "/announcements").catch((e) => { if (e.status !== 404) throw e; return request("GET", "/announcement").then((d) => ({ announcements: d.announcement ? [d.announcement] : [] })); }),
+  adminAnnouncements: () => request("GET", "/admin/announcements"),
+  adminAnnUpdate: (id, b) => request("PATCH", `/admin/announcements/${id}`, b),
+  adminAnnOrder: (ids) => request("POST", "/admin/announcements/order", { ids }),
   adminTeams: () => request("GET", "/admin/teams"),
   adminPlans: (id, from, to) => request("GET", `/admin/users/${id}/plans?from=${from}&to=${to}`),
-  adminAnnounce: (body) => request("POST", "/admin/announcements", { body }),
+  adminAnnounce: (body, extra = {}) => request("POST", "/admin/announcements", { body, ...extra }),
   // 공지 사진: 파일 그대로 올려요 → { src: "/api/ann/img/…" }
   annImage: async (blob) => {
     let res;

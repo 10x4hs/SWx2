@@ -1516,7 +1516,7 @@ try {
       // 예전 한 줄 공지는 그대로: 자세히 버튼 없이 글자만
       await ac.request.post(BASE + "/api/admin/announcements", { headers: H, data: { body: "그냥 한 줄 공지" } });
       await mp.reload(); await mp.waitForSelector(".ann-bar", { timeout: 8000 }).catch(() => {});
-      const plain = await mp.evaluate(() => ({ t: document.querySelector(".ann-bar span")?.textContent, more: !!document.querySelector(".ann-bar .ann-more") }));
+      const plain = await mp.evaluate(() => ({ t: document.querySelector(".ann-bar span")?.textContent, more: !!document.querySelector(".ann-bar:first-child .ann-more") }));
       ok(plain.t === "📢 그냥 한 줄 공지" && !plain.more, `한 줄 공지는 예전처럼 — "${plain.t}" · 자세히 ${plain.more}`);
       // 공지 사진: 관리자가 글상자에 붙여 넣기 → 미리보기에 보이고 → 올리기 → 회원 자세히에서 사진이 실제로 떠요
       await ap.click("[data-ann-pv]").catch(() => {}); await sleep(200);
@@ -1536,11 +1536,58 @@ try {
       ok(/!\[\]\(\/api\/ann\/img\/[0-9a-f-]+\.png\)/.test(md) && pvImg > 0, `공지 사진 붙여 넣기 → 미리보기 — 글 ${JSON.stringify(md)} · 너비 ${pvImg}`);
       await ap.click(".adm-ann button:not([type])"); await sleep(1500);
       await mp.reload(); await mp.waitForSelector(".ann-bar", { timeout: 8000 }).catch(() => {});
-      const thumb = await mp.evaluate(() => !!document.querySelector(".ann-bar img.ann-thumb"));
-      await mp.click(".ann-bar .ann-more").catch(() => {});
+      const thumb = await mp.evaluate(() => !!document.querySelector(".ann-bar:first-child img.ann-thumb"));
+      await mp.click(".ann-bar:first-child .ann-more").catch(() => {});
       await mp.waitForFunction(() => document.querySelector(".ann-sheet img.ann-img")?.complete, null, { timeout: 5000 }).catch(() => {});
       const mImg = await mp.evaluate(() => { const im = document.querySelector(".ann-sheet img.ann-img"); return im ? { w: im.naturalWidth, mw: getComputedStyle(im).maxWidth } : null; });
       ok(mImg?.w > 0 && mImg.mw === "100%" && thumb && !errs.length, `회원 자세히에서 공지 사진 — 너비 ${mImg?.w} · max-width ${mImg?.mw} · 띠 썸네일 ${thumb}${errs.length ? " — " + errs[0] : ""}`);
+      // 공지 여러 개: 관리자 화면에서 3개(하나는 사진) → 회원은 3줄로 쌓여 보이고 섬 · 체험 띠와 안 겹쳐요 (1280 · 390)
+      sq(`UPDATE announcements SET active = 0`);
+      await ap.reload(); await sleep(2000); await ap.click('.adm-tabs [data-tab="ann"]'); await sleep(300);
+      const IMG = md.match(/\/api\/ann\/img\/[^)\s]+/)?.[0];
+      for (const t of ["# 셋째 줄 공지\n본문", `# 사진 둘째\n![](${IMG})`, "첫째 한 줄 공지"]) {
+        if (await ap.evaluate(() => document.querySelector(".adm-ann textarea").hidden)) await ap.click("[data-ann-pv]");
+        await ap.fill(".adm-ann textarea", t); await ap.click(".adm-ann button:not([type])"); await sleep(900);
+      }
+      const rows = await ap.evaluate(() => [...document.querySelectorAll(".adm-ann-row .adm-ann-t")].map((x) => x.textContent));
+      ok(rows.slice(0, 3).join("|") === "첫째 한 줄 공지|# 사진 둘째|# 셋째 줄 공지", `관리자 공지 목록 — ${rows.join(" | ")}`);
+      const geo = async (pg) => pg.evaluate(() => {
+        const r = (el) => el && el.getBoundingClientRect(), bars = [...document.querySelectorAll(".ann-stack .ann-bar")].map(r);
+        const others = [r(document.querySelector("#timer.is-live")), r(document.querySelector(".trial-bar")), r(document.querySelector(".imp-bar"))].filter((x) => x && x.width);
+        const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        const ov = bars.some((a, i) => bars.some((b, j) => i !== j && hit(a, b)) || others.some((o) => hit(a, o)));
+        return { n: bars.length, ov, inView: bars.every((b) => b.left >= 0 && b.right <= innerWidth), texts: [...document.querySelectorAll(".ann-stack .ann-bar span")].map((x) => x.textContent), th: document.querySelectorAll(".ann-stack .ann-bar img.ann-thumb").length };
+      });
+      await mp.evaluate(() => { try { localStorage.removeItem("trio-ann-hidden2"); } catch {} });
+      for (const w of [1280, 390]) {
+        await mp.setViewportSize({ width: w, height: w > 500 ? 860 : 844 });
+        await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await sleep(500);
+        // 집중 섬도 띄워 봐요 (있으면)
+        await mp.evaluate(() => document.querySelector("#timer")?.classList.add("is-live")); await sleep(300);
+        const g = await geo(mp);
+        ok(g.n === 3 && !g.ov && g.inView && g.th === 1, `공지 3줄 쌓기 ${w}px — ${g.n}줄 · 겹침 ${g.ov} · 화면 안 ${g.inView} · 사진 썸네일 ${g.th}`);
+        await mp.screenshot({ path: `/tmp/claude-501/ann-${w}.png`, clip: { x: 0, y: 0, width: w, height: 300 } });
+      }
+      await mp.click('.ann-stack .ann-bar:nth-child(1) .ann-x'); await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await sleep(500);
+      let g2 = await geo(mp);
+      ok(g2.n === 2 && !g2.texts.some((t) => t.includes("첫째")), `하나 닫고 새로고침 → ${g2.n}줄 남음`);
+      const firstId = JSON.parse(sq("SELECT id FROM announcements WHERE body = '첫째 한 줄 공지'"))[0].results[0].id;
+      await ac.request.patch(BASE + "/api/admin/announcements/" + firstId, { headers: H, data: { body: "첫째 한 줄 공지 (고침)" } });
+      await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await sleep(500);
+      g2 = await geo(mp);
+      ok(g2.n === 3 && g2.texts.some((t) => t.includes("고침")), `고치면 닫았던 공지가 다시 떠요 → ${g2.n}줄`);
+      await ac.request.patch(BASE + "/api/admin/announcements/" + firstId, { headers: H, data: { ends_at: Date.now() - 60000 } });
+      await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await sleep(500);
+      g2 = await geo(mp);
+      ok(g2.n === 2 && !g2.texts.some((t) => t.includes("첫째")), `끝나는 때가 지나면 안 보여요 → ${g2.n}줄${errs.length ? " — " + errs[0] : ""}`);
+      // 4개 이상이면 3줄 + "+N개 더"
+      await ac.request.post(BASE + "/api/admin/announcements", { headers: H, data: { body: "넷째" } });
+      await ac.request.post(BASE + "/api/admin/announcements", { headers: H, data: { body: "다섯째" } });
+      await mp.reload(); await mp.waitForSelector(".ann-rest", { timeout: 8000 }).catch(() => {});
+      const rest = await mp.evaluate(() => document.querySelector(".ann-rest")?.textContent);
+      await mp.click(".ann-rest").catch(() => {}); await sleep(200);
+      const all = await mp.evaluate(() => document.querySelectorAll(".ann-stack .ann-bar").length);
+      ok(rest === "+1개 더" && all === 4, `3줄 넘으면 "${rest}" → 펼치면 ${all}줄`);
     } finally {
       await ac.close(); await mc.close();
       sq(`UPDATE announcements SET active = 0 WHERE created_by = (SELECT id FROM users WHERE username = '${adm}')`);

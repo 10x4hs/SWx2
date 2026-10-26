@@ -148,19 +148,54 @@ function annSheet(src) {
   box.querySelector(".ann-md").innerHTML = adminView.annHtml(src);
   box.querySelector(".ann-md").addEventListener("click", (e) => { const im = e.target.closest("img.ann-img"); if (im) window.open(im.src, "_blank", "noopener"); });
 }
+// 공지 여러 개 = 맨 위 가운데에 줄줄이 쌓인 빨간 띠 (.ann-stack). 3줄까지 보이고 나머지는 "+N개 더".
+// 닫은 공지는 이 기기에 "id:updated_at" 로 기억해요 → 관리자가 고치면(updated_at 바뀜) 다시 떠요
+const ANN_HIDE = "trio-ann-hidden2", ANN_MAX = 3;
+const annKey = (a) => `${a.id}:${a.updated_at ?? a.created_at}`;
+function annHidden() {
+  let set = new Set(), old = "";
+  try { set = new Set(JSON.parse(localStorage.getItem(ANN_HIDE) || "[]")); old = localStorage.getItem("trio-ann-hidden") || ""; } catch {}
+  return { set, old };
+}
+let annOpen = false; // "+N개 더" 를 펼쳤는지
 function annBar() {
-  api.announcement().then(({ announcement: a }) => {
-    document.querySelector(".ann-bar")?.remove();
-    let hid = ""; try { hid = localStorage.getItem("trio-ann-hidden") || ""; } catch {}
-    if (!a || a.id === hid) return;
-    const title = annTitle(a.body).replace(/!\[[^\]]*\]\([^)]*\)/g, "").trim(), more = title !== a.body.trim();
-    const thumb = (a.body.match(/!\[[^\]]*\]\((\/api\/ann\/img\/[^)\s]+)\)/) || [])[1];
-    const bar = document.createElement("div");
-    bar.className = "ann-bar"; bar.setAttribute("role", "alert");
-    bar.innerHTML = `${thumb && adminView.ANN_IMG_SRC.test(thumb) ? `<img class="ann-thumb" src="${esc(thumb)}" alt="">` : ""}<span>📢 ${esc(title)}</span>${more ? `<button type="button" class="ann-more">자세히</button>` : ""}<button type="button" class="ann-x" aria-label="공지 닫기" title="닫기">✕</button>`;
-    bar.querySelector(".ann-x").addEventListener("click", () => { try { localStorage.setItem("trio-ann-hidden", a.id); } catch {} bar.remove(); });
-    bar.querySelector(".ann-more")?.addEventListener("click", () => annSheet(a.body));
-    document.body.append(bar);
+  api.announcements().then(({ announcements }) => {
+    const list = Array.isArray(announcements) ? announcements : [];
+    const { set, old } = annHidden();
+    // 옛 키(trio-ann-hidden = id 하나)는 그 공지를 아직 안 고쳤을 때만 숨겨요
+    const show = list.filter((a) => a && !set.has(annKey(a)) && !(old && a.id === old && (a.updated_at ?? a.created_at) === a.created_at));
+    document.querySelector(".ann-stack")?.remove();
+    if (!show.length) return;
+    const stack = document.createElement("div");
+    stack.className = "ann-stack";
+    const draw = () => {
+      stack.classList.toggle("is-open", annOpen);
+      const vis = annOpen ? show : show.slice(0, ANN_MAX), rest = show.length - vis.length;
+      stack.replaceChildren(...vis.map((a) => {
+        const title = annTitle(a.body).replace(/!\[[^\]]*\]\([^)]*\)/g, "").trim(), more = title !== a.body.trim();
+        const thumb = (a.body.match(/!\[[^\]]*\]\((\/api\/ann\/img\/[^)\s]+)\)/) || [])[1];
+        const bar = document.createElement("div");
+        bar.className = "ann-bar"; bar.setAttribute("role", "alert"); bar.dataset.ann = a.id;
+        bar.innerHTML = `${thumb && adminView.ANN_IMG_SRC.test(thumb) ? `<img class="ann-thumb" src="${esc(thumb)}" alt="">` : ""}<span>📢 ${esc(title)}</span>${more ? `<button type="button" class="ann-more">자세히</button>` : ""}<button type="button" class="ann-x" aria-label="공지 닫기" title="닫기">✕</button>`;
+        bar.querySelector(".ann-x").addEventListener("click", () => {
+          const { set } = annHidden(); set.add(annKey(a));
+          try { localStorage.setItem(ANN_HIDE, JSON.stringify([...set].slice(-200))); } catch {}
+          show.splice(show.indexOf(a), 1);
+          if (show.length) draw(); else stack.remove();
+        });
+        bar.querySelector(".ann-more")?.addEventListener("click", () => annSheet(a.body));
+        return bar;
+      }));
+      if (rest > 0 || (annOpen && show.length > ANN_MAX)) {
+        const m = document.createElement("button");
+        m.type = "button"; m.className = "ann-rest"; m.setAttribute("aria-expanded", annOpen);
+        m.textContent = annOpen ? "접기" : `+${rest}개 더`;
+        m.addEventListener("click", () => { annOpen = !annOpen; draw(); });
+        stack.append(m);
+      }
+    };
+    draw();
+    document.body.append(stack);
   }).catch(() => {});
 }
 // 관리자가 이 회원으로 들어간 동안: 맨 위 띠 + 관리자로 돌아가기
