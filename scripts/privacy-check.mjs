@@ -52,7 +52,7 @@ export async function privacyChecks(ok) {
   ok(/\{ private: true \}\); \/\/ 하루 계획/.test(src("records.js")), "privacy: records.js day score is private");
   ok(/private: true \}\)\); \} \/\/ 계획/.test(src("together.js")), "privacy: together.js weekly review is private");
   ok(/isPrivateSafe\(MODELS\[t\]\.provider\) \? \{ sys: system, tools: TOOLS \} : \{ sys: publicSystem, tools: PUBLIC_TOOLS \}/.test(src("ai.js")), "privacy: /ai/chat gives notes · plans context only to private-safe targets");
-  ok(/PRIVATE_SAFE, onTok, \{ private: true \}/.test(src("cimask.js")), "privacy: cimask note answers are private");
+  ok(/PRIVATE_SAFE, onTok, \{ private: true[ ,}]/.test(src("cimask.js")), "privacy: cimask note answers are private");
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
