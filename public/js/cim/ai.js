@@ -4,6 +4,7 @@
 //   · 폰(≤760px)은 아래에서 올라오는 판, 위 손잡이를 끌어 높이
 //   · 열림 · 크기는 이 기기에 기억(localStorage cim-ai-open · cim-ai-size), 대화는 이번 접속 동안(sessionStorage)
 //   · 답은 /api/apps/cim/ask 에서 글자 단위로(SSE), 도는 동안 '멈추기'. Enter 보내기 · Shift+Enter 줄바꿈
+//   · 빠른 질문(쉽게 설명해줘 · 예시 들어줘 · 외우는 법)은 카드에 '쉽게 보기'(p.easy)가 있으면 AI 를 부르지 않고 바로 답해요 → '더 자세히'를 누르면 AI 에게
 //   · 근거: 서버가 찾은 CIM 카드 · 내 노트에 [1]..[n] 번호를 붙여 보내고, 답의 [1] 은 그 자료로 가는 링크 · 아래 '근거' 칩 (단 번호만 진하게)
 import { streamCimAsk } from "../api.js";
 import { renderMarkdown as renderMd } from "../md.js";
@@ -35,6 +36,17 @@ const QUICK = {
   quizOk: ["왜 이게 정답이야?", "비슷한 문제 내줘"],
   general: ["오늘 뭐부터 할까?"],
 };
+
+// 바로 답 (AI 없이) — 카드의 쉽게 보기에서 꺼내요. 없으면 null → AI 에게
+export function instantAnswer(q, c) {
+  const e = c?.kind === "card" ? c.easy : null;
+  if (!e?.lines?.length) return null;
+  const src = `\n\n_교재${c.page ? " " + c.page + "쪽" : ""} 카드의 쉽게 보기에서 가져왔어요._`;
+  if (q === "쉽게 설명해줘") return e.lines.map((l) => "- " + l).join("\n") + (e.analogy ? `\n\n**비유하면** ${e.analogy}` : "") + src;
+  if (q === "예시 들어줘") return (e.example ? `**숫자로** ${e.example.replace(/^예\s*[:：]\s*/, "")}` : `**비유하면** ${e.analogy}`) + (e.example && e.analogy ? `\n\n**비유하면** ${e.analogy}` : "") + src;
+  if (q === "외우는 법") return `**시험 포인트**\n${(e.points || []).map((l) => "- " + l).join("\n")}` + (e.analogy ? `\n\n**그림으로 기억** ${e.analogy}` : "") + src;
+  return null;
+}
 
 let ctxNow = { kind: "general", topic: "CIM 오늘 화면" }, panel = null;
 // 화면이 지금 보는 내용을 알려 줘요 (패널이 닫혀 있어도 기억만)
@@ -72,7 +84,7 @@ export function mountAi(root) {
   const saveChat = () => { try { sessionStorage.setItem(CHAT_KEY, JSON.stringify(chat.slice(-24))); } catch {} };
   const paint = (live = -1) => {
     log.innerHTML = chat.length ? chat.map((m, i) => (m.role === "user" && i && chat[i - 1].k !== m.k ? `<p class="c-ai-sep">${esc(m.t || "새 화면")}</p>` : "") + (m.role === "user" ? `<div class="c-ai-msg me"><p>${esc(m.content)}</p></div>`
-      : `<div class="c-ai-msg bot${i === live ? " live" : ""}"><div class="md">${m.content ? cites(md(m.content), m.sources) : `<span class="c-ai-dots" aria-label="답을 쓰는 중"><i></i><i></i><i></i></span>`}</div>${i === live ? "" : srcChips(m.sources, m.content)}</div>`)).join("")
+      : `<div class="c-ai-msg bot${i === live ? " live" : ""}"><div class="md">${m.content ? cites(md(m.content), m.sources) : `<span class="c-ai-dots" aria-label="답을 쓰는 중"><i></i><i></i><i></i></span>`}</div>${i === live ? "" : srcChips(m.sources, m.content)}${m.inst && i === chat.length - 1 ? `<button type="button" class="c-chip press c-ai-more" data-ai-more="${esc(m.inst)}">더 자세히 (AI)</button>` : ""}</div>`)).join("")
       + (errMsg ? `<div class="c-ai-msg err" role="alert"><b>답을 받지 못했어요</b><p>${esc(errMsg)}</p></div>` : "")
       : `<div class="c-ai-empty">${errMsg ? `<div class="c-ai-msg err" role="alert"><b>답을 받지 못했어요</b><p>${esc(errMsg)}</p></div>` : "지금 화면 내용을 같이 보내요. 질문만 적으면 돼요."}</div>`;
     log.scrollTop = log.scrollHeight;
@@ -88,11 +100,13 @@ export function mountAi(root) {
   let raf = 0;
   const paintLive = (i, text) => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; const el = log.querySelector(".c-ai-msg.live .md"); if (!el) return busy ? paint(i) : undefined; el.innerHTML = md(text); log.scrollTop = log.scrollHeight; }); };
 
-  async function ask(text) {
+  async function ask(text, quick = false) {
     const q = String(text || "").trim();
     if (!q || busy) return;
     errMsg = "";
     const k = keyOf(ctxNow), t = ctxLine(ctxNow);
+    const inst = quick ? instantAnswer(q, ctxNow) : null;
+    if (inst) { chat.push({ role: "user", content: q, k, t }, { role: "assistant", content: inst, k, inst: q }); paint(); saveChat(); return; }
     chat.push({ role: "user", content: q, k, t }, { role: "assistant", content: "", k });
     const at = chat.length - 1;
     busy = true; ta.value = ""; ta.style.height = ""; paint(at);
@@ -129,7 +143,8 @@ export function mountAi(root) {
     if (!ai.contains(t)) return;
     if (t.closest("[data-ai-x]")) return setOpen(false);
     const sz = t.closest("[data-sz]"); if (sz) { const [w, h] = SIZES[sz.dataset.sz]; size = { w, h, k: sz.dataset.sz }; apply(); keep(SIZE_KEY, size); return; }
-    const qk = t.closest("[data-ai-q]"); if (qk) return ask(qk.dataset.aiQ);
+    const qk = t.closest("[data-ai-q]"); if (qk) return ask(qk.dataset.aiQ, true);
+    const mo = t.closest("[data-ai-more]"); if (mo) return ask(`${mo.dataset.aiMore} — 더 자세히 알려줘`);
     if (t.closest("[data-ai-stop]")) return ctrl?.abort();
     if (t.closest("[data-ai-clear]")) { ctrl?.abort(); chat = []; errMsg = ""; saveChat(); paint(); }
   };

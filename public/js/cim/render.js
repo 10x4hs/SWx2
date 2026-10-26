@@ -1,5 +1,6 @@
 // CIM 카드 그리기 — 교재 본문 정리(renderBody) · 카드 한 장(cardHtml) · 한 줄 요약 · AI 에 보낼 글
-//   카드: 메타 줄(★ · 과목 장 · 핵심 · 쪽 · 개정 확인 · 내 밑줄) · 제목 · 본문 · 왜 이 공식(라임 왼쪽 선) · 그림 · 이야기
+//   카드: 교재 쪽(크게) · 메타 줄(★ · 과목 장 · 핵심 · 개정 확인 · 내 밑줄) · 제목 · 쉽게 보기(먼저) · 교재 원문 보기(접힘) · 왜 이 공식(라임 왼쪽 선) · 그림 · 이야기
+//   쉽게 보기 = p.easy { lines, analogy, example, points } — scripts/cim-easy.mjs 가 교재 카드 글만 보고 미리 만들어 장 JSON 에 넣어요 (없으면 원문을 펼친 채로)
 import { CH } from "./meta.js";
 import { NOTES } from "./notes.js";
 import { FIGS } from "./figs.js";
@@ -93,13 +94,23 @@ export const isRev = (p) => REV.test(p.b) || p.q.some((q) => REV.test(q.q + q.x)
 const chId = (p) => p.key.slice(0, p.key.indexOf("-"));
 export const chLabel = (id) => `${CH[id].s}과목 ${CH[id].c}장`;
 
+// 쉽게 보기 — 쉬운 말 몇 줄 · 비유 · 작은 숫자 예 · 시험 포인트
+export const easyHtml = (e) => `<section class="c-easy" aria-label="쉽게 보기"><span class="bl">쉽게 보기</span>
+    <ul class="c-easy-l">${e.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
+    ${e.analogy ? `<p class="c-easy-an"><span>비유하면</span> ${esc(e.analogy)}</p>` : ""}
+    ${e.example ? `<p class="c-easy-ex"><span>숫자로</span> ${esc(e.example.replace(/^예\s*[:：]\s*/, ""))}</p>` : ""}
+    ${e.points?.length ? `<div class="c-easy-pt"><b>시험 포인트</b><ul>${e.points.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></div>` : ""}
+  </section>`;
+const hasEasy = (p) => Array.isArray(p.easy?.lines) && p.easy.lines.length > 0;
+
 // 카드 한 장 (그림은 mountFigs 로 붙여요)
 export function cardHtml(p) {
-  const id = chId(p), N = NOTES;
+  const id = chId(p), N = NOTES, body = renderBody(p.b, p.marks) || `<p class="c-empty">본문을 준비하고 있어요.</p>`;
   return `<article class="c-kp" id="k-${p.key}" data-key="${p.key}">
-    <div class="c-meta num">${p.st ? `<b aria-label="중요도 ${p.st}">${"★".repeat(p.st)}</b>` : ""}<span>${chLabel(id)} · 핵심 ${p.n}${p.pg ? ` · ${esc(p.pg)}쪽` : ""}</span>${isRev(p) ? `<span class="c-tag" title="최근 바뀐 숫자가 있을 수 있어요. 숫자 외우기에서 확인하세요.">개정 확인</span>` : ""}${p.marks?.length ? `<span class="c-tag soft" title="교재에 직접 그은 밑줄을 옮겨 왔어요">내 밑줄</span>` : ""}</div>
+    ${p.pg ? `<p class="c-page num">교재 ${esc(p.pg)}쪽</p>` : ""}
+    <div class="c-meta num">${p.st ? `<b aria-label="중요도 ${p.st}">${"★".repeat(p.st)}</b>` : ""}<span>${chLabel(id)} · 핵심 ${p.n}</span>${isRev(p) ? `<span class="c-tag" title="최근 바뀐 숫자가 있을 수 있어요. 숫자 외우기에서 확인하세요.">개정 확인</span>` : ""}${p.marks?.length ? `<span class="c-tag soft" title="교재에 직접 그은 밑줄을 옮겨 왔어요">내 밑줄</span>` : ""}</div>
     <h2>${esc(p.t)}</h2>
-    ${renderBody(p.b, p.marks) || `<p class="c-empty">본문을 준비하고 있어요.</p>`}
+    ${hasEasy(p) ? `${easyHtml(p.easy)}<details class="c-orig"><summary>교재 원문 보기${p.pg ? ` <span class="num">· ${esc(p.pg)}쪽</span>` : ""}</summary>${body}</details>` : body}
     ${N.WHY[p.key] ? whyBox(N.WHY[p.key]) : ""}
     ${N.FIGS[p.key] ? `<div class="c-fig" data-fig="${N.FIGS[p.key]}"></div>` : ""}
     ${N.STORY[p.key] ? `<aside class="c-box story"><span class="bl">이야기</span><p>${esc(N.STORY[p.key])}</p></aside>` : ""}
@@ -118,4 +129,6 @@ export function summary(p) {
   return (first || p.t).replace(/^\(\d+\)\s*|^[①-⑳]\s*/, "");
 }
 // AI 에 보낼 카드 글 (표 기호 · 빈 줄 정리, 길이는 서버에서도 잘라요)
+// AI 패널에 알려 줄 카드 (쉽게 보기도 같이 — 빠른 질문은 이걸로 바로 답해요)
+export const aiCard = (p, chapter) => ({ kind: "card", key: p.key, chapter, title: p.t, page: p.pg || "", body: cardText(p), ...(hasEasy(p) ? { easy: { lines: p.easy.lines, analogy: p.easy.analogy, example: p.easy.example, points: p.easy.points } } : {}) });
 export const cardText = (p) => String(p.b || "").replace(/\n{2,}/g, "\n").replace(/\s*\|\s*/g, " | ").slice(0, 3500);

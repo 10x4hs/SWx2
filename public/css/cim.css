@@ -473,4 +473,25 @@ a.c-src:hover { border-color: var(--c-ink); color: var(--c-ink); }
 }
 /* 화면 안에 'AI에게 묻기'가 있으면(카드 · 문제) 머리의 것은 숨겨요 — 같은 버튼 두 개 없이 */
 .cim:has(.c-v [data-ai-open]) .c-top [data-ai-open] { display: none; }
+/* ---------- 쉽게 보기 (먼저) · 교재 쪽 · 원문 접기 — 2026-10-26 ---------- */
+.c-page { font-size: 15px; font-weight: 800; color: var(--c-ink); background: var(--c-soft); border-radius: 999px; padding: 2px 12px; width: fit-content; }
+.c-easy { border-left: 3px solid var(--c-lime); padding: 2px 0 2px 16px; display: grid; gap: 10px; }
+.c-easy > .bl { font-size: 13px; font-weight: 800; color: var(--c-lime-text); }
+.c-easy-l { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.c-easy-l li { font-size: 19px; line-height: 1.65; color: var(--c-ink); font-weight: 520; }
+.c-easy-an, .c-easy-ex { color: var(--c-body); font-size: 16.5px; }
+.c-easy-an span, .c-easy-ex span { font-size: 13px; font-weight: 800; color: var(--c-sub); margin-right: 4px; }
+.c-easy-pt { background: var(--c-lime-soft); border-radius: 14px; padding: 12px 16px; }
+.c-easy-pt b { font-size: 13px; font-weight: 800; color: var(--c-lime-text); }
+.c-easy-pt ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 2px; font-size: 16px; color: var(--c-ink); }
+.c-orig { border-top: 1px solid var(--c-line); padding-top: 10px; }
+.c-orig > summary { cursor: pointer; font-size: 15px; font-weight: 700; color: var(--c-sub); list-style: none; padding: 6px 0; }
+.c-orig > summary::-webkit-details-marker { display: none; }
+.c-orig > summary::before { content: "▸ "; }
+.c-orig[open] > summary::before { content: "▾ "; }
+.c-orig[open] { display: grid; gap: 14px; }
+.c-pace { font-size: 14px; color: var(--c-sub); margin-top: 4px; }
+.c-pgs { color: var(--c-ink); }
+.c-cont { margin: 4px 0 8px; }
+.c-ai-more { margin-top: 8px; }
 .c-ai-sep { font-size: 12.5px; font-weight: 700; color: var(--c-faint); text-align: center; border-top: 1px solid var(--c-line); padding-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

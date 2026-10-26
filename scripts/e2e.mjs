@@ -1031,7 +1031,7 @@ try {
       errs = [];
       await p.click("#c-start"); await p.waitForSelector(".c-kp", { timeout: 15000 }).catch(() => {}); await sleep(400);
       const h1 = await head(), tabOff = await p.evaluate(() => getComputedStyle(document.querySelector(".c-tabbar")).display === "none");
-      let read = 0; while (!(await p.$(".c-opt")) && read < 14) { await p.keyboard.press("ArrowRight"); read++; await sleep(200); }
+      let read = 0; while (!(await p.$(".c-opt")) && read < 70) { await p.keyboard.press("ArrowRight"); read++; await sleep(200); }
       for (let i = 0; i < 2; i++) { await p.keyboard.press("1"); await sleep(150); await p.keyboard.press("Enter"); await sleep(200); }
       await p.keyboard.press("2"); await sleep(1500);
       const h2 = await head();
@@ -1064,6 +1064,41 @@ try {
       await p.click("[data-toc]"); await sleep(200); await p.click('#c-toc [data-j="0"]'); await sleep(500);
       const ht = await p.evaluate(() => location.hash);
       ok(rows === 19 && nowB >= 1 && card.why && card.fig === 1 && card.tip && hn === "#/cim/study/s3c6/14" && ht === "#/cim/study/s3c6/1" && !(await over()) && !errs.length, `${tv} · CIM 공부 — ${rows}장 · 오늘 ${nowB} · 카드 13 왜 이 공식 ${card.why} · 그림 ${card.fig} · 다음 → ${hn} · 목차 → ${ht}${errs.length ? " — " + errs[0] : ""}`);
+      // 교재 순서 · 쉽게 보기 · 빠른 질문 바로 답 · 글자 단위 스트림 (2026-10-26)
+      {
+        errs = [];
+        const shotE = (n) => p.screenshot({ path: `${process.env.SHOTS || "/tmp"}/cim-easy-${n}-${w}.png` }).catch(() => {});
+        const so = (await (await ctx.request.get(BASE + "/api/apps/cim/state", { headers: H })).json()).data;
+        const tc = so.today?.cards || [], book = [...Array(32)].map((_, i) => `s1c1-${i + 1}`).concat([...Array(28)].map((_, i) => `s1c2-${i + 1}`)), bookOk = tc.length >= 6 && tc.join() === book.slice(0, tc.length).join(), nextK = book[tc.length] || "", qOk = (so.today?.qs || []).every((id) => tc.includes(id.split("-").slice(0, 2).join("-")));
+        await hop("#/cim/study", ".c-cont", 300);
+        const cont = await p.$eval(".c-cont", (e) => e.getAttribute("href")).catch(() => "");
+        await hop("#/cim", ".c-today", 400); await shotE("today");
+        const pgs = await p.$eval(".c-pgs", (e) => e.textContent).catch(() => "");
+        await hop("#/cim/study/s3c6/12", "#k-s3c6-12", 500);
+        const ev = await p.evaluate(() => { const k = document.querySelector("#k-s3c6-12"), e = k.querySelector(".c-easy"), d = k.querySelector("details.c-orig"); return { lines: e ? e.querySelectorAll(".c-easy-l li").length : 0, pts: e ? e.querySelectorAll(".c-easy-pt li").length : 0, page: k.querySelector(".c-page")?.textContent || "", first: !!(e && d && e.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING), closed: d ? !d.open : false }; });
+        await shotE("card");
+        let calls = 0, asked2 = null;
+        await p.route("**/api/apps/cim/ask", (rt) => { calls++; asked2 = JSON.parse(rt.request().postData() || "{}"); rt.fulfill({ status: 200, contentType: "text/event-stream", body: `data: ${JSON.stringify({ type: "delta", text: "자세히" })}\n\ndata: ${JSON.stringify({ type: "end", text: "자세히 말하면 이래요 [1].", sources: [] })}\n\n` }); });
+        await p.click(".c-v [data-ai-open]"); await sleep(300);
+        const t0 = Date.now(); await p.click('#c-ai-quick [data-ai-q="쉽게 설명해줘"]');
+        await p.waitForSelector("[data-ai-more]", { timeout: 2000 }).catch(() => {});
+        const instMs = Date.now() - t0, inst = await p.evaluate(() => ({ li: document.querySelectorAll(".c-ai-msg.bot li").length, more: !!document.querySelector("[data-ai-more]") }));
+        await shotE("instant");
+        const calls0 = calls;
+        await p.click("[data-ai-more]"); await sleep(700);
+        await p.unroute("**/api/apps/cim/ask");
+        // 진짜 서버: 답이 글자 조각(delta) 여러 번으로 오고, 첫 조각이 끝(end)보다 먼저 와요
+        const stream = await p.evaluate(async () => {
+          const t = performance.now(); let first = null, deltas = 0, end = null, buf = "";
+          const r = await fetch("/api/apps/cim/ask", { method: "POST", headers: { "content-type": "application/json", "x-trio": "1" }, body: JSON.stringify({ context: { kind: "card", key: "s3c6-12", chapter: "3과목 6장", title: "듀레이션", body: "듀레이션은 채권 현금흐름을 회수하는 데 걸리는 가중평균 기간이다." }, messages: [{ role: "user", content: "쉽게 설명해줘" }] }) });
+          const rd = r.body.getReader(), dec = new TextDecoder();
+          for (;;) { const { value, done } = await rd.read(); if (done) break; buf += dec.decode(value, { stream: true }); let i; while ((i = buf.indexOf("\n\n")) >= 0) { const l = buf.slice(0, i); buf = buf.slice(i + 2); if (!l.startsWith("data: ")) continue; const e = JSON.parse(l.slice(6)); if (e.type === "delta") { deltas++; if (first == null) first = performance.now() - t; } if (e.type === "end") end = performance.now() - t; } }
+          return { status: r.status, first: Math.round(first ?? -1), end: Math.round(end ?? -1), deltas };
+        });
+        await p.click("[data-ai-x]");
+        ok(bookOk && qOk && cont === `#/cim/study/${nextK.replace("-", "/")}` && /교재 \d+쪽/.test(pgs) && ev.lines >= 3 && ev.lines <= 5 && ev.pts >= 1 && /^교재 \d+쪽$/.test(ev.page) && ev.first && ev.closed && inst.li >= 3 && inst.more && calls0 === 0 && instMs < 1000 && calls === 1 && /더 자세히/.test(asked2?.messages?.at(-1)?.content || "") && asked2?.context?.easy?.lines?.length >= 3 && stream.status === 200 && stream.deltas > 1 && stream.first >= 0 && stream.first < stream.end && !errs.length,
+          `${tv} · CIM 교재 순서 · 쉽게 보기 — 오늘 카드 ${tc.slice(0, 3).join(",")}… (문제도 그 카드 ${qOk}) · 이어 읽기 ${cont} · 오늘 ${pgs} · 카드 쉽게 ${ev.lines}줄 · 포인트 ${ev.pts} · ${ev.page} · 원문 접힘 ${ev.closed} · 빠른 질문 바로 ${instMs}ms (AI 호출 ${calls0}) → 더 자세히 호출 ${calls} · 스트림 첫 글자 ${stream.first}ms / 끝 ${stream.end}ms (${stream.deltas}조각)${errs.length ? " — " + errs[0] : ""}`);
+      }
       errs = [];
       await hop("#/cim/study/figs", ".c-figs .cf-svg", 500);
       const f0 = await p.evaluate(() => ({ n: document.querySelectorAll(".c-figs > li").length, cap: document.querySelector("#fig-bond .cf-cap")?.textContent }));
