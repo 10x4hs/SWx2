@@ -97,6 +97,7 @@ function llmPrompt(state, Q) {
   };
 }
 async function groqOnce(env, system, user, temperature) {
+  if (env.__AI_MOCK) return { data: { answers: {} }, model: "mock", usage: null }; // 로컬 검사 (AI_MOCK): 모두 unknown
   let last = null, retried = false;
   for (let i = 0; i < GROQ_CHAIN.length; i++) {
     const model = GROQ_CHAIN[i];
@@ -121,6 +122,7 @@ async function groqOnce(env, system, user, temperature) {
   throw last || new Error("groq failed");
 }
 async function otherOnce(env, system, user) {
+  if (env.__AI_MOCK) return { data: { answers: {} }, model: "mock", usage: null };
   const { aiJson } = await import("./ai.js"); // 개인 자료가 아닐 때만 여기까지 와요
   const r = await aiJson(env, system, user);
   return { data: r.data, model: r.provider + ":" + r.model, usage: r.usage || null };

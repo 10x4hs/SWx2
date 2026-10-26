@@ -1,6 +1,7 @@
 // AI 채팅: Gemini(Google AI Studio) · Groq · Cohere · Xiaomi MiMo · Zhipu GLM · OpenRouter · Kilo · Ollama · 여러 개 나란히 비교.
 // 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY, ZHIPU_API_KEY, OPENROUTER_API_KEY, KILO_API_KEY, OLLAMA_API_KEY)에만 있고 브라우저로 나가지 않아요.
 
+import { mockText, mockJson, mockChunks, MOCK_MODEL } from "./lib/aimock.js";
 import { toolPrompt, parseToolCall, runAgentTool, toolSummary, autoResearch, WRITE_TOOLS, CLAIM_RE, dayPlans, stripToolLines } from "./agent.js";
 import { cleanImages, withImages } from "./vision.js";
 import { kstToday } from "./lib/day.js";
@@ -359,6 +360,7 @@ async function contextPrompt(env, user, b, message) {
 // 한 회사 안에서는 붐빌 때만 다음 모델로, 그 회사가 아예 안 되면(키·요청 오류) 다음 회사로 넘어가요.
 // opts.private = true → PRIVATE_SAFE(Groq) 만. 고른 모델이 Groq 가 아니면 무시해요. 다 안 되면 privateError.
 export async function aiJson(env, system, prompt, prefer = null, { private: priv = false } = {}) {
+  if (env.__AI_MOCK) return { data: mockJson(), used: MOCK_MODEL, provider: "groq", model: MOCK_MODEL, usage: { in: 0, out: 0 } }; // 로컬 검사 (AI_MOCK)
   const JSON_RUN = { gemini: geminiJson, groq: openaiJson("groq"), cohere: cohereJson, mimo: openaiJson("mimo"), zhipu: openaiJson("zhipu"), openrouter: openaiJson("openrouter"), kilo: openaiJson("kilo"), ollama: openaiJson("ollama") };
   const pv = prefer && MODELS[prefer] ? MODELS[prefer].provider : null; // 고른 모델의 회사를 맨 앞에
   const groups = orderFrom(pv, JSON_ORDER).filter((p) => hasKey(env, p) && (!priv || isPrivateSafe(p)));
@@ -436,6 +438,7 @@ const openaiJson = (provider) => async (env, model, system, prompt) => {
 
 // ---------- providers ----------
 async function runModel(env, id, system, history, message, emit) {
+  if (env.__AI_MOCK) { const text = mockText(message); for (const c of mockChunks(text)) await emit("delta", c); return { text, used: MOCK_MODEL }; }
   const m = MODELS[id];
   let lastErr = null;
   for (let round = 0; round < 2; round++) {   // 전부 붐비면 잠깐 쉬고 한 바퀴 더
@@ -575,6 +578,11 @@ const RUN = { gemini, mimo, groq, cohere, zhipu: openaiLike("zhipu"), openrouter
 // fast = 짧은 답이 먼저 필요한 곳(CIM 튜터): 회사마다 첫 글자가 빠른 모델부터 (FAST_CHAIN) · 생각 · 길이를 짧게
 const FAST_CHAIN = { groq: ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b"], gemini: ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-flash-latest"] };
 export async function aiText(env, system, messages, order = TEXT_ORDER, onToken = null, { private: priv = false, fast = false } = {}) {
+  if (env.__AI_MOCK) { // 로컬 검사 (AI_MOCK): 같은 답 · 조각으로 흘려 보내기
+    const text = mockText(messages[messages.length - 1]?.content);
+    if (onToken) for (const c of mockChunks(text)) await onToken(c);
+    return { text, used: MOCK_MODEL };
+  }
   const groups = order.filter((p) => MODELS[p] && hasKey(env, p) && (!priv || isPrivateSafe(p)));
   if (!groups.length && priv) throw privateError();
   if (!groups.length) { const e = new Error("AI 키가 설정되지 않았어요. README의 'AI 키' 부분을 확인해 주세요."); e.status = 503; throw e; }

@@ -37,20 +37,28 @@ import { themeE2E } from "./e2e-theme.mjs";
 import { islandE2E } from "./e2e-island.mjs";
 import { boardE2E } from "./e2e-board.mjs";
 import { noteFilesE2E } from "./e2e-notefiles.mjs";
+import { section, count, writeSummary } from "./lib/sections.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
-const { chromium } = createRequire(import.meta.url)("playwright"); // NODE_PATH 로 다른 곳의 playwright 도 쓸 수 있어요
+const { chromium } = (() => { try { return createRequire(import.meta.url)("playwright"); } catch (e) { if (!process.env.NODE_PATH) throw e; return createRequire(process.env.NODE_PATH.split(":")[0] + "/x")("playwright"); } })(); // NODE_PATH 로 다른 곳의 playwright 도 쓸 수 있어요
 const H = { "x-trio": "1", "content-type": "application/json" };
 let fails = 0;
-const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); if (!cond) fails++; };
+const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); count(!!cond); if (!cond) fails++; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await sleep(500); } }
 
-const tag = Date.now().toString(36), user = "t_e2e" + tag, friend = "t_e2f" + tag, outsider = "t_e2o" + tag; // outsider = ⑱ 같은 팀이지만 일기 기능이 없는 사람
-execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" });
-execFileSync("node", ["scripts/add-user.mjs", friend, "검사친구", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" }); // ⑨ 공개 페이지를 올리는 친구
-execFileSync("node", ["scripts/add-user.mjs", outsider, "모임밖", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" });
-const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username IN ('${user}', '${friend}', '${outsider}')`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
+// E2E_VIEWPORTS=desktop | phone | desktop,phone(기본) — scripts/test.mjs 는 둘을 따로 띄워 같이 돌려요.
+// 따로 돌 때 서로 안 부딪히게 계정 이름 끝에 E2E_WORKER(한 글자)를 붙여요.
+const VIEWPORTS = (process.env.E2E_VIEWPORTS || "desktop,phone").split(",");
+execFileSync("node", ["scripts/test-cleanup.mjs", "--stale"], { stdio: "ignore" }); // 지난번에 멈춘 실행이 남긴 2시간 넘은 t_… 계정
+const tag = Date.now().toString(36) + (process.env.E2E_WORKER || "").replace(/[^a-z0-9]/g, "").slice(0, 2), user = "t_e2e" + tag, friend = "t_e2f" + tag, outsider = "t_e2o" + tag; // outsider = ⑱ 같은 팀이지만 일기 기능이 없는 사람
+// 컴퓨터 · 폰을 같이 돌릴 때는 실행마다 임시 팀을 따로 — 한 팀이면 서로의 집중 · 상태가 보여서 화면이 달라져요 (집중 섬 띠 검사가 그래서 실패했어요)
+const TEAM = process.env.E2E_WORKER ? "t_team_" + tag : "swx2";
+if (TEAM !== "swx2") execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `INSERT OR IGNORE INTO teams (id, name, code, created_at) VALUES ('${TEAM}', '검사 ${tag}', '${tag}', ${Date.now()})`], { stdio: "ignore" });
+execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" });
+execFileSync("node", ["scripts/add-user.mjs", friend, "검사친구", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" }); // ⑨ 공개 페이지를 올리는 친구
+execFileSync("node", ["scripts/add-user.mjs", outsider, "모임밖", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" });
+const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username IN ('${user}', '${friend}', '${outsider}'); DELETE FROM teams WHERE id = '${TEAM}' AND id <> 'swx2'`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
 
 // 과목 페이지: 화면을 꽉 채우는 한 장짜리 · 여러 파일(style.css · app.js)짜리
 const FULL = `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%}body{display:grid;place-items:center;background:#1b6}</style><p>꽉 차야 해요</p>`;
@@ -62,7 +70,7 @@ const MULTI = {
 
 const browser = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
 try {
-  for (const [w, h, tv] of [[1300, 900, "컴퓨터"], [390, 844, "폰"]]) {
+  for (const [w, h, tv] of [[1300, 900, "컴퓨터", "desktop"], [390, 844, "폰", "phone"]].filter((v) => VIEWPORTS.includes(v[3]))) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h } });
     const login = await ctx.request.post(BASE + "/api/auth/login", { headers: H, data: { username: user } });
     ok(login.ok(), `${tv} · 임시 계정 로그인`);
@@ -78,8 +86,11 @@ try {
     // 앱을 새로 열어요 — 같은 문서에서 # 뒤만 바꾸면 껍데기가 남아서, "AI 탭에서 새로 열고 → 과목 탭" 같은 실제 순서를 흉내 내지 못해요
     const go = async (hash, wait = 1800) => { await p.goto("about:blank"); await p.goto(BASE + "/" + hash); await sleep(wait); };
     const hop = async (hash, sel, wait = 350) => { await p.evaluate((x) => { location.hash = x; }, hash); await p.waitForSelector(sel, { timeout: 8000 }).catch(() => {}); await sleep(wait); };
+    // 구역 하나만 골라 돌리면 앞 구역이 열어 둔 앱 화면이 없어요 (about:blank 에서는 localStorage 를 못 읽어요) → 앱 밖이면 홈을 먼저 열어요
+    const sec = (name, fn) => section(name, async () => { if (!p.url().startsWith(BASE)) await go("#/", 1200); await fn(); });
 
     // ---------- ① 과목 탭 높이 ----------
+    await sec("study-tabs", async () => {
     const frameFill = () => p.evaluate(() => {
       const f = document.querySelector(".study-body iframe"), m = document.querySelector("#main").getBoundingClientRect(), r = f?.getBoundingClientRect();
       return r ? { h: Math.round(r.height), gap: Math.round(m.bottom - r.bottom), mh: Math.round(m.height) } : { h: 0, gap: 999, mh: Math.round(m.height) };
@@ -95,7 +106,9 @@ try {
     const back = await p.evaluate(() => { const o = document.querySelector("#main > .host"), wr = document.querySelector(".study-wrap"); return { fill: o.classList.contains("study-fill"), fits: wr.scrollHeight <= wr.clientHeight + 1 }; });
     ok(!back.fill && back.fits, `${tv} · 과목에서 영어로 돌아가면 높이 고정이 풀려요`);
 
+    });
     // ---------- ⑤ 내 AI 모델 — 일정 AI 비서 칸에서 보이고 바꾸면 계정에 남아요 ----------
+    await sec("ai-model", async () => {
     await go("#/calendar/" + new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), 2500);
     const pick = p.locator(".aic-pick select").first();
     const hasPick = await pick.count() > 0;
@@ -106,7 +119,9 @@ try {
     ok(hasPick && saved === "cohere" && shown === "cohere", `${tv} · 일정 AI 비서 — 모델 고르기 칸이 보이고, 바꾸면 계정에 저장 (${saved || "없음"} · 다시 열면 ${shown || "없음"})`);
     await ctx.request.patch(BASE + "/api/me", { headers: H, data: { ai_model: "" } });
 
+    });
     // ---------- ⑦ 계획 길이: 직접 입력 3 → 3분, 다음 기본값은 1시간 ----------
+    await sec("plan-length", async () => {
     try {
       const day7 = new Date(Date.now() + 9 * 3600e3 + 2 * 864e5).toISOString().slice(0, 10); // 모레 (지금 시각 줄과 겹치지 않게)
       await go("#/calendar/" + day7, 2500);
@@ -125,7 +140,9 @@ try {
       ok(def1 === "60" && saved?.mins === 3 && def2 === "60", `${tv} · 계획 길이 — 직접 입력 3 → ${saved ? saved.mins + "분" : "저장 안 됨"} · 기본값 처음 ${def1} → 다음 ${def2}`);
     } catch (e) { const why = String(e.message).split("\n").filter((l) => /intercept|stable|outside|visible/.test(l)).slice(-2).join(" / "); ok(false, `${tv} · 계획 길이 — ${String(e.message).split("\n")[0]}${why ? " · " + why : ""}`); }
 
+    });
     // ---------- ⑧ Dock 순서: '대화'를 끌어서 맨 앞으로 ----------
+    await sec("dock-order", async () => {
     try {
       await ctx.request.patch(BASE + "/api/me", { headers: H, data: { dock_order: null } });
       await go("#/", 2200);
@@ -143,7 +160,9 @@ try {
       await ctx.request.patch(BASE + "/api/me", { headers: H, data: { dock_order: null } });
     } catch (e) { ok(false, `${tv} · Dock 순서 — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ⑨ 친구가 공개한 페이지를 내 화면에서 숨기기 → 프로필에서 다시 보이기 ----------
+    await sec("friend-pages", async () => {
     try {
       const fctx = await browser.newContext();
       await fctx.request.post(BASE + "/api/auth/login", { headers: H, data: { username: friend } });
@@ -172,7 +191,9 @@ try {
       await fctx.close();
     } catch (e) { ok(false, `${tv} · 친구 페이지 숨기기 — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ⑩ Study 그래프 ----------
+    await sec("study-graph", async () => {
     try {
       await ctx.request.patch(BASE + "/api/me", { headers: H, data: { graph_prefs: null } });
       const counts = {};
@@ -195,7 +216,9 @@ try {
       await ctx.request.patch(BASE + "/api/me", { headers: H, data: { graph_prefs: null } });
     } catch (e) { ok(false, `${tv} · Study 그래프 — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ⑪ Brain — 맨 위엔 큰 개념만, 누르면 안으로, 공부 점은 원래 화면으로, 가져오기는 다시 올려도 그대로 ----------
+    await sec("brain", async () => {
     try {
       const items = [
         { title: "Business & Finance", body: "" }, { title: "AI & Dev", body: "" },
@@ -232,7 +255,9 @@ try {
         `${tv} · Second Brain — 처음 안내 ${intro1} → 다시 열면 ${intro2} · 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
     } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ⑪-b 노트 우클릭 — 열기(오른쪽 클릭 · 폰은 길게 누르기 · Shift+F10) · 이름 바꾸기 · 새 하위 노트 · 옮기기 · 지우기 Undo / 5초 뒤 (2026-10-15) ----------
+    await sec("note-menu", async () => {
     let step = "준비";
     try {
       errs = [];
@@ -339,8 +364,10 @@ try {
         `${tv} · 노트 우클릭 — 편집기 지우기 → ${left} · Undo → ${reopened === "#/notes/" + E ? "다시 열림" : reopened} · 지우고 바로 떠나면 서버에서 지워짐 ${fGone}${errs.length ? " — " + errs[0] : ""}`);
     } catch (e) { ok(false, `${tv} · 노트 우클릭 (${step}) — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ⑳ Obsidian 마우스 · 뒤로 · 되돌리기 (2026-10-22) — 누르기 = 고르기 · 고른 채 다른 점 = 연결 · 두 번 = 들어가기(연결 안 생김) · 우클릭만 만들기/고치기/지우기 · ⌘Z/⌘⇧Z · ← 뒤로 · Dock 한 칸 위 ----------
-    step = "준비";
+    await sec("obsidian", async () => {
+    let step = "준비"; // 구역마다 따로 (sections.mjs)
     try {
       errs = [];
       const T = (s) => `옵 ${s} ${tv}`, MODK = w > 600 ? "Meta" : "Control";
@@ -459,21 +486,33 @@ try {
       }
     } catch (e) { ok(false, `${tv} · Obsidian (${step}) — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ㉓ 관계 종류 (2026-10-24, scripts/e2e-onto.mjs) — 연결 → '어떤 관계예요?' → 예시 → 색 선 · 선 우클릭 관계 바꾸기 · AI 제안함 · 새 노트 자리 칩 ----------
+    await sec("onto", async () => {
     errs = [];
     await ontoE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs: () => errs, shots: process.env.SHOTS || null });
+    });
+    await sec("board", async () => {
     await boardE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs: () => errs, shots: process.env.SHOTS || null }); // ㉖ 할 일 보드
 
+    });
     // ---------- ㉔ 화면 꾸미기 (2026-10-24, scripts/e2e-theme.mjs) — 기본값은 예전 그대로 · 강조 색 · 배경화면 · 투명도 줄이기 바로 적용 · 계정 저장 · 409 · 기본으로 ----------
+    await sec("theme", async () => {
     errs = [];
     await themeE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs: () => errs, shots: process.env.SHOTS || null });
+    });
     // ---------- ㉕ 집중 섬 (2026-10-24, scripts/e2e-island.mjs) — Dock ⏱ 시작 · 두 화면 · +5분 · 일시정지 · Esc · 띠 겹침 없음 · 멈추기 · 끝 ----------
+    await sec("island", async () => {
     errs = [];
     await islandE2E({ p, go, ok, tv, w, getErrs: () => errs, shots: process.env.SHOTS || null });
+    });
     // ---------- ㉗ 노트 사진 · 파일 (2026-10-26, scripts/e2e-notefiles.mjs) — 끌어다 놓기 PNG · 붙여 넣기 txt · PDF 미리보기 · ⌘Z · 25MB 알림 · 다시 열기 ----------
+    await sec("note-files", async () => {
     await noteFilesE2E({ p, ctx, ok, tv, BASE, H });
 
+    });
     // ---------- ⑫-b 단 나누기 · 수식 — 끝에 끌어 놓기 → 2단, "/2 columns", "/equation" KaTeX, 글 속 $..$ (2026-10-14) ----------
+    await sec("columns-math", async () => {
     try {
       errs = [];
       const P = (id, text) => ({ id, type: "paragraph", text, props: {}, children: [] });
@@ -507,7 +546,9 @@ try {
         `${tv} · 단 · 수식 — 글 속 수식 ${inl} · 끌기 ${dragCols} · "/2 columns" ${cm} · 수식 미리보기 ${live} · 저장 ${sb.map((b) => b.type).join(",")} · 수식 ${eqIn} · 폭 ${vw} 단 ${stack}${errs.length ? " — " + errs[0] : ""}`);
     } catch (e) { ok(false, `${tv} · 단 · 수식 — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ⑫ 블록 편집기 — 토글 접기 · "/" 로 콜아웃 · 보드에서 끌면 상태가 바뀌어요 (2026-10-13) ----------
+    await sec("block-editor", async () => {
     try {
       errs = [];
       const doc = { v: 1, blocks: [{ id: "b_tg1", type: "toggle", text: "Fold me", props: {}, children: [{ id: "b_in1", type: "paragraph", text: "hidden inside", props: {}, children: [] }] }, { id: "b_p1", type: "paragraph", text: "", props: {}, children: [] }] };
@@ -570,7 +611,9 @@ try {
       ok(rp2.status === "진행 중" && shown === 1 && !listed.notes.some((n) => n.id === row2), `${tv} · DB — 손가락 끌기 → ${rp2.status} · 필터 후 ${shown}줄 · 행은 왼쪽 목록에서 숨김`);
     } catch (e) { ok(false, `${tv} · 블록 편집기 — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ⑫-b 페이지 기록 — 두 번 고치고(강제 기록) Page history 에서 되돌리면 내용이 그때로 (2026-10-14) ----------
+    await sec("page-history", async () => {
     try {
       errs = [];
       const blk = (t) => ({ v: 1, blocks: [{ id: "b_h1", type: "paragraph", text: t, props: {}, children: [] }] });
@@ -592,12 +635,15 @@ try {
     } catch (e) { ok(false, `${tv} · 페이지 기록 — ${String(e.message).split("\n")[0]}`); }
     await sleep(2100); // 되돌린 뒤 받은 노트 목록이 SW 의 2초 "갓 받은 답" 창을 벗어나게 (다음 DB 검사가 새 목록을 받도록)
 
+    });
     // ---------- ⑬ 데이터베이스 — 필터로 줄이기 · 묶기 · 달력에서 날짜 옮기기 (컴퓨터는 마우스, 폰은 길게 눌러 끌기) ----------
+    await sec("db-filter-cal", async () => {
     try {
       errs = [];
       const shot = (n) => p.screenshot({ path: `${process.env.SHOTS || "/tmp"}/e2e-${n}-${w}.png` }).catch(() => {});
       const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), mon = today.slice(0, 7);
-      const other = today.endsWith("-02") ? mon + "-03" : mon + "-02";
+      // 옮길 카드는 오늘 바로 옆날(같은 달) — 예전엔 늘 2일이라, 달 끝 무렵이면 오늘 칸이 화면 아래(끌기 중엔 스크롤이 안 돼요)에 있어서 날짜 따라 실패했어요 (2026-10-26)
+      const other = today.endsWith("-01") ? mon + "-02" : new Date(Date.parse(today) - 864e5).toISOString().slice(0, 10);
       const dbn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 필터 DB " + tv, kind: "database" } })).json()).note.id;
       const mkRow = async (title, props) => (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: title + " " + tv, parent_id: dbn, props } })).json()).note.id;
       await mkRow("필터 하나", { status: "완료", date: today, tags: ["math"] });
@@ -625,6 +671,7 @@ try {
       await p.click(".db-addview"); await p.click('.db-pop [data-v="calendar"]'); await sleep(1500);
       await p.waitForSelector(`.db-cal-card[data-row="${r3}"]`, { timeout: 8000 });
       if (w > 640) {
+        await p.locator(`.db-cal-cell[data-day="${today}"]`).scrollIntoViewIfNeeded(); await sleep(300); // 달력이 다 그려진 뒤 (저장 후 다시 그리면 카드 자리가 바뀌어요)
         await p.dragAndDrop(`.db-cal-card[data-row="${r3}"]`, `.db-cal-cell[data-day="${today}"]`);
       } else {
         // 폰: 길게 누르고(350ms) 끌어서 오늘 칸에 놓아요 — pointerType touch
@@ -638,13 +685,17 @@ try {
           ev("pointerup", a.left + 10, b.top + 12, c);
         }, { r3, today });
       }
-      await sleep(1500);
-      const moved = JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + r3)).json()).note.props || "{}").date;
+      // 저장을 기다려요 (같이 돌면 서버가 조금 늦어요) — 최대 6초
+      const dateOf = async () => JSON.parse((await (await ctx.request.get(BASE + "/api/notes/" + r3)).json()).note.props || "{}").date;
+      let moved = await dateOf();
+      for (let i = 0; i < 12 && moved !== today; i++) { await sleep(500); moved = await dateOf(); }
       await shot("db-calendar");
       ok(moved === today && !errs.length, `${tv} · DB 달력 — 카드 ${other} → ${moved}${errs.length ? " — " + errs[0] : ""}`);
     } catch (e) { ok(false, `${tv} · DB 필터 · 달력 — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ⑬-2 데이터베이스 — 갤러리 · 목록 · 템플릿 · 관계 + 롤업 · 수식 ----------
+    await sec("db-gallery", async () => {
     try {
       errs = [];
       const post = async (data) => (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data })).json()).note;
@@ -701,7 +752,9 @@ try {
       ok(tpl && madeN && JSON.parse(madeN.props).status === "진행 중" && madeN.body.includes("시작 블록") && rowsShown === 3 && !errs.length, `${tv} · DB 템플릿 — 새 행 ${madeN?.title} · 상태 ${madeN && JSON.parse(madeN.props).status} · 블록 복사 ${!!madeN?.body.includes("시작 블록")} · 표 ${rowsShown}줄${errs.length ? " — " + errs[0] : ""}`);
     } catch (e) { ok(false, `${tv} · DB 갤러리 · 템플릿 · 관계 — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ⑥ 자정 AI 점수 — 어제 기록을 하나 넣고 그날 화면에서 봐요 ----------
+    await sec("ai-score", async () => {
     const kst = (n) => new Date(Date.now() + 9 * 3600e3 + n * 864e5).toISOString().slice(0, 10);
     execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `INSERT OR REPLACE INTO day_records (user_id, day, data, score, done, total, auto, saved_at, ai_score, ai_note, ai_model) SELECT id, '${kst(-1)}', '{"plans":[]}', 70, 1, 1, 1, 0, 82, '우선순위 높은 일을 끝냈어요.', 'openai/gpt-oss-120b' FROM users WHERE username = '${user}'`], { stdio: "ignore" });
     await go("#/calendar/" + kst(-1), 2500);
@@ -710,13 +763,17 @@ try {
     const aisToday = await p.evaluate(() => !document.querySelector("#dp-ai-score")?.hidden);
     ok(/82/.test(ais) && /Groq GPT-OSS/.test(ais) && /우선순위/.test(ais) && !aisToday, `${tv} · 자정 AI 점수 — 어제: ${ais || "안 보임"} · 오늘은 숨김 ${!aisToday}`);
 
+    });
     // ---------- ② 여러 파일 페이지 ----------
+    await sec("multi-file-page", async () => {
     await go("#/p/" + M, 3000);
     const fr = p.frames().find((x) => x.url().includes("/pf/"));
     const inner = fr ? await fr.evaluate(() => { const t = document.getElementById("t"); return t ? { text: t.textContent, color: getComputedStyle(t).color } : null; }).catch(() => null) : null;
     ok(inner?.text === "JS OK" && inner.color === "rgb(255, 0, 128)", `${tv} · 여러 파일 페이지 — app.js 실행 · style.css 적용 (${inner ? inner.text + " · " + inner.color : "iframe 없음"})`);
 
+    });
     // ---------- ③ AI 공부책 ----------
+    await sec("books", async () => {
     errs = [];
     const idx = await (await ctx.request.get(BASE + "/books/index.json")).json();
     await go("#/books", 2200);
@@ -747,7 +804,9 @@ try {
     await hop("#/books/words", "#bk-wl", 600);
     ok(!errs.length && await p.evaluate(() => !!document.querySelector("#bk-wl")), `${tv} · AI 복습 · 용어 사전 열림${errs.length ? " — " + errs[0] : ""}`);
 
+    });
     // ---------- ④ 논문 쉽게 읽기 ----------
+    await sec("papers", async () => {
     errs = [];
     const pidx = await (await ctx.request.get(BASE + "/papers/index.json")).json();
     await go("#/papers/easy", 2500);
@@ -760,7 +819,9 @@ try {
     await go("#/papers/easy/review", 2000);
     ok(await p.evaluate(() => !!document.querySelector(".ez-rv h2, .ez-rv .qz")), `${tv} · 논문 섞어서 복습 화면`);
 
+    });
     // ---------- ⑫ 뉴스 — 하루 한 호 (가독성 · 한국어): 헤드라인 · 분야 · 기사 시트 · 메모 + 반박 · j/k · Esc (2026-10-13) ----------
+    await sec("news", async () => {
     errs = [];
     execFileSync("node", ["scripts/news-seed.mjs"], { stdio: "ignore" });
     await p.goto(BASE + "/#/news"); await p.waitForSelector(".gn-hero", { timeout: 10000 }).catch(() => {});
@@ -805,7 +866,9 @@ try {
       for (const c of (await r.json()).comments || []) if (/^e2e /.test(c.body) && !c.parent_id) await ctx.request.fetch(BASE + "/api/news/comments/" + c.id, { method: "DELETE", headers: H });
     }).catch(() => {});
 
+    });
     // ---------- ⑬ 경영 마이크로디그리 — 모듈 지도 · 현황판 · 2주 계획 · 카드 · 케이스 · 연습문제 · 오늘 · 회사 세우기 · 용어 (2026-10-14) ----------
+    await sec("mba", async () => {
     {
       errs = [];
       await go("#/mba", 2600);
@@ -869,7 +932,9 @@ try {
       ok(w0 >= 100 && w1 >= 1 && w1 < w0 && !errs.length, `${tv} · 경영 용어 — 전체 ${w0} · 'EBITDA' 찾기 ${w1}${errs.length ? " — " + errs[0] : ""}`);
     }
 
+    });
     // ---------- ⑬-2 개발 흐름 마이크로디그리 — 3D 흐름 지도 · 현황판 · 한 주 · 카드 · 사례 · 회의실 · 오늘 · 문서 지도 (2026-10-15) ----------
+    await sec("devflow", async () => {
     {
       errs = [];
       await go("#/sw/dev", 2500);
@@ -930,7 +995,9 @@ try {
       await ctx.request.fetch(BASE + "/api/dev/done", { method: "PUT", headers: H, data: { module: "security", item: sd.problems.find((x) => x.day === pd).id, kind: "problem", done: false } }).catch(() => {});
     }
 
+    });
     // ---------- ⑬-3 SW 과정 — 책 두 권 · 옛 #/dev 주소 · VG 목차 · 카드 속 설명 그림(단계 · 끌기 · 영상) · 밤 · 튜터 크기 · 그림 모아 보기 · Dock 으로 돌아오면 보던 곳 그대로 (2026-10-20) ----------
+    await sec("sw", async () => {
     {
       errs = [];
       await go("#/sw", 3000);
@@ -1010,7 +1077,9 @@ try {
       await p.evaluate(() => { localStorage.removeItem("trio-dock-last"); localStorage.removeItem("sw-ai-size"); localStorage.setItem("sw-theme", "paper"); });
     }
 
+    });
     // ---------- ⑲ CIM 투자자산운용사 (미니멀, 2026-10-22) — 처음 안내 한 번 · 오늘(D-day · 4단계 · 버튼 하나) · 오늘 공부(읽기 → 문제 → 새로 고침 이어서) · 공부(목록 · 한 장씩 · 그림) · 시험(네 줄 · 문제 저장 · 모의고사 · 숫자) · 옛 주소 · AI 패널(문맥 · 크기) · Dock 기억 ----------
+    await sec("cim", async () => {
     {
       errs = [];
       const over = () => p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1 || document.querySelector("#main").scrollWidth > document.querySelector("#main").clientWidth + 1);
@@ -1149,7 +1218,9 @@ try {
       await p.goto("about:blank"); const sl = await (await ctx.request.get(BASE + "/api/apps/cim/state", { headers: H })).json(); await ctx.request.put(BASE + "/api/apps/cim/state", { headers: H, data: { data: { v: 2 }, at: sl.updated_at } }).catch(() => {}); // 폰 차례도 빈 기록에서 (같은 임시 계정)
     }
 
+    });
     // ---------- ⑭ 영상 노트 한 화면 — 맨 위 인용에 YouTube 영상이 있으면 왼쪽 영상 · 목차 · 접힌 스크립트, 오른쪽 정리 (2026-10-14) ----------
+    await sec("video-note", async () => {
     {
       const V = "Am7IWP8IpEc", u = (t) => `https://youtu.be/${V}?t=${t}`, title = "영상 검사 " + tv;
       const body = `> 🎬 원본 영상: [YouTube](https://youtu.be/${V}) · 채널 **검사 채널** · 길이 1:00:00\n> 🖼 이미지: 영상 캡처 1장\n\n#영상정리\n\n## 한 줄 결론\n핵심 **한 줄**.\n\n## 짧은 요약\n_(없음)_\n\n## 목차\n- 1. 첫째\n\n## 정리 본문\n_각 항목 끝의 ⏱ 표시는 그 말이 나온 영상 위치예요._\n\n### 1. 첫째 [⏱0:00](${u(0)})\n![영상 캡처 0:05](/icons/icon-192.png)\n[▶ 0:05 에서 보기](${u(5)})\n- **요점** [⏱0:30](${u(30)})\n#### 1.1. 둘째 [⏱1:00](${u(60)})\n- 설명 [⏱1:30](${u(90)})\n\n## 원문\n- [[${title} · 원문 스크립트]] — 자막 전체\n`;
@@ -1190,7 +1261,9 @@ try {
       errs = [];
     }
 
+    });
     // ---------- ⑭ 홈 오늘 링 끌기 — 하루 쪽 큰 시계 · 전체 쪽 오늘 링, 마우스 · 내 차트에서만 (2026-10-15) ----------
+    await sec("home-ring", async () => {
     {
       errs = [];
       const day = await p.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
@@ -1261,7 +1334,9 @@ try {
       }
     }
 
+    });
     // ---------- ⑮ 하루 계획표 짧은 일정 — 맞닿으면 위아래로 · 붙어 있으면 그 칸만 늘어남 · 진짜 겹침은 나란히 (2026-10-15) ----------
+    await sec("plan-short", async () => {
     {
       errs = [];
       const ahead = tv === "컴퓨터" ? 3 : 4; // 다른 검사 계획 · 다른 크기 검사와 날짜가 안 겹치게
@@ -1294,7 +1369,9 @@ try {
       }
     }
 
+    });
     // ---------- ⑯ 홈 Day 쪽 ‹ 날짜 › — 내일 · 다른 날 보기와 끌어 넣기 · 고른 날 기억 (2026-10-15) ----------
+    await sec("home-day", async () => {
     try {
       errs = [];
       await p.evaluate(() => { localStorage.setItem("trio-home-page", "3"); localStorage.setItem("trio-guide-off", "1"); localStorage.removeItem("trio-home-day"); });
@@ -1326,7 +1403,9 @@ try {
       await p.evaluate(() => { localStorage.removeItem("trio-home-day"); localStorage.removeItem("trio-home-page"); });
     } catch (e) { ok(false, `${tv} · Day 쪽 ‹ 날짜 › — ${String(e.message).split("\n")[0]} (지금 시각에 따라 .hud-pad 가 › 를 가리는 기존 문제일 수 있어요)`); }
 
+    });
     // ---------- ⑰ 계획 복사 · 붙여넣기 (⌘C · ⌘V · ⌘Z, Ctrl 도 돼요) — 하루 계획표 · 홈 시계 (2026-10-16) ----------
+    await sec("plan-copy", async () => {
     if (tv === "컴퓨터") {
       errs = [];
       const day = await p.evaluate(() => { const d = new Date(Date.now() + 7 * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
@@ -1376,7 +1455,9 @@ try {
       await p.evaluate(() => localStorage.removeItem("trio-home-page"));
     }
 
+    });
     // ---------- ㉑ 계획 되돌리기 (⌘Z · ⌘⇧Z · Ctrl+Y, 2026-10-22) — 옮기기 · 길이 · 이름 · 지우기(다시 만들어요) · 추가(빈 다음 칸에서도) · 서버에도 반대 요청 ----------
+    await sec("plan-undo", async () => {
     if (tv === "컴퓨터") {
       errs = [];
       try {
@@ -1416,7 +1497,9 @@ try {
       } catch (e) { ok(false, `${tv} · 계획 되돌리기 — ${String(e.message).split("\n")[0]}`); }
     }
 
+    });
     // ---------- ㉒ 일기 블록 편집기 되돌리기 (2026-10-22) — 글 치기 · Enter 나누기 · "- " 목록 바꾸기를 한 단계씩 ⌘Z, ⌘⇧Z 로 다시, 저장된 값도 같이 ----------
+    await sec("diary-undo", async () => {
     try {
       errs = [];
       const day = new Date(Date.now() + 9 * 3600e3 - (w > 600 ? 3 : 4) * 864e5).toISOString().slice(0, 10), MODK = w > 600 ? "Meta" : "Control";
@@ -1437,7 +1520,9 @@ try {
         `${tv} · 일기 ⌘Z — ${steps.map((x) => x.split(" | ").length + "칸").join(" → ")} (${steps.join("#") === want.join("#") ? "한 단계씩" : steps.join(" # ")}) · 커서 ${caret.join(":")} · 저장 ${savedUndo === "paragraph:첫 줄 글"} · ⌘⇧Z 다시 ${redone === typed} · 저장 ${savedRedo === typed}${errs.length ? " — " + errs[0] : ""}`);
     } catch (e) { ok(false, `${tv} · 일기 되돌리기 — ${String(e.message).split("\n")[0]}`); }
 
+    });
     // ---------- ⑱ 일기 친구 — 아이디로 초대하고 상대가 수락한 사람끼리만 서로의 공개 일기를 봐요. 같은 팀이어도 친구가 아니면 서버가 막아요 (2026-10-19) ----------
+    await sec("diary-friends", async () => {
     {
       errs = [];
       const sql = (c) => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", c], { stdio: "ignore" });
@@ -1516,14 +1601,15 @@ try {
       await fc.close();
       sql(`DELETE FROM diary_links WHERE a IN ${ids} OR b IN ${ids}`);
     }
+    });
 
     await ctx.close();
   }
 
-  // ---------- 공지 마크다운: 관리자가 쓰고 미리보기 → 올리기 → 회원 띠에 제목 · 자세히 시트에 굵게 · 목록 · 안전한 링크 (스크립트는 안 돌아요) ----------
-  {
+  // ---------- 공지 마크다운 (컴퓨터 쪽을 돌릴 때만 — 공지는 모두가 같이 보는 것이라 두 실행이 같이 만지면 안 돼요): 관리자가 쓰고 미리보기 → 올리기 → 회원 띠에 제목 · 자세히 시트에 굵게 · 목록 · 안전한 링크 (스크립트는 안 돌아요) ----------
+  if (VIEWPORTS.includes("desktop")) await section("announce", async () => {
     const adm = "t_e2a" + tag, sq = (q) => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", q], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-    execFileSync("node", ["scripts/add-user.mjs", adm, "공지검사", "password1", "--team=swx2", "--features=all"], { stdio: "ignore" });
+    execFileSync("node", ["scripts/add-user.mjs", adm, "공지검사", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" });
     sq(`UPDATE users SET role = 'admin' WHERE username = '${adm}'`);
     const prev = JSON.parse(sq("SELECT id FROM announcements WHERE active = 1"))[0].results.map((x) => x.id);
     const ac = await browser.newContext({ viewport: { width: 1300, height: 900 } }), mc = await browser.newContext({ viewport: { width: 1300, height: 900 } });
@@ -1630,10 +1716,11 @@ try {
       sq(`DELETE FROM announcements WHERE created_by = (SELECT id FROM users WHERE username = '${adm}')`);
       sq(`DELETE FROM users WHERE username = '${adm}'`);
     }
-  }
+  });
 } finally {
   await browser.close();
   try { cleanup(); } catch {}
 }
 console.log(fails ? `\n실패 ${fails}개` : "\n모두 통과");
 process.exitCode = fails ? 1 : 0;
+writeSummary({ script: "e2e", viewports: VIEWPORTS });

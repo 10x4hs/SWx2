@@ -63,6 +63,27 @@ npm run e2e            # (선택) 화면 검사 — 과목 탭 높이 · 여러 
 - `npm run seed` 를 실행하면 세 계정에 예시 데이터가 들어가요
 - AI 키: `.dev.vars` 에 `GEMINI_API_KEY`, `GROQ_API_KEY`, `COHERE_API_KEY`, `MIMO_API_KEY` (git에 올라가지 않아요, 자세한 건 아래 "AI 키")
 
+## 테스트
+
+한 곳에서 단계만 골라요. 서버(`wrangler dev`, 포트 8828)는 스크립트가 직접 켜고 끕니다.
+
+```bash
+npm run test:quick     # 바뀐 파일에 걸린 구역 + 바탕(로그인 · 홈 · 계획 넣기 · 노트 저장), 컴퓨터 화면만, 가짜 AI
+npm run test:normal    # smoke 전부 + 바뀐 파일에 걸린 화면 구역, 컴퓨터 · 폰 같이, 가짜 AI
+npm run test:full      # 예전 그대로 전부 (smoke + e2e 모든 구역, 컴퓨터 · 폰), 진짜 AI — 병합 전에
+node scripts/test.mjs quick --dry   # 무엇을 돌릴지만 보기
+```
+
+- 바뀐 파일 = `git diff origin/main...HEAD` + 커밋 안 한 것 + 새 파일. 파일 → 구역은 `scripts/test-map.json` (경로 앞부분). 표에 없는 파일이 바뀌면 quick 이 normal 로 올라가요
+- 구역: `smoke.mjs` · `e2e.mjs` 의 덩어리마다 `section("이름", …)`. 직접 고르기: `SECTIONS=diary,board node scripts/smoke.mjs` · 빼기: `SKIP_SECTIONS=…`. 아무것도 안 주면 예전처럼 전부 (`npm test` · `npm run e2e` 그대로)
+- 화면 검사는 컴퓨터 · 폰을 **따로 프로세스로 같이** 돌려요 (임시 계정도 따로). `--shards=2` 면 화면마다 두 갈래 더
+- 가짜 AI (`AI_MOCK=1`): 서버가 Groq · Gemini · Workers AI 를 부르지 않고 정해진 답을 줘요 (`src/lib/aimock.js`). **`PASSWORDLESS=1` + localhost 주소일 때만** 켜져서 배포본에서는 켤 수 없어요. 진짜 AI 답을 봐야 하는 구역(`ai-real`)은 full 에서만 돌아요
+- 임시 계정(`t_…`)은 매번 시작 · 끝에 지워요 (시작 때는 2시간 넘은 것만 — 같이 도는 다른 검사 것은 남겨요). 손으로: `npm run test:clean`
+- 끝나면 표가 나와요: 실행별 구역 수 · 통과 · 실패 · 시간, 오래 걸린 구역, 실패한 구역, 로그 폴더
+- 이 컴퓨터에서 잰 시간 (2026-10-26): quick 1.5~2분 · normal(노트 하나 바꿈) 3분 · 전부 가짜 AI 13분 · full 14분 — 예전 smoke 9분 + e2e 20분 ≈ 30분
+- 앞 구역이 만든 것을 쓰는 구역은 `test-map.json` 의 `needs` 에 적어 두면 같이 돌아요 (예: 노트 우클릭 → Brain)
+- 이미 켜 둔 서버를 쓰려면 `--base=http://127.0.0.1:8787` (가짜 AI 는 그 서버를 `--var AI_MOCK:1` 로 켰을 때만). `.dev.vars` 가 다른 곳이면 `--env-file=…`
+
 ## 계정 만들기 (가입 화면 대신)
 
 ```bash
