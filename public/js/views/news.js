@@ -4,6 +4,7 @@
 // 세계: 진짜 국경 지구본(world-atlas 50m, public/vendor/world) 위에 기사가 나온 나라를 모두 찍고, 오른쪽에 나라별 기사.
 // 회사: 사람마다 구독한 회사가 탭으로 떠요. 키보드: j/k 다음·이전 기사 · [ ] 어제·내일 · s 별표 · Esc 닫기.
 import { api } from "../api.js";
+import { renderMarkdown } from "../md.js";
 import { esc, toast } from "../util.js";
 import { icon } from "../icons.js";
 
@@ -410,6 +411,11 @@ export function mount(root, ctx, r) {
       </div>
       ${d.body ? `<details class="gn-card gn-full"><summary>Full text <small>from the outlet's feed</small></summary><div class="gn-full-b">${esc(d.body).replace(/\n+/g, "<br><br>")}</div></details>` : ""}
       <section class="gn-card" id="gn-deep"${d.deep ? "" : " hidden"}></section>
+      <section class="gn-card gn-ask" id="gn-ask"><h3>Ask AI</h3>
+        <div class="gn-ask-log" id="gn-ask-log"></div>
+        <div class="gn-ask-chips">${["쉽게 설명해줘", "어려운 용어 풀어줘", "왜 중요해?"].map((c) => `<button class="gn-btn sm" type="button" data-askq="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+        <form class="gn-compose" id="gn-ask-f"><textarea name="q" rows="1" maxlength="1000" placeholder="이 기사에 대해 물어보세요 · 예: DNA 토큰이 뭐야?"></textarea><button class="gn-btn pri" type="submit">Ask</button></form>
+      </section>
       <section class="gn-talk"><h3>Comments <small id="gn-talk-n"></small></h3>
         <form class="gn-compose" id="gn-compose"><textarea name="b" rows="2" maxlength="2000" placeholder="Add a comment"></textarea><button class="gn-btn pri" type="submit">Post</button></form>
         <div id="gn-talk"></div>
@@ -422,6 +428,20 @@ export function mount(root, ctx, r) {
       try { const r2 = await api.newsDeep(id); d.deep = r2.deep || r2; paintDeep(d.deep); b.textContent = "Deep dive ✓"; }
       catch (err) { toast(err.message, "err"); b.disabled = false; b.textContent = "Deep dive"; }
     });
+    // 기사에 대해 묻기 — 이 창이 열려 있는 동안만 대화를 기억해요
+    const askHist = [], askLog = sheet.querySelector("#gn-ask-log"), askF = sheet.querySelector("#gn-ask-f");
+    const ask = async (q) => {
+      q = String(q || "").trim(); if (!q) return;
+      const btn = askF.querySelector("button"); btn.disabled = true;
+      askLog.insertAdjacentHTML("beforeend", `<p class="gn-ask-q">${esc(q)}</p><div class="gn-ask-a gn-soft">생각하는 중…</div>`);
+      const box = askLog.lastElementChild;
+      try { const r = await api.newsAsk(id, q, askHist); box.classList.remove("gn-soft"); box.innerHTML = renderMarkdown(r.answer || ""); askHist.push({ role: "user", content: q }, { role: "assistant", content: r.answer || "" }); }
+      catch (err) { box.textContent = err.message; }
+      btn.disabled = false;
+    };
+    askF.addEventListener("submit", (e) => { e.preventDefault(); const ta = askF.q; ask(ta.value); ta.value = ""; });
+    askF.q.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); askF.requestSubmit(); } });
+    sheet.querySelectorAll("[data-askq]").forEach((b) => b.addEventListener("click", () => ask(b.dataset.askq)));
     sheet.querySelector("#gn-sh-star").addEventListener("click", () => toggleStar(id));
     sheet.querySelector("#gn-sh-read").addEventListener("click", () => toggleRead(id));
     // 아직 요약이 없으면 이 기사 하나만 바로 요약해요 (매시 정각 차례를 기다리지 않게)
