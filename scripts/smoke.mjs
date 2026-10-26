@@ -23,13 +23,14 @@ async function call(who, method, path, body, headers = {}) {
   const data = await r.json().catch(() => null);
   return { status: r.status, data };
 }
-const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); if (!cond) process.exitCode = 1; };
+import { section, count, aiReal, writeSummary } from "./lib/sections.mjs";
+const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); count(!!cond); if (!cond) process.exitCode = 1; };
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
 
 import { execFileSync } from "node:child_process";
 import { applyView, remindAt, isDue } from "../public/js/blocks/dbview.js";
 // ---------- 도구 줄 해석 · 거짓 "넣었어요" 검사 (모델 없이, 고정 입력) ----------
-{
+await section("agent-parse", async () => {
   const { parseToolCall, stripToolLines, CLAIM_RE } = await import("../src/agent.js");
   const T = (name) => ({ name, args: {} });
   const calls = [
@@ -48,9 +49,9 @@ import { applyView, remindAt, isDue } from "../public/js/blocks/dbview.js";
   const open = [["GET", "/plans?periods=D:2026-09-28"], ["PUT", "/diary"], ["GET", "/files/a.b.png"], ["POST", "/plans"]];
   ok(blocked.every(([m, p]) => B(m, p, false)) && open.every(([m, p]) => !B(m, p, false)) && B("GET", "/diary?day=2026-09-28", true) && B("POST", "/plans", true) && !B("GET", "/plans?periods=D:2026-09-28", true), "page bridge: diary friends · dot-segment paths blocked, normal paths open");
   void T;
-}
+});
 // SW 과정 설명 그림 목록 (public/figs/map.json): 자리마다 있는 카드 · 있는 문단 · 있는 그림 파일 · 확인한 영상. 카드 순서는 index.json 과 모듈 파일이 같아야 '그림 N-M' 번호가 화면과 튜터에서 같아요
-{
+await section("figs", async () => {
   const { readFileSync, existsSync } = await import("node:fs");
   const J = (p) => JSON.parse(readFileSync(new URL("../public" + p, import.meta.url)));
   const map = J("/figs/map.json"), bad = [];
@@ -73,8 +74,10 @@ import { applyView, remindAt, isDue } from "../public/js/blocks/dbview.js";
   const { figsOfModule } = await import("../src/mba.js");
   const ann = figsOfModule(map, "vg", J("/vg/vg-ann-index.json"), "c12").find((f) => f.id === "hnsw");
   ok(ann?.here && /^2-\d+$/.test(ann.no), `figs: 튜터 프롬프트의 그림 번호 — 이 카드에 있는 그림은 이 카드 번호 (${ann?.no})`);
-}
+});
 const tag = Date.now().toString(36).slice(-5);
+// 시작할 때: 2시간 넘게 남은 임시 계정(t_…)을 지워요 — 지난번에 중간에 멈춘 실행이 남긴 것 (지금 도는 다른 검사 것은 안 건드려요)
+execFileSync("node", ["scripts/test-cleanup.mjs", "--stale"], { stdio: "ignore" });
 const mk = (u, n, pw) => execFileSync("node", ["scripts/add-user.mjs", u, n, pw, "--team=swx2", "--features=all"], { stdio: "ignore" }); // 테스트 사람들은 한 팀 (서로 보기 검사)
 // 로컬 D1 에 직접 묻기 (서버를 거치지 않고 저장된 값 확인)
 const d1 = (sql) => JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", sql], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }))[0].results;
@@ -106,7 +109,7 @@ r = await call("l", "GET", "/apps/ui/state"); ok(r.status === 200 && r.data.data
 r = await call("l", "GET", "/search/semantic?q=" + encodeURIComponent("증권거래세 세율")); ok(r.status === 200 && Array.isArray(r.data.results) && !r.data.results.some((x) => x.type === "cim"), "semantic search: open to everyone (notes) · CIM cards only with the cim feature");
 d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
 // 관리자 두 사람: 기능 신청은 둘 다 승인해야 열림 · 시간 추가 · 추천 보너스 (로컬 진짜 관리자는 잠깐 member 로 내렸다가 되돌려요)
-{
+await section("admin", async () => {
   const r3 = () => [...crypto.getRandomValues(new Uint8Array(3))].map((b) => String.fromCharCode(97 + (b % 26))).join("");
   const idOf = (u) => d1(`SELECT id FROM users WHERE username = '${u}'`)[0]?.id;
   const admins0 = d1("SELECT id FROM users WHERE role = 'admin'").map((x) => x.id);
@@ -224,7 +227,7 @@ d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
     if (admins0.length) d1(`UPDATE users SET role = 'admin' WHERE id IN (${admins0.map((i) => `'${i}'`).join(",")})`);
     d1(`DELETE FROM users WHERE username IN ('${H}', '${G}', '${R}', '${REF}', '${NEW}')`);
   }
-}
+});
 r = await call("x", "GET", "/me"); ok(r.status === 401, "anon rejected");
 r = await fetch(BASE + "/api/plans", { method: "POST", headers: { cookie: jar.a, "content-type": "application/json" }, body: "{}" });
 ok(r.status === 403, "csrf header required");
@@ -553,7 +556,7 @@ r = await call("a", "POST", "/notes", { title: "부모 없음", parent_id: "nope
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: pg }); ok(r.status === 400, "page: self parent → 400");
 r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status === 200 && r.data.note.parent_id === null, "page: move to top");
 // ---------- 할 일 보드 (2026-10-24): 새 칸(칸 · 프로젝트 · 마감일 · 작은 할 일 · 메모 · 순서) · 검사 · 남의 것 · '완료' 칸 = done ----------
-{
+await section("board", async () => {
   const M = await import("../public/js/board/model.js");
   const P = (b) => call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-28", text: "보드 검사", ...b });
   let r = await P({ project: "  논문  ", due: "2026-09-30", subtasks: [{ t: " 읽기 ", d: true }, { t: "정리" }], note: "메모", status: "doing", sort: 5 });
@@ -615,10 +618,10 @@ r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status ===
   ok(M.sortBetween(1, 3) === 2 && M.sortBetween(null, 10) < 10 && M.sortBetween(10, null) > 10 && M.sortBetween(null, null, 99) === 99 && M.sortBetween(4, 4) > 4, "board model: sort between neighbours");
   ok(M.subProgress(L[3]).join("/") === "1/2" && M.tagColor("논문") === M.tagColor("논문") && M.tagColor("논문", { 논문: "teal" }) === "teal", "board model: subtask progress · stable tag colours");
   for (const x of [bp, bd, old, timed, far, farNo]) await call("a", "DELETE", "/plans/" + x.id);
-}
+});
 
 // ---------- 노트 우클릭 메뉴 (note-menu.js) — 이름 바꾸기는 내 다른 노트의 [[링크]] 도 · 지우면 하위는 한 칸 위로 · 내 하위 아래로 옮기기는 400 ----------
-{
+await section("note-menu", async () => {
   const T = (s) => `${s} ${tag}`, OLD = T("옛 이름"), NEW = T("새 이름");
   const add = async (who, b) => (await call(who, "POST", "/notes", b)).data?.note?.id;
   const x = await add("a", { title: OLD, body: "본문" });
@@ -653,9 +656,9 @@ r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status ===
   r = await call("a", "PUT", "/notes/" + c1, { parent_id: null }); ok(r.status === 200 && r.data.note.parent_id === null, "move: to the top level");
   r = await call("a", "GET", "/notes/" + c1); ok(r.data.crumbs.length === 0 && r.data.children.length === 2, "move: top-level note keeps its children");
   r = await call("a", "DELETE", "/notes/" + c1); ok(r.status === 200 && await par(gc) === null && await par(c2) === null, "delete: children of a top-level note become top-level");
-}
+});
 // ---------- 블록 노트 (docs/blocks-schema.md): 블록 저장 → body 마크다운 사본 · 링크 · 태그 ----------
-{
+await section("blocks", async () => {
   const doc = { v: 1, blocks: [
     { id: "b_1", type: "h2", text: "블록 제목", props: {}, children: [] },
     { id: "b_2", type: "toggle", text: "접기", props: {}, children: [{ id: "b_3", type: "paragraph", text: "안쪽 [[자료구조]] #블록태그", props: {}, children: [] }] },
@@ -737,7 +740,7 @@ r = await call("a", "PUT", "/notes/" + pg, { parent_id: null }); ok(r.status ===
   r = await call("a", "POST", "/reminders/take"); ok(!r.data.reminders.some((x) => x.id === row1), "reminder: not delivered twice");
   r = await call("b", "POST", "/reminders/take"); ok(!r.data.reminders.some((x) => x.id === row1), "reminder: other user never sees it");
   r = await call("a", "POST", "/reminders/run?now=" + (T0 + 120e3)); ok(!r.data.sent, "reminder: cron does not resend");
-}
+});
 r = await call("a", "POST", "/ai/ask", { note_id: n1, question: "" }); ok(r.status === 400, "ai/ask: empty question → 400");
 r = await call("a", "POST", "/ai/plan", { messages: [] }); ok(r.status === 400, "ai/plan: no messages → 400");
 r = await call("a", "POST", "/ai/command", { text: "" }); ok(r.status === 400, "ai/command: empty → 400");
@@ -771,7 +774,7 @@ r = await call("a", "DELETE", "/custom/" + encodeURIComponent("nav:brain")); r =
 r = await call("a", "GET", "/files/notion-missing.png"); ok(r.status === 404, "missing file 404");
 r = await call("x", "GET", "/files/notion-missing.png"); ok(r.status === 401, "files need login");
 // ---- note attachments (raw PUT body, owner-only read, risky types as attachment) ----
-{
+await section("note-files", async () => {
   const raw = (who, method, path, body, type) => fetch(BASE + "/api" + path, { method, headers: { "content-type": type, "x-trio": "1", cookie: jar[who] || "" }, body });
   const nid = (await call("a", "POST", "/notes", { title: "smoke-files " + Date.now(), body: "" })).data.note.id;
   let f = await raw("b", "PUT", `/notes/${nid}/files?name=a.txt`, "hi", "text/plain"); ok(f.status === 404, "note file: other user can't upload to my note");
@@ -782,7 +785,7 @@ r = await call("x", "GET", "/files/notion-missing.png"); ok(r.status === 401, "f
   f = await raw("b", "GET", "/files/" + svg.src.split("/").pop()); ok(f.status === 404, "note file: not readable via /files");
   f = await raw("a", "PUT", `/notes/${nid}/files?name=big.bin`, new Uint8Array(25 * 1024 * 1024 + 1), "application/octet-stream"); ok(f.status === 413, "note file: >25MB → 413");
   await call("a", "DELETE", "/notes/" + nid);
-}
+});
 // ---- diary ----
 r = await call("a", "PUT", "/diary", { day: "2026-09-28", mood: 4, body: "오늘은 괜찮았다" }); ok(r.data.diary?.mood === 4, "diary saved");
 r = await call("a", "GET", "/diary?day=2026-09-28"); ok(r.data.diary?.body === "오늘은 괜찮았다", "diary read");
@@ -790,7 +793,7 @@ r = await call("b", "GET", "/diary?day=2026-09-28"); ok(r.data.diary === null, "
 r = await call("a", "PUT", "/diary", { day: "2026-09-28", mood: 9 }); ok(r.status === 400, "bad mood rejected");
 r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diary list");
 // 일기 친구: 같은 팀이어도 아이디로 초대하고 상대가 수락하기 전엔 서로의 일기를 못 봐요
-{
+await section("diary", async () => {
   const ida = (await call("a", "GET", "/me")).data.user.id, idb = (await call("b", "GET", "/me")).data.user.id, D = "2026-09-29";
   await call("b", "PUT", "/diary", { day: D, mood: 3, body: "b 의 공개 일기", shared: true });
   r = await call("a", "GET", `/diary/of?user=${idb}&day=${D}`); ok(r.status === 403, "diary friends: same team without invite → 403");
@@ -811,13 +814,17 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   r = await call("a", "POST", "/diary/invite", { username: "t_b" + tag }); ok(r.data.accepted === true, "diary friends: inviting each other connects at once");
   await call("a", "DELETE", `/diary/link/${idb}`);
   await call("b", "PUT", "/diary", { day: D, mood: null, body: "" });
-}
+});
 
 // ---- 서로는 차트만 + 하루 기록 ----
-{
+await section("peers", async () => {
   const me = (await call("a", "GET", "/me")).data.user;
   const pp = (await call("a", "POST", "/plans", { scope: "day", period: "D:2026-09-28", text: "a만 아는 계획", start: "08:00", mins: 30 })).data.plan;
-  r = await call("b", "GET", `/plans?periods=D:2026-09-28&user=${me.id}`); ok(r.data.plans.some((p) => p.id === pp.id && p.text === ""), "b sees a's plan shape without text");
+  r = await call("b", "GET", `/plans?periods=D:2026-09-28&user=${me.id}`); ok(r.data.plans.some((p) => p.id === pp.id && p.text === "a만 아는 계획"), "b sees a's open plans with text (plans_open, 9a605b7)");
+  // 닫아 두면(plans_open = false) 친구에게는 빈 목록 + closed — 예전 '모양만 보기' 검사를 이걸로 바꿨어요 (2026-10-26)
+  await call("a", "PATCH", "/me", { plans_open: false });
+  r = await call("b", "GET", `/plans?periods=D:2026-09-28&user=${me.id}`); ok(r.data.closed === true && r.data.plans.length === 0, "b sees nothing when a's plans are closed");
+  await call("a", "PATCH", "/me", { plans_open: true });
   r = await call("b", "GET", `/logs?day=2026-09-28&user=${me.id}`); ok(r.status === 403, "b cannot read a's logs");
   // 연간 히트맵도 계획을 닫아 둔(not open) 친구 것은 못 봐요 (GET /plans 와 같은 규칙)
   r = await call("b", "GET", `/plans/heatmap?year=2026&user=${me.id}`); ok(r.status === 200 && !r.data.closed && r.data.days.some((d) => d.period === "D:2026-09-28"), "heatmap: b sees a's daily counts while open");
@@ -834,10 +841,10 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   await call("a", "PATCH", `/plans/${pp.id}`, { missed: false });
   r = await call("b", "GET", "/records?day=2026-09-28"); ok(r.data.record === null, "b cannot see a's record");
   r = await call("a", "GET", "/records/days?year=2026"); ok(r.data.days.some((d) => d.day === "2026-09-28"), "record days list");
-}
+});
 
 // ---- 영어 (ENGLISH-OS) ----
-{
+await section("english", async () => {
   const D = "2026-09-29";
   r = await call("a", "PUT", "/english/day", { day: D, blocks: { words: 55, sound: 30, speak: 70, recall: 20 }, checks: [true, false, true], newwords: 32, mistakes: 3, mood: "좋음", sentence: "I just moved here from Korea.", note: "첫날" });
   ok(r.status === 200 && r.data.day?.minutes === 175 && r.data.day?.spoken === 100, "english day: minutes/spoken computed by server");
@@ -876,10 +883,10 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   r = await call("b", "GET", "/english/cards"); ok(r.data.cards?.length === 0, "english cards private");
   r = await fetch(BASE + "/english/data.json"); const ed = await r.json().catch(() => null);
   ok(r.status === 200 && ed?.sentences?.length === 60 && ed?.patterns?.length === 91, "english data.json served");
-}
+});
 
 // ---- 캘린더: 날짜별 할 일 · 하루 한 페이지 ----
-{
+await section("calendar", async () => {
   const F = "2027-01-15";
   let r = await call("a", "POST", "/plans", { scope: "day", period: "D:" + F, text: "캘린더 할 일", start: "09:30" });
   const pid = r.data.plan?.id;
@@ -896,10 +903,10 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   r = await call("b", "GET", "/calendar/day?day=" + F); ok(r.data.plans?.length === 0 && !r.data.diary, "calendar day private to owner");
   r = await call("a", "GET", "/calendar?from=2027-01-01&to=2027-03-31"); ok(r.status === 400, "calendar range > 43 days rejected");
   r = await call("a", "GET", "/calendar/day?day=2027-02-30"); ok(r.status === 400, "calendar impossible date rejected");
-}
+});
 
 // ---- 할 일별 집중 (logs.plan_id → plans.focus_mins) · 주간 회고 숫자 ----
-{
+await section("focus", async () => {
   const W = "2027-W10", D1 = "2027-03-08", D2 = "2027-03-09";
   const aid = (await call("a", "GET", "/me")).data.user.id, bid = (await call("b", "GET", "/me")).data.user.id;
   const p1 = (await call("a", "POST", "/plans", { scope: "day", period: "D:" + D1, text: "회고용 할 일", start: "09:00", mins: 60 })).data.plan.id;
@@ -915,7 +922,7 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   r = await call("a", "GET", `/plans?periods=D:${D1},D:${D2}`);
   ok(r.data.plans.find((p) => p.id === p1)?.focus_mins === 45 && r.data.plans.every((p) => typeof p.focus_mins === "number"), "plans carry focus_mins (30+15=45)");
   r = await call("b", "GET", `/plans?periods=D:${D1}&user=${aid}`);
-  ok(r.data.plans.find((p) => p.id === p1)?.focus_mins === 45 && r.data.plans.every((p) => p.text === ""), "others see focus_mins but no text");
+  ok(r.data.plans.find((p) => p.id === p1)?.focus_mins === 45 && r.data.plans.find((p) => p.id === p1)?.text === "회고용 할 일", "friends (open plans) see focus_mins with the plan");
   const p3 = (await call("a", "POST", "/plans", { scope: "day", period: "D:" + D2, text: "지울 할 일" })).data.plan.id;
   const l3 = (await call("a", "POST", "/logs", { day: D2, at: "13:00", text: "집중", kind: "focus", mins: 0, plan_id: p3 })).data.log.id;
   await call("a", "DELETE", "/plans/" + p3);
@@ -939,10 +946,10 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   r = await call("a", "GET", "/review/week?week=2026-40"); ok(r.status === 400, "review: bad week format rejected");
   r = await call("a", "POST", "/review/week/ai", { week: "nope" }); ok(r.status === 400, "review ai: bad week rejected before calling AI");
   r = await call("a", "POST", "/review/week/ai", { week: "2031-W02" }); ok(r.status === 400, "review ai: empty week → 400, no AI call");
-}
+});
 
 // ---- 지금 공부 중 ----
-{
+await section("studying", async () => {
   const aid = (await call("a", "GET", "/me")).data.user.id;
   const t = Date.now();
   r = await call("a", "PUT", "/presence", { state: "focus", ends_at: t + 25 * 60e3, label: "비밀 과목" });
@@ -960,10 +967,10 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   await new Promise((res) => setTimeout(res, 1600));
   r = await call("b", "GET", "/presence"); const ex = r.data.members.find((m) => m.user_id === aid);
   ok(ex?.focus === false && ex.started_at === null, "presence: expired focus reads as not focusing");
-}
+});
 
 // ---- 응원 ----
-{
+await section("cheer", async () => {
   const aid = (await call("a", "GET", "/me")).data.user.id, bid = (await call("b", "GET", "/me")).data.user.id;
   r = await call("a", "POST", "/cheers", { to: bid }); ok(r.status === 201 && r.data.cheer?.to_id === bid, "cheer sent (201)");
   r = await call("a", "POST", "/cheers", { to: bid }); ok(r.status === 409, "cheer twice same day → 409");
@@ -974,11 +981,11 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   r = await call("a", "GET", "/cheers?day=" + r.data.day); ok(r.data.sent?.includes(bid) && r.data.received.length === 0, "a sees cheer as sent");
   r = await call("a", "GET", "/cheers?day=2026-02-30"); ok(r.status === 400, "cheers: impossible day rejected");
   r = await call("b", "GET", "/review/week"); ok(r.status === 200 && r.data.members.find((m) => m.user_id === bid)?.cheers >= 1, "review (this week) counts cheers received");
-}
+});
 
 // ---- 첫 로그인 비밀번호 바꾸기 (must_change_pw) ----
 // 로컬은 PASSWORDLESS=1 이라 이 표시를 무시해요. "x-trio-strict: 1" 헤더를 붙이면 배포본처럼 검사해요 (더 엄격해지기만 하는 테스트용 스위치).
-{
+await section("must-change-pw", async () => {
   const cu = "t_c" + tag, S = { "x-trio-strict": "1" };
   mk(cu, "테스트C", "password3");
   ok(d1(`SELECT must_change_pw FROM users WHERE username = '${cu}'`)[0]?.must_change_pw === 1, "add-user sets must_change_pw = 1 (D1)");
@@ -996,10 +1003,10 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   ok(d1(`SELECT must_change_pw FROM users WHERE username = '${cu}'`)[0]?.must_change_pw === 0, "password change clears must_change_pw (D1)");
   r = await call("c", "GET", "/plans?periods=D:2026-09-28", null, S); ok(r.status === 200, "strict: unblocked after change");
   r = await call("c", "GET", "/me", null, S); ok(r.data.user.must_change_pw === false, "strict: /me says must_change_pw false after change");
-}
+});
 
 // ---- 비밀번호 바꾸기 ----
-{
+await section("password", async () => {
   let r = await call("a", "POST", "/auth/password", { current: "wrong-pass", next: "newpassword1" }); ok(r.status === 403, "password change: wrong current rejected");
   r = await call("a", "POST", "/auth/password", { current: "password1", next: "short" }); ok(r.status === 400, "password change: short new rejected");
   r = await call("a", "POST", "/auth/password", { current: "password1", next: "password1" }); ok(r.status === 400, "password change: same as current rejected");
@@ -1011,7 +1018,7 @@ r = await call("a", "GET", "/diary/list"); ok(r.data.entries.length === 1, "diar
   r = await call("a", "GET", "/me"); ok(r.status === 200, "this device stays logged in");
   r = await call("a", "POST", "/auth/password", { current: "password1", next: "another-pass" }); ok(r.status === 403, "old password no longer works");
   r = await call("a", "POST", "/auth/password", { current: "newpassword1", next: "password1" }); ok(r.status === 200, "new password works (changed back)");
-}
+});
 
 // ---- 대화방 · 창고 (v6) ----
 r = await call("a", "GET", "/room"); ok(r.status === 200 && Array.isArray(r.data.messages) && typeof r.data.ai_name === "string" && typeof r.data.now === "number", "room: list shape · ai_name=" + r.data.ai_name);
@@ -1066,7 +1073,7 @@ const grp1 = r.data.message;
 r = await call("b", "POST", "/room/ai", { message_id: dm1.id }); ok(r.status === 400, "room: dm retry rule same (non-mention 400)");
 
 // 대화방 사진 · 영상: 파일 그대로 올리기 → kind image, 방 밖 사람은 403, 형식 검사, 지우면 파일도
-{
+await section("room-media", async () => {
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
   const up = (who, room, buf, type, caption = "") => fetch(BASE + "/api/room/media?" + new URLSearchParams({ room, caption }), { method: "POST", headers: { "content-type": type, "x-trio": "1", cookie: jar[who] || "" }, body: buf }).then(async (x) => ({ status: x.status, data: await x.json().catch(() => null) }));
   const get = (who, key, h = {}) => fetch(BASE + "/api/room/media/" + encodeURIComponent(key), { headers: { cookie: jar[who] || "", ...h } });
@@ -1082,7 +1089,7 @@ r = await call("b", "POST", "/room/ai", { message_id: dm1.id }); ok(r.status ===
   r = await up("d", dm, png, "image/png"); ok(r.status === 403, "room media: outsider cannot upload");
   r = await call("a", "DELETE", "/room/" + im.id); ok(r.status === 200, "room media: delete");
   f = await get("a", im.ref_id); ok(f.status === 404, "room media: file gone after delete");
-}
+});
 
 // 창고
 r = await call("a", "POST", "/library/preview", {}); ok(r.status === 400, "library: preview needs url or title");
@@ -1141,7 +1148,7 @@ async function ask(model, message, chat_id) {
   const ev = text.split("\n\n").filter((b) => b.startsWith("data: ")).map((b) => JSON.parse(b.slice(6)));
   return { status: res.status, ev, out: (m) => ev.filter((e) => e.type === "delta" && e.model === m).map((e) => e.text).join("") };
 }
-if (!process.env.SKIP_AI) {
+await section("ai", async () => {
   let a = await ask("all", "[[자료구조]] 노트 기준으로 스택을 한 문장으로 설명해 줘");
   const meta = a.ev.find((e) => e.type === "meta");
   ok(a.status === 200 && meta?.chat_id, "ai stream started");
@@ -1201,12 +1208,12 @@ if (!process.env.SKIP_AI) {
   r = await call("a", "POST", "/room/ai", { message_id: r.data.message.id }); ok(r.status === 200 && r.data.ai?.kind === "ai", "room ai: retry makes another reply");
   r = await call("a", "POST", "/room/ai", { message_id: r.data.ai.reply_to }); ok(r.status === 429, "room ai: retry too fast → 429");
   execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", "DELETE FROM room_messages WHERE created_at >= " + roomT0], { stdio: "ignore" });
-} else {
-  console.log("SKIP ai chat · brain · weekly review ai (SKIP_AI=1)");
-}
+}, { tags: ["ai-real"] });
+// (SKIP_AI=1 · AI_MOCK=1 이면 위 구역은 SKIP 으로 찍혀요)
+
 
 // ---------- 논문 스프린트 ----------
-{
+await section("papers", async () => {
   const D = { "x-papers-now": "2026-10-02" };
   const aId = (await call("a", "GET", "/me")).data.user.id;
   const mine = (d) => d.members.find((m) => m.user_id === aId); // 이름은 겹칠 수 있어서 id 로
@@ -1236,7 +1243,7 @@ if (!process.env.SKIP_AI) {
   r = await call("a", "PUT", "/papers/check", { paper: "sam", step: "read", done: true }, E); ok(r.status === 410, "papers: writes closed after 10-05 → 410");
   r = await call("a", "GET", "/papers/progress", null, E); ok(r.status === 200 && r.data.ended === true, "papers: progress still readable, ended flag");
   r = await call("a", "PUT", "/papers/check", { paper: "yolov10", step: "read", done: false }, D); ok(r.status === 200 && !mine(r.data).checks.yolov10?.read, "papers: uncheck");
-  if (!process.env.SKIP_AI) {
+  if (aiReal()) { // 진짜 AI 답 (full 단계만)
     { // 스트리밍(SSE): delta 가 여러 번 오고 end 로 끝나요
       const res = await fetch(BASE + "/api/papers/ask", { method: "POST", headers: { "content-type": "application/json", "x-trio": "1", cookie: jar.a, ...D }, body: JSON.stringify({ paper: "yolov10", messages: [{ role: "user", content: "IoU 가 뭐예요? 한 문장으로" }] }) });
       const raw = await res.text(), evs = raw.split("\n\n").filter((x) => x.startsWith("data: ")).map((x) => JSON.parse(x.slice(6)));
@@ -1260,10 +1267,10 @@ if (!process.env.SKIP_AI) {
   r = await call("a", "GET", "/notes/" + er); ok(r.status === 200, "papers notes: english zone untouched");
   await call("a", "DELETE", "/notes/" + er);
   execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", "DELETE FROM paper_checks; DELETE FROM paper_notes; DELETE FROM paper_tokens;"], { stdio: "ignore" });
-}
+});
 
 // ---------- MCP (/mcp) ----------
-{
+await section("mcp", async () => {
   const tok = (name) => execFileSync("node", ["scripts/mcp-token.mjs", "t_a" + tag, name], { encoding: "utf8" }).match(/Bearer ([A-Za-z0-9_-]+)/)[1];
   const TA = tok("smoke-a"), TB = tok("smoke-b");
   const mcp = async (t, method, params, id = 1) => {
@@ -1309,10 +1316,10 @@ if (!process.env.SKIP_AI) {
   t = await tool(TBB, "whoami"); ok(t.text.includes("테스트B") && t.text.includes("b-laptop"), "mcp tokens: friend token acts as friend");
   r = await call("b", "DELETE", "/mcp/tokens/b-laptop"); ok(r.data?.removed === true, "mcp tokens: revoke");
   r = await mcp(TBB, "tools/list"); ok(r.status === 401, "mcp tokens: revoked from web → 401");
-}
+});
 
 // ---------- 프로필 바꾸기 ----------
-{
+await section("profile", async () => {
   r = await call("a", "PATCH", "/me", { display_name: "테스트A2", bio: "  논문   16편  ", day_goal: 300 });
   ok(r.status === 200 && r.data.user.display_name === "테스트A2" && r.data.user.bio === "논문 16편" && r.data.user.day_goal === 300, "profile: name + bio (tidied) + goal saved");
   r = await call("b", "GET", "/users"); ok(r.data.users.some((u) => u.display_name === "테스트A2" && u.bio === "논문 16편"), "profile: friends see new name + bio");
@@ -1330,10 +1337,10 @@ if (!process.env.SKIP_AI) {
   r = await call("a", "PATCH", "/me", { avatar: "data:image/jpeg;base64," + "A".repeat(80_001) }); ok(r.status === 400, "profile: photo over 80KB → 400");
   r = await call("a", "PATCH", "/me", { display_name: "테스트A" }); ok(r.data.user.avatar === PIC, "profile: other edits keep the photo");
   r = await call("a", "PATCH", "/me", { avatar: null }); ok(r.status === 200 && r.data.user.avatar === null, "profile: null removes photo");
-}
+});
 
 // ---------- 홈: 오늘의 다짐(셋이 봐요) · 메모장(나만) ----------
-{
+await section("home", async () => {
   const aId = (await call("a", "GET", "/me")).data.user.id;
   r = await call("a", "PUT", "/home/pledge", { text: "  논문   2편 끝내고 잔다  " }); ok(r.status === 200 && r.data.text === "논문 2편 끝내고 잔다", "pad: pledge saved (spaces tidied)");
   r = await call("b", "GET", "/home/pad"); ok(r.data.pledges.some((p) => p.user_id === aId && p.body === "논문 2편 끝내고 잔다"), "pad: friend sees my pledge");
@@ -1343,10 +1350,10 @@ if (!process.env.SKIP_AI) {
   r = await call("b", "GET", "/home/pad"); ok(r.data.memo !== "나만 보는 메모", "pad: friend can't read my memo");
   r = await call("a", "PUT", "/home/memo", { text: 5 }); ok(r.status === 400, "pad: memo must be text");
   r = await call("a", "PUT", "/home/pledge", { text: "" }); r = await call("b", "GET", "/home/pad"); ok(!r.data.pledges.some((p) => p.user_id === aId), "pad: empty pledge removes it");
-}
+});
 
 // ---------- OAuth 2.1 (ChatGPT · claude.ai 커넥터) ----------
-{
+await section("oauth", async () => {
   const { createHash, randomBytes } = await import("node:crypto");
   const USER = "t_b" + tag, PASS = "";
   const b64 = (b) => b.toString("base64url");
@@ -1400,10 +1407,10 @@ if (!process.env.SKIP_AI) {
   r = await fetch(BASE + "/api/mcp/oauth/" + cl.client_id, { method: "DELETE", headers: { cookie, "x-trio": "1" } }); ok((await r.json()).removed, "oauth: revoke from app");
   r = await fetch(BASE + "/mcp", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + t.d.access_token }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) }); ok(r.status === 401, "oauth: revoked grant → 401");
   
-}
+});
 
 // ---------- 뉴스 Signal Map: 지도 · 토론(2단) · 🤖 반박 · 반박 알림 (wrangler dev --var NEWS_FAKE_AI:1 이면 AI 없이) ----------
-{
+await section("news-map", async () => {
   const fid = "smk-f" + tag, iid = "smk-i" + tag, t0 = Date.now();
   d1(`INSERT INTO news_feeds (id, url, name, topic, created_at) VALUES ('${fid}', 'https://example.com/${fid}', 'Smoke Feed', 'china', ${t0})`);
   d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, one_liner, geo, created_at) VALUES ('${iid}', '${fid}', 'https://example.com/${iid}', 'Beijing tightens rare earth smoke export', ${t0 - 3600e3}, 'China said on Monday it will tighten rare earth exports. Washington called the move coercive.', '중국이 희토류 수출을 죄어요', '["CN","US"]', ${t0})`);
@@ -1448,10 +1455,10 @@ if (!process.env.SKIP_AI) {
   r = await call("a", "DELETE", `/news/comments/${memo.id}`); ok(r.status === 200, "news: delete own memo");
   ok(d1(`SELECT COUNT(*) AS n FROM news_comments WHERE item_id = '${iid}'`)[0].n === 0, "news: replies go with the memo");
   d1(`DELETE FROM news_threads WHERE id = '${th}'`); d1(`DELETE FROM news_items WHERE id = '${iid}'`); d1(`DELETE FROM news_feeds WHERE id = '${fid}'`);
-}
+});
 
 // ---------- 뉴스 신문(하루 한 부) · 되채우기 · 크론 예산 (wrangler dev --var NEWS_FAKE_AI:1) ----------
-{
+await section("news-edition", async () => {
   const { sectionOf, kstDay } = await import("../src/news.js");
   ok(sectionOf("semi") === "tech" && sectionOf("macro") === "economy" && sectionOf("energy") === "economy" && sectionOf("china") === "geopolitics" && sectionOf("europe") === "geopolitics" && sectionOf("ai") === "ai" && sectionOf("china", "ai") === "ai" && sectionOf("ai", "bogus") === "ai", "edition: topic → section map (AI tag overrides)");
   ok(kstDay(Date.parse("2026-10-12T15:30:00Z")) === "2026-10-13" && kstDay(Date.parse("2026-10-12T14:59:00Z")) === "2026-10-12", "edition: item day = KST date");
@@ -1462,6 +1469,9 @@ if (!process.env.SKIP_AI) {
   ok(rb.used === 3 && blocked instanceof BudgetError, "budget: 4th fetch over a limit of 3 is refused");
 
   const t0 = Date.now(), D = kstDay(t0 - 58 * 864e5), DT = Date.parse(D + "T03:00:00Z"); // 그날 정오(한국)
+  // 지난 실행이 남긴 smk- 줄 · 그날 신문부터 지워요
+  d1(`DELETE FROM news_editions WHERE day IN (SELECT DISTINCT day FROM news_items WHERE id LIKE 'smk-%')`);
+  d1(`DELETE FROM news_items WHERE id LIKE 'smk-%'`); d1(`DELETE FROM news_feeds WHERE id LIKE 'smk-f%'`); d1(`DELETE FROM news_jobs WHERE name = 'backfill'`);
   const fs = "smk-fs" + tag, fa = "smk-fa" + tag;
   d1(`INSERT INTO news_feeds (id, url, name, topic, created_at) VALUES ('${fs}', 'http://127.0.0.1:1/${fs}', 'Smoke Semi', 'semi', ${t0}), ('${fa}', 'http://127.0.0.1:1/${fa}', 'Smoke AI', 'ai', ${t0})`);
   const ids = [0, 1, 2, 3, 4].map((n) => `smk-e${n}${tag}`);
@@ -1470,6 +1480,13 @@ if (!process.env.SKIP_AI) {
   // 되채우기: 가장 오래된 날(D)부터 — 요약 → 마감 신문
   // AI 가 계속 답을 안 주는 글(가짜 AI: 제목에 NOANSWER) → 두 번째에 건너뛰기, 그날은 3걸음 규칙 없이 마감
   const D0 = kstDay(t0 - 59 * 864e5), nx = "smk-nx" + tag;
+  // 지난 실행이 남긴 smk- 줄 · 그날 신문을 먼저 지우고, D0 보다 오래된 날(60일 창 안)에 남은 '마감 안 된' 다른 글은 잠깐 마감 자리로 막아요
+  // (되채우기는 가장 오래된 날부터 고르니, 남은 줄이 있으면 우리 날 대신 그날을 골라서 실패했어요 — 2026-10-26)
+  const blockDays = d1(`SELECT DISTINCT i.day, e.status FROM news_items i LEFT JOIN news_editions e ON e.day = i.day WHERE i.day >= '${kstDay(t0 - 60 * 864e5)}' AND i.day < '${D0}' AND (e.day IS NULL OR e.status <> 'closed')`);
+  const holdNew = blockDays.filter((x) => !x.status).map((x) => x.day), holdDraft = blockDays.filter((x) => x.status).map((x) => x.day);
+  const inList = (a) => a.map((d) => `'${d}'`).join(",");
+  if (holdNew.length) d1(`INSERT INTO news_editions (day, headline, status, item_count, built_at) VALUES ${holdNew.map((d) => `('${d}', 'smk-hold', 'closed', 0, 0)`).join(",")}`);
+  if (holdDraft.length) d1(`UPDATE news_editions SET status = 'closed' WHERE day IN (${inList(holdDraft)})`);
   d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, created_at, day, section) VALUES ('${nx}', '${fa}', 'https://example.com/${nx}', 'NOANSWER smoke', ${Date.parse(D0 + "T03:00:00Z")}, 'x', ${t0}, '${D0}', 'ai')`);
   r = await call("a", "POST", "/news/backfill"); ok(r.data.day === D0 && r.data.built === false && r.data.todo === 1, "backfill: no answer once → retried later");
   r = await call("a", "POST", "/news/backfill"); ok(r.data.day === D0 && r.data.built === true && r.data.stuck < 3, "backfill: no answer twice → item skipped, day closes normally");
@@ -1505,10 +1522,12 @@ if (!process.env.SKIP_AI) {
   r = await call("a", "POST", "/cron/run?cron=am"); ok(d1(`SELECT status FROM news_editions WHERE day = '${kstDay(Date.now())}'`)[0]?.status === "closed", "cron am: draft never reopens a closed edition");
   d1(`DELETE FROM news_items WHERE id LIKE 'smk-%${tag}'`); d1(`DELETE FROM news_feeds WHERE id LIKE 'smk-f%${tag}'`);
   d1(`DELETE FROM news_editions WHERE day = '${D}' OR day = '${D0}' OR day = '${kstDay(Date.now())}'`); d1(`DELETE FROM news_jobs`);
-}
+  d1(`DELETE FROM news_editions WHERE headline = 'smk-hold'`);
+  if (holdDraft.length) d1(`UPDATE news_editions SET status = 'draft' WHERE day IN (${inList(holdDraft)})`);
+});
 
 // ---------- 페이지 파일: sandbox iframe 은 쿠키가 없어서 /pf/<id>/~<토큰>/ 으로 불러요 ----------
-{
+await section("page-files", async () => {
   const files = { "index.html": '<!doctype html><html><head><link rel="stylesheet" href="style.css"></head><body>hi</body></html>', "style.css": "body{color:red}" };
   const pa = (await call("a", "POST", "/pages", { title: "파일 토큰", files })).data.page;
   const pa2 = (await call("a", "POST", "/pages", { title: "다른 페이지", files })).data.page;
@@ -1522,10 +1541,10 @@ if (!process.env.SKIP_AI) {
   r = await raw(`/pf/${pa.id}/~${t.data.token.slice(0, -2)}xx/style.css`); ok(r.status === 401, "pf: tampered token → 401");
   r = await call("b", "GET", `/pages/${pa.id}/file-token`); ok(r.status === 404, "pf: no token for someone else's private page");
   await call("a", "DELETE", `/pages/${pa.id}`); await call("a", "DELETE", `/pages/${pa2.id}`);
-}
+});
 
 // ---------- 개인 API 키 + /api/v1 (바깥 사이트, 키만 · CORS *) ----------
-{
+await section("apikeys", async () => {
   const v1 = (path, h = {}, method = "GET") => fetch(BASE + "/api/v1" + path, { method, headers: h });
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
   const plan = (await call("a", "POST", "/plans", { scope: "day", period: "D:" + today, text: "v1 계획 " + tag })).data.plan;
@@ -1556,12 +1575,14 @@ if (!process.env.SKIP_AI) {
   for (const x of (await call("a", "GET", "/apikeys")).data.keys) await call("a", "DELETE", "/apikeys/" + x.id);
   r = await v1("/plans/today", H); ok(r.status === 401, "v1: revoked key 401");
   await call("a", "DELETE", "/plans/" + plan.id);
-}
+});
 
 // 개인 자료 공급사 (서버 없이 — fetch 를 잠깐 가짜로 바꿔서 확인해요)
 { const { privacyChecks } = await import("./privacy-check.mjs"); await privacyChecks(ok); }
 
 r = await call("a", "POST", "/auth/logout"); r = await call("a", "GET", "/me"); ok(r.status === 401, "logout");
 
-execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", "DELETE FROM users WHERE username LIKE 't\\_%' ESCAPE '\\'"], { stdio: "ignore" });
+// 끝날 때: 이 실행이 만든 임시 계정만 (test.mjs 로 여럿이 같이 돌 때 남의 것을 지우지 않게). 혼자 돌면 예전처럼 t_… 전부
+execFileSync("node", ["scripts/test-cleanup.mjs", ...(process.env.TEST_RUN ? ["--tag=" + tag] : [])], { stdio: "ignore" });
 console.log("cleaned up test users");
+writeSummary({ script: "smoke" });

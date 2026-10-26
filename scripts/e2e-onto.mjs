@@ -114,6 +114,8 @@ export async function ontoE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots =
 
     // 4) 맨 위 노트 → 자리 칩 → 옮기기 → ⌘Z
     step = "4 새 노트 자리 칩";
+    // 진짜 의미 벡터(bge-m3)가 있어야 확신 0.85 를 넘어요 → 가짜 AI(AI_MOCK=1, quick · normal)에서는 건너뛰고 full 에서만 봐요 [ai-real]
+    if (process.env.AI_MOCK === "1") { console.log(`SKIP ${tv} · 자리 칩 [ai-real] — AI_MOCK=1 (full 에서 봐요)`); return; }
     const N = await post({ title: T("프롬프트 엔지니어링"), body: "LLM 에게 프롬프트를 주는 방법이에요. 머신러닝 · 딥러닝 모델과 인공지능 API 를 프로그래밍으로 부르고, 시스템 프롬프트 · few-shot 예시 · 체인 오브 소트 같은 기법을 써요. 소프트웨어 개발에서 AI 코딩 도구를 쓸 때도 중요해요.", parent_id: null });
     const sug = await get(`/notes/${N}/sort`);
     await go("#/notes/" + N, 3000);

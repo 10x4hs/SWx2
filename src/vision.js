@@ -64,6 +64,7 @@ async function viaWorkersAI(env, images, q) {
 
 // 이미지들 → 글. { text, model }. 볼 수 있는 모델이 다 막히면 503
 export async function describeImages(env, images, q = "") {
+  if (env.__AI_MOCK) return { text: "모의 이미지 읽기: 빨간색(red) 이미지예요.", model: "mock" }; // 로컬 검사 (AI_MOCK)
   const tries = [
     ...(env.GEMINI_API_KEY ? GEMINI_CHAIN.map((m) => ["gemini", m, () => viaGemini(env, m, images, q)]) : []),
     ...(env.OPENROUTER_API_KEY ? OPENROUTER_CHAIN.map((m) => ["openrouter", m, () => viaOpenRouter(env, m, images, q)]) : []),

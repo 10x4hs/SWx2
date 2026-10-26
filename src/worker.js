@@ -38,11 +38,13 @@ import { registerFiles } from "./files.js";
 import { registerNotes, indexStmts, MAX_NOTE } from "./notes.js";
 import { registerRecords } from "./records.js";
 import { registerApiKeys, handleV1 } from "./apikeys.js";
+import { aiMockOn, mockEnv } from "./lib/aimock.js";
 export { RoomHub } from "./hub.js"; // Durable Object 클래스는 main 모듈에서 내보내야 해요
 
 export default {
   async fetch(req, env, ec) {
     const url = new URL(req.url);
+    if (aiMockOn(env, url)) env = mockEnv(env); // 로컬 검사만: 가짜 AI (src/lib/aimock.js)
     // OAuth 2.1 (ChatGPT · claude.ai 커넥터처럼 OAuth 로만 붙는 MCP 앱)
     if (url.pathname.startsWith("/.well-known/") || url.pathname.startsWith("/oauth/")) {
       try { const r = await handleOAuth(req, env, url, { sessionUser, loginWith }); if (r) return r; }
@@ -75,6 +77,7 @@ export default {
   },
   // wrangler.jsonc 의 triggers.crons — 무엇이 언제 도는지는 src/cron.js 맨 위에 있어요
   async scheduled(event, env, ec) {
+    if (aiMockOn(env)) env = mockEnv(env);
     ec.waitUntil(runCron(env, event.cron)
       .then((r) => console.log("크론", event.cron, "바깥 요청 " + r.used + "/" + r.limit, JSON.stringify(r.result).slice(0, 600)))
       .catch((e) => console.log("크론 실패", event.cron, String(e?.message || e))));
