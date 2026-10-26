@@ -1,6 +1,6 @@
 /* 집중 섬 — 화면 맨 위 가운데의 검은 알약(Dynamic Island 모양). js/focus-timer.js 가 그려요.
    #timer[hidden] = 접힘(세션이 있으면 작은 알약) · hidden 없음 = 펼친 카드. 라이트 · 다크 모두 섬은 검은색 그대로예요.
-   맨 위 가운데 쌓는 순서: 사칭 띠(.imp-bar, 맨 위 전체) → 섬 → 공지(.ann-bar) → 무료 체험 띠(.trial-bar, 공지가 있으면 아래쪽으로). */
+   맨 위 가운데 쌓는 순서: 사칭 띠(.imp-bar, 맨 위 전체) → 섬 → 공지(.ann-stack 안에 .ann-bar 여러 줄) → 무료 체험 띠(.trial-bar, 공지가 있으면 아래쪽으로). */
 
 :root {
   --isl-top: max(10px, env(safe-area-inset-top));
@@ -33,7 +33,7 @@ body:has(.imp-bar) { --isl-top: 44px; }
 #timer.island:not([hidden]) .isl-pill { display: none; } /* 펼침 = 카드만 */
 
 /* 섬이 떠 있는 동안 다른 맨 위 띠는 섬 밑으로 */
-body:has(#timer.is-live) .ann-bar { top: var(--isl-below); }
+body:has(#timer.is-live) .ann-stack { top: var(--isl-below); }
 body:has(#timer.is-live):not(:has(.ann-bar)) .trial-bar { top: var(--isl-below); }
 body:has(#timer.is-live) .pwa-net { top: var(--isl-below); }
 /* 섬 자리만큼 앱을 아래로 내려서 각 화면의 맨 위 머리줄(고정 머리줄 · 가운데 탭 포함)을 가리지 않아요.

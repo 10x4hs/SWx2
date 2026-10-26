@@ -12,6 +12,9 @@ import { hubNotifyMany } from "./hub.js";
 const ANN_IMG_TYPES = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
 const ANN_IMG_MAX = 5 * 1024 * 1024;
 export const ANN_IMG_KEY = /^[0-9a-f-]{8,64}\.(png|jpg|webp|gif)$/;
+const ANN_COLS = "id, body, created_at, updated_at, ends_at, active, sort";
+const annText = (v) => { const t = String(v ?? "").trim(); if (!t || t.length > 4000) fail(400, "공지는 1~4000자로 써 주세요."); return t; }; // 마크다운 원문 그대로 저장
+const annEnds = (v) => { if (v == null || v === "") return null; const n = Number(v); if (!Number.isFinite(n) || n < 0) fail(400, "끝나는 때가 올바르지 않아요."); return Math.round(n); };
 const needAdmin = (user) => { if (user.role !== "admin" || user.imp_by) fail(403, "관리자만 쓸 수 있어요."); };
 const target = async (env, id) => (await env.DB.prepare("SELECT id, username, role, state FROM users WHERE id = ?").bind(id).first()) || fail(404, "없는 회원이에요.");
 const notAdmin = (u) => { if (u.role === "admin") fail(400, "관리자 계정에는 할 수 없어요."); };
@@ -84,17 +87,41 @@ export function registerAdmin(on) {
     return json({ user: { id: u.id, username: u.username }, plans: results });
   });
   // 공지
+  // 공지 여러 개: 관리자 목록 (지운 것 빼고 전부 · 꺼진 것 · 끝난 것 포함) · 올리기 · 고치기 · 순서 · 지우기
+  on("GET", "/admin/announcements", async ({ env, user }) => {
+    needAdmin(user);
+    const { results } = await env.DB.prepare(`SELECT ${ANN_COLS} FROM announcements WHERE deleted_at IS NULL ORDER BY sort, created_at DESC`).all();
+    return json({ announcements: results });
+  });
   on("POST", "/admin/announcements", async ({ env, user, req }) => {
     needAdmin(user);
     const b = await body(req);
-    const text = String(b.body || "").trim();
-    if (!text || text.length > 4000) fail(400, "공지는 1~4000자로 써 주세요."); // 마크다운 원문 그대로 저장
-    const a = { id: uid(), body: text, created_at: now() };
-    await env.DB.batch([
-      env.DB.prepare("UPDATE announcements SET active = 0 WHERE active = 1"),
-      env.DB.prepare("INSERT INTO announcements (id, body, created_by, created_at) VALUES (?, ?, ?, ?)").bind(a.id, a.body, user.id, a.created_at),
-    ]);
+    const text = annText(b.body), ends = annEnds(b.ends_at);
+    const top = await env.DB.prepare("SELECT MIN(sort) AS m FROM announcements WHERE deleted_at IS NULL").first();
+    const t = now(), a = { id: uid(), body: text, created_at: t, updated_at: t, ends_at: ends, active: b.active === false ? 0 : 1, sort: (top?.m ?? 1) - 1 };
+    // 예전과 달리 앞 공지를 내리지 않아요 — 새 공지는 맨 위에 쌓여요
+    await env.DB.prepare("INSERT INTO announcements (id, body, created_by, created_at, updated_at, ends_at, active, sort) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(a.id, a.body, user.id, t, t, ends, a.active, a.sort).run();
     return json({ announcement: a }, 201);
+  });
+  on("PATCH", "/admin/announcements/:id", async ({ env, user, req, params }) => {
+    needAdmin(user);
+    const b = await body(req);
+    const cur = (await env.DB.prepare(`SELECT ${ANN_COLS} FROM announcements WHERE id = ? AND deleted_at IS NULL`).bind(params.id).first()) || fail(404, "없는 공지예요.");
+    const next = { ...cur };
+    if ("body" in b) next.body = annText(b.body);
+    if ("ends_at" in b) next.ends_at = annEnds(b.ends_at);
+    if ("active" in b) next.active = b.active ? 1 : 0;
+    // 글이나 끝나는 때가 바뀌면 updated_at 이 바뀌어요 → 닫았던 사람에게도 다시 떠요
+    if (next.body !== cur.body || next.ends_at !== cur.ends_at) next.updated_at = now();
+    await env.DB.prepare("UPDATE announcements SET body = ?, ends_at = ?, active = ?, updated_at = ? WHERE id = ?").bind(next.body, next.ends_at, next.active, next.updated_at, cur.id).run();
+    return json({ announcement: next });
+  });
+  on("POST", "/admin/announcements/order", async ({ env, user, req }) => {
+    needAdmin(user);
+    const b = await body(req);
+    if (!Array.isArray(b.ids) || !b.ids.length || b.ids.length > 200 || b.ids.some((x) => typeof x !== "string" || x.length > 64)) fail(400, "순서 목록이 올바르지 않아요.");
+    await env.DB.batch(b.ids.map((id, i) => env.DB.prepare("UPDATE announcements SET sort = ? WHERE id = ? AND deleted_at IS NULL").bind(i, id)));
+    return json({ ok: true });
   });
   // 공지 사진 (R2 FILES, 키 ann/<uuid>.<ext>): 올리기는 관리자만, 보기는 로그인한 누구나 — 공지는 모두에게 뜨니까요
   on("POST", "/admin/ann-img", async ({ req, env, user }) => {
@@ -124,7 +151,7 @@ export function registerAdmin(on) {
   });
   on("DELETE", "/admin/announcements/:id", async ({ env, user, params }) => {
     needAdmin(user);
-    await env.DB.prepare("UPDATE announcements SET active = 0 WHERE id = ?").bind(params.id).run();
+    await env.DB.prepare("UPDATE announcements SET active = 0, deleted_at = ? WHERE id = ?").bind(now(), params.id).run();
     return json({ ok: true });
   });
   // 단체 메시지: 받는 사람마다 그 사람의 관리자 문의방(help:<id>)에 관리자 이름으로 보통 메시지 한 줄씩 (서로는 못 봐요) + 푸시.
@@ -152,11 +179,11 @@ export function registerAdmin(on) {
     pushUsers(env, ec, to, { room: "help" });
     return json({ sent: to.length }, 201);
   });
-  // 모든 사람: 지금 공지 (없으면 null)
-  on("GET", "/announcement", async ({ env }) => {
-    const a = await env.DB.prepare("SELECT id, body, created_at FROM announcements WHERE active = 1 ORDER BY created_at DESC LIMIT 1").first();
-    return json({ announcement: a || null });
-  });
+  // 모든 사람: 지금 떠 있는 공지들 (켜짐 · 안 끝남 · 안 지움, 관리자가 정한 순서)
+  const live = (env) => env.DB.prepare(`SELECT ${ANN_COLS} FROM announcements WHERE deleted_at IS NULL AND active = 1 AND (ends_at IS NULL OR ends_at > ?) ORDER BY sort, created_at DESC LIMIT 50`).bind(now()).all().then((r) => r.results);
+  on("GET", "/announcements", async ({ env }) => json({ announcements: await live(env) }));
+  // 예전 앱(서비스 워커에 남은 옛 JS)용: 맨 위 하나만 — 한 번 배포 뒤에 지워도 돼요
+  on("GET", "/announcement", async ({ env }) => json({ announcement: (await live(env))[0] || null }));
 
   // 승인: 관리자마다 한 번씩. 관리자 모두가 승인하면 그때 '활성'
   on("POST", "/admin/users/:id/approve", async ({ env, user, params, ec }) => {
