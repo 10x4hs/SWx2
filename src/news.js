@@ -12,7 +12,7 @@
 // 4. 피드는 조용히 죽습니다. 200 에 유효한 XML 을 주면서 몇 년째 새 글이 없는 경우가 있어
 //    마지막 글이 90일보다 오래되면 경고합니다.
 // =====================================================================================
-import { aiJson as realAiJson } from "./ai.js";
+import { aiJson as realAiJson, aiText } from "./ai.js";
 import { SEED } from "./feeds.js";
 import { pushUsers } from "./push.js";
 import { charge, left, withBudget } from "./lib/budget.js";
@@ -1415,6 +1415,29 @@ export function registerNews(on, { json, body, fail, now }) {
     } catch (e) {
       return json({ deep: null, error: String(e?.message || e).slice(0, 200) });
     }
+  });
+
+  // [POST /news/item/:id/ask] 이 기사에 대해 AI 에게 묻기 — { q, history?:[{role,content}] } → { answer }
+  //   기사(공개 글)만 보내요. 개인 노트는 안 들어가서 어느 AI 든 써요. 하루 사용량은 worker.js AI_PATH
+  on("POST", "/news/item/:id/ask", async ({ env, params, req }) => {
+    const b = await body(req);
+    const q = String(b.q || "").trim().slice(0, 1000);
+    if (!q) fail(400, "궁금한 걸 적어 주세요.");
+    const item = await env.DB.prepare("SELECT title, title_ko, summary, raw FROM news_items WHERE id = ?").bind(params.id).first();
+    if (!item) fail(404, "그 글이 없어요.");
+    let sum = []; try { sum = JSON.parse(item.summary || "[]"); } catch {}
+    const sys = `너는 뉴스 기사를 읽는 사람을 돕는 한국어 해설가야. 쉬운 해요체로 짧고 정확하게 답해.
+- 아래 기사 내용을 먼저 근거로 써. 기사에 없는 일반 지식(용어 뜻 · 배경)은 설명해도 되지만 '기사 밖 설명:' 으로 시작해 구분해.
+- 모르는 건 모른다고 해. 숫자는 기사에 있는 것만 써.
+
+제목: ${item.title_ko || item.title}
+원제: ${item.title}
+요약: ${(Array.isArray(sum) ? sum : []).join(" / ")}
+본문:
+${String(item.raw || "").slice(0, 16000)}`;
+    const hist = (Array.isArray(b.history) ? b.history : []).slice(-6).filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string").map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }));
+    const r = await aiText(env, sys, [...hist, { role: "user", content: q }]);
+    return json({ answer: r.text, model: r.model });
   });
 
   // 4. [PATCH /news/item/:id] 읽음 · 저장 · 중요 표시 · 내 메모

@@ -293,6 +293,7 @@ export const api = {
   newsRecentComments: (n) => request("GET", "/news/comments/recent?limit=" + (n || 30)),
   newsItem: (id) => request("GET", "/news/item/" + id),
   newsDeep: (id) => request("POST", "/news/item/" + id + "/deep", {}),
+  newsAsk: (id, q, history) => request("POST", "/news/item/" + id + "/ask", { q, history }),
   newsMark: (id, b) => request("PATCH", "/news/item/" + id, b),
   newsThread: (id) => request("GET", "/news/thread/" + id),
   newsStory: (id) => request("POST", "/news/thread/" + id + "/story", {}),

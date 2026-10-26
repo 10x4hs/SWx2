@@ -112,7 +112,7 @@ async function route(req, env, url, ec) {
   return r.handler(ctx);
 }
 
-const AI_PATH = /^\/(?:ai\/[a-z-]+|books\/ask|apps\/cim\/ask|papers\/(?:ask|explain|quiz)|review\/week\/ai|room\/ai|news\/(?:summarize|item\/[^/]+\/(?:deep|summarize)|comments\/[^/]+\/ai-rebut))$/;
+const AI_PATH = /^\/(?:ai\/[a-z-]+|books\/ask|apps\/cim\/ask|papers\/(?:ask|explain|quiz)|review\/week\/ai|room\/ai|news\/(?:summarize|item\/[^/]+\/(?:deep|summarize|ask)|comments\/[^/]+\/ai-rebut))$/;
 async function aiQuota(env, user) {
   if (await env.DB.prepare("SELECT 1 FROM team_members WHERE team_id = 'swx2' AND user_id = ?").bind(user.id).first()) return;
   const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), max = Number(env.AI_DAILY || 30);
