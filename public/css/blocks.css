@@ -137,6 +137,8 @@
 .nb-drop.side { opacity: .9; }
 .nb-drop { position: absolute; height: 3px; background: var(--nb-drop); opacity: .7; border-radius: 2px; pointer-events: none; z-index: 3; }
 .nb.dragging { opacity: .4; }
+.nb-picked > .nb-row { background: rgba(35, 131, 226, .14); border-radius: 4px; }
+.nb-box { position: fixed; z-index: 50; background: rgba(35, 131, 226, .12); border: 1px solid rgba(35, 131, 226, .6); pointer-events: none; }
 .nb-menu { position: fixed; z-index: 90; width: 260px; max-height: 360px; overflow-y: auto; padding: 6px; border-radius: 10px; background: var(--paper-solid); box-shadow: 0 0 0 1px var(--line-2), 0 12px 32px -8px rgba(0, 0, 0, .45); }
 .nb-menu-h { font-size: 11.5px; color: var(--ink-3); padding: 4px 8px 6px; font-weight: 600; }
 .nb-menu button { display: flex; gap: 10px; align-items: center; width: 100%; border: 0; background: none; padding: 5px 8px; border-radius: 6px; text-align: left; color: var(--ink); cursor: pointer; }

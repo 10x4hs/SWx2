@@ -568,6 +568,36 @@ try {
       const sb = JSON.parse(saved.note.blocks || "{}").blocks || [];
       ok(v0 !== v1 && v1 !== v2 && menuOk && sb.some((b) => b.type === "callout" && /Hello \*\*callout\*\*/.test(b.text)) && /\[!note\]/.test(saved.note.body) && !errs.length,
         `${tv} · 블록 — 토글 ${v0}→${v1}→${v2} · "/" 메뉴 ${menuOk} · 콜아웃 저장 ${sb.map((b) => b.type).join(",")}${errs.length ? " — " + errs[0] : ""}`);
+      { // 빈 토글 안으로 표 끌어 넣기 · 끌기 그림 정리 · 상자 선택 → Delete → ⌘Z (2026-10-26)
+        const Q = (id, type, text, props = {}, children = []) => ({ id, type, text, props, children });
+        const dd = { v: 1, blocks: [Q("d_tg", "toggle", "Empty one"), Q("d_tb", "table", "", { rows: [["a", "b"], ["c", "d"]] }), Q("d_p1", "paragraph", "one"), Q("d_p2", "paragraph", "two"), Q("d_p3", "paragraph", "three")] };
+        const dn = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사 끌기 " + tv, blocks: dd } })).json()).note.id;
+        await go("#/notes/" + dn, 2200);
+        await p.evaluate(() => { const b = [...document.querySelectorAll('[data-mode="block"]')][0]; if (b && b.getAttribute("aria-selected") !== "true") b.click(); });
+        await p.waitForSelector('.nb[data-id="d_tg"] .nb-tg', { timeout: 8000 });
+        await p.click('.nb[data-id="d_tg"] .nb-tg'); await p.waitForSelector('.nb[data-id="d_tg"] .nb-empty-kid', { timeout: 3000 });
+        const drag = async (src, tsel, dx) => {
+          await p.hover(`.nb[data-id="${src}"] > .nb-row`); const hb = await p.locator(`.nb[data-id="${src}"] .nb-handle`).boundingBox(); const bx = await p.locator(tsel).boundingBox();
+          await p.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await p.mouse.down();
+          await p.mouse.move(bx.x + dx, bx.y + bx.height / 2, { steps: 8 }); await p.mouse.up().catch(() => {}); await sleep(300);
+        };
+        const parentOf = (id) => p.evaluate((id) => document.querySelector(`.nb[data-id="${id}"]`)?.parentElement.closest(".nb")?.dataset.id || "", id);
+        await drag("d_tb", '.nb[data-id="d_tg"] .nb-empty-kid', 12);
+        const inTg = await parentOf("d_tb"), ghost = await p.evaluate(() => document.querySelectorAll(".dragging, .nb-drop").length);
+        await drag("d_p3", '.nb[data-id="d_p1"] > .nb-row', 60); // 보통 순서 바꾸기 (위쪽 반 → 앞에)
+        const order = await p.evaluate(() => [...document.querySelectorAll(".nb-doc > .nb")].map((x) => x.dataset.id).join(","));
+        // 상자 선택: 글 바깥(편집기 왼쪽 여백)에서 끌어 두 문단을 덮기
+        const r1 = await p.locator('.nb[data-id="d_p1"] > .nb-row').boundingBox(), r2 = await p.locator('.nb[data-id="d_p2"] > .nb-row').boundingBox(), hr = await p.locator(".nb-doc").boundingBox();
+        await p.mouse.move(hr.x - 12, r1.y + 2); await p.mouse.down(); await p.mouse.move(hr.x + 40, r2.y + r2.height - 2, { steps: 6 }); await p.mouse.up();
+        const pickedN = await p.evaluate(() => [...document.querySelectorAll(".nb-picked")].map((x) => x.dataset.id).join(","));
+        await p.keyboard.press("Delete"); await sleep(200);
+        const gone = await p.evaluate(() => !document.querySelector('.nb[data-id="d_p1"]') && !document.querySelector('.nb[data-id="d_p2"]'));
+        await p.keyboard.press(process.platform === "darwin" ? "Meta+z" : "Control+z"); await sleep(200);
+        const back = await p.evaluate(() => !!document.querySelector('.nb[data-id="d_p1"]') && !!document.querySelector('.nb[data-id="d_p2"]'));
+        ok(inTg === "d_tg" && !ghost && order === "d_tg,d_p3,d_p1,d_p2" && pickedN === "d_p1,d_p2" && gone && back && !errs.length,
+          `${tv} · 블록 끌기 · 상자 선택 — 빈 토글 안 ${inTg || "없음"} · 남은 끌기 표시 ${ghost} · 순서 ${order} · 상자 ${pickedN} · 지움 ${gone} · ⌘Z ${back}${errs.length ? " — " + errs[0] : ""}`);
+        await p.goto("about:blank");
+      }
       // "@" 멘션 → [[페이지]] 링크 · 그 페이지 아래 백링크 (제목 형광펜)
       const tgt = (await (await ctx.request.post(BASE + "/api/notes", { headers: H, data: { title: "검사대상" + tv, body: "x" } })).json()).note.id;
       await p.goto("about:blank"); await go("#/notes/" + bn, 2200);
