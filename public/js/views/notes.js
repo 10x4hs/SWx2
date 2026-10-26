@@ -221,6 +221,10 @@ export function mount(root, ctx, r) {
       onNewPage: (title) => newPage(title, false, {}),
       onNewDb: (title) => newPage(title, false, { kind: "database" }),
       mountDb: (el, id) => mountDatabase(el, id, { inline: true, readOnly: !own, onOpen: (nid) => { save.flush(); ctx.go("#/notes/" + nid); } }),
+      // 사진 · 파일 (25MB 까지): 끌어다 놓기 · 붙여 넣기 · /파일 · /사진
+      maxFileSize: 25 * 1024 * 1024,
+      uploadFile: own ? ((nid) => (f, o) => api.noteFile(nid, f, o))(S.cur.id) : null,
+      onError: (err) => toast(err.message || "파일을 올리지 못했어요.", "err"),
     });
     drawOutline();
     if (S.cur.props) drawRowProps();

@@ -131,12 +131,13 @@ export function mount(root, ctx) {
         <section class="adm-sec" id="adm-plans" hidden></section>
       </section>
       <section class="adm-pane" data-pane="reqs" ${tab === "reqs" ? "" : "hidden"}>${n ? feats.requests.map((r) => `<div class="adm-req" data-req="${esc(r.id)}"><div><b>${esc(r.display_name || r.username)}</b> <small class="faint">@${esc(r.username)}</small> → <span class="adm-badge">${esc(feats.all[r.feature] || r.feature)}</span>${r.note ? `<p class="adm-req-note">"${esc(r.note)}"</p>` : ""}</div>${reqAps(r)}<div class="adm-acts"><button type="button" class="btn sm adm-ok" data-dec="approve" ${(r.approvals || []).includes(ctx.me.username) ? "disabled" : ""}>${(r.approvals || []).includes(ctx.me.username) ? "승인함" : "승인"}</button><button type="button" class="btn sm adm-no" data-dec="deny">거절</button></div></div>`).join("") : '<p class="faint">새 신청 없음</p>'}</section>
-      <section class="adm-pane" data-pane="ann" ${tab === "ann" ? "" : "hidden"}><p class="faint">모든 사람 화면 맨 위에 빨간 띠로 떠요. 새로 올리면 예전 공지는 내려가요.</p>
-        <div class="adm-ann-now"></div>
-        <form class="adm-ann"><textarea class="input adm-ann-text" rows="6" maxlength="4000" placeholder="# 제목&#10;내용을 마크다운으로 써요" required></textarea>
+      <section class="adm-pane" data-pane="ann" ${tab === "ann" ? "" : "hidden"}><p class="faint">켜 둔 공지가 모든 사람 화면 맨 위에 빨간 띠로 줄줄이 떠요 (위에서부터 3줄 · 나머지는 "+N개 더"). 고치면 닫았던 사람에게도 다시 떠요.</p>
+        <div class="adm-ann-now adm-ann-list"></div>
+        <form class="adm-ann"><input type="hidden" class="adm-ann-id"><textarea class="input adm-ann-text" rows="6" maxlength="4000" placeholder="# 제목&#10;내용을 마크다운으로 써요" required></textarea>
           <div class="adm-ann-pv ann-md" hidden></div>
+          <label class="adm-ann-end">끝나는 날 <input type="date" class="input adm-ann-date" aria-label="공지 끝나는 날"> <small class="faint">이 날이 지나면 자동으로 안 보여요 · 비우면 계속</small></label>
           <p class="faint adm-ann-hint"># 제목 · **굵게** · *기울임* · - 목록 · [글자](https://주소) · \`코드\` · 사진은 끌어다 놓거나 붙여 넣어도 돼요 — 첫 줄이 띠에 떠요</p>
-          <div class="adm-acts"><button type="button" class="btn sm ghost" data-ann-img>사진 넣기</button><input type="file" class="adm-ann-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden><button type="button" class="btn sm ghost" data-ann-pv aria-pressed="false">미리보기</button><button class="btn sm">올리기</button></div></form></section>
+          <div class="adm-acts"><button type="button" class="btn sm ghost" data-ann-img>사진 넣기</button><input type="file" class="adm-ann-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden><button type="button" class="btn sm ghost" data-ann-pv aria-pressed="false">미리보기</button><button type="button" class="btn sm ghost" data-ann-cancel hidden>새로 쓰기</button><button class="btn sm">올리기</button></div></form></section>
       <section class="adm-pane" data-pane="teams" ${tab === "teams" ? "" : "hidden"}><div class="adm-teams"><p class="faint">불러오는 중…</p></div></section>
       <section class="adm-pane" data-pane="decide" ${tab === "decide" ? "" : "hidden"}><div class="adm-decide"><p class="faint">불러오는 중…</p></div></section>`;
     drawRows(); drawBc(); drawAnn(); loadTeams(); loadDecide();
@@ -146,14 +147,60 @@ export function mount(root, ctx) {
     if (e.target.matches(".adm-bc-text")) { bc.text = e.target.value; bcCounts(); }
   });
   // 공지
-  let ann = null;
-  const drawAnn = () => { const el = body.querySelector(".adm-ann-now"); if (el) el.innerHTML = ann ? `<p class="adm-ann-cur">지금 공지: <b>${esc(ann.body.split("\n")[0])}</b> <button type="button" class="btn sm ghost" data-ann-off="${esc(ann.id)}">내리기</button></p>` : `<p class="faint">지금 공지 없음</p>`; };
-  api.announcement().then((d) => { ann = d.announcement; drawAnn(); }).catch(() => {});
+  let anns = [], editId = "";
+  const kday = (t) => new Date(t + 9 * 3600e3).toISOString().slice(0, 10);   // 끝나는 때(ms) → 한국 날짜
+  const kend = (d) => (d ? Date.parse(d + "T23:59:59.999+09:00") : null);     // 날짜 → 그날 끝 (한국 시간)
+  const drawAnn = () => {
+    const el = body.querySelector(".adm-ann-now"); if (!el) return;
+    const t = Date.now();
+    el.innerHTML = anns.length ? anns.map((a, i) => {
+      const ended = a.ends_at != null && a.ends_at <= t, on = a.active && !ended;
+      return `<div class="adm-ann-row ${on ? "" : "is-off"} ${a.id === editId ? "is-edit" : ""}" data-ann-row="${esc(a.id)}">
+        <span class="adm-ann-t">${esc(a.body.split("\n").find((l) => l.trim()) || "")}</span>
+        <span class="adm-badge">${ended ? "끝남" : a.active ? "보임" : "꺼짐"}</span>${a.ends_at != null ? `<small class="faint">~${kday(a.ends_at)}</small>` : ""}
+        <button type="button" class="btn sm ghost" data-ann-mv="-1" ${i ? "" : "disabled"} aria-label="위로">↑</button><button type="button" class="btn sm ghost" data-ann-mv="1" ${i < anns.length - 1 ? "" : "disabled"} aria-label="아래로">↓</button>
+        <button type="button" class="btn sm ghost" data-ann-act>${a.active ? "끄기" : "켜기"}</button><button type="button" class="btn sm ghost" data-ann-edit>고치기</button><button type="button" class="btn sm ghost" data-ann-off="${esc(a.id)}">지우기</button></div>`;
+    }).join("") : `<p class="faint">지금 공지 없음</p>`;
+  };
+  const loadAnn = () => api.adminAnnouncements().then((d) => { anns = d.announcements || []; drawAnn(); }).catch(() => {});
+  loadAnn();
+  const annForm = (a) => {
+    const f = body.querySelector(".adm-ann"); if (!f) return;
+    editId = a?.id || ""; annPv(false);
+    f.querySelector(".adm-ann-id").value = editId;
+    f.querySelector("textarea").value = a?.body || "";
+    f.querySelector(".adm-ann-date").value = a?.ends_at != null ? kday(a.ends_at) : "";
+    f.querySelector("button:not([type])").textContent = a ? "고친 것 저장" : "올리기";
+    f.querySelector("[data-ann-cancel]").hidden = !a;
+    drawAnn();
+    if (a) f.querySelector("textarea").focus();
+  };
   body.addEventListener("submit", async (e) => {
     if (!e.target.closest(".adm-ann")) return;
     e.preventDefault();
     const inp = e.target.querySelector("textarea"), v = inp.value.trim(); if (!v) return;
-    try { ann = (await api.adminAnnounce(v)).announcement; inp.value = ""; annPv(false); drawAnn(); toast("공지를 올렸어요."); } catch (err) { toast(err.message, "err"); }
+    const ends_at = kend(e.target.querySelector(".adm-ann-date").value);
+    try {
+      if (editId) { await api.adminAnnUpdate(editId, { body: v, ends_at }); toast("공지를 고쳤어요."); }
+      else { await api.adminAnnounce(v, { ends_at }); toast("공지를 올렸어요."); }
+      annForm(null); await loadAnn();
+    } catch (err) { toast(err.message, "err"); }
+  });
+  body.addEventListener("click", async (e) => {
+    const row = e.target.closest("[data-ann-row]");
+    if (e.target.closest("[data-ann-cancel]")) return annForm(null);
+    if (!row) return;
+    const i = anns.findIndex((a) => a.id === row.dataset.annRow), a = anns[i]; if (!a) return;
+    try {
+      if (e.target.closest("[data-ann-edit]")) return annForm(a);
+      if (e.target.closest("[data-ann-act]")) { await api.adminAnnUpdate(a.id, { active: !a.active }); await loadAnn(); }
+      const mv = e.target.closest("[data-ann-mv]");
+      if (mv) {
+        const j = i + Number(mv.dataset.annMv); if (j < 0 || j >= anns.length) return;
+        [anns[i], anns[j]] = [anns[j], anns[i]]; drawAnn();
+        await api.adminAnnOrder(anns.map((x) => x.id));
+      }
+    } catch (err) { toast(err.message, "err"); loadAnn(); }
   });
   // 미리보기: 켜면 쓴 마크다운을 그려서 보여 줘요
   const annPv = (on) => {
@@ -249,7 +296,7 @@ export function mount(root, ctx) {
     const chip = e.target.closest("[data-feat]");
     if (chip) { try { await api.adminSetFeature(chip.closest("tr").dataset.id, chip.dataset.feat, !chip.classList.contains("on")); await load(); } catch (err) { toast(err.message, "err"); } return; }
     const off = e.target.closest("[data-ann-off]");
-    if (off) { try { await api.adminAnnounceOff(off.dataset.annOff); ann = null; drawAnn(); } catch (err) { toast(err.message, "err"); } return; }
+    if (off) { if (!confirm("이 공지를 지울까요?")) return; try { await api.adminAnnounceOff(off.dataset.annOff); if (editId === off.dataset.annOff) annForm(null); await loadAnn(); } catch (err) { toast(err.message, "err"); } return; }
     const hb = e.target.closest("[data-hours]");
     if (hb) { if (await addTime(hb, hb.closest("tr").dataset.id)) { timeFor = ""; await load(); } return; }
     const b = e.target.closest("[data-act]"); if (!b) return;

@@ -125,6 +125,25 @@ d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
     const annGot = (await call("r", "GET", "/announcement")).data.announcement;
     ok(r.status === 201 && annGot?.body === annSrc, `announcement: markdown stored raw and returned (${r.status})`);
     r = await call("r", "POST", "/admin/announcements", { body: "x" }); ok(r.status === 403, "announcement: members cannot post");
+    // 공지 여러 개: 쌓이고(새 것이 맨 위) · 고치기 · 순서 · 끄기 · 끝나는 때 지나면 회원 목록에서 빠져요 · 관리자만
+    const a2 = (await call("h", "POST", "/admin/announcements", { body: "둘째 공지" })).data.announcement;
+    const a3 = (await call("h", "POST", "/admin/announcements", { body: "끝난 공지", ends_at: Date.now() - 1000 })).data.announcement;
+    let live = (await call("r", "GET", "/announcements")).data.announcements.map((x) => x.id);
+    ok(live[0] === a2.id && live.includes(annGot?.id) && !live.includes(a3.id), `announcements: stacked newest first, ended one hidden (${live.length})`);
+    r = await call("r", "GET", "/admin/announcements"); ok(r.status === 403, `announcements: admin list is admin-only (${r.status})`);
+    r = await call("r", "PATCH", "/admin/announcements/" + a2.id, { body: "x" }); ok(r.status === 403, `announcements: members cannot edit (${r.status})`);
+    r = await call("h", "PATCH", "/admin/announcements/" + a2.id, { body: "둘째 공지 (고침)" });
+    ok(r.status === 200 && r.data.announcement.updated_at >= a2.updated_at && r.data.announcement.body === "둘째 공지 (고침)", `announcements: edit bumps updated_at (${r.status})`);
+    await call("h", "POST", "/admin/announcements/order", { ids: [annGot.id, a2.id, a3.id] });
+    live = (await call("r", "GET", "/announcements")).data.announcements.map((x) => x.id);
+    ok(live[0] === annGot.id && live[1] === a2.id, `announcements: reorder (${live.slice(0, 2).join(",")})`);
+    await call("h", "PATCH", "/admin/announcements/" + a2.id, { active: false });
+    live = (await call("r", "GET", "/announcements")).data.announcements.map((x) => x.id);
+    const adm = (await call("h", "GET", "/admin/announcements")).data.announcements.map((x) => x.id);
+    ok(!live.includes(a2.id) && adm.includes(a2.id) && adm.includes(a3.id), "announcements: turned-off / ended stay in admin list only");
+    ok((await call("r", "GET", "/announcement")).data.announcement?.id === annGot.id, "announcement (old API): still returns the top one");
+    for (const x of [a2, a3]) await call("h", "DELETE", "/admin/announcements/" + x.id);
+    ok(!(await call("h", "GET", "/admin/announcements")).data.announcements.some((x) => x.id === a2.id), "announcements: delete removes from admin list");
     if (annGot) await call("h", "DELETE", "/admin/announcements/" + annGot.id);
     // 공지 사진: 관리자만 · 이미지 4종만 · 5MB 까지, 올린 사진은 일반 회원도 받아요
     const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==", "base64");
@@ -137,7 +156,7 @@ d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
     const anon = r.data?.src ? await fetch(BASE + r.data.src) : null;
     ok(r.status === 201 && /^\/api\/ann\/img\/[0-9a-f-]+\.png$/.test(r.data.src) && img?.status === 200 && img.headers.get("content-type") === "image/png" && (await img.arrayBuffer()).byteLength === PNG.length && anon?.status === 401,
       `ann image: admin upload ${r.status} → member fetch ${img?.status} · logged-out ${anon?.status}`);
-    if (prevAnn) d1(`UPDATE announcements SET active = 1 WHERE id = '${prevAnn.id}'`);
+    if (prevAnn) d1(`UPDATE announcements SET active = 1, deleted_at = NULL WHERE id = '${prevAnn.id}'`);
     await call("r", "POST", "/features/request", { feature: "biz" });
     const req = (await call("h", "GET", "/admin/feature-requests")).data.requests.find((x) => x.user_id === rid && x.feature === "biz");
     r = await call("h", "POST", `/admin/feature-requests/${req.id}/approve`); ok(r.status === 200 && r.data.granted === false, "feature request: one admin approval is not enough");
@@ -751,6 +770,19 @@ r = await call("a", "PUT", "/custom/" + encodeURIComponent("evil slot"), { css: 
 r = await call("a", "DELETE", "/custom/" + encodeURIComponent("nav:brain")); r = await call("a", "GET", "/custom"); ok(!r.data.custom.length, "custom reset");
 r = await call("a", "GET", "/files/notion-missing.png"); ok(r.status === 404, "missing file 404");
 r = await call("x", "GET", "/files/notion-missing.png"); ok(r.status === 401, "files need login");
+// ---- note attachments (raw PUT body, owner-only read, risky types as attachment) ----
+{
+  const raw = (who, method, path, body, type) => fetch(BASE + "/api" + path, { method, headers: { "content-type": type, "x-trio": "1", cookie: jar[who] || "" }, body });
+  const nid = (await call("a", "POST", "/notes", { title: "smoke-files " + Date.now(), body: "" })).data.note.id;
+  let f = await raw("b", "PUT", `/notes/${nid}/files?name=a.txt`, "hi", "text/plain"); ok(f.status === 404, "note file: other user can't upload to my note");
+  f = await raw("a", "PUT", `/notes/${nid}/files?name=x.svg`, '<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>', "image/svg+xml");
+  const svg = await f.json(); ok(f.status === 201 && !svg.image, "note file: svg uploaded, not inline");
+  f = await raw("a", "GET", svg.src.slice(4)); ok(f.headers.get("content-type") === "application/octet-stream" && /^attachment/.test(f.headers.get("content-disposition")) && f.headers.get("x-content-type-options") === "nosniff", "note file: svg served as attachment");
+  f = await raw("b", "GET", svg.src.slice(4)); ok(f.status === 404, "note file: other user can't read");
+  f = await raw("b", "GET", "/files/" + svg.src.split("/").pop()); ok(f.status === 404, "note file: not readable via /files");
+  f = await raw("a", "PUT", `/notes/${nid}/files?name=big.bin`, new Uint8Array(25 * 1024 * 1024 + 1), "application/octet-stream"); ok(f.status === 413, "note file: >25MB → 413");
+  await call("a", "DELETE", "/notes/" + nid);
+}
 // ---- diary ----
 r = await call("a", "PUT", "/diary", { day: "2026-09-28", mood: 4, body: "오늘은 괜찮았다" }); ok(r.data.diary?.mood === 4, "diary saved");
 r = await call("a", "GET", "/diary?day=2026-09-28"); ok(r.data.diary?.body === "오늘은 괜찮았다", "diary read");

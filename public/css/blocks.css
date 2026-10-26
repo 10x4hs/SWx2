@@ -44,6 +44,7 @@
 }
 
 /* ---------- blocks ---------- */
+.nb-doc:focus { outline: none; }
 .nb-doc { position: relative; padding: 2px 0 40px; font-size: 16px; line-height: 1.5; color: var(--ink); min-height: 120px; } .ed-inner:has(.nb-doc) { max-width: 708px; } .nb + .nb { margin-top: 2px; }
 .nb { position: relative; }
 .nb-row { position: relative; display: flex; align-items: flex-start; gap: 4px; padding: 1px 0 1px 2px; border-radius: 4px; }
@@ -94,6 +95,22 @@
 .nb-url { width: 100%; }
 .nb-bm { display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--line-2); border-radius: 6px; padding: 10px 14px; margin: 4px 0; }
 .nb-bm a { color: inherit; font-weight: 550; text-decoration: none; }
+/* 노트에 올린 파일 카드 (PDF 는 미리보기 · 크게 보기) + 올리는 중 줄 */
+.nb-body.nb-file { border: 1px solid var(--line-2); border-radius: 8px; margin: 4px 0; overflow: hidden; }
+.nb-file-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-width: 0; }
+.nb-file-ic { font-size: 22px; line-height: 1; flex: none; }
+.nb-file-meta { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.nb-file-meta b { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nb-file-meta small { color: var(--faint, #888); font-size: 12px; }
+.nb-file-row .btn { flex: none; text-decoration: none; color: var(--ink); }
+.nb-file-pdf { display: block; width: 100%; height: 260px; border: 0; border-top: 1px solid var(--line-2); background: #fff; }
+.nb-body.nb-file.open .nb-file-pdf { height: min(80vh, 900px); }
+.nb-up { display: flex; align-items: center; gap: 10px; margin: 6px 0; padding: 8px 12px; border: 1px dashed var(--line-2); border-radius: 8px; font-size: 13px; }
+.nb-up-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nb-up-bar { flex: 0 0 30%; height: 4px; border-radius: 2px; background: var(--line-2); overflow: hidden; }
+.nb-up-bar i { display: block; height: 100%; width: 0; background: var(--accent, #3b82f6); transition: width .15s; }
+.nb-up-pc { flex: none; width: 3em; text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .nb-file-pdf { height: 200px; } .nb-up-bar { flex-basis: 22%; } }
 .nb-eq { font: 16px var(--mono); text-align: center; padding: 12px; border-radius: 6px; cursor: pointer; }
 .nb-eq:hover { background: var(--hover); }
 .nb-eq.empty { color: var(--ink-3); font-size: 14px; font-family: inherit; }

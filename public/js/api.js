@@ -14,7 +14,7 @@ for (const t of ["pointerdown", "keydown"]) addEventListener(t, () => { swrUntil
 async function request(method, path, body) {
   let res;
   const headers = { "content-type": "application/json", "x-trio": "1" };
-  if (method === "GET" && performance.now() < swrUntil && !path.startsWith("/room") && path !== "/announcement") headers["x-swr"] = "1";
+  if (method === "GET" && performance.now() < swrUntil && !path.startsWith("/room") && !path.startsWith("/announcement")) headers["x-swr"] = "1";
   try {
     res = await fetch("/api" + path, {
       method,
@@ -58,9 +58,14 @@ export const api = {
   updateTeam: (id, b) => request("PATCH", `/teams/${id}`, b),
   leaveTeam: (id, uid) => request("DELETE", `/teams/${id}/members/${uid}`),
   announcement: () => request("GET", "/announcement"),
+  // 공지 여러 개 → { announcements: [...] } (옛 서버면 /announcement 하나를 목록으로 바꿔요)
+  announcements: () => request("GET", "/announcements").catch((e) => { if (e.status !== 404) throw e; return request("GET", "/announcement").then((d) => ({ announcements: d.announcement ? [d.announcement] : [] })); }),
+  adminAnnouncements: () => request("GET", "/admin/announcements"),
+  adminAnnUpdate: (id, b) => request("PATCH", `/admin/announcements/${id}`, b),
+  adminAnnOrder: (ids) => request("POST", "/admin/announcements/order", { ids }),
   adminTeams: () => request("GET", "/admin/teams"),
   adminPlans: (id, from, to) => request("GET", `/admin/users/${id}/plans?from=${from}&to=${to}`),
-  adminAnnounce: (body) => request("POST", "/admin/announcements", { body }),
+  adminAnnounce: (body, extra = {}) => request("POST", "/admin/announcements", { body, ...extra }),
   // 공지 사진: 파일 그대로 올려요 → { src: "/api/ann/img/…" }
   annImage: async (blob) => {
     let res;
@@ -169,6 +174,23 @@ export const api = {
     if (!res.ok) throw new ApiError(res.status, data.error || "사진을 올리지 못했어요.", data);
     return data;
   },
+  // 노트 사진 · 파일: 파일 그대로 PUT (진행률 · 취소 때문에 XHR) → { src, name, size, mime, image, pdf }
+  noteFile: (noteId, file, { onProgress, signal } = {}) => new Promise((ok, no) => {
+    const x = new XMLHttpRequest();
+    x.open("PUT", "/api/notes/" + encodeURIComponent(noteId) + "/files?" + qs({ name: file.name || "file" }));
+    x.setRequestHeader("content-type", file.type || "application/octet-stream");
+    x.setRequestHeader("x-trio", "1");
+    x.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total); };
+    x.onload = () => {
+      let data = {}; try { data = JSON.parse(x.responseText); } catch {}
+      if (x.status >= 200 && x.status < 300) ok(data);
+      else no(new ApiError(x.status, data.error || (x.status === 413 ? "파일이 너무 커요 (한 개에 25MB 까지)." : `'${file.name}' 을(를) 올리지 못했어요.`), data));
+    };
+    x.onerror = () => no(new ApiError(0, "서버에 연결할 수 없어요. 인터넷 연결을 확인해 주세요."));
+    x.onabort = () => no(new DOMException("취소했어요", "AbortError"));
+    if (signal) { if (signal.aborted) return x.onabort(); signal.addEventListener("abort", () => x.abort(), { once: true }); }
+    x.send(file);
+  }),
   diaryDays: (year) => request("GET", "/diary/days?" + qs({ year })),
   diaries: (before) => request("GET", "/diary/list?" + qs({ before })),
   // 일기 모임(서로 보기) — 모임 밖이면 403. 남의 비공개 날은 { day, private: true } 만 와요
