@@ -23,7 +23,7 @@ async function call(who, method, path, body, headers = {}) {
   const data = await r.json().catch(() => null);
   return { status: r.status, data };
 }
-import { section, count, aiReal, writeSummary } from "./lib/sections.mjs";
+import { section, count, aiReal, aiMock, writeSummary } from "./lib/sections.mjs";
 const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); count(!!cond); if (!cond) process.exitCode = 1; };
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
 
@@ -108,6 +108,34 @@ r = await call("l", "POST", "/apps/cim/ask", { messages: [{ role: "user", conten
 r = await call("l", "GET", "/apps/ui/state"); ok(r.status === 200 && r.data.data === null, `free: 화면 꾸미기 (/apps/ui/state) is open to a user with no features (${r.status})`);
 r = await call("l", "GET", "/search/semantic?q=" + encodeURIComponent("증권거래세 세율")); ok(r.status === 200 && Array.isArray(r.data.results) && !r.data.results.some((x) => x.type === "cim"), "semantic search: open to everyone (notes) · CIM cards only with the cim feature");
 d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
+// Silicon Valley Mafia (#/svm): 관리자만 — 회원은 기능 · 체험이 다 열려 있어도 없는 주소(404), 관리자는 내용 · 기록 · 번역
+await section("svm", async () => {
+  const A = "t_sa" + tag, M = "t_sm" + tag;
+  mk(A, "관리S", "password1"); mk(M, "회원S", "password1");
+  d1(`UPDATE users SET role = 'admin' WHERE username = '${A}'`);
+  d1(`UPDATE users SET trial_until = ${Date.now() + 3600e3} WHERE username = '${M}'`);
+  try {
+    for (const [k, u] of [["sa", A], ["sm", M]]) await call(k, "POST", "/auth/login", { username: u, password: "password1" });
+    let r = await call("sa", "GET", "/svm/data");
+    const D = r.data || {}, e0 = D.essays?.[0];
+    ok(r.status === 200 && D.essays?.length === 15 && D.concepts?.length >= 14 && D.people?.length >= 8 && Array.isArray(D.videos) && Array.isArray(D.more), `svm: admin gets the content (${r.status} · ${D.essays?.length} essays)`);
+    ok(D.essays?.every((e, i) => e.no === i + 1 && e.sources?.length && e.claims?.length >= 3), "svm: essays come sorted by no, each with sources and 3+ claims");
+    for (const [m, p, b] of [["GET", "/svm/data"], ["GET", `/svm/source?id=${e0?.id}&part=0`], ["POST", "/svm/translate", { id: e0?.id, texts: ["x"] }], ["GET", "/apps/svm/state"], ["PUT", "/apps/svm/state", { data: { read: {} }, at: 0 }]]) {
+      r = await call("sm", m, p, b); ok(r.status === 404, `svm: member with every feature + trial → 404 on ${m} ${p.split("?")[0]} (${r.status})`);
+    }
+    r = await call("sa", "PUT", "/apps/svm/state", { data: { v: 1, read: { [e0?.id]: 1 }, pos: {}, mode: "brief" }, at: 0 });
+    const at = r.data?.updated_at;
+    r = await call("sa", "GET", "/apps/svm/state");
+    ok(r.status === 200 && r.data.data?.read?.[e0?.id] === 1 && r.data.data.mode === "brief" && r.data.updated_at === at, "svm: reading state saved per admin");
+    r = await call("sa", "PUT", "/apps/svm/state", { data: { v: 1 }, at: 0 }); ok(r.status === 409, `svm: stale state write → 409 (${r.status})`);
+    r = await call("sa", "GET", `/svm/source?id=${e0?.id}&part=99`); ok(r.status === 404, `svm: source part outside the list → 404 (${r.status})`);
+    r = await call("sa", "GET", "/svm/source?id=nope&part=0"); ok(r.status === 404, "svm: unknown essay → 404");
+    r = await call("sa", "POST", "/svm/translate", { id: e0?.id, texts: [] }); ok(r.status === 400, "svm: translate needs 1+ paragraphs");
+    r = await call("sa", "POST", "/svm/translate", { id: e0?.id, texts: Array(13).fill("a") }); ok(r.status === 400, "svm: translate caps 12 paragraphs");
+    r = await call("sa", "POST", "/svm/translate", { id: e0?.id, texts: ["a".repeat(3001)] }); ok(r.status === 400, "svm: translate caps 3000 chars a paragraph");
+    if (aiMock) { r = await call("sa", "POST", "/svm/translate", { id: e0?.id, texts: ["Hello world", "Second"] }); ok(r.status === 200 && r.data.ko?.length === 2 && r.data.ko[0].startsWith("모의 번역"), `svm: translate (mock AI) → one Korean line per paragraph (${r.status})`); }
+  } finally { d1(`DELETE FROM users WHERE username IN ('${A}', '${M}')`); }
+});
 // 관리자 두 사람: 기능 신청은 둘 다 승인해야 열림 · 시간 추가 · 추천 보너스 (로컬 진짜 관리자는 잠깐 member 로 내렸다가 되돌려요)
 await section("admin", async () => {
   const r3 = () => [...crypto.getRandomValues(new Uint8Array(3))].map((b) => String.fromCharCode(97 + (b % 26))).join("");

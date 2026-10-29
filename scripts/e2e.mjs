@@ -37,7 +37,8 @@ import { themeE2E } from "./e2e-theme.mjs";
 import { islandE2E } from "./e2e-island.mjs";
 import { boardE2E } from "./e2e-board.mjs";
 import { noteFilesE2E } from "./e2e-notefiles.mjs";
-import { section, count, writeSummary } from "./lib/sections.mjs";
+import { svmE2E } from "./e2e-svm.mjs";
+import { section, count, aiMock, writeSummary } from "./lib/sections.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
 const { chromium } = (() => { try { return createRequire(import.meta.url)("playwright"); } catch (e) { if (!process.env.NODE_PATH) throw e; return createRequire(process.env.NODE_PATH.split(":")[0] + "/x")("playwright"); } })(); // NODE_PATH 로 다른 곳의 playwright 도 쓸 수 있어요
@@ -1747,6 +1748,8 @@ try {
       sq(`DELETE FROM users WHERE username = '${adm}'`);
     }
   });
+  // ---------- Silicon Valley Mafia (#/svm, 관리자만) — scripts/e2e-svm.mjs (컴퓨터 · 폰 · 회원은 안 보임) ----------
+  await section("svm", () => svmE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag, member: user, aiMock }));
 } finally {
   await browser.close();
   try { cleanup(); } catch {}

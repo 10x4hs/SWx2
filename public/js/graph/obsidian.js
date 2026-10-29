@@ -2,7 +2,7 @@
 //   모양: 납작한 점 · 가는 선 · 마우스를 올리면 그 점과 이웃만 밝게 · 확대하면 이름이 서서히 · 오른쪽 설정 패널
 //   mountGraph(host, { data: { nodes, links }, types, onOpen, onMenu?, prefs, savePrefs, empty })
 //     nodes: [{ id, title, type, group?, sub? }]  links: [{ s, t, kind? }]  (s · t 는 node id)
-//     types: { [type]: { label, color, tier: 0(가장 큼)~3 } } — 종류별 색 · 크기 · 보이기 필터
+//     types: { [type]: { label, color, tier: 0(가장 큼)~3, shape? } } — 종류별 색 · 크기 · 보이기 필터 · shape: "square"(네모) | "ring"(테두리 원) — 없으면 원
 //     onMenu(node, e): 점 위에서 오른쪽 클릭 · 손가락으로 0.5초 누르기 (e = { clientX, clientY, preventDefault, hold? })
 //   설정(prefs)은 계정에 저장돼요 (users.graph_prefs) — 크기 기준 · 노드 크기 · 글자 · 선 · 힘
 import { esc } from "../util.js";
@@ -167,10 +167,12 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
       if (on && st?.label) named.push(l);
     }
     for (const n of nodes) {
-      const on = lit(n), r = radius(n);
+      const on = lit(n), r = radius(n), ty = typeOf(n), col = n === focus ? accent : ty.color;
       g.globalAlpha = on ? 1 : 0.14;
-      g.beginPath(); g.arc(n.x, n.y, r, 0, Math.PI * 2);
-      g.fillStyle = n === focus ? accent : typeOf(n).color; g.fill();
+      g.beginPath();
+      if (ty.shape === "square") g.rect(n.x - r * 0.88, n.y - r * 0.88, r * 1.76, r * 1.76); else g.arc(n.x, n.y, r, 0, Math.PI * 2);
+      if (ty.shape === "ring") { g.lineWidth = Math.max(1.2 / view.k, r * 0.34); g.strokeStyle = col; g.stroke(); }
+      else { g.fillStyle = col; g.fill(); }
     }
     if (sel && nodes.includes(sel)) { // 고른 점: 바깥 테두리
       g.globalAlpha = 1; g.strokeStyle = accent; g.lineWidth = 2.2 / view.k;

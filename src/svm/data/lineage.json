@@ -1,0 +1,1013 @@
+{
+  "essays": [
+    {
+      "id": "education-of-a-libertarian",
+      "no": 12,
+      "section": "lineage",
+      "title": "The Education of a Libertarian",
+      "ko": "한 자유지상주의자의 교육",
+      "sub": "정치 밖으로 탈출하라 — 틸의 2009년 글",
+      "author": "thiel",
+      "venue": "Cato Unbound",
+      "year": 2009,
+      "words": 1250,
+      "concepts": [
+        "democracy",
+        "exit"
+      ],
+      "people": [
+        "thiel",
+        "friedman",
+        "yarvin"
+      ],
+      "core": "자유와 민주주의는 양립하지 않으니 정치 밖으로 탈출해야 한다고 본다",
+      "claims": [
+        "틸은 지금도 스스로를 자유지상주의자라 부르지만, 지난 20년 동안 그 목표를 이루는 방법에 대한 생각이 근본적으로 바뀌었다고 밝힌다. 가장 큰 변화는 자유와 민주주의가 더는 양립한다고 믿지 않게 된 것이다.",
+        "그는 스탠퍼드 학생 신문 활동과 1990년대 맨해튼에서의 변호사 · 트레이더 경험을 거치며 정치적 설득이 소수의 ‘합창단’에게만 닿는다는 환멸을 얻었다고 쓴다. 2009년 금융위기 이후의 정부 대응은 정치에 기대던 자유지상주의자의 마지막 희망을 꺾었다고 본다.",
+        "틸은 1920년 이후 복지 수혜자의 급증과 여성 참정권의 확대, 곧 자유지상주의자에게 특히 까다로운 두 유권자 집단의 등장이 ‘자본주의적 민주주의’를 형용모순으로 만들었다고 쓴다. 1920년대가 정치에 대해 진정으로 낙관할 수 있었던 미국 역사상 마지막 10년이었다는 것이 그의 시대 진단이다.",
+        "그가 내놓는 해법은 정치를 ‘통해서’가 아니라 정치 ‘너머로’ 탈출하는 것이다. 사이버공간 · 우주 · 바다 위 정착(시스테딩)을 후보로 들고, 우주보다 훨씬 현실적이라고 보는 시스테딩은 ‘기꺼이 지지한다’고 한다.",
+        "그는 기술이 저절로 자유를 보장한다는 낙관은 경계하며, 미래는 정치와 기술의 ‘치명적인 경주’에 달려 있다고 쓴다. 이 경주에서는 개인의 선택이 여전히 결정적일 수 있어서, 자유를 지키는 ‘기계 장치’를 만들거나 퍼뜨리는 한 사람의 노력에 세계의 운명이 달릴 수도 있다고 본다."
+      ],
+      "quotes": [
+        {
+          "en": "Most importantly, I no longer believe that freedom and democracy are compatible.",
+          "ko": "무엇보다 나는 더 이상 자유와 민주주의가 양립할 수 있다고 믿지 않는다.",
+          "where": "도입부 (둘째 문단)",
+          "url": "https://www.cato-unbound.org/2009/04/13/peter-thiel/education-libertarian/"
+        },
+        {
+          "en": "In our time, the great task for libertarians is to find an escape from politics in all its forms — from the totalitarian and fundamentalist catastrophes to the unthinking demos that guides so-called “social democracy.”",
+          "ko": "우리 시대 자유지상주의자의 큰 과제는 모든 형태의 정치로부터 탈출구를 찾는 것이다. 전체주의 · 근본주의의 파국에서부터 이른바 ‘사회민주주의’를 이끄는 생각 없는 민중(데모스)에 이르기까지 말이다.",
+          "where": "본문 중반 — 정치로부터의 탈출",
+          "url": "https://www.cato-unbound.org/2009/04/13/peter-thiel/education-libertarian/"
+        },
+        {
+          "en": "A better metaphor is that we are in a deadly race between politics and technology.",
+          "ko": "더 나은 비유는 우리가 정치와 기술 사이의 치명적인 경주를 하고 있다는 것이다.",
+          "where": "맺음 부근",
+          "url": "https://www.cato-unbound.org/2009/04/13/peter-thiel/education-libertarian/"
+        }
+      ],
+      "sv": {
+        "text": "이 글이 실린 2009년 4월 Cato Unbound 토론에서 첫 글을 쓴 패트리 프리드먼은 참고문헌에 호페의 책과 함께 ‘멘시우스 몰드버그의 블로그’를 올렸고, 닉 랜드는 이 토론을 민주주의에 대한 환멸이 드러난 이정표로 꼽으며 틸의 문장을 인용했다. 틸의 Founders Fund는 야빈의 Tlön(Urbit)에 투자했고, Vox는 틸이 야빈의 친구가 되어 그의 스타트업에 자금을 댔다고 전한다. 다만 CNN에 따르면 틸은 2023년 The Atlantic에 야빈의 구상이 ‘통하지는’ 않겠지만 그를 ‘흥미롭고 영향력 있는’ 역사가로 본다고 말했다.",
+        "refs": [
+          {
+            "label": "Patri Friedman, Beyond Folk Activism — 참고문헌에 Unqualified Reservations (Cato Unbound, 2009)",
+            "url": "https://www.cato-unbound.org/2009/04/06/patri-friedman/beyond-folk-activism/"
+          },
+          {
+            "label": "Nick Land, The Dark Enlightenment — 1부가 틸의 문장을 인용",
+            "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/"
+          },
+          {
+            "label": "Vox — Curtis Yarvin wants American democracy toppled (2022)",
+            "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug"
+          },
+          {
+            "label": "The Verge — Alt-right darling Mencius Moldbug … (2017) · Tlön의 투자자",
+            "url": "https://www.theverge.com/2017/2/21/14671978/alt-right-mencius-moldbug-urbit-curtis-yarvin-tlon"
+          },
+          {
+            "label": "CNN — Curtis Yarvin wants to replace American democracy … (2025)",
+            "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "도허티는 틸이 든 세 탈출구 어느 쪽도 오래된 ‘설득 운동’보다 더 그럴듯하다고 보기 어렵고, 작은 자유지상주의 거주지는 자유롭지 않은 큰 세계 안에서 안전하기 어렵다고 반박한다.",
+          "by": "브라이언 도허티 (Brian Doherty)",
+          "label": "Teaching and Doing Depend on Each Other (Cato Unbound, 2009)",
+          "url": "https://www.cato-unbound.org/2009/04/16/brian-doherty/teaching-doing-depend-each-other/"
+        },
+        {
+          "text": "그린버그는 이 토론의 필자들이 ‘뻔한 길’을 놓쳤다며, 이념가에게 가장 효과적인 길은 원칙 있고 유능한 사람을 공직에 보내는 일반 정치라고 주장한다.",
+          "by": "댄 그린버그 (Dan Greenberg)",
+          "label": "A Plea for Politics (Cato Unbound, 2009)",
+          "url": "https://www.cato-unbound.org/2009/04/21/editors/plea-politics/"
+        }
+      ],
+      "sources": [
+        {
+          "label": "The Education of a Libertarian (Cato Unbound, 2009.4.13)",
+          "url": "https://www.cato-unbound.org/2009/04/13/peter-thiel/education-libertarian/"
+        }
+      ],
+      "note": "참정권 대목에 대한 틸의 해명(‘어떤 계층도 참정권을 박탈당해서는 안 된다’)은 같은 페이지 하단 후속 글에 있고, 요약은 본문만 다뤘다."
+    },
+    {
+      "id": "dark-enlightenment",
+      "no": 13,
+      "section": "lineage",
+      "title": "The Dark Enlightenment",
+      "ko": "어두운 계몽",
+      "sub": "신반동에 ‘어두운 계몽’이라는 이름을 붙인 연재",
+      "author": "land",
+      "venue": "thedarkenlightenment.com",
+      "year": 2012,
+      "words": 27700,
+      "concepts": [
+        "democracy",
+        "exit",
+        "neocameralism",
+        "cathedral",
+        "universalism",
+        "nrx"
+      ],
+      "people": [
+        "land",
+        "yarvin",
+        "thiel",
+        "friedman",
+        "andreessen"
+      ],
+      "core": "민주주의는 문명을 갉아먹는 병이라며 ‘이탈’을 택하는 신반동 총정리",
+      "claims": [
+        "랜드는 2009년 Cato Unbound 토론을 민주주의에 대한 환멸이 터놓고 드러난 이정표로 꼽고, 틸의 ‘자유와 민주주의는 양립하지 않는다’는 문장을 인용한다. 자유지상주의자들이 정치에서 ‘발언(Voice)’을 높이는 대신 ‘이탈(Exit)’을 택하고 있다는 것이 그의 진단이다.",
+        "그는 민주주의를 문명의 ‘시간 선호’를 높여 약탈과 소비를 부추기는 퇴행적 벡터로 본다. 군주는 영토를 사유 재산으로 여겨 덜 근시안적으로 약탈한다는 호페의 논변을 길게 인용하며 ‘홉스에서 호페로’ 이어지는 계보를 제시한다.",
+        "글의 상당 부분은 야빈(몰드버그)의 사상을 소개하는 데 쓰인다. 국가를 지분으로 나눈 주식회사처럼 운영하고 시민을 고객으로 보는 신카메랄리즘(‘발언 없이, 자유로운 퇴출’), 언론 · 학계가 실질적 지배 구조가 되었다는 ‘대성당’, 진보주의를 청교도 계열의 종교로 보는 ‘보편주의’가 그것이다.",
+        "랜드는 야빈이 자유지상주의에서 출발했지만 주권은 없앨 수도 가둘 수도 없다는 홉스적 깨달음으로 신반동에 들어섰다고 정리한다. 그는 몰드버그의 글쓰기를 ‘아이러니를 방법으로 삼는’ 것이라 평한다.",
+        "4부(4a–4f)는 인종 · 유전을 둘러싼 논쟁을 길게 다루고, 마지막에는 기술이 인간 자체를 바꿔 놓는 ‘생체기계의 지평(bionic horizon)’으로 나아간다."
+      ],
+      "quotes": [
+        {
+          "en": "Even more than Equality-vs-Liberty, Voice-vs-Exit is the rising alternative, and libertarians are opting for voiceless flight.",
+          "ko": "평등 대 자유보다도 ‘발언(Voice) 대 이탈(Exit)’이 떠오르는 대안이며, 자유지상주의자들은 발언 없는 도피를 택하고 있다.",
+          "where": "1부 · Neo-reactionaries head for the exit",
+          "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/"
+        },
+        {
+          "en": "For the hardcore neo-reactionaries, democracy is not merely doomed, it is doom itself.",
+          "ko": "강경한 네오반동주의자에게 민주주의는 단지 망할 운명이 아니라 그 자체가 재앙이다.",
+          "where": "1부",
+          "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/"
+        },
+        {
+          "en": "Without a taste for irony, Mencius Moldbug is all but unendurable, and certainly unintelligible.",
+          "ko": "아이러니를 즐길 줄 모르면 멘시우스 몰드버그는 견디기 어렵고, 이해하기는 더더욱 어렵다.",
+          "where": "4부 · Re-running the race to ruin",
+          "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/"
+        }
+      ],
+      "sv": {
+        "text": "랜드는 중국으로 건너간 철학자로, 야빈의 신카메랄리즘 · 대성당 · 보편주의를 하나로 묶어 ‘어두운 계몽’이라는 이름을 붙였고 이 글에서 야빈을 ‘네오반동의 최고 시스 군주’라 부른다. 같은 글에서 틸의 2009년 문장을 인용해 틸과 야빈을 한 흐름에 놓는데, The Awl의 맥더걸드는 이를 두고 틸의 발언을 랜드가 ‘즐겁게 인용했다’고 쓴다. 2023년에는 앤드리슨의 「기술낙관주의 선언」이 랜드의 ‘기술자본 기계’를 끌어 쓰고 그를 ‘수호성인’에 올렸으며, 2026년 2월 Vice는 샌프란시스코의 랜드 환영 행사에 야빈 등 실리콘밸리 인사가 모였다고 전했다.",
+        "refs": [
+          {
+            "label": "Park MacDougald, The Darkness Before the Right (The Awl, 2015)",
+            "url": "https://www.theawl.com/2015/09/the-darkness-before-the-right/"
+          },
+          {
+            "label": "Klint Finley, Geeks for Monarchy (TechCrunch, 2013) · 랜드가 ‘dark enlightenment’를 만들었다고 소개",
+            "url": "https://techcrunch.com/2013/11/22/geeks-for-monarchy/"
+          },
+          {
+            "label": "The Techno-Optimist Manifesto (a16z, 2023)",
+            "url": "https://a16z.com/the-techno-optimist-manifesto/"
+          },
+          {
+            "label": "Vice — Sunset on the Dark Enlightenment (2026)",
+            "url": "https://www.vice.com/en/article/sunset-on-the-dark-enlightenment-inside-nick-lands-san-francisco-arrival-party/"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "맥더걸드는 이 글이 초점이 흐트러져 있다고 평하고, 권위주의 정부가 민주국가보다 안정적이라는 근거가 없으며 ‘좌향 래칫’도 세율 · 노조 가입률 · 소득 지표로 보면 그리 단순하지 않다고 반박한다.",
+          "by": "파크 맥더걸드 (Park MacDougald)",
+          "label": "The Darkness Before the Right (The Awl, 2015)",
+          "url": "https://www.theawl.com/2015/09/the-darkness-before-the-right/"
+        },
+        {
+          "text": "후이는 계몽이 처음부터 민주주의를 약속한 적이 없고 그 문제를 둘러싼 논쟁이 계몽 내부에서 시작되었다고 지적한다. 야빈이 모범으로 삼는 프리드리히 대왕조차 계몽 군주였다는 사실을 신반동이 외면한다고 본다.",
+          "by": "육 후이 (Yuk Hui)",
+          "label": "On the Unhappy Consciousness of Neoreactionaries (e-flux journal #81, 2017)",
+          "url": "https://www.e-flux.com/journal/81/125815/on-the-unhappy-consciousness-of-neoreactionaries/"
+        }
+      ],
+      "sources": [
+        {
+          "label": "The Dark Enlightenment, by Nick Land (전 4부 + 4a–4f, 한 페이지)",
+          "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/"
+        }
+      ],
+      "note": "4부의 인종 · 유전 논의는 한 줄로만 요약했고, 2026년 Vice 기사는 부제만 확인했다."
+    },
+    {
+      "id": "the-network-state",
+      "no": 14,
+      "section": "lineage",
+      "title": "The Network State",
+      "ko": "네트워크 국가",
+      "sub": "온라인 공동체가 땅을 모아 국가가 되는 법",
+      "author": "balaji",
+      "venue": "thenetworkstate.com",
+      "year": 2022,
+      "words": 100000,
+      "concepts": [
+        "network-state",
+        "exit",
+        "sovereignty"
+      ],
+      "people": [
+        "balaji",
+        "thiel",
+        "friedman",
+        "andreessen",
+        "yarvin"
+      ],
+      "core": "새 국가를 땅이 아닌 온라인 공동체에서 시작해 외교 승인까지 키운다",
+      "claims": [
+        "발라지는 네트워크 국가를 ‘집단행동 능력을 갖춘 고도로 정렬된 온라인 공동체가 세계 곳곳의 영토를 크라우드펀딩하고, 결국 기존 국가로부터 외교적 승인을 얻는 것’으로 정의한다. 땅이 아니라 사람(마음)에서 출발하는 국가라는 점이 핵심이다.",
+        "방법은 ‘클라우드가 먼저, 땅은 나중에’다. 창립자가 스타트업 사회를 세우고, 이를 네트워크 유니언으로 조직하고, 오프라인 신뢰와 암호경제를 쌓고, 물리적 거점을 크라우드펀딩하고, 온체인 인구조사로 규모를 증명한 뒤 외교 승인을 협상하는 일곱 단계를 제시한다.",
+        "그는 허시먼의 ‘발언 · 이탈 · 충성’ 틀을 써서, 중국 공산당이 발언과 이탈을 모두 막는 ‘충성’ 쪽으로 갈 것이라 전망한다. 반면 네트워크 국가의 창업자는 독재자와 달리 누구든 언제든 떠날 수 있기 때문에 권위의 정당성을 얻는다고 본다.",
+        "책은 2~4장에서 미국발 ‘무정부 상태’와 중국발 ‘통제’라는 우려스러운 전망을 진단하고, 5장에서 그 틈에서 자유주의 가치를 지킬 해법으로 스타트업 사회와 네트워크 국가를 제시한다.",
+        "발라지는 새 나라를 만드는 길로 선거 · 혁명 · 전쟁 · 마이크로네이션 · 시스테딩 · 우주를 차례로 훑고, 이를 모두 뒤로 미룬 채 일곱 번째인 네트워크 국가를 택한다. 시스테딩은 ‘패트리 프리드먼이 구상하고 틸이 후원했다’고 소개하고, 그는 이 책을 ‘선언문이 아니라 도구상자’로 읽어 달라고 당부한다."
+      ],
+      "quotes": [
+        {
+          "en": "A network state is a highly aligned online community with a capacity for collective action that crowdfunds territory around the world and eventually gains diplomatic recognition from pre-existing states.",
+          "ko": "네트워크 국가는 집단행동 능력을 갖춘 고도로 정렬된 온라인 공동체로, 세계 곳곳의 영토를 크라우드펀딩하고 결국 기존 국가들로부터 외교적 승인을 얻는다.",
+          "where": "The Network State in One Sentence",
+          "url": "https://thenetworkstate.com/the-network-state-in-one-sentence"
+        },
+        {
+          "en": "A key concept is to go cloud first, land last — but not land never — by starting with an online community and then materializing it into the physical world.",
+          "ko": "핵심 개념은 ‘클라우드가 먼저, 땅은 나중에 — 하지만 땅이 영영 없는 것은 아니다’다. 온라인 공동체에서 시작해 그것을 물리 세계로 구체화하는 것이다.",
+          "where": "The Network State in One Thousand Words",
+          "url": "https://thenetworkstate.com/the-network-state-in-one-thousand-words"
+        },
+        {
+          "en": "A founder is the best kind of leader, because they have the legitimacy associated with building an organization from scratch. Unlike a dictator, their authority isn't forced upon the population, and anyone can exit at any time.",
+          "ko": "창업자는 최고의 지도자 유형이다. 처음부터 조직을 만들었다는 데서 정당성이 나오기 때문이다. 독재자와 달리 그 권위는 주민에게 강요되지 않으며, 누구든 언제든 떠날 수 있다.",
+          "where": "On Network States (5장)",
+          "url": "https://thenetworkstate.com/on-network-states"
+        }
+      ],
+      "sv": {
+        "text": "온라인판 본문에서 야빈 · 몰드버그의 이름은 확인되지 않지만, 두 사람은 ‘발언 대신 이탈’이라는 어휘로 자주 묶인다. 2013년 TechCrunch는 야빈의 ‘이탈은 있고 발언은 없다’는 설계가 발라지의 Y Combinator 강연 「Silicon Valley’s Ultimate Exit」과 닮았다고 짚었고, 발라지는 자신은 자유지상주의자도 분리독립론자도 아니며 ‘이주와 이탈’을 말한 것이라고 해명했다. 같은 해 발라지가 야빈에게 보낸 이메일의 존재는 2021년 NYT 보도로 알려졌다. 책은 틸이 후원한 패트리 프리드먼의 시스테딩을 새 국가 만들기의 선례로 소개한다.",
+        "refs": [
+          {
+            "label": "Klint Finley, Geeks for Monarchy (TechCrunch, 2013)",
+            "url": "https://techcrunch.com/2013/11/22/geeks-for-monarchy/"
+          },
+          {
+            "label": "Business Insider — Balaji Srinivasan reportedly suggested doxxing a journalist (2021, NYT 보도 인용)",
+            "url": "https://www.businessinsider.com/venture-capitalist-balaji-srinivasan-suggested-doxxing-journalist-nyt-2021-2"
+          },
+          {
+            "label": "Balaji Srinivasan, Software Is Reorganizing the World (Wired, 2013)",
+            "url": "https://www.wired.com/2013/11/software-is-reorganizing-the-world-and-cloud-formations-could-lead-to-physical-nations/"
+          },
+          {
+            "label": "The Network State in One Essay",
+            "url": "https://thenetworkstate.com/the-network-state-in-one-essay"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "클링은 이 책이 ‘지금 여기서 거기로 가는 길’, 곧 기존 정부와의 세금 · 규제 의무를 어떻게 정리하고 옮겨 갈지를 말하지 않는다고 지적한다. 그것이 빠지면 네트워크 국가는 ‘국제 클럽이나 기업 충성 프로그램’에 그친다고 본다.",
+          "by": "아널드 클링 (Arnold Kling)",
+          "label": "Balaji-land: Getting From Here to There (Econlib, 2022)",
+          "url": "https://www.econlib.org/balaji-land-getting-from-here-to-there/"
+        },
+        {
+          "text": "카프는 책이 정부가 실제로 하는 일을 외면한 채 정부를 스타트업처럼 다룬다며 ‘크레용으로 그린 청사진’이라고 혹평한다. 그래도 이 아이디어가 기술 투자자들의 사고를 미리 보여 주므로 진지하게 읽을 필요는 있다고 덧붙인다.",
+          "by": "데이브 카프 (Dave Karpf)",
+          "label": "The Tech Barons have a blueprint drawn in crayon (The Future, Now and Then, 2025)",
+          "url": "https://davekarpf.substack.com/p/the-tech-barons-have-a-blueprint"
+        }
+      ],
+      "sources": [
+        {
+          "label": "Preamble (1장)",
+          "url": "https://thenetworkstate.com/preamble"
+        },
+        {
+          "label": "The Network State in One Sentence",
+          "url": "https://thenetworkstate.com/the-network-state-in-one-sentence"
+        },
+        {
+          "label": "The Network State in One Thousand Words",
+          "url": "https://thenetworkstate.com/the-network-state-in-one-thousand-words"
+        },
+        {
+          "label": "The Network State in One Essay",
+          "url": "https://thenetworkstate.com/the-network-state-in-one-essay"
+        },
+        {
+          "label": "American Anarchy, Chinese Control, International Intermediate (4장)",
+          "url": "https://thenetworkstate.com/american-anarchy-chinese-control-international-intermediate"
+        },
+        {
+          "label": "On Network States (5장)",
+          "url": "https://thenetworkstate.com/on-network-states"
+        }
+      ],
+      "note": "서문 · 요약 · 4~5장 일부만 요약했다(전체 약 10만 단어). ‘야빈 이름 없음’은 온라인판 검색으로만 확인했다."
+    },
+    {
+      "id": "techno-optimist-manifesto",
+      "no": 15,
+      "section": "lineage",
+      "title": "The Techno-Optimist Manifesto",
+      "ko": "기술낙관주의 선언",
+      "sub": "성장 · 시장 · 기술이 답이라는 5천 단어 선언",
+      "author": "andreessen",
+      "venue": "Andreessen Horowitz (a16z.com)",
+      "year": 2023,
+      "words": 5100,
+      "concepts": [
+        "nrx"
+      ],
+      "people": [
+        "andreessen",
+        "land",
+        "burnham",
+        "yarvin"
+      ],
+      "core": "기술과 시장이 만드는 성장만이 답이고 감속론이 적이라고 선언한다",
+      "claims": [
+        "앤드리슨은 기술이 인간 야망과 성취의 정수이며 문명은 기술 위에 세워졌다고 선언한다. ‘사회는 상어처럼 성장하거나 죽는다’고 쓰며 성장을 곧 진보로 본다.",
+        "기술과 시장을 합친 것이 닉 랜드가 말한 ‘기술자본 기계’이며, 끝없이 물질적 풍요와 성장을 만들어 내는 엔진이라고 본다. 이 기계가 아이디어의 영역에서도 자연선택이 우리를 위해 일하게 한다고 쓴다.",
+        "글은 ‘적’을 길게 열거한다. ‘존재 위험’ · ‘지속가능성’ · ‘ESG’ · ‘신뢰와 안전’ · ‘기술 윤리’ 같은 이름으로 60년 동안 기술과 삶에 맞서 이어진 ‘사기 저하 캠페인’, 정체 · 감속 · 탈성장 · 사전예방 원칙, 그리고 관료제 · 규제 포획 · 상아탑의 전문가 세계관이 그 대상이다.",
+        "그는 ‘국가주의 · 권위주의 · 집산주의 · 중앙계획 · 사회주의’도 적이라고 쓰며, 중앙계획은 ‘악순환’이고 시장은 ‘상승 나선’이라고 본다.",
+        "상세한 각주 대신 ‘수호성인’ 명단을 붙이고 이들의 저작을 읽으면 기술 낙관주의자가 된다고 말한다. 명단에는 하이에크 · 슘페터 · 니체 등과 함께 제임스 버넘과 닉 랜드가 들어 있다."
+      ],
+      "quotes": [
+        {
+          "en": "Combine technology and markets and you get what Nick Land has termed the techno-capital machine, the engine of perpetual material creation, growth, and abundance.",
+          "ko": "기술과 시장을 결합하면 닉 랜드가 ‘기술자본 기계’라 부른 것, 곧 끝없는 물질적 창조 · 성장 · 풍요의 엔진이 나온다.",
+          "where": "‘The Techno-Capital Machine’ 절",
+          "url": "https://a16z.com/the-techno-optimist-manifesto/"
+        },
+        {
+          "en": "In lieu of detailed endnotes and citations, read the work of these people, and you too will become a Techno-Optimist.",
+          "ko": "자세한 미주와 인용 대신 이 사람들의 저작을 읽어 보라. 당신도 기술 낙관주의자가 될 것이다.",
+          "where": "‘Patron Saints of Techno-Optimism’ 절",
+          "url": "https://a16z.com/the-techno-optimist-manifesto/"
+        },
+        {
+          "en": "Our enemies are not bad people – but rather bad ideas.",
+          "ko": "우리의 적은 나쁜 사람이 아니라 나쁜 생각이다.",
+          "where": "‘The Enemy’ 절",
+          "url": "https://a16z.com/the-techno-optimist-manifesto/"
+        }
+      ],
+      "sv": {
+        "text": "앤드리슨의 벤처캐피털 a16z는 야빈의 Tlön(Urbit)에 투자한 것으로 알려졌고, CNN은 그가 야빈을 ‘좋은 친구’라 부르며 2025년 초 X에 ‘야빈을 군주제주의자가 되지 않고도 읽을 수 있다’고 썼다고 전한다. 선언문 자체에는 야빈의 이름이 나오지 않지만, 본문이 닉 랜드의 ‘기술자본 기계’를 인용하고 ‘수호성인’ 명단에 랜드와 제임스 버넘을 올렸다. CNN은 틸 · 앤드리슨 · 밴스 · 앤턴이 모두 야빈의 이론을 그대로 따르지는 않는다고 덧붙인다.",
+        "refs": [
+          {
+            "label": "CNN — Curtis Yarvin wants to replace American democracy … (2025)",
+            "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo"
+          },
+          {
+            "label": "The Verge — Alt-right darling Mencius Moldbug … (2017) · Tlön의 투자자",
+            "url": "https://www.theverge.com/2017/2/21/14671978/alt-right-mencius-moldbug-urbit-curtis-yarvin-tlon"
+          },
+          {
+            "label": "The Techno-Optimist Manifesto (a16z, 2023)",
+            "url": "https://a16z.com/the-techno-optimist-manifesto/"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "다이어위서퍼드와 물라로니는 앤드리슨이 근거로 든 랜드의 ‘기술자본’이 인간을 주인이 아닌 임시 숙주로 만드는 종 소멸의 과정을 가리키므로, 이를 낙관의 근거로 삼은 것은 ‘드러나는 오류’라고 지적한다.",
+          "by": "닉 다이어위서퍼드 · 알레산드라 물라로니 (Nick Dyer-Witheford, Alessandra Mularoni)",
+          "label": "A Spectre Haunts the Planet (Verso, 2025)",
+          "url": "https://www.versobooks.com/en-gb/blogs/news/a-spectre-haunts-the-planet"
+        },
+        {
+          "text": "부테린은 기술 낙관에 공감하면서도 기술은 ‘크기뿐 아니라 방향’이 중요하며, ‘이윤 극대화’라는 공식이 원하는 방향을 자동으로 고르지 않으므로 의도적인 선택이 필요하다고 반박한다.",
+          "by": "비탈릭 부테린 (Vitalik Buterin)",
+          "label": "My techno-optimism (2023)",
+          "url": "https://vitalik.eth.limo/general/2023/11/27/techno_optimism.html"
+        }
+      ],
+      "sources": [
+        {
+          "label": "The Techno-Optimist Manifesto (a16z, 2023.10.16)",
+          "url": "https://a16z.com/the-techno-optimist-manifesto/"
+        }
+      ],
+      "note": "앤드리슨의 ‘좋은 친구’ 발언과 X 게시글은 CNN 보도를 거친 전언이며, 원문 게시물은 확인하지 못했다."
+    }
+  ],
+  "people": [
+    {
+      "id": "yarvin",
+      "name": "Curtis Yarvin",
+      "ko": "커티스 야빈",
+      "role": "프로그래머 · 블로거(멘시우스 몰드버그) · Urbit 창시자",
+      "years": "1973–",
+      "short": "대성당 · 군주제를 말한 신반동의 출발점",
+      "bio": "야빈은 2007년 블로그 Unqualified Reservations에서 멘시우스 몰드버그라는 필명으로 글을 쓰기 시작해 ‘대성당’ · 신카메랄리즘 같은 개념을 내놓았다. 닉 랜드가 이를 ‘어두운 계몽’으로 묶었고, 틸의 Founders Fund와 앤드리슨 호로위츠가 그의 스타트업 Tlön(Urbit)에 투자했다. 밴스 · 마스터스 같은 정치인이 그의 ‘RAGE’ 구상을 입에 올렸지만, 야빈은 밴스에게 영향을 주었다는 주장은 부인한다.",
+      "lineage": 2,
+      "refs": [
+        {
+          "label": "Unqualified Reservations (야빈 본인의 블로그 보관소)",
+          "url": "https://www.unqualified-reservations.org/"
+        },
+        {
+          "label": "Vox — Curtis Yarvin wants American democracy toppled (2022)",
+          "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug"
+        },
+        {
+          "label": "CNN — Curtis Yarvin wants to replace American democracy … (2025)",
+          "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo"
+        }
+      ]
+    },
+    {
+      "id": "carlyle",
+      "name": "Thomas Carlyle",
+      "ko": "토머스 칼라일",
+      "role": "스코틀랜드의 역사가 · 에세이스트 · 사상가",
+      "years": "1795–1881",
+      "short": "야빈이 ‘나는 칼라일주의자’라 선언한 사상가",
+      "bio": "야빈은 2010년 글 「From Mises to Carlyle」에서 ‘나는 칼라일주의자다. 마르크스주의자가 마르크스주의자인 것과 거의 같다’고 쓰며, 칼라일 숭배는 청소년기의 열정이 아니라 성인의 의식적 선택이라고 말한다. 그는 칼라일을 다룬 연작 「Moldbug on Carlyle」(「Why Carlyle Matters」 등)을 따로 썼다. 발라지 스리니바산의 『The Network State』도 칼라일을 ‘영웅이 질서를 준다’는 국가론의 하나로 소개하지만, 버려야 할 전략의 사례로 든다.",
+      "lineage": 1,
+      "refs": [
+        {
+          "label": "Moldbug, From Mises to Carlyle (2010)",
+          "url": "https://www.unqualified-reservations.org/2010/02/from-mises-to-carlyle-my-sick-journey/"
+        },
+        {
+          "label": "Moldbug, Why Carlyle Matters (2009)",
+          "url": "https://www.unqualified-reservations.org/2009/07/why-carlyle-matters/"
+        },
+        {
+          "label": "The Network State — On Nation States",
+          "url": "https://thenetworkstate.com/on-nation-states"
+        }
+      ]
+    },
+    {
+      "id": "burnham",
+      "name": "James Burnham",
+      "ko": "제임스 버넘",
+      "role": "미국의 정치철학자",
+      "years": "1905–1987",
+      "short": "야빈이 극찬한 에세이 ‘Dante’의 저자",
+      "bio": "야빈은 2007년 8월 블로그에 버넘의 「Dante: Politics as Wish」(『The Machiavellians』(1943)의 첫 글)를 직접 옮겨 적고 ‘지금까지 쓰인 가장 위대한 정치 에세이 가운데 하나라고 생각한다’고 썼다. 마크 앤드리슨의 「기술낙관주의 선언」은 ‘수호성인’ 명단에 버넘의 이름을 올렸다.",
+      "lineage": 1,
+      "refs": [
+        {
+          "label": "Moldbug, James Burnham’s Dante: Politics as Wish (2007)",
+          "url": "https://www.unqualified-reservations.org/2007/08/james-burnhams-dante-politics-as-wish/"
+        },
+        {
+          "label": "The Techno-Optimist Manifesto (a16z, 2023)",
+          "url": "https://a16z.com/the-techno-optimist-manifesto/"
+        }
+      ]
+    },
+    {
+      "id": "hoppe",
+      "name": "Hans-Hermann Hoppe",
+      "ko": "한스헤르만 호페",
+      "role": "독일계 미국인 경제학자 · 철학자(무정부자본주의)",
+      "years": "1949–",
+      "short": "야빈을 자유지상주의 너머로 이끈 책의 저자",
+      "bio": "야빈은 2010년 글 「From Mises to Carlyle」에서 호페의 『Democracy: The God That Failed』를 ‘내가 읽은 최고의 반민주주의 저작 가운데 하나이며 처음 읽은 것’이라 쓰고, 미제스주의자가 자유지상주의를 넘어서는 ‘쉬운 길’이라고 소개한다. 다만 호페가 군주제를 끝까지 탐구하지 않고 경쟁하는 보호기관이라는 무정부자본주의 쪽으로 물러선다고 아쉬워한다. 닉 랜드는 「The Dark Enlightenment」에서 호페의 군주제 옹호 논변을 길게 인용하고, 패트리 프리드먼은 2009년 Cato Unbound 글의 참고문헌에 이 책을 올렸다.",
+      "lineage": 1,
+      "refs": [
+        {
+          "label": "Moldbug, From Mises to Carlyle (2010)",
+          "url": "https://www.unqualified-reservations.org/2010/02/from-mises-to-carlyle-my-sick-journey/"
+        },
+        {
+          "label": "Nick Land, The Dark Enlightenment (2012)",
+          "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/"
+        },
+        {
+          "label": "Patri Friedman, Beyond Folk Activism (Cato Unbound, 2009)",
+          "url": "https://www.cato-unbound.org/2009/04/06/patri-friedman/beyond-folk-activism/"
+        }
+      ]
+    },
+    {
+      "id": "land",
+      "name": "Nick Land",
+      "ko": "닉 랜드",
+      "role": "영국 철학자 · 가속주의 사상가",
+      "years": "1962–",
+      "short": "신반동에 ‘어두운 계몽’이라는 이름을 붙인 철학자",
+      "bio": "랜드는 1987~98년 워릭대에서 철학을 가르친 뒤 중국으로 옮겨 우파 사상가로 다시 나타났다(The Awl). 2012년 연재 「The Dark Enlightenment」에서 몰드버그를 ‘네오반동의 최고 시스 군주’라 부르며 신카메랄리즘 · 대성당 · 보편주의를 풀어 썼고, 같은 글에서 틸의 2009년 문장과 프리드먼 · 호페를 인용했다. 앤드리슨의 2023년 선언문은 랜드의 ‘기술자본 기계’를 인용하고 그를 ‘수호성인’으로 올렸다.",
+      "lineage": 3,
+      "refs": [
+        {
+          "label": "Nick Land, The Dark Enlightenment (2012)",
+          "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/"
+        },
+        {
+          "label": "Park MacDougald, The Darkness Before the Right (The Awl, 2015)",
+          "url": "https://www.theawl.com/2015/09/the-darkness-before-the-right/"
+        },
+        {
+          "label": "Klint Finley, Geeks for Monarchy (TechCrunch, 2013)",
+          "url": "https://techcrunch.com/2013/11/22/geeks-for-monarchy/"
+        }
+      ]
+    },
+    {
+      "id": "thiel",
+      "name": "Peter Thiel",
+      "ko": "피터 틸",
+      "role": "PayPal · Palantir 공동창업자 · 투자자",
+      "years": "1967–",
+      "short": "야빈의 Tlön에 투자하고 정치 ‘탈출’을 말한 후원자",
+      "bio": "틸은 2009년 Cato Unbound 글에서 ‘자유와 민주주의가 양립한다고 더는 믿지 않는다’고 쓰고 정치 밖으로의 ‘탈출’을 주장했다. 그의 벤처 펀드 Founders Fund는 야빈의 Tlön(Urbit)에 투자했고, Vox는 틸이 야빈의 친구가 되어 스타트업에 자금을 댔다고 전한다. 밴스 · 마스터스의 상원 선거를 크게 후원했지만, CNN에 따르면 틸은 2023년 The Atlantic에 야빈의 구상이 ‘통하지는’ 않을 것이라고 말했다.",
+      "lineage": 4,
+      "refs": [
+        {
+          "label": "The Education of a Libertarian (Cato Unbound, 2009)",
+          "url": "https://www.cato-unbound.org/2009/04/13/peter-thiel/education-libertarian/"
+        },
+        {
+          "label": "The Verge — Alt-right darling Mencius Moldbug … (2017)",
+          "url": "https://www.theverge.com/2017/2/21/14671978/alt-right-mencius-moldbug-urbit-curtis-yarvin-tlon"
+        },
+        {
+          "label": "Vox — Curtis Yarvin wants American democracy toppled (2022)",
+          "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug"
+        },
+        {
+          "label": "Vanity Fair — Inside the New Right, Where Peter Thiel Is Placing His Biggest Bets (2022)",
+          "url": "https://www.vanityfair.com/news/2022/04/inside-the-new-right-where-peter-thiel-is-placing-his-biggest-bets"
+        }
+      ]
+    },
+    {
+      "id": "balaji",
+      "name": "Balaji Srinivasan",
+      "ko": "발라지 스리니바산",
+      "role": "Counsyl 공동창업자 · 전 a16z 제너럴 파트너 · 전 Coinbase CTO · 『The Network State』 저자",
+      "years": "1980–",
+      "short": "‘이탈’을 국가 설계로 옮긴 네트워크 국가 제안자",
+      "bio": "발라지는 2013년 Y Combinator Startup School 강연 「Silicon Valley’s Ultimate Exit」이 일부 매체에서 실리콘밸리의 연방 탈퇴 선언으로 소개되자 ‘이주와 이탈’에 관한 강연이라고 해명했고, 2022년 책 『The Network State』에서 이 구상을 이어 갔다. TechCrunch는 같은 해 야빈의 ‘이탈은 있고 발언은 없다’는 설계와 닮았다고 짚었고, 발라지가 야빈에게 보낸 2013년 이메일은 2021년 NYT 보도로 알려졌다. 그러나 책의 온라인판에서 야빈의 이름은 확인되지 않는다.",
+      "lineage": 5,
+      "refs": [
+        {
+          "label": "Klint Finley, Geeks for Monarchy (TechCrunch, 2013)",
+          "url": "https://techcrunch.com/2013/11/22/geeks-for-monarchy/"
+        },
+        {
+          "label": "Business Insider — Balaji Srinivasan reportedly suggested doxxing a journalist (2021)",
+          "url": "https://www.businessinsider.com/venture-capitalist-balaji-srinivasan-suggested-doxxing-journalist-nyt-2021-2"
+        },
+        {
+          "label": "Balaji Srinivasan, Software Is Reorganizing the World (Wired, 2013)",
+          "url": "https://www.wired.com/2013/11/software-is-reorganizing-the-world-and-cloud-formations-could-lead-to-physical-nations/"
+        },
+        {
+          "label": "The Network State (thenetworkstate.com)",
+          "url": "https://thenetworkstate.com/the-network-state-in-one-essay"
+        }
+      ]
+    },
+    {
+      "id": "andreessen",
+      "name": "Marc Andreessen",
+      "ko": "마크 앤드리슨",
+      "role": "Netscape 공동창업자 · Andreessen Horowitz 공동창업자",
+      "years": "1971–",
+      "short": "Tlön에 투자하고 야빈을 ‘친구’라 부른 VC",
+      "bio": "앤드리슨의 벤처캐피털 a16z는 야빈의 Tlön(Urbit)에 투자한 것으로 알려졌다. CNN은 그가 야빈을 ‘좋은 친구’라 불렀고 2025년 초 X에 ‘야빈을 군주제주의자가 되지 않고도 읽을 수 있다’고 썼다고 전한다. 2023년 「기술낙관주의 선언」은 닉 랜드의 ‘기술자본 기계’를 인용하고 랜드와 제임스 버넘을 ‘수호성인’에 올렸으며, 야빈의 이름은 거론하지 않는다.",
+      "lineage": 5,
+      "refs": [
+        {
+          "label": "The Techno-Optimist Manifesto (a16z, 2023)",
+          "url": "https://a16z.com/the-techno-optimist-manifesto/"
+        },
+        {
+          "label": "CNN — Curtis Yarvin wants to replace American democracy … (2025)",
+          "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo"
+        },
+        {
+          "label": "The Verge — Alt-right darling Mencius Moldbug … (2017)",
+          "url": "https://www.theverge.com/2017/2/21/14671978/alt-right-mencius-moldbug-urbit-curtis-yarvin-tlon"
+        },
+        {
+          "label": "Fox Business — ‘Hillbilly Elegy’ author, Peter Thiel partner on VC fund (2020)",
+          "url": "https://www.foxbusiness.com/money/venture-capital-jd-vance-narya"
+        }
+      ]
+    },
+    {
+      "id": "vance",
+      "name": "JD Vance",
+      "ko": "JD 밴스",
+      "role": "미국 부통령 · 『힐빌리의 노래』 저자 · 전 벤처 투자자",
+      "years": "1984–",
+      "short": "야빈을 공개 인용한 틸 후원 정치인",
+      "bio": "밴스는 틸의 Mithril Capital에서 일했고, 틸이 후원한 2022년 오하이오 상원의원 선거에서 당선했다. 2021년 9월 한 팟캐스트에서 ‘커티스 야빈이라는 사람이 이런 것들을 써 왔다’고 말하며 연방 공무원을 대거 교체하자는 구상을 밝혔는데, The Verge는 이를 야빈이 2012년 즈음 내놓은 ‘RAGE(Retire All Government Employees)’와 거의 같다고 짚는다. 야빈은 2024년 7월 밴스에게 영향을 주었다는 주장을 부인했고, 밴스 측 보좌관은 CNN에 두 사람이 ‘한 번쯤 만났다’고 말했다.",
+      "lineage": 5,
+      "refs": [
+        {
+          "label": "Vox — Curtis Yarvin wants American democracy toppled (2022)",
+          "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug"
+        },
+        {
+          "label": "The Verge — JD Vance thinks monarchists like Curtis Yarvin have some good ideas (2024)",
+          "url": "https://www.theverge.com/2024/10/16/24266512/jd-vance-curtis-yarvin-influence-rage-project-2025"
+        },
+        {
+          "label": "Vanity Fair — Inside the New Right, Where Peter Thiel Is Placing His Biggest Bets (2022)",
+          "url": "https://www.vanityfair.com/news/2022/04/inside-the-new-right-where-peter-thiel-is-placing-his-biggest-bets"
+        },
+        {
+          "label": "CNN — Curtis Yarvin wants to replace American democracy … (2025)",
+          "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo"
+        }
+      ]
+    },
+    {
+      "id": "masters",
+      "name": "Blake Masters",
+      "ko": "블레이크 마스터스",
+      "role": "벤처 투자자 · 작가 · 전 Thiel Foundation 대표",
+      "years": "1986–",
+      "short": "틸의 제자 · 야빈의 RAGE를 입에 올린 후보",
+      "bio": "마스터스는 스탠퍼드 로스쿨 시절 틸의 강의 노트를 정리해 올렸고, 이를 바탕으로 틸과 『Zero to One』(2014)을 함께 썼다. 이후 Thiel Capital 최고운영책임자와 Thiel Foundation 대표를 지냈다. Vox에 따르면 그는 로스쿨 시절 독서 모임 추천으로 야빈의 블로그 글 링크를 보냈고 2021년 선거 유세에서 ‘내 친구가 만든 약어 RAGE’를 말했으며, 2022년 애리조나 상원 선거에 공화당 후보로 나섰으나 낙선했다. 마스터스는 NBC에 야빈과는 ‘다른 처방’을 갖고 있다고 밝혔다.",
+      "lineage": null,
+      "refs": [
+        {
+          "label": "Vox — Curtis Yarvin wants American democracy toppled (2022)",
+          "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug"
+        },
+        {
+          "label": "Vanity Fair — Inside the New Right, Where Peter Thiel Is Placing His Biggest Bets (2022)",
+          "url": "https://www.vanityfair.com/news/2022/04/inside-the-new-right-where-peter-thiel-is-placing-his-biggest-bets"
+        },
+        {
+          "label": "TechCrunch — Zero to One: How Blake Masters went from being Peter Thiel’s student to co-author (2014)",
+          "url": "https://techcrunch.com/2014/09/16/zero-to-one-how-blake-masters-went-from-being-peter-thiels-student-to-co-author/"
+        }
+      ]
+    },
+    {
+      "id": "alexander",
+      "name": "Scott Alexander",
+      "ko": "스콧 알렉산더",
+      "role": "정신과 의사 · 블로거(Slate Star Codex → Astral Codex Ten)",
+      "years": "",
+      "short": "야빈의 ‘국가=기업’ 모델을 장문으로 반박한 블로거",
+      "bio": "알렉산더는 2013년 3월 「Reactionary Philosophy In An Enormous, Planet-Sized Nutshell」로 반동주의를 정리한 뒤, 같은 해 10월 「The Anti-Reactionary FAQ」에서 몰드버그를 주된 반박 대상으로 삼았다. 이 글은 몰드버그를 ‘아마도 가장 유명한 반동주의자이자 운동의 창시자 중 한 명이며, 대단히 선견지명 있고 박식한 필자’로 평하면서, 4부 전체를 그의 ‘국가=기업’ 모델에 할애한다. 알렉산더는 2014년 3월 덧붙인 주에서 이 글의 모든 진술에 더는 동의하지 않는다고 밝혔다.",
+      "lineage": null,
+      "refs": [
+        {
+          "label": "The Anti-Reactionary FAQ (Slate Star Codex, 2013)",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        },
+        {
+          "label": "Reactionary Philosophy In An Enormous, Planet-Sized Nutshell (Slate Star Codex, 2013)",
+          "url": "https://slatestarcodex.com/2013/03/03/reactionary-philosophy-in-an-enormous-planet-sized-nutshell/"
+        }
+      ]
+    },
+    {
+      "id": "sandifer",
+      "name": "Elizabeth Sandifer",
+      "ko": "엘리자베스 샌디퍼",
+      "role": "작가 · Eruditorum Press 운영자",
+      "years": "",
+      "short": "신반동 사상을 책 한 권으로 해부한 비평가",
+      "bio": "샌디퍼는 『Neoreaction a Basilisk: Essays On and Around the Alt-Right』의 저자로, 몰드버그 · 닉 랜드 · 율코프스키 등 신반동과 얽힌 사상가들을 다룬다. 2022년 Current Affairs 인터뷰에서 신반동을 극우 철학이 지적 토대를 만들려는 시도로 규정하고 야빈이 이를 정식화했다고 설명했다. 그는 야빈이 틸에게 ‘입증 가능한 큰 영향’을 끼쳤다고 보며, 책에서 야빈을 ‘노골적으로 어리석다’고 불렀고 대체로 그 입장을 유지한다고 말했다.",
+      "lineage": null,
+      "refs": [
+        {
+          "label": "Current Affairs — The Strange and Terrifying Ideas of Neoreactionaries (2022)",
+          "url": "https://www.currentaffairs.org/2022/05/the-strange-and-terrifying-ideas-of-neoreactionaries"
+        },
+        {
+          "label": "Neoreaction a Basilisk: Excerpt Four (Eruditorum Press, 2016)",
+          "url": "https://www.eruditorumpress.com/blog/neoreaction-a-basilisk-excerpt-four"
+        }
+      ]
+    },
+    {
+      "id": "friedman",
+      "name": "Patri Friedman",
+      "ko": "패트리 프리드먼",
+      "role": "자유지상주의 이론가 · Seasteading Institute 공동 설립자",
+      "years": "1976–",
+      "short": "틸이 후원한 시스테딩 · 야빈의 블로그를 권한 필자",
+      "bio": "프리드먼은 2009년 Cato Unbound 토론의 첫 글 「Beyond Folk Activism」 말미 참고문헌에 호페의 『Democracy: The God That Failed』, 허시먼의 『Exit, Voice, and Loyalty』와 함께 ‘멘시우스 몰드버그의 블로그’(과장이 심하니 소금 한 줌을 곁에 두라는 단서와 함께)를 올렸다. 틸은 같은 토론에서 그의 시스테딩 실험을 ‘기꺼이 지지한다’고 썼고, 랜드는 프리드먼의 ‘자유로운 이탈이 유일한 보편적 인권’이라는 말을 인용했다. TechCrunch에 따르면 야빈은 2009년 시스테딩 연구소 콘퍼런스 연사로 예정되었다가 출연이 취소되었다.",
+      "lineage": null,
+      "refs": [
+        {
+          "label": "Beyond Folk Activism (Cato Unbound, 2009)",
+          "url": "https://www.cato-unbound.org/2009/04/06/patri-friedman/beyond-folk-activism/"
+        },
+        {
+          "label": "Klint Finley, Geeks for Monarchy (TechCrunch, 2013)",
+          "url": "https://techcrunch.com/2013/11/22/geeks-for-monarchy/"
+        },
+        {
+          "label": "The Network State in One Essay",
+          "url": "https://thenetworkstate.com/the-network-state-in-one-essay"
+        }
+      ]
+    },
+    {
+      "id": "anton",
+      "name": "Michael Anton",
+      "ko": "마이클 앤턴",
+      "role": "작가 · Claremont Institute 선임연구원 · 전 국무부 정책기획국장",
+      "years": "1969–",
+      "short": "야빈과 수년간 알고 지낸 트럼프 행정부 출신 필자",
+      "bio": "앤턴은 필명으로 쓴 에세이 「The Flight 93 Election」(2016)으로 트럼프 지지 논리를 펼쳤고, 2025년 1~9월 국무부 정책기획국장을 지냈다. CNN에 따르면 그는 야빈과 수년 전부터 알고 지냈고 2021년 Claremont Institute 재직 중 자신이 진행한 팟캐스트에 야빈을 불렀으며, 야빈은 CNN에 정부 인사에 관한 추천을 한 적이 있다고 말했다. The Verge에 따르면 앤턴은 Claremont Review of Books 서평에서 야빈이 필명 Bronze Age Pervert의 책을 선물했다고 밝혔다.",
+      "lineage": null,
+      "refs": [
+        {
+          "label": "CNN — Curtis Yarvin wants to replace American democracy … (2025)",
+          "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo"
+        },
+        {
+          "label": "The Verge — JD Vance thinks monarchists like Curtis Yarvin have some good ideas (2024)",
+          "url": "https://www.theverge.com/2024/10/16/24266512/jd-vance-curtis-yarvin-influence-rage-project-2025"
+        }
+      ]
+    },
+    {
+      "id": "musk",
+      "name": "Elon Musk",
+      "ko": "일론 머스크",
+      "role": "Tesla · SpaceX 경영자 · X(옛 Twitter) 소유주",
+      "years": "1971–",
+      "short": "2025년 야빈과 통화했다고 보도된 기업가",
+      "bio": "NYT는 2025년 7월 머스크가 제3당 구상을 두고 야빈에게 조언을 구했다고, 익명을 요청한 취재원 두 명을 인용해 보도했다. 머스크 측은 즉각 답하지 않았고 야빈은 인터뷰를 거절했다. 야빈은 머스크의 정부효율부(DOGE)가 관료제에 대한 권한을 충분히 갖지 못했다고 비판해 왔고, 전자투표를 두고 두 사람의 입장도 다르다. 발라지 스리니바산은 2013년 Wired 글에서 머스크의 화성 식민지 구상을 ‘클라우드 나라’ 구상의 한 갈래로 언급했다.",
+      "lineage": null,
+      "refs": [
+        {
+          "label": "The New York Times News Service — Elon Musk consulted Curtis Yarvin, right-wing thinker, on third party (2025.7.10, Hawaii Tribune-Herald 전재)",
+          "url": "https://www.hawaiitribune-herald.com/2025/07/10/nation-world-news/elon-musk-consulted-curtis-yarvin-right-wing-thinker-on-third-party/"
+        },
+        {
+          "label": "Balaji Srinivasan, Software Is Reorganizing the World (Wired, 2013)",
+          "url": "https://www.wired.com/2013/11/software-is-reorganizing-the-world-and-cloud-formations-could-lead-to-physical-nations/"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "a": "carlyle",
+      "b": "yarvin",
+      "rel": "INFLUENCED",
+      "ko": "야빈이 자신을 ‘칼라일주의자’라 부르며 칼라일 연작을 씀",
+      "url": "https://www.unqualified-reservations.org/2010/02/from-mises-to-carlyle-my-sick-journey/",
+      "weak": false
+    },
+    {
+      "a": "burnham",
+      "b": "yarvin",
+      "rel": "INFLUENCED",
+      "ko": "야빈이 버넘의 에세이를 블로그에 옮겨 적고 ‘가장 위대한 정치 에세이 가운데 하나’라 평함",
+      "url": "https://www.unqualified-reservations.org/2007/08/james-burnhams-dante-politics-as-wish/",
+      "weak": false
+    },
+    {
+      "a": "hoppe",
+      "b": "yarvin",
+      "rel": "INFLUENCED",
+      "ko": "야빈이 호페의 책을 ‘최고의 반민주주의 저작 가운데 하나’이자 처음 읽은 것이라 밝힘",
+      "url": "https://www.unqualified-reservations.org/2010/02/from-mises-to-carlyle-my-sick-journey/",
+      "weak": false
+    },
+    {
+      "a": "yarvin",
+      "b": "land",
+      "rel": "INFLUENCED",
+      "ko": "랜드가 「The Dark Enlightenment」에서 몰드버그를 풀어 쓰고 ‘네오반동의 최고 시스 군주’라 부름",
+      "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/",
+      "weak": false
+    },
+    {
+      "a": "land",
+      "b": "hoppe",
+      "rel": "CITED",
+      "ko": "랜드가 ‘홉스에서 호페로’ 이어지는 반민주주의 계보를 말하며 호페를 길게 인용",
+      "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/",
+      "weak": false
+    },
+    {
+      "a": "land",
+      "b": "thiel",
+      "rel": "CITED",
+      "ko": "랜드가 틸의 2009년 Cato 글(‘자유와 민주주의는 양립 불가’)을 이정표로 인용",
+      "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/",
+      "weak": false
+    },
+    {
+      "a": "land",
+      "b": "friedman",
+      "rel": "CITED",
+      "ko": "랜드가 프리드먼의 ‘자유로운 이탈은 유일한 보편적 인권’ 발언을 인용",
+      "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/",
+      "weak": false
+    },
+    {
+      "a": "friedman",
+      "b": "yarvin",
+      "rel": "CITED",
+      "ko": "프리드먼이 2009년 Cato Unbound 글 말미 참고문헌에 몰드버그의 블로그를 올림",
+      "url": "https://www.cato-unbound.org/2009/04/06/patri-friedman/beyond-folk-activism/",
+      "weak": false
+    },
+    {
+      "a": "thiel",
+      "b": "friedman",
+      "rel": "BACKED",
+      "ko": "틸이 프리드먼의 시스테딩 실험을 ‘기꺼이 지지’한다고 밝힘",
+      "url": "https://www.cato-unbound.org/2009/04/13/peter-thiel/education-libertarian/",
+      "weak": false
+    },
+    {
+      "a": "thiel",
+      "b": "yarvin",
+      "rel": "INVESTED",
+      "ko": "야빈의 스타트업 Tlön(Urbit)에 틸의 Founders Fund가 투자",
+      "url": "https://www.theverge.com/2017/2/21/14671978/alt-right-mencius-moldbug-urbit-curtis-yarvin-tlon",
+      "weak": false
+    },
+    {
+      "a": "thiel",
+      "b": "yarvin",
+      "rel": "PEER",
+      "ko": "틸이 야빈의 친구가 되었다고 Vox가 전함 (틸 측 논평 없음)",
+      "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug",
+      "weak": false
+    },
+    {
+      "a": "thiel",
+      "b": "vance",
+      "rel": "BACKED",
+      "ko": "밴스는 틸의 Mithril Capital 출신 · 틸이 밴스 · 마스터스 지지 슈퍼팩에 1,000만 달러 넘게 기부",
+      "url": "https://www.vanityfair.com/news/2022/04/inside-the-new-right-where-peter-thiel-is-placing-his-biggest-bets",
+      "weak": false
+    },
+    {
+      "a": "thiel",
+      "b": "masters",
+      "rel": "BACKED",
+      "ko": "마스터스는 Thiel Capital COO · Thiel Foundation 대표 출신 · 틸이 선거 자금 지원",
+      "url": "https://www.vanityfair.com/news/2022/04/inside-the-new-right-where-peter-thiel-is-placing-his-biggest-bets",
+      "weak": false
+    },
+    {
+      "a": "vance",
+      "b": "yarvin",
+      "rel": "CITED",
+      "ko": "밴스가 2021년 9월 팟캐스트에서 야빈을 직접 거명하며 공무원 대거 교체 구상을 말함",
+      "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug",
+      "weak": false
+    },
+    {
+      "a": "yarvin",
+      "b": "vance",
+      "rel": "INFLUENCED",
+      "ko": "영향 여부는 논쟁 중 — 야빈은 2024년 7월 ‘거의 만난 적 없다’며 부인",
+      "url": "https://www.theverge.com/2024/10/16/24266512/jd-vance-curtis-yarvin-influence-rage-project-2025",
+      "weak": true
+    },
+    {
+      "a": "masters",
+      "b": "yarvin",
+      "rel": "CITED",
+      "ko": "마스터스가 로스쿨 시절 야빈 글을 추천하고 2021년 유세에서 ‘친구의 RAGE’를 말함 (NBC에는 ‘처방은 다르다’고 밝힘)",
+      "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug",
+      "weak": false
+    },
+    {
+      "a": "andreessen",
+      "b": "yarvin",
+      "rel": "INVESTED",
+      "ko": "a16z가 야빈의 Tlön에 투자 (Tlön 쪽이 a16z 등 VC의 투자를 인정)",
+      "url": "https://www.theverge.com/2017/2/21/14671978/alt-right-mencius-moldbug-urbit-curtis-yarvin-tlon",
+      "weak": false
+    },
+    {
+      "a": "andreessen",
+      "b": "yarvin",
+      "rel": "PEER",
+      "ko": "앤드리슨이 야빈을 ‘좋은 친구’라 부르고 ‘군주제주의자가 되지 않고도 읽을 수 있다’고 X에 씀 (CNN)",
+      "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo",
+      "weak": false
+    },
+    {
+      "a": "andreessen",
+      "b": "land",
+      "rel": "CITED",
+      "ko": "선언문이 랜드가 말한 ‘기술자본 기계’를 인용하고 ‘수호성인’ 명단에 랜드를 올림",
+      "url": "https://a16z.com/the-techno-optimist-manifesto/",
+      "weak": false
+    },
+    {
+      "a": "andreessen",
+      "b": "burnham",
+      "rel": "CITED",
+      "ko": "선언문의 ‘수호성인’ 명단에 제임스 버넘이 들어 있음",
+      "url": "https://a16z.com/the-techno-optimist-manifesto/",
+      "weak": false
+    },
+    {
+      "a": "andreessen",
+      "b": "vance",
+      "rel": "BACKED",
+      "ko": "밴스의 벤처 펀드 Narya Capital(2020)의 투자자로 보도됨 (Axios 인용)",
+      "url": "https://www.foxbusiness.com/money/venture-capital-jd-vance-narya",
+      "weak": false
+    },
+    {
+      "a": "andreessen",
+      "b": "balaji",
+      "rel": "PEER",
+      "ko": "발라지가 2013년 12월 a16z의 여덟 번째 제너럴 파트너가 됨",
+      "url": "https://techcrunch.com/2013/12/09/counsyl-srinivasan-andreessen-horowitz/",
+      "weak": false
+    },
+    {
+      "a": "balaji",
+      "b": "thiel",
+      "rel": "CITED",
+      "ko": "발라지가 2013년 Wired 글에서 틸이 내놓은 ‘국제 해역의 떠다니는 도시’를 ‘클라우드 나라’ 구상의 한 갈래로 언급",
+      "url": "https://www.wired.com/2013/11/software-is-reorganizing-the-world-and-cloud-formations-could-lead-to-physical-nations/",
+      "weak": false
+    },
+    {
+      "a": "thiel",
+      "b": "balaji",
+      "rel": "INVESTED",
+      "ko": "틸의 Founders Fund가 발라지의 회사 Counsyl에 투자 (펀드 → 회사를 거친 간접 관계)",
+      "url": "https://techcrunch.com/2013/11/22/geeks-for-monarchy/",
+      "weak": true
+    },
+    {
+      "a": "balaji",
+      "b": "yarvin",
+      "rel": "PEER",
+      "ko": "발라지가 2013년 야빈에게 보낸 이메일의 존재를 2021년 NYT가 보도 (발라지는 논평하지 않음)",
+      "url": "https://www.businessinsider.com/venture-capitalist-balaji-srinivasan-suggested-doxxing-journalist-nyt-2021-2",
+      "weak": true
+    },
+    {
+      "a": "balaji",
+      "b": "friedman",
+      "rel": "CITED",
+      "ko": "『The Network State』가 프리드먼이 구상하고 틸이 후원한 시스테딩을 새 국가 만들기의 선례로 소개",
+      "url": "https://thenetworkstate.com/the-network-state-in-one-essay",
+      "weak": false
+    },
+    {
+      "a": "balaji",
+      "b": "carlyle",
+      "rel": "CITED",
+      "ko": "책이 칼라일을 ‘영웅이 질서를 준다’는 국가론으로 소개하되 버려야 할 전략의 사례로 둠",
+      "url": "https://thenetworkstate.com/on-nation-states",
+      "weak": true
+    },
+    {
+      "a": "balaji",
+      "b": "musk",
+      "rel": "CITED",
+      "ko": "발라지가 2013년 Wired 글에서 머스크의 화성 식민지 구상을 ‘클라우드 나라’ 구상의 한 갈래로 언급",
+      "url": "https://www.wired.com/2013/11/software-is-reorganizing-the-world-and-cloud-formations-could-lead-to-physical-nations/",
+      "weak": false
+    },
+    {
+      "a": "alexander",
+      "b": "yarvin",
+      "rel": "CRITIC",
+      "ko": "「The Anti-Reactionary FAQ」(2013)가 몰드버그를 주된 반박 대상으로 삼음",
+      "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/",
+      "weak": false
+    },
+    {
+      "a": "sandifer",
+      "b": "yarvin",
+      "rel": "CRITIC",
+      "ko": "『Neoreaction a Basilisk』 저자 — 인터뷰에서 신반동을 극우 철학의 지적 토대 시도로 규정",
+      "url": "https://www.currentaffairs.org/2022/05/the-strange-and-terrifying-ideas-of-neoreactionaries",
+      "weak": false
+    },
+    {
+      "a": "anton",
+      "b": "yarvin",
+      "rel": "PEER",
+      "ko": "앤턴이 수년간 야빈과 알고 지내며 2021년 자신의 팟캐스트에 초대 (CNN)",
+      "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo",
+      "weak": false
+    },
+    {
+      "a": "musk",
+      "b": "yarvin",
+      "rel": "PEER",
+      "ko": "2025년 7월 머스크가 제3당 구상을 두고 야빈과 통화했다고 NYT가 익명 취재원을 인용해 보도",
+      "url": "https://www.hawaiitribune-herald.com/2025/07/10/nation-world-news/elon-musk-consulted-curtis-yarvin-right-wing-thinker-on-third-party/",
+      "weak": true
+    }
+  ]
+}

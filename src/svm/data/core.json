@@ -1,0 +1,967 @@
+{
+  "essays": [
+    {
+      "id": "open-letter",
+      "no": 1,
+      "section": "intro",
+      "title": "An Open Letter to Open-Minded Progressives",
+      "ko": "열린 마음의 진보주의자에게 보내는 공개편지",
+      "sub": "14장 연재 · 야빈 사상의 가장 긴 입문",
+      "author": "yarvin",
+      "venue": "Unqualified Reservations",
+      "year": 2008,
+      "words": 128000,
+      "concepts": [
+        "cathedral",
+        "democracy",
+        "sovereignty",
+        "neocameralism",
+        "monarchy",
+        "redpill",
+        "rage"
+      ],
+      "people": [
+        "andreessen",
+        "thiel",
+        "balaji",
+        "vance",
+        "masters"
+      ],
+      "core": "민주주의 · 대성당 · 주권 주식회사를 한 줄로 꿰는, 야빈 사상의 가장 긴 입문서다.",
+      "claims": [
+        "야빈은 1~2장에서 진보 · 보수를 가리지 않는 근대의 통념에 세 가지 이상 징후(anomaly)가 있다고 짚는다. '독립'이라는 말의 뜻, '민족주의'에 대한 오락가락하는 태도, 인권 침해에 대한 한쪽으로 치우친 민감도다. 3장은 이 역설을 설명할 틀로 휘그식 역사를 뒤집은 '자코바이트식 세계사'를 내놓는다.",
+        "4장에서 그는 1945년 이후의 주류 학계 · 언론 · 교육 기관이 서로 조율하지 않고도 한 방향으로 움직이는 현상을 설명하려고 이들을 '대성당'이라 부르자고 제안한다. 7~8장은 정책을 만드는 대학과 동의를 만드는 언론, 곧 대성당이 선출직이 아니라 현대 권력의 중심이라고 주장한다.",
+        "6장은 정부를 '주권을 가진 법인'으로 정의하고, 좋은 정부는 적임자(그가 드는 예는 스티브 잡스다)에게 예산 · 정책 · 인사의 전권을 맡길 때 가능하다고 말한다. 주주 격인 '통제자'는 해임권만 쥐고 쿠데타는 암호로 잠근 지휘 체계로 막는다는 이 설계에 그는 '신관방주의'라는 이름을 붙인다.",
+        "8~9장은 '리셋은 혁명이 아니다'라고 주장하며, 대성당을 걷어내려면 언론과 대학을 국유화한 뒤 직원은 연금을 주어 퇴직시키고 자산은 청산하되 하버드 · 뉴욕타임스라는 이름의 권위는 지워야 한다고 말한다.",
+        "10장은 정부를 파산한 회사처럼 정리하는 절차를 그린다. 임시 '관재인(Receiver)'이 2년 동안 전권을 쥐고 정부를 배당을 내는 법인으로 바꾸며, 불필요한 공무원은 해고하지 않고 연금을 주어 퇴직시킨다. 마지막 14장은 '우리의 문제는 민주주의'라고 요약하며, 민주주의를 통치 영토라는 자산을 둘러싼 '총 없는 영구 내전'이라 부른다."
+      ],
+      "quotes": [
+        {
+          "en": "The great power center of 2008 is the Cathedral. The Cathedral has two parts: the accredited universities and the established press. The universities formulate public policy. The press guides public opinion. In other words, the universities make decisions, for which the press manufactures consent.",
+          "ko": "2008년 최대의 권력 중심은 대성당이다. 대성당은 인가받은 대학과 기성 언론, 두 부분으로 이루어진다. 대학은 공공 정책을 만들고 언론은 여론을 이끈다. 다시 말해 대학이 결정을 내리면 언론이 그에 대한 동의를 제조한다.",
+          "where": "Chapter 8",
+          "url": "https://www.unqualified-reservations.org/2008/06/ol8-reset-is-not-revolution/"
+        },
+        {
+          "en": "Our problem is democracy. Democracy is a dangerous, malignant form of government which tends to degenerate, sometimes slowly and sometimes with shocking, gut-wrenching speed, into tyranny and chaos.",
+          "ko": "우리의 문제는 민주주의다. 민주주의는 위험하고 악성인 정부 형태로, 때로는 천천히 때로는 충격적일 만큼 빠르게 폭정과 혼란으로 퇴화한다.",
+          "where": "Chapter XIV",
+          "url": "https://www.unqualified-reservations.org/2008/07/olxiv-rules-for-reactionaries/"
+        },
+        {
+          "en": "A government is a sovereign corporation. It is sovereign because its control over its territory is not subject to any higher authority. It is a corporation because it has a single institutional identity.",
+          "ko": "정부는 주권을 가진 법인이다. 영토에 대한 통제가 더 높은 권위에 종속되지 않으므로 주권적이고, 하나의 제도적 정체성을 가지므로 법인이다.",
+          "where": "Chapter 6",
+          "url": "https://www.unqualified-reservations.org/2008/05/ol6-lost-theory-of-government/"
+        }
+      ],
+      "sv": {
+        "text": "뉴요커(2025)는 야빈 프로필을 이 연재로 시작하며, 피터 틸과 발라지 스리니바산이 블로그를 읽고 야빈과 친구가 되었고 야빈이 세운 Tlon에 앤드리슨 호로위츠와 파운더스 펀드가 투자했다고 전한다. 6장은 '새 스티브'를 고르는 대목에 '(Marc Andreessen, perhaps.)'라고 적었고, 발라지는 『네트워크 국가』에서 9장을 '언론이 통제하는 국가'를 설명하는 근거로 링크한다. JD 밴스는 2021년 팟캐스트에서 '커티스 야빈이라는 사람이 이런 것들에 대해 써 왔다'고 말하며 공무원 대량 해고를 거론했고, 블레이크 매스터스가 2012년 대학 룸메이트에게 야빈의 군주제 논변을 추천했다는 이메일이 Mother Jones에 보도됐다.",
+        "refs": [
+          {
+            "label": "The New Yorker (2025) - Curtis Yarvin’s Plot Against America",
+            "url": "https://www.newyorker.com/magazine/2025/06/09/curtis-yarvin-profile"
+          },
+          {
+            "label": "Balaji Srinivasan, The Network State - People of God, People of the State, People of the Network",
+            "url": "https://thenetworkstate.com/people-of-god-people-of-the-state-people-of-the-network"
+          },
+          {
+            "label": "The Guardian (2024) - He’s anti-democracy and pro-Trump (밴스 발언)",
+            "url": "https://www.theguardian.com/us-news/2024/dec/21/curtis-yarvin-trump"
+          },
+          {
+            "label": "Mother Jones (2022) - Newly uncovered emails show Blake Masters’ long history of hating democracy",
+            "url": "https://www.motherjones.com/politics/2022/09/blake-masters-anti-democratic-stanford-emails-arizona-kelly-thiel/"
+          },
+          {
+            "label": "열린 편지 6장 본문 - “(Marc Andreessen, perhaps.)”",
+            "url": "https://www.unqualified-reservations.org/2008/05/ol6-lost-theory-of-government/"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "진보적 흐름은 하버드(1636년)나 뉴욕타임스(1851년)보다 훨씬 앞서고 미국 밖에서 더 왼쪽으로 가 있으며, 뉴욕타임스도 한때 동성애자 권리 운동에 반대했다고 지적한다. 34개 쟁점의 여론 조사에서도 19개는 왼쪽으로, 13개는 오른쪽으로 움직여 '대성당이 사회를 한 방향으로 끌고 간다'는 그림과 맞지 않는다고 본다.",
+          "by": "스콧 알렉산더",
+          "label": "The Anti-Reactionary FAQ §3.2",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        },
+        {
+          "text": "야빈이 사회의 기준선을 정하는 기관으로 언론 · 학계 · 관료는 꼽으면서 금융 · 자본은 한 번도 꼽지 않는다는 점을 짚는다. 일론 머스크의 트위터 인수처럼 돈이 담론을 바꾸는 사례는 그의 대성당 모형으로 설명되지 않는다고 본다.",
+          "by": "엘리자베스 샌디퍼",
+          "label": "Current Affairs 인터뷰: The Strange and Terrifying Ideas of Neoreactionaries (2022)",
+          "url": "https://www.currentaffairs.org/news/2022/05/the-strange-and-terrifying-ideas-of-neoreactionaries"
+        },
+        {
+          "text": "주식회사라고 부른다고 국가가 수익에 매달리게 되지는 않으며, 주식이 시민에게 퍼지면 가난한 이들이 곧 팔아 소수 대주주만 남는다고 지적한다. 수익 극대화는 '쓸모없는 주민'을 정리하는 쪽으로 흐를 수 있는데, 야빈이 스스로 '심각한 문제(Dire Problem)'라 인정한 이 대목에 내놓은 안전장치가 '신의 뜻' 같은 약한 것뿐이라고 비판한다.",
+          "by": "스콧 알렉산더",
+          "label": "The Anti-Reactionary FAQ §4.1 · 4.4",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        }
+      ],
+      "sources": [
+        {
+          "label": "Chapter 1: A Horizon Made of Canvas",
+          "url": "https://www.unqualified-reservations.org/2008/04/open-letter-to-open-minded-progressives/"
+        },
+        {
+          "label": "Chapter 2: More Historical Anomalies",
+          "url": "https://www.unqualified-reservations.org/2008/04/open-letter-pt-2-more-historical/"
+        },
+        {
+          "label": "Chapter 3: The Jacobite History of the World",
+          "url": "https://www.unqualified-reservations.org/2008/05/ol3-jacobite-history-of-world/"
+        },
+        {
+          "label": "Chapter 4: Dr. Johnson’s Hypothesis",
+          "url": "https://www.unqualified-reservations.org/2008/05/ol4-dr-johnsons-hypothesis/"
+        },
+        {
+          "label": "Chapter 5: The Shortest Way to World Peace",
+          "url": "https://www.unqualified-reservations.org/2008/05/ol5-shortest-way-to-world-peace/"
+        },
+        {
+          "label": "Chapter 6: The Lost Theory of Government",
+          "url": "https://www.unqualified-reservations.org/2008/05/ol6-lost-theory-of-government/"
+        },
+        {
+          "label": "Chapter 7: The Ugly Truth About Government",
+          "url": "https://www.unqualified-reservations.org/2008/05/ol7-ugly-truth-about-government/"
+        },
+        {
+          "label": "Chapter 8: A Reset Is Not a Revolution",
+          "url": "https://www.unqualified-reservations.org/2008/06/ol8-reset-is-not-revolution/"
+        },
+        {
+          "label": "Chapter 9: How to Uninstall a Cathedral",
+          "url": "https://www.unqualified-reservations.org/2008/06/ol9-how-to-uninstall-cathedral/"
+        },
+        {
+          "label": "Chapter X: A Simple Sovereign Bankruptcy Procedure",
+          "url": "https://www.unqualified-reservations.org/2008/06/olx-simple-sovereign-bankruptcy/"
+        },
+        {
+          "label": "Chapter XI: The Truth About Left and Right",
+          "url": "https://www.unqualified-reservations.org/2008/06/olxi-truth-about-left-and-right/"
+        },
+        {
+          "label": "Chapter XII: What Is to Be Done?",
+          "url": "https://www.unqualified-reservations.org/2008/07/olxii-what-is-to-be-done/"
+        },
+        {
+          "label": "Chapter XIII: Tactics and Structures of Any Prospective Restoration",
+          "url": "https://www.unqualified-reservations.org/2008/07/olxiii-tactics-and-structures-of-any/"
+        },
+        {
+          "label": "Chapter XIV: Rules for Reactionaries",
+          "url": "https://www.unqualified-reservations.org/2008/07/olxiv-rules-for-reactionaries/"
+        }
+      ],
+      "note": "14장 중 4 · 6 · 8 · 9 · 10 · 14장은 핵심 대목을, 나머지는 도입부만 원문과 대조했다."
+    },
+    {
+      "id": "gentle-introduction",
+      "no": 2,
+      "section": "intro",
+      "title": "A Gentle Introduction to Unqualified Reservations",
+      "ko": "『언퀄리파이드 레저베이션스』 친절한 입문",
+      "sub": "11장 연재 · 레드필에서 새 구조까지",
+      "author": "yarvin",
+      "venue": "Unqualified Reservations",
+      "year": 2009,
+      "words": 103000,
+      "concepts": [
+        "redpill",
+        "cathedral",
+        "democracy",
+        "universalism",
+        "sovereignty",
+        "nrx"
+      ],
+      "people": [
+        "vance"
+      ],
+      "core": "열린 편지의 문제의식을 레드필 · 근대적 구조 · 3단계 절차로 다시 정리한 입문 연재다.",
+      "claims": [
+        "야빈은 UR의 목표가 독자의 '뇌를 고치는 것'이며, 『매트릭스』의 레드필처럼 세상을 보는 틀을 통째로 바꾸는 일이라고 소개한다. 그래서 '순한 입문'은 있을 수 없다고 처음부터 경고한다.",
+        "1장에서 그는 하버드와 스탠퍼드가 조율 없이 같은 답을 내놓는 현상을 짚고, 새 생각이 대학에서 나와 언론 · 공교육을 거쳐 여론과 정부 정책이 된다고 설명한다. 이 흐름이 늘 왼쪽으로만 간다는 관찰을 '크툴루는 느리게 헤엄쳐도 왼쪽으로만 간다'고 요약한다.",
+        "2~3장은 독립전쟁을 왕당파(Loyalist) 역사가들의 시각으로 다시 읽고, 지구온난화(AGW) · 케인스-피셔 거시경제학(KFM) · 인간 신경 균일성(HNU)이라는 세 가지 '공식 교리'를 의심한다. 4장은 금융 위기를 푸는 '몰드버그 계획'을 사고실험으로 펼치되, 강한 정부만 실행할 수 있어 지금의 체제에서는 일어나지 않는다고 말한다.",
+        "5~8장은 '근대적 구조(Modern Structure)'를 OECD 국가에서 실제 정책에 영향을 미치는 권력의 구조로 정의하며, 영어로는 이것이 '민주주의'라 불린다고 말한다. 이어 승자의 역사(5~6장)와 패자 · 20세기의 역사(7~8장)를 차례로 서술한다.",
+        "9~11장은 '절차(Procedure)'를 '가치 있는 사람이 되어라 · 권력을 받아들여라 · 통치하라'의 3단계로 제시한다. 1단계에서는 정치 행동주의를 끊는 '수동주의(passivism)'를 익히고 대학을 대체할 '안티버시티(Antiversity)'를 세우며, 2단계에서 기존 대학의 전원을 끊고 안티버시티를 연결해 새 구조로 갈아탄다는 구상이다. 야빈은 21세기 반동의 본질을 근대의 공학적 사고와 민주주의 이전의 사상 유산이 같은 결론에 이르는 것이라고 설명한다."
+      ],
+      "quotes": [
+        {
+          "en": "Cthulhu may swim slowly. But he only swims left.",
+          "ko": "크툴루는 느리게 헤엄칠지 몰라도 왼쪽으로만 헤엄친다.",
+          "where": "Chapter 1",
+          "url": "https://www.unqualified-reservations.org/2009/01/gentle-introduction-to-unqualified/"
+        },
+        {
+          "en": "UR is a strange blog: its goal is to cure your brain.",
+          "ko": "UR은 이상한 블로그다. 목표는 당신의 뇌를 고치는 것이다.",
+          "where": "Chapter 1",
+          "url": "https://www.unqualified-reservations.org/2009/01/gentle-introduction-to-unqualified/"
+        },
+        {
+          "en": "The essence of any 21st-century reaction is the unity of these two forces: the modern engineering mentality, and the great historical legacy of antique, classical and Victorian pre-democratic thought.",
+          "ko": "21세기 반동의 본질은 두 힘의 결합에 있다. 근대의 공학적 사고방식과, 고대 · 고전 · 빅토리아 시대로 이어지는 민주주의 이전 사상의 거대한 유산이다.",
+          "where": "Chapter 9",
+          "url": "https://www.unqualified-reservations.org/2009/09/gentle-introduction-to-unqualified/"
+        }
+      ],
+      "sv": {
+        "text": "야빈의 사이트는 NRx를 소개하는 글에서 이 연재(9장)를 직접 인용하고, 닉 랜드의 『The Dark Enlightenment』 사이트도 메뉴 첫 항목으로 이 연재를 입문서로 둔다. 1장 제목이기도 한 '레드필'을 정치에 들여온 사람이 야빈이라고 Vox(2022)는 짚고, JD 밴스는 2021년 팟캐스트에서 '나는 레드필을 먹었다(I was redpilled)'고 말했다. TechCrunch(2013)는 해커뉴스와 레스롱 같은 기술 커뮤니티에서 '몰드버그'와 '대성당'을 둘러싼 암호 같은 대화가 오간다고 전했고, 발라지 스리니바산은 『네트워크 국가』의 20세기 읽을거리에 이 블로그를 올렸다.",
+        "refs": [
+          {
+            "label": "Unqualified Reservations 첫 화면 - NRx 소개문(이 연재 9장을 인용)",
+            "url": "https://www.unqualified-reservations.org/"
+          },
+          {
+            "label": "Nick Land, The Dark Enlightenment (사이트 메뉴에 Moldbug’s Gentle Introduction)",
+            "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/"
+          },
+          {
+            "label": "Vox (2022) - Curtis Yarvin wants American democracy toppled. He has some prominent Republican fans.",
+            "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug"
+          },
+          {
+            "label": "TechCrunch (2013) - Geeks for Monarchy: The Rise of the Neoreactionaries",
+            "url": "https://techcrunch.com/2013/11/22/geeks-for-monarchy/"
+          },
+          {
+            "label": "Balaji Srinivasan, The Network State - If the News is Fake, Imagine History",
+            "url": "https://thenetworkstate.com/if-the-news-is-fake-imagine-history"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "34개 쟁점의 여론 변화를 모아 보면 사회가 일방적으로 왼쪽으로만 가지 않는다고 반박한다. 총기 규제 · 복지국가 · 자본주의 · 노조 · 환경에서는 지난 세대 동안 오히려 오른쪽으로 움직였고, 왼쪽 이동은 주로 여성과 소수자 관련 쟁점에 몰려 있다는 것이다.",
+          "by": "스콧 알렉산더",
+          "label": "The Anti-Reactionary FAQ §3.2.3",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        },
+        {
+          "text": "야빈이 독자를 얻는 힘은 논증의 견고함보다 '금지된 지식에 접근하게 해 준다'는 느낌에서 나온다고 본다. 미국인 대부분이 민주주의를 옹호하는 법을 배운 적 없이 믿도록 자랐다는 점을 그의 논법이 파고든다고 설명한다.",
+          "by": "아바 코프먼",
+          "label": "Curtis Yarvin’s Plot Against America (The New Yorker, 2025)",
+          "url": "https://www.newyorker.com/magazine/2025/06/09/curtis-yarvin-profile"
+        }
+      ],
+      "sources": [
+        {
+          "label": "Chapter 1: The Red Pill",
+          "url": "https://www.unqualified-reservations.org/2009/01/gentle-introduction-to-unqualified/"
+        },
+        {
+          "label": "Chapter 2: The American Rebellion",
+          "url": "https://www.unqualified-reservations.org/2009/01/gentle-introduction-to-unqualified_15/"
+        },
+        {
+          "label": "Chapter 3: AGW, KFM, and HNU",
+          "url": "https://www.unqualified-reservations.org/2009/01/gentle-introduction-to-unqualified_22/"
+        },
+        {
+          "label": "Chapter 4: Plan Moldbug",
+          "url": "https://www.unqualified-reservations.org/2009/01/gentle-introduction-to-unqualified_29/"
+        },
+        {
+          "label": "Chapter 5: The Modern Structure",
+          "url": "https://www.unqualified-reservations.org/2009/02/gentle-introduction-to-unqualified/"
+        },
+        {
+          "label": "Chapter 6: Brother Jonathan",
+          "url": "https://www.unqualified-reservations.org/2009/02/gentle-introduction-to-unqualified_19/"
+        },
+        {
+          "label": "Chapter 7: The War of Secession",
+          "url": "https://www.unqualified-reservations.org/2009/03/gentle-introduction-to-unqualified/"
+        },
+        {
+          "label": "Chapter 8: Olde Towne Easte",
+          "url": "https://www.unqualified-reservations.org/2009/04/gentle-introduction-to-unqualified_15/"
+        },
+        {
+          "label": "Chapter 9: The Procedure and the Reaction",
+          "url": "https://www.unqualified-reservations.org/2009/09/gentle-introduction-to-unqualified/"
+        },
+        {
+          "label": "Chapter 10: The Mandate of Heaven",
+          "url": "https://www.unqualified-reservations.org/2009/10/gentle-introduction-to-unqualified/"
+        },
+        {
+          "label": "Chapter 11: The New Structure",
+          "url": "https://www.unqualified-reservations.org/2009/11/gentle-introduction-to-unqualified/"
+        }
+      ],
+      "note": "11장 중 1 · 4 · 9장은 핵심 대목을, 나머지는 도입부만 원문과 대조했다."
+    },
+    {
+      "id": "formalist-manifesto",
+      "no": 3,
+      "section": "core",
+      "title": "A Formalist Manifesto",
+      "ko": "형식주의 선언문",
+      "sub": "블로그 첫 글 · 국가도 하나의 기업이라는 선언",
+      "author": "yarvin",
+      "venue": "Unqualified Reservations",
+      "year": 2007,
+      "words": 4500,
+      "concepts": [
+        "formalism",
+        "neocameralism",
+        "sovereignty",
+        "democracy"
+      ],
+      "people": [],
+      "core": "국가는 주인이 불분명한 거대한 기업일 뿐이니 '지금 누가 가졌는지'부터 확정하자는 첫 글이다.",
+      "claims": [
+        "형식주의의 출발점은 인간사의 핵심 문제가 폭력, 그중에서도 조직된 폭력이라는 진단이다. 야빈은 빈곤 · 지구온난화 · 도덕적 타락도 조직된 폭력에 비하면 사소하다고 보고, 이를 도덕이 아니라 공학의 문제로 다루자고 한다.",
+        "그는 폭력을 '갈등 더하기 불확실성'으로 정의한다. 누가 무엇을 가졌는지 명확하고 깰 수 없는 규칙이 있으면 싸울 이유가 사라지므로, '누가 가져야 하는가'는 따지지 말고 '지금 누가 가졌는가'를 확정해 증서를 주자고 말한다.",
+        "이 논리를 미국에 적용하면 미국은 신비한 신탁이 아니라 목적이 불분명한 거대한 기업이라는 것이 '형식주의 선언'이다. 야빈은 이 기업의 실제 소유자를 가려내 소유와 통제를 일치시키고, 소유자가 구조조정이든 청산이든 정하게 해야 한다고 주장한다.",
+        "싱가포르 · 홍콩 · 두바이처럼 민주주의 없이 번영하는 도시국가를 근거로 그는 민주주의가 '비효과적이고 파괴적인 통치 체계'라고 주장한다. 전후 서방이 번영한 것도 민주주의가 아니라 '비정치적'인 관료와 판사 덕분이며, 민주주의가 작동하는 것처럼 보이는 것은 형식주의를 어설프게 구현했기 때문이라고 본다.",
+        "야빈은 진보주의 · 보수주의 · 중도 · 자유지상주의를 차례로 검토한 뒤 자기 이념을 '괴짜가 괴짜를 위해 설계한 이념'이라 소개한다. 중도는 이념이 아니라 '사고의 부재'이며, 중심이 계속 움직이기 때문에 그것을 옮기려는 폭력의 유인이 생긴다고 말한다."
+      ],
+      "quotes": [
+        {
+          "en": "The basic idea of formalism is just that the main problem in human affairs is violence.",
+          "ko": "형식주의의 기본 발상은 인간사의 핵심 문제가 폭력이라는 것이다.",
+          "where": "본문 중반",
+          "url": "https://www.unqualified-reservations.org/2007/04/formalist-manifesto-originally-posted/"
+        },
+        {
+          "en": "So this is the formalist manifesto: that the US is just a corporation.",
+          "ko": "그러니 이것이 형식주의 선언이다. 미국은 그저 하나의 기업이라는 것.",
+          "where": "본문 후반",
+          "url": "https://www.unqualified-reservations.org/2007/04/formalist-manifesto-originally-posted/"
+        },
+        {
+          "en": "Moderation is not an ideology. It is not an opinion. It is not a thought. It is an absence of thought.",
+          "ko": "중도는 이념이 아니다. 의견도 아니고 생각도 아니다. 생각의 부재다.",
+          "where": "본문 초반",
+          "url": "https://www.unqualified-reservations.org/2007/04/formalist-manifesto-originally-posted/"
+        }
+      ],
+      "sv": {
+        "text": "TechCrunch(2013)는 이 글을 '신반동 독서 목록'에 올렸고, 뉴요커(2025)는 야빈 프로필에서 이 글의 첫 문장, 곧 '차고에서 만지작거리다 새 이념을 만들기로 했다'를 인용한다. 야빈은 형식주의를 '괴짜가 괴짜를 위해 설계한 이념'이라 소개하고 국가를 기업처럼 읽는데, 이 틀은 뒤에 신관방주의와 패치워크로 이어진다. Vox(2017)는 저자를 '실리콘밸리의 프로그래머'라고 소개하며, 그가 자기 이념을 '형식주의' 또는 '신관방주의'라 불렀다고 전한다.",
+        "refs": [
+          {
+            "label": "TechCrunch (2013) - Geeks for Monarchy: The Rise of the Neoreactionaries (Neoreaction Reading List)",
+            "url": "https://techcrunch.com/2013/11/22/geeks-for-monarchy/"
+          },
+          {
+            "label": "The New Yorker (2025) - Curtis Yarvin’s Plot Against America",
+            "url": "https://www.newyorker.com/magazine/2025/06/09/curtis-yarvin-profile"
+          },
+          {
+            "label": "Vox (2017) - Neo-monarchist blogger denies he’s chatting with Steve Bannon",
+            "url": "https://www.vox.com/policy-and-politics/2017/2/7/14533876/mencius-moldbug-steve-bannon-neoreactionary-curtis-yarvin"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "'기업'이라는 이름을 붙인다고 국가가 수익에 매달리게 되지는 않는다고 지적한다. 억만장자 대주주는 돈보다 다른 일에 끌리고 CEO의 평균 재임은 6.8년으로 대통령 두 번 임기보다 짧아, 기업 지배가 곧 장기적 시야를 뜻하지도 않는다고 본다.",
+          "by": "스콧 알렉산더",
+          "label": "The Anti-Reactionary FAQ §4.1 · 4.2",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        },
+        {
+          "text": "야빈의 철학적 뿌리를 '질서에 대한 집착'으로 요약한다. 혼란 · 불복종 · 반항을 본질적으로 나쁘게 보는 이 전제가 CEO에게 군주의 권한을 주자는 결론으로 이어진다고 비판한다.",
+          "by": "엘리자베스 샌디퍼",
+          "label": "Current Affairs 인터뷰: The Strange and Terrifying Ideas of Neoreactionaries (2022)",
+          "url": "https://www.currentaffairs.org/news/2022/05/the-strange-and-terrifying-ideas-of-neoreactionaries"
+        }
+      ],
+      "sources": [
+        {
+          "label": "A Formalist Manifesto",
+          "url": "https://www.unqualified-reservations.org/2007/04/formalist-manifesto-originally-posted/"
+        }
+      ]
+    },
+    {
+      "id": "patchwork",
+      "no": 4,
+      "section": "core",
+      "title": "Patchwork: A Political System for the 21st Century",
+      "ko": "패치워크 · 21세기를 위한 정치 체제",
+      "sub": "주권 기업 수만 개가 경쟁하는 세계 · 4장 연재",
+      "author": "yarvin",
+      "venue": "Unqualified Reservations",
+      "year": 2008,
+      "words": 24000,
+      "concepts": [
+        "patchwork",
+        "neocameralism",
+        "exit",
+        "sovereignty",
+        "monarchy",
+        "cathedral",
+        "network-state"
+      ],
+      "people": [
+        "thiel",
+        "balaji"
+      ],
+      "core": "낡은 정부를 주권 주식회사형 소국 수만 개로 대체하고 '이탈'만 남기자는 설계도다.",
+      "claims": [
+        "1장은 패치워크를 '주권을 가진 독립 소국(realm) 수만~수십만 개가 거미줄처럼 연결된 세계'로 소개한다. 소국은 주주가 가진 주권 주식회사가 주민 의견과 무관하게 통치하고, 주민에게는 마음에 안 들면 떠날 권리만 있어서 '이탈(exit)만 있고 항의(voice)는 없는' 설계라고 한다.",
+        "소국(realm)은 자기 땅(patch)의 가치를 높여야 이익이 나는 사업체다. 야빈은 주주가 위임한 책임자('Delegate')가 쪼개지지 않은 주권을 쥐는 이 구조를 '군주제의 변형'이라 부르며, 약한 군주가 나오던 역사적 문제를 주주가 언제든 책임자를 바꿀 수 있어 해결한다고 주장한다.",
+        "2장은 이 구조에 '신관방주의'라는 이름을 붙이고, 도덕적 책임은 구조로 강제할 수 없지만 재정적 책임은 강제할 수 있다고 말한다. 쿠데타는 주주가 비밀 분산 키를 쥐고 지휘 체계와 개별 무기의 암호 잠금까지 통제하는 방식으로 막는다고 설명한다.",
+        "3장은 지금의 민주주의가 왜 실패하는지를 다룬다. 야빈은 공립학교 · 대학 · 언론으로 이루어진 '대성당'이 선별된 귀족제처럼 움직이면서도 어떤 책임 장치도 없다고 주장한다.",
+        "4장은 평화를 곧 안보이자 질서로 정의하는 '반동적 평화론'을 편다. 그는 모든 소국이 안전하면 패치워크는 평화롭다고 보고, 칸트의 영구 평화론에서 나온 팍스 아메리카나를 비판한다."
+      ],
+      "quotes": [
+        {
+          "en": "a global spiderweb of tens, even hundreds, of thousands of sovereign and independent mini-countries, each governed by its own joint-stock corporation without regard to the residents’ opinions.",
+          "ko": "전 세계에 거미줄처럼 얽힌 수만, 아니 수십만 개의 주권적이고 독립적인 소국. 각 소국은 주민의 의견과는 상관없이 자기만의 주식회사가 통치한다.",
+          "where": "Chapter 1",
+          "url": "https://www.unqualified-reservations.org/2008/11/patchwork-positive-vision-part-1/"
+        },
+        {
+          "en": "If residents don’t like their government, they can and should move. The design is all “exit,” no “voice.”",
+          "ko": "주민이 정부가 마음에 들지 않으면 떠날 수 있고, 떠나야 한다. 이 설계에는 ‘이탈’만 있고 ‘항의’는 없다.",
+          "where": "Chapter 1",
+          "url": "https://www.unqualified-reservations.org/2008/11/patchwork-positive-vision-part-1/"
+        },
+        {
+          "en": "But we cannot construct a political structure that will enforce moral responsibility. We can construct a political structure that will enforce financial responsibility. Thus neocameralism.",
+          "ko": "그러나 도덕적 책임을 강제하는 정치 구조는 만들 수 없다. 재정적 책임을 강제하는 정치 구조는 만들 수 있다. 그래서 신관방주의다.",
+          "where": "Chapter 2",
+          "url": "https://www.unqualified-reservations.org/2008/11/patchwork-2-profit-strategies-for-our/"
+        }
+      ],
+      "sv": {
+        "text": "야빈은 1장에서 패치워크를 '세계를 위한 새 운영체제'에 비유하고 샌프란시스코를 주권 기업 '프리스코프'로 운영하는 상상을 펼치며, 주주의 암호 키가 군대의 무기를 잠근다는 설계를 내놓는다. 피터 틸은 2009년 Cato Unbound 글에서 '자유와 민주주의가 양립한다고 더는 믿지 않는다'며 사이버스페이스 · 우주 · 시스테딩에서 '정치로부터의 탈출'을 찾자고 했고, 뉴요커(2025)는 틸과 발라지 스리니바산이 블로그를 읽고 야빈과 친구가 되었다고 전한다. 학술 논문(Smith & Burrows, 2021)은 야빈 · 랜드 · 틸 · 패트리 프리드먼의 NRx 사상을 '이탈의 건축(architectures of exit)'으로 분석하며, Urbit을 국가를 'gov-corp'로 쪼개는 시도로 읽는다.",
+        "refs": [
+          {
+            "label": "Peter Thiel (2009) - The Education of a Libertarian (Cato Unbound)",
+            "url": "https://www.cato-unbound.org/2009/04/13/peter-thiel/education-libertarian/"
+          },
+          {
+            "label": "The New Yorker (2025) - Curtis Yarvin’s Plot Against America",
+            "url": "https://www.newyorker.com/magazine/2025/06/09/curtis-yarvin-profile"
+          },
+          {
+            "label": "Smith & Burrows (2021) - Software, sovereignty and the post-neoliberal politics of exit (Theory, Culture & Society)",
+            "url": "https://eprints.whiterose.ac.uk/id/eprint/173748/"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "이탈의 권리를 만병통치약처럼 말하지만 미국인에게도 이미 꽤 넓은 이탈의 자유가 있는데 쓰는 사람은 드물다고 지적한다. 사람들은 재산 · 가족 · 직장에 뿌리내려 있어 실제로 떠나는 이는 아주 가난한 난민과 아주 부유한 제트족뿐이며, 무기에 암호 잠금을 거는 설계도 군부 쿠데타는 막아도 대중 봉기는 막지 못한다고 본다.",
+          "by": "스콧 알렉산더",
+          "label": "The Anti-Reactionary FAQ §4.5 · 4.3",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        },
+        {
+          "text": "'자기 집을 약탈하는 사람은 없다'는 야빈의 답이 독재의 역사를 아는 사람에게는 억지로 들린다고 짚는다. 법인 CEO를 뽑고 해임하는 비밀 이사회를 누가 어떻게 세우는지도 불분명하고, 야빈 같은 반대자가 그런 체제에서 먼저 탄압받을 것이라는 역설이 그에게는 문제가 되지 않는 듯하다고 쓴다.",
+          "by": "아바 코프먼",
+          "label": "Curtis Yarvin’s Plot Against America (The New Yorker, 2025)",
+          "url": "https://www.newyorker.com/magazine/2025/06/09/curtis-yarvin-profile"
+        }
+      ],
+      "sources": [
+        {
+          "label": "Chapter 1: A Positive Vision",
+          "url": "https://www.unqualified-reservations.org/2008/11/patchwork-positive-vision-part-1/"
+        },
+        {
+          "label": "Chapter 2: Profit Strategies for Our New Corporate Overlords",
+          "url": "https://www.unqualified-reservations.org/2008/11/patchwork-2-profit-strategies-for-our/"
+        },
+        {
+          "label": "Chapter 3: What We Have and What’s So Bad About It",
+          "url": "https://www.unqualified-reservations.org/2008/11/patchwork-3-what-we-have-and-whats-so/"
+        },
+        {
+          "label": "Chapter 4: A Reactionary Theory of World Peace",
+          "url": "https://www.unqualified-reservations.org/2008/12/patchwork-4-reactionary-theory-of-world/"
+        }
+      ],
+      "note": "4장 중 1장은 거의 전문을, 2~4장은 핵심 대목만 원문과 대조했다."
+    },
+    {
+      "id": "how-dawkins-got-pwned",
+      "no": 5,
+      "section": "core",
+      "title": "How Dawkins Got Pwned",
+      "ko": "도킨스는 어떻게 해킹당했나",
+      "sub": "도킨스도 '보편주의'에 감염됐다는 7장 연재",
+      "author": "yarvin",
+      "venue": "Unqualified Reservations",
+      "year": 2007,
+      "words": 38000,
+      "concepts": [
+        "universalism",
+        "democracy",
+        "neocameralism",
+        "formalism"
+      ],
+      "people": [
+        "balaji"
+      ],
+      "core": "진보주의를 '비유신론적 기독교 분파'로 규정하고, 도킨스 같은 무신론자도 그 안에 있다고 보는 연재다.",
+      "claims": [
+        "야빈은 도킨스가 종교를 '밈 복합체'라는 기생체로 설명한 틀에 동의한다고 하면서, 정작 도킨스 자신이 '아무 믿음 체계도 없다'고 믿으며 또 다른 밈 복합체에 감염돼 있다고 주장한다. 이 상태를 인터넷 은어 'pwned(통제권을 빼앗긴)'로 부른다.",
+        "그 밈 복합체의 이름이 보편주의(Universalism)다. 야빈은 이것이 진보주의 · 다문화주의 · 자유주의 · 인본주의 · 정치적 올바름 등과 거의 같은 말이며, 영국의 비국교도 · 청교도에서 유니테리언 · 초월주의 · 진보 운동으로 이어진 칼뱅주의 계보의 '비유신론적 기독교 분파'라고 주장한다.",
+        "그는 보편주의를 '권력의 비의 종교(mystery cult of power)'라 부른다. 복제 과정에 국가라는 단계가 꼭 필요하고, 인류 · 진보 · 평등 · 민주주의 같은 말이 일관된 의미 없이 믿음의 에너지만 빨아들이는 '신비'로 쓰인다는 이유에서다.",
+        "3~5장은 보편주의의 득실을 따진다. 야빈은 경쟁 종교를 막아 주는 정도의 사소한 긍정 효과를 빼면 부정적 효과가 크다고 보고, 도킨스가 인류학과 역사에 관한 보편주의의 정설을 '증명되기 전까지는 참'으로 두는 방식으로 받아들였다고 비판한다.",
+        "6~7장은 보편주의를 바깥에서 평가하기 위한 '기준 이념'으로 신관방주의(형식주의)를 세운 뒤, 20세기 대량학살(democide)의 원인을 민주주의로 설명한다. 그는 보편주의가 독재에서 원인을 찾는 것과 반대로 '민주주의의 시대가 곧 대량학살의 시대'라고 주장한다."
+      ],
+      "quotes": [
+        {
+          "en": "Universalism, in my opinion, is best described as a mystery cult of power.",
+          "ko": "보편주의는 내 생각에 ‘권력의 비의 종교(mystery cult of power)’라고 부르는 것이 가장 정확하다.",
+          "where": "Chapter 4",
+          "url": "https://www.unqualified-reservations.org/2007/10/how-dawkins-got-pwned-part-4/"
+        },
+        {
+          "en": "a received tradition I call Universalism, which is a nontheistic Christian sect.",
+          "ko": "내가 보편주의라고 부르는 전승된 전통, 곧 비유신론적 기독교 분파.",
+          "where": "Chapter 4",
+          "url": "https://www.unqualified-reservations.org/2007/10/how-dawkins-got-pwned-part-4/"
+        },
+        {
+          "en": "I’ve expressed this before, but let me state it more bluntly: the cause of democide is democracy.",
+          "ko": "전에도 말했지만 더 직설적으로 말하겠다. 대량학살(democide)의 원인은 민주주의다.",
+          "where": "Chapter 7",
+          "url": "https://www.unqualified-reservations.org/2007/11/how-dawkins-got-pwned-part-7/"
+        }
+      ],
+      "sv": {
+        "text": "닉 랜드는 『The Dark Enlightenment』에서 이 연재 1~3부를 길게 인용하며 신반동 논의를 풀어 간다. 발라지 스리니바산은 『네트워크 국가』에서 '워크니스는 정교 분리를 피해 가려고 비종교를 자처한 종교인가'를 묻는 대목에 '커티스 야빈의 How Dawkins Got Pwned'를 맨 앞에 든다. 같은 대목에 존 맥워터 · 앤드루 설리번 · 노아 스미스 · 톰 홀랜드 · 폴 그레이엄의 글도 함께 오른다.",
+        "refs": [
+          {
+            "label": "Balaji Srinivasan, The Network State - People of God, People of the State, People of the Network",
+            "url": "https://thenetworkstate.com/people-of-god-people-of-the-state-people-of-the-network"
+          },
+          {
+            "label": "Nick Land, The Dark Enlightenment",
+            "url": "https://www.thedarkenlightenment.com/the-dark-enlightenment-by-nick-land/"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "진보주의가 칼뱅주의의 산물이라는 주장은 성립하지 않는다고 본다. 반동주의자들끼리도 칼뱅주의 · 퀘이커주의 · 유대교 중 어느 종교인지 합의하지 못하고, 평등 · 평화 · 복지 같은 진보의 이상은 칼뱅보다 수천 년 앞선 고대 로마에도 있었다고 반박한다.",
+          "by": "스콧 알렉산더",
+          "label": "The Anti-Reactionary FAQ §3.1",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        },
+        {
+          "text": "'민주주의 시대가 곧 학살의 시대'라는 논법은 '인민의 이름으로 통치'라는 넓은 범주(demotism)를 만들어 나치 · 공산주의와 자유민주주의를 한데 묶는 데 기댄다고 비판한다. 그렇게 묶지 않으면 자유민주주의 국가가 자국민 수백만 명을 죽인 사례는 없다는 것이다.",
+          "by": "스콧 알렉산더",
+          "label": "The Anti-Reactionary FAQ §2.3",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        }
+      ],
+      "sources": [
+        {
+          "label": "Chapter 1: A Really Ugly Bug",
+          "url": "https://www.unqualified-reservations.org/2007/09/how-dawkins-got-pwned-part-1/"
+        },
+        {
+          "label": "Chapter 2: M.41 and M.42",
+          "url": "https://www.unqualified-reservations.org/2007/10/how-dawkins-got-pwned-part-2/"
+        },
+        {
+          "label": "Chapter 3: Manitou and the Zeitgeist",
+          "url": "https://www.unqualified-reservations.org/2007/10/how-dawkins-got-pwned-part-3/"
+        },
+        {
+          "label": "Chapter 4: A Mystery Cult of Power",
+          "url": "https://www.unqualified-reservations.org/2007/10/how-dawkins-got-pwned-part-4/"
+        },
+        {
+          "label": "Chapter 5: Planet 3.01",
+          "url": "https://www.unqualified-reservations.org/2007/10/how-dawkins-got-pwned-part-5/"
+        },
+        {
+          "label": "Chapter 6: The Logic of Law and Power",
+          "url": "https://www.unqualified-reservations.org/2007/11/how-dawkins-got-pwned-part-6/"
+        },
+        {
+          "label": "Chapter 7: The Age of Democide",
+          "url": "https://www.unqualified-reservations.org/2007/11/how-dawkins-got-pwned-part-7/"
+        }
+      ],
+      "note": "7장 중 4 · 7장은 핵심 대목을, 나머지는 도입부만 원문과 대조했다."
+    },
+    {
+      "id": "not-white-nationalist",
+      "no": 6,
+      "section": "core",
+      "title": "Why I Am Not a White Nationalist",
+      "ko": "나는 왜 백인민족주의자가 아닌가",
+      "sub": "주요 매체가 자주 인용하는 논란의 글",
+      "author": "yarvin",
+      "venue": "Unqualified Reservations",
+      "year": 2007,
+      "words": 4200,
+      "concepts": [
+        "castes",
+        "universalism",
+        "democracy"
+      ],
+      "people": [
+        "thiel"
+      ],
+      "core": "백인민족주의를 도덕이 아니라 '효과가 없다'는 이유로 거부하며 5개 카스트 모형을 소개한 글이다.",
+      "claims": [
+        "야빈은 자신이 백인민족주의자는 아니지만 백인민족주의 블로그를 읽고 링크하며 그런 글에 '딱히 알레르기가 있지는 않다'고 밝힌다. 이를 지식인의 기본 태도로 변호하면서, 이것을 지지 선언으로 읽는 사람은 바보라고 덧붙인다.",
+        "그는 나치와 한 단계만 떨어졌다는 이유로 백인민족주의를 악으로 몰면 스탈린과 이어진 공산주의에도 같은 잣대를 써야 한다고 지적하고, 이 비대칭에서 벗어나려면 머릿속에서 '히틀러! 히틀러!' 하고 외치는 작은 목소리를 억눌러야 한다고 말한다. 위험도 비교해서 따져야 한다고 하고, '인간 인지 생물다양성'(집단 사이의 인지 차이 가설)이 논쟁적이라는 점만은 논쟁의 여지가 없으므로 이 이념을 무조건 배척해서는 안 된다고 주장한다.",
+        "그가 이 이념을 거부하는 이유는 도덕이 아니라 효용이다. 백인민족주의는 현실을 정확히 보는 데 도움이 되지 않고 그것이 불평하는 문제를 풀 '매우 비효과적인 정치 도구'이며, 지배층이 가장 면역된 이념이라 전략적으로도 실패한다고 말한다.",
+        "야빈은 갈등을 백인과 비백인의 두 진영이 아니라 다섯 집단의 파벌 싸움으로 본다. 브라만 · 달리트 · 헬롯의 연합(BDH)이 옵티메이트 · 바이샤(OV)를 누르는 구도라는 것이며, 앞선 글 'The BDH–OV conflict'에서 쓴 틀을 가져온 설명이다.",
+        "그는 백인민족주의의 가장 나쁜 점이 '민족주의'라는 데 있다고 본다. 민족주의는 민주주의의 다른 이름이고, 보편주의 역시 지구 전체를 하나의 민족으로 삼는 일종의 민족주의라고 주장하며, 보편주의의 치료제는 사회 조직의 실제 원리에 대한 명료한 이해라고 결론짓는다."
+      ],
+      "quotes": [
+        {
+          "en": "It should be obvious that, although I am not a white nationalist, I am not exactly allergic to the stuff (as should be the case with any intellectual—anyone who takes this as an endorsement of white nationalism is an idiot).",
+          "ko": "분명히 해 두자면, 나는 백인민족주의자가 아니면서도 그런 것에 딱히 알레르기를 일으키지는 않는다(지식인이라면 그래야 마땅하다. 이를 백인민족주의 지지 선언으로 읽는 사람은 바보다).",
+          "where": "본문 중반",
+          "url": "https://www.unqualified-reservations.org/2007/11/why-i-am-not-white-nationalist/"
+        },
+        {
+          "en": "I am not a white nationalist because I don’t find white nationalism useful or effective.",
+          "ko": "내가 백인민족주의자가 아닌 것은 그것이 쓸모 있거나 효과적이라고 보지 않기 때문이다.",
+          "where": "본문 후반",
+          "url": "https://www.unqualified-reservations.org/2007/11/why-i-am-not-white-nationalist/"
+        }
+      ],
+      "sv": {
+        "text": "Verge(2017)는 야빈이 공동 창업한 스타트업 Tlon(Urbit)을 소개하며 이 글을 언급했고, Vanity Fair(2022) · CNN(2025) · 뉴요커(2025) · The Nation(2022)도 야빈을 소개할 때 이 글을 든다. 야빈과 후원자들의 관계를 따지는 보도에서 반복해 인용되는 글이다. CNN은 2015년 한 소프트웨어 개발자 콘퍼런스가 야빈의 강연을 취소한 일도 인종에 관한 그의 글들을 둘러싼 논란 때문이었다고 전한다.",
+        "refs": [
+          {
+            "label": "The Verge (2017) - Alt-right darling Mencius Moldbug wanted to destroy democracy. Now he wants to sell you web services",
+            "url": "https://www.theverge.com/2017/2/21/14671978/alt-right-mencius-moldbug-urbit-curtis-yarvin-tlon"
+          },
+          {
+            "label": "Vanity Fair (2022) - Inside the New Right, Where Peter Thiel Is Placing His Biggest Bets",
+            "url": "https://www.vanityfair.com/news/2022/04/inside-the-new-right-where-peter-thiel-is-placing-his-biggest-bets"
+          },
+          {
+            "label": "CNN (2025) - Curtis Yarvin wants to replace American democracy with a form of monarchy led by a CEO",
+            "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo"
+          },
+          {
+            "label": "The New Yorker (2025) - Curtis Yarvin’s Plot Against America",
+            "url": "https://www.newyorker.com/magazine/2025/06/09/curtis-yarvin-profile"
+          },
+          {
+            "label": "The Nation (2022) - The Reactionary Prophet of Silicon Valley",
+            "url": "https://www.thenation.com/article/politics/curtis-yarvin/"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "반동주의자들이 인종과 관련한 20세기 진보의 정책 대부분에 사실상 동의하면서 최근 수십 년만 문제 삼는다는 점을 꼬집는다. 설령 집단 평균 차이가 있다 해도 기회의 평등을 위한 싸움은 여전히 남는다고 반박한다.",
+          "by": "스콧 알렉산더",
+          "label": "The Anti-Reactionary FAQ §5.4",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        },
+        {
+          "text": "야빈이 '백인민족주의'라는 꼬리표는 사양하면서도 신반동이 따르는 '인간 생물다양성'(집단 사이 지능 차이가 있다는 변두리 신념)을 받아들인다고 쓴다. 이 신념이 빈곤 · 범죄 · 교육 격차를 '편리하게' 설명해 준다는 점을 짚는다.",
+          "by": "아바 코프먼",
+          "label": "Curtis Yarvin’s Plot Against America (The New Yorker, 2025)",
+          "url": "https://www.newyorker.com/magazine/2025/06/09/curtis-yarvin-profile"
+        }
+      ],
+      "sources": [
+        {
+          "label": "Why I Am Not a White Nationalist",
+          "url": "https://www.unqualified-reservations.org/2007/11/why-i-am-not-white-nationalist/"
+        }
+      ],
+      "note": "인용 빈도는 열람한 주요 기사 9건 기준(NYT · Atlantic 등은 열람 불가)이고, 수사 · 반어가 짙어 어조는 담지 못했다."
+    },
+    {
+      "id": "brown-scare",
+      "no": 7,
+      "section": "core",
+      "title": "Technology, Communism and the Brown Scare",
+      "ko": "기술, 공산주의, 그리고 브라운 스케어",
+      "sub": "기술계 '파시스트 색출'을 레드 스케어에 견준 글",
+      "author": "yarvin",
+      "venue": "Unqualified Reservations",
+      "year": 2013,
+      "words": 10200,
+      "concepts": [
+        "cathedral",
+        "redpill"
+      ],
+      "people": [
+        "thiel"
+      ],
+      "core": "기술계의 '파시스트 색출'을 레드 스케어의 거울상인 '브라운 스케어'라 부르고 해커에게 맞서라고 권한다.",
+      "claims": [
+        "야빈은 미국의 끝없는 '파시스트 색출'을 '브라운 스케어(갈색 공포)'라 부르며, 레드 스케어의 절정기에도 브라운 스케어가 열 배는 컸다고 본다. 레드 스케어는 실제 첩자가 있던 민중적 현상이라 지배 지식층은 영향을 받지 않았지만, 브라운 스케어는 제도권이 앞장서는 '주류 음모론'이라 훨씬 강력하다는 것이다.",
+        "그는 기술(넓게는 '캘리포니아에서 일어나는 새롭고 멋진 모든 것')이 생산적인 엘리트에게 주어지는 특별한 관용 덕에 오랫동안 인종 · 성차별 규제에서 사실상 면제였지만, 이제 해커 세계에도 같은 압력이 번지고 있다고 말한다. 마녀사냥꾼은 마녀를 몰아내도 마녀는 사냥꾼을 몰아낸 적이 없고, 팩스 디킨슨과 폴 그레이엄도 Gawker를 무너뜨리기는커녕 움츠러든다는 것이다. 그는 이를 이 '음모'가 실재가 아니라 상상된 것이라는 증거로 든다.",
+        "이 글에서 야빈은 '우리는 매트릭스, 정확히는 대성당 안에 산다'고 쓰고, 자신이 고른 레드필을 '미국은 공산주의 국가다'로 정한다. 일부러 모호하게 쓴 문장이라 어떻게 해석해도 모두 참이라고 주장하며, 대성당이 평생 주입한 '파란 약'은 이를 대문자 C의 소련식 '공산주의 국가'라는 허수아비로 바꿔 버린다고 설명한다.",
+        "해커들에게는 숙청당할 필요가 없다고 말한다. 포식자는 강하지만 복잡하지 않아 조심하면 해킹할 수 있으므로, 방어에 급급하지 말고 선제적으로 공격하라고 조언한다."
+      ],
+      "quotes": [
+        {
+          "en": "Brown Scare? Or dare I say… #BrownScare? But what else to name America’s ginormous, never-ending, profoundly insane witch-hunt for fascists under the bed?",
+          "ko": "브라운 스케어? 아니, #BrownScare라고 불러야 할까? 파시스트를 침대 밑까지 뒤지는 미국의 거대하고 끝없는 정신 나간 마녀사냥을 달리 뭐라 부르겠는가?",
+          "where": "본문 서두",
+          "url": "https://www.unqualified-reservations.org/2013/09/technology-communism-and-brown-scare/"
+        },
+        {
+          "en": "Dear fellow geeks, there’s no need to get purged. Your predator, though powerful, is not complicated, and not that hard to hack if you’re careful.",
+          "ko": "동료 괴짜들이여, 숙청당할 필요는 없다. 당신들의 포식자는 강하긴 해도 복잡하지 않고, 조심하면 해킹하기도 어렵지 않다.",
+          "where": "본문 초반",
+          "url": "https://www.unqualified-reservations.org/2013/09/technology-communism-and-brown-scare/"
+        },
+        {
+          "en": "I think I’ve chosen my candidate for the Pill itself. And I’m going to stick with it. My Pill is: America is a communist country.",
+          "ko": "내가 고른 ‘그 약’ 후보를 정했다. 끝까지 밀고 가겠다. 내 약은 이것이다. 미국은 공산주의 국가다.",
+          "where": "본문 중반",
+          "url": "https://www.unqualified-reservations.org/2013/09/technology-communism-and-brown-scare/"
+        }
+      ],
+      "sv": {
+        "text": "야빈이 실리콘밸리의 구체적 사건과 인물을 직접 다룬 글이다. Verge(2017)는 이 글이 Urbit이 사업으로 출범하던 무렵에 나왔고, Business Insider CTO의 해고와 Y Combinator 창업자 폴 그레이엄을 향한 비판을 야빈이 '마녀사냥'으로 규정했다고 짚는다. TechCrunch(2013)는 글에 나오는 팩스 디킨슨이 신반동 사상의 영향을 받았다고 말한다고 전했고, 현재 판의 각주 2는 고커를 무너뜨리는 데 '헐크 호건 섹스 테이프와 피터 틸의 결심이 필요했다'고 덧붙인다.",
+        "refs": [
+          {
+            "label": "The Verge (2017) - Alt-right darling Mencius Moldbug wanted to destroy democracy. Now he wants to sell you web services",
+            "url": "https://www.theverge.com/2017/2/21/14671978/alt-right-mencius-moldbug-urbit-curtis-yarvin-tlon"
+          },
+          {
+            "label": "TechCrunch (2013) - Geeks for Monarchy: The Rise of the Neoreactionaries",
+            "url": "https://techcrunch.com/2013/11/22/geeks-for-monarchy/"
+          },
+          {
+            "label": "이 글 본문 각주 2 (Gawker와 피터 틸)",
+            "url": "https://www.unqualified-reservations.org/2013/09/technology-communism-and-brown-scare/"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "'미국은 공산주의 국가다'라는 구호를 수천 단어에 걸쳐 펼치면서도 미국이 정말 마르크스적 원리로 운영되는지는 한 번도 묻지 않는다고 지적한다. 야빈이 이 대목에서 기본적인 검증(due diligence)을 빠뜨렸다는 것이다.",
+          "by": "엘리자베스 샌디퍼",
+          "label": "Current Affairs 인터뷰: The Strange and Terrifying Ideas of Neoreactionaries (2022)",
+          "url": "https://www.currentaffairs.org/news/2022/05/the-strange-and-terrifying-ideas-of-neoreactionaries"
+        },
+        {
+          "text": "1928년 공산당 강령 요구의 70%가 실현됐다는 분석은 강령에 '생산수단의 공유' 같은 항목이 빠져 있고, 같은 기준으로 1920년 공화당 강령을 따지면 81%가 실현돼 '공화당 국가'라는 결론도 나온다고 반박한다. 느슨한 정의로 '공산주의'를 붙인 뒤 엄격한 정의의 함의를 끌어오는 것은 '세상에서 가장 나쁜 논증'이라고 비판한다.",
+          "by": "스콧 알렉산더",
+          "label": "The Anti-Reactionary FAQ §3.5",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        }
+      ],
+      "sources": [
+        {
+          "label": "Technology, Communism and the Brown Scare",
+          "url": "https://www.unqualified-reservations.org/2013/09/technology-communism-and-brown-scare/"
+        }
+      ],
+      "note": "글의 앞부분 · 레드필 대목 · 결말 위주로 원문과 대조했고, 중간 논증은 훑지 못했다."
+    }
+  ],
+  "concepts": [
+    {
+      "id": "cathedral",
+      "en": "CATHEDRAL",
+      "name": "대성당",
+      "short": "대학 · 언론이 정책과 여론을 정하는 비공식 권력 구조",
+      "long": "야빈이 '열린 편지' 4장에서 1945년 이후의 주류 학계 · 언론 · 교육 기관을 한데 묶어 '대성당'이라 부르자고 제안하며 쓰기 시작한 말이다. 8장은 이를 인가받은 대학과 기성 언론의 두 부분으로 설명한다. 대학이 공공 정책을 만들고 언론이 여론을 이끌어 동의를 '제조'하며, 이 두뇌가 영구 공무원 조직('폴리곤' 또는 '아파라트')을 거느린다는 것이다. 야빈은 중앙 사령부가 없는데도 하버드와 예일이 한 방향으로 움직이는 현상을 '괴벨스 없는 획일화(Gleichschaltung)'라 부르고, '패치워크' 3장에서는 이 체계에 잘못을 바로잡을 책임 장치가 없다고 지적한다. 이름이 진짜 성당을 깎아내리려는 뜻은 아니며, 세속주의를 내세우면서도 실제로는 사제 계급처럼 군다는 수사적 요점이라고 각주에서 밝힌다.",
+      "terms": [
+        "대성당",
+        "Cathedral",
+        "the Cathedral"
+      ]
+    },
+    {
+      "id": "formalism",
+      "en": "FORMALISM",
+      "name": "형식주의",
+      "short": "누가 무엇을 가졌는지 확정해 폭력을 없애자는 발상",
+      "long": "2007년 4월 '형식주의 선언문'에서 야빈이 내세운 이념으로, 이름은 법 형식주의(legal formalism)에서 빌렸다. 인간사의 핵심 문제를 폭력, 특히 조직된 폭력으로 보고 이를 도덕이 아닌 공학의 문제로 다룬다. 폭력은 '갈등 더하기 불확실성'이므로 누가 무엇을 가졌는지 명확하고 깨질 수 없는 규칙이 있으면 싸울 이유가 사라진다는 것이 핵심 논리다. 그래서 '누가 가져야 하는가'를 따지지 않고 '지금 누가 가졌는가'를 확정해 증서를 주자고 하며, 소유와 통제가 일치할 때만 안정된다고 본다. 이 구상은 훗날 신관방주의라는 이름으로 구체화된다.",
+      "terms": [
+        "형식주의",
+        "Formalism",
+        "formalism",
+        "formalist",
+        "formalists"
+      ]
+    },
+    {
+      "id": "neocameralism",
+      "en": "NEOCAMERALISM",
+      "name": "신관방주의",
+      "short": "국가를 주주가 통제하는 주권 주식회사로 운영하자는 구상",
+      "long": "'관방주의(cameralism)'는 프리드리히 대왕의 프로이센식 국가 경영을 가리키며, 야빈은 여기에 '신(neo)'을 붙여 국가를 이익을 내는 법인으로 운영하는 구상을 부른다. 정부를 주주들이 절대적으로 통제하는 '주권 주식회사'로 보고, 주주가 위임한 책임자에게 쪼개지지 않은 최고 권한을 맡긴다. 도덕적 책임은 구조로 강제할 수 없지만 재정적 책임은 강제할 수 있으므로, 땅의 가치를 높여야 이익이 나는 통치자는 주민에게 좋은 서비스를 하게 된다는 논리다. 쿠데타를 막는 장치로는 주주가 암호 키로 지휘 체계를 통제하는 '암호화된 지휘 체인'을 든다.",
+      "terms": [
+        "신관방주의",
+        "네오카메랄리즘",
+        "neocameralism",
+        "Neocameralism",
+        "neocameralist",
+        "neo-cameralism"
+      ]
+    },
+    {
+      "id": "patchwork",
+      "en": "PATCHWORK",
+      "name": "패치워크",
+      "short": "주권 기업형 소국 수만 개가 경쟁하는 세계",
+      "long": "야빈이 2008년 연재 『Patchwork』에서 그린 21세기 정치 체제다. 낡은 정부가 무너진 자리에 수만~수십만 개의 독립 소국('realm')이 거미줄처럼 이어지고, 각 소국은 자기 땅('patch')을 자본으로 삼는 주권 주식회사가 통치한다. 주민 의견을 묻지 않는 대신 떠날 자유가 있어서, 야빈은 이를 '이탈(exit)만 있고 항의(voice)는 없는' 설계라고 부른다. 소국이 하나로 합쳐지거나 한 곳이 다른 곳을 지배하지 못하게 하는 보안 설계가 핵심 과제이며, 모든 소국이 안전하면 패치워크도 평화롭다고 본다.",
+      "terms": [
+        "패치워크",
+        "Patchwork",
+        "patchwork"
+      ]
+    },
+    {
+      "id": "democracy",
+      "en": "DEMOCRACY",
+      "name": "민주주의",
+      "short": "국민의 지배가 아니라 대학 · 언론 · 관료의 지배라는 진단",
+      "long": "야빈은 민주주의를 '국민이 다스리는 제도'로 보지 않는다. '열 개의 레드필'에서는 서방의 실권이 선출직이 아니라 영구 공무원 조직에 있고, 대학과 언론 같은 NGO도 사실상 이 관료제의 일부라고 주장한다. 형식주의 선언문은 민주주의를 '비효과적이고 파괴적인 통치 체계'라 부르며, 전후 서방의 번영은 민주주의가 아니라 비정치적인 관료제 덕분이라고 말한다. 열린 편지 14장은 이를 '위험하고 악성인 정부 형태'이자 통치 영토라는 자산을 둘러싼 '총 없는 영구 내전'이라 하고, 『도킨스』 7장은 20세기의 대량학살이 민주주의의 결과라고 주장한다. 그는 나치와 공산주의도 '인민의 이름으로 통치'하는 민주주의의 한 형태라고 본다.",
+      "terms": [
+        "민주주의",
+        "democracy",
+        "Democracy",
+        "democratic"
+      ]
+    },
+    {
+      "id": "universalism",
+      "en": "UNIVERSALISM",
+      "name": "보편주의",
+      "short": "진보주의를 '비유신론적 기독교 분파'로 부르는 이름",
+      "long": "야빈이 진보주의 · 다문화주의 · 자유주의 · 인본주의 · 좌파 · 정치적 올바름 등을 한꺼번에 가리키려고 쓰는 이름이다. 그는 이것이 영국 비국교도 · 청교도에서 유니테리언 · 초월주의 · 진보 운동으로 이어진 칼뱅주의 계보의 '비유신론적 기독교 분파'라고 주장한다. 복제 과정에 국가라는 단계가 필요하고 인류 · 진보 · 평등 · 민주주의 같은 '신비'로 숙주를 혼란스럽게 하므로 '권력의 비의 종교(mystery cult of power)'라 부른다. 2007년 연재 『How Dawkins Got Pwned』에서 길게 펼쳤고, 도킨스 같은 무신론자도 이 신앙의 매개체(vector)라고 말한다.",
+      "terms": [
+        "보편주의",
+        "Universalism",
+        "Universalist",
+        "Universalists"
+      ]
+    },
+    {
+      "id": "sovereignty",
+      "en": "SOVEREIGNTY",
+      "name": "주권",
+      "short": "더 높은 권위에 종속되지 않는 최종 결정권",
+      "long": "야빈에게 정부는 '주권을 가진 법인'이며(열린 편지 6장), 주권은 영토에 대한 통제가 더 높은 권위에 종속되지 않는다는 뜻이다. 그는 어떤 정부도 스스로를 제한할 수 없다고 보며, 사법심사로 정부를 법 아래 두려는 설계는 결국 대법원을 주권자로 만들 뿐이라고 말한다. 최종 권위는 규칙이 아니라 사람에게 있으므로 주권은 부분적으로 있는 것이 아니라 '있거나 없는' 이분법(boolean)이라는 입장이다. 주권자는 법을 집행할 수는 있어도 법에 구속되지는 않는다고 구분한다.",
+      "terms": [
+        "주권",
+        "sovereignty",
+        "Sovereignty",
+        "sovereign"
+      ]
+    },
+    {
+      "id": "monarchy",
+      "en": "MONARCHY",
+      "name": "군주제",
+      "short": "전권을 쥔 한 사람이 책임지는 정부 (현대판 CEO-군주)",
+      "long": "야빈이 말하는 군주제는 입헌 · 의례용 군주제가 아니라 필머(Filmer)식 '절대 군주제'를 현대 기업 설계로 옮긴 것이다. 패치워크의 주권 주식회사는 '군주제의 변형'으로, 생물학적 우연 때문에 약한 군주가 나오던 역사적 문제를 주주가 책임자를 교체하는 방식으로 푼다고 한다. 그는 군주제와 폭정을 구분하며, 승계가 분명한 군주제와 달리 폭군은 살인으로 자리를 지켜야 해서 광기가 구조에 스며든다고 본다. 스스로를 왕당파 · 자코바이트에 빗대고, 패치워크 시대의 아이들은 1688년 이후를 '앵글로-아메리칸 공위기(Interregnum)'로 배우게 될 것이라고 상상한다.",
+      "terms": [
+        "군주제",
+        "monarchy",
+        "Monarchy",
+        "monarchist",
+        "divine-right monarchy"
+      ]
+    },
+    {
+      "id": "rage",
+      "en": "RAGE",
+      "name": "RAGE (공무원 일괄 퇴직)",
+      "short": "정부 직원을 연금 주고 일괄 퇴직시키자는 구호",
+      "long": "'Retire All Government Employees(모든 정부 직원을 퇴직시키자)'의 머리글자로, 야빈이 2012년 BIL 콘퍼런스 강연 'How to Reboot the US Government'에서 내세운 구호로 알려져 있다. 낡은 체제의 직원을 해고가 아니라 연금을 주어 퇴직시켜 저항을 줄이는 방식이며, 이 발상은 이미 열린 편지 8장에 필수 보안 · 기술 인력을 뺀 현 체제 전원을 '전액 급여로 퇴직'시키고 공직 취업을 막자는 대목으로 나온다. 야빈은 이를 정부를 '재부팅'하는 첫 단계로, 그다음에 '국가 CEO(곧 독재자)'를 세우는 구상과 묶는다. 2021년 JD 밴스가 '중간 관료를 모두 해고하라'고 말한 팟캐스트 대목과 자주 겹쳐 읽히며, 블레이크 매스터스는 유세에서 이 구호를 '내 친구의 약어'라며 소개했다.",
+      "terms": [
+        "RAGE",
+        "Retire All Government Employees"
+      ]
+    },
+    {
+      "id": "exit",
+      "en": "EXIT",
+      "name": "이탈 (Exit)",
+      "short": "마음에 안 들면 떠나는 것으로 통치자를 견제한다는 논리",
+      "long": "'이탈(exit)'은 조직에 불만을 표하는 두 길, 곧 남아서 목소리를 내는 '항의(voice)'와 떠나는 '이탈'을 구분한 앨버트 허시먼(1970)의 틀에서 온 말이다. 야빈은 패치워크를 '이탈만 있고 항의는 없는' 설계라 부르며, 주민이 자산을 들고 언제든 다른 소국으로 떠날 권리를 계약에 넣고 소국은 그 때문에 서비스로 경쟁해야 한다고 한다. 닉 랜드는 신반동의 방향을 '이탈을 향하는 것'으로 요약했고, 피터 틸은 2009년 글에서 정치로부터의 탈출을 사이버스페이스 · 우주 · 시스테딩에서 찾았다. 발라지 스리니바산은 『네트워크 국가』에서 허시먼의 삼각형(이탈 · 항의 · 충성)을 가져와 뉴욕타임스를 '항의' 쪽에, 비트코인을 '이탈' 쪽에 둔다.",
+      "terms": [
+        "이탈",
+        "exit",
+        "Exit",
+        "exit rights"
+      ]
+    },
+    {
+      "id": "nrx",
+      "en": "NEOREACTION (NRX)",
+      "name": "신반동 (NRx)",
+      "short": "야빈 이후 온라인에서 퍼진 반민주주의 지적 흐름",
+      "long": "'신반동(neoreaction, NRx)'은 야빈의 블로그를 중심으로 모인 반(反)민주주의 지적 흐름을 가리키는 이름이다. 야빈은 처음 자기 이념을 '형식주의'라 불렀지만 2010년 아널드 클링이 '네오리액셔너리'라 부른 뒤 이 이름이 굳었다고 TechCrunch(2013)는 전한다. 야빈의 사이트는 NRx를 '안전하고 책임 있고 효과적인 정부'를 목표로 하는 정치철학이자 지적 운동이라 소개하고, 핵심 명제를 '민주주의'를 정치 공학의 관점에서 다시 평가하는 일이라고 적는다. 닉 랜드는 연재 『The Dark Enlightenment』에서 이 흐름을 '어둠의 계몽'이라 부르며 '항의' 대신 '이탈'로 향하는 반민주주의 사상으로 정리했다. 비판자들은 이를 위장된 파시즘이라 부르고, 대안우파와의 접점을 문제 삼는다(The Verge · Vox).",
+      "terms": [
+        "신반동",
+        "NRx",
+        "neoreaction",
+        "neoreactionary",
+        "neo-reaction",
+        "neoreactionaries",
+        "Dark Enlightenment",
+        "어둠의 계몽"
+      ]
+    },
+    {
+      "id": "castes",
+      "en": "CASTES",
+      "name": "카스트",
+      "short": "미국 사회를 지위 체계가 다른 5개 집단으로 나눈 분류",
+      "long": "야빈이 2007년 글 'Castes of the United States'에서 쓴 분류로, 그는 '카스트'를 '자기만의 지위 체계를 가진 사회 집단'으로 다시 정의하고 인도의 바르나와 똑같지는 않은 '대략적인' 비유라고 단서를 단다. 미국 사회를 브라만 · 달리트 · 헬롯 · 옵티메이트 · 바이샤 다섯 집단으로 나누고, 학벌과 지적 성취 · NGO 활동으로 지위를 얻는 브라만이 오늘날의 지배 카스트라는 가설을 세운다. 옵티메이트는 얼마 전까지의 지배 카스트로, 출생과 가문으로 지위를 얻던 옛 상류층이다. 이어진 글 'The BDH–OV conflict'에서는 민주당을 브라만 · 달리트 · 헬롯의 정당, 공화당을 옵티메이트 · 바이샤의 정당으로 보고 이를 'BDH–OV 갈등'이라 부르며, 이 틀은 『나는 왜 백인민족주의자가 아닌가』의 갈등 해석에도 쓰인다.",
+      "terms": [
+        "카스트",
+        "caste",
+        "castes",
+        "Brahmin",
+        "Dalit",
+        "Helot",
+        "Optimate",
+        "Vaisya",
+        "브라만",
+        "달리트",
+        "헬롯",
+        "옵티메이트",
+        "바이샤"
+      ]
+    },
+    {
+      "id": "network-state",
+      "en": "NETWORK STATE",
+      "name": "네트워크 국가",
+      "short": "온라인 공동체가 땅을 사들여 인정받는 국가 (발라지)",
+      "long": "투자자 · 창업가 발라지 스리니바산이 2022년 책 『The Network State』에서 내놓은 개념으로, 그는 이를 '집단행동 능력을 가진 결속 높은 온라인 공동체가 세계 곳곳의 영토를 크라우드펀딩하고 결국 기존 국가에게서 외교적 인정을 얻는 것'이라 한 문장으로 정의한다. 민족국가가 지도에서 출발해 땅마다 국가를 배정한다면, 네트워크 국가는 70억 명의 사람에서 출발해 각자를 하나 이상의 네트워크로 끌어들인다고 설명한다. 야빈의 패치워크와 마찬가지로 '이탈'의 논리를 깔고 있지만, 소국의 영토 통치가 아니라 온라인 공동체가 먼저라는 점이 다르다. 발라지는 책의 읽을거리에 야빈의 『Unqualified Reservations』를 올리고, 가장 중요한 권력이 선출직 바깥의 교수 · 활동가 · 관료 · 언론인에게 있다는 논지를 '야빈이 길게 기록했다'며 가져온다.",
+      "terms": [
+        "네트워크 국가",
+        "network state",
+        "Network State",
+        "network states"
+      ]
+    },
+    {
+      "id": "redpill",
+      "en": "REDPILL",
+      "name": "레드필",
+      "short": "공식 서사를 의심하고 '진짜 현실'을 보는 각성",
+      "long": "영화 『매트릭스』에서 '빨간 약'은 불편한 진실을 택하는 선택을 뜻한다. 야빈은 2007년 '민주주의에 반대하는 열 가지 레드필'에서 민주주의의 정설(파란 약)과 자신의 반론(빨간 약)을 열 쌍으로 맞세웠고, 2009년 『친절한 입문』 1장 '레드필'에서 UR의 목표를 독자의 뇌를 고치는 일이라 소개했다. Vox · Vanity Fair · 뉴요커는 야빈을 이 비유를 정치에 들여온 장본인으로 꼽는다. 2013년 글에서는 자신이 고른 레드필을 '미국은 공산주의 국가다'로 정하기도 한다.",
+      "terms": [
+        "레드필",
+        "빨간 약",
+        "red pill",
+        "red pills",
+        "redpill",
+        "redpilled",
+        "Red Pill"
+      ]
+    }
+  ]
+}
