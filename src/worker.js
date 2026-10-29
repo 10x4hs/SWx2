@@ -11,6 +11,7 @@ import { registerBooks } from "./books.js";
 import { registerMba, registerDev, registerVg, registerOnto } from "./mba.js";
 import { registerAppState } from "./appstate.js";
 import { registerCimAsk } from "./cimask.js";
+import { registerSvm } from "./svm.js";
 import { registerRag } from "./rag.js";
 import { registerRels } from "./onto.js";
 import { registerDecide } from "./decide.js";
@@ -115,7 +116,7 @@ async function route(req, env, url, ec) {
   return r.handler(ctx);
 }
 
-const AI_PATH = /^\/(?:ai\/[a-z-]+|books\/ask|apps\/cim\/ask|papers\/(?:ask|explain|quiz)|review\/week\/ai|room\/ai|news\/(?:summarize|item\/[^/]+\/(?:deep|summarize|ask)|comments\/[^/]+\/ai-rebut))$/;
+const AI_PATH = /^\/(?:ai\/[a-z-]+|books\/ask|apps\/cim\/ask|svm\/translate|papers\/(?:ask|explain|quiz)|review\/week\/ai|room\/ai|news\/(?:summarize|item\/[^/]+\/(?:deep|summarize|ask)|comments\/[^/]+\/ai-rebut))$/;
 async function aiQuota(env, user) {
   if (await env.DB.prepare("SELECT 1 FROM team_members WHERE team_id = 'swx2' AND user_id = ?").bind(user.id).first()) return;
   const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), max = Number(env.AI_DAILY || 30);
@@ -165,6 +166,7 @@ registerVg(on, { json, body, fail, now }); // Vector & Graph 과정 (#/sw/vg) �
 registerOnto(on, { json, body, fail, now }); // 온톨로지 (#/sw/onto) · Palantir AIP (#/sw/aip) — 같은 모양, onto_* · aip_* 표
 registerAppState(on, { json, body, fail, now }); // 내장 Dock 앱의 사람별 저장소 (#/cim 투자자산운용사)
 registerCimAsk(on, { json, body, fail }); // CIM AI 튜터 옆 패널 (POST /apps/cim/ask · 하루 사용량은 AI_PATH) — 근거 [1]..[n] 은 rag.js 에서
+registerSvm(on, { json, body, fail }); // Silicon Valley Mafia (#/svm, 관리자만) — 내용 · 원문 읽기 · 단락 번역 (POST /svm/translate 는 AI_PATH)
 registerRels(on); // 관계 종류 · 제안함 · 새 노트 자리 제안 (/rels/* · /notes/:id/sort) — src/onto.js
 registerDecide(on, { json, fail }); // decide() 판정 통계 (GET /decide/stats, 관리자) — src/decide.js
 registerRag(on, { json, fail }); // 뜻으로 찾기 (GET /search/semantic) · 색인 관리 (/rag/*, 관리자)

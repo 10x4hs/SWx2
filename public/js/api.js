@@ -238,6 +238,9 @@ export const api = {
   bookReview: (results) => request("PUT", "/books/review", { results }),
   appState: (app) => request("GET", `/apps/${app}/state`), // 내장 Dock 앱의 사람별 저장소 (CIM)
   saveAppState: (app, data, at) => request("PUT", `/apps/${app}/state`, { data, at }), // 409 = 다른 기기가 먼저 씀 → err.data 에 서버 값
+  svmData: () => request("GET", "/svm/data"), // Silicon Valley Mafia 내용 (관리자만 · src/svm.js)
+  svmSource: (id, part) => request("GET", `/svm/source?id=${encodeURIComponent(id)}&part=${part}`), // 원문 단락 (원문 사이트에서 그때그때)
+  svmTranslate: (id, texts) => request("POST", "/svm/translate", { id, texts }), // 단락 번역 (AI)
   mbaState: () => request("GET", "/mba/state"),
   mbaRead: (module, card, correct, total) => request("PUT", "/mba/read", { module, card, correct, total }),
   mbaReview: (results) => request("PUT", "/mba/review", { results }),

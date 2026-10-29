@@ -10,8 +10,10 @@ const dayLabel = (d) => { const t = new Date(d + "T00:00:00"); return `${t.getMo
 const SEEN = "trio-updates-seen";
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 
-export async function unseenCount() {
-  try { const { updates } = await (await fetch("/updates.json", { cache: "no-cache" })).json(); const seen = store.get(SEEN) || ""; return updates.filter((u) => u.date > seen).length; } catch { return 0; }
+// admin: true 인 기록은 관리자에게만 (관리자 전용 기능 — 예: Silicon Valley Mafia)
+const forMe = (list, me) => list.filter((u) => !u.admin || me?.role === "admin");
+export async function unseenCount(me) {
+  try { const { updates } = await (await fetch("/updates.json", { cache: "no-cache" })).json(); const seen = store.get(SEEN) || ""; return forMe(updates, me).filter((u) => u.date > seen).length; } catch { return 0; }
 }
 
 export function mount(root, ctx) {
@@ -43,6 +45,7 @@ export function mount(root, ctx) {
     $$("[data-f]", root).forEach((b) => b.addEventListener("click", () => { filter = b.dataset.f; draw(); }));
   }
   fetch("/updates.json", { cache: "no-cache" }).then((r) => r.json()).then((j) => {
+    j.updates = forMe(j.updates, ctx.me);
     data = j; draw();
     store.set(SEEN, j.updates.map((u) => u.date).sort().pop()); // 여기까지 봤어요
     window.dispatchEvent(new CustomEvent("trio:updates-seen"));

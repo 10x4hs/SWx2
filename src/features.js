@@ -41,7 +41,10 @@ export const TRIAL_MS = 24 * 3600e3; // 무료체험 24시간 (계정이 열리�
 export const inTrial = (user) => (user.trial_until || 0) > Date.now();
 export const canUse = (user, f) => !f || user.role === "admin" || inTrial(user) || (user.features || []).includes(f);
 // route() 에서: 잠긴 기능이면 403 (Dock 의 페이지 목록만은 빈 목록으로 — 화면이 깨지지 않게)
+// 관리자만 (신청 · 체험으로도 안 열려요): Silicon Valley Mafia — 다른 사람에게는 없는 주소처럼 404
+const ADMIN_ONLY = /^\/(?:svm(?:\/|$)|apps\/svm\/)/;
 export function gate(method, path, user) {
+  if (ADMIN_ONLY.test(path) && (user.role !== "admin" || user.imp_by)) fail(404, "없는 주소예요.");
   const f = featureOf(path);
   if (canUse(user, f)) return null;
   if (method === "GET" && path === "/pages") return json({ pages: [] });

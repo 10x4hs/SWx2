@@ -18,6 +18,7 @@
 | 대화방 · 창고 | `#/room` | 실시간 채팅(@AI), 책 · 링크 · 영상 모음 |
 | 공부 | `#/sw` · `#/cim` · `#/mba` | 교과서식 공부 페이지, 근거 달린 AI 튜터 |
 | 뉴스 | `#/news` | 하루 한 부 신문 |
+| Silicon Valley Mafia | `#/svm` | 관리자 전용 · Curtis Yarvin 글 15편 (요약 · 원문 + 번역) · 영상 · 지식그래프 — 내용 규격 `src/svm/CONTENT_SPEC.md` |
 
 공통: `⌘K` 검색 · 집중 타이머 · 다크/라이트 · 모든 AI 입력창에서 웹 검색 · 사진 넣기.
 기능 자세히 → [docs/guide/features.md](docs/guide/features.md)

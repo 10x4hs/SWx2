@@ -1,0 +1,379 @@
+{
+  "essays": [
+    {
+      "id": "brief-explanation-of-the-cathedral",
+      "no": 8,
+      "section": "gray",
+      "title": "A brief explanation of the cathedral",
+      "ko": "대성당에 대한 짧은 설명",
+      "sub": "저널리즘 더하기 학계, 대성당의 한 줄 정의",
+      "author": "yarvin",
+      "venue": "Gray Mirror",
+      "year": 2021,
+      "words": 3883,
+      "concepts": [
+        "cathedral",
+        "sovereignty",
+        "monarchy",
+        "democracy"
+      ],
+      "people": [
+        "balaji"
+      ],
+      "core": "대성당은 저널리즘과 학계가 한 몸처럼 움직이는 구조이며 고칠 수 없다고 본다.",
+      "claims": [
+        "야빈은 오래전에 자신이 만든 '대성당'이라는 말이 요즘 더 자주 쓰인다며, 이를 '저널리즘 더하기 학계'를 줄인 말이라고 정의한다. 중세에 교회가 맡던 지적 중심의 자리를 오늘날 이 제도들이 차지했다는 뜻이다. 교회는 하나의 조직인데 대성당은 여러 기관이면서도 이름이 단수라는 점, 곧 '여럿이 하나처럼 움직이는' 현상이 핵심 수수께끼라고 한다.",
+        "그는 하버드·예일·타임스·포스트처럼 조직상 연결이 없는 기관들이 같은 교리를 공유하고, 그 교리가 예측 가능한 방향으로 함께 변해 간다고 주장한다. 1951년의 예일과 2021년의 예일은 서로를 지적 범죄자의 소굴로 볼 만큼 다른데도, 각 시점의 기관들은 늘 같은 쪽에 서 있다는 것이다. 표본이 독립적이지 않다면 통계는 현실이 아니라 그 표본을 조정하는 힘을 재고 있을 뿐이라고도 한다.",
+        "원인은 아이디어 시장의 선택압이라는 것이 야빈의 설명이다. 대성당은 명령 체계가 아니라 담론처럼 작동하고, 권력의 행사를 정당화하는 '지배적 아이디어'는 순풍을, 권력을 의심하게 하는 '열성 아이디어'는 역풍을 받는다고 한다. 정책 전략은 교수가, 정부 감시라는 전술은 기자가 맡으니 '전략 더하기 전술이 곧 통제'이고, 호수를 오염시키는 하수는 이들이 쥔 주권이라고 쓴다.",
+        "이를 두 나라의 우화로 설명한다. 차르가 다스리는 무다나의 반체제 지식인은 주권이 없어서 좋은 생각만 선택되고, 진보 민주주의 국가 무토피아의 교수와 기자는 주권을 쥐어서 지배적 아이디어에 쏠린다는 것이다. 차르는 처벌로, 대성당은 보상으로 순응을 만들지만 둘 다 권력의 방식이라고 본다.",
+        "야빈은 대성당을 고칠 수 없다고 주장한다. 문제는 대성당 자체가 아니라 책임을 바깥으로 넘겨 '권력이 새는' 관료제이고, 책임이 위로 모이는 군대·기업 같은 구조의 이름이 군주제라는 논리이다. 우화의 결말에서 무토피아 민중은 민주주의를 수단으로 써서 민간 부문의 이름난 기업가를 군주로 세우고, 옛 관료에게는 퇴직금과 새 일자리를 준다."
+      ],
+      "quotes": [
+        {
+          "en": "“The cathedral” is just a short way to say “journalism plus academia”—in other words, the intellectual institutions at the center of modern society, just as the Church was the intellectual institution at the center of medieval society.",
+          "ko": "'대성당'은 '저널리즘 더하기 학계'를 줄인 말일 뿐이다. 곧 중세 사회의 중심에 교회가 있었듯, 현대 사회의 중심에 있는 지적 제도들을 가리킨다.",
+          "where": "도입부",
+          "url": "https://graymirror.substack.com/p/a-brief-explanation-of-the-cathedral"
+        },
+        {
+          "en": "The cathedral can’t be repaired for two reasons. The first is that it can’t be repaired—just look at it. The second is that it isn’t the problem.",
+          "ko": "대성당은 두 가지 이유로 고칠 수 없다. 첫째, 고칠 수가 없다. 그냥 보면 안다. 둘째, 대성당이 문제가 아니다.",
+          "where": "소제목 'The cathedral cannot be repaired'",
+          "url": "https://graymirror.substack.com/p/a-brief-explanation-of-the-cathedral"
+        },
+        {
+          "en": "The Tsar punishes deviation from canonical thought. The cathedral rewards conformity with dominant thought.",
+          "ko": "차르는 정통 사상에서 벗어난 자를 벌한다. 대성당은 지배적 사상에 순응한 자에게 상을 준다.",
+          "where": "소제목 'Selective advantage of dominant ideas'",
+          "url": "https://graymirror.substack.com/p/a-brief-explanation-of-the-cathedral"
+        }
+      ],
+      "sv": {
+        "text": "'대성당'은 야빈의 가장 영향력 있는 개념 가운데 하나로 꼽히고, 이 글은 그 정의를 직접 인용할 때 쓰인다(Vox, The Bulwark). 이 글의 우화에서 새 군주는 '두 개의 혁신적인 회사를 일군' 민간 부문의 지도자이고, 그의 '스타트업 국가'는 서부 해안 기술 업계의 베테랑들이 채운다. The Bulwark는 이 2021년의 시나리오가 DOGE의 태도를 미리 보여 주었다고 읽으며, 보도에 따르면 DOGE 직원 일부가 '대성당'이라는 말을 의식적으로 썼다고 전한다. 뉴요커는 인사관리처 법무 책임자 앤드루 클로스터가 연방 공무원을 충성파로 바꾸는 일이 '대성당'을 이기는 데 도움이 된다고 말했다고 전하고, 배니티 페어는 발라지 스리니바산이 대성당 개념과 닮은 '종이 벨트(paper belt)'라는 말을 써 왔다고 쓴다.",
+        "refs": [
+          {
+            "label": "The Bulwark, Curtis Yarvin's Cranky Yearnings (조슈아 테이트, 2025-07-14)",
+            "url": "https://www.thebulwark.com/p/curtis-yarvin-cranky-yearnings-monarchy-royalist-tech-right-permission-structure"
+          },
+          {
+            "label": "Vox, Curtis Yarvin wants American democracy toppled (앤드루 프로콥, 2022-10-24)",
+            "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug"
+          },
+          {
+            "label": "The New Yorker, Curtis Yarvin's Plot Against America (아바 코프먼, 2025-06)",
+            "url": "https://www.newyorker.com/magazine/2025/06/09/curtis-yarvin-profile"
+          },
+          {
+            "label": "Vanity Fair, Inside the New Right (제임스 포그, 2022-04)",
+            "url": "https://www.vanityfair.com/news/2022/04/inside-the-new-right-where-peter-thiel-is-placing-his-biggest-bets"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "대성당을 '분산된 음모'라고 부르며, 진보적 사상은 하버드와 타임스보다 훨씬 오래되었고 캐나다·영국·프랑스·네덜란드·스웨덴처럼 미국보다 더 왼쪽인 나라도 많다는 점을 들어 이 두 기관이 진보주의를 퍼뜨렸다는 설명이 맞지 않는다고 반박한다. 이 글보다 앞선 2013년의 반론이다.",
+          "by": "스콧 알렉산더",
+          "label": "The Anti-Reactionary FAQ, 3.2절",
+          "url": "https://slatestarcodex.com/2013/10/20/the-anti-reactionary-faq/"
+        },
+        {
+          "text": "대성당이 대단한 개념인 척하지만 사실은 개인적 원한과 파시즘 의제에서 나온 '축약된 적 명단'에 불과하다고 비판한다. 대학·언론·관료제가 그렇게 전능하다면 왜 트럼프의 1월 6일 기소를 두고 논란이 벌어지느냐며, 문제는 이 기관들의 강함이 아니라 약함과 자본의 지배라고 반박한다.",
+          "by": "코리 페인",
+          "label": "The Nation, The Reactionary Prophet of Silicon Valley (2022-10-27)에 실린 발언",
+          "url": "https://www.thenation.com/article/politics/curtis-yarvin/"
+        },
+        {
+          "text": "대성당의 뼈대는 제임스 버넘 같은 우파 이념비판의 계보에 있는 낡은 생각이라고 짚는다. 또 어떤 아이디어든 성공은 권력적 가치만 보여 줄 뿐 진리를 보여 주지 못한다고 보므로, 야빈의 인식론은 합리주의를 내세우면서도 허무주의가 특징이라고 평한다.",
+          "by": "조슈아 테이트",
+          "label": "The Bulwark, Curtis Yarvin's Cranky Yearnings (2025-07-14)",
+          "url": "https://www.thebulwark.com/p/curtis-yarvin-cranky-yearnings-monarchy-royalist-tech-right-permission-structure"
+        }
+      ],
+      "sources": [
+        {
+          "label": "A brief explanation of the cathedral (2021-01-21)",
+          "url": "https://graymirror.substack.com/p/a-brief-explanation-of-the-cathedral"
+        }
+      ]
+    },
+    {
+      "id": "butterfly-revolution",
+      "no": 9,
+      "section": "gray",
+      "title": "The butterfly revolution",
+      "ko": "나비 혁명",
+      "sub": "트럼프 진영을 '망명 정권'으로 바꾸는 시나리오",
+      "author": "yarvin",
+      "venue": "Gray Mirror",
+      "year": 2022,
+      "words": 5703,
+      "concepts": [
+        "rage",
+        "monarchy",
+        "sovereignty",
+        "democracy"
+      ],
+      "people": [
+        "vance",
+        "masters",
+        "andreessen"
+      ],
+      "core": "당선 즉시 CEO에게 행정부 전권을 맡기는 '나비 혁명'을 상상한 사고 실험이다.",
+      "claims": [
+        "야빈은 2022년 초의 트럼프 진영이 '망명 정권(regime in exile)'과 같다고 보고, 이를 권력을 잡고 쓸 줄 아는 기계로 바꾼다면 어떨지 상상하는 형식으로 쓴다. 실제 트럼프는 그럴 사람이 아니므로 이 문서는 '안전하다'고 선을 그으면서도, 누군가는 그래야 한다는 믿음을 숨기지 않겠다고 덧붙인다.",
+        "핵심 구상은 미국 정부의 '완전 재부팅(full power start)'이다. 1945년 일본·독일의 연합군 점령 당국에 가까운 권한을 하나의 조직에 주되, 그 조직은 선거 전에는 사적이고 평화로운 '유충'으로 자라다가 당선과 함께 실제 권력을 쥔 '나비'가 된다고 한다.",
+        "이 구상에서 트럼프는 CEO가 아니라 '이사회 의장'이다. 그는 경험 많은 경영자를 CEO로 골라 방송으로 공개하고, CEO는 의회와 법원의 간섭 없이 행정부를 운영하며 기존 기관을 새 체계로 바꾼다. 야빈은 워싱턴·링컨·FDR을 '거의 진짜 CEO'였던 대통령으로 꼽고, 그 군주적 체제가 과두제로 굳으면 다음 군주제가 재부팅해 왔다고 본다.",
+        "정당성은 대통령이 행정부의 '최고경영자(chief executive)'라는 평이한 영어 뜻에서 끌어온다. 기관들이 당선자의 헌법적 지위를 막으면 유권자가 직접 나서야 하며, 트럼프는 가장 약한 임기 끝이 아니라 가장 강한 임기 시작에 지지자를 거리로 불러야 한다고 쓴다. 야빈은 이를 '핵 옵션'이라 부르고, 준비와 과시만으로 실행을 막을 수 있다고 한다.",
+        "대안 정권은 통합·탁월·에너지라는 세 원칙을 따르고, 특히 한쪽 진영에 치우치지 않아 '모든 내전(인종·계급·성·문화)의 평화'를 첫 성과로 내야 한다고 쓴다."
+      ],
+      "note": "유료 구간('유충의 해부' 이후)은 공개되지 않아 요약에서 뺐다.",
+      "quotes": [
+        {
+          "en": "We’ve got to risk a full power start—a full reboot of the USG. We can only do this by giving absolute sovereignty to a single organization—with roughly the powers that the Allied occupation authorities held in Japan and Germany in the fall of 1945.",
+          "ko": "우리는 '풀 파워 스타트', 곧 미국 정부의 완전한 재부팅을 감수해야 한다. 이는 하나의 조직에 절대적 주권을 주어야만 가능하며, 그 권한은 1945년 가을 연합군 점령 당국이 일본과 독일에서 쥐었던 수준이어야 한다.",
+          "where": "소제목 'An optimistic framing of one Trumpian future'",
+          "url": "https://graymirror.substack.com/p/the-butterfly-revolution"
+        },
+        {
+          "en": "Trump himself will not be the brain of this butterfly. He will not be the CEO. He will be the chairman of the board—he will select the CEO (an experienced executive).",
+          "ko": "트럼프 자신은 이 나비의 두뇌가 아닐 것이다. 그는 CEO가 아닐 것이다. 그는 이사회 의장이 되어 CEO(경험 많은 경영자)를 고를 것이다.",
+          "where": "소제목 'The regime in internal exile'",
+          "url": "https://graymirror.substack.com/p/the-butterfly-revolution"
+        },
+        {
+          "en": "Therefore, this document is safe—Trump will never do anything like this. Whew! But I won’t disguise my belief that someone should. Someone worthy of the task, of course.",
+          "ko": "그러므로 이 문서는 안전하다. 트럼프는 결코 이런 일을 하지 않을 테니까. 휴! 그래도 누군가는 해야 한다는 내 믿음을 숨기지는 않겠다. 물론 그 일을 감당할 만한 사람이어야 한다.",
+          "where": "소제목 'Why this is safe'",
+          "url": "https://graymirror.substack.com/p/the-butterfly-revolution"
+        }
+      ],
+      "sv": {
+        "text": "DOGE 이전에 쓰인 이 글은 'CEO가 행정부를 통째로 재부팅한다'는 청사진이라, DOGE를 다룬 여러 글에서 거론된다. Vox(2022)는 이 글을 야빈이 쓴 권력 장악 '플레이북'으로 소개하면서 JD 밴스와 블레이크 매스터스가 야빈을 인용해 왔다고 전한다. 길 두란(The Nerd Reich)은 2025년 2월 이 글을 RAGE의 갱신판으로 읽으며 일론 머스크의 DOGE와 닮았다고 썼고, 헤더 콕스 리처드슨의 뉴스레터가 이를 인용했다. 같은 관점은 이 글 밖에서도 되풀이되어, 마크 앤드리슨은 2025년 1월 후버연구소 인터뷰에서 야빈을 '내 친구'라 부르며 'FDR의 개인 군주제가 FDR 없이 80년 진화했다'는 그의 표현을 소개했고, 야빈은 같은 달 NYT 인터뷰에서 워싱턴·링컨·FDR을 '사실상 국가의 CEO'라고 불렀다.",
+        "refs": [
+          {
+            "label": "Vox, Curtis Yarvin wants American democracy toppled (앤드루 프로콥, 2022-10-24)",
+            "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug"
+          },
+          {
+            "label": "The Nerd Reich, 'Reboot' Revealed: Elon Musk's CEO-Dictator Playbook (길 두란, 2025-02-05)",
+            "url": "https://www.thenerdreich.com/reboot-elon-musk-ceo-dictator-doge/"
+          },
+          {
+            "label": "Letters from an American, February 5, 2025 (헤더 콕스 리처드슨)",
+            "url": "https://heathercoxrichardson.substack.com/p/february-5-2025"
+          },
+          {
+            "label": "Hoover Institution, Marc Andreessen: It's Morning Again In America (2025-01-14, 녹취)",
+            "url": "https://www.hoover.org/plus/research/marc-andreessen-its-morning-again-america"
+          },
+          {
+            "label": "The New York Times, The Interview: Curtis Yarvin (2025-01-18, 팟캐스트 녹취로 확인)",
+            "url": "https://www.nytimes.com/2025/01/18/magazine/curtis-yarvin-interview.html"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "독재 체제에서도 경직과 쇠퇴는 생기고, 지도자의 유인이 좋은 통치에 맞춰지게 하기도 어렵다고 지적한다. 기업 모델 역시 비효율적인 관료제를 낳으며, 나라를 다스리는 일은 회사를 경영하는 일과 다른 종류의 문제일 수 있다는 것이다.",
+          "by": "앤드루 프로콥",
+          "label": "Vox, Curtis Yarvin wants American democracy toppled (2022-10-24)",
+          "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug"
+        },
+        {
+          "text": "야빈의 여러 제안을 검토한 뒤 '이것이 파시스트적 상상력의 산물이 아니라면 무엇이 그렇겠는가'라고 결론 내렸다고, Vox가 이 글을 포함한 야빈의 시나리오를 소개하며 전한다.",
+          "by": "존 갠즈",
+          "label": "Vox가 인용한 평",
+          "url": "https://www.vox.com/policy-and-politics/23373795/curtis-yarvin-neoreaction-redpill-moldbug"
+        },
+        {
+          "text": "'풀 파워 스타트'와 CEO 구상이 머스크의 DOGE와 닮았고, DOGE는 RAGE를 '효율'이라는 순한 말로 포장한 것이라고 비판한다. 야빈이 허구나 비현실적 시나리오로 내놓은 것이 현실이 되고 있다는 지적이다.",
+          "by": "길 두란",
+          "label": "The Nerd Reich, 'Reboot' Revealed (2025-02-05)",
+          "url": "https://www.thenerdreich.com/reboot-elon-musk-ceo-dictator-doge/"
+        }
+      ],
+      "sources": [
+        {
+          "label": "The butterfly revolution (2022-04-07, 일부 유료)",
+          "url": "https://graymirror.substack.com/p/the-butterfly-revolution"
+        }
+      ]
+    },
+    {
+      "id": "barbarians-and-mandarins",
+      "no": 10,
+      "section": "gray",
+      "title": "Barbarians and mandarins",
+      "ko": "야만인과 만다린",
+      "sub": "취임 6주 트럼프 47기 성적표, C-",
+      "author": "yarvin",
+      "venue": "Gray Mirror",
+      "year": 2025,
+      "words": 7194,
+      "concepts": [
+        "monarchy",
+        "cathedral",
+        "democracy"
+      ],
+      "people": [
+        "thiel",
+        "andreessen",
+        "vance"
+      ],
+      "core": "취임 6주의 트럼프 47기에 C-를 주며 야만인도 만다린도 혁명을 못 한다고 본다.",
+      "claims": [
+        "야빈은 취임 6주 시점의 트럼프 47기에 'C-'를 준다. 아직 실패하지는 않았지만, 이길 기회와 힘이 있는데도 이기려는 의지와 이해가 없어 결국 질 것이라고 본다.",
+        "정권이 제대로 이해하는 것으로 그는 세 가지를 꼽는다. 행정부는 대통령 집무실에서 위에서 아래로 운영되어야 하고('executive'는 'monarchical'의 동의어라고 한다), 기존 인프라는 믿을 수 없으니 '해킹'해야 하며(USDS가 DOGE로 바뀐 일을 표준으로 든다), 권력은 쓸수록 커지니 계속 키우지 않으면 잃는다는 것이다. 1~2월의 '지진'을 넘는 조치가 3~4월에 없으면 정권이 시들 것이라고 경고한다.",
+        "문제는 스태프 구성이라는 것이 그의 진단이다. 민간 출신 '야만인'은 통치할 줄도, 통치하고 싶지도 않고 시스템을 고치려 할 뿐이며, 공직 경력의 '만다린'은 통치하고 싶고 방법도 알지만 고치려는 마음조차 크지 않다고 한다. 둘 다 시스템이 고칠 수 없다는 것을 보기에는 너무 가까이 있다는 것이다.",
+        "야만인의 '새 CEO의 턴어라운드' 관점은 2022년의 트위터 인수가 아니라 1992년 트란실바니아의 트랙터 공장 인수에 가깝다는 비유로 반박한다. 그에 따르면 DOGE의 진짜 성과 지표는 비용 절감이 아니라 자유주의자들에게서 권력을 빼앗아 지키는 능력이고, 만다린의 '있는 정부로 할 수 있는 만큼' 접근은 역사적 기준으로는 많지 않다.",
+        "과학 정책 사례에서는 진짜 군주라면 과학자라는 '귀족'과 대중의 충성을 얻어야 한다고 주장한다. 귀족이나 대중을 학살할 각오가 없다면 동의를 얻는 수밖에 없으므로, 연구비를 깎아 적을 만들기보다 과학 거버넌스를 새 체계로 대체하며 포섭하라는 것이다."
+      ],
+      "note": "유료 구간(글 끝의 구체적 정책 제안)은 공개되지 않아 요약에서 뺐다.",
+      "quotes": [
+        {
+          "en": "After six weeks, is Trump 47 going well? It is and it isn’t. Frankly, I give it a C-.",
+          "ko": "6주가 지났다. 트럼프 47기는 잘 가고 있는가? 그렇기도 하고 아니기도 하다. 솔직히 나는 C-를 준다.",
+          "where": "도입부",
+          "url": "https://graymirror.substack.com/p/barbarians-and-mandarins"
+        },
+        {
+          "en": "The fundamental problem of Trump 47 is that Barbarians (a) do not know how to rule, (b) do not want to rule, and (c) only want to repair the system.",
+          "ko": "트럼프 47기의 근본 문제는 야만인들이 (a) 통치하는 법을 모르고, (b) 통치하고 싶어 하지 않으며, (c) 시스템을 고치고만 싶어 한다는 데 있다.",
+          "where": "'야만인'과 '만다린'을 구분하는 대목",
+          "url": "https://graymirror.substack.com/p/barbarians-and-mandarins"
+        },
+        {
+          "en": "When the Barbarians enter the cathedral, they wander around the nave, break bits of gold and jewels off the crosses, dress up in the sacred robes and barbecue a goat on the high altar.",
+          "ko": "야만인들이 대성당에 들어가면 중앙 회랑을 돌아다니며 십자가에서 금과 보석 조각을 떼어 내고, 성직자의 예복을 차려입고, 제단 위에서 염소를 구워 먹는다.",
+          "where": "같은 대목",
+          "url": "https://graymirror.substack.com/p/barbarians-and-mandarins"
+        }
+      ],
+      "sv": {
+        "text": "이 글은 DOGE를 '야만인'의 대표 사례로 놓고, 와이콤비네이터식 공동창업자 체제나 콘웨이의 법칙 같은 실리콘밸리의 틀을 끌어 정권을 평가한다. CNN(2025)은 야빈이 정권의 조치가 겨우 표면을 긁는 수준이라 실망했다고 전하면서, 피터 틸·마크 앤드리슨·JD 밴스·마이클 앤턴이 그의 이론을 모두 따르지는 않아도 '귀를 기울이고 있다'고 쓴다. The Bulwark는 이 글의 C- 평가를 야빈이 정권에 양가적이라는 근거로 인용한다.",
+        "refs": [
+          {
+            "label": "CNN, Curtis Yarvin wants to replace American democracy with a form of monarchy led by a 'CEO' (하다스 골드, 2025-05-30)",
+            "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo"
+          },
+          {
+            "label": "The Bulwark, Curtis Yarvin's Cranky Yearnings (조슈아 테이트, 2025-07-14)",
+            "url": "https://www.thebulwark.com/p/curtis-yarvin-cranky-yearnings-monarchy-royalist-tech-right-permission-structure"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "대통령이 행정부를 최대한 휘둘러야 한다는 야빈의 주장을 곧이곧대로 읽으면 권위주의적 조치와 인격 정치를 용인하거나 지지하게 하는 '허용 구조'가 만들어진다고 비판한다. 진보 관료제보다는 늘 낫다는 논리가 그 바탕에 있다는 것이다.",
+          "by": "조슈아 테이트",
+          "label": "The Bulwark, Curtis Yarvin's Cranky Yearnings (2025-07-14)",
+          "url": "https://www.thebulwark.com/p/curtis-yarvin-cranky-yearnings-monarchy-royalist-tech-right-permission-structure"
+        },
+        {
+          "text": "트럼프의 탐욕과 정책 무관심, 유능한 사람을 싫어하는 성향을 이미 겪은 사람이 이제 와서 정권에 계획이 없다고 놀라는 것은 순진하다고 지적한다. 낡은 시스템을 한꺼번에 뜯어내는 방식은 대기업의 시스템 교체 상식에도 어긋난다고 본다.",
+          "by": "에드 워커",
+          "label": "Emptywheel, Yarvin On Trump And His Henchmen (2025-05-29)",
+          "url": "https://www.emptywheel.net/2025/05/29/yarvin-on-trump-and-his-henchmen/"
+        },
+        {
+          "text": "야빈은 이행이 평화로울 것이라 주장하지만 그의 글 곳곳에 폭력의 환상이 어른거린다고 평하며, 이 글의 '귀족이나 대중을 학살할 각오가 없다면…'이라는 구절을 예로 든다.",
+          "by": "아바 코프먼",
+          "label": "The New Yorker, Curtis Yarvin's Plot Against America (2025-06)",
+          "url": "https://www.newyorker.com/magazine/2025/06/09/curtis-yarvin-profile"
+        }
+      ],
+      "sources": [
+        {
+          "label": "Barbarians and mandarins (2025-03-06, 일부 유료)",
+          "url": "https://graymirror.substack.com/p/barbarians-and-mandarins"
+        }
+      ]
+    },
+    {
+      "id": "techno-pessimist-manifesto",
+      "no": 11,
+      "section": "gray",
+      "title": "A techno-pessimist manifesto",
+      "ko": "기술 비관주의자 선언",
+      "sub": "앤드리슨의 기술 낙관주의 선언에 맞선 글",
+      "author": "yarvin",
+      "venue": "Gray Mirror",
+      "year": 2023,
+      "words": 4073,
+      "concepts": [
+        "universalism",
+        "democracy"
+      ],
+      "people": [
+        "andreessen"
+      ],
+      "core": "기술은 질서를 지킬 엘리트의 기개를 꺾는 원인이라며 앤드리슨의 낙관론을 반박한다.",
+      "claims": [
+        "야빈은 기술 낙관주의를 '당뇨 전 단계'만큼 흔한 질환이라 부르며, 미국인은 모두 기술의 진보와 도덕의 진보를 같은 것으로 믿는 기술 낙관주의자라고 말한다. 치료법으로 내놓는 '요하네스버그 프로토콜'은 그 도시에서 일주일을 보내며 50~100년 전에는 작동했으나 지금은 '반쯤 매드맥스'가 된 세계의 물리적 증거를 보는 것이다. 그래도 낙관이 남으면 더 비싸고 위험한 2차 요법인 '킨샤사 요법'을 쓰라고 한다.",
+        "그는 요하네스버그와 킨샤사가 팰로앨토·버클리와 기술 수준이 같다고 짚는다. 아이폰도 작동하고 같은 교과서와 논문을 볼 수 있는데도 '뒤로 간 것은 기술이 아니다'라는 것이다. 교육 기술로 킨샤사 주민을 도쿄 주민처럼 바꿀 수 있다는 가정이 기술 낙관주의뿐 아니라 모든 근대적 낙관의 공리이며, 이 공리가 틀린 세계를 상상해 보라고 요구한다.",
+        "기술의 곡선과 별개로 '질서의 곡선'이 있다는 것이 그의 핵심 주장이다. 100억 달러짜리 반도체 공장도 5달러짜리 휘발유 통으로 태울 수 있듯 질서는 기술보다 깨지기 쉬우며, 제3세계가 적어도 중기적으로 인류의 미래이므로 제1세계를 그 병에서 지키는 일이 시대의 가장 중요한 역사적 문제라고 본다. 앤드리슨도 인간 정신(thymos)의 하락이라는 '두 번째 곡선'을 보고 있어 자기 곡선을 예측해 준다면서, 엘리트가 질서를 지킨다는 자부심을 잃으면 문명이 위태로워진다고 쓴다.",
+        "앤드리슨의 처방, 곧 기술을 위한 '은유적 전쟁'으로 티모스를 되살리자는 구상은 통하지 않는다고 야빈은 본다. 연구개발의 흥분은 소수만 누릴 수 있고, 기술 가속주의는 해를 입히는 상대가 없는 선한 대의여서 대중 운동으로서는 '형편없는 상품'이라는 것이다(소행성 방어를 요구하며 도로에 몸을 묶는 시위대는 없다). 오히려 윌리엄 제임스가 1910년에 제안한 '전쟁의 도덕적 등가물', 곧 청년을 광산·어선 같은 힘든 노동에 징집하는 방안이 기술의 반대편에 있다고 짚는다.",
+        "가장 큰 반론은 기술이 티모스 상실의 치료제가 아니라 원인이라는 것이며, 야빈은 앤드리슨이 '담배로 암을 치료하고 있다'고 쓴다. 기술은 엘리트에게서는 '전쟁의 도덕적 등가물'이 주던 어려움과 위험을, 비엘리트에게서는 쓸모를 없애므로 AI와 로봇이 일자리를 잠식할수록 '한계 생산이 0인 인간'이 늘고, 이들은 '자원의 저주'처럼 생산 대신 남의 것을 빼앗는 정치적 방식에 기운다고 한다. 글은 기술 낙관주의가 20세기 미국의 트로츠키주의와 닮았다는 비교로 끝난다."
+      ],
+      "quotes": [
+        {
+          "en": "Are you a techno-optimist? This is a serious condition—as common as prediabetes.",
+          "ko": "당신은 기술 낙관주의자인가? 이것은 당뇨 전 단계만큼이나 흔한 심각한 질환이다.",
+          "where": "도입부",
+          "url": "https://graymirror.substack.com/p/a-techno-pessimist-manifesto"
+        },
+        {
+          "en": "Andreessen’s curve predicts mine—because the role of thymos is to maintain order. Pride in maintaining order is a crucial element of a functional elite.",
+          "ko": "앤드리슨의 곡선은 내 곡선을 예측한다. 티모스의 역할이 질서를 유지하는 것이기 때문이다. 질서를 지킨다는 자부심은 제대로 기능하는 엘리트의 핵심 요소이다.",
+          "where": "소제목 'The two curves'",
+          "url": "https://graymirror.substack.com/p/a-techno-pessimist-manifesto"
+        },
+        {
+          "en": "Technical acceleration is not just not the cure for last-man syndrome. No—technology is the obvious cause of last-man syndrome. Andreessen is curing cancer with tobacco.",
+          "ko": "기술의 가속은 최후의 인간 증후군의 치료제가 아닐 뿐 아니라, 기술이야말로 그 증후군의 분명한 원인이다. 앤드리슨은 담배로 암을 치료하고 있다.",
+          "where": "소제목 'E.M. Forster would like a word'",
+          "url": "https://graymirror.substack.com/p/a-techno-pessimist-manifesto"
+        }
+      ],
+      "sv": {
+        "text": "이 글은 앤드리슨의 「기술 낙관주의 선언」(2023-10-16) 문장을 길게 인용하며 맞서는 글이라, 실리콘밸리 투자자의 이념에 야빈이 정면으로 답한 사례이다. 앤드리슨이 이 글에 답했다는 기록은 찾지 못했지만, 그는 2025년 1월 후버연구소 인터뷰에서 야빈을 '내 친구'라 불렀고 CNN에 따르면 군주제 지지자가 되지 않고도 야빈을 읽을 수 있다고 X에 썼다. The Bulwark는 야빈이 실리콘밸리의 말투와 참조로 글을 써 이 업계 엘리트를 우쭐하게 만든다고 평하며, '기술 비관주의'를 설명하는 대목에서 이 글을 링크한다. 다만 Substack 좋아요 703개(2026-10-30 확인)와 달리 Hacker News 제출은 5점·댓글 0에 그쳐, 실리콘밸리 안의 반응은 확인하지 못했다.",
+        "refs": [
+          {
+            "label": "Andreessen Horowitz, The Techno-Optimist Manifesto (마크 앤드리슨, 2023-10-16)",
+            "url": "https://a16z.com/the-techno-optimist-manifesto/"
+          },
+          {
+            "label": "Hoover Institution, Marc Andreessen: It's Morning Again In America (2025-01-14, 녹취)",
+            "url": "https://www.hoover.org/plus/research/marc-andreessen-its-morning-again-america"
+          },
+          {
+            "label": "CNN, Curtis Yarvin wants to replace American democracy with a form of monarchy led by a 'CEO' (하다스 골드, 2025-05-30)",
+            "url": "https://edition.cnn.com/2025/05/30/politics/curtis-yarvin-wants-to-replace-american-democracy-with-a-form-of-monarchy-led-by-a-ceo"
+          },
+          {
+            "label": "The Bulwark, Curtis Yarvin's Cranky Yearnings (조슈아 테이트, 2025-07-14)",
+            "url": "https://www.thebulwark.com/p/curtis-yarvin-cranky-yearnings-monarchy-royalist-tech-right-permission-structure"
+          },
+          {
+            "label": "Hacker News, Curtis Yarvin on Techno-Optimism (2023-12-23, 5점·댓글 0)",
+            "url": "https://news.ycombinator.com/item?id=38741082"
+          }
+        ]
+      },
+      "critiques": [
+        {
+          "text": "야빈의 기술 비관주의는 질서 붕괴에 대한 음울한 진단에서 나오며, 그가 '범죄적 자연 상태'를 노골적으로 인종화된 용어로 그려 요하네스버그·킨샤사·오클랜드에서 구현된 것으로 본다고 비판한다. 야빈이 인종 관련 발언을 누그러뜨렸어도 2025년에 옛 글의 '가장 과격한 인용구' 뒤의 생각이 '지금도 진지하다'고 말했다는 점을 든다.",
+          "by": "조슈아 테이트",
+          "label": "The Bulwark, Curtis Yarvin's Cranky Yearnings (2025-07-14)",
+          "url": "https://www.thebulwark.com/p/curtis-yarvin-cranky-yearnings-monarchy-royalist-tech-right-permission-structure"
+        }
+      ],
+      "sources": [
+        {
+          "label": "A techno-pessimist manifesto (2023-12-21)",
+          "url": "https://graymirror.substack.com/p/a-techno-pessimist-manifesto"
+        }
+      ]
+    }
+  ]
+}
