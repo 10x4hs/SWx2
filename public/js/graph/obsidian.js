@@ -17,8 +17,8 @@ const TIER_R = [11, 7, 4.5, 3.2];
 //   · onSelect(node | null) · initial = { k, x, y, sel, pos } (돌아왔을 때 확대 · 위치 · 고른 점 그대로)
 // 돌려주는 stop() 에 붙은 것: stop.state() · stop.setData(data, types?, spawn?) · stop.select(id) · stop.worldAt(clientX, clientY) · stop.screenOf(id)
 // 관계 종류 (2026-10-24): edgeStyle(link) → { color, dash, label, arrow } | null — 선 색 · 점선 · 화살표(from → 다른 점). 이름표는 마우스를 올린 선 · 고른 점의 선에만
-//   legend: [{ label, color, dash }] → 설정 패널 '관계' 칸
-export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank, prefs: p0, savePrefs, empty, scope = "", select = false, onSelect, onConnect, onEdgeMenu, onBlankMenu, initial = null, edgeStyle = null, legend = null }) {
+//   legend: [{ label, color, dash }] → 설정 패널 '관계' 칸 · edgeLabels: "focus"(기본, 고른 점의 선 전부) | "hover"(마우스를 올린 선만)
+export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank, prefs: p0, savePrefs, empty, scope = "", select = false, onSelect, onConnect, onEdgeMenu, onBlankMenu, initial = null, edgeStyle = null, legend = null, edgeLabels = "focus" }) {
   let lastTap = { n: null, t: 0 };
   const DBL = 300;
   const P = { ...GRAPH_DEFAULTS, open: innerWidth > 760, ...(p0 || {}) }; // 폰은 설정 패널을 접고 시작해요
@@ -164,7 +164,7 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
         const tipR = radius(b) + 2 / view.k, hx = b.x - ux * tipR, hy = b.y - uy * tipR, s2 = 5.5 / view.k;
         if (d > tipR + s2 * 2) { g.fillStyle = st.color; g.beginPath(); g.moveTo(hx, hy); g.lineTo(hx - ux * s2 * 1.6 - uy * s2, hy - uy * s2 * 1.6 + ux * s2); g.lineTo(hx - ux * s2 * 1.6 + uy * s2, hy - uy * s2 * 1.6 - ux * s2); g.closePath(); g.fill(); }
       }
-      if (on && st?.label) named.push(l);
+      if ((edgeLabels === "hover" ? l === hoverEdge : on) && st?.label) named.push(l); // edgeLabels "hover" = 마우스를 올린 선에만 (선이 많을 때)
     }
     for (const n of nodes) {
       const on = lit(n), r = radius(n), ty = typeOf(n), col = n === focus ? accent : ty.color;

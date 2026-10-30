@@ -120,6 +120,8 @@ await section("svm", async () => {
     const D = r.data || {}, e0 = D.essays?.[0];
     ok(r.status === 200 && D.essays?.length === 15 && D.concepts?.length >= 14 && D.people?.length >= 8 && Array.isArray(D.videos) && Array.isArray(D.more), `svm: admin gets the content (${r.status} · ${D.essays?.length} essays)`);
     ok(D.essays?.every((e, i) => e.no === i + 1 && e.sources?.length && e.claims?.length >= 3), "svm: essays come sorted by no, each with sources and 3+ claims");
+    const ids = new Set(D.essays?.map((e) => e.id));
+    ok(D.sections?.length === 4 && D.sections.every((s) => s.blurb && s.color && s.art) && D.questions?.length >= 6 && D.questions.every((q) => q.to || (q.essays.length && q.essays.every((id) => ids.has(id)))), `svm: 4 volumes with cover data + ${D.questions?.length} questions pointing at real chapters`);
     for (const [m, p, b] of [["GET", "/svm/data"], ["GET", `/svm/source?id=${e0?.id}&part=0`], ["POST", "/svm/translate", { id: e0?.id, texts: ["x"] }], ["GET", "/apps/svm/state"], ["PUT", "/apps/svm/state", { data: { read: {} }, at: 0 }]]) {
       r = await call("sm", m, p, b); ok(r.status === 404, `svm: member with every feature + trial → 404 on ${m} ${p.split("?")[0]} (${r.status})`);
     }

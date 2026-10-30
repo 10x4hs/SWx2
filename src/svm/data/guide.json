@@ -1,0 +1,62 @@
+{
+ "questions": [
+  {
+   "q": "민주주의가 왜 문제라는 거야?",
+   "a": "실제로는 관료 · 대학 · 언론이 다스린다는 주장",
+   "essays": [
+    "open-letter",
+    "formalist-manifesto",
+    "dark-enlightenment"
+   ]
+  },
+  {
+   "q": "'대성당'이 뭐야?",
+   "a": "명령 없이도 한 몸처럼 움직이는 대학과 언론",
+   "essays": [
+    "brief-explanation-of-the-cathedral",
+    "open-letter",
+    "brown-scare"
+   ]
+  },
+  {
+   "q": "그럼 대안은? 왕을 세우자는 거야?",
+   "a": "주인이 분명한 회사 같은 국가, CEO형 군주",
+   "essays": [
+    "formalist-manifesto",
+    "patchwork",
+    "butterfly-revolution"
+   ]
+  },
+  {
+   "q": "실리콘밸리는 왜 이걸 읽어?",
+   "a": "정치 밖으로의 '탈출', 국가를 스타트업처럼",
+   "essays": [
+    "education-of-a-libertarian",
+    "the-network-state",
+    "techno-optimist-manifesto"
+   ]
+  },
+  {
+   "q": "트럼프 2기와 무슨 상관이야?",
+   "a": "RAGE와 'CEO 대통령' 상상이 DOGE · 밴스와 겹쳐 읽힌다",
+   "essays": [
+    "butterfly-revolution",
+    "barbarians-and-mandarins"
+   ]
+  },
+  {
+   "q": "진보주의를 왜 종교라고 해?",
+   "a": "신 없는 기독교 분파 — '보편주의'",
+   "essays": [
+    "how-dawkins-got-pwned",
+    "gentle-introduction"
+   ]
+  },
+  {
+   "q": "반대 의견은?",
+   "a": "글마다 붙은 대표 비판을 한곳에",
+   "to": "counter",
+   "essays": []
+  }
+ ]
+}

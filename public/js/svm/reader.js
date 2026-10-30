@@ -3,9 +3,9 @@
 //   원문 + 번역: 서버가 원문 사이트에서 그때그때 읽은 단락(/api/svm/source) → 보이는 곳부터 4단락씩 번역(/api/svm/translate, 첫 묶음은 2단락 · 두 묶음까지 같이)
 //     번역은 이 기기에만 잠깐 둬요 (localStorage, 글 12편까지) — 서버에는 원문도 번역도 남지 않아요
 //   J/K 다음 · 앞 단락 · ←/→ 다음 · 앞 글 · 읽은 곳(%)은 스크롤로, '다 읽었어요'는 직접
-import { data, linkTerms, personName, pad2 } from "./model.js";
+import { data, linkTerms, personName, pad2, volColor } from "./model.js";
 import { st, setRead, setPos, setPref, isRead } from "./store.js";
-import { videoCard, play } from "./library.js";
+import { videoCard, play } from "./appendix.js";
 import { api } from "../api.js";
 import { esc, toast } from "../util.js";
 
@@ -45,10 +45,11 @@ export function mountReader(host, r, env) {
   const glossHtml = () => {
     const cs = (e.concepts || []).map((c) => D.C.get(c)).filter(Boolean);
     const rel = (e.related || []).map((id) => D.E.get(id)).filter(Boolean);
+    const people = [...new Set([e.author, ...(e.people || [])])].filter((p) => p && D.P.has(p));
     return `<span class="sv-label sv-mono">GLOSSARY · 이 글의 개념</span>
       ${cs.map((c) => `<a class="sv-gi" id="sv-g-${esc(c.id)}" href="#/svm/glossary/${esc(c.id)}"><b>${esc(c.name)} <span class="sv-mono">${esc(c.en || "")}</span></b><span>${esc(c.short || "")}</span></a>`).join("") || `<p class="sv-cap">—</p>`}
-      ${rel.length ? `<div class="sv-gi"><b>연결된 글</b>${rel.map((x) => `<a class="sv-mono" href="#/svm/read/${esc(x.id)}">→ ${pad2(x.no)} ${esc(x.title.length > 26 ? x.title.slice(0, 25) + "…" : x.title)}</a>`).join("")}</div>` : ""}
-      <a class="sv-gi sv-mono" href="#/svm/graph/e:${esc(e.id)}">그래프에서 보기 →</a>`;
+      ${rel.length ? `<div class="sv-gi"><b>연결된 장</b>${rel.map((x) => `<a class="sv-mono" href="#/svm/read/${esc(x.id)}">→ CH ${pad2(x.no)} ${esc((x.ko || x.title).length > 20 ? (x.ko || x.title).slice(0, 19) + "…" : x.ko || x.title)}</a>`).join("")}</div>` : ""}
+      ${people.length ? `<div class="sv-gi"><b>이 글의 인물</b>${people.map((p) => `<a class="sv-mono" href="#/svm/people/${esc(p)}">→ ${esc(personName(p))}</a>`).join("")}</div>` : ""}`;
   };
   const tocItems = () => mode === "orig" ? [["src", "원문"]] : mode === "brief" ? [["core", "한 줄 핵심"], ["claims", "주요 논지"]]
     : [["core", "한 줄 핵심"], ["claims", "주요 논지"], ...(e.quotes?.length ? [["quotes", "원문 인용"]] : []), ...(e.sv?.text ? [["sv", "실리콘밸리 연결"]] : []), ...(e.critiques?.length ? [["counter", "주요 비판"]] : []), ...(e.vids.length ? [["video", `영상 ${e.vids.length}`]] : [])];
@@ -64,7 +65,7 @@ export function mountReader(host, r, env) {
     return claims
       + (e.quotes?.length ? `<section class="sv-sec" id="sv-quotes" data-k><h2 class="sv-h sv-mono">QUOTES · 원문 인용</h2>${e.quotes.map((x, i) => `<figure class="sv-quote" data-k><span class="sv-mono">Q${i + 1}</span><div><blockquote lang="en">“${esc(x.en)}”</blockquote><figcaption>${esc(x.ko || "")}${x.where ? ` <span class="sv-mono">${esc(x.where)}</span>` : ""}${x.url ? ` <a class="sv-mono" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">¶ 원문 위치 ↗</a>` : ""}</figcaption></div></figure>`).join("")}</section>` : "")
       + (e.sv?.text ? `<section class="sv-sec sv-svbox" id="sv-sv" data-k><h2 class="sv-h sv-mono">SV LINK · 왜 실리콘밸리가 읽나</h2>
-          ${(e.people || []).length ? `<div class="sv-chips">${e.people.map((p) => `<a class="sv-pchip" href="#/svm/s/p:${esc(p)}">${esc(personName(p))}</a>`).join("")}</div>` : ""}
+          ${(e.people || []).length ? `<div class="sv-chips">${e.people.map((p) => `<a class="sv-pchip" href="#/svm/people/${esc(p)}">${esc(personName(p))}</a>`).join("")}</div>` : ""}
           <p>${linkTerms(e.sv.text, used)}</p>${(e.sv.refs || []).length ? `<p class="sv-refs sv-mono">${e.sv.refs.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label || host_(x.url))} ↗</a>`).join(" · ")}</p>` : ""}</section>` : "")
       + (e.critiques?.length ? `<details class="sv-sec sv-counter" id="sv-counter" data-k${S?.crit === 0 ? "" : " open"}><summary class="sv-h sv-mono">COUNTER · 주요 비판 <span>(${S?.crit === 0 ? "펼치기" : "접기"})</span></summary>
           ${e.critiques.map((c) => `<div class="sv-crit"><p>${linkTerms(c.text, used)}</p><p class="sv-refs sv-mono">${esc(c.by || "")}${c.url ? ` · <a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.label || host_(c.url))} ↗</a>` : c.label ? ` · ${esc(c.label)}` : ""}</p></div>`).join("")}</details>` : "")
@@ -74,7 +75,8 @@ export function mountReader(host, r, env) {
   function draw() {
     io?.disconnect(); io = null; sGen++; // 방식 · 글이 바뀌면 원문 + 번역의 지켜보기 · 남은 번역 답은 버려요
     const prev = near(-1), next = near(1);
-    env.crumb(`<a href="#/svm">/ YARVIN</a> <span class="sv-wide">/ <a href="#/svm/s/${esc(e.section)}">${esc(D.sections.find((s) => s.id === e.section)?.no || "")} ${esc(D.sections.find((s) => s.id === e.section)?.name || "")}</a></span> / ${pad2(e.no)}`);
+    const sec = D.sections.find((s) => s.id === e.section);
+    env.crumb(`<a href="#/svm">/ LIBRARY</a> <a class="sv-wide" href="#/svm/v/${esc(e.section)}" style="color:${volColor(e.section)}">/ VOL.${esc(sec?.no || "")} ${esc(sec?.name || "")}</a> <span>/ CH ${pad2(e.no)}</span>`);
     host.innerHTML = `<div class="sv-read" data-mode="${mode}">
       <aside class="sv-toc" aria-label="이 글 안에서">
         <span class="sv-label sv-mono">ON THIS PAGE</span>
@@ -82,7 +84,8 @@ export function mountReader(host, r, env) {
         <div class="sv-meta sv-mono"><span class="sv-label">META</span><span>SRC  ${esc(e.venue || "")}</span><span>YEAR ${esc(e.year || "")}</span><span>BY   ${esc(personName(e.author))}</span>${e.words ? `<span>LEN  원문 ${Number(e.words).toLocaleString("ko-KR")}단어</span>` : ""}<span>SUM  ${pad2(e.mins)}m</span></div>
       </aside>
       <article class="sv-art" id="sv-art">
-        <header class="sv-ahead" id="sv-core" data-k>
+        <header class="sv-ahead" id="sv-core" data-k style="--vc:${volColor(e.section)}">
+          <span class="sv-chno sv-mono"><b>CH ${pad2(e.no)}</b> · VOL.${esc(sec?.no || "")} ${esc(sec?.name || "")}</span>
           <div class="sv-tags">${(e.concepts || []).map((c, i) => `<a class="sv-tag sv-mono${i ? "" : " on"}" href="#/svm/glossary/${esc(c)}">${esc(D.C.get(c)?.en || c.toUpperCase())}</a>`).join("")}</div>
           <h1>${esc(e.title)}</h1>
           ${e.ko ? `<p class="sv-ko">${esc(e.ko)}</p>` : ""}
@@ -94,8 +97,8 @@ export function mountReader(host, r, env) {
           <button type="button" class="sv-done" data-done aria-pressed="${isRead(e.id)}">${isRead(e.id) ? "읽었어요 ✓ · 취소" : "다 읽었어요 ✓"}</button>
           ${e.sources?.[0]?.url ? `<a class="sv-mono" href="${esc(e.sources[part]?.url || e.sources[0].url)}" target="_blank" rel="noopener noreferrer" data-srclink>SOURCE ↗</a>` : ""}
           <span class="sv-grow"></span>
-          ${prev ? `<a class="sv-mono sv-prev sv-wide" href="#/svm/read/${esc(prev.id)}">← ${pad2(prev.no)}</a>` : ""}
-          ${next ? `<a class="sv-next" href="#/svm/read/${esc(next.id)}">${pad2(next.no)} · ${esc(next.title.length > 30 ? next.title.slice(0, 29) + "…" : next.title)} →</a>` : `<a class="sv-next" href="#/svm">서재로 →</a>`}
+          ${prev ? `<a class="sv-mono sv-prev sv-wide" href="#/svm/read/${esc(prev.id)}">← CH ${pad2(prev.no)}</a>` : ""}
+          ${next ? `<a class="sv-next" href="#/svm/read/${esc(next.id)}"><span class="sv-mono">CH ${pad2(next.no)}</span> ${esc((next.ko || next.title).length > 24 ? (next.ko || next.title).slice(0, 23) + "…" : next.ko || next.title)} →</a>` : `<a class="sv-next" href="#/svm">LIBRARY →</a>`}
         </footer>
       </article>
       <aside class="sv-gloss" aria-label="개념">${glossHtml()}</aside>
