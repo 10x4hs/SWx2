@@ -7,7 +7,7 @@ const DIR = new URL("../src/svm/data/", import.meta.url);
 const errs = [], warns = [];
 const bad = (m) => errs.push(m), warn = (m) => warns.push(m);
 const read = (f) => { try { return JSON.parse(readFileSync(new URL(f, DIR), "utf8")); } catch (e) { bad(`${f}: ${e.message}`); return {}; } };
-const core = read("core.json"), gray = read("gray.json"), lineage = read("lineage.json"), media = read("media.json");
+const core = read("core.json"), gray = read("gray.json"), lineage = read("lineage.json"), media = read("media.json"), guide = read("guide.json");
 const arr = (x) => (Array.isArray(x) ? x : []);
 const str = (x, n) => typeof x === "string" && x.trim().length > 0 && (!n || x.length <= n);
 const https = (u) => typeof u === "string" && /^https:\/\/[^\s]+$/.test(u);
@@ -72,6 +72,8 @@ for (const v of videos) {
   for (const c of arr(v.concepts)) if (!cIds.has(c)) bad(`${at}: 개념 ${c} 없음`);
   for (const e of arr(v.essays)) if (!eIds.has(e)) bad(`${at}: 글 ${e} 없음`);
 }
+for (const q of arr(guide.questions)) { if (!str(q.q) || !str(q.a)) bad(`질문 ${q.q}: q · a`); if (!q.to && !arr(q.essays).length) bad(`질문 ${q.q}: 글이 없어요`); for (const e of arr(q.essays)) if (!eIds.has(e)) bad(`질문 ${q.q}: 글 ${e} 없음`); }
+if (arr(guide.questions).length < 5) warn(`질문이 ${arr(guide.questions).length}개 (5개 넘게 권장)`);
 const urls = new Set(essays.flatMap((e) => arr(e.sources).map((s) => s.url)));
 for (const m of more) { if (!str(m.title) || !https(m.url)) bad(`더 읽을 거리 ${m.title}: title · url`); if (urls.has(m.url)) warn(`더 읽을 거리 ${m.title}: 핵심 15편과 같은 주소`); }
 

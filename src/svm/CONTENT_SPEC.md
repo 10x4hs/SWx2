@@ -9,6 +9,7 @@
 | `data/gray.json` | `essays` (03 최근 Gray Mirror) |
 | `data/lineage.json` | `essays` (04 계보) + `people` (인물) + `edges` (인물 사이 관계) |
 | `data/media.json` | `videos` (YouTube) + `more` (더 읽을 거리) |
+| `data/guide.json` | `questions` (서재의 '무엇이 궁금하세요?' — `{ q, a, essays: [글 id], to? }`, `to: "counter"` 면 비판 모아 보기로) |
 
 모든 파일은 하나의 JSON 객체예요. 주석 · 끝 쉼표는 쓸 수 없어요.
 

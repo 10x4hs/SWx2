@@ -59,22 +59,38 @@ export function linkTerms(text, used = new Set()) {
   return out + esc(s.slice(i));
 }
 
-// 지식그래프: 인물(p:) · 글(e:) · 개념(c:) · 영상(v:)
-export const REL = { INFLUENCED: "영향", INVESTED: "투자", BACKED: "후원", CITED: "인용", PEER: "가까움", CRITIC: "비판", DEBATED: "논쟁", AUTHOR: "씀", CONCEPT: "개념", SV: "읽음 · 인용", VIDEO: "영상" };
-const cut = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
-export function graphData(show = { person: true, essay: true, concept: true, video: false }) {
-  const nodes = [], links = [];
-  if (show.person) for (const p of D.people) nodes.push({ id: "p:" + p.id, title: p.ko || p.name, type: "person", ...(p.id === "yarvin" ? { size: 14 } : {}) });
-  if (show.essay) for (const e of D.essays) nodes.push({ id: "e:" + e.id, title: cut(e.title, 34), type: "essay" });
-  if (show.concept) for (const c of D.concepts) nodes.push({ id: "c:" + c.id, title: c.name, type: "concept" });
-  if (show.video) for (const v of D.videos) nodes.push({ id: "v:" + v.id, title: cut(v.title, 30), type: "video" });
-  const has = new Set(nodes.map((n) => n.id)), add = (s, t, kind, weak = false) => { if (has.has(s) && has.has(t) && s !== t) links.push({ s, t, kind, from: s, weak }); };
-  for (const x of D.edges) add("p:" + x.a, "p:" + x.b, x.rel, !!x.weak);
-  for (const e of D.essays) {
-    add("p:" + e.author, "e:" + e.id, "AUTHOR");
-    for (const c of e.concepts || []) add("e:" + e.id, "c:" + c, "CONCEPT");
-    for (const p of e.people || []) if (p !== e.author) add("p:" + p, "e:" + e.id, "SV", true);
-  }
-  for (const v of D.videos) for (const p of v.people || []) add("v:" + v.id, "p:" + p, "VIDEO", true);
+// 서재의 권: 그 권의 글 · 읽은 수 · 남은 분
+export function volume(id) {
+  const s = D.sections.find((x) => x.id === id);
+  if (!s) return null;
+  const list = D.essays.filter((e) => e.section === id);
+  return { ...s, list, mins: list.reduce((n, e) => n + e.mins, 0) };
+}
+export const VOL_COLOR = { lime: "var(--sv-v-lime)", blue: "var(--sv-v-blue)", silver: "var(--sv-v-silver)", green: "var(--sv-v-green)" };
+export const volColor = (sectionId) => VOL_COLOR[D?.sections.find((x) => x.id === sectionId)?.color] || "var(--sv-ink)";
+
+// 찾아보기(색인) 매트릭스: 개념 × 장 · 인물 × 장 (책 뒤 색인을 한 장으로)
+export function matrix() {
+  const concepts = D.concepts.map((c) => ({ id: c.id, name: c.name, href: `#/svm/glossary/${c.id}`, cells: D.essays.map((e) => !!e.concepts?.includes(c.id)) }));
+  const people = D.people.filter((p) => D.essays.some((e) => e.author === p.id || e.people?.includes(p.id))).filter((p) => p.id !== "yarvin")
+    .map((p) => ({ id: p.id, name: p.ko || p.name, href: `#/svm/people/${p.id}`, cells: D.essays.map((e) => e.author === p.id || !!e.people?.includes(p.id)) }))
+    .sort((a, b) => b.cells.filter(Boolean).length - a.cells.filter(Boolean).length);
+  return { concepts, people };
+}
+
+// QUERY: 적은 말로 장 찾기 (제목 · 한국어 제목 · 한 줄 · 논지 · 개념 · 인물)
+export function search(q) {
+  q = String(q || "").trim().toLowerCase();
+  if (!q) return [];
+  const hay = (e) => [e.title, e.ko, e.sub, e.core, ...(e.claims || []), ...(e.concepts || []).map((c) => D.C.get(c)?.name), ...(e.people || []).map(personName), personName(e.author)].join(" ").toLowerCase();
+  return D.essays.filter((e) => hay(e).includes(q));
+}
+
+// 인물 지도: 인물만 (뿌리 · 비판한 사람은 색으로) — 글 · 개념 점은 빼요 (2026-10-30 "그래프가 너무 보기 힘들고")
+export const REL = { INFLUENCED: "영향", INVESTED: "투자", BACKED: "후원", CITED: "인용", PEER: "가까움", CRITIC: "비판", DEBATED: "논쟁" };
+export function peopleGraph() {
+  const critics = new Set(D.edges.filter((x) => x.rel === "CRITIC").map((x) => x.a));
+  const nodes = D.people.map((p) => ({ id: p.id, title: p.ko || p.name, type: p.lineage === 1 ? "root" : critics.has(p.id) && p.lineage == null ? "critic" : "person", size: p.id === "yarvin" ? 9 : p.lineage === 1 || critics.has(p.id) ? 4 : 5.5 })); // 점이 15개뿐이라 화면에 맞추면 크게 확대돼요 — 작게
+  const links = D.edges.map((x) => ({ s: x.a, t: x.b, kind: x.rel, from: x.a, weak: !!x.weak }));
   return { nodes, links };
 }
