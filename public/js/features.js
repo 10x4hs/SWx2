@@ -11,6 +11,7 @@ export function featureOfRoute(r) {
   if (r.view === "mba") return "biz";
   if (r.view === "dev") return "dev";
   if (r.view === "cim") return "cim";
+  if (r.view === "psy") return "psy";
   if (r.view === "page") return "pages";
   return null;
 }

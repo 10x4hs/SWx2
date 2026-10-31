@@ -33,6 +33,7 @@ import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js";
 import * as roomView from "./views/room.js";
 import * as newsView from "./views/news.js"; // 뉴스 Signal Map (#/news · #/news/item/<id> · #/news/thread/<id>)
 import * as cimView from "./views/cim.js"; // 투자자산운용사 2주 완성 (#/cim 오늘 · #/cim/go 오늘 공부 · #/cim/study[/<장>[/<n>]] 공부 · #/cim/exam[/…] 시험 · 옛 주소는 바꿔 줘요) — 잠금 기능 "cim" (관리자 승인)
+import * as psyView from "./views/psy.js"; // Psychology — 설득 · 수사학 (#/psy 지도 · t/<분야> · c/<카드> · today · quiz · spar · v · library) — 잠금 기능 "psy"
 import * as svmView from "./views/svm.js"; // Silicon Valley Mafia — 관리자(HSK · GYK)만 · Curtis Yarvin 모음 (#/svm 서재 · #/svm/read/<글> · #/svm/graph)
 import * as mbaView from "./views/mba.js"; // 경영 마이크로디그리 (#/mba · #/mba/today · #/mba/company · #/mba/words · #/mba/<모듈>/<카드>)
 import * as devView from "./views/dev.js"; // SW 공간 (#/sw 과정 목록 · #/sw/<과정>/… 개발 흐름 · Vector & Graph — today · docs · <모듈>/<카드> · case · practice)
@@ -273,6 +274,7 @@ const NAV = [
   { key: "biz", hash: "#/mba", label: "MBA", img: "/assets/dock/stocks.png" }, // 경영 마이크로디그리 (24주 · 하루 1~2시간)
   { key: "dev", hash: "#/sw", label: "Code Flow", img: "/assets/dock/vscode.png" }, // SW 과정 (Vector & Graph · Dev Flow) — 첫 화면은 과정 두 권
   { key: "cim", hash: "#/cim", label: "CIM", img: "/assets/dock/cim.svg" }, // 투자자산운용사 2주 완성 — 오늘 · 공부 · 시험 + AI 튜터 (잠금 기능 "cim" · 기록은 사람별 서버 저장)
+  { key: "psy", hash: "#/psy", label: "Psychology", img: "/assets/dock/psy.svg" }, // 설득 · 수사학 — 지도 · 카드(간격 반복) · 퀴즈 · AI 말싸움 (잠금 기능 "psy" · 기록은 사람별 서버 저장)
   { key: "svm", hash: "#/svm", label: "Silicon Valley Mafia", img: "/assets/dock/svm.svg", when: (me) => me?.role === "admin" && !me?.impersonated_by }, // Curtis Yarvin 글 · 사상 모음 — 관리자만 (다른 사람에겐 아이콘도 자물쇠도 없어요, 서버도 404)
 ];
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
@@ -456,6 +458,7 @@ function parseRoute() {
   if (a === "sw") return { view: "dev", nav: "dev", course: b || null, id: c || null, sub: d || null, item: e || null }; // SW 공간 — 과정 목록 · 과정 안
   if (a === "dev") return { view: "dev", nav: "dev", course: "dev", id: b || null, sub: c || null, item: d || null }; // 옛 주소 (#/dev/…) = #/sw/dev/…
   if (a === "cim") return { view: "cim", nav: "cim", tab: b || null, id: c || null, sub: d || null, item: e || null }; // 투자자산운용사
+  if (a === "psy") return { view: "psy", nav: "psy", tab: b || null, id: c || null }; // Psychology
   if (a === "svm") return ctx.me?.role === "admin" && !ctx.me?.impersonated_by ? { view: "svm", nav: "svm", tab: b || null, id: c || null, sub: d || null } : { view: "home", nav: "home" }; // Silicon Valley Mafia (관리자만 — 아니면 홈)
   if (a === "mba") return { view: "mba", nav: "biz", id: b || null, sub: c || null, item: d || null }; // 경영 마이크로디그리
   if (a === "news") return { view: "news", nav: "news", sub: ["item", "world", "co", "talk", "board", "library", "history", "ai-trend", "hw-trend"].includes(b) ? b : null, id: c || null, day: /^\d{4}-\d{2}-\d{2}$/.test(b || "") ? b : null }; // #/news · #/news/<day> · #/news/item/<id>
@@ -465,7 +468,7 @@ function parseRoute() {
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, cim: cimView, svm: svmView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, admin: adminView, teams: teamsView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, cim: cimView, psy: psyView, svm: svmView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, admin: adminView, teams: teamsView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {
@@ -503,6 +506,7 @@ function route(redraw = false) {
   if (lastView === "page" && r.view === "page" && !inStudy) { pageView.update(r); return; } // 페이지 사이 이동은 껍데기를 그대로
   if (lastView === "news" && r.view === "news") { newsView.update(r); return; } // 지구본은 그대로, 패널만
   if (lastView === "cim" && r.view === "cim") { cimView.update(r); return; } // 탭 · 장 사이 이동은 껍데기를 그대로
+  if (lastView === "psy" && r.view === "psy") { psyView.update(r); return; } // 지도 · 카드 · 퀴즈 사이도 껍데기를 그대로
   if (lastView === "svm" && r.view === "svm") { svmView.update(r); return; } // 서재 · 글 · 그래프 사이도 껍데기를 그대로
   if (lastView === "mba" && r.view === "mba") { mbaView.update(r); return; } // 모듈 · 카드 사이 이동은 껍데기를 그대로
   if (lastView === "dev" && r.view === "dev") { devView.update(r); return; } // 주 · 카드 사이 이동도 껍데기를 그대로
