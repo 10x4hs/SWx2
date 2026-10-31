@@ -3,7 +3,7 @@
 //   PUT /apps/:app/state {data, at} → { updated_at }         at = 내가 마지막으로 본 updated_at
 //     다른 기기가 그 사이에 썼으면 409 + { data, updated_at } (지금 서버 값) → 화면이 합쳐서 다시 보내요
 // 기능 잠금: CIM 은 "cim" 기능이에요 (src/features.js 의 MAP · /apps/cim/* — 관리자 두 명이 승인해야 열려요)
-const APPS = { cim: 600_000, ui: 4_000, svm: 40_000 }; // 앱 → 최대 크기(글자) · ui = 화면 꾸미기 (테마 · 배경 · 강조 색, js/theme.js — 잠금 없음) · svm = Silicon Valley Mafia 읽은 글 · 설정 (관리자만, features.js ADMIN_ONLY)
+const APPS = { cim: 600_000, ui: 4_000, svm: 40_000, psy: 200_000 }; // 앱 → 최대 크기(글자) · ui = 화면 꾸미기 (테마 · 배경 · 강조 색, js/theme.js — 잠금 없음) · svm = Silicon Valley Mafia 읽은 글 · 설정 (관리자만, features.js ADMIN_ONLY) · psy = Psychology SRS · 퀴즈 · 스파링 점수 (기능 psy)
 
 export function registerAppState(on, { json, body, fail, now }) {
   const appOf = (p) => (Object.hasOwn(APPS, p.app) ? p.app : fail(404, "없는 앱이에요."));

@@ -240,6 +240,7 @@ export const api = {
   saveAppState: (app, data, at) => request("PUT", `/apps/${app}/state`, { data, at }), // 409 = 다른 기기가 먼저 씀 → err.data 에 서버 값
   svmData: () => request("GET", "/svm/data"), // Silicon Valley Mafia 내용 (관리자만 · src/svm.js)
   svmSource: (id, part) => request("GET", `/svm/source?id=${encodeURIComponent(id)}&part=${part}`), // 원문 단락 (원문 사이트에서 그때그때)
+  psySpar: (scenario, turns) => request("POST", "/apps/psy/spar", { scenario, turns }), // Psychology AI 스파링 (src/psy.js) → { reply, ai_moves, my_moves, score, missed }
   svmTranslate: (id, texts) => request("POST", "/svm/translate", { id, texts }), // 단락 번역 (AI)
   mbaState: () => request("GET", "/mba/state"),
   mbaRead: (module, card, correct, total) => request("PUT", "/mba/read", { module, card, correct, total }),

@@ -1,0 +1,386 @@
+{
+ "books": [
+  {
+   "id": "how-to-win-friends",
+   "en": "How to Win Friends and Influence People",
+   "ko": "데일 카네기 인간관계론",
+   "author": "Dale Carnegie",
+   "year": 1936,
+   "shelf": "relations",
+   "why": "관계의 기본기를 처음 정리한 고전 실전서.",
+   "url": "https://openlibrary.org/works/OL1063267W",
+   "cards": [
+    "carnegie-dont-criticize",
+    "carnegie-honest-appreciation",
+    "carnegie-their-interest",
+    "carnegie-interest-in-others",
+    "carnegie-name",
+    "carnegie-listen",
+    "carnegie-never-say-wrong",
+    "carnegie-suggestions"
+   ]
+  },
+  {
+   "id": "crucial-conversations",
+   "en": "Crucial Conversations",
+   "ko": "결정적 순간의 대화",
+   "author": "Kerry Patterson et al.",
+   "year": 2002,
+   "shelf": "relations",
+   "why": "의견이 갈리고 위험이 큰 대화를 푸는 틀.",
+   "url": "https://openlibrary.org/works/OL282391W",
+   "cards": [
+    "cc-start-heart",
+    "cc-learn-to-look",
+    "cc-make-safe",
+    "cc-silence-violence",
+    "cc-state-path",
+    "cc-explore-others",
+    "cc-move-to-action"
+   ]
+  },
+  {
+   "id": "difficult-conversations",
+   "en": "Difficult Conversations",
+   "ko": "어려운 대화 (한국어판 제목 unverified)",
+   "author": "Douglas Stone, Bruce Patton, Sheila Heen",
+   "year": 1999,
+   "shelf": "relations",
+   "why": "하버드 협상 프로젝트에서 나온 어려운 대화 해부서.",
+   "url": "https://openlibrary.org/works/OL13513526W",
+   "cards": [
+    "dc-three-conversations",
+    "dc-blame-contribution",
+    "dc-intent-impact",
+    "dc-different-stories",
+    "dc-feelings",
+    "dc-identity",
+    "dc-learning-stance"
+   ]
+  },
+  {
+   "id": "nvc",
+   "en": "Nonviolent Communication",
+   "ko": "비폭력 대화",
+   "author": "Marshall Rosenberg",
+   "year": 1999,
+   "shelf": "relations",
+   "why": "관찰·감정·욕구·부탁 네 단계 말하기 틀.",
+   "url": "https://openlibrary.org/works/OL2018966W",
+   "cards": [
+    "nvc-observation",
+    "nvc-feelings",
+    "nvc-needs",
+    "nvc-request",
+    "nvc-empathy",
+    "nvc-giraffe-jackal",
+    "nvc-anger"
+   ]
+  },
+  {
+   "id": "thinking-fast-slow",
+   "en": "Thinking, Fast and Slow",
+   "ko": "생각에 관한 생각",
+   "author": "Daniel Kahneman",
+   "year": 2011,
+   "shelf": "judgment",
+   "why": "직관과 숙고 두 시스템으로 보는 판단 편향의 지도.",
+   "url": "https://openlibrary.org/works/OL15992072W",
+   "cards": [
+    "tfs-system1-2",
+    "tfs-anchoring",
+    "tfs-availability",
+    "tfs-priming",
+    "tfs-loss-aversion",
+    "tfs-wysiati",
+    "tfs-planning-fallacy",
+    "tfs-two-selves"
+   ]
+  },
+  {
+   "id": "nudge",
+   "en": "Nudge",
+   "ko": "넛지",
+   "author": "Richard Thaler, Cass Sunstein",
+   "year": 2008,
+   "shelf": "judgment",
+   "why": "선택 환경 설계로 행동을 바꾸는 법.",
+   "url": "https://openlibrary.org/works/OL3936258W",
+   "cards": [
+    "nudge-choice-architecture",
+    "nudge-defaults",
+    "nudge-save-more",
+    "nudge-social-norm",
+    "nudge-libertarian-paternalism",
+    "nudge-feedback",
+    "nudge-effect-size"
+   ]
+  },
+  {
+   "id": "predictably-irrational",
+   "en": "Predictably Irrational",
+   "ko": "상식 밖의 경제학",
+   "author": "Dan Ariely",
+   "year": 2008,
+   "shelf": "judgment",
+   "why": "불합리가 무작위가 아니라 예측 가능한 패턴임을 보여줌.",
+   "url": "https://openlibrary.org/works/OL9302660W",
+   "cards": [
+    "pi-relativity",
+    "pi-zero-price",
+    "pi-social-market",
+    "pi-ownership",
+    "pi-expectations",
+    "pi-procrastination",
+    "pi-dishonesty-caveat"
+   ]
+  },
+  {
+   "id": "black-swan",
+   "en": "The Black Swan",
+   "ko": "블랙 스완",
+   "author": "Nassim Nicholas Taleb",
+   "year": 2007,
+   "shelf": "judgment",
+   "why": "드문 큰 사건과 과신에 대한 경고.",
+   "url": "https://openlibrary.org/works/OL3295030W",
+   "cards": [
+    "bs-black-swan",
+    "bs-narrative-fallacy",
+    "bs-silent-evidence",
+    "bs-mediocristan-extremistan",
+    "bs-ludic-fallacy",
+    "bs-barbell",
+    "bs-expert-problem"
+   ]
+  },
+  {
+   "id": "superforecasting",
+   "en": "Superforecasting",
+   "ko": "슈퍼 예측, 그들은 어떻게 미래를 보는가 (unverified)",
+   "author": "Philip Tetlock, Dan Gardner",
+   "year": 2015,
+   "shelf": "judgment",
+   "why": "예측을 점수로 검증해 잘하는 법을 찾은 연구.",
+   "url": "https://openlibrary.org/works/OL18233878W",
+   "cards": [
+    "sf-brier",
+    "sf-fermi",
+    "sf-outside-inside",
+    "sf-update",
+    "sf-foxes",
+    "sf-teams",
+    "sf-limits"
+   ]
+  },
+  {
+   "id": "noise",
+   "en": "Noise: A Flaw in Human Judgment",
+   "ko": "노이즈",
+   "author": "Daniel Kahneman, Olivier Sibony, Cass Sunstein",
+   "year": 2021,
+   "shelf": "judgment",
+   "why": "편향과 별개로 판단이 흔들리는 '소음'을 다룬다.",
+   "url": "https://openlibrary.org/works/OL17962180W",
+   "cards": [
+    "noise-def",
+    "noise-audit",
+    "noise-types",
+    "noise-hygiene",
+    "noise-aggregate",
+    "noise-structure",
+    "noise-rules-vs-judgment"
+   ]
+  },
+  {
+   "id": "thinking-in-bets",
+   "en": "Thinking in Bets",
+   "ko": "결정, 흔들리지 않는 법 (unverified)",
+   "author": "Annie Duke",
+   "year": 2018,
+   "shelf": "judgment",
+   "why": "불확실한 결정을 베팅의 눈으로 보는 법.",
+   "url": "https://openlibrary.org/works/OL19736287W",
+   "cards": [
+    "tib-resulting",
+    "tib-probability",
+    "tib-decision-group",
+    "tib-pre-mortem",
+    "tib-ulysses",
+    "tib-motivated-reasoning"
+   ]
+  },
+  {
+   "id": "influence",
+   "en": "Influence: The Psychology of Persuasion",
+   "ko": "설득의 심리학",
+   "author": "Robert Cialdini",
+   "year": 1984,
+   "shelf": "persuasion",
+   "why": "설득 원리를 정리한 기본서. 개정판마다 원리 수가 다름.",
+   "url": "https://openlibrary.org/works/OL3902892W",
+   "cards": [
+    "inf-reciprocity",
+    "inf-commitment",
+    "inf-social-proof",
+    "inf-liking",
+    "inf-authority",
+    "inf-scarcity",
+    "inf-unity",
+    "inf-contrast"
+   ]
+  },
+  {
+   "id": "pre-suasion",
+   "en": "Pre-Suasion",
+   "ko": "초전 설득",
+   "author": "Robert Cialdini",
+   "year": 2016,
+   "shelf": "persuasion",
+   "why": "메시지 전에 주의를 먼저 놓는 법.",
+   "url": "https://openlibrary.org/works/OL17592794W",
+   "cards": [
+    "ps-privileged-moment",
+    "ps-attention-importance",
+    "ps-unity-first",
+    "ps-association",
+    "ps-defense",
+    "ps-ethics",
+    "ps-reciprocity-setup"
+   ]
+  },
+  {
+   "id": "never-split-difference",
+   "en": "Never Split the Difference",
+   "ko": "어떻게 원하는 것을 얻는가 (unverified)",
+   "author": "Chris Voss, Tahl Raz",
+   "year": 2016,
+   "shelf": "persuasion",
+   "why": "FBI 인질 협상가의 실전 기술.",
+   "url": "https://openlibrary.org/works/OL18819818W",
+   "cards": [
+    "nsd-mirroring",
+    "nsd-labeling",
+    "nsd-calibrated-questions",
+    "nsd-accusation-audit",
+    "nsd-thats-right",
+    "nsd-anchor-ackerman",
+    "nsd-black-swan-leverage"
+   ]
+  },
+  {
+   "id": "getting-to-yes",
+   "en": "Getting to Yes",
+   "ko": "YES를 이끌어내는 협상법",
+   "author": "Roger Fisher, William Ury (+ Bruce Patton in 2nd ed.)",
+   "year": 1981,
+   "shelf": "persuasion",
+   "why": "원칙 협상(Principled negotiation)의 기본서.",
+   "url": "https://openlibrary.org/works/OL1837566W",
+   "cards": [
+    "gty-separate-people",
+    "gty-interests",
+    "gty-options",
+    "gty-criteria",
+    "gty-batna",
+    "gty-power-tricks",
+    "gty-communication"
+   ]
+  },
+  {
+   "id": "made-to-stick",
+   "en": "Made to Stick",
+   "ko": "스틱!",
+   "author": "Chip Heath, Dan Heath",
+   "year": 2007,
+   "shelf": "persuasion",
+   "why": "오래 기억되는 메시지를 만드는 SUCCESs 틀.",
+   "url": "https://openlibrary.org/books/OL7915103M",
+   "cards": [
+    "mts-simple",
+    "mts-unexpected",
+    "mts-concrete",
+    "mts-credible",
+    "mts-emotional",
+    "mts-stories",
+    "mts-curse-of-knowledge"
+   ]
+  },
+  {
+   "id": "thank-you-for-arguing",
+   "en": "Thank You for Arguing",
+   "ko": "논쟁의 기술 (unverified)",
+   "author": "Jay Heinrichs",
+   "year": 2007,
+   "shelf": "persuasion",
+   "why": "수사학을 일상 설득으로 푼 책.",
+   "url": "https://openlibrary.org/works/OL3255662W",
+   "cards": [
+    "tya-ethos-pathos-logos",
+    "tya-argue-for-agreement",
+    "tya-concede",
+    "tya-tenses",
+    "tya-logical-fallacies",
+    "tya-mirror-values",
+    "tya-timing"
+   ]
+  },
+  {
+   "id": "48-laws",
+   "en": "The 48 Laws of Power",
+   "ko": "권력의 법칙",
+   "author": "Robert Greene",
+   "year": 1998,
+   "shelf": "power",
+   "why": "권력 전술 모음. 방어·알아보기 관점으로만 읽는다.",
+   "url": "https://openlibrary.org/works/OL1968368W",
+   "cards": [
+    "48-conceal-intentions",
+    "48-always-say-less",
+    "48-court-attention",
+    "48-win-through-actions",
+    "48-make-others-depend",
+    "48-isolate",
+    "48-ethics-caution"
+   ]
+  },
+  {
+   "id": "the-prince",
+   "en": "The Prince",
+   "ko": "군주론",
+   "author": "Niccolo Machiavelli",
+   "year": 1532,
+   "shelf": "power",
+   "why": "권력 유지의 냉정한 현실 분석. 1513년경 집필, 1532년 출간.",
+   "url": "https://openlibrary.org/works/OL1089297W",
+   "cards": [
+    "prince-virtu-fortuna",
+    "prince-appearance",
+    "prince-feared-loved",
+    "prince-hatred",
+    "prince-advisors",
+    "prince-new-states",
+    "prince-context"
+   ]
+  },
+  {
+   "id": "art-of-war",
+   "en": "The Art of War",
+   "ko": "손자병법",
+   "author": "Sun Tzu (Sunzi)",
+   "year": -500,
+   "shelf": "power",
+   "why": "전쟁을 피하고 이기는 전략서. 저자·연대는 불확실.",
+   "url": "https://openlibrary.org/works/OL244537W",
+   "cards": [
+    "aow-know-self-enemy",
+    "aow-win-without-fighting",
+    "aow-deception",
+    "aow-terrain",
+    "aow-speed",
+    "aow-leader-discipline",
+    "aow-attribution"
+   ]
+  }
+ ]
+}

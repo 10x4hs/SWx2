@@ -38,6 +38,7 @@ import { islandE2E } from "./e2e-island.mjs";
 import { boardE2E } from "./e2e-board.mjs";
 import { noteFilesE2E } from "./e2e-notefiles.mjs";
 import { svmE2E } from "./e2e-svm.mjs";
+import { psyE2E } from "./e2e-psy.mjs";
 import { section, count, aiMock, writeSummary } from "./lib/sections.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
@@ -1750,6 +1751,8 @@ try {
   });
   // ---------- Silicon Valley Mafia (#/svm, 관리자만) — scripts/e2e-svm.mjs (컴퓨터 · 폰 · 회원은 안 보임) ----------
   await section("svm", () => svmE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag, member: user, aiMock }));
+  // ---------- Psychology (#/psy, 기능 psy) — scripts/e2e-psy.mjs (컴퓨터 · 폰 · 기능 없는 회원은 안 보임) ----------
+  await section("psy", () => psyE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }));
 } finally {
   await browser.close();
   try { cleanup(); } catch {}

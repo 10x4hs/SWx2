@@ -23,6 +23,7 @@ export const FEATURES = {
   mcp: "MCP 연결 (AI 에이전트)",
   news: "뉴스",
   cim: "CIM (투자자산운용사)",
+  psy: "Psychology (설득 · 수사학)",
 };
 // 서버 주소 → 기능 (없으면 누구나)
 const MAP = [
@@ -34,6 +35,7 @@ const MAP = [
 
   [/^\/(?:pages|site-meta|proxy-token)(?:\/|$)/, "pages"],
   [/^\/mcp\/tokens/, "mcp"],
+  [/^\/apps\/psy\//, "psy"], // Psychology 기록 · AI 스파링 (src/psy.js · 카드 /psy/*.json 은 정적)
   [/^\/apps\/cim\//, "cim"], // CIM 기록 · AI 튜터 (내용 파일 /cim/*.json 은 정적이라 여기 안 와요)
 ];
 export const featureOf = (path) => MAP.find(([re]) => re.test(path))?.[1] || null;

@@ -1,0 +1,744 @@
+{
+ "videos": [
+  {
+   "id": "cFdCzN7RYbw",
+   "title": "Science Of Persuasion",
+   "channel": "Team Cialdini",
+   "lang": "en",
+   "tracks": [
+    "persuasion"
+   ],
+   "covers": [
+    "reciprocity",
+    "scarcity",
+    "authority",
+    "commitment-consistency",
+    "liking-unity",
+    "social-proof"
+   ],
+   "kind": "explainer",
+   "why": "치알디니가 직접 해설하는 설득의 6원칙 애니메이션",
+   "mins": 12
+  },
+  {
+   "id": "_hem3-8XbEI",
+   "title": "The Power of Pre-Suasion | Robert Cialdini | Royal Society of Arts | Lecture",
+   "channel": "Royal Society of Arts",
+   "lang": "en",
+   "tracks": [
+    "persuasion"
+   ],
+   "covers": [
+    "ps-privileged-moment",
+    "inf-reciprocity"
+   ],
+   "kind": "lecture",
+   "why": "설득은 메시지 이전의 순간에 시작된다는 치알디니 강연",
+   "mins": 62
+  },
+  {
+   "id": "o6oyCeYQWPE",
+   "title": "Persuasion, attitude change, and the elaboration likelihood model | MCAT | Khan Academy",
+   "channel": "khanacademymedicine",
+   "lang": "en",
+   "tracks": [
+    "persuasion"
+   ],
+   "covers": [
+    "elm"
+   ],
+   "kind": "explainer",
+   "why": "칸아카데미가 6분에 정리하는 설득·태도 변화와 ELM",
+   "mins": 6
+  },
+  {
+   "id": "YvhHVjTTd2c",
+   "title": "정교화가능성모델",
+   "channel": "문화심리학자 한민의 '5분심리학'",
+   "lang": "ko",
+   "tracks": [
+    "persuasion"
+   ],
+   "covers": [
+    "elm"
+   ],
+   "kind": "explainer",
+   "why": "문화심리학자가 한국어로 5분에 설명하는 ELM",
+   "mins": 5
+  },
+  {
+   "id": "58jHhNzUHm4",
+   "title": "How can you change someone's mind? (hint: facts aren't always enough) - Hugo Mercier",
+   "channel": "TED-Ed",
+   "lang": "en",
+   "tracks": [
+    "persuasion",
+    "argument"
+   ],
+   "covers": [
+    "moral-reframing",
+    "backfire-effect",
+    "reactance"
+   ],
+   "kind": "explainer",
+   "why": "청중이 믿고 신뢰하는 것에 맞춰야 논증이 먹힌다",
+   "mins": 5
+  },
+  {
+   "id": "EC18WNW11OE",
+   "title": "'아니' '근데' 필수인 설득의 민족! 한국인에게만 통하는 설득의 심리학부터, 설득 잘~하는 3가지 방법까지 [심리읽어드립니다] | 김경일 심리학자",
+   "channel": "사피엔스 스튜디오",
+   "lang": "ko",
+   "tracks": [
+    "persuasion"
+   ],
+   "covers": [
+    "kairos",
+    "ben-franklin-effect"
+   ],
+   "kind": "talk",
+   "why": "김경일 교수가 알려주는 설득 잘하는 3가지 방법",
+   "mins": 14
+  },
+  {
+   "id": "X1jII3pTwqw",
+   "title": "당신은 주변 상황과 타인의 행동에 쉽게 휩쓸리나요? 이 다큐를 시청하길 바랍니다.｜개인의 주체적 판단력 중요한 이유｜다큐프라임｜#골라듄다큐",
+   "channel": "EBSDocumentary (EBS 다큐)",
+   "lang": "ko",
+   "tracks": [
+    "defense",
+    "persuasion"
+   ],
+   "covers": [
+    "milgram-obedience",
+    "authority",
+    "asch-conformity",
+    "social-proof"
+   ],
+   "kind": "documentary",
+   "why": "EBS 실험으로 확인하는 권위 복종과 동조의 힘",
+   "mins": 34
+  },
+  {
+   "id": "XABYyRXsFcs",
+   "title": "말싸움 필승법",
+   "channel": "알간지Alganzi",
+   "lang": "ko",
+   "tracks": [
+    "argument"
+   ],
+   "covers": [
+    "toulmin-model"
+   ],
+   "kind": "explainer",
+   "why": "시작 영상: 알간지의 말싸움 필승법",
+   "mins": 19
+  },
+  {
+   "id": "xdoo3BkLykc",
+   "title": "(Jp) 사랑하는 사람과 ‘말싸움’ 잘하는 법 | 서보현(Bo Seo) '디베이터' 저자 | #말하기 #토론 #하버드 | Ask N Learn 26회",
+   "channel": "세바시 강연 Sebasi Talk",
+   "lang": "ko",
+   "tracks": [
+    "argument"
+   ],
+   "covers": [
+    "toulmin-model",
+    "de-escalation"
+   ],
+   "kind": "talk",
+   "why": "세계 토론 챔피언이 말하는 '끝장'을 보지 않는 토론",
+   "mins": 10
+  },
+  {
+   "id": "phgjouv0BUA",
+   "title": "How to disagree productively and find common ground | Julia Dhar",
+   "channel": "TED",
+   "lang": "en",
+   "tracks": [
+    "argument"
+   ],
+   "covers": [
+    "charity-steelman",
+    "active-listening"
+   ],
+   "kind": "talk",
+   "why": "공통점에서 출발해 생산적으로 반대하는 법 (TED)",
+   "mins": 15
+  },
+  {
+   "id": "w4RLfVxTGH4",
+   "title": "Why you think you're right -- even if you're wrong | Julia Galef",
+   "channel": "TED",
+   "lang": "en",
+   "tracks": [
+    "argument"
+   ],
+   "covers": [
+    "tib-motivated-reasoning",
+    "confirmation-bias",
+    "what-would-change-your-mind"
+   ],
+   "kind": "talk",
+   "why": "내 생각을 방어하는 군인 vs 사실을 찾는 정찰병",
+   "mins": 12
+  },
+  {
+   "id": "LZZ7tQnI2-M",
+   "title": "The Principle of Charity",
+   "channel": "John Corvino",
+   "lang": "en",
+   "tracks": [
+    "argument"
+   ],
+   "covers": [
+    "charity-steelman",
+    "straw-man"
+   ],
+   "kind": "explainer",
+   "why": "허수아비 대신 상대 논증을 후하게 읽는 자비의 원칙",
+   "mins": 2
+  },
+  {
+   "id": "L9rkQJ91VOE",
+   "title": "Can you outsmart the fallacy that started a witch hunt? - Elizabeth Cox",
+   "channel": "TED-Ed",
+   "lang": "en",
+   "tracks": [
+    "argument"
+   ],
+   "covers": [
+    "burden-of-proof",
+    "appeal-to-ignorance"
+   ],
+   "kind": "explainer",
+   "why": "반증 못 하면 참이라는 입증책임 오류, 매카시 사례",
+   "mins": 4
+  },
+  {
+   "id": "NKEhdsnKKHs",
+   "title": "How to Argue - Philosophical Reasoning: Crash Course Philosophy #2",
+   "channel": "CrashCourse",
+   "lang": "en",
+   "tracks": [
+    "argument"
+   ],
+   "covers": [
+    "toulmin-model",
+    "socratic-questioning"
+   ],
+   "kind": "explainer",
+   "why": "연역 논증이 어떻게 작동하고 어떻게 틀리는지 입문",
+   "mins": 10
+  },
+  {
+   "id": "TpQlyUjp3vM",
+   "title": "Argument Clinic | Monty Python (Official Sketch)",
+   "channel": "Monty Python",
+   "lang": "en",
+   "tracks": [
+    "argument"
+   ],
+   "covers": [
+    "graham-hierarchy"
+   ],
+   "kind": "skit",
+   "why": "논증과 단순 반박의 차이를 웃기게 보여주는 콩트",
+   "mins": 3
+  },
+  {
+   "id": "guZa7mQV1l0",
+   "title": "Never Split the Difference | Chris Voss | Talks at Google",
+   "channel": "Talks at Google",
+   "lang": "en",
+   "tracks": [
+    "business"
+   ],
+   "covers": [
+    "accusation-audit",
+    "nsd-accusation-audit",
+    "nsd-thats-right",
+    "nsd-black-swan-leverage",
+    "logrolling"
+   ],
+   "kind": "talk",
+   "why": "FBI 인질 협상가의 '절대 반으로 나누지 마라' 강연",
+   "mins": 51
+  },
+  {
+   "id": "MXFpOWDAhvM",
+   "title": "Margaret Neale: Negotiation: Getting What You Want",
+   "channel": "Stanford Graduate School of Business",
+   "lang": "en",
+   "tracks": [
+    "business"
+   ],
+   "covers": [
+    "batna",
+    "reservation-aspiration",
+    "framing"
+   ],
+   "kind": "lecture",
+   "why": "스탠퍼드 교수의 협상 4단계: 평가·준비·요청·정리",
+   "mins": 25
+  },
+  {
+   "id": "Hc6yi_FtoNo",
+   "title": "The walk from \"no\" to \"yes\" | William Ury",
+   "channel": "TED",
+   "lang": "en",
+   "tracks": [
+    "business"
+   ],
+   "covers": [
+    "de-escalation",
+    "principled-negotiation"
+   ],
+   "kind": "talk",
+   "why": "윌리엄 유리가 말하는 '아니오'에서 '예'로 가는 길",
+   "mins": 19
+  },
+  {
+   "id": "17XZGUX_9iM",
+   "title": "Kevin Hale - How to Pitch Your Startup",
+   "channel": "Y Combinator",
+   "lang": "en",
+   "tracks": [
+    "business"
+   ],
+   "covers": [
+    "pitch-storytelling",
+    "pyramid-principle"
+   ],
+   "kind": "lecture",
+   "why": "YC 파트너가 알려주는 투자자 대상 피칭 구성",
+   "mins": 28
+  },
+  {
+   "id": "J6EjBwrdHgE",
+   "title": "Daniel Pink & Adam Grant Interview on Why ‘To Sell is Human’: Using Sales Skills in Everyday Life",
+   "channel": "Knowledge at Wharton",
+   "lang": "en",
+   "tracks": [
+    "business"
+   ],
+   "covers": [
+    "pitch-storytelling",
+    "spin-selling"
+   ],
+   "kind": "interview",
+   "why": "다니엘 핑크: 모든 직업은 세일즈다 (와튼 대담)",
+   "mins": 20
+  },
+  {
+   "id": "nZTp499Y3hE",
+   "title": "(Kor, Eng, Jpn) 관계가 행복해지는 협상의 기술 | 류재언 '협상바이블' 저자, 변호사 | 협상 대화 말하기 네고 | 세바시 988회",
+   "channel": "세바시 강연 Sebasi Talk",
+   "lang": "ko",
+   "tracks": [
+    "business"
+   ],
+   "covers": [
+    "batna",
+    "zopa"
+   ],
+   "kind": "talk",
+   "why": "변호사 류재언이 알려주는 일상 협상 잘하는 5가지",
+   "mins": 17
+  },
+  {
+   "id": "D-O8FGKXvWM",
+   "title": "[풀버전] 소비자들은 이성적이지 않다ㅣEBS 비즈니스 리뷰 플러스 정태성편",
+   "channel": "EBS 비즈니스 리뷰",
+   "lang": "ko",
+   "tracks": [
+    "business"
+   ],
+   "covers": [
+    "endowment-effect",
+    "first-offer-anchoring",
+    "framing"
+   ],
+   "kind": "lecture",
+   "why": "소유·닻 내림·프레이밍 효과로 보는 소비자 심리",
+   "mins": 12
+  },
+  {
+   "id": "3klMM9BkW5o",
+   "title": "How to use rhetoric to get what you want - Camille A. Langston",
+   "channel": "TED-Ed",
+   "lang": "en",
+   "tracks": [
+    "classical"
+   ],
+   "covers": [
+    "ethos-pathos-logos",
+    "three-genres"
+   ],
+   "kind": "explainer",
+   "why": "아리스토텔레스 수사학의 에토스·로고스·파토스 입문",
+   "mins": 4
+  },
+  {
+   "id": "sKibtzrro7M",
+   "title": "Cicero and the Secrets of Persuasive Oratory",
+   "channel": "Emory University",
+   "lang": "en",
+   "tracks": [
+    "classical"
+   ],
+   "covers": [
+    "catilinarian-quo-usque",
+    "docere-delectare-movere",
+    "parts-of-oration",
+    "five-canons"
+   ],
+   "kind": "lecture",
+   "why": "에모리대 강연: 키케로와 설득 웅변의 비밀",
+   "mins": 47
+  },
+  {
+   "id": "QMWLJspZ3eU",
+   "title": "10회 아리스토텔레스 수사학 [민주주의를 만나는 시간]",
+   "channel": "중앙선거관리위원회",
+   "lang": "ko",
+   "tracks": [
+    "classical"
+   ],
+   "covers": [
+    "ethos-pathos-logos",
+    "enthymeme",
+    "parts-of-oration"
+   ],
+   "kind": "lecture",
+   "why": "김헌 교수가 풀어주는 아리스토텔레스 『수사학』",
+   "mins": 42
+  },
+  {
+   "id": "MmLMf_0xydc",
+   "title": "[#알쓸신잡3] 아테네의 웅변 학원\"소피스트\"? 김영하가 설명해주는 설득의 방법 (Feat. 로고스X파토스X에토스)",
+   "channel": "tvN Joy",
+   "lang": "ko",
+   "tracks": [
+    "classical"
+   ],
+   "covers": [
+    "gorgias-logos",
+    "dissoi-logoi",
+    "ethos-pathos-logos"
+   ],
+   "kind": "talk",
+   "why": "알쓸신잡 김영하가 설명하는 소피스트와 설득의 방법",
+   "mins": 3
+  },
+  {
+   "id": "VLag2sWb3_Q",
+   "title": "과거에서 오늘의 리더십을 찾아봅시다!🌏 한비자와 진시황 이야기ㅣ김원중 단국대학교 교수ㅣ전주MBC 명강연ㅣTV특강ㅣ인생강연",
+   "channel": "전주MBC Original",
+   "lang": "ko",
+   "tracks": [
+    "classical"
+   ],
+   "covers": [
+    "hanfeizi-shuonan"
+   ],
+   "kind": "lecture",
+   "why": "김원중 교수의 한비자 강의: 제왕학과 법가 사상",
+   "mins": 47
+  },
+  {
+   "id": "bKAoouwUKpA",
+   "title": "[풀버전] 조우성 변호사의 한비자 수업 - 1부 리더를 사랑하는 부하직원은 없다! | EBS 비즈니스리뷰 조우성편",
+   "channel": "EBS 비즈니스 리뷰",
+   "lang": "ko",
+   "tracks": [
+    "classical"
+   ],
+   "covers": [
+    "hanfeizi-shuonan"
+   ],
+   "kind": "lecture",
+   "why": "조우성 변호사의 한비자 수업 1부: 이해득실과 법치",
+   "mins": 14
+  },
+  {
+   "id": "nRS8Az2UTjs",
+   "title": "How to talk your way into the White House | Mark Forsyth | TEDxPenn",
+   "channel": "TEDx Talks",
+   "lang": "en",
+   "tracks": [
+    "figures"
+   ],
+   "covers": [
+    "anaphora",
+    "tricolon",
+    "antithesis"
+   ],
+   "kind": "talk",
+   "why": "고대 그리스가 정리한 연설·광고·시의 수사 공식",
+   "mins": 12
+  },
+  {
+   "id": "h65TJao0yKc",
+   "title": "The Art of Rhetoric - Simon Lancaster",
+   "channel": "Gresham College",
+   "lang": "en",
+   "tracks": [
+    "figures"
+   ],
+   "covers": [
+    "anaphora",
+    "chiasmus",
+    "tricolon"
+   ],
+   "kind": "lecture",
+   "why": "스피치라이터가 푸는 고대 수사 장치의 보물창고",
+   "mins": 62
+  },
+  {
+   "id": "t4ODg51XNYk",
+   "title": "Rhetorical devices and appeals | Reading | Khan Academy",
+   "channel": "Khan Academy",
+   "lang": "en",
+   "tracks": [
+    "figures"
+   ],
+   "covers": [
+    "metaphor",
+    "hyperbole",
+    "ethos-pathos-logos"
+   ],
+   "kind": "explainer",
+   "why": "은유·과장·에토스·로고스를 4분에 훑는 칸아카데미",
+   "mins": 4
+  },
+  {
+   "id": "RXWRet1zXI0",
+   "title": "15분 안에 끝내는 '국어에서의 상징'(ft. 비유와 VS 상징은 뭐가 다를까?)ㅣ국어 1등급ㅣ윤혜정의 나비효과ㅣ#이토록쉬운기초개념",
+   "channel": "EBSi ",
+   "lang": "ko",
+   "tracks": [
+    "figures"
+   ],
+   "covers": [
+    "metaphor",
+    "symbol"
+   ],
+   "kind": "lecture",
+   "why": "EBSi 윤혜정이 가르치는 비유와 상징의 차이",
+   "mins": 16
+  },
+  {
+   "id": "v3c9iUMYoN4",
+   "title": "EBS [국어] 문학 - 대구법은 어떤 수사법인가요?",
+   "channel": "EBSi ",
+   "lang": "ko",
+   "tracks": [
+    "figures"
+   ],
+   "covers": [
+    "parallelism-isocolon"
+   ],
+   "kind": "explainer",
+   "why": "EBSi 강사가 2분 만에 설명하는 대구법",
+   "mins": 2
+  },
+  {
+   "id": "v4P2Qwh1QCU",
+   "title": "How to deal with gaslighting | Ariel Leve",
+   "channel": "TED Archive",
+   "lang": "en",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "gaslighting"
+   ],
+   "kind": "talk",
+   "why": "엄마의 가스라이팅에서 살아남은 작가의 생존 전략",
+   "mins": 12
+  },
+  {
+   "id": "1KVyFio8gw4",
+   "title": "Dark Patterns: User Interfaces Designed to Trick People",
+   "channel": "Harry Brignull",
+   "lang": "en",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "dark-patterns"
+   ],
+   "kind": "talk",
+   "why": "'다크패턴' 용어를 만든 브리널의 속임수 UI 강연",
+   "mins": 29
+  },
+  {
+   "id": "C74amJRp730",
+   "title": "How a handful of tech companies control billions of minds every day | Tristan Harris",
+   "channel": "TED",
+   "lang": "en",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "dark-patterns"
+   ],
+   "kind": "talk",
+   "why": "알림·자동재생이 주의를 빼앗는 설계 방식 폭로",
+   "mins": 17
+  },
+  {
+   "id": "1RmxeZHPeHg",
+   "title": "How \"prebunking\" misinformation works",
+   "channel": "60 Minutes",
+   "lang": "en",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "prebunking"
+   ],
+   "kind": "documentary",
+   "why": "60 Minutes: 조작 수법을 미리 알려주는 프리벙킹",
+   "mins": 6
+  },
+  {
+   "id": "gDfQHWQwJ8Q",
+   "title": "Prebunking Manipulation Techniques: False Dichotomies",
+   "channel": "Info Interventions",
+   "lang": "en",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "prebunking",
+    "false-dilemma-slippery-slope"
+   ],
+   "kind": "explainer",
+   "why": "90초로 배우는 거짓 이분법 프리벙킹 (Jigsaw)",
+   "mins": 2
+  },
+  {
+   "id": "RrScnmzk1cg",
+   "title": "Ep 03: Jennifer Freyd on DARVO and the Language of Betrayal",
+   "channel": "Jacob Ward | The Rip Current",
+   "lang": "en",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "darvo"
+   ],
+   "kind": "interview",
+   "why": "DARVO를 명명한 프레이드가 말하는 가해자의 방어 전술",
+   "mins": 59
+  },
+  {
+   "id": "R7inDObva0A",
+   "title": "타인의 자아를 조종하는 비겁한 악인, 가스라이팅 하는 사람의 눈에 띄는 특징 [타인의 심리 읽어드립니다 EP.9] | 김경일 교수",
+   "channel": "사피엔스 스튜디오",
+   "lang": "ko",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "gaslighting"
+   ],
+   "kind": "talk",
+   "why": "김경일 교수가 짚는 가스라이터의 특징과 탈출법",
+   "mins": 15
+  },
+  {
+   "id": "vbReKT69n4A",
+   "title": "WHY WE BELIEVE IN ASTROLOGERS, PSYCHICS, SUPERSTITION & FAITH HEALERS: Barnum Forer Effect Explained",
+   "channel": "Prashant Yadav",
+   "lang": "en",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "barnum-forer",
+    "subjective-validation"
+   ],
+   "kind": "explainer",
+   "why": "바넘·포러 효과 해설(질은 미확인)",
+   "mins": 8
+  },
+  {
+   "id": "qvnXzf0VsFk",
+   "title": "바넘 효과: 애매할수록 그럴듯하게 들린다",
+   "channel": "누다심 마음연구소",
+   "lang": "ko",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "barnum-forer"
+   ],
+   "kind": "explainer",
+   "why": "바넘 효과 한국어 해설",
+   "mins": 5
+  },
+  {
+   "id": "lvZeDGHVxN8",
+   "title": "혈액형, 타로점? 나하고 딱 맞는거 같아! '바넘효과'에 대해 알아보자!",
+   "channel": "시빅TV",
+   "lang": "ko",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "barnum-forer"
+   ],
+   "kind": "explainer",
+   "why": "혈액형·타로와 바넘 효과",
+   "mins": 5
+  },
+  {
+   "id": "7lGowWutlOE",
+   "title": "당신의 속을 꿰뚫어보는 점술가의 기술, '콜드 리딩' 이영돈PD가 간다 3회",
+   "channel": "JTBC Entertainment",
+   "lang": "ko",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "cold-reading"
+   ],
+   "kind": "documentary",
+   "why": "한국 방송의 콜드 리딩 기법 해설",
+   "mins": 20
+  },
+  {
+   "id": "mzyUO28-4nE",
+   "title": "What is the Pygmalion Effect? (Easiest Explanation)",
+   "channel": "Social Science Explainer",
+   "lang": "en",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "pygmalion-rosenthal"
+   ],
+   "kind": "explainer",
+   "why": "피그말리온 효과 설명(재현 논쟁은 별도 확인)",
+   "mins": 5
+  },
+  {
+   "id": "MDCktmTRkYc",
+   "title": "미국에서 떡상 중인 예언가 아재",
+   "channel": "알간지Alganzi",
+   "lang": "ko",
+   "tracks": [
+    "defense"
+   ],
+   "covers": [
+    "vague-prophecy",
+    "cold-reading"
+   ],
+   "kind": "commentary",
+   "why": "요즘 뜨는 '예언가'를 보며 모호한 예언과 콜드 리딩을 짚어 봐요."
+  }
+ ]
+}

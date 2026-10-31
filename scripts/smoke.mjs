@@ -138,6 +138,32 @@ await section("svm", async () => {
     if (aiMock) { r = await call("sa", "POST", "/svm/translate", { id: e0?.id, texts: ["Hello world", "Second"] }); ok(r.status === 200 && r.data.ko?.length === 2 && r.data.ko[0].startsWith("모의 번역"), `svm: translate (mock AI) → one Korean line per paragraph (${r.status})`); }
   } finally { d1(`DELETE FROM users WHERE username IN ('${A}', '${M}')`); }
 });
+// Psychology (#/psy): 기능 psy — 없는 회원은 403, 관리자 · 기능 받은 회원은 기록 · 스파링
+await section("psy", async () => {
+  const A = "t_pa" + tag, M = "t_pm" + tag;
+  mk(A, "관리P", "password1"); mk(M, "회원P", "password1"); // mk 의 --features=all 에 psy 는 없어요
+  d1(`UPDATE users SET role = 'admin' WHERE username = '${A}'`);
+  try {
+    for (const [k, u] of [["pa", A], ["pm", M]]) await call(k, "POST", "/auth/login", { username: u, password: "password1" });
+    for (const [m, p, b] of [["GET", "/apps/psy/state"], ["PUT", "/apps/psy/state", { data: { srs: {} }, at: 0 }], ["POST", "/apps/psy/spar", { scenario: "x", turns: [{ who: "me", text: "hi" }] }]]) {
+      const r = await call("pm", m, p, b); ok(r.status === 403 && r.data?.locked === "psy", `psy: member without the feature → 403 on ${m} ${p} (${r.status})`);
+    }
+    let r = await call("pa", "GET", "/apps/psy/state"); ok(r.status === 200, `psy: admin opens the state (${r.status})`);
+    r = await call("pa", "PUT", "/apps/psy/state", { data: { srs: { c1: { b: 2, d: Date.now() + 864e5, n: 1, l: Date.now() } }, quiz: { right: 1, total: 1 }, spar: [] }, at: 0 });
+    const at = r.data?.updated_at;
+    r = await call("pa", "GET", "/apps/psy/state");
+    ok(r.status === 200 && r.data.data?.srs?.c1?.b === 2 && r.data.updated_at === at, "psy: SRS state saved per user");
+    r = await call("pa", "PUT", "/apps/psy/state", { data: { srs: {} }, at: 0 }); ok(r.status === 409, `psy: stale state write → 409 (${r.status})`);
+    r = await call("pa", "POST", "/apps/psy/spar", { scenario: "x", turns: [{ who: "ai", text: "x" }] }); ok(r.status === 400, `psy: spar last turn must be mine (${r.status})`);
+    r = await call("pa", "POST", "/apps/psy/spar", { scenario: "x", turns: [{ who: "me", text: "a".repeat(5000) }] }); ok(r.status === 400, `psy: spar caps turn size (${r.status})`);
+    if (aiMock) {
+      r = await call("pa", "POST", "/apps/psy/spar", { scenario: "salary", turns: [{ who: "me", text: "연봉 10% 올려 주세요." }] });
+      ok(r.status === 200 && typeof r.data.reply === "string" && Array.isArray(r.data.ai_moves) && Array.isArray(r.data.my_moves) && r.data.score >= 0 && r.data.score <= 100, `psy: spar (mock AI) → reply + moves + score (${r.status})`);
+    }
+    d1(`INSERT OR IGNORE INTO user_features (user_id, feature, at) SELECT id, 'psy', ${Date.now()} FROM users WHERE username = '${M}'`);
+    r = await call("pm", "GET", "/apps/psy/state"); ok(r.status === 200, `psy: member with the feature → 200 (${r.status})`);
+  } finally { d1(`DELETE FROM users WHERE username IN ('${A}', '${M}')`); }
+});
 // 관리자 두 사람: 기능 신청은 둘 다 승인해야 열림 · 시간 추가 · 추천 보너스 (로컬 진짜 관리자는 잠깐 member 로 내렸다가 되돌려요)
 await section("admin", async () => {
   const r3 = () => [...crypto.getRandomValues(new Uint8Array(3))].map((b) => String.fromCharCode(97 + (b % 26))).join("");
