@@ -15,7 +15,7 @@ export function featureOfRoute(r) {
   if (r.view === "page") return "pages";
   return null;
 }
-export const NAV_FEATURE = { study: "study", news: "news", biz: "biz", dev: "dev", cim: "cim" };
+export const NAV_FEATURE = { study: "study", news: "news", biz: "biz", dev: "dev", cim: "cim", psy: "psy" };
 export const isOpen = (ctx, f) => !f || ctx.me?.role === "admin" || (ctx.features?.open || []).includes(f);
 
 export async function loadFeatures(ctx) {

@@ -154,7 +154,7 @@ await section("psy", async () => {
     r = await call("pa", "GET", "/apps/psy/state");
     ok(r.status === 200 && r.data.data?.srs?.c1?.b === 2 && r.data.updated_at === at, "psy: SRS state saved per user");
     r = await call("pa", "PUT", "/apps/psy/state", { data: { srs: {} }, at: 0 }); ok(r.status === 409, `psy: stale state write → 409 (${r.status})`);
-    r = await call("pa", "POST", "/apps/psy/spar", { scenario: "x", turns: [] }); ok(r.status === 400, `psy: spar needs 1+ turns (${r.status})`);
+    r = await call("pa", "POST", "/apps/psy/spar", { scenario: "x", turns: [{ who: "ai", text: "x" }] }); ok(r.status === 400, `psy: spar last turn must be mine (${r.status})`);
     r = await call("pa", "POST", "/apps/psy/spar", { scenario: "x", turns: [{ who: "me", text: "a".repeat(5000) }] }); ok(r.status === 400, `psy: spar caps turn size (${r.status})`);
     if (aiMock) {
       r = await call("pa", "POST", "/apps/psy/spar", { scenario: "salary", turns: [{ who: "me", text: "연봉 10% 올려 주세요." }] });
