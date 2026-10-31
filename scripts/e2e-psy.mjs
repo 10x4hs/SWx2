@@ -5,32 +5,32 @@
 //   4) QUIZ: 예시 하나 · 보기 4개 → 하나 고르면 풀이
 //   5) SPAR: 상황 고르기 → 한 턴 (가짜 AI 답 — route 로 고정) → 옆 패널 점수
 //   6) 영상 · 서재 화면이 그려짐
-//   7) psy 기능이 없는 회원: Dock 에 없고, API 는 403
+//   7) psy 기능이 없는 회원: 화면은 '사용 신청'(잠김), API 는 403
 // UI 쪽 이름(클래스 · data-*)은 아래 S 한 곳에만 적어요 — UI 가 바뀌면 여기만 고치면 돼요.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const S = {
-  root: ".psy",
+  root: ".ps",
   dock: '[data-nav="psy"]',
-  tile: ".psy-tile",            // MAP 의 트랙 칸 (7개)
-  dot: ".psy-tile .psy-dot",    // 카드마다 점 하나
-  stats: ".psy-stats",          // CARDS · KNOWN · DUE
-  row: 'a[href^="#/psy/c/"]',   // 트랙 화면의 카드 줄
-  cardEn: ".psy-en",            // LEARN 카드 EN 이름
-  cardKo: ".psy-card h1",       // 한국어 이름
-  sec: ".psy-sec",              // WHY / USE / COUNTER 칸
-  source: ".psy-source",
-  quizEx: ".psy-quiz .psy-example",
-  opt: ".psy-quiz [data-opt]",
-  explain: ".psy-explain",
-  scen: "[data-scen]",
-  sparIn: ".psy-spar textarea",
-  sparSend: ".psy-spar [data-send]",
-  sparScore: ".psy-spar .psy-score",
-  video: ".psy-video",
-  book: ".psy-book",
+  tile: ".ps-map a.ps-tile",            // MAP 의 트랙 칸 (7개)
+  dot: ".ps-map a.ps-tile .ps-dot",    // 카드마다 점 하나
+  stats: "#ps-stats",          // CARDS · KNOWN · DUE
+  row: '.ps-list ol a[href^="#/psy/c/"]',   // 트랙 화면의 카드 줄
+  cardEn: ".ps-card-main > .ps-k",            // LEARN 카드 EN 이름
+  cardKo: ".ps-card h1",       // 한국어 이름
+  sec: ".ps-card-side > div > b.ps-k",            // WHY / USE / COUNTER 칸
+  source: ".ps-src",
+  quizEx: ".ps-quiz .ps-q",
+  opt: ".ps-opts [data-opt]",
+  explain: "#ps-why",
+  scen: ".ps-scn a.ps-tile",
+  sparIn: "#ps-in",
+  sparSend: '#ps-send [type="submit"]',
+  sparScore: ".ps-score",
+  video: ".ps-vid",
+  book: ".ps-book",
 };
 const MOCK_SPAR = { reply: "그건 좀 어렵겠네요. 다른 회사 제안도 받으셨나요?", ai_moves: [], my_moves: [], score: 62, missed: null };
 
@@ -42,6 +42,7 @@ export async function psyE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }) {
   sq(`INSERT OR IGNORE INTO user_features (user_id, feature, at) SELECT id, 'psy', ${Date.now()} FROM users WHERE username = '${u}'`);
   const C = JSON.parse(readFileSync("public/psy/cards.json", "utf8"));
   const tracks = C.tracks, cards = C.cards;
+  const nDots = tracks.reduce((n, t) => n + t.order.length, 0); // 트랙 칸마다 order 의 카드 하나 = 점 하나
   const t0 = tracks[0], c0 = cards.find((c) => c.id === t0.order[0]);
   try {
     for (const [w, h, tv] of [[1300, 900, "컴퓨터", "desktop"], [390, 844, "폰", "phone"]].filter((v) => VIEWPORTS.includes(v[3]))) {
@@ -58,7 +59,7 @@ export async function psyE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }) {
         await go("#/psy", S.tile);
         const mp = await p.evaluate((S) => ({ tiles: document.querySelectorAll(S.tile).length, dots: document.querySelectorAll(S.dot).length, dock: !!document.querySelector(S.dock), stats: document.querySelector(S.stats)?.textContent || "" }), S);
         const o1 = await over();
-        ok(mp.tiles === 7 && mp.dots === cards.length && mp.dock && /CARDS/i.test(mp.stats) && o1 <= 1, `${tv} · PSY 지도 — 트랙 ${mp.tiles} · 점 ${mp.dots}/${cards.length} · Dock ${mp.dock} · 넘침 ${o1}px · "${mp.stats.slice(0, 40)}"`);
+        ok(mp.tiles === 7 && mp.dots === nDots && mp.dock && /CARDS/i.test(mp.stats) && o1 <= 1, `${tv} · PSY 지도 — 트랙 ${mp.tiles} · 점 ${mp.dots}/${nDots} · Dock ${mp.dock} · 넘침 ${o1}px · "${mp.stats.slice(0, 40)}"`);
 
         // 2) 트랙 → 카드
         await go("#/psy/t/" + t0.id, S.row);
@@ -108,9 +109,10 @@ export async function psyE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }) {
       await mc.request.post(BASE + "/api/auth/login", { headers: H, data: { username: m, password: "password1" } });
       const mp2 = await mc.newPage();
       await mp2.goto(BASE + "/#/psy"); await sleep(2500);
-      const dock = await mp2.evaluate((s) => !!document.querySelector(s), S.dock);
+      // 다른 잠긴 앱(CIM · 뉴스)처럼 Dock 에는 남고, 화면은 '사용 신청'(host-locked) — 내용(.ps)은 안 그려요
+      const v = await mp2.evaluate((r) => ({ locked: !!document.querySelector(".host-locked"), ps: !!document.querySelector(r) }), S.root);
       const api = (await mc.request.get(BASE + "/api/apps/psy/state", { headers: H })).status();
-      ok(!dock && api === 403, `회원(psy 없음) · PSY 안 보임 — Dock ${dock} · API ${api}`);
+      ok(v.locked && !v.ps && api === 403, `회원(psy 없음) · PSY 잠김 — 사용 신청 ${v.locked} · 화면 ${v.ps} · API ${api}`);
     } finally { await mc.close(); }
   } finally { sq(`DELETE FROM users WHERE username IN ('${u}', '${m}')`); }
 }
