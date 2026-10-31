@@ -6,7 +6,7 @@ import * as studyView from "./views/study.js";
 import { upHash } from "./brain-nav.js";
 
 const KEY = "trio-dock-last", TTL = 12 * 3600e3;
-export const REMEMBER = new Set(["brain", "study", "news", "room", "biz", "dev", "cim", "svm"]);
+export const REMEMBER = new Set(["brain", "study", "news", "room", "biz", "dev", "cim", "psy", "svm"]);
 let mem = {};
 try { mem = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { mem = {}; }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch {} };
@@ -35,6 +35,7 @@ function upOf(n, hash) {
     const m = hash.match(/^#\/cim\/([a-z]+)(\/.+)?$/);
     return m?.[2] ? `#/cim/${m[1]}` : "#/cim";
   }
+  if (n.key === "psy") return "#/psy"; // Psychology: 어디서든 → 지도
   if (n.key === "svm") return "#/svm"; // Silicon Valley Mafia: 글 · 그래프 · 목록 어디서든 → 서재
   if (n.key === "study") {
     const m = hash.match(/^#\/(english|papers|books)\b/) || hash.match(/^#\/(study\/[^/]+)/);

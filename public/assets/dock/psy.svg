@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Psychology — 검정 판 · 점 지도(익힌 카드 = 보라) · 말풍선 두 개 -->
+  <rect width="256" height="256" rx="56" fill="#08080A"/>
+  <g fill="#3A3A45">
+    <circle cx="60" cy="60" r="7"/><circle cx="92" cy="60" r="7"/><circle cx="124" cy="60" r="7"/><circle cx="156" cy="60" r="7"/><circle cx="188" cy="60" r="7"/>
+    <circle cx="60" cy="92" r="7"/><circle cx="188" cy="92" r="7"/>
+  </g>
+  <g fill="#9B87FF">
+    <circle cx="60" cy="60" r="7"/><circle cx="92" cy="60" r="7"/><circle cx="124" cy="60" r="7"/><circle cx="92" cy="92" r="7"/><circle cx="124" cy="92" r="7"/><circle cx="156" cy="92" r="7"/>
+  </g>
+  <path d="M52 132h88a12 12 0 0 1 12 12v30a12 12 0 0 1-12 12H84l-20 16v-16H52a12 12 0 0 1-12-12v-30a12 12 0 0 1 12-12z" fill="none" stroke="#9B87FF" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M204 156h-36a12 12 0 0 0-12 12v18a12 12 0 0 0 12 12h12l14 12v-12h10a12 12 0 0 0 12-12v-18a12 12 0 0 0-12-12z" fill="none" stroke="#FFB86B" stroke-width="8" stroke-linejoin="round"/>
+</svg>
