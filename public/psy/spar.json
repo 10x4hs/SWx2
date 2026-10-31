@@ -1,0 +1,16 @@
+{
+ "scenarios": [
+  {"id":"salary","title":"연봉 협상","role":"인사팀장 — 예산이 빠듯하다며 3% 인상을 제시한다","goal":"근거와 대안을 들고 8% 이상, 또는 그에 맞먹는 조건을 얻는다","opener":"올해는 회사 사정이 어려워서요. 3% 정도가 최선입니다.","cards":["batna","first-offer-anchoring","calibrated-questions","precise-anchors","meso"]},
+  {"id":"boss-disagree","title":"팀장에게 반대하기","role":"팀장 — 이번 주 금요일 출시를 밀어붙인다","goal":"관계를 지키면서 출시를 일주일 미루자고 설득한다","opener":"이미 다 정해진 거야. 금요일에 그냥 내보내자.","cards":["accusation-audit","labeling","pyramid-principle","concession","reframing"]},
+  {"id":"friend-fight","title":"친구와 말싸움","role":"오랜 친구 — 약속에 또 늦고 오히려 서운해한다","goal":"사람을 공격하지 않고 내 불만을 전하고 다음 약속 규칙을 정한다","opener":"아니 10분 늦은 거 가지고 왜 그렇게까지 해?","cards":["nonviolent-communication","four-horsemen","de-escalation","charity-steelman"]},
+  {"id":"haggle","title":"중고 가격 흥정","role":"중고 판매자 — 노트북을 120만 원에 내놓았다","goal":"근거 있는 제안으로 95만 원 이하에 산다","opener":"이 가격 진짜 싸게 내놓은 거예요. 깎으면 안 팔아요.","cards":["first-offer-anchoring","nibble-flinch","ackerman","strategic-silence","zopa"]},
+  {"id":"qa-attack","title":"발표 질문 공격","role":"까다로운 임원 — 발표 숫자를 공격적으로 의심한다","goal":"흔들리지 않고 질문을 재구성해 핵심 근거로 돌아온다","opener":"그 숫자, 솔직히 믿기 어려운데요. 표본이 몇 개예요?","cards":["reframing","concession","burden-of-proof","cherry-picking","loaded-question"]},
+  {"id":"voice-phishing","title":"보이스피싱 전화","role":"검찰 수사관을 사칭하는 사기범 — 계좌가 범죄에 쓰였다고 한다","goal":"정보를 하나도 주지 않고 통화를 끊고 확인 절차를 밟는다","opener":"서울중앙지검입니다. 고객님 명의 계좌가 범죄에 연루돼서 지금 바로 확인이 필요합니다.","cards":["voice-phishing-scripts","authority","false-urgency-scarcity","social-engineering","broken-record"]},
+  {"id":"sales-pitch","title":"영업 사원의 권유","role":"헬스장 영업 직원 — 오늘만 할인이라며 1년권을 권한다","goal":"압박에 밀리지 않고 필요한 만큼만 고르거나 정중히 거절한다","opener":"오늘 등록하시면 40% 할인인데, 내일부터는 정가예요.","cards":["scarcity","decoy-effect","low-ball","thats-not-all","fogging"]},
+  {"id":"guilt-family","title":"가족의 죄책감 압박","role":"부모님 — 명절에 안 오면 서운하다며 죄책감을 건드린다","goal":"관계를 해치지 않고 내 일정을 지키며 대안을 제시한다","opener":"너 키우느라 얼마나 고생했는데, 이번 명절도 안 온다고?","cards":["guilt-tripping","fog-emotional-blackmail","broken-record","nonviolent-communication"]},
+  {"id":"conspiracy","title":"음모론 믿는 친구","role":"친구 — 영상 하나를 보고 백신 음모론을 확신한다","goal":"이기려 하지 않고 친구가 스스로 근거를 따져 보게 만든다","opener":"너도 이 영상 봐 봐. 언론이 다 숨기고 있는 거야.","cards":["street-epistemology","what-would-change-your-mind","backfire-effect","confirmation-bias","sift-lateral-reading"]},
+  {"id":"fortune-teller","title":"점집의 콜드 리딩","role":"점술가 — 손님 반응을 떠보며 '다 안다'는 듯 말한다","goal":"떠보기와 바넘 진술을 알아채고 정보를 주지 않은 채 확인 질문을 던진다","opener":"요즘 마음이 좀 무겁죠? 가까운 사람 때문에 생긴 일 같은데.","cards":["cold-reading","barnum-forer","fishing-jacques","subjective-validation","rainbow-ruse"]},
+  {"id":"team-pitch","title":"투자자 피칭","role":"심사역 — 시장 규모와 경쟁사를 날카롭게 묻는다","goal":"3분 안에 문제·해결·근거를 전달하고 다음 미팅을 잡는다","opener":"비슷한 서비스가 이미 많던데, 왜 당신들이어야 하죠?","cards":["pitch-storytelling","pyramid-principle","mts-concrete","social-proof","ethos-pathos-logos"]},
+  {"id":"online-debate","title":"댓글 토론","role":"익명 댓글러 — 근거 대신 질문 폭탄과 조롱을 던진다","goal":"휘말리지 않고 쟁점 하나로 좁혀 근거를 요구한다","opener":"그럼 출처 10개 가져와 봐. 못 가져오면 네가 틀린 거임.","cards":["gish-gallop","sealioning","burden-of-proof","ad-hominem-tu-quoque","jaqing"]}
+ ]
+}
