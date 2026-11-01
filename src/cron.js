@@ -33,7 +33,18 @@ export async function runCron(env, cron) {
   if (cron === CRON.NEWS_AM) return withBudget(NEWS_BUDGET, () => newsCron(env, kstToday(0)));
   if (cron === CRON.NEWS_CLOSE) return withBudget(NEWS_BUDGET, () => newsClose(env, kstToday(0)));
   if (cron === CRON.WEEKLY) return withBudget(NEWS_BUDGET, () => weeklyReviewCron(env));
-  return withBudget(NEWS_BUDGET, async () => ({ save: await autoSaveYesterday(env), papers: await cleanupPaperNotes(env, kstToday(0)) }));
+  return withBudget(NEWS_BUDGET, async () => ({ save: await autoSaveYesterday(env), papers: await cleanupPaperNotes(env, kstToday(0)), purged: await purgeExpired(env).catch((e) => ({ error: String(e?.message || e) })) }));
+}
+
+// 매일 00:05: 만료된 로그인 · OAuth 기록 지우기 (로그인할 때만 지우던 걸 오래 안 들어온 사람 것까지)
+export async function purgeExpired(env) {
+  const t = Date.now();
+  const r = await env.DB.batch([
+    env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(t),
+    env.DB.prepare("DELETE FROM oauth_tokens WHERE refresh_expires < ?").bind(t),
+    env.DB.prepare("DELETE FROM oauth_codes WHERE expires_at < ?").bind(t - 864e5),
+  ]);
+  return { sessions: r[0].meta.changes, tokens: r[1].meta.changes, codes: r[2].meta.changes };
 }
 
 // 보조 장치: Cloudflare 크론이 멈춘 적이 있어요 (2026-10-14, 02:10 이후 11시간 동안 한 번도 안 돌았음).

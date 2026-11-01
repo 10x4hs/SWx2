@@ -46,6 +46,8 @@ export { RoomHub } from "./hub.js"; // Durable Object 클래스는 main 모듈�
 export default {
   async fetch(req, env, ec) {
     const url = new URL(req.url);
+    // 아이디만으로 들어가기(PASSWORDLESS=1)는 내 컴퓨터(localhost)에서만 — 배포본 설정에 실수로 들어가도 꺼져요
+    if (env.PASSWORDLESS === "1" && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(url.hostname)) env = { ...env, PASSWORDLESS: "0" };
     if (aiMockOn(env, url)) env = mockEnv(env); // 로컬 검사만: 가짜 AI (src/lib/aimock.js)
     // OAuth 2.1 (ChatGPT · claude.ai 커넥터처럼 OAuth 로만 붙는 MCP 앱)
     if (url.pathname.startsWith("/.well-known/") || url.pathname.startsWith("/oauth/")) {
