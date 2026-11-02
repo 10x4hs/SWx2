@@ -204,6 +204,14 @@ try {
       const under = Math.abs(top.y - mid.y) <= 6 && top.k === mid.k, grew = top.w >= Math.round(base[3].w * 1.4);
       await p.mouse.down(); await p.mouse.move(30, mid.y + 12, { steps: 3 }); await sleep(80); const pressed = await icons(); await p.mouse.move(30, mid.y, { steps: 2 }); await p.mouse.up(); // 끌기 시작 = 원래 자리
       const flat = pressed.every((x, i) => Math.abs(x.y - base[i].y) <= 2 && Math.abs(x.w - base[i].w) <= 4); // 마우스 아래 아이콘은 hover 1.07배
+      // 위 검색 · 아래 타이머 · 프로필은 고정, 벌어진 앱 줄이 그쪽으로 넘어가지 않아요 (맨 위 · 맨 아래 앱에 마우스)
+      const fixed = () => p.evaluate(() => { const q = (s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? [Math.round(r.top), Math.round(r.bottom), Math.round(r.width)] : null; }; const ics = [...document.querySelectorAll(".rail-nav .rail-btn > :first-child")].map((x) => x.getBoundingClientRect()); return { s: q("#open-palette > :first-child"), t: q("#timer-btn > :first-child"), m: q("#me-btn .av"), first: Math.round(Math.min(...ics.map((r) => r.top))), last: Math.round(Math.max(...ics.map((r) => r.bottom))) }; });
+      await p.mouse.move(700, 400); await sleep(900);
+      const f0 = await fixed();
+      await p.mouse.move(30, base[0].y, { steps: 4 }); await sleep(800); const fTop = await fixed();
+      await p.mouse.move(30, f0.last - 20, { steps: 6 }); await sleep(800); const fBot = await fixed();
+      const still = [fTop, fBot].every((f) => JSON.stringify([f.s, f.t, f.m]) === JSON.stringify([f0.s, f0.t, f0.m]));
+      const clearTop = fTop.first >= f0.s[1], clearBot = fBot.last <= f0.t[0];
       await p.mouse.move(700, 400); await sleep(900);
       // 내 메뉴 → Settings
       await p.locator("#me-btn").click(); await p.locator("#set-btn").click(); await sleep(1200);
@@ -214,8 +222,8 @@ try {
       const big2 = (await icons()).reduce((a, b) => Math.max(a, b.w), 0);
       await p.mouse.move(700, 400);
       await p.locator('[data-tab="account"]').click(); const acct = await p.locator('[data-act="logout"]').count();
-      ok(under && grew && flat && menuGone && prefs.size === 2 && prefs.edge === 40 && big2 >= Math.round(base[3].w * 1.85) && acct === 1,
-        `${tv} · Dock 확대 · Settings — 커서 아래 가장 큼 ${under} (${top.k}) · ${base[3].w}→${top.w}px · 끌면 제자리 ${flat}${flat ? "" : " " + JSON.stringify(pressed.find((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)) + "/" + JSON.stringify(base[pressed.findIndex((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)])} · 메뉴 정리 ${menuGone} · 저장 ${prefs.size}/${prefs.edge} · 2배 ${big2}px · 계정 탭 ${acct}`);
+      ok(under && grew && flat && still && clearTop && clearBot && menuGone && prefs.size === 2 && prefs.edge === 40 && big2 >= Math.round(base[3].w * 1.85) && acct === 1,
+        `${tv} · Dock 확대 · Settings — 커서 아래 가장 큼 ${under} (${top.k}) · ${base[3].w}→${top.w}px · 끌면 제자리 ${flat} · 검색 · 타이머 · 프로필 고정 ${still} · 위 ${fTop.first}≥${f0.s[1]} · 아래 ${fBot.last}≤${f0.t[0]}${flat ? "" : " " + JSON.stringify(pressed.find((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)) + "/" + JSON.stringify(base[pressed.findIndex((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)])} · 메뉴 정리 ${menuGone} · 저장 ${prefs.size}/${prefs.edge} · 2배 ${big2}px · 계정 탭 ${acct}`);
     } catch (e) { ok(false, `${tv} · Dock 확대 · Settings — ${String(e.message).split("\n")[0]}`); }
       await p.evaluate(() => { try { localStorage.removeItem("dock-prefs"); } catch {} });
     });

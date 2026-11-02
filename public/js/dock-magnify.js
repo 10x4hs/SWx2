@@ -1,4 +1,4 @@
-// SWx2 — Dock 확대 (맥 Dock 처럼): 마우스에 가까운 아이콘일수록 커지고, 양옆은 부드럽게 벌어져요. 컴퓨터 화면만.
+// SWx2 — Dock 확대 (맥 Dock 처럼): 마우스에 가까운 앱 아이콘일수록 커지고, 양옆은 부드럽게 벌어져요. 컴퓨터 화면만. 검색 · 타이머 · 프로필은 고정.
 //   크기 s(d) = 1 + (m-1)·cos²(πd/2R) — d = 마우스와 아이콘 가운데 거리, R = 퍼지는 범위(px)
 //   벌어짐 = s-1 을 마우스에서 그 아이콘까지 적분한 값 → 마우스 바로 아래 아이콘은 제자리, 멀수록 바깥으로 밀려요
 //   설정(크기 · 범위 · 속도 · 끄기)은 dock-hide.js 의 dockPrefs (Settings 화면에서 바꿔요)
@@ -10,11 +10,20 @@ const PITCH = 56, ICON = 44; // 아이콘 칸(48 + 사이 8) · 아이콘 크기
 let y = null, held = false, raf = 0, items = [];
 const rail = () => document.querySelector(".rail.dock");
 
+// 커지는 건 가운데 앱 줄(+ 페이지 추가 버튼)만 — 위 검색 · 아래 타이머 · 프로필은 고정이에요
+// 원래 자리(mid)와 위아래 여유(lo · hi)는 모양을 풀어 둔 지금 재 둬요: 벌어진 줄이 검색 · 타이머 쪽으로 넘어가지 않게
+let lo = 0, hi = 0;
 function collect() {
   const r = rail(); if (!r) return [];
-  return [...new Set(r.querySelectorAll(".rail-btn, .dock-fold-btn"))].filter((el) => el.offsetParent).map((el) => {
-    const ic = el.querySelector(":scope > .app-ic, :scope > .av, :scope > .fold-grid") || el.firstElementChild;
-    return { el, ic, s: 1, t: 0 };
+  const els = [...new Set(r.querySelectorAll(".rail-nav .rail-btn, .rail-nav .dock-fold-btn"))].filter((el) => el.offsetParent);
+  if (!els.length) return [];
+  const rect = (el) => el.getBoundingClientRect();
+  const top = r.querySelector("#open-palette"), foot = r.querySelector(".rail-foot");
+  lo = rect(els[0]).top - (top ? rect(top).bottom + 8 : rect(r).top + 8);
+  hi = (foot ? rect(foot).top : rect(r).bottom) - 8 - rect(els.at(-1)).bottom;
+  return els.map((el) => {
+    const ic = el.querySelector(":scope > .app-ic, :scope > .av, :scope > .fold-grid") || el.firstElementChild, b = rect(el);
+    return { el, ic, mid: b.top + b.height / 2, s: 1, t: 0 };
   });
 }
 // 마우스 거리 d 에서 { 배율, 밀림 }
@@ -36,14 +45,20 @@ function frame() {
   if (on && !items.length) { items = collect(); document.documentElement.classList.add("dock-mag"); }
   const k = Math.min(1, Math.max(1, p.speed) / 22);
   let moving = false;
-  for (const it of items) {
-    const box = it.el.getBoundingClientRect(), mid = box.top + box.height / 2 - it.t; // 밀리기 전 원래 가운데
-    const g = on ? at(mid - y, p) : { s: 1, t: 0 };
+  const goal = items.map((it) => (on ? at(it.mid - y, p) : { s: 1, t: 0 }));
+  if (on && goal.length) { // 줄 끝이 여유를 넘으면 그쪽으로 벌어지는 양만 줄여요 — 마우스 아래 아이콘은 그대로 제자리
+    const f = goal[0], l = goal.at(-1), half = ICON / 2;
+    const cu = f.t < 0 ? Math.min(1, Math.max(0, (lo - half * (f.s - 1)) / -f.t)) : 1;
+    const cd = l.t > 0 ? Math.min(1, Math.max(0, (hi - half * (l.s - 1)) / l.t)) : 1;
+    for (const g of goal) g.t *= g.t < 0 ? cu : cd;
+  }
+  items.forEach((it, i) => {
+    const g = goal[i];
     it.s += (g.s - it.s) * k; it.t += (g.t - it.t) * k;
     if (Math.abs(g.s - it.s) > 0.002 || Math.abs(g.t - it.t) > 0.2) moving = true; else { it.s = g.s; it.t = g.t; }
     it.el.style.transform = it.t ? `translateY(${it.t.toFixed(2)}px)` : "";
     if (it.ic) it.ic.style.transform = it.s !== 1 ? `scale(${it.s.toFixed(3)})` : "";
-  }
+  });
   if (!on && !moving) return clear();
   if (on || moving) raf = requestAnimationFrame(frame);
 }
@@ -65,4 +80,5 @@ export function initDockMagnify() {
   addEventListener("pointerup", () => { if (held) { held = false; down = null; kick(); } });
   addEventListener("pointercancel", () => { held = false; down = null; kick(); });
   window.addEventListener("trio:dock-prefs", () => { clear(); kick(); });
+  addEventListener("resize", () => { if (items.length) { clear(); kick(); } });
 }
