@@ -101,7 +101,7 @@ function systemPrompt(ctx, list, route = null) {
 학생이 "더 자세히"를 부탁할 때만 10~15줄까지 길게 써도 돼.
 근거: 아래 [근거]의 번호 자료(교재 카드 · 노트)로만 사실을 말하고, 사실을 말한 문장 끝에 [1] 처럼 근거 번호를 붙여. 여러 개면 [1][2]. [근거]에 없는 번호는 쓰지 마.
 숫자 규칙: 세율 · 한도 · 기간 · 비율 · 법 조문 같은 숫자는 [근거]에 그대로 있는 것만 써. 지어내지 마. 비유 · 계산 예시에서 쓰는 숫자는 "예를 들어"라고 밝히고 쓰고, 교재 기준처럼 말하지 마.
-확실하지 않은 부분은 지어내지 말고 그 자리에 "교재로 확인이 필요해요"라고 써. [근거]로 답할 수 없는 질문이면 첫 문장을 "자료에 근거가 없어요."로 시작하고, 교재에서 어떤 내용을 찾아보면 되는지만 짧게 말해 (장 · 쪽 번호는 [근거]에 있을 때만). 예시 · 비유 문장에는 근거 번호를 달지 마.
+확실하지 않은 부분은 지어내지 말고 그 자리에 "교재로 확인이 필요해요"라고 써. 앞 대화를 이어서 묻는 질문(예: "영어는 무슨 약자야?" = 방금 말한 MMF)이면 앞 대화의 주제로 이해해. 약어의 영어 원말 · 용어 뜻처럼 누구나 아는 일반 상식은 [근거]에 없어도 답해도 되지만, 그 문장 앞에 "(일반 상식)"이라고 밝히고 근거 번호는 달지 마. 시험 기준 숫자 · 법 규정은 일반 상식으로 답하지 마. 그 밖에 [근거]로 답할 수 없는 질문이면 첫 문장을 "자료에 근거가 없어요."로 시작하고, 교재에서 어떤 내용을 찾아보면 되는지만 짧게 말해 (장 · 쪽 번호는 [근거]에 있을 때만). 예시 · 비유 문장에는 근거 번호를 달지 마.
 계산이 나오면 한 줄씩 숫자로 보여 줘. 문제를 물으면 왜 정답이 맞는지, 학생이 고른 답이 왜 틀렸는지(헷갈리게 만든 함정)를 짚어 줘.
 '비슷한 문제'를 부탁하면 4지선다 한 문제를 내고 정답과 해설은 맨 끝에 따로 적어. 외우는 법을 부탁하면 짧은 기억 훅(앞글자 · 비유)을 하나 줘.
 LaTeX(\\[ \\] \\frac 같은 것)는 쓰지 마. 공식은 "듀레이션 = …" 처럼 글자로 한 줄.
@@ -123,7 +123,10 @@ export function registerCimAsk(on, { json, body, fail }) {
     let route = null;
     if (mode === "apply") route = (await routeAsk(env, user, ask, ckind).catch(() => null))?.choice || null;
     else if (mode === "log") ec.waitUntil(routeAsk(env, user, ask, ckind).catch(() => null)); // 기록만 — 답은 지금과 같아요
-    let list = await findSources(env, user, b.context, ask, { maxNotes: route === "my_notes" ? 4 : MAX_NOTE_SOURCES });
+    // 이어지는 짧은 질문("영어는 무슨 약자야?")은 앞 질문과 같이 찾아요 — 마지막 줄만 보면 주제를 잃어요
+    const prevAsk = clean.filter((m) => m.role === "user").slice(-2, -1)[0]?.content || "";
+    const findQ = prevAsk && ask.length < 40 ? `${prevAsk.slice(0, 200)} ${ask}` : ask;
+    let list = await findSources(env, user, b.context, findQ, { maxNotes: route === "my_notes" ? 4 : MAX_NOTE_SOURCES });
     const hasNotes = () => list.some((x) => x.type === "note");
     const withoutNotes = () => { list = list.filter((x) => x.type !== "note").map((x, i) => ({ ...x, n: i + 1 })); };
     // 노트가 있으면 안전한 공급사로만. 실패하면(키 없음 · 막힘) 노트를 빼고 보통 순서로 다시
