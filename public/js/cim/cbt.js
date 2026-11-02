@@ -4,7 +4,7 @@
 //   결과: 점수 · 과목별(과락 40%) · 해설 다시 보기 · 틀린 문제는 오답 SRS(store record) 로
 //   진행 중인 회차(S.cbtRun)는 서버에 저장돼서 새로 고침 · 다른 기기에서 이어서 풀어요.
 import { st, save, record, today, addDays } from "./store.js";
-import { SUBJ, chName, chOf } from "./meta.js";
+import { SUBJ, CH, chName, chOf } from "./meta.js";
 import { chapters, QI } from "./data.js";
 import { setAi } from "./ai.js";
 import { esc, pad2, loading, errorBox, typing } from "./ui.js";
@@ -12,6 +12,8 @@ import { toast } from "../util.js";
 
 const SUBJ_AT = (i) => (i < 20 ? 1 : i < 50 ? 2 : 3);
 const RANGE = { 1: [0, 20], 2: [20, 50], 3: [50, 100] };
+// 번호판 숨김(B) · 폰 바텀시트 열림 — 화면 상태일 뿐 시험 기록(S.cbtRun)엔 안 넣어요
+let HIDE = localStorage.getItem("cim-cbt-hide") === "1", SHEET = false;
 let SETS = null; // cbt.json (한 번 받으면 그대로)
 export const cbtSets = () => (SETS ||= fetch("/cim/cbt.json").then((r) => { if (!r.ok) throw new Error("/cim/cbt.json " + r.status); return r.json(); }).catch((e) => { SETS = null; throw e; }));
 export const CBT_N = 15;
@@ -82,14 +84,22 @@ export function mountCbt(host, no) {
       const r = R(); if (!r) return list();
       r.flags ||= {};
       const i = r.cur, q = QI[r.ids[i]], n = Object.keys(r.picks).length, nf = Object.keys(r.flags).length, s = SUBJ_AT(i), fl = !!r.flags[i];
-      host.innerHTML = `<div class="cb-run">
-        <div class="cb-main c-session">
-          <div class="cm-bar num"><span class="cb-no">${r.no}회</span><span class="cm-timer" id="cm-tm" role="timer" aria-label="남은 시간"></span><span class="cm-ans"><b>${n}</b> / 100 답함</span><button type="button" class="c-btn dark sm press" id="cb-sub">제출</button></div>
-          <div class="c-shead num"><span>${i + 1} / 100</span><span>${esc(SUBJ[s].n)}</span></div>
-          <p class="c-qstem" id="cb-q">${esc(q?.q || "문제를 찾지 못했어요.")}</p>
-          <div class="c-opts" role="group" aria-label="보기">${(q?.o || []).map((t, k) => `<button type="button" class="c-opt${r.picks[i] === k ? " pick" : ""}" data-k="${k}" aria-pressed="${r.picks[i] === k}"><span class="k num" aria-hidden="true">${k + 1}</span><span>${esc(t)}</span></button>`).join("")}</div>
-          <div class="c-navrow cb-nav"><button type="button" class="c-btn press" data-mv="-1" ${i ? "" : "disabled"}>← 이전</button><button type="button" class="c-btn press cb-flag${fl ? " on" : ""}" id="cb-flag" aria-pressed="${fl}">${fl ? "★ 표시됨" : "☆ 표시"}</button><button type="button" class="c-btn press" data-mv="1" ${i < 99 ? "" : "disabled"}>다음 →</button></div>
+      const ch = CH[chOf(r.ids[i])];
+      // 화면 = 위 한 줄(회차 · 시계 · 답함 · 번호판 · 제출) + 읽기 칸(가운데 760px) + 오른쪽 얇은 번호판
+      host.innerHTML = `<div class="cb-run${HIDE ? " hide" : ""}${SHEET ? " sheet" : ""}">
+        <div class="cm-bar cb-bar num"><span class="cb-no">${r.no}회</span><span class="cm-timer" id="cm-tm" role="timer" aria-label="남은 시간"></span><span class="cm-ans"><b>${n}</b> / 100 답함</span><button type="button" class="cb-pad press" id="cb-pad" aria-expanded="${HIDE ? !1 : !0}" title="번호판 (B)">번호판</button><button type="button" class="c-btn dark sm press" id="cb-sub">제출</button></div>
+        <div class="cb-main">
+          <div class="cb-read">
+            <p class="cb-meta num"><b>${i + 1}</b> / 100 · ${esc(SUBJ[s].n)}${ch ? ` · ${esc(ch.t)}` : ""}</p>
+            <p class="c-qstem cb-q" id="cb-q">${esc(q?.q || "문제를 찾지 못했어요.")}</p>
+            <div class="c-opts cb-opts" role="group" aria-label="보기">${(q?.o || []).map((t, k) => `<button type="button" class="c-opt${r.picks[i] === k ? " pick" : ""}" data-k="${k}" aria-pressed="${r.picks[i] === k}"><span class="k num" aria-hidden="true">${k + 1}</span><span>${esc(t)}</span></button>`).join("")}</div>
+            <div class="cb-foot">
+              <div class="cb-nav"><button type="button" class="c-btn press" data-mv="-1" ${i ? "" : "disabled"}>← 이전</button><button type="button" class="c-btn press cb-flag${fl ? " on" : ""}" id="cb-flag" aria-pressed="${fl}">${fl ? "★ 표시됨" : "☆ 표시"}</button><button type="button" class="c-btn press" data-mv="1" ${i < 99 ? "" : "disabled"}>다음 →</button></div>
+              <p class="cb-keys"><kbd>1</kbd>–<kbd>4</kbd> 고르기 · <kbd>←</kbd><kbd>→</kbd> 이동 · <kbd>F</kbd> 표시 · <kbd>B</kbd> 번호판</p>
+            </div>
+          </div>
         </div>
+        <div class="cb-scrim" data-sheet-close></div>
         <aside class="cb-side" aria-label="문항 번호판">
           <div class="cb-legend num"><span><i class="a"></i>답함 ${n}</span><span><i></i>안 답함 ${100 - n}</span><span><i class="f"></i>표시 ${nf}</span></div>
           ${[1, 2, 3].map((sj) => { const [a, b] = RANGE[sj]; return `<div class="cm-grp"><span class="k">${esc(SUBJ[sj].n)}</span><div class="cm-grid cb-grid">${r.ids.slice(a, b).map((_, j) => { const k = a + j; return `<button type="button" data-j="${k}" class="num${r.picks[k] != null ? " a" : ""}${r.flags[k] ? " f" : ""}${k === i ? " cur" : ""}" aria-label="${k + 1}번${r.picks[k] != null ? " 답함" : ""}${r.flags[k] ? " 표시" : ""}"${k === i ? ' aria-current="true"' : ""}>${k + 1}</button>`; }).join("")}</div></div>`; }).join("")}
@@ -107,6 +117,12 @@ export function mountCbt(host, no) {
     const choose = (k) => { const r = R(); r.picks[r.cur] = k; save(); if (r.cur < 99) r.cur++; draw(); };
     const move = (d) => { const r = R(); r.cur = Math.max(0, Math.min(99, r.cur + d)); save(); draw(); };
     const flag = () => { const r = R(); r.flags ||= {}; if (r.flags[r.cur]) delete r.flags[r.cur]; else r.flags[r.cur] = 1; save(); draw(); };
+    // 번호판: 넓은 화면은 오른쪽 칸 숨김/보임(기억해요), 폰은 바텀시트 열기/닫기
+    const pad = () => {
+      if (matchMedia("(max-width: 899px)").matches) SHEET = !SHEET;
+      else { HIDE = !HIDE; localStorage.setItem("cim-cbt-hide", HIDE ? "1" : "0"); }
+      draw();
+    };
     const submit = () => {
       const r = R(), left = 100 - Object.keys(r.picks).length, nf = Object.keys(r.flags || {}).length;
       const msg = left ? `안 푼 문항이 ${left}개 있어요${nf ? ` (표시 ${nf}개)` : ""}. 제출할까요?` : `100문항 다 풀었어요${nf ? ` (표시 ${nf}개)` : ""}. 제출할까요?`;
@@ -118,7 +134,9 @@ export function mountCbt(host, no) {
       if (!R()) return;
       const o = e.target.closest(".c-opt"); if (o) return choose(+o.dataset.k);
       const mv = e.target.closest("[data-mv]"); if (mv) return move(+mv.dataset.mv);
-      const j = e.target.closest("[data-j]"); if (j) { R().cur = +j.dataset.j; save(); draw(); return; }
+      const j = e.target.closest("[data-j]"); if (j) { R().cur = +j.dataset.j; SHEET = false; save(); draw(); return; }
+      if (e.target.closest("#cb-pad")) return pad();
+      if (e.target.closest("[data-sheet-close]")) { SHEET = false; return draw(); }
       if (e.target.closest("#cb-flag")) return flag();
       if (e.target.closest("#cb-sub")) submit();
     };
@@ -128,6 +146,10 @@ export function mountCbt(host, no) {
       if (n >= 1 && n <= 4) { e.preventDefault(); choose(n - 1); }
       else if (e.key === "ArrowRight") { e.preventDefault(); move(1); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); move(-1); }
+      else if (e.metaKey || e.ctrlKey || e.altKey) return;
+      else if (e.key === "f" || e.key === "F") { e.preventDefault(); flag(); }
+      else if (e.key === "b" || e.key === "B") { e.preventDefault(); pad(); }
+      else if (e.key === "Escape" && SHEET) { SHEET = false; draw(); }
     };
     document.addEventListener("keydown", onKey);
     draw();
