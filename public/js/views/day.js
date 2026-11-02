@@ -15,13 +15,11 @@ import { BLOCKS } from "../english/data.js";
 import { mountPlanClip, MOD } from "../plan-clip.js";
 import { planUndo } from "../plan-undo.js"; // ⌘Z · ⌘⇧Z: 옮기기 · 길이 · 이름 · 끝냄 · 우선순위 · 미루기 · 지우기 · 추가 · 붙여넣기
 
-const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게). 언제나 실제 비율 (짧은 계획 때문에 칸을 늘리지 않아요)
+const HOUR_PX = 252; // 한 시간 = 252px → 5분 = 21px = 글 한 줄. 언제나 실제 비율
 const STEP = 5;     // 시간표를 누르거나 끌 때만 5분 칸 (적는 시각 · 길이는 1분 단위)
 const DEFAULT_MINS = 60; // 새 계획의 기본 길이 — 바로 전에 넣은 길이를 따라가지 않아요
-const SHORT = 15;   // 15분보다 짧은 계획은 블록이 아니라 한 줄(점 · 시각 · 이름)로 그 시각에
-const LINE_H = 18;  // 한 줄 높이(px)
-const LINE_MIN = Math.ceil(LINE_H / (HOUR_PX / 60)); // 한 줄이 차지하는 분 (겹침 계산용) — 이 안에 붙은 짧은 계획끼리는 '+N' 으로 접어요
-const ONE_H = 22;   // 15분 이상 블록의 최소 높이 (한 줄)
+const LINE_H = 18;  // 그룹 안 한 줄 높이(px)
+const ONE_H = 20;   // 모든 블록의 최소 높이 = 한 줄 (체크 + 이름). 1분 계획도 이만큼은 보여요
 // 분 → 세로 위치(px) 표: Y[i] = 시간표 맨 위(m0 분)에서 i분 뒤의 위치 (1시간 = HOUR_PX, 늘이지 않아요)
 function axis(m0) {
   const base = HOUR_PX / 60, Y = [0];
@@ -65,7 +63,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   const ro = () => who !== me.id;
   const S = { plans: null, spill: [], goals: null, diary: undefined, logs: [], english: null, record: null, notes: [], carry: 0, editSlot: null,
     sel: new Set(), hoverId: null, hoverMin: null, // 복사 · 붙여넣기 · 여러 개 고르기
-    form: null, fold: loadFold(), openMore: null, pendingLoad: false, pendingDraw: false }; // form = 열린 추가 · 고치기 창의 칸 값 (다시 그려도 그대로) · fold = 접은 그룹 · openMore = 펼친 '+N'
+    form: null, fold: loadFold(), pendingLoad: false, pendingDraw: false }; // form = 열린 추가 · 고치기 창의 칸 값 (다시 그려도 그대로) · fold = 접은 그룹
   let drag = null, lasso = null, justDragged = 0;
   // 글을 쓰는 중(추가 · 고치기 창, 이름 고치기)이거나 끄는 중이면 다시 그리지 않고 미뤄요 — 쓰던 게 날아가지 않게
   const busy = () => !!(drag || lasso || $("[data-slot-form]", el) || el.querySelector('[contenteditable="true"]'));
@@ -217,28 +215,20 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     const nowM = toMin(nowTime());
     const m0 = startH * 60;
     const Y = axis(m0), yAt = (m) => Y[Math.max(0, Math.min(1440, m) - m0)], PPM = HOUR_PX / 60;
-    // 그릴 것: 어제에서 이어진 칸 · 그룹(같은 group_id 2개 이상) · 15분 이상 블록 · 15분 미만 한 줄(가까이 붙으면 '+N' 묶음)
-    // 자정을 넘는 계획은 e 가 1440 을 넘어요 (위치는 24:00 까지만). le = 화면에서 차지하는 끝(겹침 계산용)
-    const items = (S.spill || []).map((p) => { const e = toMin(p.start) + (p.mins || 30) - 1440; return { p, s: 0, e, le: Math.max(e, LINE_MIN), cont: true }; });
+    // 그릴 것: 어제에서 이어진 칸 · 그룹(같은 group_id 2개 이상) · 계획 블록 (길이와 상관없이 모두 같은 모양 · 체크 있음)
+    // 자정을 넘는 계획은 e 가 1440 을 넘어요 (위치는 24:00 까지만). le = 겹침 계산용 끝 = 진짜 끝 (최소 높이 때문에 나란히 두지 않아요)
+    const items = (S.spill || []).map((p) => { const e = toMin(p.start) + (p.mins || 30) - 1440; return { p, s: 0, e, le: Math.max(e, 1), cont: true }; });
     const byGrp = new Map();
     for (const p of timed) if (p.group_id) byGrp.set(p.group_id, [...(byGrp.get(p.group_id) || []), p]);
-    const shorts = [];
     for (const p of timed) {
-      const s = toMin(p.start), e = s + (p.mins || 30);
+      const s = toMin(p.start), e = s + Math.max(1, p.mins || 30);
       if (p.group_id && byGrp.get(p.group_id).length > 1) continue;
-      if (e - s < SHORT) shorts.push({ p, s, e }); else items.push({ p, s, e, le: e });
+      items.push({ p, s, e, le: e });
     }
     for (const [gid, ms] of byGrp) {
       if (ms.length < 2) continue;
       const s = Math.min(...ms.map((p) => toMin(p.start))), e = Math.max(...ms.map((p) => toMin(p.start) + (p.mins || 30)));
-      const need = Math.ceil(((S.fold.has(gid) ? 1 : ms.length + 1) * LINE_H + 8) / PPM); // 줄이 다 들어갈 만큼
-      items.push({ grp: gid, ms, s, e, le: Math.max(e, s + need) });
-    }
-    // 짧은 것끼리: 앞 줄이 차지하는 칸(LINE_MIN) 안에서 시작하면 한 묶음 → 첫 줄 + '+N'
-    for (let i = 0; i < shorts.length;) {
-      const first = shorts[i], ms = [first];
-      while (++i < shorts.length && shorts[i].s < first.s + LINE_MIN) ms.push(shorts[i]);
-      items.push({ mini: ms, p: first.p, s: first.s, e: first.e, le: first.s + LINE_MIN });
+      items.push({ grp: gid, ms, s, e, le: e });
     }
     items.sort((a, b) => a.s - b.s || b.le - a.le);
     // 겹치면 옆으로 나눠요 (구글 캘린더처럼) — 서로 이어진 묶음마다 칸 수를 같이 쓰고, 오른쪽이 비면 넓게 펴요
@@ -255,6 +245,14 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     };
     for (const it of items) { if (group.length && it.s >= groupEnd) flushCols(); group.push(it); groupEnd = Math.max(groupEnd, it.le); }
     if (group.length) flushCols();
+    // 화면 위치: 실제 시각 위치 + 최소 높이. 앞 블록(같은 칸 줄)이 최소 높이로 길어져 아래 블록을 덮으면, 아래 블록만 화면에서 살짝 내려요 (데이터는 그대로)
+    const hOf = (it) => it.grp ? Math.max(yAt(it.e) - yAt(it.s) - 2, (S.fold.has(it.grp) ? 1 : it.ms.length + 1) * LINE_H + 8) : it.cont ? Math.max(yAt(it.e) - yAt(0) - 2, ONE_H) : Math.max(yAt(it.e) - yAt(it.s) - 2, ONE_H);
+    const shown = [];
+    for (const it of [...placed].sort((a, b) => a.s - b.s || a.c - b.c)) {
+      it.h = hOf(it); it.top = (it.cont ? yAt(0) : yAt(it.s)) + 1;
+      for (const o of shown) if (o.c < it.c + it.span && it.c < o.c + o.span) it.top = Math.max(it.top, o.top + o.h + 2);
+      shown.push(it);
+    }
     // 1시간 칸 (늘이지 않아요 — 15분 눈금은 CSS 배경)
     let hours = "";
     for (let h = startH; h < 24; h++) {
@@ -265,35 +263,28 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     const pos = (top, h, c, n, span) => { const w = 100 / n; return `top:${r2(top)}px;height:${r2(h)}px;left:calc(${c * w}% + ${c ? 2 : 0}px);right:auto;width:calc(${w * span}% - ${n > 1 ? 2 : 0}px)`; };
     const sel = (id) => (S.sel.has(id) ? " sel" : "");
     const tipOf = (p, s, e) => `${span2(p.start, e)} · ${p.text}${p.priority ? ` · ${p.priority}` : ""}`;
-    // 짧은 계획 한 줄: 점 · 시각 · 이름 (체크 · 버튼은 우클릭 메뉴로)
-    const miniRow = ({ p, s, e }, extra = "", style = "") => `<div class="block mini ${status(p)}${sel(p.id)}${extra}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" data-id="${esc(p.id)}" title="${esc(tipOf(p, s, e) + ` · ${hm(e - s)}`)}"${style ? ` style="${style}"` : ""}><i class="mini-dot" aria-hidden="true"></i><span class="when-i">${esc(p.start)}</span><span class="mini-t" data-edit="${esc(p.id)}">${esc(p.text)}</span>`;
     const blocks = placed.map((it) => {
-      const { p, s, e, c, n, span, cont } = it;
+      const { p, s, e, c, n, span, cont, top } = it;
       if (cont) { // 어제에서 이어진 칸: 체크 · 버튼 없이 보기만, 누르면 어제 하루로
-        const h = Math.max(yAt(e) - yAt(0) - 2, LINE_H);
-        return `<div class="block cont ${p.done ? "done" : p.missed ? "fail" : ""}${h < 30 ? " thin tiny" : h < 50 ? " thin" : ""}" data-p="${p.priority || ""}" data-cont="${esc(p.id)}" title="${esc(`어제 ${p.start}부터 · ${p.text} · 누르면 어제 계획표`)}" style="${pos(yAt(0) + 1, h, c, n, span)};opacity:.6;border-style:dashed">
+        const h = it.h;
+        return `<div class="block cont ${p.done ? "done" : p.missed ? "fail" : ""}${h < 30 ? " thin tiny" : h < 50 ? " thin" : ""}" data-p="${p.priority || ""}" data-cont="${esc(p.id)}" title="${esc(`어제 ${p.start}부터 · ${p.text} · 누르면 어제 계획표`)}" style="${pos(top, h, c, n, span)};opacity:.6;border-style:dashed">
           <div class="txt"><span class="when-i">← ${esc(p.start)}</span><span>${esc(p.text)}</span>${h >= 50 ? `<span class="when">어제 ${esc(p.start)}부터 · 00:00–${toTime(e)}</span>` : ""}</div></div>`;
       }
-      if (it.mini) { // 15분 미만: 한 줄, 붙어 있으면 '+N' → 누르면 아래로 목록
-        const more = it.mini.length - 1, open = more && S.openMore === p.id;
-        return miniRow(it.mini[0], "", pos(yAt(s) + 1, LINE_H, c, n, span)) + (more ? `<button type="button" class="mini-more" data-more="${esc(p.id)}" aria-expanded="${open}" title="이 시각 근처 짧은 계획 ${more}개 더">+${more}</button>` : "") + `</div>`
-          + (open ? `<div class="mini-pop" style="${pos(yAt(s) + 1 + LINE_H + 2, (it.mini.length) * (LINE_H + 2) + 6, c, n, span)}">${it.mini.map((x) => miniRow(x, " in-pop") + "</div>").join("")}</div>` : "");
-      }
       if (it.grp) { // 그룹: 머리 줄(접기 · 시각 · 이름 · 풀기) + 묶인 계획들
-        const fold = S.fold.has(it.grp), allSel = it.ms.every((x) => S.sel.has(x.id)), h = Math.max(yAt(e) - yAt(s) - 2, (fold ? 1 : it.ms.length + 1) * LINE_H + 8);
+        const fold = S.fold.has(it.grp), allSel = it.ms.every((x) => S.sel.has(x.id)), h = it.h;
         const done = it.ms.filter((x) => x.done).length;
-        return `<div class="block grp${allSel ? " sel" : ""}${fold ? " folded" : ""}" data-grp="${esc(it.grp)}" style="${pos(yAt(s) + 1, h, c, n, span)}">
+        return `<div class="block grp${allSel ? " sel" : ""}${fold ? " folded" : ""}" data-grp="${esc(it.grp)}" style="${pos(top, h, c, n, span)}">
           <div class="grp-h"><button type="button" class="grp-fold" data-fold="${esc(it.grp)}" aria-expanded="${!fold}" aria-label="${fold ? "펼치기" : "접기"}">${fold ? "▸" : "▾"}</button><span class="when-i">${esc(toTime(s))}–${esc(endLab(e))}</span><span class="grp-n">${esc(it.ms[0].text)} 외 ${it.ms.length - 1}개</span><span class="grp-c">${done}/${it.ms.length}</span><button type="button" class="grp-un" data-ungroup="${esc(it.grp)}" title="그룹 풀기">풀기</button></div>
           ${fold ? "" : it.ms.map((x) => `<div class="grp-row ${status(x)}${sel(x.id)}" data-id="${esc(x.id)}" data-p="${x.priority || ""}" title="${esc(tipOf(x, toMin(x.start), toMin(x.start) + (x.mins || 30)))}"><input type="checkbox" class="check" data-toggle="${esc(x.id)}" ${x.done ? "checked" : ""} aria-label="${esc(x.text)} 완료"><span class="when-i">${esc(x.start)}</span><span class="mini-t" data-edit="${esc(x.id)}">${esc(x.text)}</span></div>`).join("")}
         </div>`;
       }
-      const h = Math.max(yAt(e) - yAt(s) - 2, ONE_H), frac = span / n, hh = Math.round(h);
+      const h = it.h, frac = span / n, hh = Math.round(h);
       // 크기에 맞춰: tiny(한 줄 · 작은 글씨) · thin(한 줄 + 시각) · narrow(좁으면 버튼은 숨기고 우클릭 메뉴로)
       const size = hh < 30 ? " thin tiny" : hh < 50 ? " thin" : "";
       const narrow = (frac < 0.5 ? " narrow xnarrow" : frac < 1 ? " narrow" : "") + (frac < 1 && c + span === n ? " edge-r" : "");
-      return `<div class="block ${status(p)}${size}${narrow}${sel(p.id)}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tipOf(p, s, e))}" style="${pos(yAt(s) + 1, h, c, n, span)}" data-id="${esc(p.id)}">
+      return `<div class="block ${status(p)}${size}${narrow}${sel(p.id)}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tipOf(p, s, e))}" style="${pos(top, h, c, n, span)}" data-id="${esc(p.id)}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">${missBtn(p)}
-        <div class="txt">${h < 50 ? `<span class="when-i">${esc(p.start)}</span>` : ""}<span data-edit="${esc(p.id)}">${esc(p.text)}</span>${e > 1440 && h < 50 ? `<span class="when-i">${esc(endLab(e))}</span>` : ""}${h >= 50 ? `<span class="when">${esc(span2(p.start, e))} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
+        <div class="txt"><span data-edit="${esc(p.id)}">${esc(p.text)}</span>${h < 50 ? `<span class="when-i">${esc(span2(p.start, e))} · ${hm(e - s)}</span>` : ""}${h >= 50 ? `<span class="when">${esc(span2(p.start, e))} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
         ${playBtn(p)}
         <button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button>
         <button class="icon-btn sm" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button>
@@ -503,8 +494,6 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     if (sb && !e.target.closest("button, input, select, a")) { e.preventDefault(); const id = sb.dataset.id; S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); drawSelBar(); return; }
     const fold = e.target.closest("[data-fold]");
     if (fold) { const g = fold.dataset.fold; S.fold.has(g) ? S.fold.delete(g) : S.fold.add(g); try { localStorage.setItem(FOLD_KEY, JSON.stringify([...S.fold].slice(-200))); } catch {} drawGrid(); return; }
-    const more = e.target.closest("[data-more]");
-    if (more) { S.openMore = S.openMore === more.dataset.more ? null : more.dataset.more; drawGrid(); return; }
     const ug = e.target.closest("[data-ungroup]");
     if (ug && S.plans) { batch("ungroup", null, S.plans.filter((p) => p.group_id === ug.dataset.ungroup).map((p) => p.id)); return; }
     const sbar = e.target.closest("[data-sb]");
@@ -620,7 +609,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   const axY = (m) => S.axis.Y[Math.max(0, Math.min(1440, m) - S.axis.m0)];
   const edgeOf = (b, y) => { const r = b.getBoundingClientRect(), k = Math.min(8, r.height / 4); return y - r.top <= k ? "top" : r.bottom - y <= k ? "bot" : "move"; };
   // 가장자리에 올리면 커서를 위아래 화살표로
-  el.addEventListener("mousemove", (e) => { const b = e.target.closest?.("#dp-grid .block[data-id]:not(.mini)"); if (!b || drag) return; b.style.cursor = e.target.closest("button, input") ? "" : edgeOf(b, e.clientY) === "move" ? "" : "ns-resize"; });
+  el.addEventListener("mousemove", (e) => { const b = e.target.closest?.("#dp-grid .block[data-id]"); if (!b || drag) return; b.style.cursor = e.target.closest("button, input") ? "" : edgeOf(b, e.clientY) === "move" ? "" : "ns-resize"; });
   // 폰(터치): 끌기 대신 꾹 누르면(0.45초) 우클릭과 같은 메뉴. 손가락이 움직이면 스크롤로 보고 취소
   let press = null;
   const cancelPress = () => {
@@ -644,7 +633,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   el.addEventListener("pointerdown", (e) => {
     const b = e.target.closest?.("#dp-grid .block[data-id]:not(.in-pop)"); if (!b || e.button !== 0 || e.pointerType === "touch" || ro()) return;
     if (e.target.closest("button, input, select, a, [data-edit].editing") || e.shiftKey || e.metaKey || e.ctrlKey) return;
-    const mode = b.classList.contains("mini") ? "move" : edgeOf(b, e.clientY); // 한 줄(짧은 계획)은 옮기기만 // 위·아래 가장자리 8px 안이면 길이 조절, 아니면 옮기기
+    const mode = edgeOf(b, e.clientY); // 위·아래 가장자리 8px 안이면 길이 조절, 아니면 옮기기
     drag = { b, id: b.dataset.id, mode, y0: e.clientY, sc0: scroller().scrollTop, s: +b.dataset.s, e: +b.dataset.e, ns: +b.dataset.s, ne: +b.dataset.e, moved: false };
     b.setPointerCapture?.(e.pointerId);
   });
@@ -666,7 +655,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     else { const base = Math.min(1440, drag.e); ne = base + d; if (ne >= 1440 && drag.e > 1440) ne = drag.e; ne = Math.max(drag.s + STEP, Math.min(Math.max(1440, drag.e), ne)); }
     drag.ns = ns; drag.ne = ne;
     drag.b.style.top = r2(axY(ns) + 1) + "px";
-    if (!drag.b.classList.contains("mini")) drag.b.style.height = r2(Math.max(ONE_H, axY(ne) - axY(ns) - 2)) + "px";
+    drag.b.style.height = r2(Math.max(ONE_H, axY(ne) - axY(ns) - 2)) + "px";
     let tag = drag.b.querySelector(".drag-tag"); if (!tag) { tag = document.createElement("span"); tag.className = "drag-tag"; drag.b.appendChild(tag); }
     tag.textContent = `${span2(toTime(ns), ne)} · ${hm(ne - ns)}`;
     e.preventDefault();
@@ -741,7 +730,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   el.addEventListener("pointerdown", (e) => {
     if (ro() || e.button !== 0 || e.pointerType === "touch" || !S.plans) return;
     const g = $("#dp-grid", el);
-    if (!g || !g.contains(e.target) || e.target.closest("[data-id], .grp, .mini-pop, [data-slot-form], .mini-more")) return;
+    if (!g || !g.contains(e.target) || e.target.closest("[data-id], .grp, [data-slot-form]")) return;
     lasso = { x0: e.clientX, y0: e.clientY, sc0: scroller().scrollTop, base: e.shiftKey || e.metaKey || e.ctrlKey ? new Set(S.sel) : new Set(), moved: false, box: null };
     e.preventDefault(); // 끄는 동안 글자가 골라지지 않게
   });
