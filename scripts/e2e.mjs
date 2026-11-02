@@ -164,6 +164,34 @@ try {
     } catch (e) { ok(false, `${tv} · Dock 순서 — ${String(e.message).split("\n")[0]}`); }
 
     });
+    // ---------- ⑧-2 Dock 자동 숨김: 우클릭으로 켜기 → 숨음 · 본문 넓어짐 → 왼쪽 끝에 마우스 → 나옴 → 떠나면 숨음 → 새로고침해도 기억 ----------
+    await sec("dock-hide", async () => {
+    try {
+      await go("#/", 2200);
+      const st = () => p.evaluate(() => { const r = document.querySelector(".rail.dock").getBoundingClientRect(), m = document.querySelector(".main").getBoundingClientRect(); return { x: Math.round(r.right), main: Math.round(m.left), on: document.documentElement.classList.contains("dock-autohide") }; });
+      if (w < 861) { // 폰은 아래 탭바 그대로
+        await p.evaluate(() => { localStorage.setItem("dock-autohide", "1"); }); await p.reload(); await sleep(2200);
+        const s = await st(); ok(s.x > 0, `${tv} · Dock 자동 숨김 — 폰은 탭바 그대로 (오른쪽 끝 ${s.x})`);
+        await p.evaluate(() => localStorage.removeItem("dock-autohide")); await p.reload(); await sleep(1500); return;
+      }
+      const before = await st();
+      const gap = await p.evaluate(() => { const a = document.querySelector(".rail-nav").getBoundingClientRect(), f = document.querySelector(".rail-foot").getBoundingClientRect(), r = document.querySelector(".rail.dock").getBoundingClientRect(); return { x: r.left + 6, y: f.top > a.bottom + 4 ? (a.bottom + f.top) / 2 : r.top + 6 }; });
+      await p.mouse.click(gap.x, gap.y, { button: "right" }); // 아이콘 없는 빈 곳
+      await p.locator('.cm [data-k="hide"]').click(); await p.mouse.move(700, 400); await sleep(900);
+      const hidden = await st();
+      await p.mouse.move(2, 400); await sleep(500);
+      const peek = await st();
+      await p.mouse.move(700, 400); await sleep(900);
+      const gone = await st();
+      await p.reload(); await sleep(2200);
+      const kept = await st();
+      await p.keyboard.press(process.platform === "darwin" ? "Meta+Alt+KeyD" : "Control+Alt+KeyD"); await sleep(600);
+      const off = await st();
+      ok(hidden.on && hidden.x <= 0 && hidden.main < before.main && peek.x > 40 && gone.x <= 0 && kept.on && !off.on && off.x > 40,
+        `${tv} · Dock 자동 숨김 — 켜기 ${hidden.on}/${hidden.x} · 본문 ${before.main}→${hidden.main} · 끝에 대면 ${peek.x} · 떠나면 ${gone.x} · 새로고침 ${kept.on} · ⌥⌘D 끄기 ${!off.on}`);
+    } catch (e) { ok(false, `${tv} · Dock 자동 숨김 — ${String(e.message).split("\n")[0]}`); }
+      await p.evaluate(() => { try { localStorage.removeItem("dock-autohide"); document.documentElement.classList.remove("dock-autohide", "dock-peek"); } catch {} });
+    });
     // ---------- ⑨ 친구가 공개한 페이지를 내 화면에서 숨기기 → 프로필에서 다시 보이기 ----------
     await sec("friend-pages", async () => {
     try {
