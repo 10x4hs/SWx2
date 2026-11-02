@@ -1379,24 +1379,25 @@ try {
       await go("#/calendar/" + day, 2500);
       await p.evaluate(() => [...document.querySelectorAll("#dp-grid .block")].find((x) => x.querySelector("[data-edit]")?.textContent === "짧은 휴식")?.scrollIntoView({ block: "center" }));
       await sleep(300);
-      // 2026-11-02: 15분 미만은 한 줄(.mini)로 제 시각에 · 칸은 늘리지 않아요 (1시간 = 96px) · 진짜 겹침은 나란히
+      // 2026-11-02 (줌): 모든 계획이 같은 블록(체크 있음) · 5분 = 한 줄(21px) · 1시간 = 252px · 진짜 겹침만 나란히
       const L = await p.evaluate(() => {
-        const r = (t) => { const b = [...document.querySelectorAll("#dp-grid [data-id]")].find((x) => x.querySelector("[data-edit]")?.textContent === t); if (!b) return null; const q = b.getBoundingClientRect(); return { top: q.top, h: q.height, left: q.left, w: q.width, cls: b.className }; };
+        const r = (t) => { const b = [...document.querySelectorAll("#dp-grid [data-id]")].find((x) => x.querySelector("[data-edit]")?.textContent === t); if (!b) return null; const q = b.getBoundingClientRect(); return { top: q.top, h: q.height, left: q.left, w: q.width, cls: b.className, chk: !!b.querySelector("input.check") }; };
         const hr = (h) => document.querySelector(`#dp-grid .hour[data-h="${h}"]`)?.getBoundingClientRect().height || 0;
         return { rest: r("짧은 휴식"), test: r("짧은 뒤 시험"), a: r("겹침 A"), b: r("겹침 B"), h8: hr(8), h11: hr(11) };
       });
       const stacked = L.rest && L.test && (L.test.top >= L.rest.top + L.rest.h - 1 || L.test.left >= L.rest.left + L.rest.w - 1 || L.rest.left >= L.test.left + L.test.w - 1); // 위아래 또는 나란히 — 겹치지 않으면 돼요
-      ok(stacked && /\bmini\b/.test(L.rest.cls) && L.rest.h >= 16 && L.rest.h <= 20 && Math.round(L.h8) === 96 && Math.round(L.h11) === 96 && L.b?.left > L.a?.left + 50 && !errs.length,
-        `${tv} · 하루 계획표 — 5분 휴식 한 줄 ${/\bmini\b/.test(L.rest?.cls)} · 바로 뒤 시험과 안 겹침 ${stacked} · 휴식 높이 ${Math.round(L.rest?.h)}px · 8시 칸 ${Math.round(L.h8)}px · 진짜 겹침 나란히 ${L.b?.left > L.a?.left + 50}${errs.length ? " — " + errs[0] : ""}`);
+      const full = L.test && L.a && L.test.w >= L.a.w * 1.8; // 50분 시험은 겹치는 게 없으니 넓게 (겹침 A/B 는 반씩)
+      ok(stacked && L.rest.chk && L.rest.h >= 18 && L.rest.h <= 22 && Math.round(L.h8) === 252 && Math.round(L.h11) === 252 && L.b?.left > L.a?.left + 50 && full && L.rest.left === L.test.left && !errs.length,
+        `${tv} · 하루 계획표 — 5분 휴식 체크 ${L.rest?.chk} · 바로 뒤 시험과 안 겹침 ${stacked} · 휴식 높이 ${Math.round(L.rest?.h)}px · 8시 칸 ${Math.round(L.h8)}px · 50분 넓게 ${full} · 진짜 겹침 나란히 ${L.b?.left > L.a?.left + 50}${errs.length ? " — " + errs[0] : ""}`);
       if (tv === "컴퓨터") {
         // 빈 칸 시각: 휴식 바로 위(08:50~08:55) → "+ 08:50에 추가"
         const sx = await p.evaluate(() => document.querySelector('#dp-grid .hour[data-h="8"] [data-slot]').getBoundingClientRect().left + 40);
         await p.mouse.move(sx, L.rest.top - 4); await sleep(150);
         const slot = await p.evaluate(() => document.querySelector('#dp-grid .hour[data-h="8"] [data-slot]').textContent);
-        // 한 줄도 끌어서 옮겨요: 10분(16px) 아래로 → 09:05
+        // 짧은 블록도 끌어서 옮겨요: 10분(42px) 아래로 → 09:05
         const x = L.rest.left + 120, y = L.rest.top + L.rest.h / 2;
         await p.mouse.move(x, y); await p.mouse.down();
-        for (let k = 1; k <= 4; k++) { await p.mouse.move(x, y + (16 * k) / 4); await sleep(30); }
+        for (let k = 1; k <= 4; k++) { await p.mouse.move(x, y + (42 * k) / 4); await sleep(30); }
         await p.mouse.up(); await sleep(1500);
         const moved = (await (await ctx.request.get(BASE + "/api/plans?periods=D:" + day, { headers: H })).json()).plans.find((q) => q.id === rest.id)?.start;
         ok(slot === "+ 08:50에 추가" && moved === "09:05", `${tv} · 짧은 계획 — 빈 칸 "${slot}" · 끌어서 내리면 ${moved}`);
@@ -1545,16 +1546,22 @@ try {
       await add("묶음 A", "10:00", 30); await add("묶음 B", "10:30", 30);
       await add("일분", "11:00", 1); await add("오분", "11:30", 5); await add("붙음 1", "12:00", 1); await add("붙음 2", "12:03", 1); await add("긴 일", "11:00", 90);
       await go("#/calendar/" + day, 2500);
-      // 1분 · 5분: 한 줄씩, 서로 · 긴 일과 안 겹치고, 붙은 둘은 '+1' → 누르면 둘 다
+      // 1분 · 5분 · 10분: 모두 체크 있는 블록 · 화면에서 서로 안 겹침 · 체크를 누르면 끝냄
+      await add("십분", "11:40", 10);
+      await go("#/calendar/" + day, 2500);
       await p.evaluate(() => document.querySelector('#dp-grid .hour[data-h="11"]').scrollIntoView({ block: "center" })); await sleep(200);
-      const R = await p.evaluate(() => [...document.querySelectorAll("#dp-grid .blocks > [data-id]")].map((b) => { const r = b.getBoundingClientRect(); return { t: b.querySelector("[data-edit]")?.textContent, mini: b.classList.contains("mini"), x: r.left, y: r.top, w: r.width, h: r.height }; }));
+      const R = await p.evaluate(() => [...document.querySelectorAll("#dp-grid .blocks > [data-id], #dp-grid .blocks > .grp")].map((b) => { const r = b.getBoundingClientRect(); return { t: b.querySelector("[data-edit]")?.textContent, chk: !!b.querySelector(":scope > input.check"), x: r.left, y: r.top, w: r.width, h: r.height }; }));
       const hit = (a, b) => a.x < b.x + b.w - 1 && b.x < a.x + a.w - 1 && a.y < b.y + b.h - 1 && b.y < a.y + a.h - 1;
       const clash = R.flatMap((a, i) => R.slice(i + 1).filter((b) => hit(a, b)).map((b) => a.t + "×" + b.t));
-      const one = R.find((r) => r.t === "일분"), five = R.find((r) => r.t === "오분");
-      await p.click('#dp-grid [data-more]'); await sleep(200);
-      const pop = await p.evaluate(() => [...document.querySelectorAll("#dp-grid .mini-pop [data-edit]")].map((x) => x.textContent).join(","));
-      ok(one?.mini && five?.mini && one.h < 22 && !clash.length && pop === "붙음 1,붙음 2" && !errs.length,
-        `${tv} · 1분 · 5분 한 줄 ${!!(one?.mini && five?.mini)} (${Math.round(one?.h)}px) · 겹침 ${clash.join(" ") || "없음"} · +1 펼치기 "${pop}"${errs.length ? " — " + errs[0] : ""}`);
+      const shortsOk = ["일분", "오분", "십분", "붙음 1", "붙음 2"].every((t) => R.find((r) => r.t === t)?.chk);
+      const toggled = [];
+      for (const t of ["일분", "오분", "십분"]) {
+        const id = (await plans()).find((x) => x.text === t)?.id;
+        await p.click(`#dp-grid [data-toggle="${id}"]`); await sleep(1200);
+        toggled.push(!!(await plans()).find((x) => x.id === id)?.done);
+      }
+      ok(shortsOk && toggled.every(Boolean) && !clash.length && !errs.length,
+        `${tv} · 1분 · 5분 · 10분 체크 ${shortsOk} · 눌러서 끝냄 ${toggled.join("/")} · 화면 겹침 ${clash.join(" ") || "없음"}${errs.length ? " — " + errs[0] : ""}`);
       if (tv === "컴퓨터") {
         // 추가 창: 시각을 바꾸면 안내도 따라가요 · 1분 틱 · 다른 곳 변경(trio:changed)에도 창과 적던 값이 그대로
         const q = await ctx.newPage(); q.on("pageerror", (e) => errs.push(e.message));

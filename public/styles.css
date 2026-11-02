@@ -2022,8 +2022,8 @@ a.btn { text-decoration: none; }
 .prio-sel { flex: none; width: auto; min-width: 96px; }
 .block[data-p="low"] { border-left-color: var(--p-low); } .block[data-p="medium"] { border-left-color: var(--p-medium); } .block[data-p="high"] { border-left-color: var(--p-high); }
 .block[data-p="xhigh"] { border-left-color: var(--p-xhigh); } .block[data-p="max"] { border-left-color: var(--p-max); box-shadow: 0 0 0 1px color-mix(in srgb, var(--p-max) 40%, transparent); }
-.cal-page .hour, .day-grid .hour { height: 96px; background-image: repeating-linear-gradient(to bottom, transparent 0 23px, var(--line) 23px 24px); background-position: 52px 0; background-size: calc(100% - 52px) 100%; background-repeat: no-repeat; }
-.cal-page .hour.editing { height: auto; min-height: 96px; background-image: none; }
+.cal-page .hour, .day-grid .hour { height: 252px; background-image: repeating-linear-gradient(to bottom, transparent 0 62px, var(--line) 62px 63px), repeating-linear-gradient(to bottom, transparent 0 20px, color-mix(in srgb, var(--line) 45%, transparent) 20px 21px); background-position: 52px 0; background-size: calc(100% - 52px) 100%; background-repeat: no-repeat; }
+.cal-page .hour.editing { height: auto; min-height: 252px; background-image: none; }
 .hour > button { margin: 0; height: 100%; }
 .block.thin .icon-btn { width: 20px; height: 20px; }
 .slot-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 0; }
@@ -3391,19 +3391,7 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 .gn-ask-a p { margin: 0 0 6px; }
 .gn-ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 
-/* ---------- 하루 계획표: 짧은 계획 한 줄 · '+N' · 그룹 · 여러 개 고르기 (2026-11-02) ---------- */
-.block.mini { height: 18px; padding: 0 6px; align-items: center; gap: 5px; font-size: 12px; line-height: 18px; border-radius: 6px; background: var(--glass-3); border-color: var(--line); white-space: nowrap; }
-.block.mini .mini-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--me); }
-.block.mini[data-p="max"] .mini-dot, .block.mini[data-p="xhigh"] .mini-dot { background: var(--p-max); }
-.block.mini .when-i { font: 500 10.5px var(--mono); color: var(--ink-3); flex: none; }
-.block.mini .mini-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; flex: 1; }
-.block.mini.done .mini-t { text-decoration: line-through; opacity: .7; }
-.block.mini.done { background: color-mix(in srgb, var(--me) 25%, var(--glass-3)); }
-.block.mini.fail .mini-dot { background: var(--bad, #d33); }
-.mini-more { position: relative; flex: none; height: 14px; padding: 0 5px; border: 0; border-radius: 7px; font: 600 10px var(--mono); background: var(--ink); color: var(--bg, #fff); cursor: pointer; pointer-events: auto; }
-.blocks > .mini-more { display: none; }
-.mini-pop { position: absolute; z-index: 6; pointer-events: auto; padding: 3px; display: flex; flex-direction: column; gap: 2px; border-radius: 8px; background: var(--glass-1, var(--bg)); border: 1px solid var(--line-2); box-shadow: 0 6px 18px rgba(0,0,0,.18); overflow: visible; }
-.mini-pop .block.mini { position: relative; top: auto; left: auto; width: auto; }
+/* ---------- 하루 계획표: 그룹 · 여러 개 고르기 (2026-11-02) ---------- */
 .block.grp { flex-direction: column; align-items: stretch; padding: 3px 6px; gap: 2px; background: color-mix(in srgb, var(--me) 8%, var(--glass-3)); border-style: solid; border-width: 1px 1px 1px 3px; }
 .grp-h { display: flex; align-items: center; gap: 6px; height: 18px; font-size: 12px; white-space: nowrap; }
 .grp-h .grp-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
@@ -3422,3 +3410,6 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 .dp-selbar .sb-n { font-weight: 700; font-size: 13px; margin-right: 4px; }
 .dp-selbar .sb-shift { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
 .dp-selbar #dp-sb-min { width: 56px; height: 28px; padding: 0 6px; }
+/* 하루 계획표 (줌): 짧은 블록은 이름 먼저 — 좁으면 시각 · 길이 쪽이 먼저 줄어요 */
+.block.thin .txt [data-edit] { flex: 0 1 auto; min-width: 4.5em; }
+.block.thin .txt .when-i { flex: 0 1000 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
