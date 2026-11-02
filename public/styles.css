@@ -3424,7 +3424,7 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
     transition: transform .28s var(--ease), opacity .2s ease;
   }
   .dock-autohide.dock-peek .rail.dock { transform: none; opacity: 1; }
-  .dock-autohide .dock-edge { display: block; position: fixed; left: 0; top: 0; bottom: 0; width: var(--dock-edge, 6px); z-index: 69; }
+  .dock-autohide .dock-edge { display: block; position: fixed; left: 0; top: 0; bottom: 0; width: 8px; z-index: 69; }
 }
 @media (prefers-reduced-motion: reduce) { .dock-autohide .rail.dock { transition: none; } }
 
@@ -3472,4 +3472,21 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
   .set-nav b { display: none; }
   .set-pane { padding: 18px 16px 32px; }
   .set-row { grid-template-columns: 1fr; gap: 8px; }
+}
+
+/* ---------- Dock 앱 줄 스크롤 (화면이 작을 때 · 14인치 + 자동 숨김): 검색 · 타이머 · 프로필은 고정, 가운데만 넘겨요 ----------
+   커진 아이콘 · 이름표가 잘리지 않게 스크롤 칸을 오른쪽으로 240px 넓히고, 그 빈 곳은 클릭이 본문으로 지나가게 (pointer-events) */
+@media (min-width: 861px) {
+  .rail.dock .rail-nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; overscroll-behavior: contain;
+    margin-right: -240px; padding-right: 240px; padding-block: 4px; pointer-events: none; align-content: start; }
+  .rail.dock .rail-nav::-webkit-scrollbar { display: none; }
+  .rail.dock .rail-nav > * { pointer-events: auto; }
+  .rail.dock .rail-nav.scrolls { -webkit-mask: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); mask: linear-gradient(transparent, #000 16px, #000 calc(100% - 16px), transparent); }
+  .rail.dock .rail-nav.scrolls.at-top { -webkit-mask: linear-gradient(#000 calc(100% - 16px), transparent); mask: linear-gradient(#000 calc(100% - 16px), transparent); }
+  .rail.dock .rail-nav.scrolls.at-end { -webkit-mask: linear-gradient(transparent, #000 16px); mask: linear-gradient(transparent, #000 16px); }
+  .rail.dock .rail-foot { margin-top: 0; padding-top: 6px; }
+  /* 오른쪽 가장자리 얇은 스크롤바 (끌어서 넘길 수도 있어요) */
+  .dock-sbar { position: absolute; right: 3px; width: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 28%, transparent); opacity: .55; cursor: grab; z-index: 2; transition: opacity .15s, width .15s, right .15s; }
+  .dock-sbar:hover, .dock-sbar.drag { opacity: 1; width: 6px; right: 2px; }
+  .dock-sbar[hidden] { display: none; }
 }

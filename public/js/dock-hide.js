@@ -5,15 +5,14 @@ import { openMenu } from "./ctxmenu.js";
 import { toast } from "./util.js";
 
 const KEY = "dock-autohide", PREFS = "dock-prefs";
-// edge = 왼쪽 끝 감지 폭(px) · mag = 확대 켜기 · size = 최대 배율 · range = 양옆 몇 개까지 · speed = 1(부드럽게)~10(빠르게)
-export const DOCK_DEFAULTS = { edge: 6, mag: true, size: 1.5, range: 2.5, speed: 6 };
+// mag = 확대 켜기 · size = 최대 배율 · range = 양옆 몇 개까지 · speed = 1(부드럽게)~10(빠르게)
+export const DOCK_DEFAULTS = { mag: true, size: 1.5, range: 2.5, speed: 6 };
 let prefs = { ...DOCK_DEFAULTS };
 try { prefs = { ...DOCK_DEFAULTS, ...JSON.parse(localStorage.getItem(PREFS) || "{}") }; } catch {}
 export const dockPrefs = () => prefs;
 export function setDockPrefs(p) {
   prefs = { ...prefs, ...p };
   try { localStorage.setItem(PREFS, JSON.stringify(prefs)); } catch {}
-  root.style.setProperty("--dock-edge", prefs.edge + "px");
   window.dispatchEvent(new CustomEvent("trio:dock-prefs", { detail: prefs }));
 }
 const root = document.documentElement;
@@ -28,7 +27,7 @@ const busy = () => !!(document.querySelector("body > .cm") || rail()?.querySelec
 function peek() { clearTimeout(hideT); root.classList.add("dock-peek"); }
 function unpeek(wait = 350) {
   clearTimeout(hideT);
-  hideT = setTimeout(() => { if (rail()?.matches(":hover") || busy()) return unpeek(wait); root.classList.remove("dock-peek"); }, wait);
+  hideT = setTimeout(() => { if (rail()?.matches(":hover") || busy()) return unpeek(Math.max(wait, 200)); root.classList.remove("dock-peek"); }, wait);
 }
 
 export function setAutoHide(on, say = true) {
@@ -41,7 +40,6 @@ export function setAutoHide(on, say = true) {
 export const toggleAutoHide = () => setAutoHide(!isAutoHide());
 
 export function initDockHide() {
-  root.style.setProperty("--dock-edge", prefs.edge + "px");
   try { if (localStorage.getItem(KEY) === "1") root.classList.add("dock-autohide"); } catch {}
   // 왼쪽 끝 감지 띠 — 숨김이 켜져 있을 때만 CSS 로 보여요
   const edge = document.createElement("div");
@@ -50,7 +48,8 @@ export function initDockHide() {
   edge.addEventListener("mouseenter", () => { if (isAutoHide() && wide.matches) peek(); });
   edge.addEventListener("mouseleave", () => { if (isAutoHide()) unpeek(); }); // Dock 으로 안 들어가고 떠나면 다시 숨어요 (Dock 위면 unpeek 이 기다려요)
   document.addEventListener("mouseover", (e) => { if (isAutoHide() && e.target.closest?.(".rail.dock")) peek(); });
-  document.addEventListener("mouseout", (e) => { if (isAutoHide() && e.target.closest?.(".rail.dock") && !e.relatedTarget?.closest?.(".rail.dock, .dock-edge")) unpeek(); });
+  // Dock 판 밖으로 나가는 순간 바로 들어가요 (끝 띠에서 Dock 으로 넘어가는 사이만 잠깐 기다려요)
+  document.addEventListener("mouseout", (e) => { if (isAutoHide() && e.target.closest?.(".rail.dock") && !e.relatedTarget?.closest?.(".rail.dock, .dock-edge")) unpeek(0); });
   // 키보드로 Dock 에 들어오면(Tab) 보여 주고, 나가면 숨겨요
   document.addEventListener("focusin", (e) => { if (isAutoHide() && e.target.closest?.(".rail.dock")) peek(); });
   document.addEventListener("focusout", (e) => { if (isAutoHide() && e.target.closest?.(".rail.dock")) unpeek(); });

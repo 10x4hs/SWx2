@@ -21,6 +21,7 @@ function collect() {
   const top = r.querySelector("#open-palette"), foot = r.querySelector(".rail-foot");
   lo = rect(els[0]).top - (top ? rect(top).bottom + 8 : rect(r).top + 8);
   hi = (foot ? rect(foot).top : rect(r).bottom) - 8 - rect(els.at(-1)).bottom;
+  if (r.querySelector(".rail-nav.scrolls")) lo = hi = Infinity; // 넘기는 줄이면 끝은 스크롤 칸이 잘라 줘요
   return els.map((el) => {
     const ic = el.querySelector(":scope > .app-ic, :scope > .av, :scope > .fold-grid") || el.firstElementChild, b = rect(el);
     return { el, ic, mid: b.top + b.height / 2, s: 1, t: 0 };
@@ -80,5 +81,32 @@ export function initDockMagnify() {
   addEventListener("pointerup", () => { if (held) { held = false; down = null; kick(); } });
   addEventListener("pointercancel", () => { held = false; down = null; kick(); });
   window.addEventListener("trio:dock-prefs", () => { clear(); kick(); });
+  // 앱 줄이 넘치면(작은 화면) 스크롤 칸 + 얇은 스크롤바. 넘기면 원래 자리를 다시 재요
+  document.addEventListener("scroll", (e) => { if (e.target.classList?.contains("rail-nav")) { if (items.length) { clear(); kick(); } fit(e.target); } }, true);
+  new ResizeObserver(() => fit()).observe(document.documentElement);
   addEventListener("resize", () => { if (items.length) { clear(); kick(); } });
+  setInterval(() => { const n = document.querySelector(".rail.dock .rail-nav"); if (n && n.scrollHeight !== +n.dataset.sh) { n.dataset.sh = n.scrollHeight; fit(n); } }, 1000);
+}
+
+function fit(nav = document.querySelector(".rail.dock .rail-nav")) {
+  const r = rail(); if (!nav || !r) return;
+  let bar = r.querySelector(".dock-sbar");
+  if (!bar) { bar = Object.assign(document.createElement("div"), { className: "dock-sbar" }); bar.setAttribute("aria-hidden", "true"); r.append(bar); dragBar(bar); }
+  const over = wide.matches && nav.scrollHeight > nav.clientHeight + 2;
+  nav.classList.toggle("scrolls", over); bar.hidden = !over;
+  nav.classList.toggle("at-top", over && nav.scrollTop < 2); nav.classList.toggle("at-end", over && nav.scrollTop + nav.clientHeight > nav.scrollHeight - 2);
+  if (!over) return;
+  const nr = nav.getBoundingClientRect(), rr = r.getBoundingClientRect(), h = Math.max(24, nav.clientHeight * nav.clientHeight / nav.scrollHeight);
+  bar.style.height = h + "px";
+  bar.style.top = nr.top - rr.top + (nav.clientHeight - h) * (nav.scrollTop / (nav.scrollHeight - nav.clientHeight)) + "px";
+}
+function dragBar(bar) {
+  bar.addEventListener("pointerdown", (e) => {
+    const nav = document.querySelector(".rail.dock .rail-nav"); if (!nav) return;
+    e.preventDefault(); e.stopPropagation(); bar.setPointerCapture(e.pointerId); bar.classList.add("drag");
+    const y0 = e.clientY, s0 = nav.scrollTop, k = nav.scrollHeight / nav.clientHeight;
+    const mv = (ev) => { nav.scrollTop = s0 + (ev.clientY - y0) * k; };
+    const up = () => { bar.classList.remove("drag"); bar.removeEventListener("pointermove", mv); };
+    bar.addEventListener("pointermove", mv); bar.addEventListener("pointerup", up, { once: true });
+  });
 }

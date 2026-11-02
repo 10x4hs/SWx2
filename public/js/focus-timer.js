@@ -24,6 +24,9 @@ export function initTimer(deps) {
 }
 
 const PRESETS = [15, 25, 50, 90];
+// '직접' = 1~240분을 내가 쳐요. 마지막에 친 값은 이 기기에 기억해요
+let customOpen = false;
+const lastCustom = () => { try { return +localStorage.getItem("focus-custom-min") || 40; } catch { return 40; } };
 const DONE_MS = 4000, FLASH_MS = 2200;
 // 시작 · 일시정지 · 처음으로 · 끝 에서 "지금 공부 중" 상태를 서버에 알려요 (무엇을 하는지는 안 보내요).
 const presence = (state, ends_at) => api.setPresence(state === "focus" ? { state, ends_at } : { state }).catch(() => {});
@@ -222,8 +225,10 @@ export function renderTimer() {
     card.innerHTML = `${head}
       <div class="isl-big idle"><span class="isl-clock" aria-hidden="true">00:00</span></div>
       <div class="isl-presets" role="group" aria-label="집중 시간">
-        ${PRESETS.map((m) => `<button type="button" class="isl-chip" data-min="${m}" aria-pressed="${m * 60 === timer.total}">${m}분</button>`).join("")}
+        ${PRESETS.map((m) => `<button type="button" class="isl-chip" data-min="${m}" aria-pressed="${!customOpen && m * 60 === timer.total}">${m}분</button>`).join("")}
+        <button type="button" class="isl-chip" id="tm-custom" aria-pressed="${customOpen || !PRESETS.includes(timer.total / 60)}">직접</button>
       </div>
+      ${customOpen ? `<label class="isl-custom"><input type="number" id="tm-min" min="1" max="240" step="1" inputmode="numeric" value="${Math.round(timer.total / 60)}" aria-label="집중 시간 (분)"><span>분 · 1~240</span></label>` : ""}
       ${labelIn}
       ${planLine}
       <button class="isl-go" type="button" id="tm-start">${icon.play(16)}<span>${Math.round(timer.total / 60)}분 집중 시작</span></button>`;
@@ -239,9 +244,22 @@ export function renderTimer() {
     toast("집중을 멈췄어요. 이번 시간은 기록하지 않았어요.");
   });
   card.querySelector("#tm-start")?.addEventListener("click", () => { collapse(false); timer.start(); el.querySelector(".isl-pill")?.focus({ preventScroll: true }); });
-  card.querySelectorAll(".isl-chip").forEach((b) => b.addEventListener("click", () => {
-    timer.preset = timer.total = timer.left = +b.dataset.min * 60; renderTimer();
+  card.querySelectorAll(".isl-chip[data-min]").forEach((b) => b.addEventListener("click", () => {
+    customOpen = false; timer.preset = timer.total = timer.left = +b.dataset.min * 60; renderTimer();
   }));
+  card.querySelector("#tm-custom")?.addEventListener("click", () => {
+    customOpen = true; const m = PRESETS.includes(timer.total / 60) ? lastCustom() : Math.round(timer.total / 60);
+    timer.preset = timer.total = timer.left = m * 60; renderTimer();
+    const i = card.querySelector("#tm-min"); i?.focus(); i?.select();
+  });
+  const minIn = card.querySelector("#tm-min");
+  minIn?.addEventListener("input", () => { // 다시 그리지 않고 숫자 · 시작 버튼만 바꿔요 (치는 중에 칸이 날아가지 않게)
+    const m = Math.round(+minIn.value); if (!(m >= 1 && m <= 240)) return;
+    timer.preset = timer.total = timer.left = m * 60; timer.paint();
+    const go = card.querySelector("#tm-start span"); if (go) go.textContent = `${m}분 집중 시작`;
+    try { localStorage.setItem("focus-custom-min", String(m)); } catch {}
+  });
+  minIn?.addEventListener("keydown", (e) => { if (e.key === "Enter") card.querySelector("#tm-start")?.click(); });
   card.querySelector("#tm-label").addEventListener("input", (e) => { // 이름을 직접 바꾸면 할 일과의 연결은 풀어요
     timer.label = e.target.value.trim().slice(0, 60);
     if (timer.plan_id) { timer.plan_id = null; card.querySelector(".tm-plan")?.remove(); }
