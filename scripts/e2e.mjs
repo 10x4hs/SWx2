@@ -192,6 +192,33 @@ try {
     } catch (e) { ok(false, `${tv} · Dock 자동 숨김 — ${String(e.message).split("\n")[0]}`); }
       await p.evaluate(() => { try { localStorage.removeItem("dock-autohide"); document.documentElement.classList.remove("dock-autohide", "dock-peek"); } catch {} });
     });
+    // ---------- ⑧-3 Dock 확대 · Settings: 마우스 아래 아이콘이 가장 크고(커서 높이와 같은 아이콘) · 끌면 원래 자리 · 내 메뉴 Settings → 크기 바꾸면 바로 · 나오는 범위 ----------
+    await sec("dock-settings", async () => {
+    try {
+      if (w < 861) { await go("#/settings", 1800); const has = await p.locator(".set-nav [data-tab]").count(); ok(has === 4, `${tv} · Settings — 폰에서도 열림 (분류 ${has})`); return; }
+      await go("#/", 2200);
+      const icons = () => p.evaluate(() => [...document.querySelectorAll(".rail.dock #dock-list > [data-dock] > .app-ic, .rail.dock #dock-list > a.rail-btn > .app-ic")].map((ic) => { const r = ic.getBoundingClientRect(); return { w: Math.round(r.width), y: Math.round(r.top + r.height / 2), k: ic.parentElement.dataset.dock }; }));
+      const base = await icons(), mid = base[3];
+      await p.mouse.move(30, mid.y, { steps: 4 }); await sleep(700);
+      const big = await icons(), top = big.reduce((a, b) => (b.w > a.w ? b : a));
+      const under = Math.abs(top.y - mid.y) <= 6 && top.k === mid.k, grew = top.w >= Math.round(base[3].w * 1.4);
+      await p.mouse.down(); await p.mouse.move(30, mid.y + 12, { steps: 3 }); await sleep(80); const pressed = await icons(); await p.mouse.move(30, mid.y, { steps: 2 }); await p.mouse.up(); // 끌기 시작 = 원래 자리
+      const flat = pressed.every((x, i) => Math.abs(x.y - base[i].y) <= 2 && Math.abs(x.w - base[i].w) <= 4); // 마우스 아래 아이콘은 hover 1.07배
+      await p.mouse.move(700, 400); await sleep(900);
+      // 내 메뉴 → Settings
+      await p.locator("#me-btn").click(); await p.locator("#set-btn").click(); await sleep(1200);
+      const menuGone = await p.evaluate(() => !document.querySelector("#mcp-btn, #pw-btn, #logout-btn"));
+      await p.locator("#s-size").fill("2"); await p.locator("#s-edge").fill("40"); await sleep(200);
+      const prefs = await p.evaluate(() => JSON.parse(localStorage.getItem("dock-prefs") || "{}"));
+      const icons2 = await icons(); await p.mouse.move(30, icons2[3].y, { steps: 4 }); await sleep(800);
+      const big2 = (await icons()).reduce((a, b) => Math.max(a, b.w), 0);
+      await p.mouse.move(700, 400);
+      await p.locator('[data-tab="account"]').click(); const acct = await p.locator('[data-act="logout"]').count();
+      ok(under && grew && flat && menuGone && prefs.size === 2 && prefs.edge === 40 && big2 >= Math.round(base[3].w * 1.85) && acct === 1,
+        `${tv} · Dock 확대 · Settings — 커서 아래 가장 큼 ${under} (${top.k}) · ${base[3].w}→${top.w}px · 끌면 제자리 ${flat}${flat ? "" : " " + JSON.stringify(pressed.find((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)) + "/" + JSON.stringify(base[pressed.findIndex((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)])} · 메뉴 정리 ${menuGone} · 저장 ${prefs.size}/${prefs.edge} · 2배 ${big2}px · 계정 탭 ${acct}`);
+    } catch (e) { ok(false, `${tv} · Dock 확대 · Settings — ${String(e.message).split("\n")[0]}`); }
+      await p.evaluate(() => { try { localStorage.removeItem("dock-prefs"); } catch {} });
+    });
     // ---------- ⑨ 친구가 공개한 페이지를 내 화면에서 숨기기 → 프로필에서 다시 보이기 ----------
     await sec("friend-pages", async () => {
     try {

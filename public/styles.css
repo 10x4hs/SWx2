@@ -3424,6 +3424,52 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
     transition: transform .28s var(--ease), opacity .2s ease;
   }
   .dock-autohide.dock-peek .rail.dock { transform: none; opacity: 1; }
-  .dock-autohide .dock-edge { display: block; position: fixed; left: 0; top: 0; bottom: 0; width: 6px; z-index: 69; }
+  .dock-autohide .dock-edge { display: block; position: fixed; left: 0; top: 0; bottom: 0; width: var(--dock-edge, 6px); z-index: 69; }
 }
 @media (prefers-reduced-motion: reduce) { .dock-autohide .rail.dock { transition: none; } }
+
+/* ---------- Dock 확대 (js/dock-magnify.js): 아이콘이 오른쪽(본문 쪽)으로 커져요. 확대 중엔 CSS 움직임을 끄고 JS 가 매 프레임 그려요 ---------- */
+@media (min-width: 861px) {
+  .rail.dock .app-ic, .rail.dock .rail-btn > .av, .rail.dock .fold-grid { transform-origin: 0 50%; }
+  .dock-mag .rail.dock .app-ic, .dock-mag .rail.dock .rail-btn > .av, .dock-mag .rail.dock .fold-grid { transition: none; will-change: transform; }
+  .dock-mag .rail.dock .rail-btn, .dock-mag .rail.dock .dock-fold-btn { will-change: transform; transition: none; }
+}
+/* 프로필 아이콘의 활동 상태 캐릭터: 동그라미에 겹치지 않게 오른쪽 위 작은 배지로 */
+.rail.dock .me-btn .av-st.chars, .rail.dock .me-btn.has-new .av-st.chars, body.app-upd .rail.dock .me-btn .av-st.chars { top: -12px; right: -16px; padding: 3px 4px; border-radius: 8px; background: var(--glass-3); border: 1px solid var(--glass-edge); box-shadow: var(--e-3, 0 2px 6px rgba(0,0,0,.25)); }
+.rail.dock .me-btn .av-st .px { width: 13px; filter: none; }
+
+/* ---------- Settings (#/settings · js/views/settings.js): 왼쪽 분류 · 오른쪽 항목 (맥 시스템 설정처럼) ---------- */
+.set { display: grid; grid-template-columns: 200px minmax(0, 1fr); min-height: 100%; }
+.set-nav { display: grid; align-content: start; gap: 2px; padding: 22px 12px; border-right: 1px solid var(--line); }
+.set-nav b { font-size: 19px; padding: 0 10px 14px; }
+.set-nav button { border: 0; background: transparent; text-align: left; padding: 8px 10px; border-radius: 9px; font-size: 14px; color: var(--ink-2); }
+.set-nav button:hover { background: var(--hover); }
+.set-nav button[aria-current="true"] { background: var(--hover); color: var(--ink); font-weight: 600; }
+.set-pane { padding: 26px 32px 40px; max-width: 760px; min-width: 0; }
+.set-pane h1 { font-size: 22px; margin: 0 0 4px; }
+.set-sub { color: var(--ink-3); margin: 0 0 20px; font-size: 13.5px; }
+.set-group { border: 1px solid var(--line); border-radius: 14px; margin-bottom: 18px; overflow: hidden; }
+.set-group h2 { margin: 0; padding: 10px 16px; font: 600 11px/1.4 var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--line); }
+.set-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 280px); gap: 16px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.set-row:last-child, .set-link:last-child { border-bottom: 0; }
+.set-row label { font-weight: 600; font-size: 14px; }
+.set-row small, .set-link small { display: block; color: var(--ink-3); font-weight: 400; font-size: 12.5px; margin-top: 2px; }
+.set-ctl { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.set-ctl input[type=range] { flex: 1; min-width: 0; accent-color: #34c759; }
+.set-ctl output { font: 12px var(--mono); width: 52px; text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.set-sw { appearance: none; -webkit-appearance: none; width: 42px; height: 25px; border-radius: 13px; background: var(--line-2, var(--line)); position: relative; cursor: pointer; transition: background .2s; margin: 0; }
+.set-sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .2s var(--ease); }
+.set-sw:checked { background: #34c759; } .set-sw:checked::after { transform: translateX(17px); }
+.set-sw:focus-visible, .set-nav button:focus-visible, .set-link:focus-visible { outline: 2px solid var(--accent, #34c759); outline-offset: 2px; }
+.set-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "a c" "b c"; align-items: center; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 12px 16px; text-align: left; color: var(--ink); font-size: 14px; }
+.set-link > span { grid-area: a; font-weight: 600; } .set-link > small { grid-area: b; } .set-link > svg { grid-area: c; color: var(--ink-3); }
+.set-link:hover { background: var(--hover); }
+.set-link.danger > span { color: #ff453a; }
+.set-reset { border: 1px solid var(--line); background: transparent; color: var(--ink-2); padding: 7px 14px; border-radius: 9px; font-size: 13px; }
+@media (max-width: 860px) {
+  .set { grid-template-columns: 1fr; }
+  .set-nav { grid-auto-flow: column; justify-content: start; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 12px; }
+  .set-nav b { display: none; }
+  .set-pane { padding: 18px 16px 32px; }
+  .set-row { grid-template-columns: 1fr; gap: 8px; }
+}

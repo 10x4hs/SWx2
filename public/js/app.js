@@ -17,6 +17,8 @@ import * as englishView from "./views/english.js";
 import * as papersView from "./views/papers.js";
 import * as booksView from "./views/books.js";
 import * as updatesView from "./views/updates.js";
+import * as settingsView from "./views/settings.js"; // #/settings — Dock · 계정 · 연결 · 관리
+import { initDockMagnify } from "./dock-magnify.js"; // Dock 확대 (맥처럼)
 import * as adminView from "./views/admin.js";
 import * as teamsView from "./views/teams.js";
 import { featureOfRoute, isOpen, loadFeatures, mountLocked } from "./features.js";
@@ -30,7 +32,7 @@ import * as pageView from "./views/page.js"; // Dock 사용자 페이지 (#/p/ne
 import { wireDockDrag } from "./dock-drag.js";
 import { setHiddenMe } from "./hidden-pages.js";
 import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js"; // Dock 우클릭 → 내 CSS · HTML · JS
-import { initDockHide, toggleAutoHide, isAutoHide } from "./dock-hide.js"; // Dock 자동 숨김 (⌥⌘D)
+import { initDockHide } from "./dock-hide.js"; // Dock 자동 숨김 (⌥⌘D)
 import * as roomView from "./views/room.js";
 import * as newsView from "./views/news.js"; // 뉴스 Signal Map (#/news · #/news/item/<id> · #/news/thread/<id>)
 import * as cimView from "./views/cim.js"; // 투자자산운용사 2주 완성 (#/cim 오늘 · #/cim/go 오늘 공부 · #/cim/study[/<장>[/<n>]] 공부 · #/cim/exam[/…] 시험 · 옛 주소는 바꿔 줘요) — 잠금 기능 "cim" (관리자 승인)
@@ -332,16 +334,9 @@ function renderMeRow() {
       <div class="me-open"><span class="me-st-h">day plans</span><span class="st-row"><button type="button" class="st-chip" data-open="1" aria-pressed="${ctx.me.plans_open !== false}" title="친구들이 내 하루 계획표를 볼 수 있어요">open</button><button type="button" class="st-chip" data-open="0" aria-pressed="${ctx.me.plans_open === false}" title="내 계획표는 나만 봐요">not open</button></span></div>
       <div class="me-st me-left" id="me-left" hidden></div>
       <div class="me-st"><span class="me-st-h">status${ctx.me.status ? ` <b>${esc(statusText(ctx.me.status))}</b>` : ""}</span>${statusPicker(ctx.me.status)}</div>
-      <button type="button" role="menuitem" id="prof-btn">${icon.edit(16)}프로필 바꾸기</button>
       <button type="button" role="menuitem" id="theme-btn">${icon.image(16)}화면 꾸미기</button>
-      <button type="button" role="menuitem" id="dockhide-btn">${icon.image(16)}<span id="dockhide-l">Dock 자동 숨기기</span></button>
-      <button type="button" role="menuitem" id="pw-btn">${icon.lock(16)}비밀번호 바꾸기</button>
-      ${ctx.me.role === "admin" && !ctx.me.impersonated_by ? `<a role="menuitem" class="me-link" id="adm-btn" href="#/admin">${icon.lock(16)}관리자</a>` : ""}
-      <a role="menuitem" class="me-link" id="teams-btn" href="#/teams">${icon.share(16)}팀</a>
       <a role="menuitem" class="me-link" id="upd-btn" href="#/updates">${icon.spark(16)}업데이트 기록<span class="me-badge" id="upd-badge" hidden></span></a>
-      <button type="button" role="menuitem" id="mcp-btn">${icon.share(16)}MCP 연결 (AI 에이전트)</button>
-      <button type="button" role="menuitem" id="apikey-btn">${icon.share(16)}페이지 API · 개인 키</button>
-      <button type="button" role="menuitem" id="logout-btn">${icon.logout(16)}로그아웃</button>
+      <a role="menuitem" class="me-link" id="set-btn" href="#/settings">${icon.gear(16)}Settings</a>
     </div>`;
   const menu = $("#me-menu"), btn = $("#me-btn");
   applyUi("ui:me");
@@ -349,26 +344,20 @@ function renderMeRow() {
   document.querySelectorAll("body > #me-menu").forEach((m) => m !== menu && m.remove());
   document.body.append(menu);
   const paintLeft = () => { const box = $("#me-left"); if (!box) return; const h = timeLeftHTML(); box.innerHTML = h; box.hidden = !h; };
-  btn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute("aria-expanded", String(!menu.hidden)); if (!menu.hidden) { paintLeft(); $("#dockhide-l").textContent = isAutoHide() ? "Dock 늘 보이기" : "Dock 자동 숨기기"; } });
+  btn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; btn.setAttribute("aria-expanded", String(!menu.hidden)); if (!menu.hidden) paintLeft(); });
   if (!renderMeRow.bound) { // 바깥을 누르면 닫기 (한 번만 걸어요)
     renderMeRow.bound = true;
     document.addEventListener("click", (e) => { const m = $("#me-menu"); if (m && !m.hidden && !e.target.closest("#me-menu")) { m.hidden = true; $("#me-btn")?.setAttribute("aria-expanded", "false"); } });
   }
   $("#theme-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openThemePanel(); }); // 밝게 · 어둡게 · 자동도 이 창 안에
-  $("#dockhide-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); toggleAutoHide(); });
-  $("#pw-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openPassword(); });
-  $("#adm-btn")?.addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
-  $("#teams-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
   $("#upd-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
+  $("#set-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
   // 마지막으로 본 뒤 생긴 업데이트 수 → 메뉴에 숫자 · 프로필 버튼에 점
   const updBadge = () => updatesView.unseenCount(ctx.me).then((n) => { const b = $("#upd-badge"); if (b) { b.hidden = !n; b.textContent = n; } btn.classList.toggle("has-new", n > 0); });
   updBadge(); window.addEventListener("trio:updates-seen", updBadge);
   $("#me-upd").addEventListener("click", () => location.reload());
-  $("#mcp-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openMcpPanel(ctx); });
-  $("#apikey-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openApiPanel(ctx); });
   const prof = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openProfile(ctx); };
-  $("#me-head").addEventListener("click", prof); $("#prof-btn").addEventListener("click", prof);
-  $("#logout-btn").addEventListener("click", async () => { await api.logout().catch(() => {}); showAuth(); });
+  $("#me-head").addEventListener("click", prof);
   // 하루 계획 공개: open / not open
   menu.querySelector(".me-open").addEventListener("click", async (e) => {
     e.stopPropagation();
@@ -421,6 +410,9 @@ async function refreshSide() {
 initDock({ ctx, NAV, parseRoute, getLastView: () => lastView });
 initCustomize(ctx);
 initDockHide();
+initDockMagnify();
+// Settings → 로그아웃
+window.addEventListener("trio:signout", async () => { await api.logout().catch(() => {}); showAuth(); });
 
 // ---------- routing ----------
 // 예전 주소는 캘린더의 그날로 옮겨요 (뒤로 가기에 남지 않게 replaceState)
@@ -453,6 +445,7 @@ function parseRoute() {
   if (a === "calendar") return { view: "calendar", nav: "calendar", mode: "month", day: b || null, who: c === "u" && d ? d : null }; // #/calendar/2026-10-04 = 그날 전체 화면 · /u/<id> = 친구의 그날
   if (a === "english") return { view: "english", nav: "study", tab: b || null, day: c || null }; // 공부 탭 안
   if (a === "updates") return { view: "updates", nav: "home" }; // 업데이트 기록
+  if (a === "settings") return { view: "settings", nav: "home", tab: b || null }; // Settings (#/settings/dock|account|connect|manage)
   if (a === "admin") return { view: "admin", nav: "home" }; // 관리자 (HSK · GYK)
   if (a === "teams") return { view: "teams", nav: "home", code: b === "join" ? c || null : null }; // 팀 · 초대 링크 #/teams/join/<코드>
   if (a === "p") return { view: "page", nav: b && b !== "new" ? "p:" + b : "page-new", id: b || "new" }; // Dock 사용자 페이지
@@ -472,7 +465,7 @@ function parseRoute() {
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, cim: cimView, psy: psyView, svm: svmView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, admin: adminView, teams: teamsView, page: pageView };
+const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, cim: cimView, psy: psyView, svm: svmView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, settings: settingsView, admin: adminView, teams: teamsView, page: pageView };
 let lastView = null;
 
 function route(redraw = false) {
