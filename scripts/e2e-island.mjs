@@ -41,7 +41,7 @@ export async function islandE2E({ p, go, ok, tv, w, getErrs, shots = null }) {
     await p.click("#tm-start"); await sleep(900);
     const s2 = await st(), pb = await box("#timer .isl-pill");
     const centered = pb && Math.abs(pb.x + pb.w / 2 - w / 2) < 2 && pb.y >= 0 && pb.y < 60;
-    ok(!s0.live && !s0.pill && s1.card && chips === 4 && s2.live && s2.hidden && s2.pill && !s2.card && s2.phase === "run" && centered && /시작/.test(s2.pillText) && presence.includes("focus"),
+    ok(!s0.live && !s0.pill && s1.card && chips === 5 && s2.live && s2.hidden && s2.pill && !s2.card && s2.phase === "run" && centered && /시작/.test(s2.pillText) && presence.includes("focus"),
       `${tv} · 집중 섬 시작 — 쉬는 중 섬 ${s0.pill} · Dock ⏱ 카드 ${s1.card}(길이 ${chips}개) → 시작 = 알약 ${s2.pill} · 가운데 ${!!centered} (${pb ? Math.round(pb.x + pb.w / 2) + "/" + w / 2 + " · 위 " + Math.round(pb.y) : "없음"}) · '${s2.pillText.trim()}' · 서버 ${presence.join(",") || "없음"}`);
     await sleep(1800); // 시작 알림이 끝나고 "집중" 으로
     await shot("collapsed");

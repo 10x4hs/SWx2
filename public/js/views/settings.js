@@ -1,5 +1,5 @@
 // Settings — #/settings (내 메뉴 맨 아래 'Settings'). 맥 시스템 설정처럼 왼쪽 분류 · 오른쪽 항목.
-//   Dock: 자동 숨김 · 나오는 범위 · 확대(켜기 · 크기 · 범위 · 속도) — 이 기기에만 (dock-hide.js 의 dockPrefs), 바꾸면 옆 Dock 에 바로 보여요
+//   Dock: 자동 숨김 · 확대(켜기 · 크기 · 범위 · 속도) — 이 기기에만 (dock-hide.js 의 dockPrefs), 바꾸면 옆 Dock 에 바로 보여요
 //   계정 · 연결 · 관리: 예전 내 메뉴에 있던 것들 (프로필 · 비밀번호 · 로그아웃 · MCP · 페이지 API · 팀 · 관리자)
 import { $, esc } from "../util.js";
 import { icon } from "../icons.js";
@@ -30,7 +30,6 @@ export function mount(root, ctx, r) {
     if (tab === "dock") pane.innerHTML = `<h1>Dock</h1><p class="set-sub">이 기기에만 저장돼요. 바꾸면 왼쪽 Dock 에 바로 보여요.</p>
       <section class="set-group"><h2>자동 숨김</h2>
         ${row("Dock 자동 숨기기", `평소엔 숨고, 화면 왼쪽 끝에 마우스를 대면 나와요 · ${isMac ? "⌥⌘D" : "Ctrl+Alt+D"}`, sw("s-hide", isAutoHide()), "s-hide")}
-        ${row("나오는 범위", "화면 왼쪽 끝에서 이만큼 안쪽까지 마우스를 대면 나와요", range("s-edge", 2, 80, 1, p.edge), "s-edge")}
       </section>
       <section class="set-group"><h2>확대</h2>
         ${row("마우스 대면 커지기", "맥 Dock 처럼 마우스에 가까운 아이콘일수록 커져요", sw("s-mag", p.mag), "s-mag")}
@@ -48,7 +47,7 @@ export function mount(root, ctx, r) {
       <section class="set-group">${link("teams", "팀", "초대 · 멤버")}${admin ? link("admin", "관리자", "관리자만 보여요") : ""}</section>`;
     paintOut();
   }
-  const fmt = { "s-edge": (v) => v + "px", "s-size": (v) => (+v).toFixed(2) + "×", "s-range": (v) => "±" + v + "개", "s-speed": (v) => v + "/10" };
+  const fmt = { "s-size": (v) => (+v).toFixed(2) + "×", "s-range": (v) => "±" + v + "개", "s-speed": (v) => v + "/10" };
   function paintOut() { for (const id in fmt) { const i = $("#" + id, root); if (i) $("#" + id + "-o", root).textContent = fmt[id](i.value); } }
 
   root.addEventListener("click", (e) => {
@@ -65,8 +64,7 @@ export function mount(root, ctx, r) {
   });
   root.addEventListener("input", (e) => {
     const id = e.target.id, v = +e.target.value;
-    if (id === "s-edge") setDockPrefs({ edge: v });
-    else if (id === "s-size") setDockPrefs({ size: v });
+    if (id === "s-size") setDockPrefs({ size: v });
     else if (id === "s-range") setDockPrefs({ range: v });
     else if (id === "s-speed") setDockPrefs({ speed: v });
     paintOut();
