@@ -2,6 +2,8 @@
 //   마우스: 누른 채 5px 넘게 움직이면 끌기 시작 · 오른쪽 클릭은 그대로 메뉴
 //   손가락: 0.45초 길게 누르면 들려요 → 움직이면 끌기, 안 움직이고 떼면 메뉴(페이지 아이콘만)
 // 끄는 동안 다른 아이콘이 비켜 주고(DOM 순서를 바로 바꿔요), 놓으면 onDrop({ order, kids, merge }) 로 새 모양을 알려 줘요.
+//   맥처럼: 아이콘은 빠져나와(ghost) 마우스를 자유롭게 따라오고, 원래 칸은 빈자리(dock-hole)로 남아 다른 아이콘이 부드럽게 비켜요(FLIP).
+//   놓으면 ghost 가 빈자리로 쏙 들어가요. Dock 에서 멀리(60px 넘게) 나가면 빈자리는 원래 자리로 돌아가고, 거기서 놓으면 그대로예요
 //   폴더(Discord 처럼): 다른 아이콘 가운데에 0.4초 머물면 테두리가 뜨고, 그때 놓으면 merge = { drag, onto } → 폴더로 묶어요
 //   폴더 안 아이콘은 폴더 밖으로 끌어내면 Dock 줄로 나와요 (kids 에서 빠져요)
 const HOLD_MS = 450, MOVE_PX = 5, MERGE_MS = 400;
@@ -15,20 +17,41 @@ export function wireDockDrag(list, { onDrop, onHoldMenu }) {
   const sig = () => JSON.stringify(snap());
   const clearOver = () => { if (!st) return; clearTimeout(st.mergeT); st.over?.classList.remove("dock-merge"); st.over = null; st.merge = false; };
 
-  const start = () => {
+  // FLIP: 움직이기 전 자리를 재 두고, DOM 을 바꾼 뒤 옛 자리에서 새 자리로 미끄러지게
+  const others = () => [...list.querySelectorAll("[data-dock]")].filter((x) => x !== st.el);
+  const flipSnap = () => new Map(others().map((x) => [x, x.getBoundingClientRect()]));
+  const flipPlay = (m) => { for (const [x, a] of m) { if (!x.isConnected) continue; const b = x.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top; if (Math.abs(dx) + Math.abs(dy) < 1) continue; x.animate?.([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(.2,.8,.2,1)" }); } };
+  const ghostAt = (x, y, sc) => { st.ghost.style.transform = `translate(${x - st.off.x}px, ${y - st.off.y}px) scale(${sc * st.k})`; }; // k = 작은 화면에서 줄인 배율 (Dock zoom)
+  const start = (e) => {
     st.dragging = true;
-    st.el.classList.add("dock-dragging");
+    const ic = st.el.querySelector(".app-ic") || st.el.firstElementChild || st.el, r = ic.getBoundingClientRect();
+    st.off = { x: e.clientX - r.left, y: e.clientY - r.top };
+    st.base = ic.offsetWidth || r.width; st.k = r.width / st.base;
+    st.ghost = ic.cloneNode(true);
+    st.ghost.classList.add("dock-ghost"); st.ghost.removeAttribute("id"); st.ghost.setAttribute("aria-hidden", "true");
+    Object.assign(st.ghost.style, { width: st.base + "px", height: st.base + "px", transform: "" });
+    document.body.append(st.ghost); ghostAt(e.clientX, e.clientY, 1.12);
+    st.back = { parent: st.el.parentElement, next: st.el.nextSibling };
+    st.el.classList.add("dock-dragging", "dock-hole");
     list.classList.add("dock-sorting");
     navigator.vibrate?.(8);
   };
   const end = (commit) => {
     if (!st) return;
     clearTimeout(st.timer);
-    const was = st.dragging, el = st.el, before = st.before, merge = st.merge ? st.over?.dataset.dock : null;
+    const was = st.dragging, el = st.el, before = st.before, merge = st.merge ? st.over?.dataset.dock : null, ghost = st.ghost, onto = st.over, base = st.base;
     clearOver();
     el.classList.remove("dock-dragging", "dock-held");
     list.classList.remove("dock-sorting");
     st = null;
+    // ghost 착지: 빈자리로 쏙 (폴더로 합치면 그 아이콘 속으로 작아지며)
+    if (ghost) {
+      const t = (merge && onto ? onto.querySelector(".app-ic") || onto : el.querySelector(".app-ic") || el).getBoundingClientRect();
+      const done = () => { ghost.remove(); el.classList.remove("dock-hole"); };
+      const to = `translate(${t.left + (merge ? t.width / 4 : 0)}px, ${t.top + (merge ? t.height / 4 : 0)}px) scale(${(merge ? 0.5 : 1) * t.width / (base || t.width)})`;
+      if (ghost.animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) ghost.animate([{ transform: ghost.style.transform }, { transform: to, opacity: merge ? 0 : 1 }], { duration: 240, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" }).onfinish = done;
+      else done();
+    } else el.classList.remove("dock-hole");
     if (!was) return;
     // 끈 직후의 클릭(링크 열기 · 폴더 펼치기)은 막아요
     const stop = (e) => { e.preventDefault(); e.stopPropagation(); };
@@ -50,7 +73,18 @@ export function wireDockDrag(list, { onDrop, onHoldMenu }) {
     if (!st) return;
     const dx = e.clientX - st.x, dy = e.clientY - st.y, far = Math.hypot(dx, dy) > MOVE_PX;
     if (!st.ready) { if (far) { clearTimeout(st.timer); st = null; } return; } // 손가락: 들리기 전에 움직이면 스크롤로 보내요
-    if (!st.dragging) { if (!far) return; start(); }
+    if (!st.dragging) { if (!far) return; start(e); }
+    ghostAt(e.clientX, e.clientY, 1.12);
+    const snap0 = flipSnap(), at0 = [st.el.parentElement, st.el.nextSibling];
+    move(e);
+    if (st.el.parentElement !== at0[0] || st.el.nextSibling !== at0[1]) flipPlay(snap0);
+  });
+  // 끄는 중 한 걸음: Dock 밖이면 원래 자리로 · 폴더 안팎 · 자리 바꾸기 · 폴더 만들기 후보
+  const move = (e) => {
+    const rr = list.closest(".rail")?.getBoundingClientRect() || list.getBoundingClientRect();
+    const out = e.clientX < rr.left - 60 || e.clientX > rr.right + 60 || e.clientY < rr.top - 60 || e.clientY > rr.bottom + 60;
+    st.ghost.classList.toggle("out", out);
+    if (out) { clearOver(); if (st.el.parentElement !== st.back.parent || st.el.nextSibling !== st.back.next) st.back.parent.insertBefore(st.el, st.back.next?.isConnected ? st.back.next : null); return; }
     const v = vertical(), p = v ? e.clientY : e.clientX;
     // 폴더 안에서 꺼낸 아이콘: 폴더 밖으로 나가면 Dock 줄로, 다시 들어오면 폴더로
     let box = list;
@@ -79,7 +113,7 @@ export function wireDockDrag(list, { onDrop, onHoldMenu }) {
       clearOver();
       if (over) { st.over = over; st.mergeT = setTimeout(() => { if (st?.over === over) { st.merge = true; over.classList.add("dock-merge"); navigator.vibrate?.(6); } }, MERGE_MS); }
     }
-  });
+  };
   window.addEventListener("pointerup", (e) => {
     if (st && st.touch && st.ready && !st.dragging) { const el = st.el; end(false); onHoldMenu?.(el); return; } // 길게 누르고 그냥 떼면 메뉴
     // 가운데에서 바로 놓았는데 아직 폴더 표시가 안 떴으면 = 그냥 순서 바꾸기 (반 넘으면 뒤로)

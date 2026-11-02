@@ -154,12 +154,15 @@ try {
       const first = (await order())[0], from = await mid("nav:room"), to = await mid(first), vert = Math.abs(to.y - from.y) > Math.abs(to.x - from.x);
       await p.mouse.move(from.x, from.y); await p.mouse.down();
       await p.mouse.move(from.x + (vert ? 0 : -8), from.y + (vert ? -8 : 0), { steps: 3 });
-      await p.mouse.move(to.x - (vert ? 0 : 8), to.y - (vert ? 8 : 0), { steps: 12 }); await p.mouse.up(); await sleep(1200);
+      await p.mouse.move(to.x - (vert ? 0 : 8), to.y - (vert ? 8 : 0), { steps: 12 });
+      const lifted = await p.evaluate(() => !!document.querySelector("body > .dock-ghost") && !!document.querySelector("#dock-list .dock-hole")); // 맥처럼 빠져나와 따라와요
+      await p.mouse.up(); await sleep(1200);
+      const landed = await p.evaluate(() => !document.querySelector(".dock-ghost, .dock-hole"));
       const moved = (await order())[0], stayed = await p.evaluate(() => location.hash);
       const savedOrder = (await (await ctx.request.get(BASE + "/api/me")).json()).user.dock_order;
       await p.reload(); await sleep(2200);
       const after = (await order())[0];
-      ok(moved === "nav:room" && savedOrder[0] === "nav:room" && after === "nav:room" && stayed === "#/", `${tv} · Dock 순서 — 끌어서 맨 앞: ${moved} · 저장 ${savedOrder[0]} · 새로고침 ${after} · 링크 안 열림 ${stayed === "#/"}`);
+      ok(moved === "nav:room" && savedOrder[0] === "nav:room" && after === "nav:room" && stayed === "#/" && lifted && landed, `${tv} · Dock 순서 — 빠져나와 끌기 ${lifted} · 착지 ${landed} · 끌어서 맨 앞: ${moved} · 저장 ${savedOrder[0]} · 새로고침 ${after} · 링크 안 열림 ${stayed === "#/"}`);
       await ctx.request.patch(BASE + "/api/me", { headers: H, data: { dock_order: null } });
     } catch (e) { ok(false, `${tv} · Dock 순서 — ${String(e.message).split("\n")[0]}`); }
 
@@ -201,7 +204,7 @@ try {
       const base = await icons(), mid = base[3];
       await p.mouse.move(30, mid.y, { steps: 4 }); await sleep(700);
       const big = await icons(), top = big.reduce((a, b) => (b.w > a.w ? b : a));
-      const under = Math.abs(top.y - mid.y) <= 6 && top.k === mid.k, grew = top.w >= Math.round(base[3].w * 1.4);
+      const under = Math.abs(top.y - mid.y) <= 30 && top.k === mid.k, grew = top.w >= Math.round(base[3].w * 1.4);
       await p.mouse.down(); await p.mouse.move(30, mid.y + 12, { steps: 3 }); await sleep(80); const pressed = await icons(); await p.mouse.move(30, mid.y, { steps: 2 }); await p.mouse.up(); // 끌기 시작 = 원래 자리
       const flat = pressed.every((x, i) => Math.abs(x.y - base[i].y) <= 2 && Math.abs(x.w - base[i].w) <= 4); // 마우스 아래 아이콘은 hover 1.07배
       // 위 검색 · 아래 타이머 · 프로필은 고정, 벌어진 앱 줄이 그쪽으로 넘어가지 않아요 (맨 위 · 맨 아래 앱에 마우스)
@@ -210,8 +213,8 @@ try {
       const f0 = await fixed();
       await p.mouse.move(30, base[0].y, { steps: 4 }); await sleep(800); const fTop = await fixed();
       await p.mouse.move(30, f0.last - 20, { steps: 6 }); await sleep(800); const fBot = await fixed();
-      const still = [fTop, fBot].every((f) => JSON.stringify([f.s, f.t, f.m]) === JSON.stringify([f0.s, f0.t, f0.m]));
-      const clearTop = fTop.first >= f0.s[1], clearBot = fBot.last <= f0.t[0];
+      const still = [fTop, fBot].every((f) => f.s[2] === f0.s[2] && f.t[2] === f0.t[2] && f.m[2] === f0.m[2]); // 크기는 그대로 (판이 늘면 위치는 같이 움직여요)
+      const clearTop = fTop.first >= fTop.s[1], clearBot = fBot.last <= fBot.t[0];
       await p.mouse.move(700, 400); await sleep(900);
       // 내 메뉴 → Settings
       await p.locator("#me-btn").click(); await p.locator("#set-btn").click(); await sleep(1200);
@@ -223,7 +226,7 @@ try {
       await p.mouse.move(700, 400);
       await p.locator('[data-tab="account"]').click(); const acct = await p.locator('[data-act="logout"]').count();
       ok(under && grew && flat && still && clearTop && clearBot && menuGone && prefs.size === 2 && noEdge && big2 >= Math.round(base[3].w * 1.85) && acct === 1,
-        `${tv} · Dock 확대 · Settings — 커서 아래 가장 큼 ${under} (${top.k}) · ${base[3].w}→${top.w}px · 끌면 제자리 ${flat} · 검색 · 타이머 · 프로필 고정 ${still} · 위 ${fTop.first}≥${f0.s[1]} · 아래 ${fBot.last}≤${f0.t[0]}${flat ? "" : " " + JSON.stringify(pressed.find((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)) + "/" + JSON.stringify(base[pressed.findIndex((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)])} · 메뉴 정리 ${menuGone} · 저장 ${prefs.size} · 나오는 범위 없앰 ${noEdge} · 2배 ${big2}px · 계정 탭 ${acct}`);
+        `${tv} · Dock 확대 · Settings — 커서 아래 가장 큼 ${under} (${top.k}) · ${base[3].w}→${top.w}px · 끌면 제자리 ${flat} · 검색 · 타이머 · 프로필 고정 ${still} · 위 ${fTop.first}≥${fTop.s[1]} · 아래 ${fBot.last}≤${fBot.t[0]}${flat ? "" : " " + JSON.stringify(pressed.find((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)) + "/" + JSON.stringify(base[pressed.findIndex((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)])} · 메뉴 정리 ${menuGone} · 저장 ${prefs.size} · 나오는 범위 없앰 ${noEdge} · 2배 ${big2}px · 계정 탭 ${acct}`);
     } catch (e) { ok(false, `${tv} · Dock 확대 · Settings — ${String(e.message).split("\n")[0]}`); }
       await p.evaluate(() => { try { localStorage.removeItem("dock-prefs"); } catch {} });
     });
@@ -234,8 +237,8 @@ try {
       await p.setViewportSize({ width: 1300, height: 560 });
       await p.evaluate(() => localStorage.setItem("dock-autohide", "1")); await go("#/", 2200);
       await p.mouse.move(2, 300); await sleep(700);
-      const g = await p.evaluate(() => { const n = document.querySelector(".rail.dock .rail-nav"), me = document.querySelector("#me-btn").getBoundingClientRect(), t = document.querySelector("#timer-btn").getBoundingClientRect(), bar = document.querySelector(".dock-sbar"); return { scrolls: n.classList.contains("scrolls"), meIn: me.bottom <= innerHeight && me.top >= 0, tIn: t.bottom <= innerHeight, bar: !!bar && !bar.hidden, sh: n.scrollHeight, ch: n.clientHeight }; });
-      const nb = await p.locator(".rail.dock .rail-nav #dock-list > [data-dock]").first().boundingBox();
+      const g = await p.evaluate(() => { const n = document.querySelector(".rail.dock .rail-nav"), me = document.querySelector("#me-btn").getBoundingClientRect(), t = document.querySelector("#timer-btn").getBoundingClientRect(); return { dz: +getComputedStyle(n).getPropertyValue("--dz") || 1, scrolls: n.classList.contains("scrolls"), meIn: me.bottom <= innerHeight && me.top >= 0, tIn: t.bottom <= innerHeight, sh: n.scrollHeight, ch: n.clientHeight }; });
+      const nb = await p.locator(".rail.dock .rail-nav #dock-list > [data-dock]").first().boundingBox(); // 그래도 넘치면 휠로 넘겨요
       await p.mouse.move(nb.x + 10, nb.y + 10); await p.mouse.wheel(0, 400); await sleep(400);
       const st = await p.evaluate(() => document.querySelector(".rail.dock .rail-nav").scrollTop);
       // 박스 밖으로 나가면 바로 들어가요
@@ -248,8 +251,45 @@ try {
       await p.locator("#tm-custom").click(); await p.locator("#tm-min").fill("37"); await sleep(150);
       const go37 = (await p.locator("#tm-start").innerText()).includes("37분");
       await p.keyboard.press("Escape").catch(() => {});
-      ok(g.scrolls && g.meIn && g.tIn && g.bar && st > 0 && hid && go37, `${tv} · Dock 스크롤 · 타이머 — 넘침 ${g.scrolls} (${g.sh}/${g.ch}) · 프로필 화면 안 ${g.meIn} · 타이머 ${g.tIn} · 스크롤바 ${g.bar} · 휠 ${st} · 나가면 바로 숨음 ${hid} · 직접 37분 ${go37}`);
+      ok((g.dz < 1 || g.scrolls && st > 0) && g.meIn && g.tIn && hid && go37, `${tv} · Dock 작은 화면 · 타이머 — 아이콘 줄임 ${g.dz} · 넘침 ${g.scrolls} (${g.sh}/${g.ch}) · 프로필 화면 안 ${g.meIn} · 타이머 ${g.tIn} · 휠 ${st} · 나가면 바로 숨음 ${hid} · 직접 37분 ${go37}`);
     } catch (e) { ok(false, `${tv} · Dock 스크롤 · 타이머 — ${String(e.message).split("\n")[0]}`); await p.setViewportSize({ width: w, height: h }).catch(() => {}); }
+    });
+    // ---------- ⑧-5 Dock 겹침 0 검사: 화면 높이 560 · 700 · 900 에서 마우스로 Dock 을 위→아래로 훑으며 매 걸음 아이콘끼리 · 이름표↔아이콘 겹침, 화면 밖으로 나감을 재요 ----------
+    await sec("dock-overlap", async () => {
+    try {
+      if (w < 861) { ok(true, `${tv} · Dock 겹침 — 폰은 아래 탭바 (해당 없음)`); return; }
+      const res = [];
+      for (const H of [560, 700, 900]) {
+        await p.setViewportSize({ width: 1300, height: H }); await go("#/", 2000);
+        const nav = await p.evaluate(() => { const r = document.querySelector(".rail.dock .rail-nav").getBoundingClientRect(); return { top: r.top, bottom: r.bottom, dz: +getComputedStyle(document.querySelector(".rail.dock .rail-nav")).getPropertyValue("--dz") || 1 }; });
+        let worst = { o: 0, y: 0 }, tipHits = 0, out = 0, steps = 0;
+        for (let yy = nav.top + 4; yy < nav.bottom - 4; yy += 9) {
+          await p.mouse.move(34, yy); await sleep(260); steps++;
+          const m = await p.evaluate(() => {
+            const ics = [...document.querySelectorAll("#dock-list .rail-btn > .app-ic, #dock-list .dock-fold-btn > .app-ic")].filter((x) => x.offsetParent).map((x) => x.getBoundingClientRect()).sort((a, b) => a.top - b.top);
+            let o = 0; for (let i = 1; i < ics.length; i++) o = Math.max(o, ics[i - 1].bottom - ics[i].top);
+            const nav = document.querySelector(".rail.dock .rail-nav"), dz = +getComputedStyle(nav).getPropertyValue("--dz") || 1;
+            const fixed = ["#open-palette", "#timer-btn", "#me-btn"].map((s) => document.querySelector(s).getBoundingClientRect());
+            // 스크롤 칸 밖으로 나간 부분은 잘려서 안 보여요 → 보이는 부분만 (아이콘 ∩ 스크롤 칸)
+            const nr = nav.getBoundingClientRect(), vis = ics.map((r) => ({ left: r.left, right: r.right, top: Math.max(r.top, nr.top), bottom: Math.min(r.bottom, nr.bottom) })).filter((r) => r.bottom - r.top > 1);
+            const hitFixed = vis.some((r) => fixed.some((f) => r.left < f.right && r.right > f.left && r.top < f.bottom - 1 && r.bottom > f.top + 1));
+            const off = fixed.some((f) => f.top < 0 || f.bottom > innerHeight) ? 1 : 0;
+            // 이름표(::after) 자리: 그 버튼 기준 left · 크기는 CSS 단위라 dz 를 곱해요
+            const hb = [...document.querySelectorAll("#dock-list .rail-btn:hover")].pop(); let hit = 0;
+            if (hb) { const cs = getComputedStyle(hb, "::after"), b = hb.getBoundingClientRect(), L = b.left + parseFloat(cs.left) * dz, W = parseFloat(cs.width) * dz + 22, Hh = parseFloat(cs.height) * dz + 16, cy = b.top + b.height / 2;
+              const tip = { left: L, right: L + W, top: cy - Hh / 2, bottom: cy + Hh / 2 }; hit = ics.some((r) => r.left < tip.right && r.right > tip.left && r.top < tip.bottom && r.bottom > tip.top) ? 1 : 0; }
+            return { o: Math.max(0, o), hit, off: off || (hitFixed ? 1 : 0) };
+          });
+          if (m.o > worst.o) worst = { o: m.o, y: yy };
+          tipHits += m.hit; out += m.off;
+        }
+        if (process.env.DOCK_SHOT && H === 560) { await p.mouse.move(34, worst.y || (nav.top + nav.bottom) / 2); await sleep(300); await p.screenshot({ path: process.env.DOCK_SHOT, clip: { x: 0, y: 0, width: 260, height: H } }); }
+        res.push({ H, dz: nav.dz, o: Math.round(worst.o * 10) / 10, tipHits, out, steps });
+        await p.mouse.move(700, 300); await sleep(400);
+      }
+      await p.setViewportSize({ width: w, height: h });
+      ok(res.every((r) => r.o <= 0.5 && r.tipHits === 0 && r.out === 0), `${tv} · Dock 겹침 0 — ${res.map((r) => `${r.H}px(줄임 ${r.dz}) 겹침 ${r.o}px · 이름표 ${r.tipHits} · 밖/고정과 겹침 ${r.out} / ${r.steps}걸음`).join(" | ")}`);
+    } catch (e) { ok(false, `${tv} · Dock 겹침 — ${String(e.message).split("\n")[0]}`); await p.setViewportSize({ width: w, height: h }).catch(() => {}); }
     });
     // ---------- ⑨ 친구가 공개한 페이지를 내 화면에서 숨기기 → 프로필에서 다시 보이기 ----------
     await sec("friend-pages", async () => {

@@ -1,42 +1,34 @@
-// SWx2 — Dock 확대 (맥 Dock 처럼): 마우스에 가까운 앱 아이콘일수록 커지고, 양옆은 부드럽게 벌어져요. 컴퓨터 화면만. 검색 · 타이머 · 프로필은 고정.
-//   크기 s(d) = 1 + (m-1)·cos²(πd/2R) — d = 마우스와 아이콘 가운데 거리, R = 퍼지는 범위(px)
-//   벌어짐 = s-1 을 마우스에서 그 아이콘까지 적분한 값 → 마우스 바로 아래 아이콘은 제자리, 멀수록 바깥으로 밀려요
+// SWx2 — Dock 확대 (맥 Dock 처럼): 마우스에 가까운 앱 아이콘일수록 커지고, 커진 만큼 칸이 길어져서 Dock 판도 위아래로 늘어나요. 컴퓨터 화면만.
+//   크기 s(d) = 1 + (m-1)·cos²(πd/2R) — d = 마우스와 아이콘의 '원래' 가운데 거리, R = 퍼지는 범위(px)
+//   원래 자리는 커지기 전에 재 둬요 — Dock 은 세로 가운데라 늘어나도 가운데는 그대로여서, 커져도 계산이 되먹지 않아 떨리지 않아요
+//   검색 · + · 타이머 · 프로필은 크기 그대로 판 끝을 따라 움직여요. 이름표는 커진 아이콘 바로 옆 (--s)
 //   설정(크기 · 범위 · 속도 · 끄기)은 dock-hide.js 의 dockPrefs (Settings 화면에서 바꿔요)
-//   아이콘을 끌어 순서를 바꾸거나 폴더로 합칠 때는 잠깐 꺼요 — dock-drag.js 가 자리를 재는데 벌어진 자리로 재면 엉뚱한 데 들어가서요
+//   아이콘을 끌기 시작하면 잠깐 꺼요 — dock-drag.js 가 자리를 재는데 커진 자리로 재면 엉뚱한 데 들어가서요
 import { dockPrefs } from "./dock-hide.js";
 
 const wide = matchMedia("(min-width: 861px)");
-const PITCH = 56, ICON = 44; // 아이콘 칸(48 + 사이 8) · 아이콘 크기
-let y = null, held = false, raf = 0, items = [];
+const PITCH = 56, BTN = 48; // 아이콘 칸(48 + 사이 8) · 칸 높이
+let y = null, held = false, raf = 0, items = [], dz = 1; // dz = 작은 화면에서 줄인 배율 (fit)
 const rail = () => document.querySelector(".rail.dock");
 
-// 커지는 건 가운데 앱 줄(+ 페이지 추가 버튼)만 — 위 검색 · 아래 타이머 · 프로필은 고정이에요
-// 원래 자리(mid)와 위아래 여유(lo · hi)는 모양을 풀어 둔 지금 재 둬요: 벌어진 줄이 검색 · 타이머 쪽으로 넘어가지 않게
-let lo = 0, hi = 0;
 function collect() {
   const r = rail(); if (!r) return [];
-  const els = [...new Set(r.querySelectorAll(".rail-nav .rail-btn, .rail-nav .dock-fold-btn"))].filter((el) => el.offsetParent);
-  if (!els.length) return [];
-  const rect = (el) => el.getBoundingClientRect();
-  const top = r.querySelector("#open-palette"), foot = r.querySelector(".rail-foot");
-  lo = rect(els[0]).top - (top ? rect(top).bottom + 8 : rect(r).top + 8);
-  hi = (foot ? rect(foot).top : rect(r).bottom) - 8 - rect(els.at(-1)).bottom;
-  if (r.querySelector(".rail-nav.scrolls")) lo = hi = Infinity; // 넘기는 줄이면 끝은 스크롤 칸이 잘라 줘요
-  return els.map((el) => {
-    const ic = el.querySelector(":scope > .app-ic, :scope > .av, :scope > .fold-grid") || el.firstElementChild, b = rect(el);
-    return { el, ic, mid: b.top + b.height / 2, s: 1, t: 0 };
+  return [...new Set(r.querySelectorAll("#dock-list .rail-btn, #dock-list .dock-fold-btn"))].filter((el) => el.offsetParent).map((el) => {
+    const ic = el.querySelector(":scope > .app-ic, :scope > .fold-grid") || el.firstElementChild, b = el.getBoundingClientRect();
+    return { el, ic, mid: b.top + b.height / 2, s: 1 };
   });
 }
-// 마우스 거리 d 에서 { 배율, 밀림 }
-function at(d, p) {
-  const R = Math.max(1, p.range) * PITCH, m = p.size - 1;
-  if (Math.abs(d) >= R) return { s: 1, t: Math.sign(d) * m * R / 2 * (ICON / PITCH) };
-  return { s: 1 + m * Math.cos(Math.PI * d / (2 * R)) ** 2, t: m * (d / 2 + R / (2 * Math.PI) * Math.sin(Math.PI * d / R)) * (ICON / PITCH) };
+const at = (d, p) => { const R = Math.max(1, p.range) * PITCH * dz; return Math.abs(d) >= R ? 1 : 1 + (p.size - 1) * Math.cos(Math.PI * d / (2 * R)) ** 2; };
+function paint(it) {
+  const big = it.s !== 1;
+  it.el.style.height = big ? (BTN * it.s).toFixed(2) + "px" : "";
+  it.el.style.setProperty("--s", it.s.toFixed(3));
+  if (it.ic) it.ic.style.transform = big ? `scale(${it.s.toFixed(3)})` : "";
 }
 function clear() {
-  for (const it of items) { it.el.style.transform = ""; if (it.ic) it.ic.style.transform = ""; }
+  for (const it of items) { it.s = 1; paint(it); it.el.style.removeProperty("--s"); }
   items = [];
-  // 움직임(transition)을 끈 채로 원래 자리에 놓은 뒤 다음 프레임에 풀어요 — 안 그러면 천천히 돌아가는 사이 dock-drag.js 가 엉뚱한 자리를 재요
+  // 움직임(transition)을 끈 채로 원래 크기로 놓은 뒤 다음 프레임에 풀어요 — 안 그러면 천천히 돌아가는 사이 dock-drag.js 가 엉뚱한 자리를 재요
   requestAnimationFrame(() => { if (!items.length) document.documentElement.classList.remove("dock-mag"); });
 }
 function frame() {
@@ -46,22 +38,14 @@ function frame() {
   if (on && !items.length) { items = collect(); document.documentElement.classList.add("dock-mag"); }
   const k = Math.min(1, Math.max(1, p.speed) / 22);
   let moving = false;
-  const goal = items.map((it) => (on ? at(it.mid - y, p) : { s: 1, t: 0 }));
-  if (on && goal.length) { // 줄 끝이 여유를 넘으면 그쪽으로 벌어지는 양만 줄여요 — 마우스 아래 아이콘은 그대로 제자리
-    const f = goal[0], l = goal.at(-1), half = ICON / 2;
-    const cu = f.t < 0 ? Math.min(1, Math.max(0, (lo - half * (f.s - 1)) / -f.t)) : 1;
-    const cd = l.t > 0 ? Math.min(1, Math.max(0, (hi - half * (l.s - 1)) / l.t)) : 1;
-    for (const g of goal) g.t *= g.t < 0 ? cu : cd;
+  for (const it of items) {
+    const g = on ? at(it.mid - y, p) : 1;
+    it.s += (g - it.s) * k;
+    if (Math.abs(g - it.s) > 0.002) moving = true; else it.s = g;
+    paint(it);
   }
-  items.forEach((it, i) => {
-    const g = goal[i];
-    it.s += (g.s - it.s) * k; it.t += (g.t - it.t) * k;
-    if (Math.abs(g.s - it.s) > 0.002 || Math.abs(g.t - it.t) > 0.2) moving = true; else { it.s = g.s; it.t = g.t; }
-    it.el.style.transform = it.t ? `translateY(${it.t.toFixed(2)}px)` : "";
-    if (it.ic) it.ic.style.transform = it.s !== 1 ? `scale(${it.s.toFixed(3)})` : "";
-  });
   if (!on && !moving) return clear();
-  if (on || moving) raf = requestAnimationFrame(frame);
+  raf = requestAnimationFrame(frame);
 }
 const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
 
@@ -81,32 +65,33 @@ export function initDockMagnify() {
   addEventListener("pointerup", () => { if (held) { held = false; down = null; kick(); } });
   addEventListener("pointercancel", () => { held = false; down = null; kick(); });
   window.addEventListener("trio:dock-prefs", () => { clear(); kick(); });
-  // 앱 줄이 넘치면(작은 화면) 스크롤 칸 + 얇은 스크롤바. 넘기면 원래 자리를 다시 재요
-  document.addEventListener("scroll", (e) => { if (e.target.classList?.contains("rail-nav")) { if (items.length) { clear(); kick(); } fit(e.target); } }, true);
-  new ResizeObserver(() => fit()).observe(document.documentElement);
-  addEventListener("resize", () => { if (items.length) { clear(); kick(); } });
-  setInterval(() => { const n = document.querySelector(".rail.dock .rail-nav"); if (n && n.scrollHeight !== +n.dataset.sh) { n.dataset.sh = n.scrollHeight; fit(n); } }, 1000);
+  // 작은 화면(14인치 · 앱이 많을 때): 맥처럼 아이콘을 줄여서 한 화면에 다 넣어요 (44px → 최소 30px). 그래도 넘칠 때만 스크롤(스크롤바 없이 위아래 흐림)
+  document.addEventListener("scroll", (e) => { if (e.target.classList?.contains("rail-nav")) { if (items.length) { clear(); kick(); } edges(e.target); } }, true);
+  addEventListener("resize", () => { if (items.length) { clear(); kick(); } fit(); });
+  window.addEventListener("trio:dock-prefs", () => fit(true));
+  setInterval(() => fit(), 800); // Dock 이 다시 그려졌는지(앱 수) 가볍게 살펴요 — 바뀐 게 없으면 아무것도 안 해요
 }
 
-function fit(nav = document.querySelector(".rail.dock .rail-nav")) {
-  const r = rail(); if (!nav || !r) return;
-  let bar = r.querySelector(".dock-sbar");
-  if (!bar) { bar = Object.assign(document.createElement("div"), { className: "dock-sbar" }); bar.setAttribute("aria-hidden", "true"); r.append(bar); dragBar(bar); }
-  const over = wide.matches && nav.scrollHeight > nav.clientHeight + 2;
-  nav.classList.toggle("scrolls", over); bar.hidden = !over;
-  nav.classList.toggle("at-top", over && nav.scrollTop < 2); nav.classList.toggle("at-end", over && nav.scrollTop + nav.clientHeight > nav.scrollHeight - 2);
-  if (!over) return;
-  const nr = nav.getBoundingClientRect(), rr = r.getBoundingClientRect(), h = Math.max(24, nav.clientHeight * nav.clientHeight / nav.scrollHeight);
-  bar.style.height = h + "px";
-  bar.style.top = nr.top - rr.top + (nav.clientHeight - h) * (nav.scrollTop / (nav.scrollHeight - nav.clientHeight)) + "px";
+// 줄이는 배율(--dz, CSS zoom): 앱 줄 + 확대할 때 늘어날 여유가 Dock 최대 높이(화면 - 24px) 안에 들어가게
+const MIN_Z = 30 / 44;
+let fitKey = "";
+export function fit(force = false) {
+  const r = rail(), nav = r?.querySelector(".rail-nav"); if (!nav) return;
+  const p = dockPrefs(), key = [r.querySelectorAll("#dock-list [data-dock]").length, innerHeight, wide.matches, p.size, p.range, p.mag].join();
+  if ((!force && key === fitKey) || items.length || r.querySelector(".dock-sorting")) return;
+  fitKey = key;
+  let z = 1;
+  nav.style.setProperty("--dz", "1");
+  if (wide.matches) {
+    const max = innerHeight - 24, fixed = r.offsetHeight - nav.offsetHeight, need = nav.scrollHeight;
+    const room = p.mag ? (p.size - 1) * Math.max(1, p.range) * BTN : 0; // 확대하면 판이 이만큼 늘어나요
+    z = Math.min(1, Math.max(MIN_Z, (max - fixed) / (need + room)));
+  }
+  dz = z; nav.style.setProperty("--dz", z.toFixed(3));
+  edges(nav);
 }
-function dragBar(bar) {
-  bar.addEventListener("pointerdown", (e) => {
-    const nav = document.querySelector(".rail.dock .rail-nav"); if (!nav) return;
-    e.preventDefault(); e.stopPropagation(); bar.setPointerCapture(e.pointerId); bar.classList.add("drag");
-    const y0 = e.clientY, s0 = nav.scrollTop, k = nav.scrollHeight / nav.clientHeight;
-    const mv = (ev) => { nav.scrollTop = s0 + (ev.clientY - y0) * k; };
-    const up = () => { bar.classList.remove("drag"); bar.removeEventListener("pointermove", mv); };
-    bar.addEventListener("pointermove", mv); bar.addEventListener("pointerup", up, { once: true });
-  });
+function edges(nav) {
+  const over = wide.matches && nav.scrollHeight > nav.clientHeight + 2;
+  nav.classList.toggle("scrolls", over);
+  nav.classList.toggle("at-top", over && nav.scrollTop < 2); nav.classList.toggle("at-end", over && nav.scrollTop + nav.clientHeight > nav.scrollHeight - 2);
 }
