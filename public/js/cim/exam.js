@@ -5,6 +5,7 @@
 //   #/cim/exam/mix/<장,장,…>[/<수>]  섞어서 (기본 30)
 //   #/cim/exam/due · /wrong    오늘 돌아온 오답 · 오답노트 전체
 //   #/cim/exam/mock            모의고사 100문항 · 120분 (mock.js)
+//   #/cim/exam/cbt[/<회차>]     실전 CBT 15회 (cbt.js · public/cim/cbt.json)
 //   #/cim/exam/cards           숫자 외우기 (cards.js)
 import { st, dueIds, wrongIds, seenIn } from "./store.js";
 import { CH, ORDER, CALC, LAW, TOTAL_Q, chOf } from "./meta.js";
@@ -12,6 +13,7 @@ import { chapters, QI, QS_BY } from "./data.js";
 import { NOTES } from "./notes.js";
 import { runQuiz, interleave } from "./quiz.js";
 import { mountMock } from "./mock.js";
+import { mountCbt } from "./cbt.js";
 import { mountCards } from "./cards.js";
 import { setAi } from "./ai.js";
 import { esc, shuffle, loading, errorBox } from "./ui.js";
@@ -23,6 +25,7 @@ const opt = (href, title, sub, hot, attrs = "") => `<a class="c-big press${hot ?
 export function mountExam(host, r) {
   let stop = null;
   if (r.id === "mock") return mountMock(host);
+  if (r.id === "cbt") return mountCbt(host, r.sub);
   if (r.id === "cards") return mountCards(host);
   if (r.id === "quiz") setup();
   else if (["ch", "mix", "due", "wrong"].includes(r.id)) run(r);
@@ -34,6 +37,7 @@ export function mountExam(host, r) {
     host.innerHTML = `<div class="c-exam"><h1>시험</h1>
       ${w}
       ${opt("#/cim/exam/quiz", "문제 풀기", `장을 고르거나 섞어서 · ${TOTAL_Q.toLocaleString("ko-KR")}문제`, false)}
+      ${opt("#/cim/exam/cbt", "실전 CBT 15회", S.cbtRun ? `${S.cbtRun.no}회 푸는 중 · 이어서 풀기` : `겹치지 않는 100문항 × 15회 · ${Object.keys(S.cbt || {}).length}회 끝`, !!S.cbtRun)}
       ${opt("#/cim/exam/mock", "모의고사", S.run ? "진행 중 · 이어서 풀기" : "실전처럼 100문항 · 120분", !!S.run)}
       ${opt("#/cim/exam/cards", "숫자 외우기", `세율 · 기간 · 한도 ${NOTES.NUMS.length}장`, false)}
     </div>`;

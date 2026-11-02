@@ -305,6 +305,24 @@ a.c-row:hover b, button.c-row:hover b { text-decoration: underline; text-underli
 .cm-res .c-done { padding-top: 10px; }
 .cm-w { display: grid; gap: 12px; padding: 18px 0; border-top: 1px solid var(--c-line); }
 .cm-w .c-opt { padding: 12px 14px !important; font-size: 15.5px; }
+/* 실전 CBT (cbt.js) — 넓으면 문제 | 번호판 두 칸, 폰은 번호판이 아래로 */
+.cb-run { display: grid; gap: 22px; padding-top: 6px; }
+@media (min-width: 900px) { .cb-run { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; } .cb-side { position: sticky; top: 12px; border-top: 0 !important; border-left: 1px solid var(--c-line); padding: 0 0 0 18px !important; } }
+.cb-no { font-weight: 800; font-size: 15px; color: var(--c-sub); }
+.cb-side { display: grid; gap: 4px; border-top: 1px solid var(--c-line); padding-top: 12px; }
+.cb-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--c-sub); font-weight: 600; }
+.cb-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; background: var(--c-soft); border: 1px solid var(--c-line); vertical-align: -1px; }
+.cb-legend i.a { background: var(--c-ink); border-color: var(--c-ink); }
+.cb-legend i.f, .cb-grid button.f::after { background: var(--c-bad); border-color: var(--c-bad); }
+.cb-grid button { position: relative; }
+.cb-grid button.f::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; }
+.cb-nav { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; }
+.cb-flag.on { border-color: var(--c-bad) !important; color: var(--c-bad); }
+.cb-row .hot { color: var(--c-ink); font-weight: 700; }
+.cb-res .gh .c-seg { grid-template-columns: auto auto; } .cb-res .gh .c-seg button { padding: 6px 12px !important; font-size: 13.5px; }
+.cb-rv.right .c-qstem { color: var(--c-sub); }
+.c-cbt { display: grid; gap: 8px; border-top: 1px solid var(--c-line); padding-top: 14px; }
+.c-cbt .t { font-size: 13.5px; font-weight: 700; color: var(--c-sub); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 
 /* 숫자 외우기 */
 .ct-deck { position: relative; width: 100%; height: 300px; touch-action: pan-y; perspective: 1200px; margin: 6px 0 4px; }

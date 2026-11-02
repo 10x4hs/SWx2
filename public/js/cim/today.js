@@ -8,6 +8,30 @@ import { STEPS, Q_CAP, BOOK, dateKo, todayPlan, todayRun, subjPct, chLine as chL
 import { setAi } from "./ai.js";
 import { esc, verdict, pad2 } from "./ui.js";
 
+// 6일 CBT 플랜 — 1~5일: 아침 어제 오답 → 오전 · 오후 · 저녁 CBT 한 회씩 (하루 3회 · 15회) · 6일: 오답만
+//   첫날 = '6일 플랜 시작'을 누른 날(cbtStart), 없으면 시험일 6일 전 (시험 전날이 6일째)
+export function cbtDay(S) {
+  const start = S.cbtStart || (S.exam ? addDays(S.exam, -6) : "");
+  if (!start) return { start: "", day: 0 };
+  return { start, day: diff(start, today()) + 1 };
+}
+export const SLOTS = ["오전", "오후", "저녁"];
+function cbtBlock(S, due) {
+  const { start, day } = cbtDay(S), wn = Object.keys(S.wrong).length;
+  const go = `<button type="button" class="c-btn sm press" data-cbt-start>6일 플랜 시작</button>`;
+  if (!start || day > 6) return `<section class="c-cbt" id="c-cbt"><div class="t"><span>실전 CBT 6일 플랜</span>${go}</div><p class="c-hint">오늘부터 하루 3회씩 5일 동안 15회를 풀고, 6일째는 오답만 봐요.</p></section>`;
+  if (day < 1) return `<section class="c-cbt" id="c-cbt"><div class="t"><span>실전 CBT 6일 플랜 · ${-day + 1}일 뒤 시작</span>${go}</div><p class="c-hint">${dateKo(start)}부터 시험 전날까지 하루 3회씩 풀어요. 지금 바로 시작해도 돼요.</p></section>`;
+  const row = (href, n, title, p, cls = "") => `<a class="c-row press${cls}" href="${href}"><span class="n num">${n}</span><b>${title}</b><span class="p num">${p}</span></a>`;
+  const rows = [];
+  if (day > 1 || due) rows.push(row(due ? "#/cim/exam/due" : "#/cim/exam/wrong", "아침", "어제 틀린 문제", due ? `${due}개` : `<span class="ok">✓ 끝</span>`, due ? " now" : ""));
+  if (day <= 5) SLOTS.forEach((t, j) => {
+    const no = (day - 1) * 3 + j + 1, r = S.cbt[no], on = S.cbtRun?.no === no;
+    rows.push(row(`#/cim/exam/cbt/${no}`, t, `실전 CBT ${no}회`, r ? `<span class="${r.pass ? "ok" : "bad"}">${r.total}점</span>` : on ? "푸는 중" : "—"));
+  });
+  else rows.push(row("#/cim/exam/wrong", "종일", "오답 총정리 · 문제는 새로 안 풀어요", `${wn}개`));
+  return `<section class="c-cbt" id="c-cbt"><div class="t"><span>실전 CBT 6일 플랜 · <b class="num">${day}일째</b> / 6</span><a class="c-link" href="#/cim/exam/cbt">15회 전체</a></div>${rows.join("")}</section>`;
+}
+
 export function mountToday(host, r, env) {
   const S = st();
   let editDate = false;
@@ -42,6 +66,7 @@ export function mountToday(host, r, env) {
         <div class="c-steps" role="list" aria-label="오늘 진행">${STEPS.map((t, j) => `<div role="listitem" class="${j < step || done ? "done" : j === Math.max(0, step) && !done ? "now" : ""}"><i></i>${t}</div>`).join("")}</div>
       </div>
       <a class="c-go press" href="#/cim/go" id="c-start">${label} <span>${side}</span></a>
+      ${cbtBlock(S, due)}
       <div class="c-subj num">${[1, 2, 3].map((s) => { const [v, t, cls] = verdict(subjPct(s)); return `<div class="${cls}" title="${esc(SUBJ[s].n)}"><span class="k">${s}과목</span><span class="v">${v}</span><span class="s">${t}</span></div>`; }).join("")}</div>
       <p class="c-hint">${esc(hint)}</p>
       <p class="c-hint"><a class="c-link" href="#/cim/log">진도 · 기록 보기</a></p>
@@ -50,7 +75,7 @@ export function mountToday(host, r, env) {
     if (inp) inp.onchange = () => { if (!inp.value) return; S.exam = inp.value; editDate = false; save(); draw(); env.top(); };
     setAi({ kind: "general", topic: `오늘 할 공부(교재 순서): ${title} (${chLine}${pages ? " · " + pages : ""}) · 진행 ${run ? (done ? "끝" : STEPS[step] + " 단계") : "시작 전"} · 과목 정답률 ${[1, 2, 3].map((s) => `${s}과목 ${verdict(subjPct(s))[0]}`).join(", ")} · 오늘 돌아온 오답 ${due}개${left != null ? ` · 시험까지 ${left}일` : ""}` });
   }
-  host.addEventListener("click", (e) => { if (e.target.closest("[data-edit]")) { editDate = !editDate; draw(); if (editDate) host.querySelector("#c-exam")?.focus(); } });
+  host.addEventListener("click", (e) => { if (e.target.closest("[data-cbt-start]")) { S.cbtStart = today(); save(); draw(); return; } if (e.target.closest("[data-edit]")) { editDate = !editDate; draw(); if (editDate) host.querySelector("#c-exam")?.focus(); } });
   draw();
   return { redraw: draw };
 }
