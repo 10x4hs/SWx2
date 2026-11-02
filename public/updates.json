@@ -2,6 +2,13 @@
  "about": "업데이트 1번 = 우리가 체감하는 기능 묶음 하나. commits 는 그 묶음에 들어간 커밋. 새 커밋은 배포할 때 scripts/updates-check.mjs 가 빠졌는지 알려 줘요.",
  "updates": [
   {
+   "date": "2026-11-02",
+   "kind": "feature",
+   "title": "Dock 자동 숨김",
+   "body": "맥 Dock 처럼 Dock 을 숨길 수 있어요. Dock 빈 곳을 우클릭하거나, 내 메뉴에서 'Dock 자동 숨기기'를 누르거나, ⌥⌘D 를 누르면 켜고 꺼요. 켜면 본문이 왼쪽 끝까지 넓어지고, 화면 왼쪽 끝에 마우스를 대면 Dock 이 잠깐 나왔다가 떠나면 다시 숨어요. 이 기기에서 기억하고, 폰 아래 탭바는 그대로예요.",
+   "commits": []
+  },
+  {
    "date": "2026-10-31",
    "kind": "feature",
    "title": "Psychology — 설득 · 수사학 앱",

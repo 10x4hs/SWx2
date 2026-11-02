@@ -3413,3 +3413,17 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 /* 하루 계획표 (줌): 짧은 블록은 이름 먼저 — 좁으면 시각 · 길이 쪽이 먼저 줄어요 */
 .block.thin .txt [data-edit] { flex: 0 1 auto; min-width: 4.5em; }
 .block.thin .txt .when-i { flex: 0 1000 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Dock 자동 숨김 (js/dock-hide.js): 맥 Dock 처럼 왼쪽으로 숨고, 왼쪽 끝에 마우스를 대면 본문 위로 나와요. 폰은 그대로 ---------- */
+.dock-edge { display: none; }
+@media (min-width: 861px) {
+  .dock-autohide .shell { grid-template-columns: minmax(0, 1fr); }
+  .dock-autohide .rail.dock {
+    position: fixed; left: 12px; top: 12px; bottom: 12px; width: 76px; z-index: 70;
+    transform: translateX(calc(-100% - 20px)); opacity: 0;
+    transition: transform .28s var(--ease), opacity .2s ease;
+  }
+  .dock-autohide.dock-peek .rail.dock { transform: none; opacity: 1; }
+  .dock-autohide .dock-edge { display: block; position: fixed; left: 0; top: 0; bottom: 0; width: 6px; z-index: 69; }
+}
+@media (prefers-reduced-motion: reduce) { .dock-autohide .rail.dock { transition: none; } }
