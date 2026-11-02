@@ -75,7 +75,9 @@ self.addEventListener("fetch", (event) => {
     }
     if (req.method !== "GET") { gen++; event.waitUntil(caches.delete(API_CACHE)); return; } // 저장 · 지우기 → 그대로 네트워크로, 캐시는 비워요
     if (url.pathname.startsWith("/api/auth/") || url.pathname.startsWith("/api/diary") || url.pathname.startsWith("/api/admin")) return; // 일기 · 관리자는 늘 서버에서 (저장 안 함)
-    event.respondWith(req.headers.has("x-swr") ? apiCacheThenFresh(event) : apiNetworkFirst(event));
+    // 계획 · 그날 기록 · 실행 기록은 x-swr 가 붙어 와도 서버 먼저 (옛 답이 방금 고친 걸 덮지 않게)
+    const swr = req.headers.has("x-swr") && !/^\/api\/(plans|calendar\/day|logs)(\/|$)/.test(url.pathname);
+    event.respondWith(swr ? apiCacheThenFresh(event) : apiNetworkFirst(event));
     return;
   }
 

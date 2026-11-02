@@ -3390,3 +3390,35 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 .gn-ask-a { line-height: 1.7; }
 .gn-ask-a p { margin: 0 0 6px; }
 .gn-ask-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+
+/* ---------- 하루 계획표: 짧은 계획 한 줄 · '+N' · 그룹 · 여러 개 고르기 (2026-11-02) ---------- */
+.block.mini { height: 18px; padding: 0 6px; align-items: center; gap: 5px; font-size: 12px; line-height: 18px; border-radius: 6px; background: var(--glass-3); border-color: var(--line); white-space: nowrap; }
+.block.mini .mini-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--me); }
+.block.mini[data-p="max"] .mini-dot, .block.mini[data-p="xhigh"] .mini-dot { background: var(--p-max); }
+.block.mini .when-i { font: 500 10.5px var(--mono); color: var(--ink-3); flex: none; }
+.block.mini .mini-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; flex: 1; }
+.block.mini.done .mini-t { text-decoration: line-through; opacity: .7; }
+.block.mini.done { background: color-mix(in srgb, var(--me) 25%, var(--glass-3)); }
+.block.mini.fail .mini-dot { background: var(--bad, #d33); }
+.mini-more { position: relative; flex: none; height: 14px; padding: 0 5px; border: 0; border-radius: 7px; font: 600 10px var(--mono); background: var(--ink); color: var(--bg, #fff); cursor: pointer; pointer-events: auto; }
+.blocks > .mini-more { display: none; }
+.mini-pop { position: absolute; z-index: 6; pointer-events: auto; padding: 3px; display: flex; flex-direction: column; gap: 2px; border-radius: 8px; background: var(--glass-1, var(--bg)); border: 1px solid var(--line-2); box-shadow: 0 6px 18px rgba(0,0,0,.18); overflow: visible; }
+.mini-pop .block.mini { position: relative; top: auto; left: auto; width: auto; }
+.block.grp { flex-direction: column; align-items: stretch; padding: 3px 6px; gap: 2px; background: color-mix(in srgb, var(--me) 8%, var(--glass-3)); border-style: solid; border-width: 1px 1px 1px 3px; }
+.grp-h { display: flex; align-items: center; gap: 6px; height: 18px; font-size: 12px; white-space: nowrap; }
+.grp-h .grp-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+.grp-h .when-i, .grp-row .when-i { font: 500 10.5px var(--mono); color: var(--ink-3); }
+.grp-h .grp-c { font: 500 10.5px var(--mono); color: var(--ink-3); }
+.grp-fold, .grp-un { border: 0; background: transparent; padding: 0 3px; font-size: 11px; color: var(--ink-3); cursor: pointer; }
+.grp-un:hover, .grp-fold:hover { color: var(--ink); }
+.grp-row { display: flex; align-items: center; gap: 6px; height: 18px; font-size: 12px; padding: 0 4px; border-radius: 5px; white-space: nowrap; }
+.grp-row .check { transform: scale(.8); margin: 0; }
+.grp-row .mini-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.grp-row.done .mini-t { text-decoration: line-through; opacity: .7; }
+.grp-row.sel { outline: 2px solid var(--ink); outline-offset: -1px; }
+.dp-lasso { position: absolute; z-index: 9; pointer-events: none; border: 1px solid var(--ink-2); background: color-mix(in srgb, var(--ink) 8%, transparent); border-radius: 3px; }
+.dp-selbar { position: sticky; bottom: 8px; z-index: 10; margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 12px; background: var(--glass-1, var(--bg)); border: 1px solid var(--line-2); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.dp-selbar[hidden] { display: none; }
+.dp-selbar .sb-n { font-weight: 700; font-size: 13px; margin-right: 4px; }
+.dp-selbar .sb-shift { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+.dp-selbar #dp-sb-min { width: 56px; height: 28px; padding: 0 6px; }

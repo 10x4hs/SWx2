@@ -16,6 +16,10 @@ const PRIORITIES = ["low", "medium", "high", "xhigh", "max"];
 const PRIO_NUM = { 1: "max", 2: "xhigh", 3: "high", 4: "medium", 5: "low" };
 const prioIn = (v) => (PRIO_NUM[String(v).trim()] || (typeof v === "string" ? v.trim().toLowerCase() : v));
 const prio = (v0, v = prioIn(v0)) => (v0 === null || v0 === "" ? null : PRIORITIES.includes(v) ? v : fail(400, "우선순위는 1(가장 급함)~5(여유) 또는 low · medium · high · xhigh · max 중 하나예요."));
+// 그룹 id — 묶을 때 브라우저가 만든 아무 글자 (null = 풀기)
+const groupId = (v) => (v === null || v === "" ? null : typeof v === "string" && /^[\w-]{1,40}$/.test(v) ? v : fail(400, "그룹 id 가 올바르지 않아요."));
+// 되돌리기용 확인: expect 의 값과 지금 값이 다르면 그 사이 다른 곳에서 바뀐 것 → 덮어쓰지 않아요 (409)
+const same = (k, a, b) => (k === "done" || k === "missed" ? !!a === !!b : (a ?? null) === (b ?? null) || String(a ?? "") === String(b ?? ""));
 const tone = (v) => (v === null ? null : TONES.includes(v) ? v : fail(400, "고를 수 없는 색이에요."));
 
 // ---------- plans (everyone reads, owner writes) ----------
@@ -78,18 +82,19 @@ export function registerPlans(on) {
   on("POST", "/plans", async ({ req, env, user }) => {
     const b = await body(req);
     checkPeriod(b.scope, b.period);
-    const p = { id: uid(), user_id: user.id, scope: b.scope, period: b.period, text: str(b.text, 200, "내용"), done: 0, missed: 0, start: null, mins: null, color: b.color === undefined ? null : tone(b.color), priority: b.priority === undefined ? null : prio(b.priority), sort: now(), created_at: now(), updated_at: now(), done_at: null, status: null, project: null, due: null, subtasks: null, note: null };
+    const p = { id: uid(), user_id: user.id, scope: b.scope, period: b.period, text: str(b.text, 200, "내용"), done: 0, missed: 0, start: null, mins: null, color: b.color === undefined ? null : tone(b.color), priority: b.priority === undefined ? null : prio(b.priority), sort: now(), created_at: now(), updated_at: now(), done_at: null, status: null, project: null, due: null, subtasks: null, note: null, group_id: b.group_id === undefined ? null : groupId(b.group_id) };
     if (b.scope === "day") checkSlot(b, p);
     boardFields(b, p); // 보드: 칸 · 프로젝트 · 마감일 · 작은 할 일 · 메모 · 순서 (없으면 예전 그대로)
     if (p.status === "done") { p.done = 1; p.done_at = now(); }
-    await env.DB.prepare("INSERT INTO plans (id, user_id, scope, period, text, done, done_at, start, mins, color, priority, sort, created_at, updated_at, status, project, due, subtasks, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(p.id, p.user_id, p.scope, p.period, p.text, p.done, p.done_at, p.start, p.mins, p.color, p.priority, p.sort, p.created_at, p.updated_at, p.status, p.project, p.due, p.subtasks, p.note).run();
+    await env.DB.prepare("INSERT INTO plans (id, user_id, scope, period, text, done, done_at, start, mins, color, priority, sort, created_at, updated_at, status, project, due, subtasks, note, group_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(p.id, p.user_id, p.scope, p.period, p.text, p.done, p.done_at, p.start, p.mins, p.color, p.priority, p.sort, p.created_at, p.updated_at, p.status, p.project, p.due, p.subtasks, p.note, p.group_id).run();
     return json({ plan: outPlan(p) }, 201);
   });
 
   on("PATCH", "/plans/:id", async ({ req, env, user, params }) => {
     const p = await ownPlan(env, params.id, user);
     const b = await body(req);
+    if (b.expect && typeof b.expect === "object") for (const [k, v] of Object.entries(b.expect)) if (k in p && !same(k, p[k], v)) fail(409, "그 사이 다른 곳에서 바뀌었어요. 덮어쓰지 않았어요.");
     const next = { ...p };
     if (b.text !== undefined) next.text = str(b.text, 200, "내용");
     if (b.done !== undefined) { next.done = b.done ? 1 : 0; next.done_at = b.done ? now() : null; if (b.done) next.missed = 0; }
@@ -99,11 +104,12 @@ export function registerPlans(on) {
     if (p.scope === "day") checkSlot(b, next);
     if (b.color !== undefined) next.color = tone(b.color);
     if (b.priority !== undefined) next.priority = prio(b.priority);
+    if (b.group_id !== undefined) next.group_id = groupId(b.group_id);
     boardFields(b, next);
     syncDone(b, p, next); // '완료' 칸 ↔ done 을 같게
     next.updated_at = now();
-    await env.DB.prepare("UPDATE plans SET text = ?, done = ?, done_at = ?, missed = ?, period = ?, start = ?, mins = ?, color = ?, priority = ?, status = ?, project = ?, due = ?, subtasks = ?, note = ?, sort = ?, updated_at = ? WHERE id = ?")
-      .bind(next.text, next.done, next.done_at, next.missed ? 1 : 0, next.period, next.start, next.mins, next.color, next.priority ?? null, next.status ?? null, next.project ?? null, next.due ?? null, next.subtasks ?? null, next.note ?? null, next.sort, next.updated_at, p.id).run();
+    await env.DB.prepare("UPDATE plans SET text = ?, done = ?, done_at = ?, missed = ?, period = ?, start = ?, mins = ?, color = ?, priority = ?, status = ?, project = ?, due = ?, subtasks = ?, note = ?, sort = ?, group_id = ?, updated_at = ? WHERE id = ?")
+      .bind(next.text, next.done, next.done_at, next.missed ? 1 : 0, next.period, next.start, next.mins, next.color, next.priority ?? null, next.status ?? null, next.project ?? null, next.due ?? null, next.subtasks ?? null, next.note ?? null, next.sort, next.group_id ?? null, next.updated_at, p.id).run();
     return json({ plan: outPlan(next) });
   });
 

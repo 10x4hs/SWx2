@@ -84,8 +84,8 @@ export function run(dir, name = active()?.name) {
 }
 export const settled = () => chain; // 자동 검사 · 순서가 필요한 곳
 
-// 글 고치는 중이면 브라우저 것 그대로 — 빈 입력 칸(예: 계획을 넣은 뒤 바로 열린 다음 칸)은 되돌릴 글이 없으니 이 기록으로
-const typing = (t) => !!t && (t.isContentEditable || (/^(INPUT|TEXTAREA)$/.test(t.tagName) && !/^(checkbox|radio|button|submit|range|color|file)$/i.test(t.type || "") && t.value !== ""));
+// 글 칸에 커서가 있으면 (비어 있어도) 브라우저 것 그대로 — 글 쓰다 누른 ⌘Z 가 계획을 지우면 안 돼요
+const typing = (t) => !!t && (t.isContentEditable || (/^(INPUT|TEXTAREA)$/.test(t.tagName) && !/^(checkbox|radio|button|submit|range|color|file)$/i.test(t.type || "")));
 export function undoKey(e) {
   if (e.altKey || !(e.metaKey || e.ctrlKey)) return null;
   const k = (e.key || "").toLowerCase();
