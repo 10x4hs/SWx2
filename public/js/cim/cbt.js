@@ -34,11 +34,25 @@ export function mountCbt(host, no) {
   }
 
   // 15회 목록
+  // 시간 없는 회차(1~10)가 하나도 안 풀고 끝난 기록(예전 120분 시계가 저절로 낸 0점)은 없던 일로 — 안 푼 문제로 들어간 오답도 같이 빼요
+  async function dropEmpty(sets) {
+    const S = st(); let ch = false;
+    for (const e of sets.exams) {
+      const r = S.cbt[e.no];
+      if (TIMED(e.no) || !r || Object.keys(r.picks || {}).length) continue;
+      for (const id of e.ids) if (S.wrong[id]?.st === 0 && !S.ans[id]) delete S.wrong[id];
+      S.mocks = S.mocks.filter((m) => m.rid !== r.rid);
+      delete S.cbt[e.no]; ch = true;
+    }
+    if (ch) save();
+  }
+
   async function list() {
     stop();
     host.innerHTML = loading("CBT 불러오는 중");
     let sets; try { sets = await cbtSets(); } catch (e) { host.innerHTML = errorBox(esc(e.message)); return; }
     if (!host.isConnected) return;
+    await dropEmpty(sets);
     const S = st(), run = R(), done = Object.keys(S.cbt).length;
     host.innerHTML = `<div class="c-exam cb-list"><div class="c-shead"><a class="c-ghost press" href="#/cim/exam">← 시험</a><span></span></div>
       <h1>실전 CBT</h1>
@@ -55,6 +69,7 @@ export function mountCbt(host, no) {
     let sets; try { sets = await cbtSets(); } catch (e) { host.innerHTML = errorBox(esc(e.message)); return; }
     const ex = sets.exams.find((e) => e.no === n);
     if (!ex) { location.replace("#/cim/exam/cbt"); return; }
+    await dropEmpty(sets);
     const S = st();
     if (R()?.no === n) return run();
     if (S.cbt[n]?.picks && !fresh) { if (!(await need(ex.ids))) return; return result(n, ex.ids, S.cbt[n]); }
