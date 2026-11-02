@@ -196,6 +196,7 @@ function mountList(root, ctx, r) {
       if (fin) return; fin = true; const v = inp.value.trim();
       if (save && v && v !== p.text) { const old = p.text; p.text = v; drawList(); try { await api.updatePlan(p.id, { text: v }); changed(); } catch (err) { p.text = old; drawList(); toast(err.message, "err"); } }
       else drawList();
+      if (S.pendingLoad && !$(".gl-edit", root)) { S.pendingLoad = false; load(); } // 고치는 동안 미뤄 둔 다시 불러오기
     };
     inp.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.isComposing) finish(true); if (ev.key === "Escape") finish(false); });
     inp.addEventListener("blur", () => finish(true));
@@ -214,7 +215,8 @@ function mountList(root, ctx, r) {
         if (k === "del") { const keep = S.list; S.list = S.list.filter((x) => x.id !== p.id); drawList(); try { await api.deletePlan(p.id); changed(); } catch (err) { S.list = keep; drawList(); toast(err.message, "err"); } }
       } });
   });
-  const onChanged = (e) => { if (e.detail?.kind === "plans" && !S.busy && Date.now() - (S.selfAt || 0) > 1500) load(); }; // AI 비서 등 다른 곳에서 바꾸면 다시 (내가 방금 바꾼 건 빼고)
+  // 이름을 고치는 중(.gl-edit)이면 다시 불러오기를 미뤄요 — 고치던 글이 날아가지 않게. 다 고치면 그때 불러와요
+  const onChanged = (e) => { if (e.detail?.kind === "plans" && !S.busy && Date.now() - (S.selfAt || 0) > 1500) { if ($(".gl-edit", root)) S.pendingLoad = true; else load(); } }; // AI 비서 등 다른 곳에서 바꾸면 다시 (내가 방금 바꾼 건 빼고)
   window.addEventListener("trio:changed", onChanged);
 
   $("#ck-back", root).addEventListener("click", () => window.trioBack?.());

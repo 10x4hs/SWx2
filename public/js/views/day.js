@@ -15,24 +15,22 @@ import { BLOCKS } from "../english/data.js";
 import { mountPlanClip, MOD } from "../plan-clip.js";
 import { planUndo } from "../plan-undo.js"; // ⌘Z · ⌘⇧Z: 옮기기 · 길이 · 이름 · 끝냄 · 우선순위 · 미루기 · 지우기 · 추가 · 붙여넣기
 
-const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게). 짧은 계획 바로 뒤에 다음 계획이 붙어 있으면 그 자리만 늘어나요 (axis)
+const HOUR_PX = 96; // 한 시간 = 96px → 5분 = 8px (5분 단위까지 보이게). 언제나 실제 비율 (짧은 계획 때문에 칸을 늘리지 않아요)
 const STEP = 5;     // 시간표를 누르거나 끌 때만 5분 칸 (적는 시각 · 길이는 1분 단위)
 const DEFAULT_MINS = 60; // 새 계획의 기본 길이 — 바로 전에 넣은 길이를 따라가지 않아요
-const MIN_H = 30;   // 짧은 계획도 한 줄(체크 · 못함 · 미루기 · 삭제 버튼까지)이 보이는 높이(px) — 바로 뒤에 다른 계획이 붙어 있으면 그 사이 칸을 늘려요
-const FLOOR = 14;   // 그래도 이만큼은 (한 줄 글자가 보이는 최소)
-// 분 → 세로 위치(px) 표: Y[i] = 시간표 맨 위(m0 분)에서 i분 뒤의 위치. 기본은 1시간 = HOUR_PX.
-// 같은 줄에서 계획 바로 뒤에 다음 계획이 붙어 있어 한 줄(MIN_H)이 안 들어가면 그 사이 분만 늘려요 — 그 시간의 1시간 칸이 그만큼 길어져요.
-function axis(placed, m0) {
-  const base = HOUR_PX / 60, n = 1440 - m0, ppm = new Array(n).fill(base);
-  for (const it of placed) {
-    if (it.next === Infinity || (it.next - it.s) * base - 2 >= MIN_H) continue;
-    const r = (MIN_H + 2) / (it.next - it.s);
-    for (let m = Math.max(it.s, m0); m < Math.min(it.next, 1440); m++) ppm[m - m0] = Math.max(ppm[m - m0], r);
-  }
-  const Y = [0];
-  for (let i = 0; i < n; i++) Y.push(Y[i] + ppm[i]);
+const SHORT = 15;   // 15분보다 짧은 계획은 블록이 아니라 한 줄(점 · 시각 · 이름)로 그 시각에
+const LINE_H = 18;  // 한 줄 높이(px)
+const LINE_MIN = Math.ceil(LINE_H / (HOUR_PX / 60)); // 한 줄이 차지하는 분 (겹침 계산용) — 이 안에 붙은 짧은 계획끼리는 '+N' 으로 접어요
+const ONE_H = 22;   // 15분 이상 블록의 최소 높이 (한 줄)
+// 분 → 세로 위치(px) 표: Y[i] = 시간표 맨 위(m0 분)에서 i분 뒤의 위치 (1시간 = HOUR_PX, 늘이지 않아요)
+function axis(m0) {
+  const base = HOUR_PX / 60, Y = [0];
+  for (let i = 0; i < 1440 - m0; i++) Y.push(Y[i] + base);
   return Y;
 }
+// 그룹을 접어 둔 것 (이 브라우저에만)
+const FOLD_KEY = "dp-fold";
+const loadFold = () => { try { return new Set(JSON.parse(localStorage.getItem(FOLD_KEY) || "[]")); } catch { return new Set(); } };
 // 세로 위치(px) → 분 (늘어난 칸에서도 실제 시각)
 function minuteAt(Y, y, m0) {
   let lo = 0, hi = Y.length - 1;
@@ -66,7 +64,16 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   let who = startWho && ctx.users.some((u) => u.id === startWho) ? startWho : me.id; // 홈의 친구 차트에서 오면 그 친구로 시작 (보기만)
   const ro = () => who !== me.id;
   const S = { plans: null, spill: [], goals: null, diary: undefined, logs: [], english: null, record: null, notes: [], carry: 0, editSlot: null,
-    sel: new Set(), hoverId: null, hoverMin: null }; // 복사 · 붙여넣기: 고른 계획(Shift+클릭 · ⌘A) · 마우스를 올린 계획 · 시간표 위 시각
+    sel: new Set(), hoverId: null, hoverMin: null, // 복사 · 붙여넣기 · 여러 개 고르기
+    form: null, fold: loadFold(), openMore: null, pendingLoad: false, pendingDraw: false }; // form = 열린 추가 · 고치기 창의 칸 값 (다시 그려도 그대로) · fold = 접은 그룹 · openMore = 펼친 '+N'
+  let drag = null, lasso = null, justDragged = 0;
+  // 글을 쓰는 중(추가 · 고치기 창, 이름 고치기)이거나 끄는 중이면 다시 그리지 않고 미뤄요 — 쓰던 게 날아가지 않게
+  const busy = () => !!(drag || lasso || $("[data-slot-form]", el) || el.querySelector('[contenteditable="true"]'));
+  function flush() {
+    if (!alive || busy()) return;
+    if (S.pendingLoad) { S.pendingLoad = false; S.pendingDraw = false; load(); }
+    else if (S.pendingDraw) { S.pendingDraw = false; drawAll(); }
+  } // 복사 · 붙여넣기: 고른 계획(Shift+클릭 · ⌘A) · 마우스를 올린 계획 · 시간표 위 시각
   const wKey = periodKey("week", date), mKey = periodKey("month", date), yKey = periodKey("year", date);
   const GOAL_KEY = { week: wKey, month: mKey, year: yKey }, GOAL_LAB = { week: "이번 주", month: "이번 달", year: "올해" };
   const wk = isoWeek(date);
@@ -99,14 +106,17 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       <p class="dp-hint">빈 시각을 누르면 바로 적을 수 있어요. 시각 · 길이는 1분 단위로 고쳐도 돼요. Enter 추가 · Esc 닫기.</p>
       <div class="dp-allday" id="dp-allday" hidden></div>
       <div class="dp-scroll" id="dp-scroll"><div class="day-grid" id="dp-grid"></div></div>
+      <div class="dp-selbar" id="dp-selbar" hidden></div>
     </section>`;
 
   // ---------- data ----------
+  let loadSeq = 0; // 늦게 온 옛 답은 버려요 (마지막으로 부른 것만)
   async function load() {
+    const my = ++loadSeq;
     try {
       const w = who;
       const [p, d, g, di] = await Promise.all([api.plans([key, prevKey], ro() ? who : undefined), api.calendarDay(day), Promise.resolve({ plans: [] }), future ? Promise.resolve({ diary: null }) : api.diary(day).catch(() => ({ diary: null }))]);
-      if (!alive || w !== who) return;
+      if (!alive || w !== who || my !== loadSeq) return;
       S.closed = !!p.closed;
       // 전날 계획 중 자정을 넘는 것 → 이 날 00:00 부터 이어진 칸 (보기만 · 누르면 원래 계획)
       const all = p.plans || [];
@@ -114,8 +124,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       S.spill = all.filter((x) => x.period === prevKey && x.start && toMin(x.start) + (x.mins || 30) > 1440);
       S.goals = g.plans || []; S.diary = di.diary;
       Object.assign(S, { logs: d.logs || [], english: d.english, record: d.record, notes: d.notes || [] });
-      drawAll();
-    } catch (e) { if (alive) toast(e.message, "err"); }
+      for (const id of [...S.sel]) if (!S.plans.some((x) => x.id === id)) S.sel.delete(id);
+      if (busy()) S.pendingDraw = true; else drawAll();
+    } catch (e) { if (alive && my === loadSeq) toast(e.message, "err"); }
   }
   async function loadExtras() {
     if (!isToday) return;
@@ -204,55 +215,83 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     if (ad) { ad.hidden = !loose.length; ad.innerHTML = loose.length ? `<span class="dp-ad-k">시간 없는 일</span>${loose.map((p) => `<a class="dp-ad ${p.done ? "done" : ""}" href="#/checklist/${day}" data-p="${esc(p.priority || "")}" title="체크리스트에서 보기">${esc(p.text)}</a>`).join("")}` : ""; }
     const startH = 0; // 시간표는 언제나 00:00–24:00 (처음엔 06:00 · 첫 계획 · 지금 근처로 스크롤해 둬요)
     const nowM = toMin(nowTime());
-    // 겹치면 옆으로 나눠요 — 서로 이어진 묶음마다 칸 수를 같이 쓰고, 오른쪽이 비면 넓게 펴요.
-    // 겹침은 실제 시각으로만 따져요 (08:55–09:00 바로 뒤의 09:00 계획은 나란히가 아니라 위아래로).
     const m0 = startH * 60;
-    // 자정을 넘는 계획은 e 가 1440 을 넘어요 (위치는 24:00 까지만) · 전날에서 넘어온 칸은 cont
-    const items = [...(S.spill || []).map((p) => ({ p, s: 0, e: toMin(p.start) + (p.mins || 30) - 1440, cont: true })),
-      ...timed.map((p) => { const s = toMin(p.start), e = s + (p.mins || 30); return { p, s, e }; })];
+    const Y = axis(m0), yAt = (m) => Y[Math.max(0, Math.min(1440, m) - m0)], PPM = HOUR_PX / 60;
+    // 그릴 것: 어제에서 이어진 칸 · 그룹(같은 group_id 2개 이상) · 15분 이상 블록 · 15분 미만 한 줄(가까이 붙으면 '+N' 묶음)
+    // 자정을 넘는 계획은 e 가 1440 을 넘어요 (위치는 24:00 까지만). le = 화면에서 차지하는 끝(겹침 계산용)
+    const items = (S.spill || []).map((p) => { const e = toMin(p.start) + (p.mins || 30) - 1440; return { p, s: 0, e, le: Math.max(e, LINE_MIN), cont: true }; });
+    const byGrp = new Map();
+    for (const p of timed) if (p.group_id) byGrp.set(p.group_id, [...(byGrp.get(p.group_id) || []), p]);
+    const shorts = [];
+    for (const p of timed) {
+      const s = toMin(p.start), e = s + (p.mins || 30);
+      if (p.group_id && byGrp.get(p.group_id).length > 1) continue;
+      if (e - s < SHORT) shorts.push({ p, s, e }); else items.push({ p, s, e, le: e });
+    }
+    for (const [gid, ms] of byGrp) {
+      if (ms.length < 2) continue;
+      const s = Math.min(...ms.map((p) => toMin(p.start))), e = Math.max(...ms.map((p) => toMin(p.start) + (p.mins || 30)));
+      const need = Math.ceil(((S.fold.has(gid) ? 1 : ms.length + 1) * LINE_H + 8) / PPM); // 줄이 다 들어갈 만큼
+      items.push({ grp: gid, ms, s, e, le: Math.max(e, s + need) });
+    }
+    // 짧은 것끼리: 앞 줄이 차지하는 칸(LINE_MIN) 안에서 시작하면 한 묶음 → 첫 줄 + '+N'
+    for (let i = 0; i < shorts.length;) {
+      const first = shorts[i], ms = [first];
+      while (++i < shorts.length && shorts[i].s < first.s + LINE_MIN) ms.push(shorts[i]);
+      items.push({ mini: ms, p: first.p, s: first.s, e: first.e, le: first.s + LINE_MIN });
+    }
+    items.sort((a, b) => a.s - b.s || b.le - a.le);
+    // 겹치면 옆으로 나눠요 (구글 캘린더처럼) — 서로 이어진 묶음마다 칸 수를 같이 쓰고, 오른쪽이 비면 넓게 펴요
     const placed = [];
-    let group = [], groupEnd = -1, gid = 0;
-    const flush = () => {
+    let group = [], groupEnd = -1;
+    const flushCols = () => {
       const cols = [];
-      for (const it of group) { let c = cols.findIndex((end) => end <= it.s); if (c < 0) { c = cols.length; cols.push(it.e); } else cols[c] = it.e; it.c = c; it.g = gid; }
+      for (const it of group) { let c = cols.findIndex((end) => end <= it.s); if (c < 0) { c = cols.length; cols.push(it.le); } else cols[c] = it.le; it.c = c; }
       for (const it of group) {
         it.n = cols.length; it.span = 1;
-        while (it.c + it.span < it.n && !group.some((o) => o !== it && o.c === it.c + it.span && o.s < it.e && it.s < o.e)) it.span++;
+        while (it.c + it.span < it.n && !group.some((o) => o !== it && o.c === it.c + it.span && o.s < it.le && it.s < o.le)) it.span++;
       }
-      placed.push(...group); group = []; gid++;
+      placed.push(...group); group = [];
     };
-    for (const it of items) { if (group.length && it.s >= groupEnd) flush(); group.push(it); groupEnd = Math.max(groupEnd, it.e); }
-    if (group.length) flush();
-    // 같은 줄(칸)에서 바로 뒤에 시작하는 계획 → 위치 표(짧은 계획 뒤가 붙어 있으면 그 사이만 늘려요)
-    const sameLane = (a, b) => a.g !== b.g || (a.c < b.c + b.span && b.c < a.c + a.span);
-    for (const it of placed) it.next = placed.filter((o) => o.s > it.s && sameLane(it, o)).reduce((m, o) => Math.min(m, o.s), Infinity);
-    const Y = axis(placed, m0), yAt = (m) => Y[Math.max(0, Math.min(1440, m) - m0)];
-    // 보이는 높이: 원래 길이 → 짧으면 MIN_H 까지, 단 같은 줄에서 바로 뒤 계획이 시작하기 전까지만 (붙어 있으면 위에서 칸이 늘어나 있어요)
-    for (const it of placed) {
-      const real = yAt(it.e) - yAt(it.s) - 2, room = it.next === Infinity ? Infinity : yAt(it.next) - yAt(it.s) - 2;
-      it.h = Math.max(Math.max(real, FLOOR), Math.min(Math.max(real, MIN_H), room));
-    }
-    // 1시간 칸: 늘어난 칸은 높이와 15분 눈금을 실제 시각 자리에 다시 그려요
+    for (const it of items) { if (group.length && it.s >= groupEnd) flushCols(); group.push(it); groupEnd = Math.max(groupEnd, it.le); }
+    if (group.length) flushCols();
+    // 1시간 칸 (늘이지 않아요 — 15분 눈금은 CSS 배경)
     let hours = "";
     for (let h = startH; h < 24; h++) {
       const past = isPast || (isToday && (h + 1) * 60 <= nowM);
       const slot = `${pad(h)}:00`, cur = isToday && Math.floor(nowM / 60) === h;
-      const top = yAt(h * 60), H = yAt(h * 60 + 60) - top, q = [15, 30, 45].map((k) => r2(yAt(h * 60 + k) - top));
-      const grow = Math.abs(H - HOUR_PX) > 0.01 ? ` style="height:${r2(H)}px;background-image:linear-gradient(to bottom, ${q.map((y, i) => `transparent ${i ? q[i - 1] : 0}px ${r2(y - 1)}px, var(--line) ${r2(y - 1)}px ${y}px`).join(", ")}, transparent ${q[2]}px)"` : "";
-      hours += `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}${grow ? " grow" : ""}" data-h="${h}"${grow}><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
+      hours += `<div class="hour${past ? " past" : ""}${cur ? " cur" : ""}" data-h="${h}"><span>${slot}</span><button type="button" data-slot="${slot}" tabindex="-1">+ ${slot}에 추가</button></div>`;
     }
-    const blocks = placed.map(({ p, s, e, h, c, n, span, cont }) => {
+    const pos = (top, h, c, n, span) => { const w = 100 / n; return `top:${r2(top)}px;height:${r2(h)}px;left:calc(${c * w}% + ${c ? 2 : 0}px);right:auto;width:calc(${w * span}% - ${n > 1 ? 2 : 0}px)`; };
+    const sel = (id) => (S.sel.has(id) ? " sel" : "");
+    const tipOf = (p, s, e) => `${span2(p.start, e)} · ${p.text}${p.priority ? ` · ${p.priority}` : ""}`;
+    // 짧은 계획 한 줄: 점 · 시각 · 이름 (체크 · 버튼은 우클릭 메뉴로)
+    const miniRow = ({ p, s, e }, extra = "", style = "") => `<div class="block mini ${status(p)}${sel(p.id)}${extra}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" data-id="${esc(p.id)}" title="${esc(tipOf(p, s, e) + ` · ${hm(e - s)}`)}"${style ? ` style="${style}"` : ""}><i class="mini-dot" aria-hidden="true"></i><span class="when-i">${esc(p.start)}</span><span class="mini-t" data-edit="${esc(p.id)}">${esc(p.text)}</span>`;
+    const blocks = placed.map((it) => {
+      const { p, s, e, c, n, span, cont } = it;
       if (cont) { // 어제에서 이어진 칸: 체크 · 버튼 없이 보기만, 누르면 어제 하루로
-        const top = r2(yAt(0) + 1), w = 100 / n;
-        return `<div class="block cont ${p.done ? "done" : p.missed ? "fail" : ""}${h < 30 ? " thin tiny" : h < 50 ? " thin" : ""}" data-p="${p.priority || ""}" data-cont="${esc(p.id)}" title="${esc(`어제 ${p.start}부터 · ${p.text} · 누르면 어제 계획표`)}" style="top:${top}px;height:${r2(h)}px;left:calc(${c * w}% + ${c ? 2 : 0}px);right:auto;width:calc(${w * span}% - ${n > 1 ? 2 : 0}px);opacity:.6;border-style:dashed">
+        const h = Math.max(yAt(e) - yAt(0) - 2, LINE_H);
+        return `<div class="block cont ${p.done ? "done" : p.missed ? "fail" : ""}${h < 30 ? " thin tiny" : h < 50 ? " thin" : ""}" data-p="${p.priority || ""}" data-cont="${esc(p.id)}" title="${esc(`어제 ${p.start}부터 · ${p.text} · 누르면 어제 계획표`)}" style="${pos(yAt(0) + 1, h, c, n, span)};opacity:.6;border-style:dashed">
           <div class="txt"><span class="when-i">← ${esc(p.start)}</span><span>${esc(p.text)}</span>${h >= 50 ? `<span class="when">어제 ${esc(p.start)}부터 · 00:00–${toTime(e)}</span>` : ""}</div></div>`;
       }
-      const top = r2(yAt(s) + 1), w = 100 / n, frac = span / n, hh = Math.round(h);
+      if (it.mini) { // 15분 미만: 한 줄, 붙어 있으면 '+N' → 누르면 아래로 목록
+        const more = it.mini.length - 1, open = more && S.openMore === p.id;
+        return miniRow(it.mini[0], "", pos(yAt(s) + 1, LINE_H, c, n, span)) + (more ? `<button type="button" class="mini-more" data-more="${esc(p.id)}" aria-expanded="${open}" title="이 시각 근처 짧은 계획 ${more}개 더">+${more}</button>` : "") + `</div>`
+          + (open ? `<div class="mini-pop" style="${pos(yAt(s) + 1 + LINE_H + 2, (it.mini.length) * (LINE_H + 2) + 6, c, n, span)}">${it.mini.map((x) => miniRow(x, " in-pop") + "</div>").join("")}</div>` : "");
+      }
+      if (it.grp) { // 그룹: 머리 줄(접기 · 시각 · 이름 · 풀기) + 묶인 계획들
+        const fold = S.fold.has(it.grp), allSel = it.ms.every((x) => S.sel.has(x.id)), h = Math.max(yAt(e) - yAt(s) - 2, (fold ? 1 : it.ms.length + 1) * LINE_H + 8);
+        const done = it.ms.filter((x) => x.done).length;
+        return `<div class="block grp${allSel ? " sel" : ""}${fold ? " folded" : ""}" data-grp="${esc(it.grp)}" style="${pos(yAt(s) + 1, h, c, n, span)}">
+          <div class="grp-h"><button type="button" class="grp-fold" data-fold="${esc(it.grp)}" aria-expanded="${!fold}" aria-label="${fold ? "펼치기" : "접기"}">${fold ? "▸" : "▾"}</button><span class="when-i">${esc(toTime(s))}–${esc(endLab(e))}</span><span class="grp-n">${esc(it.ms[0].text)} 외 ${it.ms.length - 1}개</span><span class="grp-c">${done}/${it.ms.length}</span><button type="button" class="grp-un" data-ungroup="${esc(it.grp)}" title="그룹 풀기">풀기</button></div>
+          ${fold ? "" : it.ms.map((x) => `<div class="grp-row ${status(x)}${sel(x.id)}" data-id="${esc(x.id)}" data-p="${x.priority || ""}" title="${esc(tipOf(x, toMin(x.start), toMin(x.start) + (x.mins || 30)))}"><input type="checkbox" class="check" data-toggle="${esc(x.id)}" ${x.done ? "checked" : ""} aria-label="${esc(x.text)} 완료"><span class="when-i">${esc(x.start)}</span><span class="mini-t" data-edit="${esc(x.id)}">${esc(x.text)}</span></div>`).join("")}
+        </div>`;
+      }
+      const h = Math.max(yAt(e) - yAt(s) - 2, ONE_H), frac = span / n, hh = Math.round(h);
       // 크기에 맞춰: tiny(한 줄 · 작은 글씨) · thin(한 줄 + 시각) · narrow(좁으면 버튼은 숨기고 우클릭 메뉴로)
-      const size = hh < 21 ? " thin tiny micro" : hh < 30 ? " thin tiny" : hh < 50 ? " thin" : "";
+      const size = hh < 30 ? " thin tiny" : hh < 50 ? " thin" : "";
       const narrow = (frac < 0.5 ? " narrow xnarrow" : frac < 1 ? " narrow" : "") + (frac < 1 && c + span === n ? " edge-r" : "");
-      const tip = `${span2(p.start, e)} · ${p.text}${p.priority ? ` · ${p.priority}` : ""}`;
-      return `<div class="block ${status(p)}${size}${narrow}${S.sel.has(p.id) ? " sel" : ""}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tip)}" style="top:${top}px;height:${r2(h)}px;left:calc(${c * w}% + ${c ? 2 : 0}px);right:auto;width:calc(${w * span}% - ${n > 1 ? 2 : 0}px)" data-id="${esc(p.id)}">
+      return `<div class="block ${status(p)}${size}${narrow}${sel(p.id)}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tipOf(p, s, e))}" style="${pos(yAt(s) + 1, h, c, n, span)}" data-id="${esc(p.id)}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">${missBtn(p)}
         <div class="txt">${h < 50 ? `<span class="when-i">${esc(p.start)}</span>` : ""}<span data-edit="${esc(p.id)}">${esc(p.text)}</span>${e > 1440 && h < 50 ? `<span class="when-i">${esc(endLab(e))}</span>` : ""}${h >= 50 ? `<span class="when">${esc(span2(p.start, e))} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
         ${playBtn(p)}
@@ -262,21 +301,21 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       </div>`;
     }).join("");
     // 추가 창: 칸을 늘리지 않고 누른 시각 위치에 떠요 (블록 위로)
-    // 추가 창 · 고치기 창(우클릭 → 편집)은 같은 모양. 고칠 땐 값이 채워지고 버튼이 '저장'
+    // 추가 창 · 고치기 창(우클릭 → 편집)은 같은 모양. 고칠 땐 값이 채워지고 버튼이 '저장'. 적던 값(S.form)은 다시 그려도 그대로
     const ed = S.editId ? plans.find((x) => x.id === S.editId) : null;
+    const F = S.form || {};
     const MINS = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180, 240];
     const mins0 = ed ? ed.mins || 30 : DEFAULT_MINS, minsList = MINS.includes(mins0) ? MINS : [...MINS, mins0].sort((a, b) => a - b);
+    const minsSel = F.mins ?? String(mins0), custom = minsSel === "custom";
+    const at0 = F.at || S.editSlot, text0 = F.text ?? (ed ? ed.text : ""), prio0 = F.priority ?? (ed ? ed.priority || "" : S.editPrio || "");
     const pop = S.editSlot ? `<form class="slot-add slot-pop${ed ? " editing" : ""}" data-slot-form="${S.editSlot}" ${ed ? `data-edit-id="${esc(ed.id)}"` : ""} autocomplete="off" style="top:${r2(Math.max(0, yAt(toMin(S.editSlot)) + 2))}px">
         ${ed ? `<span class="sp-t">계획 고치기</span>` : ""}
-        <input class="input slot-at" type="time" name="at" step="60" value="${S.editSlot}" aria-label="시작 시각 (1분 단위)">
-        <input class="input" name="text" maxlength="200" placeholder="${S.editSlot}에 할 일" aria-label="할 일" value="${ed ? esc(ed.text) : ""}" autofocus>
-        <select class="select" name="mins" aria-label="걸리는 시간">${minsList.map((m) => `<option value="${m}" ${m === mins0 ? "selected" : ""}>${hm(m)}</option>`).join("")}<option value="custom">직접 입력…</option></select><input class="input slot-mins" name="mins_text" placeholder="${MINS_HINT}" aria-label="걸리는 시간 직접 입력" autocomplete="off" hidden>
-        ${prioSelect("priority", ed ? ed.priority || "" : S.editPrio || "")}
+        <input class="input slot-at" type="time" name="at" step="60" value="${esc(at0)}" aria-label="시작 시각 (1분 단위)">
+        <input class="input" name="text" maxlength="200" placeholder="${esc(at0)}에 할 일" aria-label="할 일" value="${esc(text0)}" autofocus>
+        <select class="select" name="mins" aria-label="걸리는 시간"${custom ? " hidden" : ""}>${minsList.map((m) => `<option value="${m}" ${String(m) === minsSel ? "selected" : ""}>${hm(m)}</option>`).join("")}<option value="custom"${custom ? " selected" : ""}>직접 입력…</option></select><input class="input slot-mins" name="mins_text" placeholder="${MINS_HINT}" aria-label="걸리는 시간 직접 입력" autocomplete="off" value="${esc(F.mins_text || "")}"${custom ? "" : " hidden"}>
+        ${prioSelect("priority", prio0)}
         <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
-    // 지금 선: 짧은 계획은 보기 좋게 늘려 그려서(예: 5분 → 다음 계획 전까지), 이미 끝난 계획의 늘어난 칸 안에 선이 들어가면 그 계획이 아직 진행 중처럼 보여요 → 끝난 계획 아래로 내려요
-    let nowY = yAt(nowM);
-    for (const it of placed) if (nowM >= it.e && it.s <= nowM) { const bottom = yAt(it.s) + 1 + it.h; if (nowY < bottom) nowY = bottom + 1; }
-    const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${r2(nowY)}px" aria-hidden="true"></div>` : "";
+    const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${r2(yAt(nowM))}px" aria-hidden="true"></div>` : "";
     // 폰: 추가 · 고치기 창은 시간표 위가 아니라 화면 아래에서 올라오는 시트로 (손가락 · 키보드에 안 가려지게)
     el.classList.toggle("ro", ro());
     const u = ctx.users.find((x) => x.id === who);
@@ -284,13 +323,14 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     if (hintEl) hintEl.textContent = ro() ? (S.closed ? `${u?.display_name || "친구"} 님은 하루 계획표를 공개하지 않았어요 (not open).` : `${u?.display_name || "친구"} 님의 하루 계획표예요 · 보기만 할 수 있어요.`) : `빈 시각을 누르면 바로 적을 수 있어요. 시각 · 길이는 1분 단위로 고쳐도 돼요. Enter 추가 · Esc 닫기.${matchMedia("(hover: hover) and (pointer: fine)").matches ? ` 계획에 마우스를 대고 ${MOD}C · 붙일 시각에 대고 ${MOD}V (Shift+클릭 여러 개 · ${MOD}A 전체).` : ""}`;
     if (ro()) { S.editSlot = null; S.editId = null; }
     const sheet = phone();
+    const fa = document.activeElement, focusName = fa?.closest?.("[data-slot-form]") ? fa.name : null; // 다시 그린 뒤에도 쓰던 칸에 커서
     $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine + (sheet ? "" : pop);
     let host = $("#dp-sheet", el);
     if (sheet && pop) {
       // <dialog> 맨 위층에 띄워요 — 유리 카드(backdrop-filter) 안에선 position: fixed 가 화면 기준이 안 돼요
       if (!host) {
         host = document.createElement("dialog"); host.id = "dp-sheet"; el.append(host);
-        host.addEventListener("cancel", (e) => { e.preventDefault(); S.editSlot = null; S.editId = null; drawGrid(); });
+        host.addEventListener("cancel", (e) => { e.preventDefault(); S.editSlot = null; S.editId = null; S.form = null; drawGrid(); });
       }
       host.innerHTML = `<div class="sheet-back" data-slot-close></div>` + pop.replace('class="slot-add slot-pop', 'class="slot-add slot-pop slot-sheet');
       if (!host.open) host.showModal();
@@ -303,7 +343,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     }
     S.axis = { m0, Y }; // 끌기 · 빈 칸 누르기가 같은 위치 표로 시각을 읽어요
     const f = $("[data-slot-form]", el);
-    if (f) { const i = f.text; i.focus({ preventScroll: true }); if (!S.editId) i.value = S.editText || ""; i.setSelectionRange(i.value.length, i.value.length); }
+    if (f) { const i = (focusName && f.elements[focusName]) || f.text; i.focus({ preventScroll: true }); if (i === f.text) i.setSelectionRange(i.value.length, i.value.length); }
+    drawSelBar();
+    if (!S.editSlot) queueMicrotask(flush); // 창이 닫혔으면 미뤄 둔 다시 불러오기 · 다시 그리기
     $("#dp-tt-sum", el).textContent = timed.length ? `${timed.length}개 · ${hm(timed.reduce((a, p) => a + (p.mins || 0), 0))}` : "";
   }
 
@@ -412,8 +454,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       t.contentEditable = "false";
       t.removeEventListener("keydown", onKey); t.removeEventListener("blur", onBlur);
       const v = t.textContent.trim();
-      if (!commit || !v || v === old) { t.textContent = old; return; }
+      if (!commit || !v || v === old) { t.textContent = old; flush(); return; }
       try { await save(v); } catch (e) { t.textContent = old; toast(e.message, "err"); }
+      flush();
     };
     const onKey = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); finish(true); } if (e.key === "Escape") finish(false); };
     const onBlur = () => finish(true);
@@ -435,6 +478,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     // 계획 창의 시간에서 "직접 입력…" 을 고르면 그 자리에 입력칸이 열려요
     const f = e.target.name === "mins" && e.target.closest("[data-slot-form]");
     if (f && f.mins.value === "custom") { f.mins.hidden = true; f.mins_text.hidden = false; f.mins_text.focus(); }
+    if (e.target.matches("#dp-selbar select")) { const v = e.target.value; e.target.value = ""; batch("prio", v || null); } // 고른 것 우선순위
   }
   // 친구 계획표: 블록을 누르면 상세 카드 (이름 · 시각 · 길이 · 우선순위 · 끝냄/못함 · 쌓인 집중 시간)
   function showPlanCard(p, at) {
@@ -454,15 +498,24 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   async function onElClick(e) {
     const cb = e.target.closest("#dp-grid [data-cont]");
     if (cb) { ctx.go(`#/calendar/${prevDay}${ro() ? `/u/${who}` : ""}`); return; } // 어제에서 이어진 칸 → 원래 계획이 있는 어제 계획표
-    const sb = !ro() && e.shiftKey && e.target.closest("#dp-grid .block");
-    if (sb && !e.target.closest("button, input, select, a")) { e.preventDefault(); const id = sb.dataset.id; S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); sb.classList.toggle("sel", S.sel.has(id)); return; }
+    // Shift · ⌘(Ctrl)+클릭 = 고르기에 넣고 빼기 (노션처럼)
+    const sb = !ro() && (e.shiftKey || e.metaKey || e.ctrlKey) && e.target.closest("#dp-grid [data-id]");
+    if (sb && !e.target.closest("button, input, select, a")) { e.preventDefault(); const id = sb.dataset.id; S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); drawSelBar(); return; }
+    const fold = e.target.closest("[data-fold]");
+    if (fold) { const g = fold.dataset.fold; S.fold.has(g) ? S.fold.delete(g) : S.fold.add(g); try { localStorage.setItem(FOLD_KEY, JSON.stringify([...S.fold].slice(-200))); } catch {} drawGrid(); return; }
+    const more = e.target.closest("[data-more]");
+    if (more) { S.openMore = S.openMore === more.dataset.more ? null : more.dataset.more; drawGrid(); return; }
+    const ug = e.target.closest("[data-ungroup]");
+    if (ug && S.plans) { batch("ungroup", null, S.plans.filter((p) => p.group_id === ug.dataset.ungroup).map((p) => p.id)); return; }
+    const sbar = e.target.closest("[data-sb]");
+    if (sbar) { const op = sbar.dataset.sb, n = Math.max(1, Math.min(720, Math.round(+($("#dp-sb-min", el)?.value) || 15))); if (op === "clear") { S.sel.clear(); drawSelBar(); } else batch(op, op === "fwd" ? n : op === "back" ? -n : null); return; }
     const wb = e.target.closest("[data-dpwho]");
     if (wb) { if (wb.dataset.dpwho === who) return; who = wb.dataset.dpwho; S.sel.clear(); $$("[data-dpwho]", el).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.dpwho === who))); S.plans = null; S.closed = false; S.editSlot = null; S.editId = null; drawGrid(); load(); return; }
     if (ro()) { const b = e.target.closest("#dp-grid .block"); const p = b && S.plans?.find((x) => x.id === b.dataset.id); if (p) showPlanCard(p, e); return; } // 친구 계획표는 보기만 · 누르면 상세
     const mb = e.target.closest("[data-miss]");
     if (mb && S.plans) { const p = S.plans.find((x) => x.id === mb.dataset.miss); if (p) setMissed(p.id, !p.missed); return; }
     const slot = e.target.closest("[data-slot]");
-    if (slot) { S.editSlot = slotAt(slot, e.clientY); S.editText = ""; S.editId = null; drawGrid(); return; }
+    if (slot) { if (S.sel.size) S.sel.clear(); S.editSlot = slotAt(slot, e.clientY); S.form = null; S.editId = null; drawGrid(); return; }
     const pr = e.target.closest("[data-prio]");
     if (pr) { // 아래로 펼쳐지는 1~5순위 고르기
       const p = S.plans.find((x) => x.id === pr.dataset.prio); if (!p) return;
@@ -483,7 +536,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       });
       return;
     }
-    if (e.target.closest("[data-slot-close]")) { S.editSlot = null; S.editId = null; drawGrid(); return; }
+    if (e.target.closest("[data-slot-close]")) { S.editSlot = null; S.editId = null; S.form = null; drawGrid(); return; }
     const play = e.target.closest("[data-play]");
     if (play) { const p = S.plans.find((x) => x.id === play.dataset.play); if (p) ctx.timer?.startFor(p); return; }
     const del = e.target.closest("[data-del]");
@@ -522,11 +575,15 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     e.preventDefault();
     const text = f.text.value.trim(), start = /^\d{2}:\d{2}$/.test(f.at?.value || "") ? f.at.value : f.dataset.slotForm, mins = f.mins.value === "custom" ? parseMins(f.mins_text.value) : +f.mins.value, priority = f.priority?.value || null;
     if (!text || !S.plans) return f.text.focus();
-    if (f.dataset.editId) { // 우클릭 → 편집 → 저장
+    if (!mins) { toast(`시간을 못 읽었어요. ${MINS_HINT}`, "err"); f.mins_text.focus(); return; }
+    if (f.dataset.editId) { // 우클릭 → 편집 → 저장 — 바뀐 칸만 보내요 (안 건드린 칸이 그 사이 다른 곳에서 바뀌었어도 덮지 않게)
       const p = S.plans.find((x) => x.id === f.dataset.editId); if (!p) return;
-      const old = { text: p.text, start: p.start, mins: p.mins, priority: p.priority };
-      Object.assign(p, { text, start, mins, priority }); S.editSlot = null; S.editId = null; drawAll();
-      try { await api.updatePlan(p.id, { text, start, mins, priority }); pu.patched(p.id, old, { text, start, mins, priority }, "계획 고치기"); changed("plans"); toast("계획을 고쳤어요."); }
+      const old = { text: p.text, start: p.start, mins: p.mins, priority: p.priority }, shown = { ...old, mins: p.mins || 30, priority: p.priority || null };
+      const ch = Object.fromEntries(Object.entries({ text, start, mins, priority }).filter(([k, v]) => (shown[k] ?? null) !== (v ?? null)));
+      S.editSlot = null; S.editId = null; S.form = null;
+      if (!Object.keys(ch).length) { drawAll(); return; }
+      Object.assign(p, ch); drawAll();
+      try { await api.updatePlan(p.id, ch); pu.patched(p.id, old, ch, "계획 고치기"); changed("plans"); toast("계획을 고쳤어요."); }
       catch (ex) { Object.assign(p, old); drawAll(); toast(ex.message, "err"); }
       return;
     }
@@ -535,21 +592,21 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       await addPlan({ text, start, mins, ...(priority ? { priority } : {}) });
       // 끝난 시각에서 바로 이어서 적을 수 있게 열어 둬요 (5분 단위)
       const next = toMin(start) + mins;
-      S.editSlot = next < 24 * 60 ? toTime(next) : null; S.editText = "";
+      S.editSlot = next < 24 * 60 ? toTime(next) : null; S.form = null;
       drawGrid();
     } catch (ex) { toast(ex.message, "err"); }
   });
-  el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; S.editId = null; drawGrid(); } });
+  el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; S.editId = null; S.form = null; drawGrid(); } });
   // 우클릭 → 편집 · 끝냄 · 우선순위 · 다음 날로 · 삭제
   el.addEventListener("contextmenu", (e) => {
     if (ro()) return;
-    const b = e.target.closest("#dp-grid .block:not(.cont)"); if (!b) return;
+    const b = e.target.closest("#dp-grid [data-id]"); if (!b) return;
     const p = S.plans?.find((x) => x.id === b.dataset.id); if (!p) return;
     openMenu(e, {
       title: `${span2(p.start, toMin(p.start) + (p.mins || 30))} · ${p.text}`,
       items: [{ k: "edit", label: "편집", hint: "이름 · 시각 · 길이" }, { k: "done", label: p.done ? "끝냄 되돌리기" : "끝냄" }, { k: "miss", label: p.missed ? "못함 되돌리기" : "못함", danger: !p.missed }, { k: "prio", prio: p.priority || "" }, { sep: true }, { k: "later", label: "다음 날로 미루기" }, { k: "del", label: "삭제", danger: true }],
       onPick: async (k, v) => {
-        if (k === "edit") { S.editId = p.id; S.editSlot = p.start; drawGrid(); return; }
+        if (k === "edit") { S.editId = p.id; S.editSlot = p.start; S.form = null; drawGrid(); return; }
         if (k === "done") return toggle(p.id, !p.done);
         if (k === "miss") return setMissed(p.id, !p.missed);
         if (k === "prio") { const old = p.priority; p.priority = v || null; drawAll(); try { await api.updatePlan(p.id, { priority: p.priority }); pu.patched(p.id, { priority: old }, { priority: p.priority }, "우선순위"); changed("plans"); } catch (ex) { p.priority = old; drawAll(); toast(ex.message, "err"); } return; }
@@ -563,8 +620,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   const axY = (m) => S.axis.Y[Math.max(0, Math.min(1440, m) - S.axis.m0)];
   const edgeOf = (b, y) => { const r = b.getBoundingClientRect(), k = Math.min(8, r.height / 4); return y - r.top <= k ? "top" : r.bottom - y <= k ? "bot" : "move"; };
   // 가장자리에 올리면 커서를 위아래 화살표로
-  el.addEventListener("mousemove", (e) => { const b = e.target.closest?.("#dp-grid .block"); if (!b || drag) return; b.style.cursor = e.target.closest("button, input") ? "" : edgeOf(b, e.clientY) === "move" ? "" : "ns-resize"; });
-  let drag = null, justDragged = 0;
+  el.addEventListener("mousemove", (e) => { const b = e.target.closest?.("#dp-grid .block[data-id]:not(.mini)"); if (!b || drag) return; b.style.cursor = e.target.closest("button, input") ? "" : edgeOf(b, e.clientY) === "move" ? "" : "ns-resize"; });
   // 폰(터치): 끌기 대신 꾹 누르면(0.45초) 우클릭과 같은 메뉴. 손가락이 움직이면 스크롤로 보고 취소
   let press = null;
   const cancelPress = () => {
@@ -586,9 +642,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   el.addEventListener("pointermove", (e) => { if (press && !press.fired && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 8) cancelPress(); });
   ["pointerup", "pointercancel"].forEach((t) => window.addEventListener(t, cancelPress));
   el.addEventListener("pointerdown", (e) => {
-    const b = e.target.closest?.("#dp-grid .block:not(.cont)"); if (!b || e.button !== 0 || e.pointerType === "touch" || ro()) return;
-    if (e.target.closest("button, input, select, a, [data-edit].editing")) return;
-    const mode = edgeOf(b, e.clientY); // 위·아래 가장자리 8px 안이면 길이 조절, 아니면 옮기기
+    const b = e.target.closest?.("#dp-grid .block[data-id]:not(.in-pop)"); if (!b || e.button !== 0 || e.pointerType === "touch" || ro()) return;
+    if (e.target.closest("button, input, select, a, [data-edit].editing") || e.shiftKey || e.metaKey || e.ctrlKey) return;
+    const mode = b.classList.contains("mini") ? "move" : edgeOf(b, e.clientY); // 한 줄(짧은 계획)은 옮기기만 // 위·아래 가장자리 8px 안이면 길이 조절, 아니면 옮기기
     drag = { b, id: b.dataset.id, mode, y0: e.clientY, sc0: scroller().scrollTop, s: +b.dataset.s, e: +b.dataset.e, ns: +b.dataset.s, ne: +b.dataset.e, moved: false };
     b.setPointerCapture?.(e.pointerId);
   });
@@ -610,7 +666,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     else { const base = Math.min(1440, drag.e); ne = base + d; if (ne >= 1440 && drag.e > 1440) ne = drag.e; ne = Math.max(drag.s + STEP, Math.min(Math.max(1440, drag.e), ne)); }
     drag.ns = ns; drag.ne = ne;
     drag.b.style.top = r2(axY(ns) + 1) + "px";
-    drag.b.style.height = r2(Math.max(MIN_H, axY(ne) - axY(ns) - 2)) + "px";
+    if (!drag.b.classList.contains("mini")) drag.b.style.height = r2(Math.max(ONE_H, axY(ne) - axY(ns) - 2)) + "px";
     let tag = drag.b.querySelector(".drag-tag"); if (!tag) { tag = document.createElement("span"); tag.className = "drag-tag"; drag.b.appendChild(tag); }
     tag.textContent = `${span2(toTime(ns), ne)} · ${hm(ne - ns)}`;
     e.preventDefault();
@@ -618,7 +674,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   const endDrag = async () => {
     if (!drag) return; const g = drag; drag = null;
     g.b.classList.remove("dragging");
-    if (!g.moved || (g.ns === g.s && g.ne === g.e)) { if (g.moved) drawGrid(); return; }
+    if (!g.moved || (g.ns === g.s && g.ne === g.e)) { if (g.moved) drawGrid(); else flush(); return; }
     justDragged = Date.now();
     const p = S.plans.find((x) => x.id === g.id); if (!p) return;
     const old = { start: p.start, mins: p.mins };
@@ -631,6 +687,86 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   // 끌고 난 직후의 클릭(체크 · 추가 창 열기)은 무시
   el.addEventListener("click", (e) => { if (Date.now() - justDragged < 250) { e.stopPropagation(); e.preventDefault(); } }, true);
 
+  // ---------- 여러 개 고르기 (노션처럼): 빈 곳을 끌어 상자로 고르기 · Shift/⌘+클릭 · 떠 있는 막대로 한 번에 ----------
+  function drawSelBar() {
+    $$("#dp-grid [data-id]", el).forEach((b) => b.classList.toggle("sel", S.sel.has(b.dataset.id)));
+    $$("#dp-grid .grp", el).forEach((g) => { const ids = $$("[data-id]", g).map((x) => x.dataset.id); g.classList.toggle("sel", ids.length > 0 && ids.every((id) => S.sel.has(id))); });
+    const bar = $("#dp-selbar", el); if (!bar) return;
+    const list = ro() || !S.plans ? [] : S.plans.filter((p) => S.sel.has(p.id));
+    bar.hidden = !list.length;
+    if (!list.length) { bar.innerHTML = ""; return; }
+    const g0 = list[0].group_id, oneGroup = !!g0 && list.every((p) => p.group_id === g0), allDone = list.every((p) => p.done);
+    bar.innerHTML = `<span class="sb-n">${list.length}개 선택</span>
+      <button type="button" class="btn sm" data-sb="${oneGroup ? "ungroup" : "group"}"${!oneGroup && list.length < 2 ? " disabled" : ""}>${oneGroup ? "그룹 풀기" : "그룹으로 묶기"}</button>
+      <span class="sb-shift" title="시간 옮기기"><span class="faint">시간 옮기기</span><button type="button" class="btn sm ghost" data-sb="back" aria-label="앞으로 옮기기">−</button><input class="input" type="number" id="dp-sb-min" value="15" min="1" max="720" step="5" aria-label="옮길 분"><span class="faint">분</span><button type="button" class="btn sm ghost" data-sb="fwd" aria-label="뒤로 옮기기">+</button></span>
+      ${prioSelect("sb_prio", "")}
+      <button type="button" class="btn sm" data-sb="done">${allDone ? "완료 취소" : "완료"}</button>
+      <button type="button" class="btn sm danger" data-sb="del">삭제</button>
+      <button type="button" class="icon-btn sm" data-sb="clear" aria-label="선택 풀기">${icon.x(14)}</button>`;
+  }
+  // 고른 계획들에 한 번에: group · ungroup · fwd/back(분) · prio · done · del — 한 번의 ⌘Z 로 되돌려요 (plan-undo)
+  async function batch(op, v, ids = [...S.sel]) {
+    if (ro() || !S.plans) return;
+    const list = ids.map((id) => S.plans.find((p) => p.id === id)).filter(Boolean); if (!list.length) return;
+    if (op === "del") {
+      const keep = S.plans; S.plans = S.plans.filter((p) => !ids.includes(p.id)); S.sel.clear(); drawAll();
+      try { await Promise.all(list.map((p) => api.deletePlan(p.id))); pu.deletedMany(list, `${list.length}개 지우기`); changed("plans"); toast(`${list.length}개를 지웠어요 · ${MOD}Z 되돌리기`); }
+      catch (ex) { S.plans = keep; drawAll(); toast(ex.message, "err"); load(); }
+      return;
+    }
+    const allDone = list.every((p) => p.done), gid = "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const next = {
+      group: () => ({ group_id: gid }),
+      ungroup: () => ({ group_id: null }),
+      fwd: (p) => (p.start ? { start: toTime(Math.max(0, Math.min(1439, toMin(p.start) + v))) } : null),
+      back: (p) => (p.start ? { start: toTime(Math.max(0, Math.min(1439, toMin(p.start) + v))) } : null),
+      prio: () => ({ priority: v }),
+      done: (p) => ({ done: !allDone, missed: allDone ? p.missed : 0 }),
+    }[op];
+    if (!next || (op === "group" && list.length < 2)) return;
+    const LAB = { group: "그룹으로 묶기", ungroup: "그룹 풀기", fwd: `${v}분 뒤로`, back: `${-v}분 앞으로`, prio: "우선순위", done: allDone ? "완료 취소" : "완료" };
+    const ents = list.map((p) => { const a = next(p); return a && { p, id: p.id, before: pu.pickOld(p, Object.keys(a)), after: a }; }).filter(Boolean);
+    if (!ents.length) return;
+    const olds = ents.map((x) => ({ ...x.p }));
+    for (const x of ents) Object.assign(x.p, x.after, "done" in x.after ? { done: x.after.done ? 1 : 0 } : {});
+    if (op === "group") S.fold.delete(gid);
+    drawAll();
+    try {
+      await Promise.all(ents.map((x) => api.updatePlan(x.id, x.after)));
+      pu.patchedMany(ents.map(({ id, before, after }) => ({ id, before, after })), `${LAB[op]} · ${ents.length}개`);
+      changed("plans");
+    } catch (ex) { ents.forEach((x, i) => Object.assign(x.p, olds[i])); drawAll(); toast(ex.message, "err"); load(); }
+  }
+  // 빈 곳(블록이 아닌 시간 칸)을 누른 채 끌면 상자 — 닿은 계획이 골라져요. Shift/⌘ 를 누르고 시작하면 지금 고른 것에 더해요
+  el.addEventListener("pointerdown", (e) => {
+    if (ro() || e.button !== 0 || e.pointerType === "touch" || !S.plans) return;
+    const g = $("#dp-grid", el);
+    if (!g || !g.contains(e.target) || e.target.closest("[data-id], .grp, .mini-pop, [data-slot-form], .mini-more")) return;
+    lasso = { x0: e.clientX, y0: e.clientY, sc0: scroller().scrollTop, base: e.shiftKey || e.metaKey || e.ctrlKey ? new Set(S.sel) : new Set(), moved: false, box: null };
+    e.preventDefault(); // 끄는 동안 글자가 골라지지 않게
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!lasso) return;
+    if (!lasso.moved && Math.hypot(e.clientX - lasso.x0, e.clientY - lasso.y0) < 5) return;
+    const g = $("#dp-grid", el), sc = scroller(); if (!g) return;
+    const sr = sc.getBoundingClientRect();
+    if (e.clientY < sr.top + 30) sc.scrollTop -= 12; else if (e.clientY > sr.bottom - 30) sc.scrollTop += 12;
+    if (!lasso.moved) { lasso.moved = true; lasso.box = document.createElement("div"); lasso.box.className = "dp-lasso"; g.appendChild(lasso.box); }
+    const gr = g.getBoundingClientRect(), y0 = lasso.y0 - (sc.scrollTop - lasso.sc0);
+    const L = Math.min(lasso.x0, e.clientX), R = Math.max(lasso.x0, e.clientX), T = Math.min(y0, e.clientY), B = Math.max(y0, e.clientY);
+    Object.assign(lasso.box.style, { left: r2(L - gr.left) + "px", top: r2(T - gr.top) + "px", width: r2(R - L) + "px", height: r2(B - T) + "px" });
+    const hit = new Set(lasso.base);
+    for (const b of $$("#dp-grid [data-id]", el)) { const r = b.getBoundingClientRect(); if (r.width && r.left < R && r.right > L && r.top < B && r.bottom > T) hit.add(b.dataset.id); }
+    S.sel = hit; drawSelBar();
+  });
+  const endLasso = () => {
+    if (!lasso) return; const l = lasso; lasso = null;
+    l.box?.remove();
+    if (l.moved) justDragged = Date.now(); // 끝낸 뒤의 클릭(추가 창 열기)은 무시
+    flush();
+  };
+  window.addEventListener("pointerup", endLasso); window.addEventListener("pointercancel", endLasso);
+
   // 마우스 위치 → 5분 단위 시각 ("+ 14:35에 추가")
   function slotAt(btn, y) {
     const row = btn.closest(".hour"), r = row.getBoundingClientRect(), h = +row.dataset.h, A = S.axis;
@@ -640,11 +776,19 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     return `${pad(h)}:${pad(m)}`;
   }
   el.addEventListener("pointermove", (e) => { const b = e.target.closest?.(".hour [data-slot]"); if (b) b.textContent = `+ ${slotAt(b, e.clientY)}에 추가`; });
-  el.addEventListener("input", (e) => { if (e.target.matches("[data-slot-form] [name=text]")) S.editText = e.target.value; });
+  el.addEventListener("input", (e) => {
+    if (e.target.closest("[data-slot-form]")) keepForm(e.target.form);
+    // 시각을 바꾸면 '…에 할 일' 안내도 새 시각으로
+    if (e.target.matches("[data-slot-form] [name=at]") && e.target.value) { const t = e.target.form?.querySelector("[name=text]"); if (t) t.placeholder = `${e.target.value}에 할 일`; }
+  });
 
-  const onChanged = (e) => { if (["logs", "plans"].includes(e.detail?.kind)) load(); };
+  // 창의 칸 값을 그대로 기억 (시각 · 길이 · 우선순위 · 이름) — 다시 그려도, 고치기 창에서도 그대로
+  function keepForm(f) { if (f) S.form = { at: f.at?.value || "", text: f.text?.value ?? "", mins: f.mins?.value, mins_text: f.mins_text?.value || "", priority: f.priority?.value ?? "" }; }
+  el.addEventListener("change", (e) => { if (e.target.closest?.("[data-slot-form]")) keepForm(e.target.form); });
+  // 다른 곳에서 바꿨다는 알림 · 1분마다 다시 그리기: 쓰는 중이면 닫힐 때까지 미뤄요
+  const onChanged = (e) => { if (["logs", "plans"].includes(e.detail?.kind)) { if (busy()) S.pendingLoad = true; else load(); } };
   window.addEventListener("trio:changed", onChanged);
-  const tick = setInterval(() => { if (isToday && S.plans) drawGrid(); }, 60_000);
+  const tick = setInterval(() => { if (isToday && S.plans) { if (busy()) S.pendingDraw = true; else drawGrid(); } }, 60_000);
   load();
   loadExtras();
   if (!future) loadTrend();
@@ -660,18 +804,19 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     S.hoverMin = inside ? Math.max(0, Math.min(1435, Math.floor(minuteAt(S.axis.Y, e.clientY - r.top, S.axis.m0) / STEP) * STEP)) : null;
   });
   el.addEventListener("pointerleave", () => { S.hoverId = null; S.hoverMin = null; });
-  el.addEventListener("mousedown", (e) => { if (e.shiftKey && e.target.closest("#dp-grid .block")) e.preventDefault(); }); // Shift+클릭이 글자를 고르지 않게
+  el.addEventListener("mousedown", (e) => { if ((e.shiftKey || e.metaKey || e.ctrlKey) && e.target.closest("#dp-grid [data-id]")) e.preventDefault(); }); // Shift+클릭이 글자를 고르지 않게
   // Esc = 고른 것 풀기 · ⌘A = 이날 시각 있는 계획 전부 고르기 (입력 중엔 원래대로)
   const onSelKey = (e) => {
     if (!alive || !el.isConnected || ro() || !S.plans) return;
     const a = document.activeElement;
     if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
-    if (e.key === "Escape" && S.sel.size) { S.sel.clear(); $$("#dp-grid .block.sel", el).forEach((b) => b.classList.remove("sel")); }
+    if (e.key === "Escape" && S.sel.size) { S.sel.clear(); drawSelBar(); }
+    else if ((e.key === "Delete" || e.key === "Backspace") && S.sel.size) { e.preventDefault(); batch("del"); }
     else if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "a") {
       const timed = S.plans.filter((p) => p.start);
       if (!timed.length) return;
       e.preventDefault();
-      S.sel = new Set(timed.map((p) => p.id)); $$("#dp-grid .block", el).forEach((b) => b.classList.add("sel"));
+      S.sel = new Set(timed.map((p) => p.id)); drawSelBar();
       toast(`계획 ${timed.length}개를 골랐어요 — ${MOD}C 로 복사`);
     }
   };
@@ -692,6 +837,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   return () => {
     alive = false; stopAic?.(); closeMenu();
     ["pointerup", "pointercancel"].forEach((t) => window.removeEventListener(t, cancelPress));
+    window.removeEventListener("pointerup", endLasso); window.removeEventListener("pointercancel", endLasso);
     window.removeEventListener("trio:changed", onChanged);
     el.removeEventListener("change", onElChange);
     el.removeEventListener("click", onElClick);
