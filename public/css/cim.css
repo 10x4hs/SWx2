@@ -564,3 +564,19 @@ a.c-src:hover { border-color: var(--c-ink); color: var(--c-ink); }
 .c-cont { margin: 4px 0 8px; }
 .c-ai-more { margin-top: 8px; }
 .c-ai-sep { font-size: 12.5px; font-weight: 700; color: var(--c-faint); text-align: center; border-top: 1px solid var(--c-line); padding-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* CBT 1~10회: 시간 없음 · 바로 채점 (2026-11-02) */
+.cm-timer.free { color: var(--c-ink-3, #8a8a8a); font-size: 20px; }
+.cb-tag { margin-left: 8px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--c-ink-3, #8a8a8a); border: 1px solid var(--c-line, #333); }
+.cb-tag.free { color: var(--c-ink); }
+.cb-mode { display: grid; gap: 8px; margin: 16px 0; }
+.cb-mode label { display: flex; gap: 10px; align-items: baseline; padding: 12px 14px; border: 1px solid var(--c-line, #333); border-radius: 12px; cursor: pointer; }
+.cb-mode label:has(input:checked) { border-color: var(--c-ink); background: var(--c-soft); }
+.cb-mode span { color: var(--c-ink-3, #8a8a8a); font-size: 14px; }
+.cb-opts .c-opt.ok { border-color: var(--c-ok, #3fb950) !important; background: color-mix(in srgb, var(--c-ok, #3fb950) 14%, transparent) !important; }
+.cb-opts .c-opt.bad { border-color: var(--c-bad, #f85149) !important; background: color-mix(in srgb, var(--c-bad, #f85149) 12%, transparent) !important; }
+.cb-opts .c-opt:disabled { cursor: default; opacity: 1; }
+.cb-ex { margin-top: 14px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--c-line, #333); font-size: 17px; line-height: 1.65; word-break: keep-all; }
+.cb-ex.ok b { color: var(--c-ok, #3fb950); }
+.cb-ex.bad b { color: var(--c-bad, #f85149); }
+.cb-ex p { margin: 6px 0 0; }

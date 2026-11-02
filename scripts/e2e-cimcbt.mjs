@@ -40,10 +40,11 @@ export async function cimCbtE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }) 
         const nRows = await p.locator(".cb-row").count();
         ok(nRows === 15 && (await over()) <= 1, `${tv} · CBT 목록 ${nRows}줄`);
         await p.click('.cb-row[data-no="1"]'); await p.waitForSelector("#cb-go", { timeout: 8000 }).catch(() => {});
+        await p.evaluate(() => { const r = document.querySelector('[name=cb-mode][value=end]'); if (r) r.checked = true; }); // 1~10회: 시간 없음 · 끝까지 풀고 채점
         await p.click("#cb-go"); await p.waitForSelector(".cb-run", { timeout: 20000 }).catch(() => {});
         await sleep(1200);
         const r1 = await p.evaluate(() => ({ tm: document.querySelector("#cm-tm")?.textContent || "", cells: document.querySelectorAll(".cb-grid [data-j]").length, hash: location.hash, focus: !!document.querySelector(".c-focus"), q: document.querySelector("#cb-q")?.textContent || "" }));
-        ok(/^1[01]\d:\d\d$/.test(r1.tm) && r1.cells === 100 && r1.hash === "#/cim/exam/cbt/1" && r1.focus && r1.q.length > 5 && (await over()) <= 1, `${tv} · CBT 1회 시작 — 시계 ${r1.tm} · 번호판 ${r1.cells} · ${r1.hash}`);
+        ok(/^00:0\d$/.test(r1.tm) && r1.cells === 100 && r1.hash === "#/cim/exam/cbt/1" && r1.focus && r1.q.length > 5 && (await over()) <= 1, `${tv} · CBT 1회 시작 — 시계 ${r1.tm} · 번호판 ${r1.cells} · ${r1.hash}`);
 
         // 2) 답 · 표시 · 이동
         await p.keyboard.press("1"); await sleep(150);   // 1번 문항 답 → 2번으로
@@ -71,6 +72,16 @@ export async function cimCbtE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }) 
         await sleep(1800);
         const s2 = await state(), wrong = Object.keys(s2.wrong || {}).length;
         ok(nAll === 100 && s2.cbt?.["1"]?.total != null && !s2.cbtRun && wrong >= 98, `${tv} · CBT 해설 전체 ${nAll} · 서버 1회 ${s2.cbt?.["1"]?.total}점 · 오답노트 ${wrong}개`);
+
+        // 4-1) 2회 '바로 채점': 고르면 그 자리에서 정답 · 해설, 다음 문제로 안 넘어가요 / 11회는 120분
+        await p.goto(BASE + "/#/cim/exam/cbt/2"); await p.waitForSelector("#cb-go", { timeout: 8000 }).catch(() => {});
+        await p.click("#cb-go"); await p.waitForSelector(".cb-run", { timeout: 20000 }).catch(() => {}); await sleep(600);
+        await p.keyboard.press("2"); await sleep(250);
+        const im = await p.evaluate(() => ({ ex: !!document.querySelector(".cb-ex"), ok: document.querySelectorAll(".cb-opts .c-opt.ok").length, cur: +document.querySelector(".cb-grid .cur")?.dataset.j, mode: document.querySelector("#cb-mode")?.textContent || "" }));
+        ok(im.ex && im.ok === 1 && im.cur === 0 && /바로 채점/.test(im.mode), `${tv} · CBT 2회 바로 채점 — 해설 ${im.ex} · 정답 표시 ${im.ok} · 지금 ${im.cur + 1}번 · ${im.mode}`);
+        await p.goto(BASE + "/#/cim/exam/cbt/11"); await p.waitForSelector("#cb-go", { timeout: 8000 }).catch(() => {});
+        const t11 = await p.evaluate(() => ({ go: document.querySelector("#cb-go")?.textContent || "", mode: !!document.querySelector("[name=cb-mode]") }));
+        ok(/120분/.test(t11.go) && !t11.mode, `${tv} · CBT 11회는 120분 — "${t11.go.trim()}" · 방식 고르기 ${t11.mode}`);
 
         // 5) 오늘 탭 6일 플랜
         await p.goto(BASE + "/#/cim"); await p.waitForSelector("#c-cbt", { timeout: 10000 }).catch(() => {});
