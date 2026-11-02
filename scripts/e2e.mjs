@@ -39,6 +39,7 @@ import { boardE2E } from "./e2e-board.mjs";
 import { noteFilesE2E } from "./e2e-notefiles.mjs";
 import { svmE2E } from "./e2e-svm.mjs";
 import { psyE2E } from "./e2e-psy.mjs";
+import { cimCbtE2E } from "./e2e-cimcbt.mjs";
 import { section, count, aiMock, writeSummary } from "./lib/sections.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
@@ -1217,7 +1218,7 @@ try {
       const nAns = Object.keys(sq.data?.ans || {}).filter((k) => k.startsWith("s2c3-")).length;
       await p.reload(); await sleep(2200); await hop("#/cim/exam/quiz", "#c-ch", 300);
       const seen = await p.evaluate(() => document.querySelector('#c-ch option[value="s2c3"]')?.textContent || "");
-      ok(big === "오답 다시 풀기,문제 풀기,모의고사,숫자 외우기" && nAns === 2 && /\(2\/100\)/.test(seen) && !(await over()) && !errs.length, `${tv} · CIM 시험 — [${big}] · 서버 저장 ${nAns}개 · 새로 고침 뒤 "${seen}"${errs.length ? " — " + errs[0] : ""}`);
+      ok(big === "오답 다시 풀기,문제 풀기,실전 CBT 15회,모의고사,숫자 외우기" && nAns === 2 && /\(2\/\d+\)/.test(seen) && !(await over()) && !errs.length, `${tv} · CIM 시험 — [${big}] · 서버 저장 ${nAns}개 · 새로 고침 뒤 "${seen}"${errs.length ? " — " + errs[0] : ""}`);
       errs = [];
       p.once("dialog", (d) => d.accept());
       await hop("#/cim/exam/mock", "#cm-go", 200); await p.click("#cm-go"); await p.waitForSelector(".cm-run .c-opt", { timeout: 30000 }).catch(() => {}); await sleep(300);
@@ -1819,6 +1820,8 @@ try {
   await section("svm", () => svmE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag, member: user, aiMock }));
   // ---------- Psychology (#/psy, 기능 psy) — scripts/e2e-psy.mjs (컴퓨터 · 폰 · 기능 없는 회원은 안 보임) ----------
   await section("psy", () => psyE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }));
+  // ---------- CIM 실전 CBT 15회 (#/cim/exam/cbt) — scripts/e2e-cimcbt.mjs (세트 파일 · 풀기 · 이어서 · 제출 · 6일 플랜) ----------
+  await section("cimcbt", () => cimCbtE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }));
 } finally {
   await browser.close();
   try { cleanup(); } catch {}

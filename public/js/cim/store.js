@@ -13,12 +13,14 @@ export const diff = (a, b) => Math.round((new Date(b + "T00:00:00Z") - new Date(
 // ans[id] = [맞힌 수, 틀린 수, 마지막 맞음 1/0] · wrong[id] = { st: 단계, due: 다시 볼 날 } · days[날] = 푼 수
 // hist[날] = { 1: [맞음, 틀림], 2: …, 3: … } (과목별 정답률 흐름) · done[계획 일차][할 일] = true · read[핵심 key] = 1
 // mocks = [{ date, by, total, pass, rid }] · run = 진행 중인 모의고사 { rid, ids, picks, end, cur }
+// cbt[회차] = 끝난 CBT { rid, date, by, total, pass, picks } · cbtRun = 진행 중인 CBT { rid, no, ids, picks, flags, end, cur } · cbtStart = 6일 플랜 첫날
 // today = 오늘 공부(#/cim/go) 진행 { d: 날, day: 계획 일차, step: 0 읽기 · 1 문제 · 2 오답 · 3 떠올리기 · 4 끝, i, cards, qs, wq, p1, p2, rc } · intro = 처음 안내를 봤으면 1
-const blank = () => ({ v: 2, exam: "", start: today(), done: {}, ans: {}, wrong: {}, days: {}, hist: {}, read: {}, mocks: [], run: null });
+const blank = () => ({ v: 2, exam: "", start: today(), done: {}, ans: {}, wrong: {}, days: {}, hist: {}, read: {}, mocks: [], run: null, cbt: {}, cbtRun: null, cbtStart: "" });
 const obj = (x) => (x && typeof x === "object" && !Array.isArray(x) ? x : {});
 function norm(x) {
   const s = Object.assign(blank(), obj(x));
-  for (const k of ["done", "ans", "wrong", "days", "hist", "read"]) s[k] = obj(s[k]);
+  for (const k of ["done", "ans", "wrong", "days", "hist", "read", "cbt"]) s[k] = obj(s[k]);
+  if (s.cbtRun && (!Array.isArray(s.cbtRun.ids) || !s.cbtRun.ids.length || !s.cbtRun.no)) s.cbtRun = null;
   if (!Array.isArray(s.mocks)) s.mocks = [];
   if (s.run && (!Array.isArray(s.run.ids) || !s.run.ids.length)) s.run = null;
   if (s.today && (typeof s.today !== "object" || !Array.isArray(s.today.cards) || !Array.isArray(s.today.qs))) s.today = null;
@@ -66,6 +68,12 @@ export function merge(L, R) {
   out.mocks = [...R.mocks, ...L.mocks].filter((m) => { const k = mk(m); if (seen.has(k)) return false; seen.add(k); return true; }).slice(-20);
   const finished = (run) => run && out.mocks.some((m) => m.rid && m.rid === run.rid);
   out.run = L.run && !finished(L.run) ? L.run : R.run && !finished(R.run) ? R.run : null;
+  // CBT: 회차마다 먼저 끝낸 기록을 그대로 (다시 풀면 더 나중 것) · 진행 중인 것은 이미 끝난 rid 면 버려요
+  out.cbt = { ...R.cbt };
+  for (const [no, x] of Object.entries(L.cbt)) if (!out.cbt[no] || (x.at || 0) >= (out.cbt[no].at || 0)) out.cbt[no] = x;
+  const doneC = (run) => run && Object.values(out.cbt).some((x) => x.rid === run.rid);
+  out.cbtRun = L.cbtRun && !doneC(L.cbtRun) ? L.cbtRun : R.cbtRun && !doneC(R.cbtRun) ? R.cbtRun : null;
+  out.cbtStart = L.cbtStart || R.cbtStart || "";
   return out;
 }
 // 같은 객체 안에서 바꿔요 — 화면이 쥐고 있는 S 를 그대로 쓰게
