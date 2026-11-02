@@ -306,18 +306,69 @@ a.c-row:hover b, button.c-row:hover b { text-decoration: underline; text-underli
 .cm-w { display: grid; gap: 12px; padding: 18px 0; border-top: 1px solid var(--c-line); }
 .cm-w .c-opt { padding: 12px 14px !important; font-size: 15.5px; }
 /* 실전 CBT (cbt.js) — 넓으면 문제 | 번호판 두 칸, 폰은 번호판이 아래로 */
-.cb-run { display: grid; gap: 22px; padding-top: 6px; }
-@media (min-width: 900px) { .cb-run { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; } .cb-side { position: sticky; top: 12px; border-top: 0 !important; border-left: 1px solid var(--c-line); padding: 0 0 0 18px !important; } }
-.cb-no { font-weight: 800; font-size: 15px; color: var(--c-sub); }
-.cb-side { display: grid; gap: 4px; border-top: 1px solid var(--c-line); padding-top: 12px; }
-.cb-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--c-sub); font-weight: 600; }
-.cb-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; background: var(--c-soft); border: 1px solid var(--c-line); vertical-align: -1px; }
+/* CBT 푸는 화면 (2026-11-02) — 문제가 주인공: 읽기 칸이 넓게(가운데 최대 760px), 번호판은 오른쪽 얇은 칸(300px) · B 로 숨김 · 폰은 바텀시트 */
+.c-col:has(.cb-run) { max-width: 1320px; }
+.cb-run { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "bar" "main"; column-gap: 32px; padding-top: 6px; }
+.cb-bar { grid-area: bar; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--c-line); font-size: 14px; }
+.cb-bar .cm-timer { font-size: 18px; font-weight: 750; }
+.cb-bar .cm-ans { font-size: 14px; }
+.cb-pad { font-size: 13.5px; font-weight: 650; color: var(--c-sub); padding: 6px 10px !important; border-radius: 10px; }
+.cb-pad:hover { color: var(--c-ink); background: var(--c-soft) !important; }
+.cb-bar .c-btn.sm { padding: 6px 14px; font-size: 14px; }
+.cb-no { font-weight: 750; font-size: 14px; color: var(--c-sub); }
+.cb-main { grid-area: main; min-width: 0; }
+.cb-read { max-width: 760px; margin: 0 auto; display: grid; gap: 22px; padding-top: 28px; }
+/* 위 한 줄: 몇 번 · 과목 · 장 */
+.cb-meta { font-size: 13.5px; font-weight: 600; color: var(--c-sub); margin: 0 0 -10px; }
+.cb-meta b { color: var(--c-ink); }
+/* 문제: 굵기는 semibold, 한국어는 낱말 단위로 줄바꿈 */
+.cb-q { font-size: 23px; font-weight: 620; line-height: 1.6; letter-spacing: -.02em; word-break: keep-all; margin: 0; }
+.cb-opts { gap: 10px; }
+.cb-opts .c-opt { width: 100%; font-size: 18.5px; line-height: 1.65; font-weight: 450; padding: 16px 20px !important; grid-template-columns: 28px minmax(0, 1fr); gap: 14px; align-items: start; word-break: keep-all; color: var(--c-body); }
+.cb-opts .c-opt .k { width: 26px; height: 26px; margin-top: 2px; border-radius: 50%; border: 1.5px solid var(--c-line); display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--c-sub); }
+/* 마우스 올림은 살짝만, 고른 보기는 진한 테두리 + 옅은 라임 바탕 */
+.cb-opts .c-opt:hover:not(:disabled) { border-color: var(--c-faint) !important; }
+.cb-opts .c-opt.pick { border-color: var(--c-ink) !important; background: var(--c-lime-soft) !important; color: var(--c-ink); }
+.cb-opts .c-opt.pick .k { background: var(--c-ink); border-color: var(--c-ink); color: var(--c-bg); }
+/* 아래 막대: 읽기 칸 바닥에 붙어 있어요 */
+.cb-foot { position: sticky; bottom: 0; background: var(--c-bg); border-top: 1px solid var(--c-line); padding: 12px 0 14px; display: grid; gap: 8px; margin-top: 6px; z-index: 2; }
+.cb-nav { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; }
+.cb-nav .c-btn { padding: 11px 16px; font-size: 15.5px; }
+.cb-keys { margin: 0; font-size: 12.5px; color: var(--c-faint); text-align: center; line-height: 1.5; }
+.cb-keys kbd { font: 600 11.5px var(--c-font); border: 1px solid var(--c-line); border-radius: 5px; padding: 0 5px; color: var(--c-sub); background: var(--c-card); }
+.cb-flag.on { border-color: var(--c-bad) !important; color: var(--c-bad); }
+/* 번호판: 과목별 작은 라벨 + 10칸 격자 · 답함 = 검정 칸, 표시 = 빨간 점, 지금 = 라임 테두리 */
+.cb-side { display: grid; gap: 2px; align-content: start; }
+.cb-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--c-sub); font-weight: 600; line-height: 1.5; }
+.cb-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 4px; background: var(--c-soft); border: 1px solid var(--c-line); vertical-align: -1px; }
 .cb-legend i.a { background: var(--c-ink); border-color: var(--c-ink); }
 .cb-legend i.f, .cb-grid button.f::after { background: var(--c-bad); border-color: var(--c-bad); }
-.cb-grid button { position: relative; }
-.cb-grid button.f::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; }
-.cb-nav { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; }
-.cb-flag.on { border-color: var(--c-bad) !important; color: var(--c-bad); }
+.cb-side .cm-grp { gap: 4px; margin-top: 10px; }
+.cb-side .cm-grp .k { font-size: 11.5px; line-height: 1.4; color: var(--c-faint); }
+.cb-grid { grid-template-columns: repeat(10, 1fr); gap: 2px; }
+.cb-grid button { position: relative; min-height: 0; aspect-ratio: 1; border-radius: 6px; font-size: 11px; font-weight: 650; line-height: 1; padding: 0; }
+.cb-grid button.cur { border-color: var(--c-lime) !important; box-shadow: 0 0 0 1.5px var(--c-ink); color: var(--c-ink); }
+.cb-grid button.f::after { content: ""; position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; border-radius: 50%; }
+.cb-scrim { display: none; }
+@media (min-width: 900px) {
+  .cb-run { grid-template-columns: minmax(0, 1fr) 300px; grid-template-areas: "bar bar" "main side"; }
+  .cb-side { grid-area: side; position: sticky; top: 12px; border-left: 1px solid var(--c-line); padding: 18px 0 0 14px; }
+  .cb-run.hide { grid-template-columns: minmax(0, 1fr); grid-template-areas: "bar" "main"; }
+  .cb-run.hide .cb-side { display: none; }
+}
+/* 폰: 한 줄, 번호판은 '번호판' 버튼으로 아래에서 올라오는 시트 */
+@media (max-width: 899px) {
+  .cb-bar { gap: 10px; flex-wrap: wrap; }
+  .cb-read { padding-top: 18px; gap: 18px; }
+  .cb-q { font-size: 20px; }
+  .cb-opts .c-opt { font-size: 17px; padding: 14px 16px !important; gap: 12px; }
+  .cb-keys { display: none; }
+  .cb-side { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; background: var(--c-card); border-radius: 18px 18px 0 0; box-shadow: var(--c-shadow); padding: 16px 18px calc(18px + env(safe-area-inset-bottom)); max-height: 72vh; overflow: auto; transform: translateY(105%); transition: transform .25s var(--c-ease); }
+  .cb-grid button { font-size: 12.5px; }
+  .cb-run.sheet .cb-side { transform: none; }
+  .cb-run.sheet .cb-scrim { display: block; position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, .35); }
+}
+@media (prefers-reduced-motion: reduce) { .cb-side { transition: none; } }
 .cb-row .hot { color: var(--c-ink); font-weight: 700; }
 .cb-res .gh .c-seg { grid-template-columns: auto auto; } .cb-res .gh .c-seg button { padding: 6px 12px !important; font-size: 13.5px; }
 .cb-rv.right .c-qstem { color: var(--c-sub); }
