@@ -12,11 +12,12 @@ const SESSION_DAYS = 30;
 const PBKDF2_ITERATIONS = 100_000; // Workers' WebCrypto maximum
 
 // MCP 토큰 → { user, agent }. 직접 만든 토큰(api_tokens) 먼저, 아니면 OAuth 접근 토큰. 쓸 때마다 last_used_at 만 고쳐요
+const TOKEN_IDLE = 90 * 864e5; // 직접 만든 MCP 토큰은 90일 안 쓰면 더는 안 받아요 (잊힌 토큰이 새도 못 쓰게) — 다시 만들면 돼요
 export async function tokenUser(env, token) {
   const h = await sha256(token), t = now();
   // 한 번에(왕복 1번): 직접 토큰 찾기 + 쓴 시각, OAuth 토큰 찾기 + (직접 토큰이 아니고 안 끝났으면) 쓴 시각
   const [api, , oa] = await env.DB.batch([
-    env.DB.prepare("SELECT t.agent, u.id, u.username, u.display_name, u.color, u.day_goal FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ? AND u.state = 'active'").bind(h),
+    env.DB.prepare("SELECT t.agent, u.id, u.username, u.display_name, u.color, u.day_goal FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ? AND u.state = 'active' AND COALESCE(t.last_used_at, t.created_at) > ?").bind(h, t - TOKEN_IDLE),
     env.DB.prepare("UPDATE api_tokens SET last_used_at = ? WHERE token_hash = ?").bind(t, h),
     env.DB.prepare("SELECT t.access_expires, c.client_name, c.client_id, u.id, u.username, u.display_name, u.color, u.day_goal FROM oauth_tokens t JOIN oauth_clients c ON c.client_id = t.client_id JOIN users u ON u.id = t.user_id WHERE t.access_hash = ? AND u.state = 'active'").bind(h),
     env.DB.prepare("UPDATE oauth_tokens SET last_used_at = ?1 WHERE access_hash = ?2 AND access_expires >= ?1 AND NOT EXISTS (SELECT 1 FROM api_tokens WHERE token_hash = ?2)").bind(t, h),
@@ -89,12 +90,20 @@ const checkState = async (env, u) => {
 const pwStrict = (req, env) => env.PASSWORDLESS !== "1" || req.headers.get("x-trio-strict") === "1";
 const mustChange = (req, env, u) => pwStrict(req, env) && Number(u.must_change_pw) === 1;
 const sessionToken = (req) => (req.headers.get("cookie") || "").match(/(?:^|;\s*)trio_session=([A-Za-z0-9_-]+)/)?.[1] || null;
-// 틀린 비밀번호 LOCK_TRIES 번이면 LOCK_MINUTES 분 잠가요 (잠기는 순간 횟수는 0 으로 돌아가요)
-const LOCK_TRIES = 5, LOCK_MINUTES = 5;
-const LOCKED_MSG = `여러 번 틀려서 잠시 잠겼어요. ${LOCK_MINUTES}분 뒤에 다시 시도해 주세요.`;
+// 틀린 비밀번호 LOCK_TRIES 번마다 잠가요: 5분 → 10분 → 20분 → 40분 → 60분(최대). 맞게 들어오면 횟수가 0 으로 돌아가요
+// (전엔 늘 5분이라 계정 하나에 하루 1,440번까지 넣어 볼 수 있었어요. 최대를 1시간으로 둬서 남이 일부러 잠가도 오래 막히진 않아요)
+const LOCK_TRIES = 5, LOCK_MINUTES = 5, LOCK_MAX_MINUTES = 60;
+const LOCKED_MSG = "여러 번 틀려서 잠시 잠겼어요. 조금 뒤에 다시 시도해 주세요.";
 async function bumpFail(env, u) {
-  const fails = u.fail_count + 1, lock = fails >= LOCK_TRIES;
-  await env.DB.prepare("UPDATE users SET fail_count = ?, locked_until = ? WHERE id = ?").bind(lock ? 0 : fails, lock ? now() + LOCK_MINUTES * 60e3 : 0, u.id).run();
+  const fails = u.fail_count + 1, n = Math.floor(fails / LOCK_TRIES), lock = fails % LOCK_TRIES === 0;
+  const mins = Math.min(LOCK_MAX_MINUTES, LOCK_MINUTES * 2 ** (n - 1));
+  await env.DB.prepare("UPDATE users SET fail_count = ?, locked_until = ? WHERE id = ?").bind(fails, lock ? now() + mins * 60e3 : 0, u.id).run();
+}
+// IP 하나당 로그인 · 가입 시도 수 제한 (Cloudflare Rate Limiting 바인딩 · 없으면 그냥 통과 — 로컬 테스트)
+async function ipLimit(req, env) {
+  const ip = req.headers.get("cf-connecting-ip"); if (!ip || !env.LOGIN_RL || ip === "127.0.0.1" || ip === "::1") return; // 내 컴퓨터(로컬 테스트)는 빼요
+  let ok = true; try { ok = (await env.LOGIN_RL.limit({ key: ip })).success; } catch {}
+  if (!ok) fail(429, "시도가 너무 많아요. 1분 뒤에 다시 해 주세요.");
 }
 export async function requireUser(req, env) {
   const token = sessionToken(req);
@@ -135,6 +144,7 @@ export function registerAuth(on) {
   // ---------- auth ----------
   // 가입 신청: 누구나. 만들어진 계정은 '승인 대기' — 관리자 모두(HSK · GYK)가 승인해야 로그인돼요 (src/admin.js)
   on("POST", "/auth/signup", async ({ req, env, ec }) => {
+    await ipLimit(req, env);
     const b = await body(req);
     const username = str(b.username, 20, "아이디").toLowerCase();
     if (!/^[a-z]{3}$/.test(username)) fail(400, "아이디는 영문 3글자예요 (예: hsk). 이름 이니셜로 정해 주세요."); // 가입은 이니셜 3글자만 (스크립트로 만든 계정은 예외)
@@ -160,6 +170,7 @@ export function registerAuth(on) {
   }, { auth: false });
 
   on("POST", "/auth/login", async ({ req, env }) => {
+    await ipLimit(req, env);
     const b = await body(req);
     const username = String(b.username || "").trim().toLowerCase();
     const u = await env.DB.prepare("SELECT * FROM users WHERE username = ?").bind(username).first();
