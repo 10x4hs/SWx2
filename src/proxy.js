@@ -13,7 +13,8 @@ export const b64u = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, 
 export const unb64u = (s) => decodeURIComponent(escape(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4))));
 
 async function hmac(env, data) {
-  const secret = env.VAPID_PRIVATE_KEY || env.INVITE_CODE || "trio";
+  const secret = env.FILE_TOKEN_SECRET || env.VAPID_PRIVATE_KEY || env.INVITE_CODE; // 비밀값이 없으면 토큰을 만들지도 받지도 않아요 (짐작되는 기본값 금지)
+  if (!secret) throw new Error("token secret missing");
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("px:" + secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return [...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data)))].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
@@ -76,6 +77,8 @@ export async function handleProxy(req, env, url) {
   const ct = res.headers.get("content-type") || "";
   for (const k of ["content-type", "content-disposition", "accept-ranges", "content-range", "content-length", "last-modified", "etag"]) if (res.headers.get(k) && !(k === "content-length" && /text\/(html|css)/i.test(ct))) out.set(k, res.headers.get(k));
   out.set("cache-control", "no-store"); out.set("referrer-policy", "no-referrer"); out.set("x-px-url", target.href);
+  // html 이 아닌 응답(svg · xhtml · xml …)도 주소를 바로 열면 앱 출처의 문서가 돼요 → 언제나 sandbox. 이미지 · 스크립트로 불러 쓰는 데는 영향 없어요
+  out.set("content-security-policy", SANDBOX); out.set("x-content-type-options", "nosniff");
   if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
     out.set("location", rewriteUrl(res.headers.get("location"), target.href, token));
     return new Response(null, { status: res.status, headers: out });

@@ -71,11 +71,11 @@ export function registerPlans(on) {
     return json({ plans: results.map(outPlan) });
   });
 
-  // Mac 위젯이 몇 초마다 묻는 '바뀐 게 있나' — 그 날들의 계획 수 + 마지막 수정 시각 (누구 것이든). 값이 달라지면 위젯이 다시 그려요
-  on("GET", "/widget/stamp", async ({ env, q }) => {
+  // Mac 위젯이 몇 초마다 묻는 '바뀐 게 있나' — 그 날들의 계획 수 + 마지막 수정 시각 (나와 같은 팀 사람 것만). 값이 달라지면 위젯이 다시 그려요
+  on("GET", "/widget/stamp", async ({ env, q, user }) => {
     const m = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/.exec(q.get("days") || "");
     if (!m || m[1] > m[2]) fail(400, "days=YYYY-MM-DD..YYYY-MM-DD 형식이에요.");
-    const r = await env.DB.prepare("SELECT COUNT(*) AS n, COALESCE(MAX(updated_at), 0) AS t FROM plans WHERE period >= ? AND period <= ?").bind("D:" + m[1], "D:" + m[2]).first();
+    const r = await env.DB.prepare(`SELECT COUNT(*) AS n, COALESCE(MAX(updated_at), 0) AS t FROM plans WHERE period >= ?1 AND period <= ?2 AND user_id IN ${PEERS("?3")}`).bind("D:" + m[1], "D:" + m[2], user.id).first();
     return json({ stamp: `${r.n}:${r.t}` });
   });
 
