@@ -2,7 +2,7 @@
 // its rows are child notes with props. Table · Board · Calendar views, each with saved filters / sorts / group.
 // Pure filtering · sorting · grouping lives in dbview.js (the worker validates views with the same file).
 import { api } from "../api.js";
-import { esc, toast } from "../util.js";
+import { esc, safeHref, toast } from "../util.js";
 import { COLORS, PROP_TYPES } from "./md.js";
 import { applyView, groupRows, opsFor, OP_LABEL, noValue, computeRows, ROLLUP_FNS } from "./dbview.js";
 import { fmtValue } from "./formula.js";
@@ -71,7 +71,7 @@ export function mountDatabase(el, id, o = {}) {
     if (p.type === "multi_select") return (v || []).map((x) => pill(x, opt(p, x)?.color)).join("");
     if (p.type === "checkbox") return `<input type="checkbox" class="db-cb" ${v ? "checked" : ""} ${ro ? "disabled" : ""} aria-label="${esc(p.name)}">`;
     if (p.type === "date") return v ? esc(fmtDate(v)) + (r?.props?._remind?.prop === p.key ? ` <span class="db-bell" title="Reminder ${esc(r.props._remind.time)}">⏰</span>` : "") : "";
-    if (p.type === "url") return v ? `<a href="${esc(v)}" target="_blank" rel="noopener">${esc(v.replace(/^https?:\/\//, ""))}</a>` : "";
+    if (p.type === "url") return v ? `<a href="${esc(safeHref(v))}" target="_blank" rel="noopener">${esc(v.replace(/^https?:\/\//, ""))}</a>` : "";
     return esc(v ?? "");
   }
   function draw() {

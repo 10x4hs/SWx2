@@ -5,7 +5,7 @@
 //   Typing in one block within 600ms is one step; Enter · Backspace-join · "/" · markdown shortcuts · drags are their own steps.
 //   Undo puts the caret back where it was before that step, then calls onChange (so the page saves).
 import { renderInline } from "../md.js";
-import { esc } from "../util.js";
+import { esc, safeHref } from "../util.js";
 import { block, canNest, mdToBlocks, MAX_COLS } from "./md.js";
 import { inlineWithMath, paintMath } from "./math.js";
 import { touchDrag } from "./touchdrag.js";
@@ -290,7 +290,7 @@ export function createBlockEditor(host, opts) {
       case "bookmark": case "embed": {
         const url = p.url || p.src || "", label = p.caption || p.name || url;
         const d = document.createElement("div"); d.className = "nb-body nb-bm";
-        d.innerHTML = url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${b.type === "file" ? "📎 " : "🔗 "}${esc(label)}</a><span class="faint">${esc(url.replace(/^https?:\/\//, "").slice(0, 60))}</span>`
+        d.innerHTML = url ? `<a href="${esc(safeHref(url))}" target="_blank" rel="noopener">${b.type === "file" ? "📎 " : "🔗 "}${esc(label)}</a><span class="faint">${esc(url.replace(/^https?:\/\//, "").slice(0, 60))}</span>`
           : (ro ? "" : `<input class="input nb-url" placeholder="Paste a link and press Enter" aria-label="Link">`);
         return d;
       }

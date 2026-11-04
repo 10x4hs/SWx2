@@ -2,6 +2,8 @@
 
 export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+// 남이 적은 링크를 href 에 넣을 때: http(s) · mailto · 앱 안 주소(/…)만. javascript: 같은 건 '#' 으로 (esc 는 따옴표만 막아요)
+export const safeHref = (u) => { const s = String(u ?? "").trim(); return /^(https?:|mailto:)/i.test(s) || /^\/(?!\/)/.test(s) ? s : "#"; };
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const pad = (n) => String(n).padStart(2, "0");
 // 한국 시각(KST)의 오늘 "YYYY-MM-DD" — 서버(Workers)는 UTC 라서 날짜 경계를 이걸로 맞춰요
