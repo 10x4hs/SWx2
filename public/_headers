@@ -10,3 +10,11 @@
 
 /icons/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+# 보안 헤더 (앱 화면): 다른 사이트가 iframe 으로 감싸 클릭을 훔치지 못하게 · 플러그인/base 주소 바꾸기 금지 · MIME 추측 금지
+/*
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self'; object-src 'none'; base-uri 'self'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: same-origin
+  Permissions-Policy: geolocation=(), camera=(), microphone=(self), payment=()

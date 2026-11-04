@@ -270,7 +270,8 @@ export function registerPages(on, { json, body, fail, uid, now }) {
 // 토큰은 (보는 사람 · 페이지 하나 · 12시간) 에 묶여서, 공유 페이지 코드가 보는 사람의 다른 페이지를 읽는 데는 못 써요.
 const FILE_TOKEN_TTL = 12 * 3600e3;
 async function signFile(env, data) {
-  const secret = env.VAPID_PRIVATE_KEY || env.INVITE_CODE || "trio";
+  const secret = env.FILE_TOKEN_SECRET || env.VAPID_PRIVATE_KEY || env.INVITE_CODE; // 비밀값이 없으면 토큰을 만들지도 받지도 않아요 (짐작되는 기본값 금지)
+  if (!secret) throw new Error("token secret missing");
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("pf:" + secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return [...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data)))].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
 }
@@ -300,6 +301,8 @@ export async function servePageFile(req, env, url, getUser) {
   const html = isHtml(path);
   return new Response(html ? withBridge(f.content) : f.content, { headers: {
     "content-type": typeOf(path), "cache-control": "no-store", "x-content-type-options": "nosniff",
-    ...(html ? { "content-security-policy": "sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-pointer-lock", "referrer-policy": "no-referrer" } : {}),
+    // html 이 아닌 파일(svg · xml …)도 주소를 바로 열면 문서가 돼요 → 언제나 sandbox (스크립트 없이). 페이지가 불러 쓰는 css · js 에는 영향 없어요
+    "content-security-policy": html ? "sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-pointer-lock" : "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
+    "referrer-policy": "no-referrer",
   } });
 }

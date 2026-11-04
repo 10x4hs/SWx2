@@ -212,6 +212,7 @@ export function registerAuth(on) {
     const r = await env.DB.batch([
       env.DB.prepare("UPDATE users SET pw_hash = ?, pw_salt = ?, fail_count = 0, locked_until = 0, must_change_pw = 0, pw_changed_at = ? WHERE id = ?").bind(next.hash, next.salt, now(), u.id),
       env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND id != ?").bind(u.id, keep),
+      env.DB.prepare("DELETE FROM oauth_tokens WHERE user_id = ?").bind(u.id), // 비밀번호를 바꾸면 OAuth 로 붙은 AI 연결도 다시 로그인
     ]);
     return json({ ok: true, signed_out: r[1].meta.changes || 0 });
   });
