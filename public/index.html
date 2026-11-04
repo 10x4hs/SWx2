@@ -242,6 +242,26 @@
   <link rel="modulepreload" href="/vendor/marked.esm.js">
   <link rel="modulepreload" href="/vendor/purify.es.mjs">
   <!-- modulepreload:end -->
+  <script>
+    // 멈춤 복구: 배포 직후 저장해 둔 예전 파일과 새 파일이 섞이면 모듈이 안 이어져 'SWx2' 화면에서 멈춰요.
+    // 그러면 저장한 코드(SW 캐시)를 비우고 한 번만 다시 불러요 (같은 탭에서 두 번은 안 해요 — 무한 새로고침 방지)
+    (function () {
+      var K = "swx2-boot-fix", done = false;
+      function fix() {
+        if (done || window.__swx2Boot) return; done = true;
+        try { if (sessionStorage.getItem(K)) return; sessionStorage.setItem(K, "1"); } catch (e) { return; }
+        var p = [];
+        try { if (window.caches) p.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) {}
+        try { if (navigator.serviceWorker) p.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })); } catch (e) {}
+        Promise.all(p).catch(function () {}).then(function () { location.reload(); });
+      }
+      // 모듈 연결 실패(없는 export 등)는 곧바로 · 그 밖엔 다 불렀는데도 시작 안 했을 때 (느린 날을 생각해 넉넉히)
+      addEventListener("error", function (e) { if (!window.__swx2Boot && /export|import|module/i.test(String(e.message || ""))) fix(); });
+      addEventListener("load", function () { setTimeout(fix, 4000); });
+      // 잘 시작했으면 표시를 지워요 (다음 배포 때 또 복구할 수 있게)
+      addEventListener("load", function () { setTimeout(function () { if (window.__swx2Boot) try { sessionStorage.removeItem(K); } catch (e) {} }, 5000); });
+    })();
+  </script>
   <script type="module" src="/js/app.js"></script>
   <script type="module" src="/js/pwa.js"></script>
 </head>
