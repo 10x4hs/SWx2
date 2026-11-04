@@ -216,14 +216,14 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     const m0 = startH * 60;
     const Y = axis(m0), yAt = (m) => Y[Math.max(0, Math.min(1440, m) - m0)], PPM = HOUR_PX / 60;
     // 그릴 것: 어제에서 이어진 칸 · 그룹(같은 group_id 2개 이상) · 계획 블록 (길이와 상관없이 모두 같은 모양 · 체크 있음)
-    // 자정을 넘는 계획은 e 가 1440 을 넘어요 (위치는 24:00 까지만). le = 겹침 계산용 끝 = 진짜 끝 (최소 높이 때문에 나란히 두지 않아요)
+    // 자정을 넘는 계획은 e 가 1440 을 넘어요 (위치는 24:00 까지만). le = 겹침 계산용 끝 = 진짜 끝, 짧은 계획은 최소 높이가 닿는 데까지 (걸치면 나란히)
     const items = (S.spill || []).map((p) => { const e = toMin(p.start) + (p.mins || 30) - 1440; return { p, s: 0, e, le: Math.max(e, 1), cont: true }; });
     const byGrp = new Map();
     for (const p of timed) if (p.group_id) byGrp.set(p.group_id, [...(byGrp.get(p.group_id) || []), p]);
     for (const p of timed) {
       const s = toMin(p.start), e = s + Math.max(1, p.mins || 30);
       if (p.group_id && byGrp.get(p.group_id).length > 1) continue;
-      items.push({ p, s, e, le: e });
+      items.push({ p, s, e, le: Math.max(e, s + ONE_H / PPM) }); // 최소 높이로 다음 계획에 걸치면 옆 칸으로 (위치는 그대로)
     }
     for (const [gid, ms] of byGrp) {
       if (ms.length < 2) continue;
@@ -245,14 +245,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     };
     for (const it of items) { if (group.length && it.s >= groupEnd) flushCols(); group.push(it); groupEnd = Math.max(groupEnd, it.le); }
     if (group.length) flushCols();
-    // 화면 위치: 실제 시각 위치 + 최소 높이. 앞 블록(같은 칸 줄)이 최소 높이로 길어져 아래 블록을 덮으면, 아래 블록만 화면에서 살짝 내려요 (데이터는 그대로)
+    // 화면 위치: 언제나 실제 시각 위치 (시간 눈금 · 지금 선과 딱 맞게). 아주 짧은 계획이 최소 높이로 다음 계획에 걸치면 다음 계획이 위에 그려져요 — 밀어내지 않아요 (밀면 쌓여서 뒤 블록이 몇 분씩 어긋났어요)
     const hOf = (it) => it.grp ? Math.max(yAt(it.e) - yAt(it.s) - 2, (S.fold.has(it.grp) ? 1 : it.ms.length + 1) * LINE_H + 8) : it.cont ? Math.max(yAt(it.e) - yAt(0) - 2, ONE_H) : Math.max(yAt(it.e) - yAt(it.s) - 2, ONE_H);
-    const shown = [];
-    for (const it of [...placed].sort((a, b) => a.s - b.s || a.c - b.c)) {
-      it.h = hOf(it); it.top = (it.cont ? yAt(0) : yAt(it.s)) + 1;
-      for (const o of shown) if (o.c < it.c + it.span && it.c < o.c + o.span) it.top = Math.max(it.top, o.top + o.h + 2);
-      shown.push(it);
-    }
+    for (const it of placed) { it.h = hOf(it); it.top = (it.cont ? yAt(0) : yAt(it.s)) + 1; }
     // 1시간 칸 (늘이지 않아요 — 15분 눈금은 CSS 배경)
     let hours = "";
     for (let h = startH; h < 24; h++) {
