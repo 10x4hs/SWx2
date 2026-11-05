@@ -38,7 +38,7 @@ export function mount(root, ctx, r) {
     <div class="view cal-view">
       <header class="vhead">
         <div class="title">
-          <span class="row" style="gap:8px"><button type="button" class="icon-btn back-btn" id="cal-back" aria-label="뒤로">${icon.left(18)}</button><span class="eyebrow">캘린더</span></span>
+          <span class="row" style="gap:8px"><button type="button" class="icon-btn back-btn" id="cal-back" aria-label="뒤로" title="홈으로">${icon.left(18)}</button><span class="eyebrow">캘린더</span></span>
           <h1 class="h1" id="cal-h1"></h1>
           <p class="cal-sub faint" id="cal-sub"></p>
         </div>
@@ -51,7 +51,7 @@ export function mount(root, ctx, r) {
       </header>
       <div id="cal-body"></div>
     </div>`;
-  root.addEventListener("click", (e) => { if (e.target.closest("#cal-back")) { if (st.mode === "day") ctx.go(monthHref(parseYmd(st.sel))); else window.trioBack?.(); } });
+  root.addEventListener("click", (e) => { if (e.target.closest("#cal-back")) { if (st.mode === "day") ctx.go(monthHref(parseYmd(st.sel))); else ctx.go("#/"); } }); // 달 · 연 화면의 뒤로 = 홈으로
   const body = $("#cal-body", root);
 
   function drawHead() {
