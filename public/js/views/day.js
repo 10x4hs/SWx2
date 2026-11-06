@@ -488,6 +488,12 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     // Shift · ⌘(Ctrl)+클릭 = 고르기에 넣고 빼기 (노션처럼)
     const sb = !ro() && (e.shiftKey || e.metaKey || e.ctrlKey) && e.target.closest("#dp-grid [data-id]");
     if (sb && !e.target.closest("button, input, select, a")) { e.preventDefault(); const id = sb.dataset.id; S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); drawSelBar(); return; }
+    // 그냥 클릭 = 그 블록 하나만 고르기 (다시 누르면 풀려요). 체크 · 버튼 · 이름 고치는 중엔 그대로
+    const one = !ro() && !e.shiftKey && !e.metaKey && !e.ctrlKey && e.target.closest("#dp-grid .block[data-id]:not(.cont), #dp-grid .grp-row[data-id]");
+    if (one && !e.target.closest("button, input, select, a, [contenteditable], [data-toggle], [data-miss], [data-play], [data-prio], [data-fold], [data-ungroup]")) {
+      const id = one.dataset.id, only = S.sel.size === 1 && S.sel.has(id);
+      S.sel = only ? new Set() : new Set([id]); drawSelBar(); return;
+    }
     const fold = e.target.closest("[data-fold]");
     if (fold) { const g = fold.dataset.fold; S.fold.has(g) ? S.fold.delete(g) : S.fold.add(g); try { localStorage.setItem(FOLD_KEY, JSON.stringify([...S.fold].slice(-200))); } catch {} drawGrid(); return; }
     const ug = e.target.closest("[data-ungroup]");
