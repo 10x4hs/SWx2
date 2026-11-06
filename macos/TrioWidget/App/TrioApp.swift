@@ -6,6 +6,7 @@ import SwiftUI
 import AppKit
 import WidgetKit
 import ServiceManagement
+import UserNotifications
 
 @main
 struct TrioApp: App {
@@ -39,12 +40,13 @@ enum EditTarget: Equatable {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     let live = Live()
     private var mainWin: NSWindow?
     private var editWin: NSWindow?
 
     func applicationDidFinishLaunching(_ n: Notification) {
+        UNUserNotificationCenter.current().delegate = self
         live.start()
         if !Trio.connected { openMain() }
     }
@@ -65,6 +67,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+
+    // 앱이 앞에 있어도 맥 알림 배너를 띄워요
+    nonisolated func userNotificationCenter(_ c: UNUserNotificationCenter, willPresent n: UNNotification) async -> UNNotificationPresentationOptions { [.banner, .sound, .list] }
 
     func enableLoginItem() {
         try? SMAppService.mainApp.register()
@@ -135,6 +140,7 @@ final class Live: ObservableObject {
             let s = try await API.stamp(from: Day.str(Day.add(now, -7)), to: Day.str(Day.add(now, 7)))
             if let last, last != s { WidgetCenter.shared.reloadAllTimelines() }
             last = s
+            await FocusAlerts.sync() // 맥 알림: 집중 시작 · 끝 · 자동 집중 (FocusAlerts.swift)
             let f = DateFormatter(); f.dateFormat = "HH:mm:ss"
             status = "실시간 연결됨 · \(f.string(from: now))"
         } catch {

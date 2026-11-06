@@ -89,7 +89,7 @@ export default {
 };
 
 // ---------- routing ----------
-const WIDGET_PATH = /^\/(?:me|users|plans(?:\/[A-Za-z0-9_-]+)?|widget\/stamp)$/;
+const WIDGET_PATH = /^\/(?:me|users|presence|plans(?:\/[A-Za-z0-9_-]+)?|widget\/stamp)$/;
 async function route(req, env, url, ec) {
   const path = url.pathname.slice(4); // strip "/api"
   const hit = match(req.method, path);
