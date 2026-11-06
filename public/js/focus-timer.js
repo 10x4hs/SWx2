@@ -372,6 +372,7 @@ async function notify(title, body) {
     if (!("Notification" in window)) return;
     if (Notification.permission === "default") await Notification.requestPermission();
     if (Notification.permission !== "granted") return;
+    import("./auto-focus.js").then((m) => m.askPush()).catch(() => {}); // 이 기기를 푸시 구독 (앱이 닫혀 있어도 '집중 끝'이 오게)
     const reg = await navigator.serviceWorker?.getRegistration();
     const opt = { body, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "swx2-focus", renotify: true, silent: true };
     reg ? await reg.showNotification(title, opt) : new Notification(title, opt);
