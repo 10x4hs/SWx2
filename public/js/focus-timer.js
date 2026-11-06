@@ -348,20 +348,22 @@ export function renderTimer() {
 let AC = null;
 const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch {} return AC; };
 ["pointerdown", "keydown", "touchstart"].forEach((t) => addEventListener(t, audio, { capture: true, passive: true }));
-// 싱잉볼처럼 낮고 둥근 소리 (귀 안 아프게 작게 · 천천히 커졌다 길게 사라져요). up = 시작(올라가는 두 음) · 아니면 끝(내려가는 두 음)
+// 맥 알림음 느낌의 짧고 맑은 '똑-' (유리 · 마림바처럼 톡 치고 금방 사라져요 · 작게). up = 시작(올라가는 두 음) · 아니면 끝(세 음 내려와 앉기)
 function chime(up = false) {
   const ac = audio(); if (!ac) return;
   try {
-    const bowl = (at, f) => {
-      [[1, .07], [2.0, .018], [2.9, .006]].forEach(([k, v]) => {
+    const out = ac.createBiquadFilter(); out.type = "lowpass"; out.frequency.value = 3200; out.connect(ac.destination);
+    const pluck = (at, f, v = .09) => {
+      [["sine", 1, v], ["triangle", 2, v * .18], ["sine", 4.01, v * .05]].forEach(([type, k, g0]) => {
         const o = ac.createOscillator(), g = ac.createGain();
-        o.type = "sine"; o.frequency.value = f * k;
-        g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(v, at + .12); g.gain.exponentialRampToValueAtTime(.0001, at + 2.6);
-        o.connect(g).connect(ac.destination); o.start(at); o.stop(at + 2.7);
+        o.type = type; o.frequency.value = f * k;
+        g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(g0, at + .006); g.gain.exponentialRampToValueAtTime(.0001, at + (k > 1 ? .18 : .55));
+        o.connect(g).connect(out); o.start(at); o.stop(at + .6);
       });
     };
-    const t = ac.currentTime + .05, [a, b] = up ? [392, 523.25] : [523.25, 392]; // G4 ↔ C5
-    bowl(t, a); bowl(t + .35, b);
+    const t = ac.currentTime + .03;
+    if (up) { pluck(t, 659.25); pluck(t + .11, 987.77, .08); }                         // E5 → B5
+    else { pluck(t, 987.77, .08); pluck(t + .12, 830.61, .08); pluck(t + .24, 659.25); } // B5 → G#5 → E5
   } catch {}
 }
 // 맥(노트북) 알림 — 탭을 보고 있어도 떠요. 같은 tag 라 서비스 워커 푸시와 겹치면 하나로 합쳐져요
