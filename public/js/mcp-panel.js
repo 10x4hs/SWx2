@@ -50,7 +50,10 @@ export function openMcpPanel(ctx) {
           ${snippets(fresh.url, fresh.token, fresh.name).map((s, i) => `<div class="mcp-snip"><div class="mcp-snip-k">${esc(s.k)}<button class="btn ghost sm" type="button" data-copy="${i}">복사</button></div><pre>${esc(s.v)}</pre></div>`).join("")}
         </div>` : ""}
       <h3 class="mcp-h">Mac 위젯</h3>
-      <div class="mcp-oauth-how">바탕화면 위젯(TrioWidget 앱)에 내 계획을 띄워요. 앱을 설치한 Mac 에서 아래 버튼을 누르면 앱이 열리면서 바로 연결돼요.
+      <div class="mcp-oauth-how">바탕화면 위젯 + 맥 알림(집중 시작 · 끝 · 자동 집중)을 띄우는 TrioWidget 앱이에요.
+        <ol class="mcp-steps"><li><a class="btn sm" href="/downloads/TrioWidget.zip" download>TrioWidget 받기 (Mac)</a> → 압축을 풀어요.</li>
+        <li><b>설치.command</b> 를 <b>오른쪽 클릭 → 열기 → 열기</b> (처음 한 번만 이렇게 해요). 앱이 설치되고 켜져요. 열기가 막히면 <b>시스템 설정 → 개인정보 보호 및 보안</b> 맨 아래 <b>그래도 열기</b>.</li>
+        <li>알림 허용 창이 뜨면 <b>허용</b>. 그다음 아래 버튼을 누르면 내 계정에 연결돼요.</li></ol>
         ${widget ? `<div class="mcp-widget-go"><a class="btn accent sm" href="${esc(widget)}">TrioWidget 에 연결</a><button class="btn ghost sm" type="button" data-copy-widget>연결 주소 복사</button></div><p class="faint">이 주소는 지금만 보여요. 앱의 '연결 주소 붙여 넣기'에 넣어도 돼요.</p>`
           : `<div class="mcp-widget-go"><button class="btn sm" type="button" data-widget>${info.tokens.some((t) => t.agent === "mac-widget") ? "다시 연결 (새 토큰)" : "위젯 연결 만들기"}</button></div>`}</div>
       <h3 class="mcp-h">ChatGPT · claude.ai 처럼 OAuth 로 붙는 앱</h3>
