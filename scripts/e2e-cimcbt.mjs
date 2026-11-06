@@ -52,13 +52,13 @@ export async function cimCbtE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }) 
         await p.keyboard.press("ArrowRight"); await sleep(150);
         await p.keyboard.press("3"); await sleep(150);   // 3번 문항 답 → 4번
         await p.keyboard.press("ArrowLeft"); await sleep(150); // 3번으로
-        const g = await p.evaluate(() => ({ a: [...document.querySelectorAll(".cb-grid .a")].map((b) => +b.dataset.j), f: [...document.querySelectorAll(".cb-grid .f")].map((b) => +b.dataset.j), cur: +document.querySelector(".cb-grid .cur")?.dataset.j, pick: document.querySelector(".c-opt.pick")?.dataset.k, legend: document.querySelector(".cb-legend")?.textContent || "" }));
+        const g = await p.evaluate(() => ({ a: [...document.querySelectorAll(".cb-grid .a")].map((b) => +b.dataset.j).sort((x, y) => x - y), f: [...document.querySelectorAll(".cb-grid .f")].map((b) => +b.dataset.j), cur: +document.querySelector(".cb-grid .cur")?.dataset.j, pick: document.querySelector(".c-opt.pick")?.dataset.k, legend: document.querySelector(".cb-legend")?.textContent || "" }));
         ok(g.a.join() === "0,2" && g.f.join() === "1" && g.cur === 2 && g.pick === "2" && /표시 1/.test(g.legend), `${tv} · CBT 답 · 표시 — 답함 [${g.a}] · 표시 [${g.f}] · 지금 ${g.cur + 1}번 · 고른 보기 ${g.pick}`);
 
         // 3) 새로 고침 → 이어서
         await sleep(1800); // 저장(0.7초 모아서 PUT)
         await p.reload(); await p.waitForSelector(".cb-run", { timeout: 20000 }).catch(() => {}); await sleep(600);
-        const g2 = await p.evaluate(() => ({ a: [...document.querySelectorAll(".cb-grid .a")].map((b) => +b.dataset.j), f: [...document.querySelectorAll(".cb-grid .f")].map((b) => +b.dataset.j), cur: +document.querySelector(".cb-grid .cur")?.dataset.j }));
+        const g2 = await p.evaluate(() => ({ a: [...document.querySelectorAll(".cb-grid .a")].map((b) => +b.dataset.j).sort((x, y) => x - y), f: [...document.querySelectorAll(".cb-grid .f")].map((b) => +b.dataset.j), cur: +document.querySelector(".cb-grid .cur")?.dataset.j }));
         const s1 = await state();
         ok(g2.a.join() === "0,2" && g2.f.join() === "1" && g2.cur === 2 && s1.cbtRun?.no === 1 && Object.keys(s1.cbtRun?.picks || {}).length === 2, `${tv} · CBT 새로 고침 → 이어서 — 답함 [${g2.a}] · 표시 [${g2.f}] · 지금 ${g2.cur + 1}번 · 서버 run ${s1.cbtRun?.no}회`);
 

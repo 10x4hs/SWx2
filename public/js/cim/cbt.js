@@ -12,6 +12,10 @@ import { toast } from "../util.js";
 
 const SUBJ_AT = (i) => (i < 20 ? 1 : i < 50 ? 2 : 3);
 const RANGE = { 1: [0, 20], 2: [20, 50], 3: [50, 100] };
+// 번호판 단원 줄: 짧은 이름 · 어려운 단원(빨강 = 계산이 많고 함정이 많은 곳) · 넘겨도 되는 단원(✓ = 어렵고 시험에 적게 나와요)
+const SHORT = { s1c1: "세제", s1c2: "금융상품", s1c3: "부동산", s2c1: "대안투자", s2c2: "해외증권", s2c3: "기본적 분석", s2c4: "기술적 분석", s2c5: "산업분석", s2c6: "리스크관리", s3c1: "직무윤리", s3c2: "자본시장법", s3c3: "금융위 규정", s3c4: "협회 규정", s3c5: "주식운용", s3c6: "채권운용", s3c7: "파생운용", s3c8: "성과분석", s3c9: "거시경제", s3c10: "분산투자" };
+const HARD = new Set(["s2c3", "s2c6", "s3c6", "s3c7", "s3c8", "s3c10"]);
+const SKIP = new Set(["s3c7", "s3c8", "s3c10"]);
 // 번호판 숨김(B) · 폰 바텀시트 열림 — 화면 상태일 뿐 시험 기록(S.cbtRun)엔 안 넣어요
 let HIDE = localStorage.getItem("cim-cbt-hide") === "1", SHEET = false;
 let SETS = null; // cbt.json (한 번 받으면 그대로)
@@ -126,7 +130,14 @@ export function mountCbt(host, no) {
         <div class="cb-scrim" data-sheet-close></div>
         <aside class="cb-side" aria-label="문항 번호판">
           <div class="cb-legend num"><span><i class="a"></i>답함 ${n}</span><span><i></i>안 답함 ${100 - n}</span><span><i class="f"></i>표시 ${nf}</span></div>
-          ${[1, 2, 3].map((sj) => { const [a, b] = RANGE[sj]; return `<div class="cm-grp"><span class="k">${esc(SUBJ[sj].n)}</span><div class="cm-grid cb-grid">${r.ids.slice(a, b).map((_, j) => { const k = a + j; return `<button type="button" data-j="${k}" class="num${r.picks[k] != null ? " a" : ""}${r.flags[k] ? " f" : ""}${k === i ? " cur" : ""}" aria-label="${k + 1}번${r.picks[k] != null ? " 답함" : ""}${r.flags[k] ? " 표시" : ""}"${k === i ? ' aria-current="true"' : ""}>${k + 1}</button>`; }).join("")}</div></div>`; }).join("")}
+          <div class="cb-legend num cb-legend2"><span><i class="h"></i>어려운 단원</span><span><b class="cb-skip">✓</b>시간 없으면 넘겨도 돼요</span></div>
+          ${[1, 2, 3].map((sj) => { const [a, b] = RANGE[sj], cut = Math.ceil(SUBJ[sj].q * 0.4);
+            const rows = [...new Set(r.ids.slice(a, b).map(chOf))].sort((x, y) => CH[x].c - CH[y].c);
+            return `<div class="cm-grp"><span class="k">${esc(SUBJ[sj].n)} · ${SUBJ[sj].q}문항 · 과락 ${cut}개</span>${rows.map((c) => {
+              const ks = r.ids.map((id, k) => [id, k]).filter(([id, k]) => k >= a && k < b && chOf(id) === c).map(([, k]) => k);
+              const hard = HARD.has(c), skip = SKIP.has(c);
+              return `<div class="cb-chrow${hard ? " hard" : ""}"><span class="cb-ch" title="${esc(CH[c].t)}">${esc(SHORT[c] || CH[c].t)} ${ks.length}${skip ? ' <b class="cb-skip" title="어렵고 문항이 적어요 · 시간 없으면 넘겨요">✓</b>' : ""}</span><div class="cm-grid cb-grid">${ks.map((k) => `<button type="button" data-j="${k}" class="num${hard ? " h" : ""}${r.picks[k] != null ? " a" : ""}${r.flags[k] ? " f" : ""}${k === i ? " cur" : ""}" aria-label="${k + 1}번${hard ? " 어려운 단원" : ""}${r.picks[k] != null ? " 답함" : ""}${r.flags[k] ? " 표시" : ""}"${k === i ? ' aria-current="true"' : ""}>${k + 1}</button>`).join("")}</div></div>`;
+            }).join("")}</div>`; }).join("")}
         </aside></div>`;
       upd();
       setAi({ kind: "general", topic: `실전 CBT ${r.no}회 푸는 중 (실전 연습이라 문제 풀이는 끝나고 물어봐요)` });
