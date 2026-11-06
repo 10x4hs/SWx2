@@ -708,8 +708,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     $$("#dp-grid .grp", el).forEach((g) => { const ids = $$("[data-id]", g).map((x) => x.dataset.id); g.classList.toggle("sel", ids.length > 0 && ids.every((id) => S.sel.has(id))); });
     const bar = $("#dp-selbar", el); if (!bar) return;
     const list = ro() || !S.plans ? [] : S.plans.filter((p) => S.sel.has(p.id));
-    bar.hidden = !list.length;
-    if (!list.length) { bar.innerHTML = ""; return; }
+    // 하나만 고른 건 막대 없이 (우클릭 메뉴로 다 돼요) — 블록 위에 겹쳐 뜨지 않게
+    bar.hidden = list.length < 2;
+    if (list.length < 2) { bar.innerHTML = ""; return; }
     const g0 = list[0].group_id, oneGroup = !!g0 && list.every((p) => p.group_id === g0), allDone = list.every((p) => p.done);
     bar.innerHTML = `<span class="sb-n">${list.length}개 선택</span>
       <button type="button" class="btn sm" data-sb="${oneGroup ? "ungroup" : "group"}"${!oneGroup && list.length < 2 ? " disabled" : ""}>${oneGroup ? "그룹 풀기" : "그룹으로 묶기"}</button>
