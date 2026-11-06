@@ -6,6 +6,7 @@
 import { aiJson } from "./ai.js";
 import { kstToday } from "./lib/day.js";
 import { PEERS } from "./teams.js";
+import { focusKick } from "./hub.js";
 
 const DAY_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const WEEK_RE = /^(\d{4})-W(\d{2})$/;
@@ -73,7 +74,15 @@ export function registerTogether(on, { json, body, fail, now }) {
     await env.DB.prepare(
       "INSERT INTO presence (user_id, state, started_at, ends_at, updated_at) VALUES (?, 'focus', ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET state = 'focus', started_at = excluded.started_at, ends_at = excluded.ends_at, updated_at = excluded.updated_at"
     ).bind(user.id, started, ends, t).run();
+    await focusKick(env); // 끝나는 시각에 알람 → 앱이 닫혀 있어도 '집중 끝' 푸시 (hub.js focusTick)
     return json({ presence: { user_id: user.id, focus: true, started_at: started, ends_at: ends } });
+  });
+
+  // 방금(3분 안) 끝난 내 집중 — 서비스 워커가 푸시를 받으면 물어봐요. 앱이 열려 있었으면 이미 idle 이라 비어요
+  on("GET", "/presence/ended", async ({ env, user }) => {
+    const t = now();
+    const r = await env.DB.prepare("SELECT started_at, ends_at FROM presence WHERE user_id = ? AND state = 'focus' AND ends_at <= ? AND ends_at > ?").bind(user.id, t + 5e3, t - 3 * 60e3).first();
+    return json({ ended: r ? { mins: Math.round((r.ends_at - (r.started_at || r.ends_at)) / 60e3), ends_at: r.ends_at } : null });
   });
 
   // 멤버 전원. ends_at 이 지났으면 focus=false (타이머를 끄지 않고 창을 닫은 경우)

@@ -48,7 +48,17 @@ export class RoomHub extends DurableObject {
       }
       await pushUsers(env, null, [...new Set(due.map((p) => p.user_id))], { room: "focus" });
     }
-    const next = results.map(at).filter((x) => x > t + 20e3).sort((a, b) => a - b)[0];
+    // 집중 끝 (presence.ends_at): 그 시각에 깨워서 푸시 — 한 번만 (DO 저장소에 보낸 표시)
+    const { results: ends } = await env.DB.prepare("SELECT user_id, ends_at FROM presence WHERE state = 'focus' AND ends_at > ?").bind(t - 3 * 60e3).all();
+    const sent = (await this.ctx.storage.get("endSent")) || {};
+    const fin = ends.filter((x) => x.ends_at <= t + 5e3 && sent[x.user_id] !== x.ends_at);
+    if (fin.length) {
+      for (const x of fin) sent[x.user_id] = x.ends_at;
+      for (const k of Object.keys(sent)) if (sent[k] < t - 864e5) delete sent[k];
+      await this.ctx.storage.put("endSent", sent);
+      await pushUsers(env, null, [...new Set(fin.map((x) => x.user_id))], { room: "focus" });
+    }
+    const next = [...results.map(at).filter((x) => x > t + 20e3), ...ends.map((x) => x.ends_at).filter((x) => x > t + 5e3)].sort((a, b) => a - b)[0];
     if (next) await this.ctx.storage.setAlarm(next); else await this.ctx.storage.deleteAlarm();
   }
   // 살아 있는지 확인하는 ping 에만 답해요 (브라우저가 25초마다 보냄)
