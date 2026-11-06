@@ -277,6 +277,15 @@ self.addEventListener("push", (event) => {
         return;
       }
     } catch {}
+    // 집중 끝 (hub.js focusTick 가 끝나는 시각에 깨워요): 앱 창이 보이면 그 창이 알림을 띄우니 건너뛰어요
+    try {
+      const r = await fetch("/api/presence/ended", { headers: { "x-trio": "1" }, credentials: "include" });
+      const e = r.ok ? (await r.json()).ended : null;
+      if (e) {
+        if (!wins.some((w) => w.visibilityState === "visible")) await self.registration.showNotification("집중 끝", { body: `${e.mins}분 집중을 마쳤어요`, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "swx2-focus", renotify: true, data: { url: "/#/" } });
+        return;
+      }
+    } catch {}
     // 데이터베이스 행 알림 (src/reminders.js): 크론이 보낸 깨우기면 여기서 무엇인지 읽어 띄워요
     try {
       const r = await fetch("/api/reminders/take", { method: "POST", headers: { "x-trio": "1" }, credentials: "include" });
