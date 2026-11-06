@@ -272,7 +272,7 @@ self.addEventListener("push", (event) => {
         for (const p of list) {
           if (seen) { seen.postMessage({ type: "auto-focus", plan: p }); continue; }
           const q = new URLSearchParams({ af: p.id, m: p.mins, s: p.start, t: p.text });
-          await self.registration.showNotification("집중 모드가 켜졌어요", { body: `${p.text} · ${p.mins}분`, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "af-" + p.id, data: { url: "/?" + q + "#/", plan: p } });
+          await self.registration.showNotification("집중 모드가 켜졌어요", { body: `${p.text} · ${p.mins}분`, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "swx2-focus", renotify: true, data: { url: "/?" + q + "#/", plan: p } });
         }
         return;
       }
