@@ -34,6 +34,8 @@ export function openMenu(e, { title = "", items = [], onPick, back = null }) {
   m.className = "cm glass"; m.setAttribute("role", "menu");
   m.innerHTML = (title ? `<div class="cm-t">${esc(title)}</div>` : "") + items.map((it) => {
     if (it.sep) return `<i class="cm-sep"></i>`;
+    // 자동 집중: 스위치 + (켜면) 'HH:MM부터 [n]분'. 메뉴는 닫히지 않고, 바꿀 때마다 it.onFocus({ on, mins })
+    if (it.k === "focus") return `<div class="cm-focus${it.on ? " on" : ""}"><button type="button" role="menuitemcheckbox" aria-checked="${!!it.on}" data-fk="tog" class="cm-i">◎ 자동 집중<span class="cm-sw" aria-hidden="true"></span></button><label class="cm-fm"><span>${esc(it.start)}부터</span><input type="number" inputmode="numeric" data-fk="min" min="1" max="${it.max}" value="${it.mins || it.max}" aria-label="집중 시간(분)">분</label></div>`;
     if (it.k === "prio") return `<div class="cm-prio" role="group" aria-label="우선순위">${PRIOS.map(([k, l]) => `<button type="button" data-k="prio" data-v="${k}" data-p="${k}" class="prio${it.prio === k ? " on" : ""}" title="${l}순위">${l}</button>`).join("")}${it.prio ? `<button type="button" class="cm-x" data-k="prio" data-v="" title="우선순위 지우기">✕</button>` : ""}</div>`;
     return `<button type="button" role="menuitem" data-k="${it.k}" class="cm-i${it.danger ? " danger" : ""}">${esc(it.label)}${it.hint ? `<small>${esc(it.hint)}</small>` : ""}</button>`;
   }).join("");
@@ -43,6 +45,14 @@ export function openMenu(e, { title = "", items = [], onPick, back = null }) {
   show(m, Math.min(e.clientX, innerWidth - w - 8), Math.min(e.clientY, innerHeight - h - 8));
   curBack = back;
   m.addEventListener("click", (ev) => { const b = ev.target.closest("[data-k]"); if (!b) return; const k = b.dataset.k, v = b.dataset.v; closeMenu(); onPick?.(k, v); });
+  const fit = items.find((it) => it.k === "focus");
+  if (fit) {
+    const box = m.querySelector(".cm-focus"), inp = box.querySelector("input");
+    const val = () => Math.max(1, Math.min(fit.max, Math.round(+inp.value || fit.max)));
+    box.querySelector("[data-fk=tog]").addEventListener("click", (ev) => { ev.stopPropagation(); const on = !box.classList.contains("on"); box.classList.toggle("on", on); ev.currentTarget.setAttribute("aria-checked", String(on)); fit.onFocus?.({ on, mins: val() }); if (on) inp.focus({ preventScroll: true }); });
+    inp.addEventListener("change", () => { inp.value = val(); fit.onFocus?.({ on: true, mins: val() }); });
+    inp.addEventListener("keydown", (ev) => { ev.stopPropagation(); if (ev.key === "Enter") { inp.dispatchEvent(new Event("change")); closeMenu(); } });
+  }
   m.addEventListener("contextmenu", (ev) => ev.preventDefault()); // 메뉴 위에선 브라우저 메뉴를 띄우지 않아요 (Windows 는 ContextMenu 키를 뗄 때 한 번 더 보내요)
   m.querySelector("button")?.focus({ preventScroll: true });
 }

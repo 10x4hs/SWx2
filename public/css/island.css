@@ -151,3 +151,36 @@ body:has(#timer.is-live) .shell { padding-top: var(--isl-below); }
   .island .isl-card, .island .isl-card > *, .island .isl-pill { animation: none !important; transition: none !important; }
   .shell { transition: none; }
 }
+
+/* 자동 집중 배너 (auto-focus.js) — 맥 알림처럼 오른쪽 위, 5초 뒤 사라짐 · 위로 밀면 닫힘 */
+#af-stack { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; z-index: 10050; display: grid; gap: 10px; width: min(380px, calc(100vw - 24px)); pointer-events: none; }
+.af-ban { pointer-events: auto; position: relative; display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: start; padding: 12px 14px; border-radius: 18px; color: #f2f4f7;
+  background: rgba(38, 42, 50, .78); -webkit-backdrop-filter: blur(24px) saturate(1.4); backdrop-filter: blur(24px) saturate(1.4); border: 1px solid rgba(255,255,255,.14); box-shadow: 0 12px 34px rgba(0,0,0,.35);
+  transform: translateX(24px); opacity: 0; transition: transform .28s cubic-bezier(.2,.8,.2,1), opacity .28s; }
+.af-ban.in { transform: none; opacity: 1; }
+.af-ban.out { transform: translateY(-16px); opacity: 0; }
+.af-ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; color: #fff; background: linear-gradient(135deg, #7fa6ff, #5fd08a); }
+.af-tx { min-width: 0; }
+.af-tx b { font-size: 13px; display: block; }
+.af-tx p { margin: 2px 0 0; font-size: 13px; line-height: 1.4; color: #d6dbe2; overflow-wrap: anywhere; }
+.af-ban small { font-size: 11px; color: #9aa3ad; }
+.af-acts { display: flex; gap: 6px; margin-top: 8px; }
+.af-acts button { font: inherit; font-size: 12px; color: inherit; border: 0; border-radius: 8px; padding: 5px 11px; background: rgba(255,255,255,.14); cursor: pointer; }
+.af-acts button:hover { background: rgba(255,255,255,.22); }
+.af-x { position: absolute; left: -6px; top: -6px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); background: rgba(60,64,72,.95); color: #ddd; font-size: 10px; display: none; cursor: pointer; }
+.af-ban:hover .af-x { display: grid; place-items: center; }
+@media (prefers-reduced-motion: reduce) { .af-ban { transition: opacity .2s; transform: none; } }
+
+/* 계획 블록의 '◎ 자동 집중 N분' 표시 · 우클릭 메뉴 스위치 */
+.af-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; margin-left: 8px; border-radius: 99px; font-size: 11.5px; line-height: 1; white-space: nowrap; vertical-align: middle; align-self: center;
+  color: color-mix(in srgb, var(--c-blue, #7fa6ff) 70%, #fff); background: color-mix(in srgb, var(--c-blue, #7fa6ff) 18%, transparent); border: 1px solid color-mix(in srgb, var(--c-blue, #7fa6ff) 45%, transparent); }
+.block.tiny .af-tag { display: none; }
+.cm-focus .cm-i { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; }
+.cm-sw { width: 30px; height: 18px; border-radius: 99px; background: rgba(255,255,255,.2); position: relative; flex: none; transition: background .15s; }
+.cm-sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; }
+.cm-focus.on .cm-sw { background: var(--c-blue, #7fa6ff); }
+.cm-focus.on .cm-sw::after { left: 14px; }
+.cm-fm { display: none; align-items: center; gap: 6px; padding: 2px 10px 8px; font-size: 13px; }
+.cm-focus.on .cm-fm { display: flex; }
+.cm-fm span { font-family: var(--mono, ui-monospace, monospace); color: var(--muted, #9bb0aa); }
+.cm-fm input { width: 64px; font: inherit; color: inherit; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); border-radius: 7px; padding: 4px 6px; }

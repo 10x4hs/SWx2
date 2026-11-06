@@ -1,6 +1,7 @@
 // 계획(plans) · 기간 요약(summary) · 실행 기록(logs). 계획은 모두가 읽고 주인만 써요.
 import { fail, json, body, now, uid, str, dayParam, yearParam } from "./http.js";
 import { PEERS } from "./teams.js";
+import { focusKick } from "./hub.js";
 import { registerBoard, boardFields, syncDone, outPlan } from "./board.js";
 
 const PERIOD_RE = {
@@ -107,10 +108,24 @@ export function registerPlans(on) {
     if (b.group_id !== undefined) next.group_id = groupId(b.group_id);
     boardFields(b, next);
     syncDone(b, p, next); // '완료' 칸 ↔ done 을 같게
+    // 자동 집중: 분(1~계획 길이) 또는 null(끄기). 시각 · 날 · 집중 분이 바뀌면 그 시각 알림을 다시 보낼 수 있게
+    if (b.auto_focus !== undefined) {
+      if (b.auto_focus === null || b.auto_focus === false || b.auto_focus === 0) next.auto_focus = null;
+      else { const m = Math.round(Number(b.auto_focus)); if (!(m >= 1 && m <= 1440)) fail(400, "집중 시간은 1분 이상이어야 해요."); if (!next.start) fail(400, "시각이 있는 계획에만 자동 집중을 켤 수 있어요."); next.auto_focus = m; }
+    }
+    if (next.auto_focus && !next.start) next.auto_focus = null;
+    if (next.auto_focus !== p.auto_focus || next.start !== p.start || next.period !== p.period) next.focus_sent_at = null;
     next.updated_at = now();
-    await env.DB.prepare("UPDATE plans SET text = ?, done = ?, done_at = ?, missed = ?, period = ?, start = ?, mins = ?, color = ?, priority = ?, status = ?, project = ?, due = ?, subtasks = ?, note = ?, sort = ?, group_id = ?, updated_at = ? WHERE id = ?")
-      .bind(next.text, next.done, next.done_at, next.missed ? 1 : 0, next.period, next.start, next.mins, next.color, next.priority ?? null, next.status ?? null, next.project ?? null, next.due ?? null, next.subtasks ?? null, next.note ?? null, next.sort, next.group_id ?? null, next.updated_at, p.id).run();
+    await env.DB.prepare("UPDATE plans SET text = ?, done = ?, done_at = ?, missed = ?, period = ?, start = ?, mins = ?, color = ?, priority = ?, status = ?, project = ?, due = ?, subtasks = ?, note = ?, sort = ?, group_id = ?, auto_focus = ?, focus_sent_at = ?, updated_at = ? WHERE id = ?")
+      .bind(next.text, next.done, next.done_at, next.missed ? 1 : 0, next.period, next.start, next.mins, next.color, next.priority ?? null, next.status ?? null, next.project ?? null, next.due ?? null, next.subtasks ?? null, next.note ?? null, next.sort, next.group_id ?? null, next.auto_focus ?? null, next.focus_sent_at ?? null, next.updated_at, p.id).run();
+    if (next.auto_focus || p.auto_focus) await focusKick(env); // 알람 시각을 다시 맞춰요
     return json({ plan: outPlan(next) });
+  });
+
+  // 서비스 워커가 푸시를 받으면 묻는 '방금 시작한 자동 집중' (지난 10분 안에 알람이 보낸 것)
+  on("GET", "/plans/focus-due", async ({ env, user }) => {
+    const { results } = await env.DB.prepare("SELECT id, text, start, auto_focus AS mins FROM plans WHERE user_id = ? AND auto_focus IS NOT NULL AND focus_sent_at > ? ORDER BY focus_sent_at DESC LIMIT 3").bind(user.id, now() - 10 * 60e3).all();
+    return json({ plans: results });
   });
 
   on("DELETE", "/plans/:id", async ({ env, user, params }) => {

@@ -10,6 +10,7 @@ import {
 } from "../util.js";
 import { MOODS } from "../diary.js";
 import { openMenu, closeMenu } from "../ctxmenu.js";
+import { askPush } from "../auto-focus.js";
 import { icon } from "../icons.js";
 import { BLOCKS } from "../english/data.js";
 import { mountPlanClip, MOD } from "../plan-clip.js";
@@ -279,7 +280,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       const narrow = (frac < 0.5 ? " narrow xnarrow" : frac < 1 ? " narrow" : "") + (frac < 1 && c + span === n ? " edge-r" : "");
       return `<div class="block ${status(p)}${size}${narrow}${sel(p.id)}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tipOf(p, s, e))}" style="${pos(top, h, c, n, span)}" data-id="${esc(p.id)}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">${missBtn(p)}
-        <div class="txt"><span data-edit="${esc(p.id)}">${esc(p.text)}</span>${h < 50 ? `<span class="when-i">${esc(span2(p.start, e))} · ${hm(e - s)}</span>` : ""}${h >= 50 ? `<span class="when">${esc(span2(p.start, e))} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
+        <div class="txt"><span data-edit="${esc(p.id)}">${esc(p.text)}</span>${p.auto_focus && !p.done ? `<span class="af-tag" title="${esc(p.start)}에 집중 모드가 저절로 켜져요">◎ 자동 집중 ${hm(p.auto_focus)}</span>` : ""}${h < 50 ? `<span class="when-i">${esc(span2(p.start, e))} · ${hm(e - s)}</span>` : ""}${h >= 50 ? `<span class="when">${esc(span2(p.start, e))} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
         ${playBtn(p)}
         <button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button>
         <button class="icon-btn sm" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button>
@@ -582,13 +583,21 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   });
   el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; S.editId = null; S.form = null; drawGrid(); } });
   // 우클릭 → 편집 · 끝냄 · 우선순위 · 다음 날로 · 삭제
+  // 자동 집중 켜기 · 끄기 · 분 바꾸기 (우클릭 메뉴에서). 화면 먼저 바꾸고, 실패하면 되돌려요
+  async function setFocus(p, mins) {
+    const old = p.auto_focus ?? null; if (old === mins) return;
+    p.auto_focus = mins; drawAll();
+    if (mins && !old) askPush(); // 알림 허락은 누른 순간에 물어야 해요
+    try { await api.updatePlan(p.id, { auto_focus: mins }); pu.patched(p.id, { auto_focus: old }, { auto_focus: mins }, "자동 집중"); changed("plans"); }
+    catch (ex) { p.auto_focus = old; drawAll(); toast(ex.message, "err"); }
+  }
   el.addEventListener("contextmenu", (e) => {
     if (ro()) return;
     const b = e.target.closest("#dp-grid [data-id]"); if (!b) return;
     const p = S.plans?.find((x) => x.id === b.dataset.id); if (!p) return;
     openMenu(e, {
       title: `${span2(p.start, toMin(p.start) + (p.mins || 30))} · ${p.text}`,
-      items: [{ k: "edit", label: "편집", hint: "이름 · 시각 · 길이" }, { k: "done", label: p.done ? "끝냄 되돌리기" : "끝냄" }, { k: "miss", label: p.missed ? "못함 되돌리기" : "못함", danger: !p.missed }, { k: "prio", prio: p.priority || "" }, { sep: true }, { k: "later", label: "다음 날로 미루기" }, { k: "del", label: "삭제", danger: true }],
+      items: [{ k: "edit", label: "편집", hint: "이름 · 시각 · 길이" }, { k: "done", label: p.done ? "끝냄 되돌리기" : "끝냄" }, { k: "miss", label: p.missed ? "못함 되돌리기" : "못함", danger: !p.missed }, { k: "prio", prio: p.priority || "" }, ...(p.start && !p.done ? [{ sep: true }, { k: "focus", on: !!p.auto_focus, start: p.start, mins: p.auto_focus, max: p.mins || 30, onFocus: ({ on, mins }) => setFocus(p, on ? mins : null) }] : []), { sep: true }, { k: "later", label: "다음 날로 미루기" }, { k: "del", label: "삭제", danger: true }],
       onPick: async (k, v) => {
         if (k === "edit") { S.editId = p.id; S.editSlot = p.start; S.form = null; drawGrid(); return; }
         if (k === "done") return toggle(p.id, !p.done);

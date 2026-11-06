@@ -1496,6 +1496,29 @@ try {
 
     });
     // ---------- ⑮ 하루 계획표 짧은 일정 — 맞닿으면 위아래로 · 붙어 있으면 그 칸만 늘어남 · 진짜 겹침은 나란히 (2026-10-15) ----------
+    await sec("auto-focus", async () => {
+      if (tv !== "컴퓨터") return;
+      errs = [];
+      const day = await p.evaluate(() => { const d = new Date(Date.now() + 6 * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
+      const plan = (await (await ctx.request.post(BASE + "/api/plans", { headers: H, data: { scope: "day", period: "D:" + day, text: "자동 집중 블록", start: "10:00", mins: 50 } })).json()).plan;
+      await go("#/calendar/" + day, 2500);
+      const blk = () => p.evaluate(() => { const b = [...document.querySelectorAll("#dp-grid [data-id]")].find((x) => x.querySelector("[data-edit]")?.textContent === "자동 집중 블록"); b?.scrollIntoView({ block: "center" }); const r = b?.getBoundingClientRect(); return r ? { x: r.left + r.width / 2, y: r.top + 12, tag: b.querySelector(".af-tag")?.textContent || "" } : null; });
+      let b = await blk(); await sleep(300); b = await blk();
+      await p.mouse.click(b.x, b.y, { button: "right" }); await sleep(250);
+      await p.click(".cm-focus [data-fk=tog]"); await sleep(200);
+      const inp = await p.$(".cm-focus input"); await inp.fill("30"); await inp.press("Enter"); await sleep(1200);
+      const saved = (await (await ctx.request.get(BASE + "/api/plans?periods=D:" + day, { headers: H })).json()).plans.find((q) => q.id === plan.id)?.auto_focus;
+      b = await blk();
+      // 그 시각 신호(웹소켓과 같은 이벤트)가 오면 → 타이머 시작 + 오른쪽 위 배너
+      await p.evaluate((id) => window.dispatchEvent(new CustomEvent("focus-live", { detail: { plan: { id, text: "자동 집중 블록", start: "10:00", mins: 30 } } })), plan.id);
+      await sleep(600);
+      const ban = await p.evaluate(() => { const x = document.querySelector("#af-stack .af-ban"); if (!x) return null; const r = x.getBoundingClientRect(); return { t: x.textContent, right: innerWidth - r.right, top: r.top }; });
+      const island = await p.evaluate(() => document.querySelector("#timer-btn")?.textContent || "");
+      await p.click("#af-stack .af-acts button"); await sleep(300); // 멈추기
+      ok(saved === 30 && /자동 집중 30분/.test(b.tag) && ban && /집중 모드가 켜졌어요/.test(ban.t) && ban.right < 40 && ban.top < 60 && !errs.length,
+        `${tv} · 자동 집중 — 우클릭 스위치 저장 ${saved} · 블록 표시 "${b.tag}" · 배너 ${ban ? `오른쪽 ${Math.round(ban.right)}px 위 ${Math.round(ban.top)}px` : "없음"} · 타이머 "${island.trim().slice(0, 20)}"${errs.length ? " — " + errs[0] : ""}`);
+      await ctx.request.delete(BASE + "/api/plans/" + plan.id, { headers: H });
+    });
     await sec("plan-short", async () => {
     {
       errs = [];

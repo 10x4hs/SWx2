@@ -962,6 +962,21 @@ await section("calendar", async () => {
 });
 
 // ---- 할 일별 집중 (logs.plan_id → plans.focus_mins) · 주간 회고 숫자 ----
+await section("auto-focus", async () => {
+  // 지금(KST) 시작하는 계획에 자동 집중을 켜면 → RoomHub 가 바로 '시작'으로 보고 focus-due 에 나와요
+  const k = new Date(Date.now() + 9 * 3600e3), D = k.toISOString().slice(0, 10), hhmm = k.toISOString().slice(11, 16);
+  const id = (await call("a", "POST", "/plans", { scope: "day", period: "D:" + D, text: "자동 집중 시험", start: hhmm, mins: 50 })).data.plan.id;
+  const loose = (await call("a", "POST", "/plans", { scope: "day", period: "D:" + D, text: "시각 없음" })).data.plan.id;
+  r = await call("a", "PATCH", "/plans/" + loose, { auto_focus: 20 }); ok(r.status === 400, "auto_focus needs a start time (400)");
+  r = await call("b", "PATCH", "/plans/" + id, { auto_focus: 20 }); ok(r.status === 403, "cannot set someone else's auto_focus (403)");
+  r = await call("a", "PATCH", "/plans/" + id, { auto_focus: 20 }); ok(r.status === 200 && r.data.plan.auto_focus === 20, "auto_focus saved (20)");
+  r = await call("a", "GET", "/plans/focus-due"); ok(r.data.plans?.some((p) => p.id === id && p.mins === 20 && p.start === hhmm), "plan due now shows in focus-due");
+  r = await call("b", "GET", "/plans/focus-due"); ok(!r.data.plans?.some((p) => p.id === id), "focus-due is only mine");
+  r = await call("a", "PATCH", "/plans/" + id, { auto_focus: null }); ok(r.status === 200 && r.data.plan.auto_focus === null, "auto_focus off (null)");
+  r = await call("a", "GET", "/plans/focus-due"); ok(!r.data.plans?.some((p) => p.id === id), "turned off → not due");
+  await call("a", "DELETE", "/plans/" + id); await call("a", "DELETE", "/plans/" + loose);
+});
+
 await section("focus", async () => {
   const W = "2027-W10", D1 = "2027-03-08", D2 = "2027-03-09";
   const aid = (await call("a", "GET", "/me")).data.user.id, bid = (await call("b", "GET", "/me")).data.user.id;

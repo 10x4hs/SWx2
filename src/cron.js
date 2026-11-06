@@ -1,3 +1,4 @@
+import { focusKick } from "./hub.js";
 // 크론 나누기 (wrangler.jsonc triggers.crons — 무료 플랜은 5개까지라 딱 5개예요).
 //   "5 15 * * *"   매일 00:05 (한국) — 지난 하루 자동 저장 · 논문 구역 정리
 //   "0 13 * * SUN" 일요일 22:00 (한국) — 주간 회고 미리 만들기
@@ -23,6 +24,7 @@ export const CRON = { SAVE: "5 15 * * *", WEEKLY: "0 13 * * SUN", NEWS_AM: "0 23
 export async function runCron(env, cron) {
   if (cron === CRON.HOURLY) return withBudget(NEWS_BUDGET, async () => {
     const reminders = await remindersCron(env).catch((e) => ({ error: String(e?.message || e) }));
+    await focusKick(env); // 자동 집중 알람이 혹시 빠졌으면 다시 맞춰요
     const news = await newsHourly(env).catch((e) => ({ error: String(e?.message || e) }));
     // 뜻으로 찾기 색인 한 걸음 (CIM 장 · 바뀐 노트 · 임베딩) — Workers AI · Vectorize 는 바인딩이라 위 fetch 예산과 따로예요
     const rag = await ragCron(env).catch((e) => ({ error: String(e?.message || e) }));
