@@ -113,6 +113,13 @@ export async function islandE2E({ p, go, ok, tv, w, getErrs, shots = null }) {
     await p.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
     ok(bg === "rgb(11, 11, 13)", `${tv} · 라이트 테마에서도 섬은 검은색 (${bg})`);
 
+    // 4b) 새로고침해도 집중이 이어져요 (localStorage focus-sess)
+    step = "새로고침";
+    const rb = await p.$eval("#timer .isl-time", (n) => n.textContent).catch(() => "");
+    await p.reload({ waitUntil: "networkidle" }); await sleep(900);
+    const ra = await p.$eval("#timer.is-live .isl-time", (n) => n.textContent).catch(() => "");
+    ok(!!ra && ra <= rb, `${tv} · 새로고침해도 집중 섬이 이어져요 (${rb} → ${ra || "없음"})`);
+
     // 5) 멈추기 · 끝
     step = "멈추기";
     presence.length = 0;
