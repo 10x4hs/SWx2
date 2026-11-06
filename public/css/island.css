@@ -27,6 +27,12 @@ body:has(.imp-bar) { --isl-top: 44px; }
   display: block; width: max-content; max-width: calc(100vw - 24px);
   color: var(--isl-ink); font-family: var(--font);
 }
+/* 끌어 옮긴 섬 (focus-timer.js dragIsland) — 원래 자리 가까이 오면 빛나고, 놓으면 착 붙어요 */
+#timer.island .isl-pill { touch-action: none; }
+#timer.island.dragging { transition: none; cursor: grabbing; }
+#timer.island.dragging .isl-pill { cursor: grabbing; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+#timer.island.near-home .isl-pill { outline: 2px solid var(--isl-accent); outline-offset: 2px; }
+#timer.island.snapping { transition: left .32s var(--isl-spring), top .32s var(--isl-spring); }
 /* 쉬는 중 · 접힘 = 아무것도 없음. 세션이 있으면 hidden 이어도 알약으로 보여요 (styles.css 의 [hidden] !important 를 이겨야 해서 !important) */
 #timer.island.is-live[hidden] { display: block !important; }
 #timer.island[hidden] .isl-card { display: none; }       /* 접힘 = 알약만 */
