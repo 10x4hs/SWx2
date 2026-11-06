@@ -21,6 +21,32 @@ export function initTimer(deps) {
   });
   // 로그아웃하면 일시정지 중이던 세션도 끝내요 (app.js 는 도는 중일 때만 멈춰요)
   window.addEventListener("trio:signed-out", () => { if (timer.active) timer.stop(); });
+  // 새로고침 · 다른 탭: 이 기기에 저장한 세션을 이어 받아요
+  restore(load());
+  window.addEventListener("storage", (e) => { if (e.key === SESS) restore(load(), true); });
+}
+
+// 세션을 이 기기(localStorage)에 남겨서 새로고침해도 · 다른 탭에서도 같은 집중이 보여요
+const SESS = "focus-sess";
+const load = () => { try { return JSON.parse(localStorage.getItem(SESS) || "null"); } catch { return null; } };
+function save() {
+  try {
+    if (!timer.active) localStorage.removeItem(SESS);
+    else localStorage.setItem(SESS, JSON.stringify({ total: timer.total, left: timer.left, end: timer.end, running: timer.running, label: timer.label, plan_id: timer.plan_id, preset: timer.preset }));
+  } catch {}
+}
+let quiet = false; // 다른 탭에서 받은 걸 적용하는 중엔 다시 저장하지 않아요
+function restore(x, fromOther = false) {
+  quiet = true;
+  try {
+    if (!x) { if (fromOther && timer.active) { timer.running = false; timer.active = false; clearInterval(timer.t); timer.total = timer.left = timer.preset; timer.plan_id = null; timer.label = ""; renderTimer(); } return; }
+    Object.assign(timer, { total: x.total, preset: x.preset || x.total, label: x.label || "", plan_id: x.plan_id || null });
+    if (x.running) {
+      const left = Math.round((x.end - Date.now()) / 1000);
+      if (left <= 0) { timer.active = true; timer.left = 0; timer.end = x.end; timer.finish(); return; }
+      timer.active = true; timer.left = left; timer.start();
+    } else { clearInterval(timer.t); timer.running = false; timer.active = true; timer.left = x.left; renderTimer(); }
+  } finally { quiet = false; }
 }
 
 const PRESETS = [15, 25, 50, 90];
@@ -47,8 +73,8 @@ export const timer = {
       if (this.left === 0) this.finish();
       this.paint();
     }, 250);
-    presence("focus", this.end);
-    if (fresh) { this.flashUntil = Date.now() + FLASH_MS; setTimeout(() => renderTimer(), FLASH_MS + 20); }
+    if (!quiet) { presence("focus", this.end); save(); }
+    if (fresh && !quiet) { this.flashUntil = Date.now() + FLASH_MS; setTimeout(() => renderTimer(), FLASH_MS + 20); }
     say(fresh ? `집중을 시작했어요. ${Math.ceil(this.left / 60)}분 남았어요.` : `다시 집중해요. ${Math.ceil(this.left / 60)}분 남았어요.`);
     renderTimer();
   },
@@ -69,19 +95,23 @@ export const timer = {
     if (!this.active) return;
     this.total += n * 60; this.left += n * 60;
     if (this.running) { this.end += n * 60 * 1000; presence("focus", this.end); }
+    save();
     say(`${n}분 늘렸어요. ${Math.ceil(this.left / 60)}분 남았어요.`);
     renderTimer();
   },
-  pause() { this.running = false; clearInterval(this.t); presence("idle"); say("일시정지했어요."); renderTimer(); },
-  reset() { this.pause(); this.left = this.total; renderTimer(); },
+  pause() { this.running = false; clearInterval(this.t); presence("idle"); save(); say("일시정지했어요."); renderTimer(); },
+  reset() { this.pause(); this.left = this.total; save(); renderTimer(); },
   // 멈추기: 기록 없이 끝내요 (로그아웃할 때도 불려요)
   stop() {
     this.running = false; this.active = false; clearInterval(this.t); presence("idle");
     this.total = this.left = this.preset; this.plan_id = null; this.label = ""; this.flashUntil = 0; document.title = "SWx2";
+    if (!quiet) save();
     renderTimer();
   },
   async finish() {
     clearInterval(this.t);
+    // 탭이 여러 개면 한 탭만 기록해요: 저장된 세션을 먼저 지운 탭이 기록 담당
+    const mine = (() => { try { const x = load(); if (!x) return false; localStorage.removeItem(SESS); return true; } catch { return true; } })();
     this.running = false; this.active = false;
     const mins = Math.round(this.total / 60);
     chime();
@@ -91,6 +121,7 @@ export const timer = {
     collapse(false); // 펼쳐져 있었어도 "끝" 알약으로
     say(`집중 ${mins}분이 끝났어요.`);
     setTimeout(() => { if (this.doneUntil && Date.now() >= this.doneUntil - 50) leave(); }, DONE_MS);
+    if (!mine) { this.total = this.left = this.preset; renderTimer(); return; }
     try {
       const b = { day: ymd(today()), at: nowTime(), text: `집중 ${mins}분${this.label ? " · " + this.label : ""}`, kind: "focus", mins };
       if (this.plan_id) b.plan_id = this.plan_id;
