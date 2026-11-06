@@ -56,7 +56,13 @@ export function openMcpPanel(ctx) {
         <li>알림 허용 창이 뜨면 <b>허용</b>. 그다음 아래 버튼을 누르면 내 계정에 연결돼요.</li></ol>
         ${widget ? `<div class="mcp-widget-go"><a class="btn accent sm" href="${esc(widget)}">TrioWidget 에 연결</a><button class="btn ghost sm" type="button" data-copy-widget>연결 주소 복사</button></div><p class="faint">이 주소는 지금만 보여요. 앱의 '연결 주소 붙여 넣기'에 넣어도 돼요.</p>`
           : `<div class="mcp-widget-go"><button class="btn sm" type="button" data-widget>${info.tokens.some((t) => t.agent === "mac-widget") ? "다시 연결 (새 토큰)" : "위젯 연결 만들기"}</button></div>`}</div>
-      <h3 class="mcp-h">ChatGPT · claude.ai 처럼 OAuth 로 붙는 앱</h3>
+      <h3 class="mcp-h">Windows · 다른 컴퓨터</h3>
+      <div class="mcp-oauth-how">설치할 것 없이 Chrome 이나 Edge 로 돼요. 집중 시작 · 끝 · 자동 집중이 Windows 알림(오른쪽 아래)으로 와요.
+        <ol class="mcp-steps"><li>Chrome · Edge 로 SWx2 에 로그인 → 주소창 오른쪽 <b>설치(⊕) 아이콘</b> → 설치 (작업 표시줄에 앱처럼 생겨요)</li>
+        <li>아래 버튼 → 알림 <b>허용</b> → 테스트 알림이 뜨면 끝</li>
+        <li>창을 닫아도 오게: 브라우저 설정 → 시스템 → <b>앱을 닫아도 백그라운드 앱 계속 실행</b> 켜기 · Windows 설정 → 알림에서 Chrome/Edge 켜기</li></ol>
+        <div class="mcp-widget-go"><button class="btn sm" type="button" data-push-test>알림 켜고 테스트</button></div></div>
+            <h3 class="mcp-h">ChatGPT · claude.ai 처럼 OAuth 로 붙는 앱</h3>
       <div class="mcp-oauth-how">그 앱의 커넥터(연결) 추가 화면에 서버 주소 <code>${esc(info.url)}</code> 를 넣고 인증을 <b>OAuth</b> 로 두면,
         이 앱의 로그인 · 허용 화면이 떠요. 내 아이디로 로그인해서 <b>허용</b>을 누르면 끝이에요. 토큰을 따로 만들 필요 없어요.</div>
       ${info.oauth?.length ? `<ul class="mcp-list">${info.oauth.map((o) => `<li><span class="mcp-name">${esc(o.client_name)}</span><span class="faint">OAuth · 허용한 날 ${esc(fmt(o.created_at))} · 마지막 사용 ${esc(fmt(o.last_used_at))}</span>
@@ -67,6 +73,18 @@ export function openMcpPanel(ctx) {
       <p class="faint mcp-note">이름은 영문 소문자 · 숫자 · . _ - 만. 같은 이름으로 다시 만들면 옛 토큰은 바로 못 써요. 토큰은 내 계정 권한이라 남에게 주지 마세요.</p>
       <details class="mcp-tools"><summary>쓸 수 있는 도구 ${info.tools.length}개</summary><ul>${info.tools.map((t) => `<li><code>${esc(t.name)}</code> — ${esc(t.description)}</li>`).join("")}</ul></details>
       <p class="faint mcp-note">서버 주소 <code>${esc(info.url)}</code></p>`;
+    body.querySelector("[data-push-test]")?.addEventListener("click", async () => {
+      // 이 브라우저를 푸시 구독 (닫혀 있어도 '집중 끝'이 오게) → 바로 테스트 알림
+      try {
+        if (!("Notification" in window)) return toast("이 브라우저는 알림을 못 띄워요.", "err");
+        if ((await Notification.requestPermission()) !== "granted") return toast("알림이 막혀 있어요. 주소창 왼쪽 자물쇠 → 알림 → 허용.", "err");
+        await (await import("./auto-focus.js")).askPush();
+        const reg = await navigator.serviceWorker?.getRegistration();
+        const opt = { body: "이렇게 집중 시작 · 끝을 알려 드려요", icon: "/icons/icon-192.png", tag: "swx2-test" };
+        reg ? await reg.showNotification("SWx2 알림 테스트", opt) : new Notification("SWx2 알림 테스트", opt);
+        toast("테스트 알림을 보냈어요. 안 보이면 Windows 설정 → 알림을 확인해요.");
+      } catch (e) { toast(e.message, "err"); }
+    });
     body.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => {
       const s = snippets(fresh.url, fresh.token, fresh.name)[+b.dataset.copy];
       try { await navigator.clipboard.writeText(s.v); b.textContent = "복사됨"; setTimeout(() => (b.textContent = "복사"), 1500); } catch { toast("복사하지 못했어요. 글자를 직접 골라 복사해 주세요.", "err"); }
