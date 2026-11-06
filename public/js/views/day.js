@@ -639,6 +639,8 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     if (e.target.closest("button, input, select, a, [data-edit].editing") || e.shiftKey || e.metaKey || e.ctrlKey) return;
     const mode = edgeOf(b, e.clientY); // 위·아래 가장자리 8px 안이면 길이 조절, 아니면 옮기기
     drag = { b, id: b.dataset.id, mode, y0: e.clientY, sc0: scroller().scrollTop, s: +b.dataset.s, e: +b.dataset.e, ns: +b.dataset.s, ne: +b.dataset.e, moved: false };
+    // 여러 개를 골라 둔 상태에서 그중 하나를 잡아 옮기면 고른 것 전부 같이 움직여요
+    if (mode === "move" && S.sel.size > 1 && S.sel.has(drag.id)) drag.mates = $$("#dp-grid .block[data-id]:not(.in-pop):not(.cont)", el).filter((x) => x !== b && S.sel.has(x.dataset.id) && x.dataset.s !== "").map((x) => ({ b: x, id: x.dataset.id, s: +x.dataset.s, e: +x.dataset.e }));
     b.setPointerCapture?.(e.pointerId);
   });
   el.addEventListener("pointermove", (e) => {
@@ -654,19 +656,33 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     drag.moved = true; drag.b.classList.add("dragging");
     let ns = drag.s, ne = drag.e;
     // 자정을 넘어도 돼요 (시작은 23:55 까지, 끝은 다음 날로 이어져요)
-    if (drag.mode === "move") { const len = drag.e - drag.s; ns = Math.max(0, Math.min(1440 - STEP, drag.s + d)); ne = ns + len; }
+    if (drag.mode === "move" && drag.mates?.length) {
+      const all = [drag, ...drag.mates], lo = Math.min(...all.map((x) => x.s)), hi = Math.max(...all.map((x) => x.s));
+      const dd = Math.max(-lo, Math.min(1440 - STEP - hi, d)); drag.dd = dd;
+      ns = drag.s + dd; ne = drag.e + dd;
+      for (const m of drag.mates) { m.b.classList.add("dragging"); m.b.style.top = r2(axY(m.s + dd) + 1) + "px"; m.b.style.height = r2(Math.max(ONE_H, axY(m.e + dd) - axY(m.s + dd) - 2)) + "px"; }
+    }
+    else if (drag.mode === "move") { const len = drag.e - drag.s; ns = Math.max(0, Math.min(1440 - STEP, drag.s + d)); ne = ns + len; }
     else if (drag.mode === "top") ns = Math.max(0, Math.min(drag.e - STEP, 1440 - STEP, drag.s + d));
     else { const base = Math.min(1440, drag.e); ne = base + d; if (ne >= 1440 && drag.e > 1440) ne = drag.e; ne = Math.max(drag.s + STEP, Math.min(Math.max(1440, drag.e), ne)); }
     drag.ns = ns; drag.ne = ne;
     drag.b.style.top = r2(axY(ns) + 1) + "px";
     drag.b.style.height = r2(Math.max(ONE_H, axY(ne) - axY(ns) - 2)) + "px";
     let tag = drag.b.querySelector(".drag-tag"); if (!tag) { tag = document.createElement("span"); tag.className = "drag-tag"; drag.b.appendChild(tag); }
-    tag.textContent = `${span2(toTime(ns), ne)} · ${hm(ne - ns)}`;
+    tag.textContent = `${span2(toTime(ns), ne)} · ${hm(ne - ns)}${drag.mates?.length ? ` · ${drag.mates.length + 1}개 같이` : ""}`;
     e.preventDefault();
   });
   const endDrag = async () => {
     if (!drag) return; const g = drag; drag = null;
-    g.b.classList.remove("dragging");
+    g.b.classList.remove("dragging"); g.mates?.forEach((m) => m.b.classList.remove("dragging"));
+    if (g.mates?.length && g.moved && g.dd) {
+      justDragged = Date.now();
+      const ents = [g, ...g.mates].map((m) => { const p = S.plans.find((x) => x.id === m.id); return p && { p, id: p.id, before: { start: p.start }, after: { start: toTime(m.s + g.dd) } }; }).filter(Boolean);
+      for (const x of ents) x.p.start = x.after.start; drawAll();
+      try { await Promise.all(ents.map((x) => api.updatePlan(x.id, x.after))); pu.patchedMany(ents.map(({ id, before, after }) => ({ id, before, after })), `계획 이동 · ${ents.length}개`); changed("plans"); toast(`${ents.length}개를 ${g.dd > 0 ? `${hm(g.dd)} 뒤로` : `${hm(-g.dd)} 앞으로`} 옮겼어요`); }
+      catch (ex) { for (const x of ents) x.p.start = x.before.start; drawAll(); toast(ex.message, "err"); }
+      return;
+    }
     if (!g.moved || (g.ns === g.s && g.ne === g.e)) { if (g.moved) drawGrid(); else flush(); return; }
     justDragged = Date.now();
     const p = S.plans.find((x) => x.id === g.id); if (!p) return;
