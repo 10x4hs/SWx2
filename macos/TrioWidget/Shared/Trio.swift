@@ -9,7 +9,7 @@ enum Trio {
     static let widgetKind = "TrioPlans"
 
     static var base: URL? {
-        get { defaults.string(forKey: "base").flatMap(URL.init(string:)) }
+        get { defaults.string(forKey: "base").map { $0.replacingOccurrences(of: "dsm-mafia.dsm-mafia.workers.dev", with: "swx2.swx2.workers.dev") }.flatMap(URL.init(string:)) } // 옛 주소(이름 바꾸기 전)는 새 주소로
         set { defaults.set(newValue?.absoluteString, forKey: "base") }
     }
     static var token: String? {
