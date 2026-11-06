@@ -3405,7 +3405,7 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 .grp-row.done .mini-t { text-decoration: line-through; opacity: .7; }
 .grp-row.sel { outline: 2px solid var(--ink); outline-offset: -1px; }
 .dp-lasso { position: absolute; z-index: 9; pointer-events: none; border: 1px solid var(--ink-2); background: color-mix(in srgb, var(--ink) 8%, transparent); border-radius: 3px; }
-.dp-selbar { position: sticky; bottom: 8px; z-index: 10; margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 12px; background: var(--glass-1, var(--bg)); border: 1px solid var(--line-2); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.dp-selbar { position: sticky; bottom: 8px; z-index: 10; margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line-2); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
 .dp-selbar[hidden] { display: none; }
 .dp-selbar .sb-n { font-weight: 700; font-size: 13px; margin-right: 4px; }
 .dp-selbar .sb-shift { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
