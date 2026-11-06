@@ -343,17 +343,22 @@ export function renderTimer() {
   card.querySelector("#tm-label").addEventListener("keydown", (e) => { if (e.key === "Enter" && ph === "idle") card.querySelector("#tm-start")?.click(); });
   card.querySelector("#tm-unlink")?.addEventListener("click", (e) => { e.stopPropagation(); timer.plan_id = null; renderTimer(); });
 }
+// 끝 소리 "띠링": 브라우저는 사용자가 한 번 누르기 전엔 소리를 막아요 → 첫 클릭 · 키에서 미리 열어 두고, 그 하나를 계속 써요
+let AC = null;
+const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch {} return AC; };
+["pointerdown", "keydown", "touchstart"].forEach((t) => addEventListener(t, audio, { capture: true, passive: true }));
 function chime() {
+  const ac = audio(); if (!ac) return;
   try {
-    const ac = new (window.AudioContext || window.webkitAudioContext)();
-    [0, .18, .36].forEach((d, i) => {
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.frequency.value = [660, 880, 990][i];
-      g.gain.setValueAtTime(.0001, ac.currentTime + d);
-      g.gain.exponentialRampToValueAtTime(.18, ac.currentTime + d + .02);
-      g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d + .5);
-      o.connect(g).connect(ac.destination);
-      o.start(ac.currentTime + d); o.stop(ac.currentTime + d + .55);
-    });
+    const bell = (at, f) => { // 종소리: 기본음 + 배음 두 개, 빨리 울리고 천천히 사라져요
+      [[1, .32], [2.76, .1], [5.4, .04]].forEach(([k, v]) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.type = "sine"; o.frequency.value = f * k;
+        g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(v, at + .01); g.gain.exponentialRampToValueAtTime(.0001, at + 1.4);
+        o.connect(g).connect(ac.destination); o.start(at); o.stop(at + 1.5);
+      });
+    };
+    const t = ac.currentTime + .05;
+    bell(t, 1318.5); bell(t + .16, 1760); // 띠(E6) · 링(A6)
   } catch {}
 }
