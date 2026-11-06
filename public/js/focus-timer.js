@@ -150,6 +150,49 @@ function say(msg, quiet) {
   sr.textContent = msg;
 }
 
+// 알약은 끌어서 아무 데나 둘 수 있어요. 원래 자리(맨 위 가운데) 가까이 놓으면 자석처럼 착 붙어 돌아가요. 자리는 이 기기에 기억해요
+const POS = "isl-pos", SNAP = 80;
+function placeIsland(el, pos) {
+  if (!pos) { el.style.left = el.style.top = ""; el.classList.remove("moved"); return; }
+  const x = Math.max(40, Math.min(innerWidth - 40, pos.x * innerWidth)), y = Math.max(4, Math.min(innerHeight - 44, pos.y));
+  el.style.left = x + "px"; el.style.top = y + "px"; el.classList.add("moved");
+}
+function dragIsland(el) {
+  let saved = null; try { saved = JSON.parse(localStorage.getItem(POS) || "null"); } catch {}
+  placeIsland(el, saved);
+  addEventListener("resize", () => { try { placeIsland(el, JSON.parse(localStorage.getItem(POS) || "null")); } catch {} });
+  const pill = el.querySelector(".isl-pill");
+  let d = null;
+  pill.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    const r = el.getBoundingClientRect();
+    d = { x0: e.clientX, y0: e.clientY, cx: r.left + r.width / 2, top: r.top, moved: false };
+    pill.setPointerCapture?.(e.pointerId);
+  });
+  pill.addEventListener("pointermove", (e) => {
+    if (!d) return;
+    const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+    if (!d.moved && Math.hypot(dx, dy) < 5) return;
+    d.moved = true; el.classList.add("dragging", "moved");
+    const x = d.cx + dx, y = d.top + dy;
+    el.style.left = x + "px"; el.style.top = y + "px";
+    const home = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--isl-top")) || 10;
+    el.classList.toggle("near-home", Math.hypot(x - innerWidth / 2, y - home) < SNAP);
+  });
+  const up = () => {
+    if (!d) return; const g = d; d = null;
+    el.classList.remove("dragging");
+    if (!g.moved) return;
+    el._dragged = true; setTimeout(() => { el._dragged = false; }, 300);
+    const snap = el.classList.contains("near-home"); el.classList.remove("near-home");
+    const pos = snap ? null : { x: parseFloat(el.style.left) / innerWidth, y: parseFloat(el.style.top) };
+    el.classList.add("snapping"); setTimeout(() => el.classList.remove("snapping"), 360);
+    placeIsland(el, pos);
+    try { pos ? localStorage.setItem(POS, JSON.stringify(pos)) : localStorage.removeItem(POS); } catch {}
+  };
+  pill.addEventListener("pointerup", up); pill.addEventListener("pointercancel", up);
+}
+
 // 껍데기(알약 · 카드 · 알림 줄)는 한 번만 만들고, 바뀔 때는 알약 내용 · 카드 내용만 다시 써요 — 열림 애니메이션이 다시 돌지 않게
 function skeleton(el) {
   if (el.querySelector(".isl-pill")) return;
@@ -159,7 +202,9 @@ function skeleton(el) {
     <button class="isl-pill" type="button" aria-expanded="false" aria-controls="isl-card"></button>
     <div class="isl-card" id="isl-card" role="group" aria-label="집중 타이머"></div>
     <p class="isl-sr" role="status" aria-live="polite"></p>`;
+  dragIsland(el);
   el.querySelector(".isl-pill").addEventListener("click", () => {
+    if (el._dragged) { el._dragged = false; return; }
     if (phase() === "done") return;
     openTimer();
     el.querySelector("#tm-toggle, #tm-start")?.focus({ preventScroll: true });

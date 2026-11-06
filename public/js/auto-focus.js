@@ -53,8 +53,13 @@ function start(p) {
     ["+5분 뒤로", () => { if (timer.plan_id === p.id) timer.stop(); setTimeout(() => run(p, true), 5 * 60e3); toast("5분 뒤에 다시 켤게요."); }],
   ] });
 }
+// 탭이 여러 개면 지금 보고 있는 탭이 먼저 잡아요 (뒤에 숨은 탭은 잠깐 기다렸다가, 아무도 안 잡았을 때만)
 function run(p, again = false) {
   if (!p?.id || !(p.mins > 0) || !p.start) return;
+  if (!again && document.visibilityState !== "visible") return void setTimeout(() => claim(p), 1500);
+  claim(p, again);
+}
+function claim(p, again = false) {
   const k = SEEN + p.id + ":" + p.start;
   try { if (!again && localStorage.getItem(k)) return; localStorage.setItem(k, String(Date.now())); } catch {}
   if (timer.running && timer.plan_id !== p.id) {
