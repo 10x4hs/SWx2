@@ -74,6 +74,7 @@ export const timer = {
       this.paint();
     }, 250);
     if (!quiet) { presence("focus", this.end); save(); }
+    if (fresh && !quiet) { chime(true); notify("집중 시작", `${this.label || "집중"} · ${Math.round(this.left / 60)}분`); }
     if (fresh && !quiet) { this.flashUntil = Date.now() + FLASH_MS; setTimeout(() => renderTimer(), FLASH_MS + 20); }
     say(fresh ? `집중을 시작했어요. ${Math.ceil(this.left / 60)}분 남았어요.` : `다시 집중해요. ${Math.ceil(this.left / 60)}분 남았어요.`);
     renderTimer();
@@ -114,7 +115,7 @@ export const timer = {
     const mine = (() => { try { const x = load(); if (!x) return false; localStorage.removeItem(SESS); return true; } catch { return true; } })();
     this.running = false; this.active = false;
     const mins = Math.round(this.total / 60);
-    chime();
+    chime(); if (mine) notify("집중 끝", `${this.label || "집중"} · ${mins}분 완료`);
     document.title = "SWx2";
     presence("idle");
     this.doneUntil = Date.now() + DONE_MS; this.doneMins = mins; this.flashUntil = 0;
@@ -347,18 +348,30 @@ export function renderTimer() {
 let AC = null;
 const audio = () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch {} return AC; };
 ["pointerdown", "keydown", "touchstart"].forEach((t) => addEventListener(t, audio, { capture: true, passive: true }));
-function chime() {
+// 싱잉볼처럼 낮고 둥근 소리 (귀 안 아프게 작게 · 천천히 커졌다 길게 사라져요). up = 시작(올라가는 두 음) · 아니면 끝(내려가는 두 음)
+function chime(up = false) {
   const ac = audio(); if (!ac) return;
   try {
-    const bell = (at, f) => { // 종소리: 기본음 + 배음 두 개, 빨리 울리고 천천히 사라져요
-      [[1, .32], [2.76, .1], [5.4, .04]].forEach(([k, v]) => {
+    const bowl = (at, f) => {
+      [[1, .07], [2.0, .018], [2.9, .006]].forEach(([k, v]) => {
         const o = ac.createOscillator(), g = ac.createGain();
         o.type = "sine"; o.frequency.value = f * k;
-        g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(v, at + .01); g.gain.exponentialRampToValueAtTime(.0001, at + 1.4);
-        o.connect(g).connect(ac.destination); o.start(at); o.stop(at + 1.5);
+        g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(v, at + .12); g.gain.exponentialRampToValueAtTime(.0001, at + 2.6);
+        o.connect(g).connect(ac.destination); o.start(at); o.stop(at + 2.7);
       });
     };
-    const t = ac.currentTime + .05;
-    bell(t, 1318.5); bell(t + .16, 1760); // 띠(E6) · 링(A6)
+    const t = ac.currentTime + .05, [a, b] = up ? [392, 523.25] : [523.25, 392]; // G4 ↔ C5
+    bowl(t, a); bowl(t + .35, b);
+  } catch {}
+}
+// 맥(노트북) 알림 — 탭을 보고 있어도 떠요. 같은 tag 라 서비스 워커 푸시와 겹치면 하나로 합쳐져요
+async function notify(title, body) {
+  try {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "default") await Notification.requestPermission();
+    if (Notification.permission !== "granted") return;
+    const reg = await navigator.serviceWorker?.getRegistration();
+    const opt = { body, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "swx2-focus", renotify: true, silent: true };
+    reg ? await reg.showNotification(title, opt) : new Notification(title, opt);
   } catch {}
 }
