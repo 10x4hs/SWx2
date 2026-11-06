@@ -263,6 +263,20 @@ function reply(event, msg) {
 self.addEventListener("push", (event) => {
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    // 자동 집중 (RoomHub 알람): 앱 창이 보이면 그 창이 켜고 배너를 띄워요 · 아니면 맥/폰 알림 (누르면 열리며 집중 시작)
+    try {
+      const r = await fetch("/api/plans/focus-due", { headers: { "x-trio": "1" }, credentials: "include" });
+      const list = r.ok ? (await r.json()).plans || [] : [];
+      if (list.length) {
+        const seen = wins.find((w) => w.visibilityState === "visible");
+        for (const p of list) {
+          if (seen) { seen.postMessage({ type: "auto-focus", plan: p }); continue; }
+          const q = new URLSearchParams({ af: p.id, m: p.mins, s: p.start, t: p.text });
+          await self.registration.showNotification("집중 모드가 켜졌어요", { body: `${p.text} · ${p.mins}분`, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", tag: "af-" + p.id, data: { url: "/?" + q + "#/", plan: p } });
+        }
+        return;
+      }
+    } catch {}
     // 데이터베이스 행 알림 (src/reminders.js): 크론이 보낸 깨우기면 여기서 무엇인지 읽어 띄워요
     try {
       const r = await fetch("/api/reminders/take", { method: "POST", headers: { "x-trio": "1" }, credentials: "include" });
@@ -334,6 +348,8 @@ self.addEventListener("notificationclick", (event) => {
   const url = (event.notification.data && event.notification.data.url) || "/#/room";
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const af = event.notification.data && event.notification.data.plan;
+    if (af) { for (const w of wins) { if ("focus" in w) { await w.focus(); w.postMessage({ type: "auto-focus", plan: af }); return; } } await self.clients.openWindow(url); return; }
     for (const w of wins) { if ("focus" in w) { await w.focus(); w.postMessage(url.includes("#/news") ? { type: "open-hash", hash: url.slice(url.indexOf("#")) } : url.includes("#/notes/") ? { type: "open-url", url } : { type: "open-room" }); return; } }
     await self.clients.openWindow(url);
   })());

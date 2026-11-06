@@ -12,6 +12,7 @@ function connect() {
     if (e.data === "pong") return;
     let d; try { d = JSON.parse(e.data); } catch { return; }
     if (d.type === "room") window.dispatchEvent(new CustomEvent("room-live", { detail: d }));
+    else if (d.type === "focus") window.dispatchEvent(new CustomEvent("focus-live", { detail: d })); // 자동 집중 시각 (auto-focus.js)
   };
   ws.onclose = () => { ws = null; live.open = false; clearInterval(ping); window.dispatchEvent(new CustomEvent("live-state", { detail: { open: false } })); schedule(); };
   ws.onerror = () => { try { ws?.close(); } catch {} };

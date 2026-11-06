@@ -51,6 +51,7 @@ import { openPalette, initPalette } from "./palette.js";
 import { timer, renderTimer, initTimer } from "./focus-timer.js";
 import { syncUi, signedOut as uiSignedOut } from "./theme.js"; // 화면 꾸미기 — 테마 · 배경 · 강조 색 (첫 화면 전에 index.html 이 먼저 맞춰요)
 import { openThemePanel } from "./theme-panel.js";
+import { initAutoFocus } from "./auto-focus.js";
 window.__swx2Boot = 1; // 모듈이 다 이어졌어요 — index.html 의 '멈춤 복구'가 이걸 봐요
 
 const app = $("#app");
@@ -554,5 +555,6 @@ window.trioBack = () => { if (navDepth > 0 && history.length > 1) history.back()
 
 initPalette({ ctx }); // 명령 팔레트 (palette.js) · Cmd/Ctrl+K
 initTimer({ ctx }); // 집중 타이머 (focus-timer.js) · ctx.timer
+initAutoFocus(); // 계획 시각에 저절로 집중 (auto-focus.js)
 
 boot();
