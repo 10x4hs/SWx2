@@ -11,14 +11,6 @@
 ![PWA](https://img.shields.io/badge/PWA-installable-5a0fc8?logo=pwa&logoColor=white)
 ![Playwright](https://img.shields.io/badge/tested%20with-Playwright-2ead33?logo=playwright&logoColor=white)
 
-</div>
-
-<p align="center">
-  <img width="1469" height="965" alt="image" src="https://github.com/user-attachments/assets/eec133b1-67d1-4965-b920-25020f6728bd" />
-</p>
-
----
-
 ## What in
 
 ### Planning and Record
