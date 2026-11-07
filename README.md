@@ -14,8 +14,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/shots/12-calendar-v16.png" width="49%" alt="캘린더와 그날 판" />
-  <img src="docs/shots/7-graph-menu.png" width="49%" alt="Second Brain 그래프" />
+  <img src="docs/readme/home.jpg" width="100%" alt="홈 — 올해 · 이번 달 · 이번 주 · 오늘 링 차트" />
 </p>
 
 ---
@@ -31,6 +30,11 @@
 | 체크리스트 · 목표 | `#/checklist` · `#/goals/…` | 우선순위(Low → Max) 할 일, 주 · 월 · 년 목표 |
 | 일기 | `#/diary` | 하루 한 편 + 기분, 초대한 친구와만 |
 
+<p align="center">
+  <img src="docs/readme/calendar.jpg" width="49%" alt="캘린더" />
+  <img src="docs/readme/diary.jpg" width="49%" alt="일기" />
+</p>
+
 ### Note and Talking
 
 | 앱 | 주소 | 한 줄 |
@@ -38,6 +42,10 @@
 | 노트 · Brain | `#/notes` · `#/brain` | Notion식 블록 편집기, 옵시디언식 그래프 |
 | 대화방 · 창고 | `#/room` | 실시간 채팅(@AI), 책 · 링크 · 영상 모음 |
 | 뉴스 | `#/news` | 하루 한 부 신문 |
+
+<p align="center">
+  <img src="docs/readme/brain.jpg" width="80%" alt="Second Brain 그래프" />
+</p>
 
 ### Study
 
@@ -50,12 +58,28 @@
 | 영어 · 논문 · 책 | `#/english` · `#/papers` · `#/books` | 단어 · 논문 번역 · 책 공부 |
 | Silicon Valley Mafia | `#/svm` | 관리자 전용 · Curtis Yarvin 글 15편 (요약 · 원문 + 번역) · 영상 · 지식그래프 |
 
+<p align="center">
+  <img src="docs/readme/sw.jpg" width="49%" alt="SW 교과서" />
+  <img src="docs/readme/cim.jpg" width="49%" alt="CIM" />
+</p>
+<p align="center">
+  <img src="docs/readme/mba.jpg" width="49%" alt="MBA" />
+  <img src="docs/readme/psy.jpg" width="49%" alt="심리" />
+</p>
+<p align="center">
+  <img src="docs/readme/english.jpg" width="49%" alt="영어" />
+  <img src="docs/readme/books.jpg" width="49%" alt="책 공부" />
+</p>
+
 **어디서나:** `⌘K` 검색 · 집중 타이머 · ⌘Z 되돌리기 · 다크/라이트 · 모든 AI 입력창에서 웹 검색 · 사진 넣기 · 푸시 알림 · macOS 위젯(`macos/TrioWidget`).
 기능 자세히 → [docs/guide/features.md](docs/guide/features.md)
 
+### 📱 폰에서도
+
+설치형 웹앱(PWA)이라 폰 홈 화면에 앱처럼 깔려요. 아래 Dock 으로 앱 사이를 오가요.
+
 <p align="center">
-  <img src="docs/shots/11-diary.png" width="49%" alt="일기" />
-  <img src="docs/shots/10-calendar-checklist.png" width="49%" alt="체크리스트" />
+  <img src="docs/readme/phones.jpg" width="80%" alt="폰 화면 — 홈 · 심리 · 캘린더" />
 </p>
 
 ## I make it
