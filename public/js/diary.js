@@ -70,6 +70,8 @@ export function mountDiary(el, day, { onSaved, rows = 7, share = "" } = {}) {
   };
 
   let chain = Promise.resolve();
+  // 같은 상자(el)에 다른 날짜를 다시 열 때, 예전 날짜의 클릭 처리기가 남으면 기분 하나를 눌러도 지나온 날들이 전부 같은 기분으로 저장돼요 → 닫을 때 떼어 내요
+  const off = new AbortController();
   const save = debounce(() => {
     if (!S.loaded) return;
     const payload = { day, mood: S.mood };
@@ -96,7 +98,7 @@ export function mountDiary(el, day, { onSaved, rows = 7, share = "" } = {}) {
     const v = +b.dataset.mood;
     S.mood = S.mood === v ? null : v;
     drawMood(); status.textContent = "입력 중…"; save();
-  });
+  }, { signal: off.signal });
 
   // 예전 일기(글만): 글 상자
   function mountText(body) {
@@ -132,7 +134,7 @@ export function mountDiary(el, day, { onSaved, rows = 7, share = "" } = {}) {
     drawMood(); drawCount(); drawShare();
   }).catch((e) => { status.textContent = "불러오지 못했어요"; toast(e.message, "err"); });
 
-  return () => { save.flush(); us.dispose(); ed?.destroy(); };
+  return () => { off.abort(); save.flush(); us.dispose(); ed?.destroy(); };
 }
 
 // 읽기 전용(상대의 공개 일기): 블록이면 편집기와 같은 모양, 아니면 글 그대로
