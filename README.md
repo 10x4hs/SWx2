@@ -19,7 +19,7 @@
 
 ---
 
-## ✨ 무엇이 있나
+## What in
 
 ### Planning and Record
 
