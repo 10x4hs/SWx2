@@ -4,10 +4,6 @@
 
 # SWx2
 
-**친구들과 같이 쓰는 공부 플래너 · 옵시디언식 노트 · AI 튜터**
-
-계획하고, 기록하고, 연결하고, 공부해요 — 빌드 없는 웹앱 하나로.
-
 [![Live](https://img.shields.io/badge/live-swx2.workers.dev-f38020?logo=cloudflare&logoColor=white)](https://swx2.swx2.workers.dev)
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20·%20D1%20·%20R2-f38020?logo=cloudflareworkers&logoColor=white)
 ![Vanilla JS](https://img.shields.io/badge/frontend-vanilla%20ES%20modules-f7df1e?logo=javascript&logoColor=black)
@@ -26,7 +22,7 @@
 
 ## ✨ 무엇이 있나
 
-### 📅 계획과 기록
+### Planning and Record
 
 | 앱 | 주소 | 한 줄 |
 |---|---|---|
@@ -35,7 +31,7 @@
 | 체크리스트 · 목표 | `#/checklist` · `#/goals/…` | 우선순위(Low → Max) 할 일, 주 · 월 · 년 목표 |
 | 일기 | `#/diary` | 하루 한 편 + 기분, 초대한 친구와만 |
 
-### 🧠 노트와 대화
+### Note and Talking
 
 | 앱 | 주소 | 한 줄 |
 |---|---|---|
@@ -43,7 +39,7 @@
 | 대화방 · 창고 | `#/room` | 실시간 채팅(@AI), 책 · 링크 · 영상 모음 |
 | 뉴스 | `#/news` | 하루 한 부 신문 |
 
-### 📚 공부
+### Study
 
 | 앱 | 주소 | 한 줄 |
 |---|---|---|
@@ -62,7 +58,7 @@
   <img src="docs/shots/10-calendar-checklist.png" width="49%" alt="체크리스트" />
 </p>
 
-## 🧱 이렇게 만들었어요
+## I make it
 
 ```
 브라우저 (PWA · Service Worker 캐시)
