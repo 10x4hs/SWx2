@@ -14,7 +14,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/readme/home.jpg" width="100%" alt="홈 — 올해 · 이번 달 · 이번 주 · 오늘 링 차트" />
+  <img width="1469" height="965" alt="image" src="https://github.com/user-attachments/assets/eec133b1-67d1-4965-b920-25020f6728bd" />
 </p>
 
 ---
@@ -67,7 +67,7 @@
   <img src="docs/readme/psy.jpg" width="49%" alt="심리" />
 </p>
 <p align="center">
-  <img src="docs/readme/english.jpg" width="49%" alt="영어" />
+  <img width="1467" height="961" alt="image" src="https://github.com/user-attachments/assets/71dd895e-9950-4521-af8e-c27bdc28a750" />
   <img src="docs/readme/books.jpg" width="49%" alt="책 공부" />
 </p>
 
