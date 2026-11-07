@@ -1,12 +1,32 @@
+<div align="center">
+
+<img src="public/icons/icon-192.png" width="96" alt="SWx2 icon" />
+
 # SWx2
 
-친구들과 같이 쓰는 **공부 플래너 + 옵시디언식 노트 + AI**. Cloudflare Workers · D1 · 빌드 없는 ES 모듈 프론트엔드.
+**친구들과 같이 쓰는 공부 플래너 · 옵시디언식 노트 · AI 튜터**
 
-배포 주소: https://swx2.swx2.workers.dev
+계획하고, 기록하고, 연결하고, 공부해요 — 빌드 없는 웹앱 하나로.
+
+[![Live](https://img.shields.io/badge/live-swx2.workers.dev-f38020?logo=cloudflare&logoColor=white)](https://swx2.swx2.workers.dev)
+![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20·%20D1%20·%20R2-f38020?logo=cloudflareworkers&logoColor=white)
+![Vanilla JS](https://img.shields.io/badge/frontend-vanilla%20ES%20modules-f7df1e?logo=javascript&logoColor=black)
+![No build](https://img.shields.io/badge/build-none-2ea44f)
+![PWA](https://img.shields.io/badge/PWA-installable-5a0fc8?logo=pwa&logoColor=white)
+![Playwright](https://img.shields.io/badge/tested%20with-Playwright-2ead33?logo=playwright&logoColor=white)
+
+</div>
+
+<p align="center">
+  <img src="docs/shots/12-calendar-v16.png" width="49%" alt="캘린더와 그날 판" />
+  <img src="docs/shots/7-graph-menu.png" width="49%" alt="Second Brain 그래프" />
+</p>
 
 ---
 
-## 무엇이 있나
+## ✨ 무엇이 있나
+
+### 📅 계획과 기록
 
 | 앱 | 주소 | 한 줄 |
 |---|---|---|
@@ -14,16 +34,52 @@
 | 캘린더 · 계획 | `#/calendar` | 5분 단위 하루 계획표, 끌어서 옮기기 · 길이 조절 |
 | 체크리스트 · 목표 | `#/checklist` · `#/goals/…` | 우선순위(Low → Max) 할 일, 주 · 월 · 년 목표 |
 | 일기 | `#/diary` | 하루 한 편 + 기분, 초대한 친구와만 |
+
+### 🧠 노트와 대화
+
+| 앱 | 주소 | 한 줄 |
+|---|---|---|
 | 노트 · Brain | `#/notes` · `#/brain` | Notion식 블록 편집기, 옵시디언식 그래프 |
 | 대화방 · 창고 | `#/room` | 실시간 채팅(@AI), 책 · 링크 · 영상 모음 |
-| 공부 | `#/sw` · `#/cim` · `#/mba` | 교과서식 공부 페이지, 근거 달린 AI 튜터 |
 | 뉴스 | `#/news` | 하루 한 부 신문 |
-| Silicon Valley Mafia | `#/svm` | 관리자 전용 · Curtis Yarvin 글 15편 (요약 · 원문 + 번역) · 영상 · 지식그래프 — 내용 규격 `src/svm/CONTENT_SPEC.md` |
 
-공통: `⌘K` 검색 · 집중 타이머 · 다크/라이트 · 모든 AI 입력창에서 웹 검색 · 사진 넣기.
+### 📚 공부
+
+| 앱 | 주소 | 한 줄 |
+|---|---|---|
+| SW 교과서 | `#/sw` | 종이 교과서 느낌의 책 · 목차 · 카드, 번호 붙은 그림, AI 튜터 |
+| CIM | `#/cim` | 자격증 공부, 출처 달린 RAG 튜터 |
+| MBA | `#/mba` | 24주 마이크로 디그리 — 카드 · 케이스 · 문제 · 강의 |
+| 심리 | `#/psy` | 설득 심리 · 수사학 카드, 지도 · 복습(SRS) · 퀴즈 · AI 토론 |
+| 영어 · 논문 · 책 | `#/english` · `#/papers` · `#/books` | 단어 · 논문 번역 · 책 공부 |
+| Silicon Valley Mafia | `#/svm` | 관리자 전용 · Curtis Yarvin 글 15편 (요약 · 원문 + 번역) · 영상 · 지식그래프 |
+
+**어디서나:** `⌘K` 검색 · 집중 타이머 · ⌘Z 되돌리기 · 다크/라이트 · 모든 AI 입력창에서 웹 검색 · 사진 넣기 · 푸시 알림 · macOS 위젯(`macos/TrioWidget`).
 기능 자세히 → [docs/guide/features.md](docs/guide/features.md)
 
-## 빠른 시작
+<p align="center">
+  <img src="docs/shots/11-diary.png" width="49%" alt="일기" />
+  <img src="docs/shots/10-calendar-checklist.png" width="49%" alt="체크리스트" />
+</p>
+
+## 🧱 이렇게 만들었어요
+
+```
+브라우저 (PWA · Service Worker 캐시)
+   │  빌드 없는 ES 모듈 — public/js/app.js 셸 + js/views/* 화면
+   ▼
+Cloudflare Worker  ── src/worker.js (ai · brain · calendar · room · mcp · rag …)
+   ├─ D1        계획 · 노트 · 일기 · 계정
+   ├─ R2        사진 · 파일
+   ├─ Vectorize 뜻으로 찾기(RAG)
+   └─ Cron      하루 점수 · 뉴스
+```
+
+- **빌드 단계가 없어요.** 파일을 고치면 그대로 배포돼요.
+- **MCP 서버 내장** — 다른 AI 도구에서 계획 · 노트를 읽고 쓸 수 있어요 → [mcp.md](docs/guide/mcp.md)
+- **보안** — 세션 · CSRF · 초대 기반 공유 → [security.md](docs/guide/security.md)
+
+## 🚀 빠른 시작
 
 ```bash
 npm install
@@ -34,16 +90,17 @@ npm run test:quick     # 바뀐 곳만 빠르게 검사
 
 AI 키는 `.dev.vars`에 넣어요 (git에 안 올라가요) → [docs/guide/ai.md](docs/guide/ai.md)
 
-## 자주 쓰는 명령
+## 🛠 자주 쓰는 명령
 
 | 하고 싶은 것 | 명령 |
 |---|---|
 | 검사 (빠름 / 보통 / 전부) | `npm run test:quick` · `test:normal` · `test:full` |
+| 실제 브라우저 검사 (데스크톱 + 폰) | `npm run e2e` |
 | 계정 만들기 | `npm run user:add -- <아이디> <이름> <비밀번호> [--remote]` |
 | 배포 | `npm run deploy:all` |
 | 로컬 DB 초기화 | `npm run db:reset` |
 
-## 문서
+## 📖 문서
 
 | 문서 | 내용 |
 |---|---|
@@ -57,13 +114,18 @@ AI 키는 `.dev.vars`에 넣어요 (git에 안 올라가요) → [docs/guide/ai.
 | [papers-english.md](docs/guide/papers-english.md) | 지난 논문 스프린트 · 영어 연동 |
 | [DESIGN.md](DESIGN.md) | 디자인 규칙 |
 
-## 구조
+## 🗂 구조
 
 ```
 src/          Worker API (worker.js 진입, ai · brain · calendar · room · mcp · rag …)
 migrations/   D1 스키마
 public/       정적 프론트엔드 (js/app.js 셸 · js/views/* 화면 · css/tokens.css)
 scripts/      테스트 · 시드 · 계정 · 배포 스크립트
+macos/        macOS 위젯 (TrioWidget)
 docs/         가이드 · 설계 문서
 legacy/       예전 단일 파일 버전
 ```
+
+<div align="center">
+<sub>Made with ☕ by HSK · GYK — and a lot of Claude.</sub>
+</div>
