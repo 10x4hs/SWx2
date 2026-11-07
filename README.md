@@ -2,10 +2,6 @@
 
 <img src="public/icons/icon-192.png" width="96" alt="SWx2 icon" />
 
-<p>
-<img width="1463" height="961" alt="image" src="https://github.com/user-attachments/assets/204cac21-dc96-40ed-9346-2675812a207c" />
-</p>
-
 # SWx2
 
 [![Live](https://img.shields.io/badge/live-swx2.workers.dev-f38020?logo=cloudflare&logoColor=white)](https://swx2.swx2.workers.dev)
@@ -14,6 +10,10 @@
 ![No build](https://img.shields.io/badge/build-none-2ea44f)
 ![PWA](https://img.shields.io/badge/PWA-installable-5a0fc8?logo=pwa&logoColor=white)
 ![Playwright](https://img.shields.io/badge/tested%20with-Playwright-2ead33?logo=playwright&logoColor=white)
+
+<p>
+<img width="1463" height="961" alt="image" src="https://github.com/user-attachments/assets/204cac21-dc96-40ed-9346-2675812a207c" />
+</p>
 
 ## What in
 
