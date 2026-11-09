@@ -1058,6 +1058,14 @@ try {
       await p.click(".mb-q .mb-choice").catch(() => {}); await sleep(150);
       const why = await p.evaluate(() => !document.querySelector(".mb-q .mb-q-why").hidden);
       ok(c0.svg && c0.canvas3d === 0 && c0.read && c1 && c0.read !== c1 && why && c0.ai && c0.q >= 2 && c0.deep >= 2 && c0.outline === doc.cards.length && !c0.over && !errs.length, `${tv} · 경영 카드 — 정적 이익 지도 ${c0.svg} (3D ${c0.canvas3d}) · 가격 바꾸면 ${c0.read} → ${c1} · 더 자세히 ${c0.deep}문단 · 목차 ${c0.outline}장 · 퀴즈 풀이 ${why} · AI 튜터 ${c0.ai} · 가로 넘침 ${c0.over}${errs.length ? " — " + errs[0] : ""}`);
+      // 본문 긁기 → "인용 중" — 긴 인용이어도 튜터 상자가 옆으로 넘치지 않고 ✕ 로 뺄 수 있어요
+      await p.evaluate(() => { const el = [...document.querySelectorAll("#mb-read p, #mb-read li")].find((x) => x.offsetParent && x.textContent.trim().length > 60 && x.textContent.trim().length < 500); const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); document.dispatchEvent(new MouseEvent("mouseup")); });
+      await sleep(600);
+      const qv = await p.evaluate(() => { const box = [...document.querySelectorAll(".mb-ai .ppc")].find((x) => x.offsetParent) || document.querySelector(".mb-ai .ppc"); const R = box.getBoundingClientRect(), q = box.querySelector("[data-ppc-quote]"), x = box.querySelector("[data-ppc-quote-x]"), row = box.querySelector(".ppc-row"); return { shown: !q.hidden, vis: !!box.offsetParent, xIn: x.getBoundingClientRect().right <= R.right + .5, rowIn: row.getBoundingClientRect().right <= R.right + .5 }; });
+      if (qv.vis) await p.click(".mb-ai .ppc [data-ppc-quote-x] >> visible=true"); else await p.evaluate(() => document.querySelector(".mb-ai .ppc [data-ppc-quote-x]").click());
+      await sleep(200);
+      const qOff = await p.evaluate(() => [...document.querySelectorAll(".mb-ai [data-ppc-quote]")].every((q) => q.hidden));
+      ok(qv.shown && (!qv.vis || (qv.xIn && qv.rowIn)) && qOff, `${tv} · 경영 카드 튜터 — 긴 인용도 상자 안 · ✕ 로 인용 빼기 ${JSON.stringify(qv)} → 빠짐 ${qOff}`);
       errs = [];
       await hop(`#/mba/accounting/case/${acc.cases[0].id}`, ".mb-cq", 500);
       const k0 = await p.evaluate(() => ({ q: document.querySelectorAll(".mb-cq").length, table: !!document.querySelector("#mb-c-data table"), ai: !!document.querySelector(".mb-ai .ppc-form") }));
