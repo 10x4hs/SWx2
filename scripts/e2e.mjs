@@ -998,6 +998,11 @@ try {
     await p.click(`.gn-item[data-id="${firstId}"] .gn-item-a`);
     await p.waitForSelector("#gn-compose textarea", { timeout: 8000 }).catch(() => {});
     ok(await p.evaluate((id) => location.hash === "#/news/item/" + id && !!document.querySelector(".gn.sheet-on .gn-sh-t"), firstId), `${tv} · 기사를 열면 시트`);
+    await p.click("[data-full]"); await sleep(400);
+    const fs = await p.evaluate(() => { const g = document.querySelector(".gn-portal"), sh = document.querySelector(".gn-sheet"); return { on: g.classList.contains("sheet-full"), wide: sh.getBoundingClientRect().width >= innerWidth - 2, open: !document.querySelector(".gn-full") || document.querySelector(".gn-full").open }; });
+    await p.keyboard.press("Escape"); await sleep(400);
+    const fsOff = await p.evaluate(() => !document.querySelector(".gn-portal").classList.contains("sheet-full") && !!document.querySelector(".gn.sheet-on"));
+    ok(fs.on && fs.wide && fs.open && fsOff, `${tv} · 기사 전체 화면 버튼 → 화면 가득 · Esc 는 전체 화면만 끄기${fs.on && fs.wide ? "" : " — " + JSON.stringify(fs)}`);
     await p.fill("#gn-compose textarea", "e2e memo " + tv);
     await p.click("#gn-compose button"); await sleep(600);
     const memoN = await p.evaluate(() => document.querySelectorAll(".gn-memo").length);

@@ -9,6 +9,8 @@ export const icon = {
   search: (z) => s('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', z),
   plus: (z) => s('<path d="M12 5v14M5 12h14"/>', z),
   x: (z) => s('<path d="M6 6l12 12M18 6L6 18"/>', z),
+  expand: (z) => s('<path d="M15 4h5v5M9 20H4v-5M20 4l-6 6M4 20l6-6"/>', z),
+  shrink: (z) => s('<path d="M14 10h5M14 10V5M10 14H5M10 14v5M14 10l6-6M10 14l-6 6"/>', z),
   left: (z) => s('<path d="M15 18l-6-6 6-6"/>', z),
   download: (z) => s('<path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/>', z),
   check: (z) => s('<path d="M5 12.5l4.5 4.5L19 7.5"/>', z),

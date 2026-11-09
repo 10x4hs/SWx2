@@ -195,6 +195,12 @@
 .gn-grab { display: none; }
 .gn-x { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; color: var(--g-ink2); }
 .gn-x:hover { background: var(--g-soft); }
+.gn-sh-btns { display: flex; gap: 4px; }
+/* 기사 전체 화면: 시트가 뉴스 화면 전체를 덮고, 글은 가운데 읽기 폭으로 */
+.gn.sheet-full .gn-sheet { left: 0; width: 100%; border-left: 0; }
+.gn.sheet-full .gn-sh { max-width: 760px; }
+.gn.sheet-full .gn-sh-t { font-size: 40px; line-height: 1.22; }
+.gn.sheet-full .gn-full-b { font-size: 18px; line-height: 1.85; }
 .gn-sh .gn-meta { margin: 0; }
 .gn-sh-t { margin: 8px 0 0; font-family: var(--g-serif); font-size: 30px; line-height: 1.2; font-weight: 700; letter-spacing: -.015em; }
 .gn-sh-orig { margin: 8px 0 0; font-size: 14px; color: var(--g-ink3); }
@@ -243,6 +249,9 @@
   .gn-sh-top { justify-content: space-between; align-items: center; }
   .gn-grab { display: block; width: 36px; height: 4px; margin-left: calc(50% - 18px); border-radius: 2px; background: var(--g-line); }
   .gn-sh-t { font-size: 24px; }
+  .gn.sheet-full .gn-sheet { top: 0; max-height: none; border-top: 0; border-radius: 0; }
+  .gn.sheet-full .gn-sh-t { font-size: 28px; }
+  .gn.sheet-full .gn-grab { visibility: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .gn *, .gn { animation: none !important; transition: none !important; } }
 
