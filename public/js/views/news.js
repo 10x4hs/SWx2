@@ -79,6 +79,7 @@ export function mount(root, ctx, r) {
   document.body.append(portal);
   const $ = (s) => root.querySelector(s);
   const page = $("#gn-page"), sheet = portal.querySelector("#gn-sheet"), gn = portal, cal = $("#gn-cal"), scrim = portal.querySelector("#gn-scrim");
+  let full = store.get("gn-full") === "1"; // 기사 전체 화면 — 한 번 켜면 다음 기사도 전체 화면으로 열어요
   let alive = true, ed = null, list = [], editions = [], cur = null, sec = store.get("gn-sec") || "all", starred = false, view = "today";
   let companies = null, coKey = store.get("gn-co") || null, coData = null, worldDays = +(store.get("gn-wd") || 1), worldData = null, worldSel = null;
   const user = (id) => ctx.user(id) || { display_name: "?", color: "var(--m0)" };
@@ -387,7 +388,7 @@ export function mount(root, ctx, r) {
   async function openItem(id) {
     cur = id;
     page.querySelectorAll("[data-id]").forEach((el) => el.classList.toggle("on", el.dataset.id === id));
-    sheet.hidden = false; scrim.hidden = false; void sheet.offsetWidth; gn.classList.add("sheet-on"); // 한 번 배치한 뒤 바로 켜야 미끄러짐이 보이고, 다음 프레임을 기다리다 늦게 켜지는 일도 없어요
+    gn.classList.toggle("sheet-full", full); sheet.hidden = false; scrim.hidden = false; void sheet.offsetWidth; gn.classList.add("sheet-on"); // 한 번 배치한 뒤 바로 켜야 미끄러짐이 보이고, 다음 프레임을 기다리다 늦게 켜지는 일도 없어요
     const known = items.get(id);
     sheet.innerHTML = `<div class="gn-sh">${sheetHead()}<p class="gn-soft">Opening…</p></div>`;
     let d;
@@ -409,7 +410,7 @@ export function mount(root, ctx, r) {
         <a class="gn-btn" href="${esc(it.url)}" target="_blank" rel="noopener">Original ${icon.external(13)}</a>
         <span class="gn-avs" title="Read by">${avs((it.readers || []).filter((u) => u !== ctx.me.id))}</span>
       </div>
-      ${d.body ? `<details class="gn-card gn-full"><summary>Full text <small>from the outlet's feed</small></summary><div class="gn-full-b">${esc(d.body).replace(/\n+/g, "<br><br>")}</div></details>` : ""}
+      ${d.body ? `<details class="gn-card gn-full"${full ? " open" : ""}><summary>Full text <small>from the outlet's feed</small></summary><div class="gn-full-b">${esc(d.body).replace(/\n+/g, "<br><br>")}</div></details>` : ""}
       <section class="gn-card" id="gn-deep"${d.deep ? "" : " hidden"}></section>
       <section class="gn-card gn-ask" id="gn-ask"><h3>Ask AI</h3>
         <div class="gn-ask-log" id="gn-ask-log"></div>
@@ -457,9 +458,16 @@ export function mount(root, ctx, r) {
     // 읽음은 자동으로 찍지 않아요 — 다 읽고 나서 직접 "Mark as read" 를 눌러요 (읽기 대결 점수가 정직하게)
     sheet.scrollTop = 0;
   }
-  const sheetHead = () => `<div class="gn-sh-top"><span class="gn-grab" aria-hidden="true"></span><button class="gn-x" type="button" data-close aria-label="Close">${icon.x(16)}</button></div>`;
+  const fullBtn = () => `<button class="gn-x" type="button" data-full aria-pressed="${full}" aria-label="${full ? "Exit full screen" : "Full screen"}" title="${full ? "Exit full screen (F)" : "Full screen (F)"}">${full ? icon.shrink(16) : icon.expand(16)}</button>`;
+  const sheetHead = () => `<div class="gn-sh-top"><span class="gn-grab" aria-hidden="true"></span><span class="gn-sh-btns">${fullBtn()}<button class="gn-x" type="button" data-close aria-label="Close">${icon.x(16)}</button></span></div>`;
+  function setFull(on) {
+    full = on; store.set("gn-full", on ? "1" : "0"); gn.classList.toggle("sheet-full", on);
+    const b = sheet.querySelector("[data-full]"); if (b) b.outerHTML = fullBtn();
+    if (on) sheet.querySelector(".gn-full")?.setAttribute("open", ""); // 전체 화면이면 본문을 바로 펼쳐요
+    sheet.querySelector("[data-full]")?.focus();
+  }
   function closeSheet() {
-    cur = null; gn.classList.remove("sheet-on"); scrim.hidden = true;
+    cur = null; gn.classList.remove("sheet-on"); scrim.hidden = true; setTimeout(() => { if (!cur) gn.classList.remove("sheet-full"); }, 220);
     setTimeout(() => { if (!cur) sheet.hidden = true; }, 220);
     page.querySelectorAll(".on[data-id]").forEach((el) => el.classList.remove("on"));
   }
@@ -671,6 +679,7 @@ export function mount(root, ctx, r) {
     if (e.target.closest("[data-tmore]")) { drawTrend(view, true); return; }
     if (e.target.closest("[data-hclear]")) { e.preventDefault(); hist.q = ""; drawHistory(); return; }
     const rd = e.target.closest("[data-read]"); if (rd) { e.preventDefault(); toggleRead(rd.dataset.read); return; }
+    if (e.target.closest("[data-full]")) { e.preventDefault(); setFull(!full); return; }
     if (e.target.closest("[data-close]") || e.target === scrim) { e.preventDefault(); back(); return; }
     const b = e.target.closest("[data-sec]"); if (b) { sec = b.dataset.sec; store.set("gn-sec", sec); draw(); return; }
     if (e.target.closest("[data-starred]")) { starred = !starred; draw(); return; }
@@ -692,7 +701,8 @@ export function mount(root, ctx, r) {
     else if (e.key === "]" && ed?.next && view === "today") ctx.go("#/news/" + ed.next);
     else if (e.key === "s" && cur) toggleStar(cur);
     else if (e.key === "r" && cur) toggleRead(cur);
-    else if (e.key === "Escape") { if (!cal.hidden) toggleCal(false); else if (cur) back(); }
+    else if (e.key === "f" && cur) setFull(!full);
+    else if (e.key === "Escape") { if (!cal.hidden) toggleCal(false); else if (cur && full) setFull(false); else if (cur) back(); }
   };
   document.addEventListener("keydown", onKey);
 
