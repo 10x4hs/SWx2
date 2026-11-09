@@ -17,7 +17,7 @@ export function chatMarkup(variant, opts = {}) {
     <div class="ppc-log" data-ppc-log><div class="ppc-empty faint">${opts.empty ? esc(opts.empty) : mini ? "모르는 걸 바로 물어봐요. 본문 글자를 긁으면 그 문장으로 물어볼 수 있어요." : "무엇이든 물어봐요. 답은 옆 칸에도 똑같이 보여요."}</div></div>
     <div class="ppc-quick">${(opts.quick || QUICK).map((q) => `<button type="button" class="chip ppc-q" data-ppc-quick="${esc(q)}">${esc(q)}</button>`).join("")}</div>
     <form class="ppc-form" data-ppc-form>
-      <div class="ppc-quote" data-ppc-quote hidden><span class="ppc-quote-k">인용 중</span><span class="ppc-quote-t" data-ppc-quote-text></span><button type="button" class="ppc-quote-x" data-ppc-quote-x aria-label="인용 빼기">${icon.x(11)}</button></div>
+      <div class="ppc-quote" data-ppc-quote hidden><span class="ppc-quote-k">인용 중</span><span class="ppc-quote-t" data-ppc-quote-text></span><button type="button" class="ppc-quote-x" data-ppc-quote-x aria-label="인용 빼기" title="인용 빼기">${icon.x(13)}</button></div>
       <div class="ppc-row"><textarea class="ppc-in" rows="1" placeholder="${opts.ph ? esc(opts.ph) : mini ? "질문을 적고 Enter" : "예: 왜 NMS 가 없어도 상자가 겹치지 않아요?"}" aria-label="AI 튜터에게 묻기"></textarea>
         <button class="ppc-send" type="submit" aria-label="보내기">${icon.send(15)}</button><button class="ppc-stop" type="button" data-ppc-stop aria-label="멈추기" hidden><i></i></button></div>
     </form>

@@ -342,14 +342,15 @@ iframe.pp-vid-frame { cursor: auto; }
 @keyframes ppc-dot { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 .ppc-caret { display: inline-block; width: 2px; height: 1em; background: var(--ink); vertical-align: -2px; margin-left: 1px; animation: ppc-blink 1s steps(1) infinite; }
 @keyframes ppc-blink { 50% { opacity: 0; } }
-.ppc-quick { display: flex; gap: 6px; padding: 0 12px; overflow-x: auto; scrollbar-width: none; }
+.ppc-quick { display: flex; gap: 6px; padding: 0 12px; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); } /* 끝이 흐려져서 옆으로 더 있다는 게 보여요 */
 .ppc-q { flex: none; border: 0; cursor: pointer; font-weight: 500; font-size: 11.5px; }
 .ppc-q:hover { background: var(--hover); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
-.ppc-form { display: grid; gap: 6px; padding: 0 10px 10px; }
+.ppc > * { min-width: 0; } /* 긴 인용 · 빠른 질문 줄이 튜터 상자를 옆으로 밀어내지 않게 */
+.ppc-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 0 10px 10px; }
 .ppc-quote { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 10px; border-radius: 10px; background: color-mix(in srgb, var(--c-amber) 12%, transparent); border-left: 3px solid var(--c-amber); font-size: 12px; }
 .ppc-quote-k { flex: none; font-weight: 700; color: var(--c-amber); }
 .ppc-quote-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
-.ppc-quote-x { flex: none; border: 0; background: transparent; color: var(--ink-3); width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; }
+.ppc-quote-x { flex: none; border: 0; background: transparent; color: var(--ink-2); width: 26px; height: 26px; margin: -3px -2px -3px 0; border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
 .ppc-quote-x:hover { background: var(--hover); color: var(--ink); }
 .ppc-row { display: flex; align-items: flex-end; gap: 6px; padding: 6px 6px 6px 12px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--glass-3); }
 .ppc-row:focus-within { border-color: var(--ink-3); }
