@@ -2339,7 +2339,7 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 
 .block { gap: 7px; }
 .block .txt { word-break: keep-all; overflow-wrap: anywhere; overflow: hidden; }
-.block .txt [data-edit] { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.block .txt [data-edit] { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--lc, 3); overflow: hidden; }
 .block .check { flex: none; }
 /* 한 줄짜리(짧은 계획): 시각 + 이름을 한 줄로, 넘치면 … */
 .block.thin { padding: 0 6px 0 8px; align-items: center; gap: 6px; }
@@ -3501,6 +3501,6 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 .dock-ghost.out { opacity: .75; }
 .dock-list .dock-hole, .dock-fold-items .dock-hole { visibility: hidden; transform: none !important; filter: none !important; }
 
-/* 계획 메모: 고치기 창 아래 한 줄 전체 · Tab 들여쓰기가 보이게 공백 그대로 */
-.slot-add .slot-note { flex: 1 1 100%; min-height: 72px; max-height: 40vh; resize: vertical; white-space: pre-wrap; tab-size: 2; font: 13.5px/1.6 var(--font); padding: 8px 10px; }
-#dp-grid .block .txt .bk-note { display: block; margin: 6px 0 0; padding: 0; text-indent: 0; white-space: pre-wrap; tab-size: 2; font-weight: 400; font-size: 12.5px; line-height: 1.5; color: var(--ink-2); overflow: hidden; }
+/* 할 일 칸(여러 줄): 한 줄 입력처럼 보이다가 Shift+Enter · Tab 들여쓰기 만큼 늘어나요 */
+.slot-add .slot-text { resize: none; overflow: hidden; white-space: pre-wrap; tab-size: 2; line-height: 1.45; min-height: 0; font-family: inherit; }
+.block .txt [data-edit] { white-space: pre-wrap; tab-size: 2; } /* 블록 제목도 줄 · 들여쓰기 그대로 */
