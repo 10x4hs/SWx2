@@ -1058,6 +1058,12 @@ try {
       await p.click(".mb-q .mb-choice").catch(() => {}); await sleep(150);
       const why = await p.evaluate(() => !document.querySelector(".mb-q .mb-q-why").hidden);
       ok(c0.svg && c0.canvas3d === 0 && c0.read && c1 && c0.read !== c1 && why && c0.ai && c0.q >= 2 && c0.deep >= 2 && c0.outline === doc.cards.length && !c0.over && !errs.length, `${tv} · 경영 카드 — 정적 이익 지도 ${c0.svg} (3D ${c0.canvas3d}) · 가격 바꾸면 ${c0.read} → ${c1} · 더 자세히 ${c0.deep}문단 · 목차 ${c0.outline}장 · 퀴즈 풀이 ${why} · AI 튜터 ${c0.ai} · 가로 넘침 ${c0.over}${errs.length ? " — " + errs[0] : ""}`);
+      // 튜터 입력창이 패널 아래로 잘리지 않아요 (머리말 높이를 하드코딩하지 않음)
+      const fit = await p.evaluate(() => { const a = document.querySelector(".mb-ai"); if (!a.offsetParent) return { vis: false }; const A = a.getBoundingClientRect(), f = a.querySelector(".ppc-form").getBoundingClientRect(), b = a.querySelector(".ppc").getBoundingClientRect(); const M = a.closest(".main").getBoundingClientRect(); return { vis: true, formIn: f.bottom <= b.bottom + .5 && b.bottom <= A.bottom + .5 && A.bottom <= M.bottom + .5 }; });
+      await p.evaluate(() => document.getElementById("timer")?.classList.add("is-live")); await sleep(450); // 집중 섬이 켜지면 화면 틀이 아래로 밀려요
+      const fitIsl = await p.evaluate(() => { const a = document.querySelector(".mb-ai"); if (!a.offsetParent) return { vis: false }; return { vis: true, formIn: a.getBoundingClientRect().bottom <= a.closest(".main").getBoundingClientRect().bottom + .5 }; });
+      await p.evaluate(() => document.getElementById("timer")?.classList.remove("is-live"));
+      ok((!fit.vis || fit.formIn) && (!fitIsl.vis || fitIsl.formIn), `${tv} · 경영 카드 튜터 — 입력창이 패널 안에 다 보임 ${JSON.stringify(fit)} · 집중 섬 켜짐 ${JSON.stringify(fitIsl)}`);
       // 본문 긁기 → "인용 중" — 긴 인용이어도 튜터 상자가 옆으로 넘치지 않고 ✕ 로 뺄 수 있어요
       await p.evaluate(() => { const el = [...document.querySelectorAll("#mb-read p, #mb-read li")].find((x) => x.offsetParent && x.textContent.trim().length > 60 && x.textContent.trim().length < 500); const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); document.dispatchEvent(new MouseEvent("mouseup")); });
       await sleep(600);

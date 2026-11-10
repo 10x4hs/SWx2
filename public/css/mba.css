@@ -205,7 +205,7 @@ body:has(.host-mba) .bg { opacity: .12; filter: blur(2px) grayscale(1); }
 .mb-cols { display: grid; grid-template-columns: 240px minmax(0, 1fr) 400px; align-items: start; }
 .mb-cardpage.ai-off .mb-cols { grid-template-columns: 240px minmax(0, 1fr) 0; }
 .mb-cardpage.ai-off .mb-ai { display: none; }
-.mb-outline { position: sticky; top: 64px; padding: 32px 16px 32px 24px; max-height: calc(100svh - 80px); overflow: auto; }
+.mb-outline { position: sticky; top: 64px; padding: 32px 16px 32px 24px; max-height: calc(100dvh - var(--mb-shell-top, 12px) - 78px); box-sizing: border-box; overflow: auto; }
 .mb-outline > .mb-k { display: block; color: var(--mb-mute); }
 .mb-outline ol { list-style: none; margin: 14px 0 0; padding: 0; }
 .mb-outline a { display: flex; gap: 10px; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.07); text-decoration: none; color: var(--mb-faint); font: 400 14px/1.45 var(--mb-ko); }
@@ -244,8 +244,10 @@ body:has(.host-mba) .bg { opacity: .12; filter: blur(2px) grayscale(1); }
 .mb-words dd { margin: 0; font: 400 15.5px/1.7 var(--mb-ko); color: var(--mb-ink2); }
 .mb-src-l { margin: 8px 0 0; font: 400 12.5px/1.7 var(--mb-ko); color: var(--mb-faint); }
 .mb-endbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--mb-line); padding-top: 28px; margin-top: 12px; }
-.mb-ai { position: sticky; top: 64px; padding: 20px 20px 20px 0; height: calc(100svh - 84px); box-sizing: border-box; }
-.mb-ai-head { display: flex; align-items: center; gap: 10px; padding: 12px 4px 12px; flex-wrap: wrap; }
+.mb-ai { position: sticky; top: 64px; padding: 20px 20px 20px 0; height: calc(100dvh - var(--mb-shell-top, 12px) - 78px); box-sizing: border-box; display: flex; flex-direction: column; }
+/* 화면 틀(.shell 위아래 12px · 집중 섬이 켜지면 위가 더 벌어져요) 안쪽에 딱 맞춰요 — 넘치면 입력창이 잘려요 */
+body:has(#timer.is-live) .mb-cardpage { --mb-shell-top: var(--isl-below); }
+.mb-ai-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 4px 12px; flex-wrap: wrap; }
 .mb-ai-head b { font: 600 15px var(--mb-ko); }
 .mb-ai-head .mb-k { flex: 1; min-width: 120px; }
 .mb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mb-acc); }
@@ -254,7 +256,7 @@ body:has(.host-mba) .bg { opacity: .12; filter: blur(2px) grayscale(1); }
 .mb-sw i::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--mb-ink); transition: transform .2s var(--mb-ease); }
 .mb-sw[aria-pressed="true"] i { background: var(--mb-acc); }
 .mb-sw[aria-pressed="true"] i::after { transform: translateX(10px); background: #000; }
-.mb-ai .ppc { height: calc(100% - 56px); display: flex; flex-direction: column; border-radius: 20px; box-shadow: inset 0 0 0 1px var(--mb-line2); background: #070809; }
+.mb-ai .ppc { flex: 1; min-height: 0; height: auto; display: flex; flex-direction: column; border-radius: 20px; box-shadow: inset 0 0 0 1px var(--mb-line2); background: #070809; }
 .mb-ai .ppc-head { display: none; }
 .mb-ai .ppc-log { flex: 1; min-height: 0; overflow: auto; }
 .mb-ai .ppc-msg.user .ppc-bub, .mb-ai .ppc-msg.user > div { background: var(--mb-ink); color: #000; }
@@ -502,7 +504,7 @@ li.mb-it.lec a { display: grid; gap: 3px; min-width: 0; text-decoration: none; }
   .mb-outline li.mb-ol-day { display: none; }
   .mb-due { display: none; }
   .mb-ai { position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 40; height: min(72svh, 620px); padding: 0 12px 12px; background: #050607; border-top: 1px solid var(--mb-line2); border-radius: 22px 22px 0 0; display: none; }
-  .mb-cardpage.ai-on .mb-ai { display: block; }
+  .mb-cardpage.ai-on .mb-ai { display: flex; }
   .mb-ai-fab { display: inline-flex; position: fixed; right: 16px; bottom: 16px; z-index: 41; min-height: 48px; padding: 0 20px; border-radius: 999px; border: 0; background: var(--mb-ink); color: #000; font: 600 15px var(--mb-ko); cursor: pointer; align-items: center; }
   .mb-cardpage.ai-on .mb-ai-fab { bottom: calc(min(72svh, 620px) + 12px); }
   .mb-proto, .mb-steps2, .mb-taxsec { grid-template-columns: minmax(0, 1fr); }
