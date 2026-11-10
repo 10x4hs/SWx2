@@ -1568,6 +1568,23 @@ try {
     }
 
     });
+    // 계획 메모: 고치기 창의 메모 칸 — Enter 줄바꿈 · Tab 들여쓰기 · ⇧Tab 내어쓰기 · ⌘Enter 저장, 블록에 들여쓴 그대로 (2026-11-10)
+    await sec("plan-note", async () => {
+      errs = [];
+      const day = await p.evaluate((n) => { const d = new Date(Date.now() + n * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }, tv === "컴퓨터" ? 5 : 6);
+      const pl = (await (await ctx.request.post(BASE + "/api/plans", { headers: H, data: { scope: "day", period: "D:" + day, text: "메모 검사", start: "15:00", mins: 90 } })).json()).plan;
+      await go("#/calendar/" + day, 2500);
+      const blk = p.locator(`#dp-grid .block[data-id="${pl.id}"]`);
+      await blk.scrollIntoViewIfNeeded(); await blk.click({ button: "right", position: { x: 60, y: 30 } }); await p.click('.cm [data-k="edit"]'); await sleep(500);
+      const ta = p.locator(".slot-note >> visible=true");
+      await ta.click(); await p.keyboard.type("준비물"); await p.keyboard.press("Enter"); await p.keyboard.type("노트북");
+      await p.keyboard.press("Tab"); await p.keyboard.press("Tab"); await p.keyboard.press("Shift+Tab");
+      const typed = await ta.inputValue();
+      await p.keyboard.press("ControlOrMeta+Enter"); await sleep(1500);
+      const saved = (await (await ctx.request.get(BASE + "/api/plans?periods=D:" + day, { headers: H })).json()).plans.find((q) => q.id === pl.id)?.note;
+      const shown = await p.evaluate((id) => document.querySelector(`#dp-grid .block[data-id="${id}"] .bk-note`)?.textContent ?? null, pl.id);
+      ok(typed === "준비물\n  노트북" && saved === typed && shown === typed && !errs.length, `${tv} · 계획 메모 — Tab 두 번 · ⇧Tab 한 번 → ${JSON.stringify(typed)} · 저장 ${JSON.stringify(saved)} · 블록 ${JSON.stringify(shown)}${errs.length ? " — " + errs[0] : ""}`);
+    });
     // ---------- ⑯ 홈 Day 쪽 ‹ 날짜 › — 내일 · 다른 날 보기와 끌어 넣기 · 고른 날 기억 (2026-10-15) ----------
     await sec("home-day", async () => {
     try {

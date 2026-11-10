@@ -40,6 +40,23 @@ function minuteAt(Y, y, m0) {
 }
 const r2 = (v) => Math.round(v * 100) / 100;
 // 못함 버튼 — 체크(끝냄) 옆의 빨간 ✕. 누르면 계획이 빨갛게 바뀌어요 (체크리스트도 같이 써요)
+// 텍스트 칸에서 Tab 들여쓰기 — 커서가 있는 줄(여러 줄을 골랐으면 그 줄 모두)의 맨 앞에 두 칸을 넣고 빼요
+const IND = "  ";
+export function indentLines(ta, out) {
+  const v = ta.value, a = ta.selectionStart, b = ta.selectionEnd;
+  const ls = v.lastIndexOf("\n", a - 1) + 1, le = b > a && v[b - 1] === "\n" ? b - 1 : (v.indexOf("\n", b) + 1 || v.length + 1) - 1;
+  const lines = v.slice(ls, le).split("\n");
+  let first = 0, total = 0;
+  const next = lines.map((l, i) => {
+    if (!out) { if (i === 0) first = IND.length; total += IND.length; return IND + l; }
+    const cut = l.startsWith(IND) ? IND.length : l.startsWith(" ") || l.startsWith("\t") ? 1 : 0;
+    if (i === 0) first = -cut; total -= cut; return l.slice(cut);
+  }).join("\n");
+  ta.setRangeText(next, ls, le, "preserve");
+  if (a === b) ta.setSelectionRange(Math.max(ls, a + first), Math.max(ls, a + first));
+  else ta.setSelectionRange(Math.max(ls, a + first), b + total);
+}
+
 export const missBtn = (p) => `<button type="button" class="miss-btn" data-miss="${esc(p.id)}" aria-pressed="${p.missed ? "true" : "false"}" aria-label="${esc(p.text)} 못함" title="${p.missed ? "못함 되돌리기" : "못 했어요 (빨간색 표시)"}"><svg viewBox="0 0 12 12" width="8" height="8" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>`;
 // 우선순위 1~5순위 · 예상 시간 — public/js/prio.js (색은 styles.css 의 --p-*). 다른 화면이 여기서 PRIOS 를 가져가요
 import { PRIOS, PRIO_RANK, prioSelect, prioPill, openPrioDrop, hoursPill, openHoursDrop, parseMins, MINS_HINT, prioLabel } from "../prio.js";
@@ -280,7 +297,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       const narrow = (frac < 0.5 ? " narrow xnarrow" : frac < 1 ? " narrow" : "") + (frac < 1 && c + span === n ? " edge-r" : "");
       return `<div class="block ${status(p)}${size}${narrow}${sel(p.id)}" data-p="${p.priority || ""}" data-s="${s}" data-e="${e}" title="${esc(tipOf(p, s, e))}" style="${pos(top, h, c, n, span)}" data-id="${esc(p.id)}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 완료">${missBtn(p)}
-        <div class="txt"><span data-edit="${esc(p.id)}">${esc(p.text)}</span>${p.auto_focus && !p.done ? `<span class="af-tag" title="${esc(p.start)}에 집중 모드가 저절로 켜져요">◎ 자동 집중 ${hm(p.auto_focus)}</span>` : ""}${h < 50 ? `<span class="when-i">${esc(span2(p.start, e))} · ${hm(e - s)}</span>` : ""}${h >= 50 ? `<span class="when">${esc(span2(p.start, e))} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
+        <div class="txt"><span data-edit="${esc(p.id)}">${esc(p.text)}</span>${p.auto_focus && !p.done ? `<span class="af-tag" title="${esc(p.start)}에 집중 모드가 저절로 켜져요">◎ 자동 집중 ${hm(p.auto_focus)}</span>` : ""}${h < 50 ? `<span class="when-i">${esc(span2(p.start, e))} · ${hm(e - s)}</span>` : ""}${h >= 50 ? `<span class="when">${esc(span2(p.start, e))} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}${p.note && h >= 50 ? `<span class="bk-note">${esc(p.note)}</span>` : ""}</div>
         ${playBtn(p)}
         <button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button>
         <button class="icon-btn sm" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button>
@@ -294,14 +311,14 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     const MINS = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 45, 50, 60, 75, 90, 120, 150, 180, 240];
     const mins0 = ed ? ed.mins || 30 : DEFAULT_MINS, minsList = MINS.includes(mins0) ? MINS : [...MINS, mins0].sort((a, b) => a - b);
     const minsSel = F.mins ?? String(mins0), custom = minsSel === "custom";
-    const at0 = F.at || S.editSlot, text0 = F.text ?? (ed ? ed.text : ""), prio0 = F.priority ?? (ed ? ed.priority || "" : S.editPrio || "");
+    const at0 = F.at || S.editSlot, text0 = F.text ?? (ed ? ed.text : ""), note0 = F.note ?? (ed ? ed.note || "" : ""), prio0 = F.priority ?? (ed ? ed.priority || "" : S.editPrio || "");
     const pop = S.editSlot ? `<form class="slot-add slot-pop${ed ? " editing" : ""}" data-slot-form="${S.editSlot}" ${ed ? `data-edit-id="${esc(ed.id)}"` : ""} autocomplete="off" style="top:${r2(Math.max(0, yAt(toMin(S.editSlot)) + 2))}px">
         ${ed ? `<span class="sp-t">계획 고치기</span>` : ""}
         <input class="input slot-at" type="time" name="at" step="60" value="${esc(at0)}" aria-label="시작 시각 (1분 단위)">
         <input class="input" name="text" maxlength="200" placeholder="${esc(at0)}에 할 일" aria-label="할 일" value="${esc(text0)}" autofocus>
         <select class="select" name="mins" aria-label="걸리는 시간"${custom ? " hidden" : ""}>${minsList.map((m) => `<option value="${m}" ${String(m) === minsSel ? "selected" : ""}>${hm(m)}</option>`).join("")}<option value="custom"${custom ? " selected" : ""}>직접 입력…</option></select><input class="input slot-mins" name="mins_text" placeholder="${MINS_HINT}" aria-label="걸리는 시간 직접 입력" autocomplete="off" value="${esc(F.mins_text || "")}"${custom ? "" : " hidden"}>
         ${prioSelect("priority", prio0)}
-        <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button></form>` : "";
+        <button class="btn accent sm" type="submit">${ed ? "저장" : "추가"}</button><button class="icon-btn sm" type="button" data-slot-close aria-label="닫기">${icon.x(14)}</button>${ed ? `<textarea class="input slot-note" name="note" rows="${Math.min(10, Math.max(3, note0.split("\n").length + 1))}" maxlength="2000" spellcheck="false" placeholder="메모 · Tab 들여쓰기 · ⇧Tab 내어쓰기 · ${MOD}Enter 저장" aria-label="메모 (Tab 으로 들여쓰기)">${esc(note0)}</textarea>` : ""}</form>` : "";
     const nowLine = isToday && nowM >= startH * 60 ? `<div class="now-line" style="top:${r2(yAt(nowM))}px" aria-hidden="true"></div>` : "";
     // 폰: 추가 · 고치기 창은 시간표 위가 아니라 화면 아래에서 올라오는 시트로 (손가락 · 키보드에 안 가려지게)
     el.classList.toggle("ro", ro());
@@ -569,8 +586,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     if (!mins) { toast(`시간을 못 읽었어요. ${MINS_HINT}`, "err"); f.mins_text.focus(); return; }
     if (f.dataset.editId) { // 우클릭 → 편집 → 저장 — 바뀐 칸만 보내요 (안 건드린 칸이 그 사이 다른 곳에서 바뀌었어도 덮지 않게)
       const p = S.plans.find((x) => x.id === f.dataset.editId); if (!p) return;
-      const old = { text: p.text, start: p.start, mins: p.mins, priority: p.priority }, shown = { ...old, mins: p.mins || 30, priority: p.priority || null };
-      const ch = Object.fromEntries(Object.entries({ text, start, mins, priority }).filter(([k, v]) => (shown[k] ?? null) !== (v ?? null)));
+      const note = f.note ? f.note.value.replace(/\s+$/, "") || null : p.note ?? null; // 앞 들여쓰기는 그대로, 끝 빈 줄만 떼요
+      const old = { text: p.text, start: p.start, mins: p.mins, priority: p.priority, note: p.note ?? null }, shown = { ...old, mins: p.mins || 30, priority: p.priority || null };
+      const ch = Object.fromEntries(Object.entries({ text, start, mins, priority, note }).filter(([k, v]) => (shown[k] ?? null) !== (v ?? null)));
       S.editSlot = null; S.editId = null; S.form = null;
       if (!Object.keys(ch).length) { drawAll(); return; }
       Object.assign(p, ch); drawAll();
@@ -586,6 +604,14 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       S.editSlot = next < 24 * 60 ? toTime(next) : null; S.form = null;
       drawGrid();
     } catch (ex) { toast(ex.message, "err"); }
+  });
+  // 메모 칸: Tab 들여쓰기 · ⇧Tab 내어쓰기 (고른 줄 모두) · ⌘/Ctrl+Enter 저장 — Enter 는 그냥 줄바꿈
+  el.addEventListener("keydown", (e) => {
+    const ta = e.target.closest?.(".slot-note"); if (!ta || e.isComposing) return;
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); ta.form.requestSubmit(); return; }
+    if (e.key !== "Tab") return;
+    e.preventDefault();
+    indentLines(ta, e.shiftKey); keepForm(ta.form);
   });
   el.addEventListener("keydown", (e) => { if (e.key === "Escape" && e.target.closest("[data-slot-form]")) { S.editSlot = null; S.editId = null; S.form = null; drawGrid(); } });
   // 우클릭 → 편집 · 끝냄 · 우선순위 · 다음 날로 · 삭제
@@ -799,7 +825,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
   });
 
   // 창의 칸 값을 그대로 기억 (시각 · 길이 · 우선순위 · 이름) — 다시 그려도, 고치기 창에서도 그대로
-  function keepForm(f) { if (f) S.form = { at: f.at?.value || "", text: f.text?.value ?? "", mins: f.mins?.value, mins_text: f.mins_text?.value || "", priority: f.priority?.value ?? "" }; }
+  function keepForm(f) { if (f) S.form = { at: f.at?.value || "", text: f.text?.value ?? "", mins: f.mins?.value, mins_text: f.mins_text?.value || "", priority: f.priority?.value ?? "", ...(f.note ? { note: f.note.value } : {}) }; }
   el.addEventListener("change", (e) => { if (e.target.closest?.("[data-slot-form]")) keepForm(e.target.form); });
   // 다른 곳에서 바꿨다는 알림 · 1분마다 다시 그리기: 쓰는 중이면 닫힐 때까지 미뤄요
   const onChanged = (e) => { if (["logs", "plans"].includes(e.detail?.kind)) { if (busy()) S.pendingLoad = true; else load(); } };
