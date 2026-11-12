@@ -991,6 +991,18 @@ try {
     const geo = await p.evaluate(() => document.querySelectorAll(".gn-item").length);
     await p.click('.gn-seg [data-sec="all"]'); await sleep(300);
     ok(geo > 0 && geo < np.items, `${tv} · 분야 고르기 — 지정학만 ${geo}개`);
+    // 하루 몫을 직접 정해요 — 3 · 5 · 7 말고 아무 수(1~30)나 쓰고 Enter
+    if (await p.locator(".gn-quota .gn-quota-in").count()) {
+      await p.fill(".gn-quota .gn-quota-in", "9"); await p.press(".gn-quota .gn-quota-in", "Enter"); await sleep(1500);
+      const q9 = await p.evaluate(async () => ({ shown: document.querySelectorAll(".gn-list-quota > li").length, on: document.querySelector(".gn-quota .gn-quota-in")?.classList.contains("on"), val: document.querySelector(".gn-quota .gn-quota-in")?.value, pressed: document.querySelectorAll('.gn-quota [data-quota][aria-pressed="true"]').length, items: document.querySelectorAll(".gn-item").length }));
+      // 검사 계정(t_…)은 순위표에서 빠져서, 저장된 값은 로컬 DB 에서 바로 봐요
+      const mineQ = JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", `SELECT p.quota FROM news_prefs p JOIN users u ON u.id = p.user_id WHERE u.username = '${user}'`]).toString())[0]?.results?.[0]?.quota;
+      await p.fill(".gn-quota .gn-quota-in", "99"); await p.press(".gn-quota .gn-quota-in", "Enter"); await sleep(600);
+      const q99 = await p.evaluate(() => document.querySelector(".gn-quota .gn-quota-in")?.value);
+      await p.click('.gn-quota [data-quota="5"]'); await sleep(800);
+      const q5 = await p.evaluate(() => ({ shown: document.querySelectorAll(".gn-list-quota > li").length, on: document.querySelector(".gn-quota .gn-quota-in")?.classList.contains("on") }));
+      ok(q9.on && q9.val === "9" && q9.pressed === 0 && q9.shown === Math.min(9, q9.items) && mineQ === 9 && q99 === "9" && !q5.on && q5.shown <= 5, `${tv} · 하루 몫 직접 입력 — 9 → ${q9.shown}편 · 서버 ${mineQ} · 99 는 거절(${q99}) · 5 버튼으로 되돌림 ${q5.shown}편 ${JSON.stringify(q9)}`);
+    } else ok(false, `${tv} · 하루 몫 직접 입력 — 오늘 읽을 몫 칸이 없음`);
     const firstId = await p.evaluate(() => document.querySelector(".gn-item[data-id]")?.dataset.id);
     // 심은 글은 '몇 시간 전'이라 자정 직후엔 모두 어제 호로 가요 — 오늘 호가 비면 아래 기사 검사는 실패로 적고 넘어가요 (뒤 검사까지 멈추지 않게)
     if (!firstId) ok(false, `${tv} · 기사 시트 · 메모 · j/k — 오늘 호에 기사가 없어 건너뜀 (자정 직후면 news-seed 의 글이 어제 호로 가요)`);

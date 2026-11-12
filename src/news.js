@@ -973,9 +973,9 @@ export function registerNewsSignal(on, { json, body, fail, now }) {
     return json({ today, week_from: weekFrom, board });
   });
 
-  // [PUT /news/prefs] 내 하루 몫 { quota: 3 | 5 | 7 }
+  // [PUT /news/prefs] 내 하루 몫 { quota: 1~30 }
   on("PUT", "/news/prefs", async ({ env, req, user }) => {
-    const b = await body(req), q = [3, 5, 7].includes(+b.quota) ? +b.quota : 5;
+    const b = await body(req), n = Math.round(+b.quota), q = n >= 1 && n <= 30 ? n : 5;
     await env.DB.prepare("INSERT INTO news_prefs (user_id, quota, updated_at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET quota = excluded.quota, updated_at = excluded.updated_at").bind(user.id, q, now()).run();
     return json({ ok: true, quota: q });
   });
