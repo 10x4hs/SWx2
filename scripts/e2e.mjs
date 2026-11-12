@@ -1549,6 +1549,30 @@ try {
       ok(saved === 30 && /자동 집중 30분/.test(b.tag) && ban && /집중 모드가 켜졌어요/.test(ban.t) && ban.right < 40 && ban.top < 60 && !errs.length,
         `${tv} · 자동 집중 — 우클릭 스위치 저장 ${saved} · 블록 표시 "${b.tag}" · 배너 ${ban ? `오른쪽 ${Math.round(ban.right)}px 위 ${Math.round(ban.top)}px` : "없음"} · 타이머 "${island.trim().slice(0, 20)}"${errs.length ? " — " + errs[0] : ""}`);
       await ctx.request.delete(BASE + "/api/plans/" + plan.id, { headers: H });
+      // 다른 집중 중에 신호가 오면 → '다음 집중' 배너 · 지금 집중이 끝나는 대로 이어서 켜져요
+      await p.evaluate(() => document.querySelectorAll("#af-stack .af-ban").forEach((x) => x.remove()));
+      await p.evaluate(() => window.dispatchEvent(new CustomEvent("focus-live", { detail: { plan: { id: "e2e-af-first", text: "먼저 집중", start: "10:00", mins: 25 } } }))); await sleep(600);
+      await p.evaluate(() => window.dispatchEvent(new CustomEvent("focus-live", { detail: { plan: { id: "e2e-af-next", text: "다음 블록", start: "10:30", mins: 20 } } }))); await sleep(600);
+      const q1 = await p.evaluate(() => ({ ban: [...document.querySelectorAll("#af-stack .af-ban")].map((x) => x.textContent).join(" | "), title: document.title }));
+      await p.evaluate(() => { const x = [...document.querySelectorAll("#af-stack .af-ban")].find((b) => /집중 모드가 켜졌어요/.test(b.textContent)); x?.querySelector(".af-acts button")?.click(); }); // 먼저 집중 멈추기
+      await sleep(1800);
+      const q2 = await p.evaluate(() => ({ ban: [...document.querySelectorAll("#af-stack .af-ban")].map((x) => x.textContent).join(" | "), title: document.title }));
+      await p.evaluate(() => { const x = [...document.querySelectorAll("#af-stack .af-ban")].find((b) => /다음 블록/.test(b.textContent) && /켜졌어요/.test(b.textContent)); x?.querySelector(".af-acts button")?.click(); }); await sleep(300);
+      ok(/다음 집중 시간이에요/.test(q1.ban) && /다음 블록/.test(q1.ban) && /집중 중/.test(q1.title) && /집중 모드가 켜졌어요[^|]*다음 블록/.test(q2.ban) && /집중 중/.test(q2.title) && !errs.length,
+        `${tv} · 자동 집중 — 다른 집중 중이면 기다렸다가 끝나는 대로 켜짐 ${JSON.stringify({ q1: q1.ban.slice(0, 80), q2: q2.ban.slice(0, 120) })}${errs.length ? " — " + errs[0] : ""}`);
+      // 늦게 켜도 남은 만큼: 5분 전에 시작한 30분 자동 집중 → (켜는 순간 서버 알람이든, 앱을 열 때 따라잡기든) 남은 25분쯤으로 켜져요
+      const now = await p.evaluate(() => { const d = new Date(Date.now() - 5 * 60e3); return { day: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`, hm: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` }; });
+      await p.goto("about:blank"); await sleep(1500); // 앱을 닫아 둬요 — 그 사이 서버 알람이 가도 받을 창이 없어요 (따라잡기만 검사)
+      const late = (await (await ctx.request.post(BASE + "/api/plans", { headers: H, data: { scope: "day", period: "D:" + now.day, text: "늦게 연 자동 집중", start: now.hm, mins: 60 } })).json()).plan;
+      await ctx.request.patch(BASE + "/api/plans/" + late.id, { headers: H, data: { auto_focus: 30 } });
+      await go("#/", 4500);
+      const cu = await p.evaluate(() => ({ title: document.title, ban: [...document.querySelectorAll("#af-stack .af-ban")].map((x) => x.textContent).join(" | ").slice(0, 90) }));
+      const mm = +(cu.title.match(/(\d+):\d\d · 집중 중/) || [])[1];
+      await p.click("#timer-btn").catch(() => {}); await sleep(300); await p.click("#tm-stop").catch(() => {}); await sleep(300);
+      await go("#/", 4000); // 멈춘 건 다시 켜지 않아요
+      const again = await p.evaluate(() => /집중 중/.test(document.title));
+      ok(/늦게 연 자동 집중/.test(cu.ban) && mm >= 23 && mm <= 25 && !again && !errs.length, `${tv} · 자동 집중 — 늦게 열어도 남은 ${mm}분으로 켜짐 · 멈추면 다시 안 켜짐 ${!again} ${JSON.stringify(cu)}${errs.length ? " — " + errs[0] : ""}`);
+      await ctx.request.delete(BASE + "/api/plans/" + late.id, { headers: H });
     });
     await sec("plan-short", async () => {
     {

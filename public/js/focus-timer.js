@@ -108,6 +108,7 @@ export const timer = {
     this.total = this.left = this.preset; this.plan_id = null; this.label = ""; this.flashUntil = 0; document.title = "SWx2";
     if (!quiet) save();
     renderTimer();
+    window.dispatchEvent(new CustomEvent("focus-idle")); // 기다리던 자동 집중이 있으면 이어서 켜요 (auto-focus.js)
   },
   async finish() {
     clearInterval(this.t);
@@ -122,7 +123,7 @@ export const timer = {
     collapse(false); // 펼쳐져 있었어도 "끝" 알약으로
     say(`집중 ${mins}분이 끝났어요.`);
     setTimeout(() => { if (this.doneUntil && Date.now() >= this.doneUntil - 50) leave(); }, DONE_MS);
-    if (!mine) { this.total = this.left = this.preset; renderTimer(); return; }
+    if (!mine) { this.total = this.left = this.preset; renderTimer(); window.dispatchEvent(new CustomEvent("focus-idle")); return; }
     try {
       const b = { day: ymd(today()), at: nowTime(), text: `집중 ${mins}분${this.label ? " · " + this.label : ""}`, kind: "focus", mins };
       if (this.plan_id) b.plan_id = this.plan_id;
@@ -132,6 +133,7 @@ export const timer = {
     } catch (e) { toast(e.message, "err"); }
     this.total = this.left = this.preset;
     renderTimer();
+    window.dispatchEvent(new CustomEvent("focus-idle")); // 기록을 다 남긴 뒤에 (새 타이머를 덮어쓰지 않게)
   },
   // 1초에 4번: 숫자 · 링 · 탭 제목 · Dock 작은 숫자 (DOM 은 다시 만들지 않아요)
   paint() {

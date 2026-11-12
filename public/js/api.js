@@ -121,6 +121,7 @@ export const api = {
   askAi: (b) => request("POST", "/ai/ask", b),
   planAi: (b) => request("POST", "/ai/plan", b),
   aiCommand: (b) => request("POST", "/ai/command", b),
+  focusOpen: () => request("GET", "/plans/focus-open"),
   pushKey: () => request("GET", "/push/key"),
   pushSubscribe: (b) => request("POST", "/push/subscribe", b),
   pushUnsubscribe: (b) => request("DELETE", "/push/subscribe", b),
