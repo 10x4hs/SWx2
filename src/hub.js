@@ -43,7 +43,7 @@ export class RoomHub extends DurableObject {
     if (due.length) {
       await env.DB.batch(due.map((p) => env.DB.prepare("UPDATE plans SET focus_sent_at = ? WHERE id = ?").bind(t, p.id)));
       for (const p of due) {
-        const msg = JSON.stringify({ type: "focus", plan: { id: p.id, text: p.text, start: p.start, mins: p.auto_focus } });
+        const msg = JSON.stringify({ type: "focus", plan: { id: p.id, text: p.text, start: p.start, period: p.period, mins: p.auto_focus } });
         for (const ws of this.ctx.getWebSockets(p.user_id)) { try { ws.send(msg); } catch {} }
       }
       await pushUsers(env, null, [...new Set(due.map((p) => p.user_id))], { room: "focus" });

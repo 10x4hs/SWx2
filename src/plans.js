@@ -124,8 +124,19 @@ export function registerPlans(on) {
 
   // 서비스 워커가 푸시를 받으면 묻는 '방금 시작한 자동 집중' (지난 10분 안에 알람이 보낸 것)
   on("GET", "/plans/focus-due", async ({ env, user }) => {
-    const { results } = await env.DB.prepare("SELECT id, text, start, auto_focus AS mins FROM plans WHERE user_id = ? AND auto_focus IS NOT NULL AND focus_sent_at > ? ORDER BY focus_sent_at DESC LIMIT 3").bind(user.id, now() - 10 * 60e3).all();
+    const { results } = await env.DB.prepare("SELECT id, text, start, period, auto_focus AS mins FROM plans WHERE user_id = ? AND auto_focus IS NOT NULL AND focus_sent_at > ? ORDER BY focus_sent_at DESC LIMIT 3").bind(user.id, now() - 10 * 60e3).all();
     return json({ plans: results });
+  });
+
+  // 지금 시간 칸 안에 있는 자동 집중 계획 (앱이 늦게 열렸거나 · 탭이 자고 있었거나 · 다른 집중이 끝난 뒤에 이어서 켜려고)
+  //   알람이 실제로 갔는지와 상관없이, 시작 시각은 지났고 끝(시작 + 집중 분)은 1분 넘게 남은 것만
+  on("GET", "/plans/focus-open", async ({ env, user }) => {
+    const KST = 9 * 36e5, t = now(), day = (x) => new Date(x + KST).toISOString().slice(0, 10);
+    const { results } = await env.DB.prepare("SELECT id, text, start, period, auto_focus FROM plans WHERE user_id = ? AND auto_focus IS NOT NULL AND done = 0 AND missed = 0 AND scope = 'day' AND start IS NOT NULL AND period IN (?, ?)")
+      .bind(user.id, "D:" + day(t), "D:" + day(t - 864e5)).all();
+    const plans = (results || []).map((p) => { const at = Date.parse(`${p.period.slice(2)}T${p.start}:00Z`) - KST, until = at + p.auto_focus * 60e3; return { id: p.id, text: p.text, start: p.start, mins: p.auto_focus, at, until }; })
+      .filter((p) => p.at <= t + 20e3 && p.until - t > 60e3).sort((a, b) => a.at - b.at);
+    return json({ plans, now: t });
   });
 
   on("DELETE", "/plans/:id", async ({ env, user, params }) => {

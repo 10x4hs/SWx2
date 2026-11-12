@@ -972,6 +972,10 @@ await section("auto-focus", async () => {
   r = await call("a", "PATCH", "/plans/" + id, { auto_focus: 20 }); ok(r.status === 200 && r.data.plan.auto_focus === 20, "auto_focus saved (20)");
   r = await call("a", "GET", "/plans/focus-due"); ok(r.data.plans?.some((p) => p.id === id && p.mins === 20 && p.start === hhmm), "plan due now shows in focus-due");
   r = await call("b", "GET", "/plans/focus-due"); ok(!r.data.plans?.some((p) => p.id === id), "focus-due is only mine");
+  r = await call("a", "GET", "/plans/focus-open"); ok(r.data.plans?.some((p) => p.id === id && p.mins === 20 && p.until - p.at === 20 * 60e3), "plan in its time slot shows in focus-open (catch-up)");
+  r = await call("b", "GET", "/plans/focus-open"); ok(!r.data.plans?.some((p) => p.id === id), "focus-open is only mine");
+  await call("a", "PATCH", "/plans/" + id, { missed: true }); r = await call("a", "GET", "/plans/focus-open"); ok(!r.data.plans?.some((p) => p.id === id), "missed plan → not in focus-open");
+  await call("a", "PATCH", "/plans/" + id, { missed: false });
   r = await call("a", "PATCH", "/plans/" + id, { auto_focus: null }); ok(r.status === 200 && r.data.plan.auto_focus === null, "auto_focus off (null)");
   r = await call("a", "GET", "/plans/focus-due"); ok(!r.data.plans?.some((p) => p.id === id), "turned off → not due");
   await call("a", "DELETE", "/plans/" + id); await call("a", "DELETE", "/plans/" + loose);
