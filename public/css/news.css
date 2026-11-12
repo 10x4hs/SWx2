@@ -305,6 +305,10 @@
 .gn-quota-n::before { content: "Per day"; align-self: center; margin-right: 6px; color: var(--g-ink3); }
 .gn .gn-quota-n button { min-width: 30px; height: 28px; padding: 0 8px; border: 1px solid var(--g-line); color: var(--g-ink2); }
 .gn .gn-quota-n button[aria-pressed="true"] { border-color: var(--g-tint); color: var(--g-tint); font-weight: 700; }
+.gn .gn-quota-in { width: 46px; height: 28px; padding: 0 6px; box-sizing: border-box; border: 1px dashed var(--g-line); background: transparent; color: var(--g-ink2); font: inherit; text-align: center; border-radius: 0; -moz-appearance: textfield; }
+.gn .gn-quota-in::-webkit-inner-spin-button, .gn .gn-quota-in::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.gn .gn-quota-in.on { border: 1px solid var(--g-tint); color: var(--g-tint); font-weight: 700; }
+.gn .gn-quota-in:focus-visible { outline: 2px solid var(--g-tint); outline-offset: 1px; border-style: solid; }
 .gn-bar-p { height: 4px; margin: 14px 0 4px; background: var(--g-line); }
 .gn-bar-p i { display: block; height: 100%; background: var(--g-tint); transition: width .3s; }
 .gn-quota.done .gn-bar-p i { background: var(--g-green); }

@@ -145,9 +145,17 @@ export function mount(root, ctx, r) {
       <button class="gn-star${m.star ? " on" : ""}" type="button" data-star="${it.id}" aria-pressed="${m.star}" aria-label="Save">${starSvg()}</button>
     </li>`;
   }
-  // 오늘 읽을 몫(할당량): 1면 → 분야마다 하나씩 → 최신 순으로 N편을 정해 줘요. N 은 사람마다(이 기기) 3 · 5 · 7
-  const QUOTAS = [3, 5, 7];
-  const quotaN = () => { const n = +((board && board.mine?.quota) || store.get("gn-quota") || 5); return QUOTAS.includes(n) ? n : 5; };
+  // 오늘 읽을 몫(할당량): 1면 → 분야마다 하나씩 → 최신 순으로 N편을 정해 줘요. N 은 사람마다 — 3 · 5 · 7 빠른 버튼이나 직접 1~30
+  const QUOTAS = [3, 5, 7], QMIN = 1, QMAX = 30;
+  const okQ = (n) => Number.isInteger(n) && n >= QMIN && n <= QMAX;
+  const quotaN = () => { const n = +((board && board.mine?.quota) || store.get("gn-quota") || 5); return okQ(n) ? n : 5; };
+  const quotaCtl = (cls = "") => { const n = quotaN(); return `<div class="gn-quota-n${cls}" role="group" aria-label="Stories per day">${QUOTAS.map((q) => `<button type="button" data-quota="${q}" aria-pressed="${q === n}">${q}</button>`).join("")}<input class="gn-quota-in${QUOTAS.includes(n) ? "" : " on"}" type="number" inputmode="numeric" min="${QMIN}" max="${QMAX}" step="1" value="${n}" data-quota-in aria-label="Stories per day (${QMIN}–${QMAX})" title="Type any number, ${QMIN}–${QMAX}"></div>`; };
+  const setQuota = (n) => {
+    n = Math.round(+n); if (!okQ(n)) { toast(`Pick a number from ${QMIN} to ${QMAX}`, "err"); view === "board" ? drawBoard() : draw(); return; }
+    store.set("gn-quota", String(n)); if (board?.mine) board.mine.quota = n;
+    api.newsPrefs({ quota: n }).then(refreshBoard).catch((err) => toast(err.message, "err"));
+    const sc = $("#gn-scroll"), y = sc?.scrollTop; view === "board" ? drawBoard() : draw(); if (sc) sc.scrollTop = y;
+  };
   // ---------- 읽기 대결 ----------
   let board = null, boardT = 0;
   async function loadBoard() {
@@ -180,7 +188,7 @@ export function mount(root, ctx, r) {
             <span><b>${r.total}</b><small>all time</small></span>
           </span></li>`).join("") || `<li class="gn-soft">No reads yet. Open a story to get on the board.</li>`}</ol>
         <p class="gn-lab">Your daily goal</p>
-        <div class="gn-quota-n gn-quota-n-l" role="group" aria-label="Stories per day">${QUOTAS.map((q) => `<button type="button" data-quota="${q}" aria-pressed="${q === quotaN()}">${q}</button>`).join("")}</div>
+        ${quotaCtl(" gn-quota-n-l")}
         <div id="gn-usage"></div>
       </div>`;
     usageHtml().then((h) => { const el = page.querySelector("#gn-usage"); if (el && view === "board") el.innerHTML = h; });
@@ -222,7 +230,7 @@ export function mount(root, ctx, r) {
         ${quota.length ? `<section class="gn-quota${done >= quota.length ? " done" : ""}">
           <header class="gn-quota-h">
             <div><h2>Today's reading</h2><p>${done >= quota.length ? "Done for today. Nice work." : `Read these ${quota.length} today · ${done} of ${quota.length} done`}</p></div>
-            <div class="gn-quota-n" role="group" aria-label="Stories per day">${QUOTAS.map((q) => `<button type="button" data-quota="${q}" aria-pressed="${q === quotaN()}">${q}</button>`).join("")}</div>
+            ${quotaCtl()}
           </header>
           <div class="gn-bar-p" role="progressbar" aria-valuemin="0" aria-valuemax="${quota.length}" aria-valuenow="${done}"><i style="width:${pct}%"></i></div>
           ${raceHtml()}
@@ -683,7 +691,7 @@ export function mount(root, ctx, r) {
     if (e.target.closest("[data-close]") || e.target === scrim) { e.preventDefault(); back(); return; }
     const b = e.target.closest("[data-sec]"); if (b) { sec = b.dataset.sec; store.set("gn-sec", sec); draw(); return; }
     if (e.target.closest("[data-starred]")) { starred = !starred; draw(); return; }
-    const q = e.target.closest("[data-quota]"); if (q) { store.set("gn-quota", q.dataset.quota); if (board?.mine) board.mine.quota = +q.dataset.quota; api.newsPrefs({ quota: +q.dataset.quota }).then(refreshBoard).catch((err) => toast(err.message, "err")); view === "board" ? drawBoard() : draw(); return; }
+    const q = e.target.closest("[data-quota]"); if (q) { setQuota(q.dataset.quota); return; }
     const wd = e.target.closest("[data-wd]"); if (wd) { worldDays = +wd.dataset.wd; store.set("gn-wd", worldDays); worldCleanup?.(); drawWorld(); return; }
     const sub = e.target.closest("[data-cosub]"); if (sub) { toggleSub(sub.dataset.cosub); return; }
     const add = e.target.closest("[data-coadd]"); if (add) { const p = page.querySelector("#gn-copick"); p.hidden = !p.hidden; add.setAttribute("aria-expanded", !p.hidden); return; }
@@ -692,6 +700,9 @@ export function mount(root, ctx, r) {
     if (!cal.hidden && !e.target.closest("#gn-cal")) toggleCal(false);
   };
   root.addEventListener("click", onClick);
+  // 직접 입력한 하루 몫 — Enter 나 칸을 벗어날 때 저장해요
+  root.addEventListener("change", (e) => { const t = e.target.closest("[data-quota-in]"); if (t && +t.value !== quotaN()) setQuota(t.value); });
+  root.addEventListener("keydown", (e) => { const t = e.target.closest("[data-quota-in]"); if (t && e.key === "Enter" && !e.isComposing) { e.preventDefault(); t.blur(); } });
   portal.addEventListener("click", onClick);
   const onKey = (e) => {
     if (e.target.closest("input, textarea, [contenteditable]") || e.metaKey || e.ctrlKey || e.altKey) return;
