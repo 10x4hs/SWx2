@@ -12,6 +12,7 @@ import { icon } from "../icons.js";
 import { undoScope, resolveId } from "../undo.js";
 import { recreatePlan } from "../plan-undo.js";
 import { openMenu, openDrop, closeMenu } from "../ctxmenu.js";
+import { moreBtn } from "../row-more.js";
 import { boardDrag } from "./drag.js";
 import { openSheet, PRIO_CHIPS } from "./sheet.js";
 import * as M from "./model.js";
@@ -88,7 +89,7 @@ export function mountBoard(root, ctx) {
     const label = [p.text, p.project && `프로젝트 ${p.project}`, pr && `우선순위 ${pr.label}`, p.due && `마감 ${M.dayLabel(p.due)}${late ? " 늦음" : ""}`, n && `작은 할 일 ${d}/${n}`].filter(Boolean).join(", ");
     return `<article class="tb-card${p.done ? " done" : ""}${late ? " late" : ""}" role="listitem" tabindex="0" data-id="${esc(p.id)}" aria-label="${esc(label)}">
       ${top ? `<div class="tb-card-top">${top}</div>` : ""}
-      <div class="tb-card-main"><button type="button" class="tb-check" data-check="${esc(p.id)}" aria-pressed="${!!p.done}" aria-label="${p.done ? "끝냄 되돌리기" : "끝냄"}">${TICK}</button><p class="tb-text">${esc(p.text)}</p></div>
+      <div class="tb-card-main"><button type="button" class="tb-check" data-check="${esc(p.id)}" aria-pressed="${!!p.done}" aria-label="${p.done ? "끝냄 되돌리기" : "끝냄"}">${TICK}</button><p class="tb-text">${esc(p.text)}</p>${moreBtn(p.text)}</div>
       ${n ? `<div class="tb-prog"><span class="tb-bar"><i style="--f:${(d / n) * 100}%"></i></span><span class="tb-subn">${d}/${n}</span></div>` : ""}
       ${meta ? `<div class="tb-meta">${meta}</div>` : ""}
     </article>`;
@@ -114,7 +115,7 @@ export function mountBoard(root, ctx) {
       return `<section class="tb-col" data-col="${esc(c.id)}" aria-label="${esc(c.name)} ${items.length}개">
         <header class="tb-col-h">
           <i class="tb-col-dot tb-k-${c.id === "todo" || c.id === "doing" || c.id === "done" ? c.id : "own"}"></i>
-          <h2 class="tb-col-name" data-rename="${esc(c.id)}" title="두 번 눌러 이름 바꾸기">${esc(c.name)}</h2><span class="tb-count">${items.length}</span>
+          <h2 class="tb-col-name" data-rename="${esc(c.id)}" data-dblkey tabindex="0" title="두 번 누르거나 Enter 로 이름 바꾸기 · ⋯ 메뉴에도 있어요">${esc(c.name)}</h2><span class="tb-count">${items.length}</span>
           <span class="tb-col-act"><button type="button" class="icon-btn sm" data-add="${esc(c.id)}" aria-label="${esc(c.name)}에 할 일 더하기" title="더하기">${icon.plus(15)}</button><button type="button" class="icon-btn sm tb-more" data-colmenu="${esc(c.id)}" aria-label="${esc(c.name)} 칸 메뉴" aria-haspopup="menu">⋯</button></span>
         </header>
         ${S.adding === c.id ? `<form class="tb-add" data-addform="${esc(c.id)}" autocomplete="off"><input class="input sm" name="text" maxlength="200" placeholder="할 일 · Enter (Esc 닫기)" aria-label="${esc(c.name)}에 더할 할 일"></form>` : ""}

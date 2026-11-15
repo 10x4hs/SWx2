@@ -11,6 +11,7 @@ import { mountDatabase, pill } from "../blocks/db.js";
 import { mountAiPick, aiPrefs } from "../ai-pick.js";
 import { attachImages } from "../imgattach.js";
 import { bindNoteMenu, deleteWithUndo, isGone } from "../note-menu.js";
+import { moreBtn } from "../row-more.js";
 import { undoScope } from "../undo.js";
 import { sortChip } from "../rel.js";
 import { back as brainBack, upHash, learnParents, syncDock } from "../brain-nav.js";
@@ -115,10 +116,10 @@ export function mount(root, ctx, r) {
       : `<div class="tagcloud" style="padding:0">${(S.allTags || []).slice(0, 12).map((t) => `<a class="tag" href="#/notes/tag/${encodeURIComponent(t.tag)}">#${esc(t.tag)}</a>`).join("")}</div>`;
     $("#nl", root).innerHTML = list.length ? list.map((n) => {
       const u = ctx.user(n.user_id);
-      return `<li><a href="#/notes/${n.id}" ${S.cur?.id === n.id ? 'aria-current="page"' : ""}>
+      return `<li class="has-more"><a href="#/notes/${n.id}" ${S.cur?.id === n.id ? 'aria-current="page"' : ""}>
         <span class="nt"><span class="dot" style="--c:${esc(u?.color || "#999")}"></span><span>${esc(n.title)}</span></span>
         <span class="ns">${esc(plain(n.snippet) || "Empty")}</span>
-      </a></li>`;
+      </a>${moreBtn(n.title, "a")}</li>`;
     }).join("") : `<li class="empty" style="margin:8px">${S.notes.length ? "No match" : "Create your first page"}</li>`;
   }
   async function loadList() {

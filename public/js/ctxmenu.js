@@ -29,6 +29,8 @@ function show(m, left, top) {
 }
 
 export function openMenu(e, { title = "", items = [], onPick, back = null }) {
+  const more = e.rowMore || null; // ⋯ 버튼으로 열었어요 (row-more.js) — 다시 누르면 닫고, Esc 면 초점이 그 버튼으로
+  if (more && cur && curAnchor === more) { e.preventDefault(); closeMenu(); return; }
   e.preventDefault(); closeMenu();
   const m = document.createElement("div");
   m.className = "cm glass"; m.setAttribute("role", "menu");
@@ -42,8 +44,15 @@ export function openMenu(e, { title = "", items = [], onPick, back = null }) {
   document.body.appendChild(m);
   const w = m.offsetWidth, h = m.offsetHeight;
   m.remove();
-  show(m, Math.min(e.clientX, innerWidth - w - 8), Math.min(e.clientY, innerHeight - h - 8));
-  curBack = back;
+  let left = Math.min(e.clientX, innerWidth - w - 8), top = Math.min(e.clientY, innerHeight - h - 8);
+  if (more) { // ⋯ 밑으로, 자리가 없으면 위로 — 메뉴가 ⋯ 를 덮으면 다시 눌러 닫을 수 없어요
+    const r = more.getBoundingClientRect();
+    left = Math.max(8, Math.min(r.left, innerWidth - w - 8)); top = r.bottom + 4;
+    if (top + h > innerHeight - 8) top = Math.max(8, r.top - 4 - h);
+  }
+  show(m, left, top);
+  curBack = more || back;
+  if (more) { curAnchor = more; more.setAttribute("aria-expanded", "true"); }
   m.addEventListener("click", (ev) => { const b = ev.target.closest("[data-k]"); if (!b) return; const k = b.dataset.k, v = b.dataset.v; closeMenu(); onPick?.(k, v); });
   const fit = items.find((it) => it.k === "focus");
   if (fit) {

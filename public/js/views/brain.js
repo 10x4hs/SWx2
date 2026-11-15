@@ -14,6 +14,7 @@ import { buildBrain, levelOf, CONCEPTS } from "../graph/brain-data.js";
 import { openNoteMenu, bindNoteMenu, withoutGone, ask, recordCreate, linkNotes, unlinkNotes, holdGuard } from "../note-menu.js";
 import { isOpen } from "../features.js";
 import { openMenu } from "../ctxmenu.js";
+import { moreBtn } from "../row-more.js";
 import { undoScope } from "../undo.js";
 import { back as brainBack, upHash, learnParents, syncDock, viewOf, keepView } from "../brain-nav.js";
 import { relPop, setRelUndo, openInbox, closeRelPop, closeInbox, edgeStyle, LEGEND, relKo } from "../rel.js";
@@ -27,7 +28,7 @@ const MOD = MAC ? "⌘" : "Ctrl+";
 const coarse = () => matchMedia("(pointer: coarse)").matches;
 const low = (s) => String(s || "").trim().toLowerCase();
 const INTRO = [
-  { t: "우클릭으로 만들기 · 고치기 · 지우기", d: "빈 곳을 우클릭하면 새 노드, 노드를 우클릭하면 이름 바꾸기 · 하위 노드 · 옮기기 · 지우기가 나와요. 폰은 길게 눌러요." },
+  { t: "빈 곳 우클릭 = 새 노드 · ⋯ = 고치기", d: "노드를 고르거나 목록에서 ⋯ 를 누르면 이름 바꾸기 · 하위 노드 · 옮기기 · 지우기예요. 폰은 빈 곳을 길게 눌러 새 노드를 만들어요." },
   { t: "노드를 누르고, 다른 노드를 누르면 연결", d: "한 번 누르면 골라져요(테두리). 그 상태로 다른 노드를 누르면 둘이 선으로 이어져요. 빈 곳이나 Esc 는 취소예요." },
   { t: "두 번 눌러 들어가기 · ← 뒤로 나오기", d: `노드를 두 번 누르면 안으로 들어가요. ← 뒤로는 보던 모습 그대로 돌아가요. 잘못했으면 ${MOD}Z 로 되돌려요.` },
 ];
@@ -78,12 +79,13 @@ export function mount(root, ctx, r) {
 
   // ---------- 아래 한 줄 도움말 ----------
   const hintBase = () => (coarse()
-    ? `길게 누르기: 만들기 · 고치기 · 지우기 · 두 번 누르기: 들어가기 · ${MOD}Z: 되돌리기`
-    : `우클릭: 만들기 · 고치기 · 지우기 · 두 번 클릭: 들어가기 · ${MOD}Z: 되돌리기`);
+    ? `빈 곳 길게 누르기: 새 노드 · ⋯: 고치기 · 두 번 누르기: 들어가기`
+    : `빈 곳 우클릭: 새 노드 · ⋯: 고치기 · 두 번 클릭: 들어가기 · ${MOD}Z: 되돌리기`);
   function hint(sel) {
     const el = $("[data-hint]", root); if (!el) return;
     el.classList.toggle("on", !!sel);
-    el.innerHTML = sel ? `<b>${esc(sel.title)}</b> 골랐어요 — 다른 노드를 누르면 연결돼요 · Esc 취소` : esc(hintBase());
+    // 고른 노드의 ⋯ = 노드 우클릭과 같은 메뉴 (폰 · 키보드도 그래프 노드를 고칠 수 있게)
+    el.innerHTML = sel ? `<b>${esc(sel.title)}</b> 골랐어요 — 다른 노드를 누르면 연결돼요 · Esc 취소<button type="button" class="hint-more" data-node-more aria-haspopup="menu" aria-label="${esc(sel.title)} 메뉴">⋯ 메뉴</button>` : esc(hintBase());
   }
 
   // ---------- 그리기 ----------
@@ -104,7 +106,7 @@ export function mount(root, ctx, r) {
     }
     $("[data-crumbs]", root).innerHTML = [`<a href="#/brain">Obsidian</a>`, ...L.crumbs.map((c, i) => i === L.crumbs.length - 1 ? `<b>${esc(c.title)}</b>` : `<a href="#/brain/${encodeURIComponent(c.id)}">${esc(c.title)}</a>`)].join(`<i aria-hidden="true">›</i>`);
     $("[data-list]", root).innerHTML = L.items.length
-      ? `<ul>${L.items.map((n) => `<li><a href="${esc(hrefOf(n))}" data-id="${esc(n.id)}"><i style="background:${L.types[n.type]?.color || "#9aa0a6"}"></i><span>${esc(n.title)}</span>${n.kids ? `<small>${n.kids}</small>` : n.href ? `<small>↗</small>` : ""}</a></li>`).join("")}</ul>`
+      ? `<ul>${L.items.map((n) => `<li class="has-more"><a href="${esc(hrefOf(n))}" data-id="${esc(n.id)}"><i style="background:${L.types[n.type]?.color || "#9aa0a6"}"></i><span>${esc(n.title)}</span>${n.kids ? `<small>${n.kids}</small>` : n.href ? `<small>↗</small>` : ""}</a>${moreBtn(n.title, "a")}</li>`).join("")}</ul>`
       : `<p class="brain-empty">아직 아무것도 없어요.</p>`;
     const sig = JSON.stringify([L.data, L.types]);
     if (graph && drawnLevel === focus) { // 같은 층: 점 · 선만 바꿔요 (확대 · 위치 · 고른 점 그대로)
@@ -271,6 +273,8 @@ export function mount(root, ctx, r) {
     if (e.target.closest("[data-back]")) { e.preventDefault(); saveView(); brainBack(upHash(location.hash), ctx.go); return; }
     if (e.target.closest("[data-help]")) { intro(0); return; }
     if (e.target.closest("[data-inbox]")) { openInbox(ctx, { undo: us, onChange: () => load() }); return; }
+    const nm = e.target.closest("[data-node-more]"), sid = nm && graph?.selected(), sp = sid && pointOf(sid);
+    if (sp) { const r0 = nm.getBoundingClientRect(); openNoteMenu({ clientX: r0.left, clientY: r0.bottom + 4, preventDefault() {}, rowMore: nm }, sp, { ...menu, anchor: nm }); return; }
     const more = e.target.closest("[data-more]");
     if (more) {
       const L = tree ? levelOf(tree, focus) : null, r0 = more.getBoundingClientRect();

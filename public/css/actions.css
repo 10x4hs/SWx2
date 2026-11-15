@@ -1,0 +1,77 @@
+/* 눈에 보이는 손짓 (2026-11) — ⋯ 칸 메뉴 버튼 (js/row-more.js) · 단축키 창 (js/shortcuts.js) */
+
+/* ---------- ⋯ : 컴퓨터는 칸에 올리거나 초점이 오면, 폰(좁은 화면 · 터치)은 늘 ---------- */
+.row-more {
+  flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0 0 2px;
+  border: 0; border-radius: var(--r-sm); background: transparent; color: var(--ink-3);
+  font: 700 15px/1 var(--font); letter-spacing: .02em; cursor: pointer;
+  opacity: 0; transition: opacity .12s var(--ease), background-color .12s var(--ease), color .12s var(--ease);
+}
+.row-more:hover, .row-more[aria-expanded="true"] { background: var(--hover); color: var(--ink); }
+.row-more:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+:is(.has-more, .gl-item, .tb-card, .block):is(:hover, :focus-within) .row-more,
+.row-more:focus-visible, .row-more[aria-expanded="true"] { opacity: 1; }
+@media (hover: none), (pointer: coarse), (max-width: 720px) {
+  .row-more { opacity: 1; width: 32px; height: 32px; }
+}
+
+/* 링크 줄(노트 목록 · Brain 목록): 링크 안엔 버튼을 못 넣어서 옆에 겹쳐 두고, 글은 그만큼 비켜요 */
+.has-more { position: relative; }
+li.has-more > a { padding-right: 38px; }
+.has-more > .row-more { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); }
+
+/* 자리별 */
+.tb-card-main .row-more { margin: -3px -4px 0 auto; }
+.block .row-more { margin: -4px -4px 0 0; width: 24px; height: 24px; color: inherit; }
+.block.thin .row-more { width: 20px; height: 20px; font-size: 13px; }
+.block.tiny .row-more { margin-top: -5px; width: 18px; height: 18px; font-size: 12px; }
+@media (hover: none), (pointer: coarse), (max-width: 720px) {
+  .block .row-more { width: 26px; height: 26px; }
+  .block.thin .row-more, .block.tiny .row-more { width: 22px; height: 22px; }
+}
+.cal-page.ro .row-more { display: none; } /* 친구 계획표: 메뉴 없음 */
+
+/* Brain: 고른 노드 아래 줄의 '⋯ 메뉴' (줄은 그래프 위에 떠 있어서 버튼만 눌려요) */
+.brain-hint .hint-more {
+  pointer-events: auto; margin-left: 8px; padding: 2px 9px 3px; border: 1px solid var(--line-2); border-radius: var(--r-pill);
+  background: var(--paper-solid); color: var(--ink); font: 600 12px/1.3 var(--font); cursor: pointer;
+}
+.brain-hint .hint-more:hover { background: var(--hover); }
+.brain-hint .hint-more:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (hover: none), (pointer: coarse) { .brain-hint .hint-more { padding: 6px 12px; } }
+
+/* 프로필 메뉴의 '단축키' 오른쪽 ? */
+.me-menu .me-kbd { margin-left: auto; }
+
+/* ---------- 단축키 창: 종이 한 장 · 키는 왼쪽 열에 맞춰서 ---------- */
+.ks {
+  width: min(720px, calc(100vw - 32px)); max-height: min(78vh, 760px); padding: 0; overflow: hidden;
+  display: none; flex-direction: column;
+  border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--paper-solid); color: var(--ink);
+  box-shadow: var(--e-4);
+}
+.ks[open] { display: flex; }
+.ks::backdrop { background: rgba(10, 10, 20, .32); }
+.ks-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 16px 12px 22px; border-bottom: 1px solid var(--line); }
+.ks-head h2 { margin: 0; font: 650 17px/1.3 var(--font-display); letter-spacing: -.01em; }
+.ks-x { font-size: 13px; }
+.ks-body { overflow-y: auto; overscroll-behavior: contain; padding: 6px 22px 20px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
+.ks-body:focus-visible { outline: 2px solid var(--ink); outline-offset: -3px; border-radius: var(--r-sm); }
+.ks-g { padding-top: 14px; break-inside: avoid; }
+.ks-g h3 { margin: 0 0 6px; font: 650 12px/1.3 var(--font); color: var(--ink-3); }
+.ks-g dl { margin: 0; }
+.ks-r { display: grid; grid-template-columns: 112px 1fr; align-items: baseline; gap: 10px; padding: 5px 0; border-top: 1px solid var(--line); }
+.ks-r:first-child { border-top: 0; }
+.ks-r dt { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.ks-r dd { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
+.ks kbd { font-size: 11px; color: var(--ink-2); min-width: 20px; text-align: center; }
+.ks-k { display: inline-flex; gap: 3px; white-space: nowrap; }
+.ks-or { margin: 0 2px; font-size: 11px; color: var(--ink-3); }
+.ks-w { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.ks-more { display: inline-grid; place-items: center; width: 22px; height: 20px; border: 1px solid var(--line-2); border-radius: 5px; font-weight: 700; font-size: 12px; color: var(--ink-2); }
+@media (max-width: 720px) {
+  .ks { max-height: 86vh; }
+  .ks-body { grid-template-columns: 1fr; padding: 4px 16px 16px; }
+  .ks-r { grid-template-columns: 116px 1fr; }
+  .ks-head { padding: 14px 12px 10px 16px; }
+}

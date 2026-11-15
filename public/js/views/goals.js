@@ -7,6 +7,7 @@ import { icon } from "../icons.js";
 import { PRIO_RANK, prioSelect, prioPill, openPrioDrop } from "../prio.js";
 import { mountCommand } from "../ai-command.js";
 import { openMenu, closeMenu } from "../ctxmenu.js";
+import { moreBtn } from "../row-more.js";
 
 const SCOPES = [{ k: "week", label: "이번 주", short: "주" }, { k: "month", label: "이번 달", short: "월" }, { k: "year", label: "올해", short: "년" }];
 const RANK = PRIO_RANK;
@@ -80,7 +81,7 @@ export function mount(root, ctx, r) {
       <li class="gl-item${p.done ? " done" : ""}" data-id="${esc(p.id)}" data-p="${p.priority || ""}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 이룸">
         <span class="gl-text" data-edit="${esc(p.id)}" title="두 번 눌러 고치기">${esc(p.text)}</span>
-        ${prioPill(p)}
+        ${prioPill(p)}${moreBtn(p.text)}
         <button type="button" class="icon-btn sm gl-del" data-del="${esc(p.id)}" aria-label="지우기">${icon.x(14)}</button>
       </li>`).join("") : `<li class="gl-empty"><p>아직 목표가 없어요.</p><p class="faint">아래에 적고 Enter. 홈 링이 목표 수만큼 칸으로 나뉘어요.</p></li>`;
     drawProg();

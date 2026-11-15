@@ -52,6 +52,7 @@ import { timer, renderTimer, initTimer } from "./focus-timer.js";
 import { syncUi, signedOut as uiSignedOut } from "./theme.js"; // 화면 꾸미기 — 테마 · 배경 · 강조 색 (첫 화면 전에 index.html 이 먼저 맞춰요)
 import { openThemePanel } from "./theme-panel.js";
 import { initAutoFocus } from "./auto-focus.js";
+import "./shortcuts.js"; // ? = 단축키 목록 (프로필 메뉴에도)
 window.__swx2Boot = 1; // 모듈이 다 이어졌어요 — index.html 의 '멈춤 복구'가 이걸 봐요
 
 const app = $("#app");
@@ -339,6 +340,7 @@ function renderMeRow() {
       <button type="button" role="menuitem" id="theme-btn">${icon.image(16)}화면 꾸미기</button>
       <a role="menuitem" class="me-link" id="upd-btn" href="#/updates">${icon.spark(16)}업데이트 기록<span class="me-badge" id="upd-badge" hidden></span></a>
       <a role="menuitem" class="me-link" id="set-btn" href="#/settings">${icon.gear(16)}설정</a>
+      <button type="button" role="menuitem" data-shortcuts>${icon.keys(16)}단축키<kbd class="me-kbd">?</kbd></button>
     </div>`;
   const menu = $("#me-menu"), btn = $("#me-btn");
   applyUi("ui:me");

@@ -53,7 +53,7 @@ export function openSheet({ p, cols, tags, projects, colOf, on }) {
         <section class="tb-subs">
           <h3>작은 할 일 ${n ? `<span class="tb-subn">${d}/${n}</span>` : ""}</h3>
           ${n ? `<span class="tb-bar tb-bar-lg"><i style="--f:${(d / n) * 100}%"></i></span>` : ""}
-          <ul>${subs.map((s, i) => `<li class="${s.d ? "done" : ""}"><input type="checkbox" class="check" data-sub="${i}" ${s.d ? "checked" : ""} aria-label="${esc(s.t)} 끝냄"><span class="tb-sub-t" data-subedit="${i}" title="두 번 눌러 고치기">${esc(s.t)}</span><button type="button" class="icon-btn sm" data-subdel="${i}" aria-label="작은 할 일 지우기">${icon.x(12)}</button></li>`).join("")}</ul>
+          <ul>${subs.map((s, i) => `<li class="${s.d ? "done" : ""}"><input type="checkbox" class="check" data-sub="${i}" ${s.d ? "checked" : ""} aria-label="${esc(s.t)} 끝냄"><span class="tb-sub-t" data-subedit="${i}" data-dblkey tabindex="0" role="button" title="두 번 누르거나 Enter 로 고치기">${esc(s.t)}</span><button type="button" class="icon-btn sm" data-subdel="${i}" aria-label="작은 할 일 지우기">${icon.x(12)}</button></li>`).join("")}</ul>
           ${n < 20 ? `<form class="tb-subadd" autocomplete="off"><input class="input sm" name="t" maxlength="100" placeholder="작은 할 일 더하기 · Enter" aria-label="작은 할 일 더하기"></form>` : `<p class="faint">작은 할 일은 20개까지예요.</p>`}
         </section>
         <section class="tb-notes">
