@@ -98,10 +98,10 @@
 .gr { display: grid; gap: 6px; justify-items: center; }
 .gr-l { font-size: 13px; font-weight: 700; color: var(--tc, var(--ink-2)); }
 .gr-t { display: grid; grid-template-columns: repeat(var(--c), 1fr); gap: 3px; }
-.gr-t i { width: 32px; height: 26px; display: grid; place-items: center; font: 500 10.5px var(--mono); font-style: normal; color: var(--ink-3); background: var(--bg); border-radius: 4px; border: 1px solid var(--line); }
+.gr-t i { width: 32px; height: 26px; display: grid; place-items: center; font: 500 11px var(--mono); font-style: normal; color: var(--ink-3); background: var(--bg); border-radius: 4px; border: 1px solid var(--line); }
 .gr-t i.h { background: color-mix(in srgb, var(--tc, var(--a)) calc(var(--v, .5) * 55%), var(--bg)); color: var(--ink); border-color: color-mix(in srgb, var(--tc, var(--a)) 45%, transparent); font-weight: 650; }
 .gr-op { font: 600 20px var(--font); color: var(--ink-3); }
-@media (max-width: 600px) { .gr-t i { width: 24px; height: 22px; font-size: 9px; } .grs { gap: 8px; } }
+@media (max-width: 600px) { .gr-t i { width: 24px; height: 22px; font-size: 11px; } .grs { gap: 8px; } }
 
 /* bars */
 .brs { display: grid; gap: 12px; }
@@ -117,8 +117,10 @@
 .scl-row { display: grid; grid-template-columns: minmax(96px, 30%) 1fr 48px; gap: 12px; align-items: center; margin-bottom: 14px; font-size: 14px; color: var(--ink-2); }
 .scl-t { position: relative; height: 8px; background: var(--paper-2); border-radius: 99px; }
 .scl-t i { position: absolute; top: 50%; left: var(--x); width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--tc, var(--n)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tc, var(--n)) 22%, transparent); }
-:is(.anim .ez-fig, .ez-fig.force) .scl-t i { left: 0; transition: left 1s var(--ease); transition-delay: calc(var(--i, 0) * 120ms + 150ms); }
-:is(.anim .ez-fig, .ez-fig.force).in .scl-t i { left: var(--x); }
+/* 점이 0 → 제자리로 미끄러져요: left 대신 트랙 폭 짜리 투명 줄을 translate 로 밀어요 (점은 ::before) */
+:is(.anim .ez-fig, .ez-fig.force) .scl-t i { left: 0; width: 100%; height: 0; margin: 0; background: none; box-shadow: none; transform: translateX(0); transition: transform 1s var(--ease); transition-delay: calc(var(--i, 0) * 120ms + 150ms); }
+:is(.anim .ez-fig, .ez-fig.force) .scl-t i::before { content: ""; position: absolute; left: 0; top: 0; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--tc, var(--n)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tc, var(--n)) 22%, transparent); }
+:is(.anim .ez-fig, .ez-fig.force).in .scl-t i { transform: translateX(var(--x)); }
 .scl-t s { position: absolute; top: -6px; bottom: -6px; left: var(--x); width: 0; border-left: 2px dashed var(--ink-3); text-decoration: none; }
 .scl-v { font: 650 13px var(--mono); text-align: right; color: var(--tc, var(--ink-2)); }
 .scl-m { display: grid; grid-template-columns: minmax(96px, 30%) 1fr 48px; gap: 12px; font-size: 12px; color: var(--ink-3); }

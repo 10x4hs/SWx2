@@ -303,7 +303,7 @@
 .thm-seg button { flex: 1; }
 
 .thm-walls { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 12px 10px; }
-.thm-wall, .thm-ac { border: 0; background: none; padding: 3px 0; display: grid; justify-items: center; gap: 6px; font: 500 12px/1.2 var(--font); color: var(--ink-2); cursor: pointer; border-radius: 12px; }
+.thm-wall, .thm-ac { border: 0; background: none; padding: 3px 0; display: grid; justify-items: center; gap: 6px; font: 500 12.5px/1.2 var(--font); color: var(--ink-2); cursor: pointer; border-radius: 12px; }
 .thm-sw { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; border: 1px solid var(--line-2); overflow: hidden; }
 .thm-wall[aria-checked="true"] .thm-sw { box-shadow: 0 0 0 2px var(--glass-3), 0 0 0 4px var(--accent); }
 .thm-wall[aria-checked="true"], .thm-ac[aria-checked="true"] { color: var(--ink); font-weight: 650; }

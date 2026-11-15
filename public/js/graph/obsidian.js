@@ -202,7 +202,9 @@ export function mountGraph(host, { data, types, onOpen, onMenu, onClick, onBlank
     g.globalAlpha = 1;
   }
   let touched = false, settledFit = false;
-  function frame() { raf = 0; if (!alive) return; const live = alpha > 0.003 || drag; if (live) step(); if (!touched && !settledFit && alpha < 0.03) { settledFit = true; fit(); } draw(); if (live) raf = requestAnimationFrame(frame); }
+  // 움직임 줄이기(prefers-reduced-motion): 점들이 둥둥 자리 잡는 모습 대신, 한 프레임 안(40ms까지)에 계산을 몰아서 끝내고 자리 잡은 그림만 그려요. 끄는 점만 손을 따라가요
+  const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function frame() { raf = 0; if (!alive) return; if (!drag && still()) { const t0 = performance.now(); while (alpha > 0.003 && performance.now() - t0 < 40) step(); } const live = alpha > 0.003 || drag; if (live) step(); if (!touched && !settledFit && alpha < 0.03) { settledFit = true; fit(); } draw(); if (live) raf = requestAnimationFrame(frame); }
   const kick = () => { if (!raf && alive) raf = requestAnimationFrame(frame); };
   function fit() {
     if (!nodes.length) return;

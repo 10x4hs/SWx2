@@ -199,6 +199,7 @@ function dragIsland(el) {
   let d = null;
   pill.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
+    el._snap?.cancel(); el._snap = null; // 착 붙는 중에 다시 잡으면 그 자리에서 바로 이어 끌어요
     const r = el.getBoundingClientRect();
     d = { x0: e.clientX, y0: e.clientY, cx: r.left + r.width / 2, top: r.top, moved: false };
     pill.setPointerCapture?.(e.pointerId);
@@ -220,8 +221,12 @@ function dragIsland(el) {
     el._dragged = true; setTimeout(() => { el._dragged = false; }, 300);
     const snap = el.classList.contains("near-home"); el.classList.remove("near-home");
     const pos = snap ? null : { x: parseFloat(el.style.left) / innerWidth, y: parseFloat(el.style.top) };
-    el.classList.add("snapping"); setTimeout(() => el.classList.remove("snapping"), 360);
+    // 착 붙는 움직임은 transform(translate)으로만 — left/top 을 매 프레임 바꾸면 그때마다 배치를 다시 해요. 움직임 줄이기면 바로 그 자리
+    const b0 = el.getBoundingClientRect();
     placeIsland(el, pos);
+    const b1 = el.getBoundingClientRect(), dx = b0.left - b1.left, dy = b0.top - b1.top;
+    if ((dx || dy) && el.animate && !matchMedia("(prefers-reduced-motion: reduce)").matches)
+      el._snap = el.animate([{ translate: `${dx}px ${dy}px` }, { translate: "0 0" }], { duration: 320, easing: "cubic-bezier(.34, 1.36, .64, 1)" });
     try { pos ? localStorage.setItem(POS, JSON.stringify(pos)) : localStorage.removeItem(POS); } catch {}
   };
   pill.addEventListener("pointerup", up); pill.addEventListener("pointercancel", up);

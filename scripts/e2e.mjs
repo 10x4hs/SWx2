@@ -25,6 +25,7 @@
 //   ㉓ 관계 종류 — 연결 → '어떤 관계예요?' 칩 → 색 · 점선 선 · ⌘Z · 선 우클릭 관계 바꾸기 · Esc = 관련 · AI 제안함 확정/거절 · 맨 위 노트 자리 칩 (2026-10-24, e2e-onto.mjs)
 //   ㉔ 화면 꾸미기 — 기본값은 theme.css 를 빼도 같은 색 · 프로필 메뉴 창에서 강조 색 · 배경화면 · 투명도 줄이기 바로 적용 · 키보드 · 계정 저장(새로 열기 · 사본 없이) · 409 면 서버 값 · 기본으로 (2026-10-24, e2e-theme.mjs)
 //   ㉕ 집중 섬 — 집중 중에만 맨 위 가운데 검은 알약 · 눌러서 카드(+5분 · 일시정지 · 멈추기) · 다른 화면 · 체험 띠/공지와 안 겹침 · 끝 알약 (2026-10-24, e2e-island.mjs)
+//   ㉘ 읽기 쉬움 — 주요 화면 글자 11px 이상 · 긴 글 12.5px 이상 · 작은 글 대비 4.5 · 홈 Tab 마다 초점 테 · 화면 바꿀 때 blur 없음 · 꾸밈 무한 반복 없음 (2026-11-16, e2e-read.mjs)
 //   ㉖ 할 일 보드 — 체크리스트 [보드 | 목록] · 새 할 일 · 끌어서 진행 중 → 완료(done 1) · ⌘Z/⌘⇧Z · 키보드 ← · 작은 할 일 2/3 · 필터 · 칸 더하기/지우기 · 홈 CheckList 숫자 · 폰 칸 하나씩 (2026-10-24, e2e-board.mjs)
 //   ㉑ 계획 되돌리기 — 옮기기 · 길이 · 이름 · 지우기 · 추가 · ⌘Z/⌘⇧Z/Ctrl+Z/Ctrl+Y, 서버 값으로 확인 (2026-10-22)
 //   ㉒ 일기 블록 편집기 되돌리기 — 글 · Enter · "- " 목록을 한 단계씩, 커서 자리 · 저장된 값까지 (2026-10-22)
@@ -40,6 +41,7 @@ import { noteFilesE2E } from "./e2e-notefiles.mjs";
 import { svmE2E } from "./e2e-svm.mjs";
 import { psyE2E } from "./e2e-psy.mjs";
 import { cimCbtE2E } from "./e2e-cimcbt.mjs";
+import { readE2E } from "./e2e-read.mjs";
 import { section, count, aiMock, writeSummary } from "./lib/sections.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
@@ -643,6 +645,8 @@ try {
     errs = [];
     await islandE2E({ p, go, ok, tv, w, getErrs: () => errs, shots: process.env.SHOTS || null });
     });
+    // ---------- ㉘ 읽기 쉬움 · 초점 테 · 가벼운 움직임 (2026-11-16, scripts/e2e-read.mjs) — 11px 아래 글자 없음 · 본문 12.5px · 작은 글 대비 · 홈 Tab 초점 테 · 화면 바꿀 때 blur 없음 ----------
+    for (const part of ["type", "focus", "motion"]) await sec("read-" + part, async () => { await readE2E({ p, go, ok, tv, part, shots: process.env.SHOTS || null }); });
     // ---------- ㉗ 노트 사진 · 파일 (2026-10-26, scripts/e2e-notefiles.mjs) — 끌어다 놓기 PNG · 붙여 넣기 txt · PDF 미리보기 · ⌘Z · 25MB 알림 · 다시 열기 ----------
     await sec("note-files", async () => {
     await noteFilesE2E({ p, ctx, ok, tv, BASE, H });

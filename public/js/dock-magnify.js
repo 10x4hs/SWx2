@@ -7,6 +7,7 @@
 import { dockPrefs } from "./dock-hide.js";
 
 const wide = matchMedia("(min-width: 861px)");
+const still = matchMedia("(prefers-reduced-motion: reduce)"); // 움직임 줄이기: 크기가 손을 따라 바로 바뀌고, 미끄러지듯 따라오는 움직임은 없어요
 const PITCH = 56, BTN = 48; // 아이콘 칸(48 + 사이 8) · 칸 높이
 let y = null, held = false, raf = 0, items = [], dz = 1; // dz = 작은 화면에서 줄인 배율 (fit)
 const rail = () => document.querySelector(".rail.dock");
@@ -36,7 +37,7 @@ function frame() {
   const p = dockPrefs(), on = y != null && !held && p.mag && wide.matches;
   if (items.length && !items.every((it) => it.el.isConnected)) clear(); // Dock 이 다시 그려졌으면 (순서 · 배지 · 폴더) 새로 잡아요
   if (on && !items.length) { items = collect(); document.documentElement.classList.add("dock-mag"); }
-  const k = Math.min(1, Math.max(1, p.speed) / 22);
+  const k = still.matches ? 1 : Math.min(1, Math.max(1, p.speed) / 22);
   let moving = false;
   for (const it of items) {
     const g = on ? at(it.mid - y, p) : 1;
