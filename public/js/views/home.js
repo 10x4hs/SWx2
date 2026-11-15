@@ -210,12 +210,20 @@ export function mount(root, ctx) {
     else { aiMin.hidden = true; hudAi.hidden = false; await hudAi.animate(GENIE.map((f) => (f.offset == null ? f : { ...f, offset: 1 - f.offset })).reverse(), o).finished.catch(() => {}); hudAi.querySelector("input, textarea")?.focus(); }
   }
   $("#hud-ai-yel", root).addEventListener("click", () => foldAi(true));
-  aiMin.addEventListener("click", () => foldAi(false));
+  aiMin.addEventListener("click", () => { aiWanted = true; foldAi(false); });
+  // "시작하기" 안내가 떠 있는 동안은 AI 챗봇이 구슬로 접혀 있어요 (둘이 같은 자리라 안내를 가리지 않게) · 구슬을 누르면 그 방문 동안은 펼쳐 둬요
+  let aiWanted = false;
+  const guideUp = () => { const g = $("#guide", root); return !!g && !g.hidden; };
+  function syncAi() {
+    const show = hudAi.dataset.show === "1", fold = aiFolded || (guideUp() && !aiWanted);
+    hudAi.hidden = !show || fold; aiMin.hidden = !show || !fold;
+  }
+  const guideWatch = new MutationObserver(syncAi); guideWatch.observe($("#guide", root), { attributes: true, attributeFilter: ["hidden"] });
   function placeAi(slide) {
     const svg = slide?.querySelector(":scope > svg.rh.wide");
     const show = !!svg && pageKey() === "all" && S.wide && mine();
     hudAi.dataset.show = show ? "1" : "0";
-    hudAi.hidden = !show || aiFolded; aiMin.hidden = !show || !aiFolded; if (!show) return;
+    syncAi(); if (!show) return;
     const vb = svg.viewBox.baseVal, r = svg.getBoundingClientRect(), host = hudAi.offsetParent?.getBoundingClientRect() || { left: 0, top: 0 };
     const k = Math.min(r.width / vb.width, r.height / vb.height), ox = r.left + (r.width - vb.width * k) / 2, oy = r.top + (r.height - vb.height * k) / 2;
     const x0 = 2 * 260 + 64; // ringhud.js 의 숫자 열 시작점
@@ -596,5 +604,5 @@ export function mount(root, ctx) {
   // 프로필(이름 · 사진)을 바꾸면 오른쪽 아래 사람 고르기도 바로 새 모습으로
   const onMe = () => { $$("[data-who]", root).forEach((btn) => { const u = ctx.user(btn.dataset.who); const old = btn.querySelector(".av"); if (u && old) old.outerHTML = avatar(u, "sm"); }); pad.refresh?.(); };
   window.addEventListener("trio:me", onMe);
-  return () => { alive = false; drag.destroy(); stopClip(); pu.dispose(); stopAi?.(); pad.destroy(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); window.removeEventListener("trio:me", onMe); };
+  return () => { alive = false; drag.destroy(); stopClip(); pu.dispose(); stopAi?.(); guideWatch.disconnect(); pad.destroy(); clearInterval(tick); ro.disconnect(); pager.destroy(); window.removeEventListener("trio:changed", onChanged); window.removeEventListener("trio:me", onMe); };
 }

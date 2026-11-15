@@ -233,7 +233,14 @@ try {
     // ---------- ⑧-4 작은 화면(14인치 · 높이 640) + 자동 숨김: 앱 줄만 스크롤 · 타이머 · 프로필은 화면 안 · 스크롤바 / 집중 타이머 '직접' 시간 ----------
     await sec("dock-scroll", async () => {
     try {
-      if (w < 861) { ok(true, `${tv} · Dock 스크롤 — 폰은 아래 탭바 (해당 없음)`); return; }
+      if (w < 861) { // 폰: 검색 · 타이머 · 프로필은 늘 화면 안, 앱 줄만 옆으로 넘겨요
+        await go("#/", 1800);
+        const m = await p.evaluate(() => { const r = (s) => document.querySelector(s).getBoundingClientRect(), n = document.querySelector(".rail.dock .rail-nav"); const inV = (b) => b.left >= 0 && b.right <= innerWidth; return { s: inV(r("#open-palette")), t: inV(r("#timer-btn")), me: inV(r("#me-row")), scrolls: n.scrollWidth > n.clientWidth, page: document.documentElement.scrollWidth <= innerWidth }; });
+        const nl = await p.locator(".rail.dock .rail-nav").evaluate((n) => { n.scrollLeft = 9999; return n.scrollLeft; });
+        await p.evaluate(() => { document.querySelector(".rail.dock .rail-nav").scrollLeft = 0; });
+        ok(m.s && m.t && m.me && m.page && (!m.scrolls || nl > 0), `${tv} · Dock — 검색 ${m.s} · 타이머 ${m.t} · 프로필 ${m.me} 화면 안 · 앱 줄 넘김 ${m.scrolls ? nl : "필요 없음"} · 가로 넘침 없음 ${m.page}`);
+        return;
+      }
       await p.setViewportSize({ width: 1300, height: 560 });
       await p.evaluate(() => localStorage.setItem("dock-autohide", "1")); await go("#/", 2200);
       await p.mouse.move(2, 300); await sleep(700);
@@ -1033,6 +1040,10 @@ try {
     await hop("#/news/world", ".gn-ranks [data-cc]", 1500);
     const wv = await p.evaluate(() => ({ cv: (document.querySelector("#gn-globe")?.width || 0) > 100, n: document.querySelectorAll(".gn-ranks [data-cc]").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
     ok(wv.cv && wv.n > 0 && !wv.over, `${tv} · 세계 — 지구본 · 나라 ${wv.n}곳 · 가로 넘침 없음`);
+    { // 섹션 탭은 한 줄 (폰에서 글자가 세로로 쪼개지지 않게)
+      const tabs = await p.evaluate(() => { const a = [...document.querySelectorAll(".gn-views a")]; const hs = a.map((x) => x.getBoundingClientRect().height); return { n: a.length, maxH: Math.max(...hs), rowH: document.querySelector(".gn-views").getBoundingClientRect().height }; });
+      ok(tabs.n > 3 && tabs.maxH < 40 && tabs.rowH < 48, `${tv} · 뉴스 섹션 탭 한 줄 — 탭 ${tabs.n}개 · 가장 높은 탭 ${Math.round(tabs.maxH)}px · 줄 높이 ${Math.round(tabs.rowH)}px`);
+    }
     await hop("#/news/co", ".gn-sub", 800);
     const wasOn = await p.evaluate(() => document.querySelector(".gn-sub")?.getAttribute("aria-pressed") === "true");
     await p.click(".gn-sub"); await sleep(900);
