@@ -3504,3 +3504,15 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 /* 할 일 칸(여러 줄): 한 줄 입력처럼 보이다가 Shift+Enter · Tab 들여쓰기 만큼 늘어나요 */
 .slot-add .slot-text { resize: none; overflow: hidden; white-space: pre-wrap; tab-size: 2; line-height: 1.45; min-height: 0; font-family: inherit; }
 .block .txt [data-edit] { white-space: pre-wrap; tab-size: 2; } /* 블록 제목도 줄 · 들여쓰기 그대로 */
+
+/* ---------- 폰 Dock: 검색 · 타이머 · 프로필은 늘 보이고, 가운데 앱 줄만 옆으로 넘겨요 (오른쪽 끝이 흐려져서 더 있다는 걸 알려 줘요) ---------- */
+@media (max-width: 860px) {
+  .rail.dock { overflow: visible; justify-content: flex-start; min-width: 0; max-width: 100%; }
+  .rail.dock > .rail-btn, .rail.dock > .dock-sep, .rail.dock .rail-foot { flex: none; }
+  .rail.dock .rail-nav { flex: 1 1 0; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain;
+    margin-block: -8px; padding-block: 8px; padding-right: 18px; scroll-padding-inline: 18px;
+    -webkit-mask: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+  .rail.dock .rail-nav::-webkit-scrollbar { display: none; }
+  .rail.dock .rail-nav .rail-btn, .rail.dock .rail-nav .dock-fold-btn { flex: none; }
+  .rail.dock .rail-foot { margin-left: 0; }
+}

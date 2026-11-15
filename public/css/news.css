@@ -41,8 +41,9 @@
 
 /* 메뉴 줄: 화면 · 날짜 */
 .gn-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: center; align-items: center; gap: 8px 28px; flex-wrap: wrap; min-height: 40px; background: var(--g-bg); border-top: 1px dotted var(--g-line); border-bottom: 1px dotted var(--g-line); }
-.gn-views { display: flex; gap: 24px; font-size: 13px; }
-.gn-views a { color: var(--g-ink2); padding: 4px 0; }
+.gn-views { display: flex; gap: 24px; font-size: 13px; min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
+.gn-views::-webkit-scrollbar { display: none; }
+.gn-views a { flex: none; color: var(--g-ink2); padding: 4px 0; }
 .gn-views a:hover { color: var(--g-tint); }
 .gn-views a[aria-current="page"] { color: var(--g-tint); }
 .gn-daynav { display: flex; align-items: center; gap: 2px; font-family: var(--g-sans); font-size: 13px; padding-left: 24px; border-left: 1px solid var(--g-line); }
@@ -409,3 +410,4 @@ body:has(.host-news) .bg { opacity: .15; filter: blur(2px) grayscale(1); }
 .gn-usage-t td { padding: 7px 4px; border-bottom: 1px dotted var(--g-line); }
 .gn-usage-t td:not(:first-child), .gn-usage-t th:not(:first-child) { text-align: right; }
 .gn .gn-s.gn-soft { padding: 0; font-size: inherit; font-style: italic; }
+@media (max-width: 720px) { .gn-views { -webkit-mask: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask: linear-gradient(90deg, #000 calc(100% - 28px), transparent); padding-right: 24px; } }
