@@ -56,14 +56,15 @@ for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { a
 // 따로 돌 때 서로 안 부딪히게 계정 이름 끝에 E2E_WORKER(한 글자)를 붙여요.
 const VIEWPORTS = (process.env.E2E_VIEWPORTS || "desktop,phone").split(",");
 execFileSync("node", ["scripts/test-cleanup.mjs", "--stale"], { stdio: "ignore" }); // 지난번에 멈춘 실행이 남긴 2시간 넘은 t_… 계정
-const tag = Date.now().toString(36) + (process.env.E2E_WORKER || "").replace(/[^a-z0-9]/g, "").slice(0, 2), user = "t_e2e" + tag, friend = "t_e2f" + tag, outsider = "t_e2o" + tag; // outsider = ⑱ 같은 팀이지만 일기 기능이 없는 사람
+const tag = Date.now().toString(36) + (process.env.E2E_WORKER || "").replace(/[^a-z0-9]/g, "").slice(0, 2), user = "t_e2e" + tag, friend = "t_e2f" + tag, outsider = "t_e2o" + tag, lockedU = "t_e2l" + tag; // lockedU = ⑧-6 잠긴 기능만 있는 새 친구 (구역 안에서 만들어요) · outsider = ⑱ 같은 팀이지만 일기 기능이 없는 사람
 // 컴퓨터 · 폰을 같이 돌릴 때는 실행마다 임시 팀을 따로 — 한 팀이면 서로의 집중 · 상태가 보여서 화면이 달라져요 (집중 섬 띠 검사가 그래서 실패했어요)
 const TEAM = process.env.E2E_WORKER ? "t_team_" + tag : "swx2";
 if (TEAM !== "swx2") execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `INSERT OR IGNORE INTO teams (id, name, code, created_at) VALUES ('${TEAM}', '검사 ${tag}', '${tag}', ${Date.now()})`], { stdio: "ignore" });
 execFileSync("node", ["scripts/add-user.mjs", user, "화면검사", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" });
 execFileSync("node", ["scripts/add-user.mjs", friend, "검사친구", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" }); // ⑨ 공개 페이지를 올리는 친구
 execFileSync("node", ["scripts/add-user.mjs", outsider, "모임밖", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" });
-const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username IN ('${user}', '${friend}', '${outsider}'); DELETE FROM teams WHERE id = '${TEAM}' AND id <> 'swx2'`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
+let dockMoreUser = false; // ⑧-6 계정은 한 번만 만들어요 (컴퓨터 · 폰이 같이 써요)
+const cleanup = () => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--command", `DELETE FROM users WHERE username IN ('${user}', '${friend}', '${outsider}', '${lockedU}'); DELETE FROM teams WHERE id = '${TEAM}' AND id <> 'swx2'`], { stdio: "ignore" }); // 페이지 · 기록은 같이 지워져요 (ON DELETE CASCADE)
 
 // 과목 페이지: 화면을 꽉 채우는 한 장짜리 · 여러 파일(style.css · app.js)짜리
 const FULL = `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;height:100%}body{display:grid;place-items:center;background:#1b6}</style><p>꽉 차야 해요</p>`;
@@ -263,6 +264,53 @@ try {
       ok((g.dz < 1 || g.scrolls && st > 0) && g.meIn && g.tIn && hid && go37, `${tv} · Dock 작은 화면 · 타이머 — 아이콘 줄임 ${g.dz} · 넘침 ${g.scrolls} (${g.sh}/${g.ch}) · 프로필 화면 안 ${g.meIn} · 타이머 ${g.tIn} · 휠 ${st} · 나가면 바로 숨음 ${hid} · 직접 37분 ${go37}`);
     } catch (e) { ok(false, `${tv} · Dock 스크롤 · 타이머 — ${String(e.message).split("\n")[0]}`); await p.setViewportSize({ width: w, height: h }).catch(() => {}); }
     });
+    // ---------- ⑧-6 Dock 더보기 · 이름 맞추기 (2026-11-16): 잠긴 앱은 Dock 칸 대신 '더보기' 타일 하나 → 창(이름 · 이유 · 사용 신청 → 기다리는 중) · Esc 면 초점이 타일로
+    //            다 열린 사람은 타일 없음 · Dock 이름 = 화면 제목 (Plan · Message) · 프로필 메뉴 · Dock 우클릭 메뉴는 한국어 ----------
+    await sec("dock-more", async () => {
+    let lc;
+    try {
+      if (!dockMoreUser) { execFileSync("node", ["scripts/add-user.mjs", lockedU, "새친구", "password1", "--team=" + TEAM], { stdio: "ignore" }); dockMoreUser = true; } // 기능 신청 전 = 기본(일기 · 대화 · 계획 · 노트)만
+      lc = await browser.newContext({ viewport: { width: w, height: h } });
+      await lc.request.post(BASE + "/api/auth/login", { headers: H, data: { username: lockedU } });
+      const lp = await lc.newPage();
+      await lp.goto(BASE + "/#/"); await sleep(2200);
+      const LOCKED = ["study", "news", "biz", "dev", "cim", "psy"];
+      const dock = await lp.evaluate(() => ({ navs: [...document.querySelectorAll("#dock-list [data-nav]")].map((a) => a.dataset.nav), badges: document.querySelectorAll("#dock-list .lock-badge, #dock-list .locked").length, tiles: document.querySelectorAll("#dock-list #dock-more-btn").length }));
+      const noLocked = LOCKED.every((k) => !dock.navs.includes(k)) && dock.badges === 0;
+      await lp.click("#dock-more-btn"); await sleep(400);
+      const pop = await lp.evaluate(() => { const p = document.querySelector("#dock-more-pop"); return p && { rows: [...p.querySelectorAll(".dm-row")].map((r) => [r.querySelector(".dm-txt b")?.textContent, r.querySelector(".dm-txt small")?.textContent, !!r.querySelector(".dm-req, .dm-state")]), head: p.querySelector("h2")?.textContent, exp: document.querySelector("#dock-more-btn").getAttribute("aria-expanded"), inView: (() => { const b = p.getBoundingClientRect(); return b.left >= 0 && b.top >= 0 && b.right <= innerWidth && b.bottom <= innerHeight; })() }; });
+      const listed = pop?.rows.length === LOCKED.length && pop.rows.every(([n, why, act]) => n && /잠김|신청함/.test(why) && act) && pop.head === "더보기" && pop.exp === "true" && pop.inView;
+      const [reqF, reqName] = tv === "컴퓨터" ? ["news", "Newsletter"] : ["cim", "CIM"]; // 컴퓨터 · 폰이 같은 계정이라 신청은 따로
+      await lp.locator(`#dock-more-pop .dm-req[data-f="${reqF}"]`).click(); await sleep(900);
+      const waiting = await lp.evaluate((nm) => [...document.querySelectorAll("#dock-more-pop .dm-row")].find((r) => r.querySelector(".dm-txt b")?.textContent === nm)?.querySelector(".dm-state")?.textContent || "", reqName);
+      const pending = ((await (await lc.request.get(BASE + "/api/features", { headers: H })).json()).pending || []).includes(reqF);
+      await lp.keyboard.press("Escape"); await sleep(250);
+      const closed = await lp.evaluate(() => !document.querySelector("#dock-more-pop") && document.activeElement?.id === "dock-more-btn");
+      // 이름: Dock 'Plan' → 화면 제목 Plan · 'Message' → Message
+      await lp.goto(BASE + "/#/calendar"); await sleep(1800);
+      const planT = await lp.evaluate(() => [document.querySelector('#dock-list [data-nav="calendar"]')?.dataset.tip, document.querySelector(".cal-view .eyebrow")?.textContent.trim()]);
+      await lp.goto(BASE + "/#/room"); await sleep(1800);
+      const roomT = await lp.evaluate(() => [document.querySelector('#dock-list [data-nav="room"]')?.dataset.tip, document.querySelector("#main h1")?.textContent.trim()]);
+      const sameName = planT[0] === planT[1] && roomT[0] === roomT[1];
+      // 프로필 메뉴 · Dock 우클릭 메뉴: 영어 낱말 없이
+      await lp.click("#me-btn"); await sleep(300);
+      const meTxt = await lp.evaluate(() => [...document.querySelectorAll("#me-menu .me-st-h, #me-menu .st-chip, #me-menu .me-link")].map((x) => x.textContent.trim()).join(" | "));
+      await lp.mouse.click(w / 2, 5); await sleep(200);
+      await lp.locator('#dock-list [data-nav="home"]').click({ button: "right" }); await sleep(300);
+      const cmTxt = await lp.evaluate(() => [...document.querySelectorAll("body > .cm [data-k]")].map((x) => x.textContent.trim()).join(" | "));
+      await lp.keyboard.press("Escape");
+      const korean = (t) => !!t && !/[A-Za-z]{3,}/.test(t.replace(/Claude|Codex|Gemini/g, ""));
+      // 기능이 열린 사람(이 검사의 기본 계정): 열린 앱은 모두 Dock 에, 잠긴 것만(--features=all 에 psy 는 없어요) 타일 뒤로 · 다 열렸으면 타일 없음
+      await go("#/", 1800);
+      const NAVF = { study: "study", news: "news", biz: "biz", dev: "dev", cim: "cim", psy: "psy" }, open = (await (await ctx.request.get(BASE + "/api/features", { headers: H })).json()).open || [];
+      const mine = await p.evaluate(() => ({ navs: [...document.querySelectorAll("#dock-list [data-nav]")].map((a) => a.dataset.nav), tile: document.querySelectorAll("#dock-more-btn").length }));
+      const shut = Object.keys(NAVF).filter((k) => !open.includes(NAVF[k]));
+      const fullTile = Object.keys(NAVF).every((k) => mine.navs.includes(k) === !shut.includes(k)) && mine.tile === (shut.length ? 1 : 0);
+      ok(noLocked && dock.tiles === 1 && listed && /기다리는/.test(waiting) && pending && closed && sameName && korean(meTxt) && korean(cmTxt) && fullTile,
+        `${tv} · Dock 더보기 — 잠긴 앱 Dock 밖 ${noLocked} (${dock.navs.join(",")}) · 타일 ${dock.tiles} · 창 ${pop?.rows.length}줄 ${listed} · 신청 → "${waiting}" 서버 ${pending} · Esc 초점 ${closed} · 이름 ${planT.join("=")} ${roomT.join("=")} · 프로필 "${meTxt}" · 우클릭 "${cmTxt}" · 열린 사람 Dock ${fullTile} (잠김 ${shut.join(",") || "없음"} · 타일 ${mine.tile})`);
+    } catch (e) { ok(false, `${tv} · Dock 더보기 — ${String(e.message).split("\n")[0]}`); }
+    await lc?.close();
+    });
     // ---------- ⑧-5 Dock 겹침 0 검사: 화면 높이 560 · 700 · 900 에서 마우스로 Dock 을 위→아래로 훑으며 매 걸음 아이콘끼리 · 이름표↔아이콘 겹침, 화면 밖으로 나감을 재요 ----------
     await sec("dock-overlap", async () => {
     try {
@@ -390,7 +438,7 @@ try {
       const mapped = await nodes();
       ok(first.created + first.kept === 5 && again.created === 0 && again.kept === 5 && ["AI & Dev", "Business & Finance", "Language", "Life", "Records"].every((t) => top.includes(t)) && top.length <= 6
         && inBiz.join() === "검사 CIM" && crumb === "Business & Finance" && inAi.includes("AI Books") && inAi.includes("검사 멘토링") && study === "#/books"
-        && dock.includes("brain") && !dock.includes("notes") && dock.includes("study") && /^Second Brain › Business & Finance › 검사 CIM › 검사 VaR/.test(path || "") && mapped.join() === "검사 VaR" && intro1 === 1 && intro2 === 0,
+        && dock.includes("brain") && !dock.includes("notes") && dock.includes("study") && /^Obsidian › Business & Finance › 검사 CIM › 검사 VaR/.test(path || "") && mapped.join() === "검사 VaR" && intro1 === 1 && intro2 === 0,
         `${tv} · Second Brain — 처음 안내 ${intro1} → 다시 열면 ${intro2} · 가져오기 ${first.created}/${again.created} · 맨 위 ${top.join(", ")} · Business 안 ${inBiz.join(", ")} · AI 안 ${inAi.join(", ")} · 공부 점 → ${study} · 노트 경로 ${path} · Map → ${mapped.join(", ")}`);
     } catch (e) { ok(false, `${tv} · Brain — ${String(e.message).split("\n")[0]}`); }
 

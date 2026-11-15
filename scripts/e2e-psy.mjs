@@ -109,7 +109,7 @@ export async function psyE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }) {
       await mc.request.post(BASE + "/api/auth/login", { headers: H, data: { username: m, password: "password1" } });
       const mp2 = await mc.newPage();
       await mp2.goto(BASE + "/#/psy"); await sleep(2500);
-      // 다른 잠긴 앱(CIM · 뉴스)처럼 Dock 에는 남고, 화면은 '사용 신청'(host-locked) — 내용(.ps)은 안 그려요
+      // 다른 잠긴 앱(CIM · 뉴스)처럼 Dock 에서는 '더보기' 뒤로 가고, 주소로 들어오면 '사용 신청'(host-locked) — 내용(.ps)은 안 그려요
       const v = await mp2.evaluate((r) => ({ locked: !!document.querySelector(".host-locked"), ps: !!document.querySelector(r) }), S.root);
       const api = (await mc.request.get(BASE + "/api/apps/psy/state", { headers: H })).status();
       ok(v.locked && !v.ps && api === 403, `회원(psy 없음) · PSY 잠김 — 사용 신청 ${v.locked} · 화면 ${v.ps} · API ${api}`);

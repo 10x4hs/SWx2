@@ -142,7 +142,7 @@ export function mount(root, ctx) {
       return;
     }
     const [a, b, c] = LEGEND[pk];
-    line.innerHTML = `<span class="key"><i class="k-done"></i>${a}</span><span class="key"><i class="k-past"></i>${b}</span><span class="key"><i class="k-todo"></i>${c}</span>${pk === "day" ? `<span class="key"><i class="k-now"></i>바늘 = 지금</span>` : ""}<span class="faint">${mine() ? (canDrag() && DRAG_HINT[pk]) || HINT[pk] : S.closed ? "이 친구는 계획표를 공개하지 않았어요 (not open)" : "링을 누르면 친구의 하루 계획표 · 조각은 그 계획 하나"}</span>`;
+    line.innerHTML = `<span class="key"><i class="k-done"></i>${a}</span><span class="key"><i class="k-past"></i>${b}</span><span class="key"><i class="k-todo"></i>${c}</span>${pk === "day" ? `<span class="key"><i class="k-now"></i>바늘 = 지금</span>` : ""}<span class="faint">${mine() ? (canDrag() && DRAG_HINT[pk]) || HINT[pk] : S.closed ? "이 친구는 계획표를 공개하지 않았어요 (비공개)" : "링을 누르면 친구의 하루 계획표 · 조각은 그 계획 하나"}</span>`;
   }
 
   // 체크리스트 쪽: 오늘 할 일을 얼마나 했는지 (우선순위 색 도넛) + 이번 주 날마다 + 남은 할 일
@@ -436,7 +436,7 @@ export function mount(root, ctx) {
     const d = e.target.closest("svg [data-day]");
     const r = e.target.closest("svg [data-ring]");
     if ((d || r) && !mine()) { // 친구 차트: 오늘·날짜 → 친구의 하루 계획표 전체 화면(보기만) · 올해·달·주 → 그 기간 목표 목록
-      if (S.closed) { toast("이 친구는 계획표를 공개하지 않았어요 (not open)."); return; }
+      if (S.closed) { toast("이 친구는 계획표를 공개하지 않았어요 (비공개)."); return; }
       const key = d ? "day" : r.dataset.ring;
       if (d || key === "day") { ctx.go(`#/calendar/${d ? d.dataset.day : pageKey() === "day" ? S.day : K.day.slice(2)}/u/${S.who}`); return; }
       if (key === "check") { ctx.go(`#/calendar/${K.day.slice(2)}/u/${S.who}`); return; }

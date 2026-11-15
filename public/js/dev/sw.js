@@ -17,12 +17,12 @@ export function mountSw(host, ctx) {
   let alive = true, depth = null, unfit = null, k3 = 0;
   const info = LIST.map(() => null);
   let asList = listPref.get("home");
-  const top = () => `<header class="dv-top"><nav class="dv-crumbs" aria-label="지금 위치"><b aria-current="page">SW 과정</b></nav><nav class="dv-nav" aria-label="보기"><button type="button" class="dv-night dp-view" data-view aria-pressed="${asList}">${asList ? "3D로 보기" : "목록으로 보기"}</button>${nightBtn()}</nav></header>`;
+  const top = () => `<header class="dv-top"><nav class="dv-crumbs" aria-label="지금 위치"><b aria-current="page">Code Flow</b></nav><nav class="dv-nav" aria-label="보기"><button type="button" class="dv-night dp-view" data-view aria-pressed="${asList}">${asList ? "3D로 보기" : "목록으로 보기"}</button>${nightBtn()}</nav></header>`;
   const prog = (k) => { const x = info[k], pct = x ? Math.round(x.ratio * 100) : 0; return { x, pct }; };
 
   function listHtml() {
     return `<div class="sw-home">
-        <header class="sw-home-h"><h1>SW 과정</h1><p>책마다 하루 30~60분씩 읽어요. 카드 몇 장, 어제 것 복습, 그리고 회의실 문제 하나.</p></header>
+        <header class="sw-home-h"><h1>Code Flow</h1><p>책마다 하루 30~60분씩 읽어요. 카드 몇 장, 어제 것 복습, 그리고 회의실 문제 하나.</p></header>
         <div class="sw-books">${LIST.map(({ c, vol, line, span }, k) => {
           const { x, pct } = prog(k);
           return `<article class="sw-book" data-course="${c.key}">
@@ -62,7 +62,7 @@ export function mountSw(host, ctx) {
     let start = 0; try { start = Math.min(LIST.length - 1, Number(sessionStorage.getItem(POS)) || 0); } catch {}
     k3 = start; paintPanel();
     mountDepth(stage, LIST.map(({ c, vol }, k) => ({ dot: `${vol} ${c.name}`, face: face(k) })), {
-      shape: [3, 4], start, label: "SW 과정 책 — 휠 · 스와이프 · 위아래 화살표로 다음 책, Enter 로 목차",
+      shape: [3, 4], start, label: "Code Flow 책 — 휠 · 스와이프 · 위아래 화살표로 다음 책, Enter 로 목차",
       onFocus: (k) => { k3 = k; paintPanel(); try { sessionStorage.setItem(POS, String(k)); } catch {} },
       onOpen: (k) => { location.hash = LIST[k].c.base; },
     }).then((d) => { if (!alive || !stage.isConnected) { d.destroy(); return; } depth = d; LIST.forEach((_, k) => info[k] && d.update(k, face(k))); })

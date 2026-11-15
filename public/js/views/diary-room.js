@@ -42,7 +42,7 @@ export function mount(root, ctx, r) {
     root.innerHTML = `
       <div class="dy dr">
         <header class="dy-top">
-          <div class="dy-when"><span class="eyebrow">일기 · ${esc(members.map((m) => (m.username || "").toUpperCase()).join(" · "))}</span><h1 class="dy-date" id="dr-date"></h1></div>
+          <div class="dy-when"><span class="eyebrow">Diary · ${esc(members.map((m) => (m.username || "").toUpperCase()).join(" · "))}</span><h1 class="dy-date" id="dr-date"></h1></div>
           <div class="pager">
             <a class="icon-btn sm" id="dr-prev" aria-label="전날 일기">${icon.left(16)}</a>
             <a class="btn sm ghost" id="dr-today">오늘</a>

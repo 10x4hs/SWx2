@@ -97,12 +97,12 @@ export function mount(root, ctx, r) {
       // 막 만든 노드 · 아직 못 받은 노드: 한 번 더 받아 보고, 그래도 없으면 알려 줘요 (주소는 그대로)
       if (retried !== focus) { retried = focus; load(); return; }
       saveView(); graph?.(); graph = null; drawnSig = ""; drawnLevel = undefined;
-      $("[data-crumbs]", root).innerHTML = `<a href="#/brain">Second Brain</a>`;
+      $("[data-crumbs]", root).innerHTML = `<a href="#/brain">Obsidian</a>`;
       $("[data-graph]", root).innerHTML = `<p class="og-loading">이 노드를 찾을 수 없어요. 지워졌거나 옮겨졌을 수 있어요. <a href="#/brain">맨 위로</a></p>`;
       $("[data-list]", root).innerHTML = "";
       return;
     }
-    $("[data-crumbs]", root).innerHTML = [`<a href="#/brain">Second Brain</a>`, ...L.crumbs.map((c, i) => i === L.crumbs.length - 1 ? `<b>${esc(c.title)}</b>` : `<a href="#/brain/${encodeURIComponent(c.id)}">${esc(c.title)}</a>`)].join(`<i aria-hidden="true">›</i>`);
+    $("[data-crumbs]", root).innerHTML = [`<a href="#/brain">Obsidian</a>`, ...L.crumbs.map((c, i) => i === L.crumbs.length - 1 ? `<b>${esc(c.title)}</b>` : `<a href="#/brain/${encodeURIComponent(c.id)}">${esc(c.title)}</a>`)].join(`<i aria-hidden="true">›</i>`);
     $("[data-list]", root).innerHTML = L.items.length
       ? `<ul>${L.items.map((n) => `<li><a href="${esc(hrefOf(n))}" data-id="${esc(n.id)}"><i style="background:${L.types[n.type]?.color || "#9aa0a6"}"></i><span>${esc(n.title)}</span>${n.kids ? `<small>${n.kids}</small>` : n.href ? `<small>↗</small>` : ""}</a></li>`).join("")}</ul>`
       : `<p class="brain-empty">아직 아무것도 없어요.</p>`;
@@ -228,7 +228,7 @@ export function mount(root, ctx, r) {
   function blankMenu(e, w) {
     holdGuard(e);
     const L = levelOf(tree, focus);
-    openMenu(e, { title: L.here?.title || "Second Brain", items: [{ k: "new", label: "여기에 새 노드" }], onPick: (k) => k === "new" && newHere(e, w) });
+    openMenu(e, { title: L.here?.title || "Obsidian", items: [{ k: "new", label: "여기에 새 노드" }], onPick: (k) => k === "new" && newHere(e, w) });
   }
   // 맨 위(개념 5개)에서는 어느 개념 안에 둘지 고르게 해요 — 누른 자리에서 가장 가까운 개념이 먼저 골라져 있어요.
   // 맨 위에 그냥 두면 Unsorted 묶음으로 들어가 화면에서 사라지기 때문이에요.
@@ -244,7 +244,7 @@ export function mount(root, ctx, r) {
       pick = { label: "어디에", value: opts.includes(cur) ? cur : "Unsorted", options: opts.map((t) => ({ v: t, label: t === "Unsorted" ? "Unsorted (분류 안 함)" : t })) };
     }
     if (here && !here.note && here.kind !== "concept") return toast("여기에는 노드를 만들 수 없어요.");
-    ask({ head: "여기에 새 노드", sub: here?.title || "Second Brain", ok: "만들기", label: "새 노드 이름", at: { x: e.clientX, y: e.clientY }, pick, refocus: false }, async (title, where) => {
+    ask({ head: "여기에 새 노드", sub: here?.title || "Obsidian", ok: "만들기", label: "새 노드 이름", at: { x: e.clientX, y: e.clientY }, pick, refocus: false }, async (title, where) => {
       try {
         let parent = here ? (here.note ? here.id : await conceptNote(here.title)) : null;
         if (!focus && where && where !== "Unsorted") parent = await conceptNote(where);

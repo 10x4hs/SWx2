@@ -19,7 +19,7 @@ export function mount(root, ctx, r) {
     <div class="dy">
       <header class="dy-top">
         <a class="icon-btn sm" id="dy-back" aria-label="캘린더로">${icon.left(16)}</a>
-        <div class="dy-when"><span class="eyebrow">일기</span><h1 class="dy-date" id="dy-date"></h1></div>
+        <div class="dy-when"><span class="eyebrow">Diary</span><h1 class="dy-date" id="dy-date"></h1></div>
         <div class="pager">
           <a class="icon-btn sm" id="dy-prev" aria-label="전날 일기">${icon.left(16)}</a>
           <a class="btn sm ghost" id="dy-today">오늘</a>

@@ -326,7 +326,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     el.classList.toggle("ro", ro());
     const u = ctx.users.find((x) => x.id === who);
     const hintEl = $(".dp-hint", el);
-    if (hintEl) hintEl.textContent = ro() ? (S.closed ? `${u?.display_name || "친구"} 님은 하루 계획표를 공개하지 않았어요 (not open).` : `${u?.display_name || "친구"} 님의 하루 계획표예요 · 보기만 할 수 있어요.`) : `빈 시각을 누르면 바로 적을 수 있어요. 시각 · 길이는 1분 단위로 고쳐도 돼요. Enter 추가 · Esc 닫기.${matchMedia("(hover: hover) and (pointer: fine)").matches ? ` 계획에 마우스를 대고 ${MOD}C · 붙일 시각에 대고 ${MOD}V (Shift+클릭 여러 개 · ${MOD}A 전체).` : ""}`;
+    if (hintEl) hintEl.textContent = ro() ? (S.closed ? `${u?.display_name || "친구"} 님은 하루 계획표를 공개하지 않았어요 (비공개).` : `${u?.display_name || "친구"} 님의 하루 계획표예요 · 보기만 할 수 있어요.`) : `빈 시각을 누르면 바로 적을 수 있어요. 시각 · 길이는 1분 단위로 고쳐도 돼요. Enter 추가 · Esc 닫기.${matchMedia("(hover: hover) and (pointer: fine)").matches ? ` 계획에 마우스를 대고 ${MOD}C · 붙일 시각에 대고 ${MOD}V (Shift+클릭 여러 개 · ${MOD}A 전체).` : ""}`;
     if (ro()) { S.editSlot = null; S.editId = null; }
     const sheet = phone();
     const fa = document.activeElement, focusName = fa?.closest?.("[data-slot-form]") ? fa.name : null; // 다시 그린 뒤에도 쓰던 칸에 커서

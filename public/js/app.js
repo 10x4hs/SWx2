@@ -333,12 +333,12 @@ function renderMeRow() {
     <div class="me-menu glass" id="me-menu" role="menu" hidden>
       <button type="button" role="menuitem" class="me-upd" id="me-upd"><span class="me-upd-dot" aria-hidden="true"></span>새 버전이 있어요 · 새로 고침</button>
       <button type="button" role="menuitem" class="me-head" id="me-head" title="프로필 바꾸기">${avatar(ctx.me, "")}<span><b>${esc(ctx.me.display_name)}</b><small>@${esc(ctx.me.username)}</small>${ctx.me.bio ? `<small class="me-bio">${esc(ctx.me.bio)}</small>` : ""}</span><span class="me-edit" aria-hidden="true">${icon.edit(14)}</span></button>
-      <div class="me-open"><span class="me-st-h">day plans</span><span class="st-row"><button type="button" class="st-chip" data-open="1" aria-pressed="${ctx.me.plans_open !== false}" title="친구들이 내 하루 계획표를 볼 수 있어요">open</button><button type="button" class="st-chip" data-open="0" aria-pressed="${ctx.me.plans_open === false}" title="내 계획표는 나만 봐요">not open</button></span></div>
+      <div class="me-open"><span class="me-st-h">하루 계획표</span><span class="st-row"><button type="button" class="st-chip" data-open="1" aria-pressed="${ctx.me.plans_open !== false}" title="친구들이 내 하루 계획표를 볼 수 있어요">공개</button><button type="button" class="st-chip" data-open="0" aria-pressed="${ctx.me.plans_open === false}" title="내 계획표는 나만 봐요">비공개</button></span></div>
       <div class="me-st me-left" id="me-left" hidden></div>
-      <div class="me-st"><span class="me-st-h">status${ctx.me.status ? ` <b>${esc(statusText(ctx.me.status))}</b>` : ""}</span>${statusPicker(ctx.me.status)}</div>
+      <div class="me-st"><span class="me-st-h">상태${ctx.me.status ? ` <b>${esc(statusText(ctx.me.status))}</b>` : ""}</span>${statusPicker(ctx.me.status)}</div>
       <button type="button" role="menuitem" id="theme-btn">${icon.image(16)}화면 꾸미기</button>
       <a role="menuitem" class="me-link" id="upd-btn" href="#/updates">${icon.spark(16)}업데이트 기록<span class="me-badge" id="upd-badge" hidden></span></a>
-      <a role="menuitem" class="me-link" id="set-btn" href="#/settings">${icon.gear(16)}Settings</a>
+      <a role="menuitem" class="me-link" id="set-btn" href="#/settings">${icon.gear(16)}설정</a>
     </div>`;
   const menu = $("#me-menu"), btn = $("#me-btn");
   applyUi("ui:me");
@@ -360,7 +360,7 @@ function renderMeRow() {
   $("#me-upd").addEventListener("click", () => location.reload());
   const prof = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openProfile(ctx); };
   $("#me-head").addEventListener("click", prof);
-  // 하루 계획 공개: open / not open
+  // 하루 계획 공개: 공개 / 비공개
   menu.querySelector(".me-open").addEventListener("click", async (e) => {
     e.stopPropagation();
     const b = e.target.closest("[data-open]"); if (!b) return;
