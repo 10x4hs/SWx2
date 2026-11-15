@@ -1,6 +1,8 @@
 // 지금 활동 상태 — 인스타처럼 직접 골라요. 프로필 동그라미 오른쪽 위에 작게 떠요.
 // coding 이면 쓰는 AI 도구의 픽셀 캐릭터(Claude 의 Clawd 풍 · Codex · Gemini)가, 그 밖엔 작은 점이 떠요.
 export const STATUSES = ["coding", "working", "studying", "reading", "resting", "sleeping", "away"];
+// 화면에 보이는 이름 (저장 값은 위 영어 그대로 — 친구 화면 · 서버가 같은 값을 읽어요)
+export const STATUS_KO = { coding: "코딩 중", working: "일하는 중", studying: "공부 중", reading: "읽는 중", resting: "쉬는 중", sleeping: "자는 중", away: "자리 비움" };
 export const TOOLS = [
   { k: "claude", label: "Claude" },
   { k: "codex", label: "Codex" },
@@ -29,7 +31,7 @@ export function sprite(k, cls = "") {
   return `<svg class="px ${cls}" viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
 }
 
-export const statusText = (st) => !st ? "" : st.s + (st.s === "coding" && st.tools?.length ? " · " + st.tools.map((t) => TOOLS.find((x) => x.k === t)?.label || t).join(", ") : "");
+export const statusText = (st) => !st ? "" : (STATUS_KO[st.s] || st.s) + (st.s === "coding" && st.tools?.length ? " · " + st.tools.map((t) => TOOLS.find((x) => x.k === t)?.label || t).join(", ") : "");
 
 // 동그라미 안에 붙는 배지 (avatar() 가 불러요)
 export function statusBadge(st) {
@@ -43,7 +45,7 @@ export function statusBadge(st) {
 export function statusPicker(st) {
   const cur = st?.s || "", tools = st?.tools || [];
   return `<div class="st-pick" role="group" aria-label="지금 활동 상태">
-    <div class="st-row">${STATUSES.map((s) => `<button type="button" class="st-chip" data-st="${s}" aria-pressed="${cur === s}">${s}</button>`).join("")}${cur ? `<button type="button" class="st-chip st-clear" data-st="">clear</button>` : ""}</div>
+    <div class="st-row">${STATUSES.map((s) => `<button type="button" class="st-chip" data-st="${s}" aria-pressed="${cur === s}">${STATUS_KO[s]}</button>`).join("")}${cur ? `<button type="button" class="st-chip st-clear" data-st="">지우기</button>` : ""}</div>
     ${cur === "coding" ? `<div class="st-row st-tools">${TOOLS.map((t) => `<button type="button" class="st-chip st-tool" data-tool="${t.k}" aria-pressed="${tools.includes(t.k)}">${sprite(t.k)}${t.label}</button>`).join("")}</div>` : ""}
   </div>`;
 }

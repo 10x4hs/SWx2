@@ -9,6 +9,7 @@ import { isHidden, hidePage } from "./hidden-pages.js";
 import { isOpen, NAV_FEATURE } from "./features.js";
 import { navHref, onDockClick } from "./dock-memory.js";
 import { initFolders, openSet, setOpen, fromDrop, folderItems, folderPick, folderMenu } from "./dock-folders.js";
+import { initDockMore, moreTile } from "./dock-more.js";
 
 // ctx · NAV · parseRoute · 지금 보는 화면(lastView)은 app.js 가 갖고 있어서 init 으로 받아요 (app.js 를 import 하면 순환이라서요)
 let ctx, NAV, parseRoute, getLastView;
@@ -16,6 +17,7 @@ let ctx, NAV, parseRoute, getLastView;
 export function initDock(deps) {
   ({ ctx, NAV, parseRoute, getLastView } = deps);
   initFolders({ ctx, save: saveDock });
+  initDockMore({ ctx, redraw: drawDock });
   setInterval(() => { if (ctx.me && document.visibilityState === "visible") refreshUnread(); }, 60_000);
   window.addEventListener("trio:changed", (e) => { if (e.detail?.kind === "room") refreshUnread(); });
   window.addEventListener("room-live", (e) => { if (e.detail?.from !== ctx.me?.id) refreshUnread(); }); // 새 메시지 → 배지 바로
@@ -30,7 +32,8 @@ export function initDock(deps) {
 const navLive = () => NAV.filter((n) => (!n.until || kstDay() <= n.until) && (!n.when || n.when(ctx.me)));
 
 // 아이폰 Dock처럼 앱 아이콘만. 이름은 마우스를 올리면, 지금 화면은 옆에 점. data-dock = 순서를 기억하는 이름
-const navItem = (n) => `<a class="rail-btn${isOpen(ctx, NAV_FEATURE[n.key]) ? "" : " locked"}" href="${navHref(n, ymd(today()))}" data-nav="${n.key}" data-dock="nav:${n.key}" draggable="false" aria-label="${n.label}" data-tip="${n.label}">${n.img ? `<span class="app-ic ic-img ic-${n.key}"><img src="${n.img}" alt="" draggable="false" decoding="async"></span>` : appIcon(n.icon || n.key)}${isOpen(ctx, NAV_FEATURE[n.key]) ? "" : `<span class="lock-badge" aria-label="잠김"><svg width="9" height="10" viewBox="0 0 9 10" aria-hidden="true"><rect x="0.5" y="4.2" width="8" height="5.3" rx="1.4" fill="currentColor"/><path d="M2.3 4.4V3a2.2 2.2 0 0 1 4.4 0v1.4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></span>`}${n.badge ? `<span class="dock-ping" aria-hidden="true"></span><span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
+// 못 여는 앱(잠긴 기능)은 여기 안 와요 — '더보기' 타일 하나 뒤로 (dock-more.js)
+const navItem = (n) => `<a class="rail-btn" href="${navHref(n, ymd(today()))}" data-nav="${n.key}" data-dock="nav:${n.key}" draggable="false" aria-label="${n.label}" data-tip="${n.label}">${n.img ? `<span class="app-ic ic-img ic-${n.key}"><img src="${n.img}" alt="" draggable="false" decoding="async"></span>` : appIcon(n.icon || n.key)}${n.badge ? `<span class="dock-ping" aria-hidden="true"></span><span class="dock-badge" id="${n.badge}" hidden></span>` : ""}</a>`;
 
 // ---------- Dock 배지: 대화방 안 읽은 개수 ----------
 // 로그인해 있으면 60초마다. 대화방이 열려 있을 땐 그 화면이 스스로 폴링하니 여기선 쉬어요.
@@ -64,8 +67,9 @@ export function drawDock() {
   const el = $("#dock-list"); if (!el || !ctx.me) return;
   const cur = parseRoute();
   const pageItem = (p) => `<a class="rail-btn rail-page${p.mine ? "" : " shared"}" href="#/p/${p.id}" data-nav="p:${p.id}" data-page="${p.id}" data-dock="page:${p.id}" draggable="false" aria-label="${esc(p.title)}" data-tip="${esc(p.title)}${p.mine ? "" : ` · ${esc(ctx.user(p.user_id)?.display_name || "")}`}"><span class="app-ic ic-page">${pageIcon(p.icon)}</span></a>`;
-  const entries = [...navLive().map((n) => ({ key: "nav:" + n.key, html: navItem(n) })), ...dockPages.filter((p) => p.place !== "study" && !isHidden(p)).map((p) => ({ key: "page:" + p.id, html: pageItem(p) }))];
-  el.innerHTML = sortByOrder(withFolders(entries), ctx.me.dock_order).map((x) => x.html).join("");
+  const live = navLive(), canOpen = (n) => isOpen(ctx, NAV_FEATURE[n.key]);
+  const entries = [...live.filter(canOpen).map((n) => ({ key: "nav:" + n.key, html: navItem(n) })), ...dockPages.filter((p) => p.place !== "study" && !isHidden(p)).map((p) => ({ key: "page:" + p.id, html: pageItem(p) }))];
+  el.innerHTML = sortByOrder(withFolders(entries), ctx.me.dock_order).map((x) => x.html).join("") + moreTile(live.filter((n) => !canOpen(n)), cur.nav);
   $$("[data-nav]", el).forEach((a) => { if (a.dataset.nav === cur.nav) a.setAttribute("aria-current", "page"); });
   // 폴더 타일: 안 아이콘 4개까지 작게 (2x2). 접혀 있을 때 지금 화면이 안에 있으면 타일에 점 (CSS :has 라 화면을 옮겨도 따라가요)
   $$("[data-folder]", el).forEach((f) => {
@@ -116,10 +120,10 @@ export async function pageMenu(e, id) {
   openMenu(e, {
     title: `${p.icon} ${p.title}`,
     items: [...(p.mine ? [
-      { k: "open", label: "열기" }, { k: "rename", label: "Rename & icon…" }, { k: "edit", label: "고치기 (AI · 코드 · 설정)" },
+      { k: "open", label: "열기" }, { k: "rename", label: "이름 · 아이콘 바꾸기…" }, { k: "edit", label: "고치기 (AI · 코드 · 설정)" },
       { k: "share", label: p.shared ? "공개 끄기 (나만)" : "셋에게 공개 (친구는 보기만)" },
       { sep: true }, { k: "del", label: "삭제", danger: true },
-    ] : [{ k: "open", label: "열기" }, { k: "rename", label: "Rename & icon…" }, { k: "copy", label: "내 페이지로 복사해서 고치기" }, { sep: true }, { k: "hide", label: "내 화면에서 숨기기" }]), ...folderItems("page:" + id)],
+    ] : [{ k: "open", label: "열기" }, { k: "rename", label: "이름 · 아이콘 바꾸기…" }, { k: "copy", label: "내 페이지로 복사해서 고치기" }, { sep: true }, { k: "hide", label: "내 화면에서 숨기기" }]), ...folderItems("page:" + id)],
     onPick: async (k) => {
       if (k.startsWith("fold-")) return folderPick(k, "page:" + id, e);
       try {

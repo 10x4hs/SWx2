@@ -20,7 +20,7 @@ export function mount(root, ctx, r) {
   let tab = TABS.some(([k]) => k === r?.tab) ? r.tab : "dock";
   const admin = ctx.me?.role === "admin" && !ctx.me.impersonated_by;
   root.innerHTML = `<div class="set">
-    <nav class="set-nav" aria-label="설정 분류"><b>Settings</b>${TABS.map(([k, l]) => `<button type="button" data-tab="${k}">${l}</button>`).join("")}</nav>
+    <nav class="set-nav" aria-label="설정 분류"><b>설정</b>${TABS.map(([k, l]) => `<button type="button" data-tab="${k}">${l}</button>`).join("")}</nav>
     <div class="set-pane" id="set-pane"></div></div>`;
   const pane = $("#set-pane", root);
 

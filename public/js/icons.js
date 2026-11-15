@@ -53,6 +53,8 @@ const DOW_KO = ["일", "월", "화", "수", "목", "금", "토"];
 const GLYPH = {
   home: g('<path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V19a1 1 0 0 0 1 1h3.5v-5.5h3V20H17a1 1 0 0 0 1-1V9.5"/>'),
   search: g('<circle cx="10.5" cy="10.5" r="6"/><path d="m15.2 15.2 4.8 4.8"/>', 2.4),
+  // Dock '더보기': 점 3x3 — 잠긴 앱이 이 뒤에 모여 있어요 (dock-more.js)
+  more: `<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><circle cx="6" cy="6" r="1.9"/><circle cx="12" cy="6" r="1.9"/><circle cx="18" cy="6" r="1.9"/><circle cx="6" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="18" cy="12" r="1.9"/><circle cx="6" cy="18" r="1.9"/><circle cx="12" cy="18" r="1.9"/><circle cx="18" cy="18" r="1.9"/></svg>`,
   // 미리 알림처럼: 색 동그라미 3개 + 회색 줄
   plans: `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><circle cx="6" cy="6.5" r="2.3" fill="var(--c-blue)"/><circle cx="6" cy="12" r="2.3" fill="var(--c-green)"/><circle cx="6" cy="17.5" r="2.3" fill="var(--c-amber)"/><path d="M10.5 6.5h9M10.5 12h9M10.5 17.5h9" stroke="currentColor" stroke-opacity=".55" stroke-width="1.8" stroke-linecap="round"/></svg>`,
   // AI: 차트 색을 잇는 은은한 그라데이션 반짝임

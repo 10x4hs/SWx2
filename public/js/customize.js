@@ -28,7 +28,7 @@ export async function initCustomize(c) {
     const slot = slotOf(e.target); if (!slot) return;
     openMenu(e, {
       title: nameOf(slot),
-      items: [{ k: "name", label: "Rename & icon…" }, { k: "edit", label: "Customize…" }, ...(map[slot] ? [{ sep: true }, { k: "reset", label: "Reset to original", danger: true }] : []), ...folderItems(slot)],
+      items: [{ k: "name", label: "이름 · 아이콘 바꾸기…" }, { k: "edit", label: "코드로 꾸미기…" }, ...(map[slot] ? [{ sep: true }, { k: "reset", label: "원래대로 되돌리기", danger: true }] : []), ...folderItems(slot)],
       onPick: (k) => (k.startsWith("fold-") ? folderPick(k, slot, e) : k === "name" ? openRename(slot) : k === "edit" ? openEditor(slot) : reset(slot)),
     });
   });
@@ -78,20 +78,20 @@ export function openRename(slot) {
   back.className = "palette-back cz-back";
   back.innerHTML = `
     <div class="cz cz-rn glass" role="dialog" aria-modal="true" aria-labelledby="cz-rn-t">
-      <header class="cz-head"><h2 id="cz-rn-t">Rename & icon <span>${esc(orig)}</span></h2><button class="icon-btn sm" type="button" data-close aria-label="Close">${icon.x(16)}</button></header>
+      <header class="cz-head"><h2 id="cz-rn-t">이름 · 아이콘 바꾸기 <span>${esc(orig)}</span></h2><button class="icon-btn sm" type="button" data-close aria-label="닫기">${icon.x(16)}</button></header>
       <div class="cz-rn-b">
-        <label class="cz-rn-l" for="cz-rn-name">Name</label>
+        <label class="cz-rn-l" for="cz-rn-name">이름</label>
         <input id="cz-rn-name" class="cz-rn-in" maxlength="40" placeholder="${esc(orig)}" value="${esc(cur.label || "")}">
-        <p class="cz-rn-l">Icon</p>
-        <div class="cz-rn-grid" role="radiogroup" aria-label="Icon">
-          <button type="button" class="cz-rn-o" data-ic="" aria-pressed="${!pick}" title="Original">${el?.querySelector(".cz-ic, .app-ic")?.dataset.czOrig || "↺"}<small>Original</small></button>
+        <p class="cz-rn-l">아이콘</p>
+        <div class="cz-rn-grid" role="radiogroup" aria-label="아이콘">
+          <button type="button" class="cz-rn-o" data-ic="" aria-pressed="${!pick}" title="원래 아이콘">${el?.querySelector(".cz-ic, .app-ic")?.dataset.czOrig || "↺"}<small>원래</small></button>
           ${ICON_KEYS.map((k) => `<button type="button" class="cz-rn-o" data-ic="app:${k}" aria-pressed="${pick === "app:" + k}" title="${k}">${appIcon(k)}</button>`).join("")}
         </div>
-        <div class="cz-rn-row"><label class="cz-rn-l" for="cz-rn-emoji">Emoji</label><input id="cz-rn-emoji" class="cz-rn-in sm" maxlength="8" placeholder="🔥" value="${esc(pick.startsWith("emoji:") ? pick.slice(6) : "")}"></div>
-        <div class="cz-rn-row"><label class="cz-rn-l" for="cz-rn-url">Image URL</label><input id="cz-rn-url" class="cz-rn-in" placeholder="https://…/icon.png" value="${esc(pick.startsWith("url:") ? pick.slice(4) : "")}"></div>
-        <div class="cz-rn-prev"><span>Preview</span><span class="rail-btn cz-rn-p" id="cz-rn-p"></span><b id="cz-rn-pn"></b></div>
+        <div class="cz-rn-row"><label class="cz-rn-l" for="cz-rn-emoji">이모지</label><input id="cz-rn-emoji" class="cz-rn-in sm" maxlength="8" placeholder="🔥" value="${esc(pick.startsWith("emoji:") ? pick.slice(6) : "")}"></div>
+        <div class="cz-rn-row"><label class="cz-rn-l" for="cz-rn-url">이미지 주소</label><input id="cz-rn-url" class="cz-rn-in" placeholder="https://…/icon.png" value="${esc(pick.startsWith("url:") ? pick.slice(4) : "")}"></div>
+        <div class="cz-rn-prev"><span>미리 보기</span><span class="rail-btn cz-rn-p" id="cz-rn-p"></span><b id="cz-rn-pn"></b></div>
       </div>
-      <footer class="cz-foot"><small>Only on your account</small><span><button class="btn ghost" type="button" data-clear>Use original</button><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn accent" type="button" data-save>Save</button></span></footer>
+      <footer class="cz-foot"><small>내 계정에서만 바뀌어요</small><span><button class="btn ghost" type="button" data-clear>원래대로</button><button class="btn ghost" type="button" data-close>취소</button><button class="btn accent" type="button" data-save>저장</button></span></footer>
     </div>`;
   document.body.append(back);
   const $ = (q) => back.querySelector(q);
@@ -108,7 +108,7 @@ export function openRename(slot) {
     try {
       const r = await api.saveCustom(slot, { css: cur.css || "", html: cur.html || "", js: cur.js || "", label, icon: ic });
       if (r.custom) map[slot] = r.custom; else delete map[slot];
-      close(); applyDock(); toast(clear ? "Back to the original name and icon." : "Saved · only you see it.");
+      close(); applyDock(); toast(clear ? "원래 이름 · 아이콘으로 돌렸어요." : "저장했어요 · 나만 보여요.");
     } catch (err) { toast(err.message || "Failed to save."); }
   }
   back.addEventListener("click", (e) => {
@@ -154,7 +154,7 @@ export function afterMount(view, host) {
 }
 
 async function reset(slot) {
-  try { await api.resetCustom(slot); delete map[slot]; applyCss(); applyUi(); applyDock(); toast("Back to original."); ctx.redraw?.(); } catch (err) { toast(err.message || "Failed."); }
+  try { await api.resetCustom(slot); delete map[slot]; applyCss(); applyUi(); applyDock(); toast("원래대로 돌렸어요."); ctx.redraw?.(); } catch (err) { toast(err.message || "Failed."); }
 }
 
 function openEditor(slot) {
@@ -170,7 +170,7 @@ function openEditor(slot) {
   back.className = "palette-back cz-back";
   back.innerHTML = `
     <div class="cz glass" role="dialog" aria-modal="true" aria-labelledby="cz-title">
-      <header class="cz-head"><h2 id="cz-title">Customize <span>${esc(nameOf(slot))}</span></h2><button class="icon-btn sm" type="button" data-close aria-label="Close">${icon.x(16)}</button></header>
+      <header class="cz-head"><h2 id="cz-title">코드로 꾸미기 <span>${esc(nameOf(slot))}</span></h2><button class="icon-btn sm" type="button" data-close aria-label="닫기">${icon.x(16)}</button></header>
       <nav class="cz-tabs" role="tablist">${["css", "html", "js"].map((t, i) => `<button type="button" role="tab" data-t="${t}" aria-selected="${i === 0}">${t.toUpperCase()}${cur[t]?.trim() ? "<i></i>" : ""}</button>`).join("")}${src ? `<button type="button" role="tab" data-t="src" aria-selected="false">Source</button>` : ""}</nav>
       ${["css", "html", "js"].map((t, i) => `<textarea class="cz-code" data-p="${t}" spellcheck="false" placeholder="${esc(hint[t])}"${i ? " hidden" : ""}>${esc(cur[t] || "")}</textarea>`).join("")}
       ${src ? `<pre class="cz-code cz-src" data-p="src" hidden>Loading ${esc(src)}…</pre>` : ""}

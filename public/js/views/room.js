@@ -35,7 +35,7 @@ export function mount(root, ctx, r) {
     <div class="rm" id="rm">
       <header class="rm-head">
         <div class="rm-head-l">
-          <h1 class="h2">대화방</h1>
+          <h1 class="h2">Message</h1>
           <nav class="seg" role="tablist" aria-label="대화방 탭">
             ${TABS.map((t) => `<a role="tab" href="#/room/${t.key}" data-tab="${t.key}">${t.label}</a>`).join("")}
           </nav>

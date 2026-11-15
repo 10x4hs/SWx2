@@ -103,7 +103,7 @@ export function mountHome(host, ctx) {
         <div class="mb-vign" aria-hidden="true"></div>
         <div class="mb-fallback" id="mb-fallback" hidden><ul>${mods.map((m, i) => `<li><a href="#/mba/${esc(m.id)}"><span class="mb-mono dim">${esc(m.no)} · ${weeksOf(i)}</span><b>${esc(m.title)}</b><span>${esc(m.sub)}</span><span class="mb-prog"><i style="width:${pct(tiles[i].progress)}%"></i></span></a></li>`).join("")}</ul></div>
         <div class="mb-hud top">
-          <div class="mb-brand"><svg width="32" height="32" viewBox="0 0 34 34" fill="none" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="9" stroke="currentColor" stroke-width="1.5"/><path d="M9 23V11l8 7 8-7v12" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><div><span class="mb-mono dim">MICRO DEGREE</span><b>경영</b></div></div>
+          <div class="mb-brand"><svg width="32" height="32" viewBox="0 0 34 34" fill="none" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="9" stroke="currentColor" stroke-width="1.5"/><path d="M9 23V11l8 7 8-7v12" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><div><span class="mb-mono dim">MICRO DEGREE</span><b>MBA</b></div></div>
           <p class="mb-state" id="mb-state">${stateTxt()}</p>
           <div class="mb-hud-r"><span class="mb-k dim">최근 7일 중 <b>${week}일</b></span><a class="mb-btn" href="#/mba/today">오늘 시작</a></div>
         </div>
