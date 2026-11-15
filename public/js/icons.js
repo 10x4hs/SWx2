@@ -78,7 +78,7 @@ const GLYPH = {
 // 타일 색은 CSS(--tile-bg / --tile-fg)가 정해요 — iOS 다크 모드 아이콘처럼 무채색, 그림으로 구분
 export function appIcon(key, d = new Date()) {
   let inner;
-  if (key === "today") inner = `<span class="cal-dow">${DOW_KO[d.getDay()]}요일</span><span class="cal-day">${d.getDate()}</span>`; // 달력 앱처럼 오늘 날짜
+  if (key === "today") inner = `<span class="cal-dow" aria-hidden="true">${DOW_KO[d.getDay()]}요일</span><span class="cal-day" aria-hidden="true">${d.getDate()}</span>`; // 달력 앱처럼 오늘 날짜
   else if (key === "notes") inner = `<span class="note-band"></span><span class="note-lines"></span>`;                             // 메모 앱처럼 노란 띠 + 줄
   else inner = GLYPH[key] || "";
   return `<span class="app-ic ic-${key}">${inner}</span>`;

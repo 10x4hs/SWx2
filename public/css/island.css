@@ -32,7 +32,7 @@ body:has(.imp-bar) { --isl-top: 44px; }
 #timer.island.dragging { transition: none; cursor: grabbing; }
 #timer.island.dragging .isl-pill { cursor: grabbing; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
 #timer.island.near-home .isl-pill { outline: 2px solid var(--isl-accent); outline-offset: 2px; }
-#timer.island.snapping { transition: left .32s var(--isl-spring), top .32s var(--isl-spring); }
+/* 놓을 때 착 붙는 움직임은 focus-timer.js 가 transform(translate)으로 그려요 — left/top 을 매 프레임 바꾸지 않아요 */
 /* 쉬는 중 · 접힘 = 아무것도 없음. 세션이 있으면 hidden 이어도 알약으로 보여요 (styles.css 의 [hidden] !important 를 이겨야 해서 !important) */
 #timer.island.is-live[hidden] { display: block !important; }
 #timer.island[hidden] .isl-card { display: none; }       /* 접힘 = 알약만 */
@@ -44,7 +44,7 @@ body:has(#timer.is-live):not(:has(.ann-bar)) .trial-bar { top: var(--isl-below);
 body:has(#timer.is-live) .pwa-net { top: var(--isl-below); }
 /* 섬 자리만큼 앱을 아래로 내려서 각 화면의 맨 위 머리줄(고정 머리줄 · 가운데 탭 포함)을 가리지 않아요.
    공지 · 체험 띠는 원래처럼 화면 위에 떠요 (섬이 없을 때와 같아요) */
-.shell { transition: padding-top .3s var(--ease, ease); }
+/* 내려가는 건 한 번에 (padding-top 을 매 프레임 움직이면 앱 전체를 다시 배치해요) */
 body:has(#timer.is-live) .shell { padding-top: var(--isl-below); }
 @media (max-width: 860px) {
   /* 공지 + 체험 띠가 같이 있으면 체험 띠는 아래로 가는데, 폰에선 Dock 위에 둬요 */
@@ -121,7 +121,7 @@ body:has(#timer.is-live) .shell { padding-top: var(--isl-below); }
 .isl-round.amber:hover { background: rgba(255, 159, 10, .3); }
 .isl-round.red { background: rgba(255, 69, 58, .2); color: var(--isl-red); }
 .isl-round.red:hover { background: rgba(255, 69, 58, .3); }
-.isl-card .tm-plan { margin: -2px 0 0; font-size: 12px; color: var(--isl-ink-3); }
+.isl-card .tm-plan { margin: -2px 0 0; font-size: 12.5px; color: var(--isl-ink-3); }
 .isl-link { border: 0; padding: 0; background: none; color: var(--isl-ink-2); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .isl-presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 /* '직접' 시간 칸 */
@@ -171,9 +171,9 @@ body:has(#timer.is-live) .shell { padding-top: var(--isl-below); }
 .af-tx p { margin: 2px 0 0; font-size: 13px; line-height: 1.4; color: #d6dbe2; overflow-wrap: anywhere; }
 .af-ban small { font-size: 11px; color: #9aa3ad; }
 .af-acts { display: flex; gap: 6px; margin-top: 8px; }
-.af-acts button { font: inherit; font-size: 12px; color: inherit; border: 0; border-radius: 8px; padding: 5px 11px; background: rgba(255,255,255,.14); cursor: pointer; }
+.af-acts button { font: inherit; font-size: 12.5px; color: inherit; border: 0; border-radius: 8px; padding: 5px 11px; background: rgba(255,255,255,.14); cursor: pointer; }
 .af-acts button:hover { background: rgba(255,255,255,.22); }
-.af-x { position: absolute; left: -6px; top: -6px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); background: rgba(60,64,72,.95); color: #ddd; font-size: 10px; display: none; cursor: pointer; }
+.af-x { position: absolute; left: -6px; top: -6px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); background: rgba(60,64,72,.95); color: #ddd; font-size: 11px; display: none; cursor: pointer; }
 .af-ban:hover .af-x { display: grid; place-items: center; }
 @media (prefers-reduced-motion: reduce) { .af-ban { transition: opacity .2s; transform: none; } }
 

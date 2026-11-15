@@ -87,7 +87,7 @@
 .nb-divider hr { border: 0; border-top: 1px solid var(--line-2); margin: 14px 0; }
 .nb-codebox { position: relative; background: var(--nb-code); border-radius: 6px; margin: 4px 0; }
 .nb-code { font: 13.5px/1.6 var(--mono); padding: 30px 16px 16px; margin: 0; overflow-x: auto; white-space: pre; tab-size: 2; }
-.nb-lang { position: absolute; top: 6px; left: 12px; border: 0; background: none; color: var(--ink-3); font: 12px var(--font); width: 140px; outline: none; }
+.nb-lang { position: absolute; top: 6px; left: 12px; border: 0; background: none; color: var(--ink-3); font: 12.5px var(--font); width: 140px; outline: none; }
 .nb-img { margin: 6px 0; }
 .nb-img img { max-width: 100%; border-radius: 6px; display: block; }
 .nb-cap { font-size: 13px; color: var(--ink-3); padding: 6px 2px; outline: none; }
@@ -324,9 +324,9 @@ body.touch-dragging { user-select: none; -webkit-user-select: none; }
 .nb-doc-l { font-size: 18px; }
 .nb-doc-xl { font-size: 21px; }
 .nb-tb-sep { width: 1px; margin: 3px 3px; background: var(--line-2); }
-.nb-tb [data-fs] { font-size: 12px; padding: 0 6px; white-space: nowrap; }
+.nb-tb [data-fs] { font-size: 12.5px; padding: 0 6px; white-space: nowrap; }
 .nb-sizes { display: flex; gap: 2px; padding: 6px 4px 2px; border-top: 1px solid var(--line); margin-top: 4px; }
-.nb-sizes button { flex: 1; font-size: 12px; padding: 5px 4px; border-radius: 6px; white-space: nowrap; }
+.nb-sizes button { flex: 1; font-size: 12.5px; padding: 5px 4px; border-radius: 6px; white-space: nowrap; }
 .nb-sizes button[aria-pressed="true"] { background: var(--glass-2); font-weight: 600; }
 /* 이미지: 크기 손잡이 · 올리기 버튼 */
 .nb-imgbox { position: relative; display: inline-block; max-width: 100%; }
