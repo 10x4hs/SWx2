@@ -10,6 +10,7 @@ import { prioDonut, prioLegend } from "../charts/prio.js";
 import { keepDraft } from "../draft.js";
 import { mountCommand } from "../ai-command.js";
 import { openMenu, closeMenu } from "../ctxmenu.js";
+import { moreBtn } from "../row-more.js";
 import { mountBoard, modeSeg, flipList } from "../board/board.js";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -108,7 +109,7 @@ function mountList(root, ctx, r) {
       return `<li class="gl-item${p.done ? " done" : ""}${p.missed ? " fail" : ""}${late ? " late" : ""}" data-id="${esc(p.id)}" data-p="${p.priority || ""}">
         <input type="checkbox" class="check" data-toggle="${esc(p.id)}" ${p.done ? "checked" : ""} aria-label="${esc(p.text)} 끝냄">${missBtn(p)}
         <span class="gl-text" data-edit="${esc(p.id)}" title="두 번 눌러 고치기">${esc(p.text)}</span>
-        ${prioPill(p)}${hoursPill(p)}
+        ${prioPill(p)}${hoursPill(p)}${moreBtn(p.text)}
         <button type="button" class="icon-btn sm gl-del" data-del="${esc(p.id)}" aria-label="지우기">${icon.x(14)}</button>
       </li>`;
     }).join("") : `<li class="gl-empty"><p>${S.day >= ymd(today()) ? "해야 할 일을 적어 보세요." : "이날은 할 일이 없었어요."}</p><p class="faint">시간이 정해진 일정은 캘린더의 하루 계획표에 적어요.</p></li>`;

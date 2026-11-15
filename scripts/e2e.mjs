@@ -42,6 +42,7 @@ import { svmE2E } from "./e2e-svm.mjs";
 import { psyE2E } from "./e2e-psy.mjs";
 import { cimCbtE2E } from "./e2e-cimcbt.mjs";
 import { readE2E } from "./e2e-read.mjs";
+import { gestE2E } from "./e2e-gest.mjs";
 import { section, count, aiMock, writeSummary } from "./lib/sections.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
@@ -678,6 +679,11 @@ try {
     await sec("onto", async () => {
     errs = [];
     await ontoE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs: () => errs, shots: process.env.SHOTS || null });
+    });
+    // ---------- 눈에 보이는 손짓 (2026-11, scripts/e2e-gest.mjs) — ⋯ 칸 메뉴 (노트 · Brain · 계획표 · 체크리스트 · 보드) · ? 단축키 창 ----------
+    await sec("gest", async () => {
+    errs = [];
+    await gestE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs: () => errs });
     });
     await sec("board", async () => {
     await boardE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs: () => errs, shots: process.env.SHOTS || null }); // ㉖ 할 일 보드

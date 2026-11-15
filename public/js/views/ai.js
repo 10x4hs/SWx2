@@ -57,7 +57,7 @@ export function mount(root, ctx, r) {
       <section class="convo" aria-label="대화">
         <header class="convo-bar">
           <a class="icon-btn sm" href="#/ai" id="convo-back" aria-label="대화 목록">${icon.left(16)}</a>
-          <span class="convo-title" id="convo-title">새 대화</span>
+          <span class="convo-title" id="convo-title" data-dblkey tabindex="0" title="두 번 누르거나 Enter 로 이름 바꾸기">새 대화</span>
           <label class="switch" title="내 계획·기록·노트를 AI에게 함께 보내요">
             <input type="checkbox" id="use-ctx" ${S.useCtx ? "checked" : ""}><span></span>내 기록 참고
           </label>

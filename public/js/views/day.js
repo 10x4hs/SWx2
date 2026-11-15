@@ -10,6 +10,7 @@ import {
 } from "../util.js";
 import { MOODS } from "../diary.js";
 import { openMenu, closeMenu } from "../ctxmenu.js";
+import { moreBtn } from "../row-more.js";
 import { askPush } from "../auto-focus.js";
 import { icon } from "../icons.js";
 import { BLOCKS } from "../english/data.js";
@@ -302,7 +303,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
         <div class="txt"><span data-edit="${esc(p.id)}"${h >= 90 ? ` style="--lc:${Math.floor((h - 34) / 18)}"` : ""}>${esc(p.text)}</span>${p.auto_focus && !p.done ? `<span class="af-tag" title="${esc(p.start)}에 집중 모드가 저절로 켜져요">◎ 자동 집중 ${hm(p.auto_focus)}</span>` : ""}${h < 50 ? `<span class="when-i">${esc(span2(p.start, e))} · ${hm(e - s)}</span>` : ""}${h >= 50 ? `<span class="when">${esc(span2(p.start, e))} · ${hm(e - s)}${p.focus_mins > 0 ? ` · 집중 ${hm(p.focus_mins)}` : ""}</span>` : ""}</div>
         ${playBtn(p)}
         <button class="icon-btn sm" type="button" data-later="${esc(p.id)}" aria-label="다음 날로 미루기" title="다음 날로 미루기">${icon.later(14)}</button>
-        <button class="icon-btn sm" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button>
+        <button class="icon-btn sm" type="button" data-del="${esc(p.id)}" aria-label="삭제">${icon.x(14)}</button>${moreBtn(p.text)}
         <i class="bk-rs top" data-rs="top" title="끌어서 시작 시각 바꾸기" aria-hidden="true"></i><i class="bk-rs bot" data-rs="bot" title="끌어서 길이 바꾸기" aria-hidden="true"></i>
       </div>`;
     }).join("");
