@@ -249,18 +249,23 @@ export function mount(root, ctx, r) {
   // ---------- 세계 ----------
   let geoLib = null;
   const loadScript = (src) => new Promise((ok, no) => { if (document.querySelector(`script[src="${src}"]`)) return ok(); const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => no(new Error("Couldn't load the map.")); document.head.append(s); });
+  // 지도는 가벼운 110m(108 KB)로 먼저 그리고, 자세한 50m(756 KB)는 필요할 때만 받아요:
+  //   넓은 지구본(데스크톱)이거나, 뉴스에 나온 나라가 110m 에 없을 때(싱가포르 같은 작은 나라). 끄는 동안엔 늘 110m (렉 방지)
+  const geoFrom = (topo, iso) => {
+    const land = window.topojson.feature(topo, topo.objects.countries), byCode = new Map();
+    for (const f of land.features) { const c = iso[String(f.id).padStart(3, "0")]; if (c) { f.properties.code = c; byCode.set(c, f); } }
+    return { land, borders: window.topojson.mesh(topo, topo.objects.countries, (a, b) => a !== b), byCode };
+  };
+  const getJson = (f) => fetch("/vendor/world/" + f).then((r) => { if (!r.ok) throw new Error("Couldn't load the map."); return r.json(); });
   async function loadGeo() {
     if (geoLib) return geoLib;
     for (const f of ["d3-array.min.js", "d3-geo.min.js", "topojson-client.min.js"]) await loadScript("/vendor/world/" + f);
-    const [topo, lo, iso] = await Promise.all(["countries-50m.json", "countries-110m.json", "iso.json"].map((f) => fetch("/vendor/world/" + f).then((r) => r.json())));
-    const fc = window.topojson.feature(topo, topo.objects.countries);
-    const borders = window.topojson.mesh(topo, topo.objects.countries, (a, b) => a !== b);
-    const byCode = new Map();
-    for (const f of fc.features) { const c = iso[String(f.id).padStart(3, "0")]; if (c) { f.properties.code = c; byCode.set(c, f); } }
-    // 끄는 동안엔 가벼운 110m 지도로 그리고, 멈추면 자세한 50m 로 다시 그려요 (렉 방지)
-    const lfc = window.topojson.feature(lo, lo.objects.countries), lowBy = new Map();
-    for (const f of lfc.features) { const c = iso[String(f.id).padStart(3, "0")]; if (c) lowBy.set(c, f); }
-    return (geoLib = { d3: window.d3, land: fc, borders, byCode, low: { land: lfc, borders: window.topojson.mesh(lo, lo.objects.countries, (a, b) => a !== b), byCode: lowBy } });
+    const [lo, iso] = await Promise.all(["countries-110m.json", "iso.json"].map(getJson));
+    const low = geoFrom(lo, iso);
+    let hiP = null;
+    // hi() = 50m 을 받아서 geoLib 의 자세한 지도를 바꿔 끼워요 (한 번만)
+    const hi = () => hiP || (hiP = getJson("countries-50m.json").then((t) => Object.assign(geoLib, geoFrom(t, iso), { detailed: true })).catch(() => { hiP = null; }));
+    return (geoLib = { d3: window.d3, ...low, low, detailed: false, hi });
   }
   async function drawWorld() {
     page.innerHTML = `<section class="gn-hero"><h1 class="gn-h1 gn-h1-sec">World</h1></section><p class="gn-soft">Loading map…</p>`;
@@ -330,6 +335,7 @@ export function mount(root, ctx, r) {
       list = its.map((it) => it.id);
     };
     size(); paint(); showCountry();
+    if (!g.detailed && (W >= 480 || [...counts.keys()].some((c) => !g.low.byCode.has(c)))) g.hi().then(() => { if (alive && view === "world") { showCountry(); ask(); } });
     let drag = null, spin = 0;
     cv.onpointerdown = (e) => { drag = { x: e.clientX, y: e.clientY, r: rot.slice(), moved: false }; lowRes = true; cv.setPointerCapture(e.pointerId); };
     cv.onpointermove = (e) => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.hypot(dx, dy) > 3) drag.moved = true; const k = 180 / W; rot = [drag.r[0] + dx * k, Math.max(-85, Math.min(85, drag.r[1] - dy * k))]; ask(); };

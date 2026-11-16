@@ -1,5 +1,6 @@
 // 앱 파일 목록 만들기 — 느린 길에서도 첫 화면이 빨리 뜨게
-//   node scripts/assets.mjs          index.html 의 modulepreload 목록을 새로 써요 (app.js · pwa.js 가 부르는 모든 모듈)
+//   node scripts/assets.mjs          index.html 의 modulepreload 목록을 새로 써요 (app.js · pwa.js 가 import 로 부르는 모듈 = 첫 화면 껍데기)
+//                                    화면 모듈은 js/view-loader.js 가 import() 로 처음 열 때 받아요 — 그래서 이 목록에 안 들어가요
 //   node scripts/assets.mjs --check  목록이 낡았으면 실패 (npm test 가 불러요)
 //   node scripts/assets.mjs --list   서비스 워커가 설치 때 미리 받아 둘 파일 목록(JSON) — deploy.sh 가 sw.js 에 찍어요
 //   node scripts/assets.mjs --hashes 그 파일들(+ 첫 화면 "/")의 내용 지문(JSON) — SW 가 설치 때 받은 게 이번 배포본인지 맞춰 봐요
@@ -41,8 +42,10 @@ const file = join(ROOT, "index.html"), html = readFileSync(file, "utf8");
 const re = new RegExp(START.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s\\S]*?" + END.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 const next = html.replace(re, block().trimStart());
 const arg = process.argv[2];
+// 첫 화면에 끼면 안 되는 화면 (관리자 · 잠금 기능 · 큰 앱): 누가 정적 import 로 다시 붙이면 --check 가 실패해요
+const MUST_LAZY = /^\/js\/views\/(admin|svm|psy|mba|cim|dev|news|notes|brain|graph|room|study|page|ai)\.js$/;
 if (arg === "--list") process.stdout.write(JSON.stringify(precache()));
 // 지문 = SHA-256 앞 16자리. "/" 는 index.html (배포 직후 엣지가 옛 파일 · 새 파일을 섞어 줄 때가 있어서, SW 가 이걸로 걸러요)
 else if (arg === "--hashes") { const h = (p) => createHash("sha256").update(readFileSync(join(ROOT, p))).digest("hex").slice(0, 16); process.stdout.write(JSON.stringify(Object.fromEntries([["/", h("/index.html")], ...precache().map((p) => [p, h(p)])]))); }
-else if (arg === "--check") { if (next !== html || !re.test(html)) { console.error("index.html 의 modulepreload 목록이 낡았어요 → node scripts/assets.mjs"); process.exit(1); } console.log(`modulepreload ${modules().length}개 최신`); }
+else if (arg === "--check") { const eager = modules().filter((u) => MUST_LAZY.test(u)); if (eager.length) { console.error("첫 화면 모듈에 화면 모듈이 섞였어요 (정적 import 대신 js/view-loader.js 의 loadView 를 써요): " + eager.join(", ")); process.exit(1); } if (next !== html || !re.test(html)) { console.error("index.html 의 modulepreload 목록이 낡았어요 → node scripts/assets.mjs"); process.exit(1); } console.log(`modulepreload ${modules().length}개 최신`); }
 else { if (!re.test(html)) throw new Error("index.html 에 modulepreload 표시가 없어요"); writeFileSync(file, next); console.log(`modulepreload ${modules().length}개 썼어요`); }

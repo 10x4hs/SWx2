@@ -2,10 +2,13 @@
 // 배포본(VERSION 이 찍힌 SW): 한국 ↔ Cloudflare 길이 느린 날에도 바로 뜨게, 서버에 묻는 횟수를 줄여요.
 // - 코드(js·css) · 앱 파일(json) · 첫 화면("/"): 캐시 먼저. 파일은 배포 때만 바뀌고, 배포하면 VERSION 이 바뀌어
 //   새 SW 가 코드 전체(PRECACHE)를 한 벌로 받아 두고 → 옛 캐시 삭제 → 열린 탭에 "updated" (새로고침하면 새 버전)
+//   한 벌을 받을 때 지문(HASHES)이 같은 파일은 옛 캐시에서 옮겨 담아요 → 배포마다 바뀐 파일만 새로 받아요
+//   옛 탭은 아직 안 받은 화면을 열 때 새로 고쳐요 (js/view-loader.js · app.js — 옛 모듈과 새 모듈이 섞이지 않게)
 // - 글꼴·사진: stale-while-revalidate
 // - /api/* GET: network-first + 캐시 대체 (별도 캐시). 화면을 막 열 때 부른 GET(x-swr 머리말)은 받아 둔 답을 바로 주고
 //   뒤에서 새로 받아요 → 내용이 다르면 열린 탭에 "api-fresh" (app.js 가 손대지 않은 화면이면 다시 그려요)
-// - GET 아닌 /api 요청(저장 · 지우기)이 지나가면 API 캐시를 비워요 → 내가 바꾼 건 항상 새로 받아요
+// - GET 아닌 /api 요청(저장 · 지우기)이 지나가면 그 묶음(/api/<첫 칸>)과 관련 묶음 · 모아 보기(me · users · home …)의 API 캐시만 비워요
+//   → 내가 바꾼 건 항상 새로 받고, 상관없는 화면(뉴스 · 노트 …)의 받아 둔 답은 그대로 둬요
 // - /api/auth/*, /api/diary*(일기 — 상대가 비공개로 바꾸면 바로 안 보여야 하고 남의 기기에 남으면 안 돼요), ok 아닌 응답은 절대 저장 안 함
 // 개발(VERSION "dev", 로컬): 코드는 network-first 그대로 (고친 게 바로 보이게).
 
@@ -31,8 +34,11 @@ self.addEventListener("install", (event) => {
     // 그래서 지문(HASHES)이 맞을 때까지 다시 받고, 끝내 안 맞으면 설치를 실패시켜요 → 브라우저는 옛 SW(한 벌로 맞는 옛 버전)를 쓰다가 나중에 다시 설치해요.
     // "/" 는 꼭 필요 (오프라인 첫 화면). /index.html 은 307 → "/" 라서 같은 본문을 두 키에 넣어요.
     await putDocument(cache, await fetchFresh("/"));
+    const old = (await caches.keys()).filter((n) => n.startsWith("dsm-static-") && n !== STATIC_CACHE);
     // 나머지는 하나가 없어져도 설치는 되게 (다른 작업으로 파일이 옮겨질 수 있어요) — 단, 받은 게 옛 버전이면 실패
     await Promise.all([...new Set([...SHELL, ...PRECACHE])].map(async (url) => {
+      const same = await unchanged(old, url); // 지문이 같으면 옛 캐시에서 옮겨 담아요 (다시 받지 않아요)
+      if (same) return cache.put(url, same);
       let res;
       try { res = await fetchFresh(url); } catch (e) { if (e && e.stale) throw e; return; }
       if (res.ok) await cache.put(url, res);
@@ -73,7 +79,7 @@ self.addEventListener("fetch", (event) => {
     if (req.method === "POST" && (url.pathname === "/api/auth/logout" || url.pathname === "/api/auth/login" || url.pathname === "/api/auth/signup")) {
       event.waitUntil(caches.delete(API_CACHE));
     }
-    if (req.method !== "GET") { gen++; event.waitUntil(caches.delete(API_CACHE)); return; } // 저장 · 지우기 → 그대로 네트워크로, 캐시는 비워요
+    if (req.method !== "GET") { gen++; event.waitUntil(dropApi(url.pathname)); return; } // 저장 · 지우기 → 그대로 네트워크로, 그 묶음의 캐시는 비워요
     if (url.pathname.startsWith("/api/auth/") || url.pathname.startsWith("/api/diary") || url.pathname.startsWith("/api/admin")) return; // 일기 · 관리자는 늘 서버에서 (저장 안 함)
     // 계획 · 그날 기록 · 실행 기록은 x-swr 가 붙어 와도 서버 먼저 (옛 답이 방금 고친 걸 덮지 않게)
     const swr = req.headers.has("x-swr") && !/^\/api\/(plans|calendar\/day|logs)(\/|$)/.test(url.pathname);
@@ -145,6 +151,22 @@ async function putApi(req, res, g) {
     await (await caches.open(API_CACHE)).put(req, new Response(body, { status: res.status, statusText: res.statusText, headers: h }));
     return true;
   } catch { return false; }
+}
+// 저장 · 지우기가 지나간 묶음: /api/<첫 칸> + 그 묶음이 바꾸는 다른 묶음 + 여러 곳을 모아 보여 주는 묶음 (늘)
+const API_ALWAYS = ["me", "users", "home", "summary", "search", "calendar", "review", "decide"];
+const API_RELATED = {
+  plans: ["logs", "records"], logs: ["plans", "records"], records: ["plans", "logs"],
+  notes: ["tags", "graph", "rels", "library"], rels: ["notes", "graph"], library: ["notes", "tags", "graph"],
+  pages: ["apps"], apps: ["pages"], teams: ["features"], features: ["teams"],
+  admin: ["announcements", "announcement", "features", "teams"], // 관리자: 공지 · 기능 승인 · 팀
+};
+function apiGroups(path) {
+  const seg = path.split("/")[2] || "";
+  return new Set([seg, ...API_ALWAYS, ...(API_RELATED[seg] || [])]);
+}
+async function dropApi(path) {
+  const groups = apiGroups(path), cache = await caches.open(API_CACHE);
+  await Promise.all((await cache.keys()).filter((k) => groups.has(new URL(k.url).pathname.split("/")[2] || "")).map((k) => cache.delete(k)));
 }
 async function tell(msg) { for (const c of await self.clients.matchAll({ type: "window" })) c.postMessage(msg); }
 async function matchApi(req) {
@@ -238,11 +260,21 @@ async function fetchFresh(url) {
     if (wait) await timeout(wait);
     const res = await fetch(url, { cache: "reload" });
     if (!want || !res.ok) return res;
-    const buf = await res.clone().arrayBuffer();
-    const got = [...new Uint8Array(await crypto.subtle.digest("SHA-256", buf))].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
-    if (got === want) return res;
+    if ((await hex(res.clone())) === want) return res;
   }
   const err = new Error("stale " + url); err.stale = true; throw err;
+}
+
+const hex = async (res) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", await res.arrayBuffer()))].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+// 지난 배포 캐시에 이번 지문과 같은 내용이 있으면 그 응답 (없으면 null)
+async function unchanged(old, url) {
+  const want = HASHES[url];
+  if (!want) return null;
+  for (const name of old) {
+    const hit = await (await caches.open(name)).match(url);
+    if (hit && (await hex(hit.clone())) === want) return hit;
+  }
+  return null;
 }
 
 let netOk = null; // 모름 → SW 가 다시 켜진 뒤 첫 결과는 항상 알려요

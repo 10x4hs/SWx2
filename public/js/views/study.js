@@ -9,13 +9,14 @@ import { icon } from "../icons.js";
 import { isHidden, hidePage } from "../hidden-pages.js";
 import { openMenu } from "../ctxmenu.js";
 import { mountStudyGraph } from "./study-graph.js";
+import { KEY, SUB_HASH } from "../study-last.js";
+export { lastHash } from "../study-last.js"; // Dock 에서 눌렀을 때: 마지막으로 보던 탭으로
 
 const SUBS = [
-  { key: "english", label: "영어", hash: "#/english", view: englishView },
-  { key: "papers", label: "논문", hash: "#/papers", view: papersView },
-  { key: "books", label: "AI", hash: "#/books", view: booksView },
+  { key: "english", label: "영어", hash: SUB_HASH.english, view: englishView },
+  { key: "papers", label: "논문", hash: SUB_HASH.papers, view: papersView },
+  { key: "books", label: "AI", hash: SUB_HASH.books, view: booksView },
 ];
-const KEY = "trio.study.sub";
 const tabIcon = (ic) => /^https?:\/\//.test(ic || "") ? `<img class="page-fav" src="${esc(ic)}" alt="">` : esc(ic || "📚");
 let subjects = []; // place=study 인 페이지들 (내 것 + 친구가 공개한 것)
 
@@ -98,8 +99,4 @@ export function mount(root, ctx, r) {
   inst = { update: show };
   show(r); loadSubjects();
   return () => { stop?.(); inst = null; window.removeEventListener("trio:changed", onChanged); };
-}
-// Dock 에서 눌렀을 때: 마지막으로 보던 탭으로
-export function lastHash() {
-  try { const k = localStorage.getItem(KEY) || ""; if (k.startsWith("p:")) return "#/study/" + k.slice(2); return SUBS.find((s) => s.key === k)?.hash || "#/english"; } catch { return "#/english"; }
 }

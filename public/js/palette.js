@@ -2,7 +2,7 @@
 // 글자가 똑같이 맞는 결과(노트 · 계획 · 명령)를 먼저 그리고, '뜻으로 찾기'(/api/search/semantic — 내 노트 + CIM 카드)는 조금 뒤 도착하면 그 아래에 끼워요.
 import { api } from "./api.js";
 import { $, esc, debounce, ymd, today, planHash } from "./util.js";
-import * as notesView from "./views/notes.js";
+import { loadView } from "./view-loader.js"; // 노트 화면 모듈은 처음 쓸 때 받아요
 import { getDockPages } from "./dock.js";
 import { timer } from "./focus-timer.js";
 
@@ -67,8 +67,8 @@ export function openPalette() {
     { grp: "이동", t: "계획 AI", s: "대화로 이번 주 계획 짜기", run: () => ctx.go("#/planner") },
     { grp: "이동", t: "오늘 일기 쓰기", s: "캘린더 · 일기", run: () => ctx.go("#/calendar/diary/" + ymd(today())) },
     { grp: "이동", t: "우리 셋 주간 회고", s: "홈 · 5쪽", run: () => { try { localStorage.setItem("trio-home-page", "4"); } catch {} ctx.go("#/"); } },
-    { grp: "명령", t: "오늘 데일리 노트 열기", s: ymd(today()), run: () => notesView.openDaily(ctx, ymd(today())) },
-    { grp: "명령", t: "새 노트", s: "빈 노트", run: () => notesView.createNote(ctx, "") },
+    { grp: "명령", t: "오늘 데일리 노트 열기", s: ymd(today()), run: () => loadView("notes").then((m) => m.openDaily(ctx, ymd(today()))) },
+    { grp: "명령", t: "새 노트", s: "빈 노트", run: () => loadView("notes").then((m) => m.createNote(ctx, "")) },
     { grp: "명령", t: "AI에게 묻기", s: "Gemini · MiMo", run: () => ctx.go("#/ai") },
     { grp: "명령", t: "Dock 페이지 추가", s: "하고 싶은 걸 적으면 AI 가 화면을 짜요", run: () => ctx.go("#/p/new") },
     { grp: "명령", t: "과목 탭 추가", s: "공부 안에 수학 · 코딩 · 자격증 … AI 가 페이지를 짜요", run: () => ctx.go("#/study/new") },
@@ -97,7 +97,7 @@ export function openPalette() {
       ...found.notes.map((n) => ({ grp: "노트", noteId: n.id, t: n.title, s: (n.snippet || "").replace(/\s+/g, " "), ic: `<span class="dot" style="--c:${esc(ctx.user(n.user_id)?.color || "#999")}"></span>`, run: () => ctx.go("#/notes/" + n.id) })),
       ...found.plans.map((p) => ({ grp: "내 계획", t: p.text, s: `${scopeName[p.scope]} · ${p.period.slice(2)}${p.done ? " · 완료" : ""}`, run: () => ctx.go(planHash(p)) })),
       ...cmds,
-      ...(q && !found.notes.some((n) => n.title.toLowerCase() === q.toLowerCase()) ? [{ grp: "만들기", t: `새 노트: ${q}`, s: "Enter로 만들기", run: () => notesView.createNote(ctx, q) }] : []),
+      ...(q && !found.notes.some((n) => n.title.toLowerCase() === q.toLowerCase()) ? [{ grp: "만들기", t: `새 노트: ${q}`, s: "Enter로 만들기", run: () => loadView("notes").then((m) => m.createNote(ctx, q)) }] : []),
     ];
     sel = 0;
     draw();
