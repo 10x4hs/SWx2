@@ -59,12 +59,24 @@ npm run user:add -- <아이디> <이름> <비밀번호> --remote   # 배포된 D
 1. https://dash.cloudflare.com/sign-up 에서 무료 가입 (카드 필요 없음) → **가입 메일의 인증 링크를 꼭 누르기** (안 하면 배포가 `code: 10034` 로 막혀요)
 2. `npx wrangler login`
 3. `.dev.vars` 에 아래 'AI 키' 들과 `INVITE_CODE` 가 들어 있는지 확인
-4. **`npm run deploy:all`** — 한 번에 끝나요 (`scripts/deploy.sh`, 여러 번 돌려도 괜찮아요)
-   - D1 `dsm-mafia` 가 없으면 만들고 id 를 `wrangler.jsonc` 에 써 넣기
-   - 원격 DB 마이그레이션 → `wrangler deploy`
-   - `.dev.vars` 의 `GEMINI_API_KEY` `GROQ_API_KEY` `COHERE_API_KEY` `MIMO_API_KEY` `INVITE_CODE` 를 Worker 비밀값으로 올리기 (값은 화면에 안 찍혀요, `PASSWORDLESS` 는 안 올려요)
-   - 마지막에 `https://swx2.<내 서브도메인>.workers.dev` 주소 출력
-5. 세 사람 계정 만들기: `npm run user:add -- <아이디> <이름> <비밀번호> --remote` × 3
+4. 처음 한 번: **`npm run secrets:push`** — `.dev.vars` 의 AI 키 · `VAPID_PRIVATE_KEY` · `INVITE_CODE` 를 Worker 비밀값으로 (하나씩 물어봐요, 값은 화면에 안 찍혀요, `PASSWORDLESS` 는 안 올려요). 키를 바꿀 때만 다시 돌려요 — 배포가 자동으로 올리지 않아요
+5. **`npm run deploy`** (= `deploy:all`, `scripts/deploy.sh`) — 순서:
+   - **관문**: 커밋 안 한 변경 없음 · 지금 커밋이 `origin/main` · 모든 JS 문법 · 내용 목록 `--check` · 단위 검사(`npm run test:unit`) · 화면 검사(`test.mjs quick`: 로그인 · 홈 · 계획 · 노트, 약 1분). 하나라도 실패하면 운영은 손대지 않고 멈춰요. 급할 때만 `SKIP_E2E=1`
+   - **되돌릴 자리**: D1 Time Travel 북마크를 찍고, 새 마이그레이션이 있거나 마지막 백업이 하루 넘었으면 전체 백업(`npm run backup`)
+   - D1 `dsm-mafia` 가 없으면 만들고 id 를 `wrangler.jsonc` 에 써 넣기 → 원격 마이그레이션 → `wrangler deploy` (커밋 번호를 태그로)
+   - 마지막에 주소와 되돌리는 명령 출력
+6. 계정 만들기: `npm run user:add -- <아이디> <이름> <비밀번호> --remote`
+
+### 백업 · 되돌리기
+
+- `npm run backup` — 운영 D1 의 모든 실제 표 데이터를 `~/Documents/swx2-backups/swx2-<UTC 시각>.sql.gz` 로 (최근 14개 유지, 저장소 밖이라 공개되지 않아요). 같은 이름의 `.bookmark` 에 그때의 Time Travel 북마크
+  - `wrangler d1 export` 는 FTS5 표(`chunks_fts`) 때문에 DB 통째로는 실패해서, 실제 표만 골라 데이터만 받아요. 100KB 넘는 행(긴 노트 · 페이지 코드)은 D1 이 한 문장으로 못 받아서 `INSERT` + 이어 붙이는 `UPDATE` 로 나눠 담아요 (`scripts/backup.mjs`, 검사: `npm run test:unit`)
+- **몇 분 ~ 며칠 전으로 같은 DB 를 되돌리기**: `npx wrangler d1 time-travel restore dsm-mafia --bookmark <북마크>` (배포 출력 · `.bookmark` 파일에 있어요)
+- **코드만 되돌리기**: `npx wrangler rollback`
+- **백업 파일로 새 DB 에 되살리기** (2026-11-16 로컬에서 연습: 표 69개 · 44,959행 모두 일치):
+  1. `npx wrangler d1 migrations apply <DB> --remote` (스키마)
+  2. `gunzip -k swx2-….sql.gz && npx wrangler d1 execute <DB> --remote --file swx2-….sql`
+  3. `npx wrangler d1 execute <DB> --remote --command "INSERT INTO chunks_fts(chunks_fts) VALUES('rebuild')"` (글자 찾기 색인)
 
 > **배포본은 비밀번호가 있어야 로그인돼요.** `wrangler.jsonc` 의 `PASSWORDLESS` 는 `"0"` 이고,
 > 아이디만으로 들어가는 건 로컬에서만(`.dev.vars` 의 `PASSWORDLESS=1` 이 덮어써요).
