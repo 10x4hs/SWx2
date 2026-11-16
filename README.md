@@ -143,6 +143,17 @@ docs/         가이드 · 설계 문서
 legacy/       예전 단일 파일 버전
 ```
 
+## 📜 License
+
+Code: [GNU AGPL-3.0](LICENSE) © 2026 HSK · GYK (10x4hs). If you run a modified version as a service, you must share its source under the same license.
+
+Not covered by that license — these belong to their original authors and are here only for personal study:
+- Korean translations of papers in `public/papers/` (original papers © their authors / publishers, under each paper's own license)
+- Course, book and reading material in `public/books`, `public/mba`, `public/psy`, `public/svm` and similar folders that quotes or summarizes others' work
+- News headlines and article text the app fetches at runtime
+
+If you own one of these and want it removed, open an issue.
+
 <div align="center">
 <sub>Made with ☕ by HSK · GYK — and a lot of Claude.</sub>
 </div>
