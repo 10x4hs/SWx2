@@ -3540,7 +3540,6 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 .rail-btn:focus-visible { outline: var(--focus-w) solid var(--focus-c); outline-offset: 2px; }
 /* phone: the home ring SVG is drawn at ~0.55× there, so its hour labels need a larger user size to stay ≥ 11px on screen (21 × .53 at 360px ≈ 11.1px) */
 @media (max-width: 600px) { .rh:not(.wide) .rh-hour { font-size: 21px; } }
-=======
 /* ---------- Dock '더보기' (dock-more.js, 2026-11-16): 못 여는 앱은 Dock 칸 대신 타일 하나 뒤로 ---------- */
 .dock-more-btn .app-ic { color: var(--ink-2); }
 .dock-more-pop { position: fixed; z-index: 80; width: 320px; max-height: min(72vh, 540px); overflow: auto; overscroll-behavior: contain; padding: 14px 10px 10px; border-radius: 16px; background: var(--glass-3); display: grid; gap: 8px; }
