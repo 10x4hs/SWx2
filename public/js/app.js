@@ -3,43 +3,19 @@ import { api, navStart } from "./api.js";
 import { syncAiPrefs } from "./ai-pick.js";
 import { $, $$, esc, initial, ymd, today, toast, avatar } from "./util.js";
 import { icon, appIcon } from "./icons.js";
-import * as notesView from "./views/notes.js";
-import * as graphView from "./views/graph.js";
-import * as brainView from "./views/brain.js"; // Brain = 노트 + 공부를 한 나무로 (#/brain/<id>)
-import * as aiView from "./views/ai.js";
-import * as plannerView from "./views/planner.js";
-import * as diaryView from "./views/diary.js";
-import * as diaryRoomView from "./views/diary-room.js";
-import * as goalsView from "./views/goals.js";
-import * as checklistView from "./views/checklist.js";
-import * as homeView from "./views/home.js";
-import * as englishView from "./views/english.js";
-import * as papersView from "./views/papers.js";
-import * as booksView from "./views/books.js";
-import * as updatesView from "./views/updates.js";
-import * as settingsView from "./views/settings.js"; // #/settings — Dock · 계정 · 연결 · 관리
+import { viewMod, loadView, isStale, reloadOnce } from "./view-loader.js"; // 화면은 처음 열 때 받아요 (홈 · 캘린더만 처음부터)
+import { unseenCount } from "./views/updates.js";
+import { annHtml, ANN_IMG_SRC } from "./ann.js";
 import { initDockMagnify } from "./dock-magnify.js"; // Dock 확대 (맥처럼)
-import * as adminView from "./views/admin.js";
-import * as teamsView from "./views/teams.js";
 import { featureOfRoute, isOpen, loadFeatures, mountLocked } from "./features.js";
 import { openMcpPanel } from "./mcp-panel.js";
 import { openApiPanel } from "./api-panel.js";
 import { openProfile } from "./profile-edit.js";
 import { statusPicker, statusText } from "./status.js";
-import * as calendarView from "./views/calendar.js";
-import * as studyView from "./views/study.js"; // 공부 = 영어 | 논문 (Dock 아이콘 하나)
-import * as pageView from "./views/page.js"; // Dock 사용자 페이지 (#/p/new · #/p/<id>)
 import { wireDockDrag } from "./dock-drag.js";
 import { setHiddenMe } from "./hidden-pages.js";
 import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js"; // Dock 우클릭 → 내 CSS · HTML · JS
 import { initDockHide } from "./dock-hide.js"; // Dock 자동 숨김 (⌥⌘D)
-import * as roomView from "./views/room.js";
-import * as newsView from "./views/news.js"; // 뉴스 Signal Map (#/news · #/news/item/<id> · #/news/thread/<id>)
-import * as cimView from "./views/cim.js"; // 투자자산운용사 2주 완성 (#/cim 오늘 · #/cim/go 오늘 공부 · #/cim/study[/<장>[/<n>]] 공부 · #/cim/exam[/…] 시험 · 옛 주소는 바꿔 줘요) — 잠금 기능 "cim" (관리자 승인)
-import * as psyView from "./views/psy.js"; // Psychology — 설득 · 수사학 (#/psy 지도 · t/<분야> · c/<카드> · today · quiz · spar · v · library) — 잠금 기능 "psy"
-import * as svmView from "./views/svm.js"; // Silicon Valley Mafia — 관리자(HSK · GYK)만 · Curtis Yarvin 모음 (#/svm 서재 · #/svm/read/<글> · #/svm/graph)
-import * as mbaView from "./views/mba.js"; // 경영 마이크로디그리 (#/mba · #/mba/today · #/mba/company · #/mba/words · #/mba/<모듈>/<카드>)
-import * as devView from "./views/dev.js"; // SW 공간 (#/sw 과정 목록 · #/sw/<과정>/… 개발 흐름 · Vector & Graph — today · docs · <모듈>/<카드> · case · practice)
 import { mountAuth } from "./views/auth.js";
 import { scrambleIn } from "./fx.js";
 import { startLive, stopLive } from "./live.js";
@@ -153,7 +129,7 @@ function annSheet(src) {
   document.addEventListener("keydown", onKey);
   document.body.append(box);
   box.querySelector(".ann-close").focus();
-  box.querySelector(".ann-md").innerHTML = adminView.annHtml(src);
+  box.querySelector(".ann-md").innerHTML = annHtml(src);
   box.querySelector(".ann-md").addEventListener("click", (e) => { const im = e.target.closest("img.ann-img"); if (im) window.open(im.src, "_blank", "noopener"); });
 }
 // 공지 여러 개 = 맨 위 가운데에 줄줄이 쌓인 빨간 띠 (.ann-stack). 3줄까지 보이고 나머지는 "+N개 더".
@@ -184,7 +160,7 @@ function annBar() {
         const thumb = (a.body.match(/!\[[^\]]*\]\((\/api\/ann\/img\/[^)\s]+)\)/) || [])[1];
         const bar = document.createElement("div");
         bar.className = "ann-bar"; bar.setAttribute("role", "alert"); bar.dataset.ann = a.id;
-        bar.innerHTML = `${thumb && adminView.ANN_IMG_SRC.test(thumb) ? `<img class="ann-thumb" src="${esc(thumb)}" alt="">` : ""}<span>📢 ${esc(title)}</span>${more ? `<button type="button" class="ann-more">자세히</button>` : ""}<button type="button" class="ann-x" aria-label="공지 닫기" title="닫기">✕</button>`;
+        bar.innerHTML = `${thumb && ANN_IMG_SRC.test(thumb) ? `<img class="ann-thumb" src="${esc(thumb)}" alt="">` : ""}<span>📢 ${esc(title)}</span>${more ? `<button type="button" class="ann-more">자세히</button>` : ""}<button type="button" class="ann-x" aria-label="공지 닫기" title="닫기">✕</button>`;
         bar.querySelector(".ann-x").addEventListener("click", () => {
           const { set } = annHidden(); set.add(annKey(a));
           try { localStorage.setItem(ANN_HIDE, JSON.stringify([...set].slice(-200))); } catch {}
@@ -357,7 +333,7 @@ function renderMeRow() {
   $("#upd-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
   $("#set-btn").addEventListener("click", () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); });
   // 마지막으로 본 뒤 생긴 업데이트 수 → 메뉴에 숫자 · 프로필 버튼에 점
-  const updBadge = () => updatesView.unseenCount(ctx.me).then((n) => { const b = $("#upd-badge"); if (b) { b.hidden = !n; b.textContent = n; } btn.classList.toggle("has-new", n > 0); });
+  const updBadge = () => unseenCount(ctx.me).then((n) => { const b = $("#upd-badge"); if (b) { b.hidden = !n; b.textContent = n; } btn.classList.toggle("has-new", n > 0); });
   updBadge(); window.addEventListener("trio:updates-seen", updBadge);
   $("#me-upd").addEventListener("click", () => location.reload());
   const prof = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); openProfile(ctx); };
@@ -469,60 +445,63 @@ function parseRoute() {
   if (a === "room") return { view: "room", nav: "room", tab: b || null, id: c || null };
   return { view: "home", nav: "home" };
 }
-const VIEWS = { home: homeView, brain: brainView, notes: notesView, graph: graphView, ai: aiView, planner: plannerView, diary: diaryView, diaryRoom: diaryRoomView, goals: goalsView, checklist: checklistView, english: englishView, papers: papersView, books: booksView, cim: cimView, psy: psyView, svm: svmView, mba: mbaView, dev: devView, calendar: calendarView, room: roomView, news: newsView, updates: updatesView, settings: settingsView, admin: adminView, teams: teamsView, page: pageView };
 let lastView = null;
+// 같은 화면 안에서 주소만 바뀌면 껍데기는 그대로 두고 update(r) 만 불러요
+//   notes: 목록을 그대로 · brain: 층만 · diary/diaryRoom · goals · checklist(주·월·년 탭) · calendar(날짜만) · study(영어 ↔ 논문 ↔ 과목 탭)
+//   page(페이지 사이) · news(지구본은 그대로, 패널만) · cim · psy · svm · mba · dev(탭 · 장 · 카드 사이) · room(대화 | 창고 탭)
+const IN_PLACE = new Set(["notes", "brain", "diary", "diaryRoom", "goals", "checklist", "calendar", "study", "page", "news", "cim", "psy", "svm", "mba", "dev", "room"]);
+const inStudyOf = (r) => r.view === "english" || r.view === "papers" || r.view === "books" || (r.view === "page" && r.place === "study");
+let loadSeq = 0; // 화면 모듈을 받는 동안 다른 화면으로 가면, 늦게 온 모듈은 그리지 않아요
 
 function route(redraw = false) {
   if (!ctx.me || ctx.me.must_change_pw) return; // 비밀번호를 바꾸기 전엔 화면을 열지 않아요
+  const r = parseRoute();
+  const inStudy = inStudyOf(r), key = inStudy ? "study" : r.view; // 공부 탭은 어느 탭으로 들어와도 같은 껍데기
+  const lockF = featureOfRoute(r), open = isOpen(ctx, lockF);
+  if (open && !viewMod(key)) { loadThenRoute(key, redraw); return; } // 처음 여는 화면: 모듈 · CSS 를 받은 뒤 다시 와요
+  loadSeq++;
+  $("#main")?.removeAttribute("aria-busy");
   navStart(); routedAt = performance.now();
   if (!redraw) redrawn = false;
-  const r = parseRoute();
   // 떠나는 화면은 기억, 돌아온 화면이면 그 스크롤로 (내용이 그려진 뒤에) · Dock 아이콘 주소도 지금 화면에 맞게
   const top = enterRoute(r.nav, location.hash, $("#main"));
   if (top) requestAnimationFrame(() => restoreTop($("#main"), top));
   $$("a.rail-btn[data-nav]").forEach((a) => { const n = NAV.find((x) => x.key === a.dataset.nav); if (n) a.setAttribute("href", navHref(n, ymd(today()))); });
+  $$("[data-nav]").forEach((a) => { if (a.dataset.nav === r.nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   // 잠긴 기능: 화면 대신 '사용 신청'
-  const lockF = featureOfRoute(r);
-  if (!isOpen(ctx, lockF)) {
+  if (!open) {
     if (cleanup) { cleanup(); cleanup = null; }
     const host = document.createElement("div"); host.className = "host host-locked";
     $("#main").replaceChildren(host);
     cleanup = mountLocked(host, ctx, lockF); lastView = "locked:" + lockF;
-    $$("[data-nav]").forEach((a) => { if (a.dataset.nav === r.nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
     return;
   }
-  $$("[data-nav]").forEach((a) => { if (a.dataset.nav === r.nav) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
-  const main = $("#main");
-  // notes view keeps its list mounted while switching notes
-  if (lastView === "notes" && r.view === "notes" && notesView.update) { notesView.update(r); return; }
-  if (lastView === "brain" && r.view === "brain") { brainView.update(r); return; } // 층만 바뀌면 껍데기는 그대로
-  if (lastView === "ai" && r.view === "ai") return; // the chat view follows its own hash changes
-  if (lastView === "diary" && r.view === "diary") { diaryView.update(r); return; }
-  if (lastView === "diaryRoom" && r.view === "diaryRoom") { diaryRoomView.update(r); return; }
-  if (lastView === "goals" && r.view === "goals") { goalsView.update(r); return; }
-  if (lastView === "checklist" && r.view === "checklist") { checklistView.update(r); return; } // 주·월·년 탭은 판을 그대로 // 날짜만 바뀌면 편집기만 바꿔요
-  if (lastView === "calendar" && r.view === "calendar" && calendarView.update) { calendarView.update(r); return; } // 날짜만 바뀌면 달력은 그대로
-  const inStudy = r.view === "english" || r.view === "papers" || r.view === "books" || (r.view === "page" && r.place === "study");
-  if (lastView === "study" && inStudy) { studyView.update(r); return; } // 영어 ↔ 논문 ↔ 과목 탭, 전환은 껍데기를 그대로
-  if (lastView === "page" && r.view === "page" && !inStudy) { pageView.update(r); return; } // 페이지 사이 이동은 껍데기를 그대로
-  if (lastView === "news" && r.view === "news") { newsView.update(r); return; } // 지구본은 그대로, 패널만
-  if (lastView === "cim" && r.view === "cim") { cimView.update(r); return; } // 탭 · 장 사이 이동은 껍데기를 그대로
-  if (lastView === "psy" && r.view === "psy") { psyView.update(r); return; } // 지도 · 카드 · 퀴즈 사이도 껍데기를 그대로
-  if (lastView === "svm" && r.view === "svm") { svmView.update(r); return; } // 서재 · 글 · 그래프 사이도 껍데기를 그대로
-  if (lastView === "mba" && r.view === "mba") { mbaView.update(r); return; } // 모듈 · 카드 사이 이동은 껍데기를 그대로
-  if (lastView === "dev" && r.view === "dev") { devView.update(r); return; } // 주 · 카드 사이 이동도 껍데기를 그대로
-  if (lastView === "room" && r.view === "room" && roomView.update) { roomView.update(r); return; } // 대화 | 창고 탭 전환도 판을 그대로 둬요
+  const main = $("#main"), mod = viewMod(key);
+  if (lastView === key && key === "ai") return; // the chat view follows its own hash changes
+  if (lastView === key && IN_PLACE.has(key) && mod.update) { mod.update(r); return; }
   if (cleanup) { cleanup(); cleanup = null; }
   // fresh host per view so listeners never pile up on <main>
   const host = document.createElement("div");
-  host.className = "host host-" + (inStudy ? "study" : r.view); // 공부 탭은 어느 탭으로 들어와도 같은 껍데기 (높이는 study.js 의 .study-fill 이 정해요)
+  host.className = "host host-" + key; // 공부 탭 높이는 study.js 의 .study-fill 이 정해요
   main.replaceChildren(host);
   main.scrollTop = 0;
-  lastView = inStudy ? "study" : r.view;
-  cleanup = (lastView === "study" ? studyView : VIEWS[r.view]).mount(host, ctx, r) || null;
+  lastView = key;
+  cleanup = mod.mount(host, ctx, r) || null;
   const undo = afterMount(lastView, host), base = cleanup;
   if (undo) cleanup = () => { try { undo(); } catch {} base?.(); };
   if (!redraw) requestAnimationFrame(() => scrambleIn(host));
+}
+function loadThenRoute(key, redraw) {
+  // 새 배포본이 켜진 옛 탭: 옛 모듈에 새 모듈을 섞지 않고 새로 고쳐서 열어요 (주소는 이미 새 화면)
+  if (isStale()) { if (cleanup) { cleanup(); cleanup = null; } location.reload(); return; }
+  const seq = ++loadSeq, main = $("#main");
+  main?.setAttribute("aria-busy", "true");
+  loadView(key).then(() => { if (seq === loadSeq) route(redraw); }, (err) => {
+    if (seq !== loadSeq) return;
+    main?.removeAttribute("aria-busy");
+    console.warn("[route] view load failed", key, err);
+    if (!reloadOnce()) toast("화면을 불러오지 못했어요. 연결을 확인하고 새로 고침해 주세요.", "err");
+  });
 }
 
 // 서비스 워커가 '바로 준 답'(받아 둔 것)과 다른 새 답을 받았을 때 (sw.js · api.js navStart)

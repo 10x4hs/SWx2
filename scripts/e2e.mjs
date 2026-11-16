@@ -27,6 +27,7 @@
 //   ㉕ 집중 섬 — 집중 중에만 맨 위 가운데 검은 알약 · 눌러서 카드(+5분 · 일시정지 · 멈추기) · 다른 화면 · 체험 띠/공지와 안 겹침 · 끝 알약 (2026-10-24, e2e-island.mjs)
 //   ㉘ 읽기 쉬움 — 주요 화면 글자 11px 이상 · 긴 글 12.5px 이상 · 작은 글 대비 4.5 · 홈 Tab 마다 초점 테 · 화면 바꿀 때 blur 없음 · 꾸밈 무한 반복 없음 (2026-11-16, e2e-read.mjs)
 //   ㉖ 할 일 보드 — 체크리스트 [보드 | 목록] · 새 할 일 · 끌어서 진행 중 → 완료(done 1) · ⌘Z/⌘⇧Z · 키보드 ← · 작은 할 일 2/3 · 필터 · 칸 더하기/지우기 · 홈 CheckList 숫자 · 폰 칸 하나씩 (2026-10-24, e2e-board.mjs)
+//   ㉙ 가벼운 첫 화면 — #/ 에서 관리자 · SVM · Psychology · MBA 모듈/CSS 안 받기 · CDN 이 멈춰도 홈 · Dock 마다 처음 열어도 그려짐 · SW 저장이 상관없는 API 캐시를 안 지움 (2026-11-16, e2e-lazy.mjs)
 //   ㉑ 계획 되돌리기 — 옮기기 · 길이 · 이름 · 지우기 · 추가 · ⌘Z/⌘⇧Z/Ctrl+Z/Ctrl+Y, 서버 값으로 확인 (2026-10-22)
 //   ㉒ 일기 블록 편집기 되돌리기 — 글 · Enter · "- " 목록을 한 단계씩, 커서 자리 · 저장된 값까지 (2026-10-22)
 //   ⑲ CIM 투자자산운용사 (미니멀) — Dock 'CIM' · 처음 안내 한 번 · 오늘(시험일 · 4단계 · 버튼 하나) · 오늘 공부(읽기 → 문제 · 새로 고침 이어서) · AI 패널(문맥 · 크기) · 공부(목록 · 한 장씩 · 목차 · 그림) · 시험(네 줄 · 저장 · 모의고사 · 숫자) · 옛 주소 · Dock 기억 (2026-10-22)
@@ -43,6 +44,7 @@ import { psyE2E } from "./e2e-psy.mjs";
 import { cimCbtE2E } from "./e2e-cimcbt.mjs";
 import { readE2E } from "./e2e-read.mjs";
 import { gestE2E } from "./e2e-gest.mjs";
+import { lazyE2E } from "./e2e-lazy.mjs";
 import { section, count, aiMock, writeSummary } from "./lib/sections.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
@@ -2151,6 +2153,8 @@ try {
   await section("svm", () => svmE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag, member: user, aiMock }));
   // ---------- Psychology (#/psy, 기능 psy) — scripts/e2e-psy.mjs (컴퓨터 · 폰 · 기능 없는 회원은 안 보임) ----------
   await section("psy", () => psyE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }));
+  // ---------- 가벼운 첫 화면 — scripts/e2e-lazy.mjs (#/ 에서 무거운 화면 안 받기 · CDN 멈춰도 홈 · Dock 마다 처음 열기 · SW API 캐시) ----------
+  await section("lazy-load", () => lazyE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }));
   // ---------- CIM 실전 CBT 15회 (#/cim/exam/cbt) — scripts/e2e-cimcbt.mjs (세트 파일 · 풀기 · 이어서 · 제출 · 6일 플랜) ----------
   await section("cimcbt", () => cimCbtE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag }));
 } finally {
