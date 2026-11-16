@@ -39,23 +39,35 @@ export async function noteFilesE2E({ p, ctx, ok, tv, BASE, H }) {
     ok(h0 > 0 && h1 > h0, `${tv} · 노트 첨부: PDF → 미리보기 · 크게 보기 (${Math.round(h0)} → ${Math.round(h1)})`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${tv} · 노트 첨부: 옆으로 넘치지 않아요`);
     await p.locator(".nb-doc .nb-text").first().click();
-    await p.keyboard.press("Control+z"); await p.keyboard.press("Control+z"); await sleep(200);
+    const seeN = (n) => p.waitForFunction((n) => document.querySelectorAll(".nb-doc .nb-file-pdf").length === n, n, { timeout: 3000 }).catch(() => {});
+    await p.keyboard.press("Control+z"); await p.keyboard.press("Control+z"); await seeN(0);
     let c = await count(); const undone = c.pdf === 0 && c.file === 1;
-    await p.keyboard.press("Control+Shift+z"); await sleep(200);
+    await p.keyboard.press("Control+Shift+z"); await seeN(1);
     c = await count();
     ok(undone && c.pdf === 1, `${tv} · 노트 첨부: ⌘Z 로 PDF 블록이 빠지고 ⌘⇧Z 로 돌아와요`);
     await drop({ text: "zip", name: "a.zip", type: "application/zip" });
     await p.waitForFunction(() => [...document.querySelectorAll(".nb-file-meta b")].some((b) => b.textContent === "a.zip"), null, { timeout: 8000 }).catch(() => {});
-    await p.keyboard.press("Control+z"); await sleep(200);
+    await p.keyboard.press("Control+z");
+    await p.waitForFunction(() => ![...document.querySelectorAll(".nb-file-meta b")].some((b) => b.textContent === "a.zip"), null, { timeout: 3000 }).catch(() => {});
     ok(!(await p.evaluate(() => [...document.querySelectorAll(".nb-file-meta b")].some((b) => b.textContent === "a.zip"))), `${tv} · 노트 첨부: 넣자마자 ⌘Z 도 그 블록을 빼요`);
     await drop({ size: 26 * 1024 * 1024, name: "huge.bin", type: "application/octet-stream" });
     const big = await p.waitForFunction(() => [...document.querySelectorAll(".toast.err")].some((t) => /너무 커요/.test(t.textContent)), null, { timeout: 4000 }).then(() => true, () => false);
     ok(big, `${tv} · 노트 첨부: 25MB 넘는 파일은 '너무 커요' 알림`);
-    await sleep(2500); // 저장 (debounce)
-    await p.reload(); await p.waitForSelector(".nb-doc .nb", { timeout: 15000 }); await sleep(800);
+    // 저장 (debounce) — 정해진 시간 대신 서버에 블록이 다 들어갈 때까지 (바쁜 검사 서버에서는 2.5초 안에 못 끝나서 새로고침이 옛 본문을 받았어요)
+    const saved = async () => { const n = (await (await ctx.request.get(BASE + "/api/notes/" + id)).json()).note; const b = JSON.parse(n?.blocks || "{}").blocks || []; const t = (k) => b.filter((x) => x.type === k); return t("image").length === 1 && t("file").map((x) => x.props?.name).sort().join() === "doc.pdf,memo.txt"; };
+    for (let end = Date.now() + 15000; !(await saved()) && Date.now() < end;) await sleep(200);
+    await p.reload(); await p.waitForSelector(".nb-doc .nb-img img", { timeout: 15000 }).catch(() => {});
+    await p.waitForFunction(() => { const i = document.querySelector(".nb-doc .nb-img img"); return i?.complete && document.querySelectorAll(".nb-doc .nb-file-pdf").length; }, null, { timeout: 8000 }).catch(() => {});
     c = await count();
     const nw = await p.evaluate(() => document.querySelector(".nb-doc .nb-img img")?.naturalWidth || 0);
     ok(c.img === 1 && c.file === 2 && c.pdf === 1 && nw > 0, `${tv} · 노트 첨부: 다시 열어도 그대로 ${JSON.stringify(c)}`);
+    // 고치고 바로 닫기 · 새로 고침: 0.65초 저장 대기 중이던 수정도 남아요 (페이지를 떠날 때 keepalive 로 마저 보내요 — views/notes.js)
+    const title = "바로 닫기 " + Date.now();
+    await p.fill("#ed-title", title);
+    await p.reload();
+    let saved2 = "";
+    for (let end = Date.now() + 8000; saved2 !== title && Date.now() < end;) { saved2 = (await (await ctx.request.get(BASE + "/api/notes/" + id)).json()).note?.title; if (saved2 !== title) await sleep(200); }
+    ok(saved2 === title, `${tv} · 노트: 고치고 바로 새로 고침해도 남아요 — 서버 제목 "${saved2}"`);
   } finally {
     await ctx.request.delete(BASE + "/api/notes/" + id, { headers: H }).catch(() => {});
   }

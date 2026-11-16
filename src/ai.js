@@ -1,7 +1,7 @@
 // AI 채팅: Gemini(Google AI Studio) · Groq · Cohere · Xiaomi MiMo · Zhipu GLM · OpenRouter · Kilo · Ollama · 여러 개 나란히 비교.
 // 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY, ZHIPU_API_KEY, OPENROUTER_API_KEY, KILO_API_KEY, OLLAMA_API_KEY)에만 있고 브라우저로 나가지 않아요.
 
-import { mockText, mockJson, mockChunks, MOCK_MODEL } from "./lib/aimock.js";
+import { mockText, mockJson, mockStream, MOCK_MODEL } from "./lib/aimock.js";
 import { toolPrompt, parseToolCall, runAgentTool, toolSummary, autoResearch, WRITE_TOOLS, CLAIM_RE, dayPlans, stripToolLines, toolSession, NO_DELETE } from "./agent.js";
 import { cleanImages, withImages } from "./vision.js";
 import { kstToday } from "./lib/day.js";
@@ -440,7 +440,7 @@ const openaiJson = (provider) => async (env, model, system, prompt) => {
 
 // ---------- providers ----------
 async function runModel(env, id, system, history, message, emit) {
-  if (env.__AI_MOCK) { const text = mockText(message); for (const c of mockChunks(text)) await emit("delta", c); return { text, used: MOCK_MODEL }; }
+  if (env.__AI_MOCK) { const text = mockText(message); await mockStream(text, (c) => emit("delta", c)); return { text, used: MOCK_MODEL }; }
   const m = MODELS[id];
   let lastErr = null;
   for (let round = 0; round < 2; round++) {   // 전부 붐비면 잠깐 쉬고 한 바퀴 더
@@ -582,7 +582,7 @@ const FAST_CHAIN = { groq: ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gp
 export async function aiText(env, system, messages, order = TEXT_ORDER, onToken = null, { private: priv = false, fast = false } = {}) {
   if (env.__AI_MOCK) { // 로컬 검사 (AI_MOCK): 같은 답 · 조각으로 흘려 보내기
     const text = mockText(messages[messages.length - 1]?.content);
-    if (onToken) for (const c of mockChunks(text)) await onToken(c);
+    if (onToken) await mockStream(text, onToken);
     return { text, used: MOCK_MODEL };
   }
   const groups = order.filter((p) => MODELS[p] && hasKey(env, p) && (!priv || isPrivateSafe(p)));

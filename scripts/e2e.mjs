@@ -53,6 +53,8 @@ const H = { "x-trio": "1", "content-type": "application/json" };
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? "PASS " : "FAIL ") + msg); count(!!cond); if (!cond) fails++; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 조건이 참이 될 때까지 짧게 다시 물어요 (정해진 sleep 대신). 끝내 거짓이면 마지막 값을 돌려줘요
+const until = async (fn, timeout = 5000, every = 100) => { const end = Date.now() + timeout; let v; for (;;) { v = await fn(); if (v || Date.now() > end) return v; await sleep(every); } };
 for (let i = 0; i < 40; i++) { try { await fetch(BASE + "/"); break; } catch { await sleep(500); } }
 
 // E2E_VIEWPORTS=desktop | phone | desktop,phone(기본) — scripts/test.mjs 는 둘을 따로 띄워 같이 돌려요.
@@ -91,9 +93,14 @@ try {
     const p = await ctx.newPage();
     let errs = [];
     p.on("pageerror", (e) => errs.push(e.message));
-    p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });
+    // 바깥 자원(Google Fonts · jsdelivr · YouTube …)을 못 받은 건 앱 오류가 아니에요 — 검사하는 컴퓨터의 인터넷이 잠깐 끊기면 화면 검사가 줄줄이 실패했어요.
+    // 앱 주소(BASE)에서 난 "Failed to load resource" 와 그 밖의 콘솔 오류는 그대로 잡아요
+    const outside = (m) => /^Failed to load resource/.test(m.text()) && !(m.location()?.url || "").startsWith(BASE);
+    p.on("console", (m) => { if (m.type() === "error" && !outside(m)) errs.push(m.text()); });
     // 앱을 새로 열어요 — 같은 문서에서 # 뒤만 바꾸면 껍데기가 남아서, "AI 탭에서 새로 열고 → 과목 탭" 같은 실제 순서를 흉내 내지 못해요
     const go = async (hash, wait = 1800) => { await p.goto("about:blank"); await p.goto(BASE + "/" + hash); await sleep(wait); };
+    // 바깥(API · 다른 계정)에서 넣은 자료를 화면이 보게: 서비스 워커의 API 캐시를 비워요 (pwa.js 가 로그아웃 때 하듯이)
+    const freshApi = () => p.evaluate(async () => { for (const n of await caches.keys()) if (n.startsWith("dsm-api-")) await caches.delete(n); }).catch(() => {});
     const hop = async (hash, sel, wait = 350) => { await p.evaluate((x) => { location.hash = x; }, hash); await p.waitForSelector(sel, { timeout: 8000 }).catch(() => {}); await sleep(wait); };
     // 구역 하나만 골라 돌리면 앞 구역이 열어 둔 앱 화면이 없어요 (about:blank 에서는 localStorage 를 못 읽어요) → 앱 밖이면 홈을 먼저 열어요
     const sec = (name, fn) => section(name, async () => { if (!p.url().startsWith(BASE)) await go("#/", 1200); await fn(); });
@@ -353,33 +360,41 @@ try {
     });
     // ---------- ⑨ 친구가 공개한 페이지를 내 화면에서 숨기기 → 프로필에서 다시 보이기 ----------
     await sec("friend-pages", async () => {
+    let step = "준비";
     try {
       const fctx = await browser.newContext();
       await fctx.request.post(BASE + "/api/auth/login", { headers: H, data: { username: friend } });
       const fmk = async (data) => (await (await fctx.request.post(BASE + "/api/pages", { headers: H, data })).json()).page.id;
       const FD = await fmk({ title: "친구 Dock", shared: true, files: { "index.html": FULL } });
       const FS = await fmk({ title: "친구 과목", place: "study", shared: true, files: { "index.html": FULL } });
-      await go("#/", 2200);
-      const dockHas = () => p.locator(`#dock-list > [data-dock="page:${FD}"]`).count();
+      // 친구가 방금 API 로 올린 페이지 — 앞 구역이 2초 안에 받아 둔 /api/pages 가 서비스 워커에 있으면 그 답을 다시 묻지 않아요 (sw.js SWR_FRESH_MS).
+      // 실제로는 다른 사람이 올린 페이지는 다음에 열 때 보이면 되니, 검사는 바깥에서 넣은 자료답게 API 캐시를 비우고 열어요 (노트 우클릭 · Obsidian 과 같은 까닭)
+      await freshApi();
+      const dockSel = `#dock-list > [data-dock="page:${FD}"]`, dockHas = () => p.locator(dockSel).count();
+      const hidden = async (want) => until(async () => { const h = (await (await ctx.request.get(BASE + "/api/me")).json()).user.hidden_pages || []; return want(h) && h; }, 5000);
+      await go("#/", 0); await p.waitForSelector(dockSel, { timeout: 8000 }).catch(() => {});
       const seen = await dockHas();
-      await p.locator(`#dock-list > [data-dock="page:${FD}"]`).click({ button: "right" });
-      await p.locator('.cm [data-k="hide"]').click(); await sleep(1200);
-      const goneDock = await dockHas() === 0;
-      await go("#/english", 2200);
-      const tab = p.locator(`#study-switch [data-sub="p:${FS}"]`), tabSeen = await tab.count();
-      if (tabSeen) { await tab.click({ button: "right" }); await p.locator('.cm [data-k="hide"]').click(); await sleep(1200); }
-      const goneTab = await p.locator(`#study-switch [data-sub="p:${FS}"]`).count() === 0;
-      const hiddenSaved = (await (await ctx.request.get(BASE + "/api/me")).json()).user.hidden_pages;
-      await go("#/", 2200);
-      await p.locator("#me-btn").click(); await p.locator("#me-head").click();
-      await p.locator(`[data-unhide="${FD}"]`).click({ timeout: 6000 }); await sleep(1200);
-      await p.keyboard.press("Escape"); await sleep(400);
-      const back = await dockHas() === 1, stillHidden = (await (await ctx.request.get(BASE + "/api/me")).json()).user.hidden_pages;
+      step = "Dock 우클릭"; await p.locator(dockSel).click({ button: "right" });
+      await p.locator('.cm [data-k="hide"]').click();
+      const goneDock = await p.waitForSelector(dockSel, { state: "detached", timeout: 5000 }).then(() => true, () => false);
+      step = "과목 탭"; await go("#/english", 0);
+      const tabSel = `#study-switch [data-sub="p:${FS}"]`, tab = p.locator(tabSel);
+      await p.waitForSelector(tabSel, { timeout: 8000 }).catch(() => {});
+      const tabSeen = await tab.count();
+      if (tabSeen) { await tab.click({ button: "right" }); await p.locator('.cm [data-k="hide"]').click(); }
+      const goneTab = await p.waitForSelector(tabSel, { state: "detached", timeout: 5000 }).then(() => true, () => false);
+      const hiddenSaved = (await hidden((h) => h.includes(FD) && h.includes(FS))) || [];
+      await go("#/", 0); await p.waitForSelector("#me-btn", { timeout: 8000 });
+      step = "프로필"; await p.locator("#me-btn").click(); await p.locator("#me-head").click();
+      await p.locator(`[data-unhide="${FD}"]`).click({ timeout: 6000 });
+      const stillHidden = (await hidden((h) => !h.includes(FD))) || [];
+      await p.keyboard.press("Escape");
+      const back = await p.waitForSelector(dockSel, { timeout: 5000 }).then(() => true, () => false) && await dockHas() === 1;
       ok(seen === 1 && goneDock && tabSeen === 1 && goneTab && hiddenSaved.includes(FD) && hiddenSaved.includes(FS) && back && !stillHidden.includes(FD) && stillHidden.includes(FS),
-        `${tv} · 친구 페이지 숨기기 — Dock 숨김 ${goneDock} · 과목 탭 숨김 ${goneTab} · 저장 ${hiddenSaved.length}개 · 프로필에서 다시 보이기 ${back}`);
+        `${tv} · 친구 페이지 숨기기 — Dock 보임 ${seen} · Dock 숨김 ${goneDock} · 과목 탭 숨김 ${goneTab} · 저장 ${hiddenSaved.length}개 · 프로필에서 다시 보이기 ${back}`);
       await ctx.request.patch(BASE + "/api/me", { headers: H, data: { hidden_pages: [] } });
       await fctx.close();
-    } catch (e) { ok(false, `${tv} · 친구 페이지 숨기기 — ${String(e.message).split("\n")[0]}`); }
+    } catch (e) { ok(false, `${tv} · 친구 페이지 숨기기 (${step}) — ${String(e.message).split("\n")[0]}`); }
 
     });
     // ---------- ⑨-2 페이지 브리지 허용 목록 — 친구가 공유한 페이지의 코드는 내 노트 · 검색을 못 읽고, 바깥으로 fetch 도 못 해요 ----------
@@ -2050,19 +2065,22 @@ try {
       await mc.request.post(BASE + "/api/auth/login", { headers: H, data: { username: user } });
       const ap = await ac.newPage(), errs = [];
       ap.on("pageerror", (e) => errs.push(e.message));
-      await ap.goto(BASE + "/#/admin"); await sleep(2500);
+      // 올리기: 관리자 목록에 한 줄 더 생길 때까지 (정해진 sleep 대신) · 한 프레임 = 띠 배치가 끝날 때까지
+      const post = async () => { const n = await ap.evaluate(() => document.querySelectorAll(".adm-ann-row").length); await ap.click(".adm-ann button:not([type])"); await ap.waitForFunction((n) => document.querySelectorAll(".adm-ann-row").length > n, n, { timeout: 8000 }).catch(() => {}); };
+      const frame = (pg) => pg.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+      await ap.goto(BASE + "/#/admin"); await ap.waitForSelector('.adm-tabs [data-tab="ann"]', { timeout: 15000 });
       await ap.click('.adm-tabs [data-tab="ann"]');
-      await sleep(400);
+      await ap.waitForSelector(".adm-ann textarea", { state: "visible", timeout: 8000 });
       await ap.fill(".adm-ann textarea", "# 제목\n- **굵게** [링크](https://example.com)\n- [나쁜](javascript:alert(1))\n<script>window.__annX=1</script><img src=x onerror=\"window.__annX=2\">");
-      await ap.click("[data-ann-pv]"); await sleep(300);
+      await ap.click("[data-ann-pv]"); await ap.waitForSelector(".adm-ann-pv:not([hidden])", { timeout: 4000 }).catch(() => {});
       const pv = await ap.evaluate(() => { const el = document.querySelector(".adm-ann-pv"); return { h1: el.querySelector("h1")?.textContent, b: el.querySelector("li strong")?.textContent, script: !!el.querySelector("script,img") }; });
       ok(pv.h1 === "제목" && pv.b === "굵게" && !pv.script, `공지 미리보기 — 제목 ${pv.h1} · 굵게 ${pv.b} · 스크립트/이미지 없음 ${!pv.script}`);
-      await ap.click(".adm-ann button:not([type])"); await sleep(1500);
+      await post();
       const mp = await mc.newPage(); mp.on("pageerror", (e) => errs.push(e.message));
       await mp.addInitScript(() => { try { localStorage.removeItem("trio-ann-hidden"); } catch {} });
       await mp.goto(BASE + "/#/home"); await mp.waitForSelector(".ann-bar", { timeout: 8000 }).catch(() => {});
       const bar = await mp.evaluate(() => document.querySelector(".ann-bar span")?.textContent || "");
-      await mp.click(".ann-bar .ann-more").catch(() => {}); await sleep(400);
+      await mp.click(".ann-bar .ann-more").catch(() => {}); await mp.waitForSelector(".ann-sheet .ann-md", { timeout: 4000 }).catch(() => {});
       const sh = await mp.evaluate(() => { const el = document.querySelector(".ann-sheet .ann-md"); const a = el?.querySelectorAll("a") || []; return { b: el?.querySelector("li strong")?.textContent, li: el?.querySelectorAll("li").length, links: [...a].map((x) => x.getAttribute("href") + "|" + x.target + "|" + x.rel), bad: !!el?.querySelector("script,img"), x: window.__annX }; });
       ok(bar.includes("제목") && !bar.includes("#") && sh.b === "굵게" && sh.li === 2 && sh.links.length === 1 && sh.links[0] === "https://example.com|_blank|noopener noreferrer" && !sh.bad && sh.x === undefined && !errs.length,
         `공지 띠 · 자세히 — 띠 "${bar}" · 굵게 ${sh.b} · 목록 ${sh.li} · 링크 ${sh.links.join(",")} · 스크립트 안 돎 ${sh.x === undefined && !sh.bad}${errs.length ? " — " + errs[0] : ""}`);
@@ -2072,7 +2090,6 @@ try {
       const plain = await mp.evaluate(() => ({ t: document.querySelector(".ann-bar span")?.textContent, more: !!document.querySelector(".ann-bar:first-child .ann-more") }));
       ok(plain.t === "📢 그냥 한 줄 공지" && !plain.more, `한 줄 공지는 예전처럼 — "${plain.t}" · 자세히 ${plain.more}`);
       // 공지 사진: 관리자가 글상자에 붙여 넣기 → 미리보기에 보이고 → 올리기 → 회원 자세히에서 사진이 실제로 떠요
-      await ap.click("[data-ann-pv]").catch(() => {}); await sleep(200);
       if (await ap.evaluate(() => document.querySelector(".adm-ann textarea").hidden)) await ap.click("[data-ann-pv]");
       await ap.fill(".adm-ann textarea", "# 사진 공지\n");
       await ap.evaluate(async () => {
@@ -2087,7 +2104,7 @@ try {
       await ap.click("[data-ann-pv]"); await ap.waitForFunction(() => document.querySelector(".adm-ann-pv img")?.complete, null, { timeout: 5000 }).catch(() => {});
       const pvImg = await ap.evaluate(() => document.querySelector(".adm-ann-pv img.ann-img")?.naturalWidth || 0);
       ok(/!\[\]\(\/api\/ann\/img\/[0-9a-f-]+\.png\)/.test(md) && pvImg > 0, `공지 사진 붙여 넣기 → 미리보기 — 글 ${JSON.stringify(md)} · 너비 ${pvImg}`);
-      await ap.click(".adm-ann button:not([type])"); await sleep(1500);
+      await post();
       await mp.reload(); await mp.waitForSelector(".ann-bar", { timeout: 8000 }).catch(() => {});
       const thumb = await mp.evaluate(() => !!document.querySelector(".ann-bar:first-child img.ann-thumb"));
       await mp.click(".ann-bar:first-child .ann-more").catch(() => {});
@@ -2096,11 +2113,11 @@ try {
       ok(mImg?.w > 0 && mImg.mw === "100%" && thumb && !errs.length, `회원 자세히에서 공지 사진 — 너비 ${mImg?.w} · max-width ${mImg?.mw} · 띠 썸네일 ${thumb}${errs.length ? " — " + errs[0] : ""}`);
       // 공지 여러 개: 관리자 화면에서 3개(하나는 사진) → 회원은 3줄로 쌓여 보이고 섬 · 체험 띠와 안 겹쳐요 (1280 · 390)
       sq(`UPDATE announcements SET active = 0`);
-      await ap.reload(); await sleep(2000); await ap.click('.adm-tabs [data-tab="ann"]'); await sleep(300);
+      await ap.reload(); await ap.waitForSelector('.adm-tabs [data-tab="ann"]', { timeout: 15000 }); await ap.click('.adm-tabs [data-tab="ann"]'); await ap.waitForSelector(".adm-ann textarea", { state: "attached", timeout: 8000 });
       const IMG = md.match(/\/api\/ann\/img\/[^)\s]+/)?.[0];
       for (const t of ["# 셋째 줄 공지\n본문", `# 사진 둘째\n![](${IMG})`, "첫째 한 줄 공지"]) {
         if (await ap.evaluate(() => document.querySelector(".adm-ann textarea").hidden)) await ap.click("[data-ann-pv]");
-        await ap.fill(".adm-ann textarea", t); await ap.click(".adm-ann button:not([type])"); await sleep(900);
+        await ap.fill(".adm-ann textarea", t); await post();
       }
       const rows = await ap.evaluate(() => [...document.querySelectorAll(".adm-ann-row .adm-ann-t")].map((x) => x.textContent));
       ok(rows.slice(0, 3).join("|") === "첫째 한 줄 공지|# 사진 둘째|# 셋째 줄 공지", `관리자 공지 목록 — ${rows.join(" | ")}`);
@@ -2114,23 +2131,23 @@ try {
       await mp.evaluate(() => { try { localStorage.removeItem("trio-ann-hidden2"); } catch {} });
       for (const w of [1280, 390]) {
         await mp.setViewportSize({ width: w, height: w > 500 ? 860 : 844 });
-        await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await sleep(500);
+        await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await frame(mp);
         // 집중 섬도 띄워 봐요 (있으면)
-        await mp.evaluate(() => document.querySelector("#timer")?.classList.add("is-live")); await sleep(300);
+        await mp.evaluate(() => document.querySelector("#timer")?.classList.add("is-live")); await frame(mp);
         const g = await geo(mp);
         ok(g.n === 3 && !g.ov && g.inView && g.th === 1, `공지 3줄 쌓기 ${w}px — ${g.n}줄 · 겹침 ${g.ov} · 화면 안 ${g.inView} · 사진 썸네일 ${g.th}`);
         await mp.screenshot({ path: `/tmp/claude-501/ann-${w}.png`, clip: { x: 0, y: 0, width: w, height: 300 } });
       }
-      await mp.click('.ann-stack .ann-bar:nth-child(1) .ann-x'); await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await sleep(500);
+      await mp.click('.ann-stack .ann-bar:nth-child(1) .ann-x'); await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await frame(mp);
       let g2 = await geo(mp);
       ok(g2.n === 2 && !g2.texts.some((t) => t.includes("첫째")), `하나 닫고 새로고침 → ${g2.n}줄 남음`);
       const firstId = JSON.parse(sq("SELECT id FROM announcements WHERE body = '첫째 한 줄 공지'"))[0].results[0].id;
       await ac.request.patch(BASE + "/api/admin/announcements/" + firstId, { headers: H, data: { body: "첫째 한 줄 공지 (고침)" } });
-      await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await sleep(500);
+      await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await frame(mp);
       g2 = await geo(mp);
       ok(g2.n === 3 && g2.texts.some((t) => t.includes("고침")), `고치면 닫았던 공지가 다시 떠요 → ${g2.n}줄`);
       await ac.request.patch(BASE + "/api/admin/announcements/" + firstId, { headers: H, data: { ends_at: Date.now() - 60000 } });
-      await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await sleep(500);
+      await mp.reload(); await mp.waitForSelector(".ann-stack .ann-bar", { timeout: 8000 }).catch(() => {}); await frame(mp);
       g2 = await geo(mp);
       ok(g2.n === 2 && !g2.texts.some((t) => t.includes("첫째")), `끝나는 때가 지나면 안 보여요 → ${g2.n}줄${errs.length ? " — " + errs[0] : ""}`);
       // 4개 이상이면 3줄 + "+N개 더"
@@ -2138,7 +2155,7 @@ try {
       await ac.request.post(BASE + "/api/admin/announcements", { headers: H, data: { body: "다섯째" } });
       await mp.reload(); await mp.waitForSelector(".ann-rest", { timeout: 8000 }).catch(() => {});
       const rest = await mp.evaluate(() => document.querySelector(".ann-rest")?.textContent);
-      await mp.click(".ann-rest").catch(() => {}); await sleep(200);
+      await mp.click(".ann-rest").catch(() => {}); await mp.waitForFunction(() => document.querySelectorAll(".ann-stack .ann-bar").length > 3, null, { timeout: 3000 }).catch(() => {});
       const all = await mp.evaluate(() => document.querySelectorAll(".ann-stack .ann-bar").length);
       ok(rest === "+1개 더" && all === 4, `3줄 넘으면 "${rest}" → 펼치면 ${all}줄`);
     } finally {
