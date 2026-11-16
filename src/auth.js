@@ -11,18 +11,28 @@ const COLORS = ["#E8552B", "#4C6FFF", "#14A38B"]; // Golden Gate orange, bay blu
 const SESSION_DAYS = 30;
 const PBKDF2_ITERATIONS = 100_000; // Workers' WebCrypto maximum
 
+// 로그인한 사람 한 줄 — 세션(requireUser)과 토큰(tokenUser)이 같은 모양을 쓰게 (role · features · trial_until · must_change_pw 까지)
+// ?2 = 지금 시각 (기간이 끝난 기능은 빼요)
+const USER_COLS = "u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.dock_folders, u.hidden_pages, u.graph_prefs, u.diary_circle, u.role, u.state, u.last_seen_at, u.trial_until, (SELECT group_concat(feature) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > ?2)) AS feature_list";
+const withFeatures = (row, mustChangePw) => {
+  const { feature_list, agent, client_name, client_id, access_expires, ...u } = row;
+  return { ...u, features: feature_list ? feature_list.split(",") : [], must_change_pw: mustChangePw };
+};
+
 // MCP 토큰 → { user, agent }. 직접 만든 토큰(api_tokens) 먼저, 아니면 OAuth 접근 토큰. 쓸 때마다 last_used_at 만 고쳐요
+// user 는 세션 로그인과 같은 모양이라 기능 잠금 · AI 사용량 · 첫 비밀번호 검사(worker.js authorize)를 똑같이 받아요
 const TOKEN_IDLE = 90 * 864e5; // 직접 만든 MCP 토큰은 90일 안 쓰면 더는 안 받아요 (잊힌 토큰이 새도 못 쓰게) — 다시 만들면 돼요
 export async function tokenUser(env, token) {
   const h = await sha256(token), t = now();
   // 한 번에(왕복 1번): 직접 토큰 찾기 + 쓴 시각, OAuth 토큰 찾기 + (직접 토큰이 아니고 안 끝났으면) 쓴 시각
   const [api, , oa] = await env.DB.batch([
-    env.DB.prepare("SELECT t.agent, u.id, u.username, u.display_name, u.color, u.day_goal FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ? AND u.state = 'active' AND COALESCE(t.last_used_at, t.created_at) > ?").bind(h, t - TOKEN_IDLE),
+    env.DB.prepare(`SELECT t.agent, ${USER_COLS} FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ?1 AND u.state = 'active' AND COALESCE(t.last_used_at, t.created_at) > ?3`).bind(h, t, t - TOKEN_IDLE),
     env.DB.prepare("UPDATE api_tokens SET last_used_at = ? WHERE token_hash = ?").bind(t, h),
-    env.DB.prepare("SELECT t.access_expires, c.client_name, c.client_id, u.id, u.username, u.display_name, u.color, u.day_goal FROM oauth_tokens t JOIN oauth_clients c ON c.client_id = t.client_id JOIN users u ON u.id = t.user_id WHERE t.access_hash = ? AND u.state = 'active'").bind(h),
+    env.DB.prepare(`SELECT t.access_expires, c.client_name, c.client_id, ${USER_COLS} FROM oauth_tokens t JOIN oauth_clients c ON c.client_id = t.client_id JOIN users u ON u.id = t.user_id WHERE t.access_hash = ?1 AND u.state = 'active'`).bind(h, t),
     env.DB.prepare("UPDATE oauth_tokens SET last_used_at = ?1 WHERE access_hash = ?2 AND access_expires >= ?1 AND NOT EXISTS (SELECT 1 FROM api_tokens WHERE token_hash = ?2)").bind(t, h),
   ]);
-  const shape = (u, agent) => ({ agent, user: { id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, must_change_pw: false } });
+  // 토큰에는 요청 헤더가 없어서 x-trio-strict 스위치는 없어요: 배포본(PASSWORDLESS 아님)이면 첫 비밀번호 표시를 그대로 따라요
+  const shape = (u, agent) => ({ agent, user: withFeatures({ ...u, imp_by: null }, env.PASSWORDLESS !== "1" && Number(u.must_change_pw) === 1) });
   const row = api.results[0], o = oa.results[0];
   if (row) return shape(row, row.agent);
   return o && o.access_expires >= t ? shape(o, agentName(o.client_name, o.client_id)) : null;
@@ -39,7 +49,9 @@ export async function loginWith(env, req, username, password) {
     const res = await r.handler({ req: new Request(url, { method: "POST", headers: { "content-type": "application/json", "x-trio": "1" }, body: JSON.stringify({ username, password }) }), env, url, params: {}, q: url.searchParams });
     const d = await res.json().catch(() => ({}));
     if (res.status !== 200) return { error: d.error || "로그인하지 못했어요." };
-    return { user: d.user, cookie: res.headers.get("set-cookie") };
+    // 로그인 응답의 user 에는 기능 목록이 없어요 → 세션과 같은 모양으로 다시 읽어요 (OAuth 화면이 MCP 기능 잠금을 보게)
+    const full = await env.DB.prepare(`SELECT ${USER_COLS} FROM users u WHERE u.id = ?1`).bind(d.user.id, now()).first();
+    return { user: withFeatures(full, d.user.must_change_pw === true), cookie: res.headers.get("set-cookie") };
   } catch (e) {
     if (e instanceof HttpError) return { error: e.message };
     throw e;
@@ -99,6 +111,29 @@ async function bumpFail(env, u) {
   const mins = Math.min(LOCK_MAX_MINUTES, LOCK_MINUTES * 2 ** (n - 1));
   await env.DB.prepare("UPDATE users SET fail_count = ?, locked_until = ? WHERE id = ?").bind(fails, lock ? now() + mins * 60e3 : 0, u.id).run();
 }
+// 로그인 잠금은 (아이디, 접속 IP) 마다예요 — 남이 내 아이디로 일부러 틀려도 그 사람 IP 만 잠기고, 다른 IP 에서 맞는 비밀번호는 들어와요.
+// (아이디가 영문 3글자라 누구나 맞혀 볼 수 있어서, 전엔 아무나 남의 계정을 계속 잠가 둘 수 있었어요.) 여러 IP 를 돌리는 시도는 ipLimit 이 IP 마다 1분 10번으로 막아요.
+// 저장: user_app_state 한 줄(app = LOGIN_FAILS — /apps API 의 APPS 표에 없어서 화면에서는 못 읽고 못 써요) = { "<IP 해시>": { n, until, at } }. 새 표(마이그레이션) 없이.
+const LOGIN_FAILS = "login_fails", FAIL_KEYS = 50, FAIL_FORGET = 24 * 3600e3;
+const clientIp = (req) => req.headers.get("cf-connecting-ip") || "local";
+const ipKey = async (ip) => (await sha256("login-ip:" + ip)).slice(0, 16);
+async function loginFails(env, userId) {
+  const r = await env.DB.prepare("SELECT data FROM user_app_state WHERE user_id = ? AND app = ?").bind(userId, LOGIN_FAILS).first();
+  try { const o = JSON.parse(r?.data || "{}"); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; } catch { return {}; }
+}
+async function saveLoginFails(env, userId, map) {
+  const t = now();
+  // 오래된(하루 넘게 조용한 · 잠금 끝난) IP 는 잊고, 많아도 최근 FAIL_KEYS 개만
+  const keep = Object.entries(map).filter(([, v]) => v && (v.until > t || v.at > t - FAIL_FORGET)).sort((a, b) => b[1].at - a[1].at).slice(0, FAIL_KEYS);
+  if (!keep.length) return env.DB.prepare("DELETE FROM user_app_state WHERE user_id = ? AND app = ?").bind(userId, LOGIN_FAILS).run();
+  return env.DB.prepare("INSERT INTO user_app_state (user_id, app, data, updated_at) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(user_id, app) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at")
+    .bind(userId, LOGIN_FAILS, JSON.stringify(Object.fromEntries(keep)), t).run();
+}
+// 틀린 횟수 · 잠금은 bumpFail 과 같은 규칙(5번마다 5 → 10 → 20 → 40 → 60분)
+function nextFail(prev) {
+  const fails = (prev?.n || 0) + 1, n = Math.floor(fails / LOCK_TRIES), lock = fails % LOCK_TRIES === 0;
+  return { n: fails, until: lock ? now() + Math.min(LOCK_MAX_MINUTES, LOCK_MINUTES * 2 ** (n - 1)) * 60e3 : 0, at: now() };
+}
 // IP 하나당 로그인 · 가입 시도 수 제한 (Cloudflare Rate Limiting 바인딩 · 없으면 그냥 통과 — 로컬 테스트)
 async function ipLimit(req, env) {
   const ip = req.headers.get("cf-connecting-ip"); if (!ip || !env.LOGIN_RL || ip === "127.0.0.1" || ip === "::1") return; // 내 컴퓨터(로컬 테스트)는 빼요
@@ -109,13 +144,13 @@ export async function requireUser(req, env) {
   const token = sessionToken(req);
   if (!token) fail(401, "로그인이 필요해요.");
   const row = await env.DB.prepare(
-    "SELECT u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.dock_folders, u.hidden_pages, u.graph_prefs, u.diary_circle, u.role, u.state, u.last_seen_at, u.trial_until, s.imp_by, (SELECT group_concat(feature) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > ?2)) AS feature_list, (SELECT username FROM users a WHERE a.id = s.imp_by) AS imp_name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?1 AND s.expires_at > ?2"
+    `SELECT ${USER_COLS}, s.imp_by, (SELECT username FROM users a WHERE a.id = s.imp_by) AS imp_name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?1 AND s.expires_at > ?2`
   ).bind(await sha256(token), now()).first();
   if (!row) fail(401, "로그인이 만료됐어요. 다시 로그인해 주세요.");
   if (row.state !== "active") fail(401, STATE_MSG[row.state] || "들어올 수 없는 계정이에요.");
   // 최근 접속: 5분에 한 번만 적어요 (관리자가 대신 들어간 건 안 적어요)
   if (!row.imp_by && !(row.last_seen_at > now() - 300e3)) await env.DB.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").bind(now(), row.id).run();
-  return { ...row, features: row.feature_list ? row.feature_list.split(",") : [], must_change_pw: mustChange(req, env, row) };
+  return withFeatures(row, mustChange(req, env, row));
 }
 // must_change_pw 는 requireUser / login 에서 이미 true·false 로 바뀐 값이에요
 // 활동 상태: 정해진 단어만 · coding 이면 쓰는 AI 도구(여럿)
@@ -174,8 +209,8 @@ export function registerAuth(on) {
     const b = await body(req);
     const username = String(b.username || "").trim().toLowerCase();
     const u = await env.DB.prepare("SELECT * FROM users WHERE username = ?").bind(username).first();
-    // 아이디만으로 들어가기 (PASSWORDLESS=1): 세 사람만 쓰는 공간이라 비밀번호를 묻지 않아요
-    if (env.PASSWORDLESS === "1") {
+    // 아이디만으로 들어가기 (PASSWORDLESS=1): 세 사람만 쓰는 공간이라 비밀번호를 묻지 않아요 ("x-trio-strict: 1" 이면 로컬에서도 배포본처럼 — smoke 용)
+    if (!pwStrict(req, env)) {
       if (!u) fail(401, "없는 아이디예요.");
       await checkState(env, u);
       return json({ user: publicUser({ ...u, must_change_pw: mustChange(req, env, u) }) }, 200, { "set-cookie": await startSession(req, env, u.id) });
@@ -183,17 +218,16 @@ export function registerAuth(on) {
     if (!b.password) return json({ error: "비밀번호를 입력해 주세요.", need_password: true }, 401);
     const wrong = "아이디 또는 비밀번호가 맞지 않아요.";
     if (!u) { await hashPassword(String(b.password || "")); fail(401, wrong); } // same cost either way
-    if (u.locked_until > now()) fail(429, LOCKED_MSG);
+    const [key, fails] = await Promise.all([ipKey(clientIp(req)), loginFails(env, u.id)]);
+    if (fails[key]?.until > now()) fail(429, LOCKED_MSG);
     const { hash } = await hashPassword(String(b.password || ""), u.pw_salt);
     if (!safeEqual(hash, u.pw_hash)) {
-      await bumpFail(env, u);
+      await saveLoginFails(env, u.id, { ...fails, [key]: nextFail(fails[key]) });
       fail(401, wrong);
     }
     await checkState(env, u);
-    await env.DB.batch([
-      env.DB.prepare("UPDATE users SET fail_count = 0, locked_until = 0 WHERE id = ?").bind(u.id),
-      env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now()),
-    ]);
+    delete fails[key];
+    await Promise.all([saveLoginFails(env, u.id, fails), env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now()).run()]);
     return json({ user: publicUser({ ...u, must_change_pw: mustChange(req, env, u) }) }, 200, { "set-cookie": await startSession(req, env, u.id) });
   }, { auth: false });
 

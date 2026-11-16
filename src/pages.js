@@ -1,6 +1,7 @@
 // 사용자 페이지 — Dock 에 내가 추가하는 화면. 페이지 하나 = 여러 파일(index.html · style.css · app.js · 다른 html …).
 // 서버가 /pf/<id>/<path> 로 그대로 서빙하고(html 에는 브리지 스크립트를 끼워 넣어요), 화면 쪽은 sandbox iframe(allow-same-origin 없음)에 띄워요.
-// 규칙: 내 페이지는 앱 API 읽기·쓰기 전부, 남이 공유한 페이지는 내 계정으로 읽기(GET)만 — 브리지가 막아요(public/js/page-runner.js).
+// 규칙: 브리지는 허용 목록만 (public/js/page-guard.js) — 내 페이지는 아래 BRIDGE_GUIDE 에 적힌 앱 API, 남이 공유한 페이지는 그 페이지 저장소 · /me · /users 만.
+// 페이지 코드의 fetch · XHR · WebSocket 은 우리 서버(페이지 파일)로만 — CSP connect-src (servePageFile). 그래서 앱 데이터를 바깥으로 보내지 못해요.
 // kind=url 이면 바깥 사이트 주소를 Dock 안에 띄우는 페이지예요(파일 없음).
 import { aiJson } from "./ai.js";
 import { b64u, unb64u } from "./proxy.js";
@@ -20,12 +21,13 @@ const BRIDGE_TAG = `<script src="/js/page-bridge.js"></script>`;
 // 페이지 코드가 쓸 수 있는 브리지 설명 — AI 프롬프트와 MCP page_guide 가 같이 써요
 export const BRIDGE_GUIDE = `## 페이지 규칙
 - 페이지 = 파일 여러 개. 반드시 index.html 이 있어야 하고, style.css · app.js · 다른 html(about.html 처럼) 을 상대 경로로 자유롭게 써. 상대 경로는 그대로 돼.
-- 외부 자원은 제한 없음: CDN 라이브러리(three.js · Chart.js · Tailwind · GSAP …), 구글 폰트, 이미지 주소, 바깥 API fetch(그 사이트가 CORS 를 열어 둔 경우). 손으로 짠 정적 사이트 수준(여러 장 · 애니메이션 · 폰트)으로 만들어도 돼.
+- 외부 자원: CDN 라이브러리(three.js · Chart.js · Tailwind · GSAP …), 구글 폰트, 이미지 주소는 돼. 손으로 짠 정적 사이트 수준(여러 장 · 애니메이션 · 폰트)으로 만들어도 돼.
+- 바깥 API fetch · XHR · WebSocket 은 **막혀 있어** (보안: connect-src 는 이 페이지 파일만). fetch("./data.json") 처럼 같은 페이지의 파일은 돼. 바깥 데이터가 필요하면 파일로 넣어 둬.
 - 화면은 sandbox iframe 안. 쿠키·fetch("/api") 는 안 돼 — 앱 데이터는 반드시 window.trio 브리지로. 브리지는 서버가 html 마다 끼워 넣어 주니 직접 넣지 마.
 - 기본 글꼴·색은 네가 정해. 앱 테마 색이 필요하면 trio.theme (아래) 로 받아 써. 모바일 폭(360px)에서도 깨지지 않게.
 
 ## window.trio (await trio.ready 뒤에 써 — 또는 trio.onReady(fn))
-- trio.me { id, display_name, color } · trio.users 셋의 목록 · trio.today "YYYY-MM-DD"(한국) · trio.readonly true 면 남의 공유 페이지(쓰기 호출은 실패) · trio.theme { bg, ink, ink2, ink3, line, accent, blue, green, amber, rose, teal, dark:boolean }
+- trio.me { id, display_name, color } · trio.users 셋의 목록 · trio.today "YYYY-MM-DD"(한국) · trio.readonly true 면 남의 공유 페이지 — 그때는 trio.store · trio.others · GET /me · GET /users 만 되고 계획 · 노트 · 일기 같은 다른 API 는 실패해 (보는 사람의 기록을 남의 페이지가 읽지 못하게) · trio.theme { bg, ink, ink2, ink3, line, accent, blue, green, amber, rose, teal, dark:boolean }
 - trio.api(method, path, body?) → JSON. 실패하면 throw Error(메시지). 예: await trio.api("GET", "/plans?periods=D:" + trio.today)
 - trio.go(hash) 앱 화면 이동(예 "#/calendar/2026-10-04") · trio.toast(글) 짧은 알림
 - trio.store.get(key) / set(key, value) / all() — 이 페이지의 **사람별 서버 저장소**(JSON, 폰 · 노트북 어디서나 같음). 체크 · 기록 · 진도는 여기에.
@@ -38,7 +40,7 @@ export const BRIDGE_GUIDE = `## 페이지 규칙
 - await trio.notes.search("검색어") → [{id,title,snippet}] · await trio.notes.get(id) → { id, title, body(markdown) … }
 - 예: const ps = await trio.plans.today(); list.innerHTML = ps.map((p) => \`<li>\${p.start || ""} \${p.text}</li>\`).join("") || "<li>오늘 계획이 없어요</li>";
 
-## 앱 API (path 는 /api 를 뺀 것)
+## 앱 API (path 는 /api 를 뺀 것) — 브리지는 아래 적힌 것만 허용해 (그 밖의 주소는 실패: /admin · /ai · /room · /auth · /mcp · 다른 페이지 …)
 - GET /plans?periods=D:YYYY-MM-DD,W:YYYY-Wnn,M:YYYY-MM,Y:YYYY[&user=id][&days=YYYY-MM-DD..YYYY-MM-DD] → { plans:[{id,text,period,start("HH:MM"|null),mins,done,missed,priority,focus_mins,sort}] }
 - POST /plans { scope:"day", period:"D:2026-10-04", text, start?, mins?, priority? } (scope 는 day|week|month|year, period 모양과 맞게) · PATCH /plans/:id { done?, missed?, text?, start?, mins?, priority? } · DELETE /plans/:id
 - GET /summary?periods=... → 기간별 계획 수·끝낸 수 · GET /plans/heatmap?from=&to= → 날마다 실행률
@@ -46,7 +48,7 @@ export const BRIDGE_GUIDE = `## 페이지 규칙
 - GET /search?q= · GET /tags · GET /graph
 - GET /english/day?day= → 그날 영어 기록 { day:{minutes,newwords,...} } · GET /english/days?from=&to= · PUT /english/day { day, minutes, ... }
 - GET /papers/progress → 논문 스프린트 진도(셋) · GET /logs/focus?from=&to=&user= → 집중 타이머 기록
-- GET /diary?day= · PUT /diary { day, body } · GET /records/recent · GET /users · GET /me
+- GET /diary?day= · PUT /diary { day, body } · GET /records/recent · GET /users · GET /me · GET /files/:key (노트 이미지)
 
 ## Study 그래프 (place="study" 과목 페이지)
 Study 의 각 과목 탭에는 [내용 | 그래프] 가 있고, 그래프는 페이지에서 자동으로 만들어져요. 그래서 과목 페이지는 이렇게 만들어 주세요:
@@ -302,7 +304,9 @@ export async function servePageFile(req, env, url, getUser) {
   return new Response(html ? withBridge(f.content) : f.content, { headers: {
     "content-type": typeOf(path), "cache-control": "no-store", "x-content-type-options": "nosniff",
     // html 이 아닌 파일(svg · xml …)도 주소를 바로 열면 문서가 돼요 → 언제나 sandbox (스크립트 없이). 페이지가 불러 쓰는 css · js 에는 영향 없어요
-    "content-security-policy": html ? "sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-pointer-lock" : "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
+    // connect-src: 페이지 코드의 fetch · XHR · WebSocket · sendBeacon 은 우리 서버(이 페이지 파일)로만 — 브리지로 받은 앱 데이터를 바깥 주소로 못 보내게.
+    //   ('self' 대신 주소를 그대로 써요: sandbox 문서는 출처가 없어서 'self' 가 브라우저마다 다르게 풀려요.) form-action 도 같은 이유로 우리 서버만.
+    "content-security-policy": html ? `sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-pointer-lock; connect-src ${url.origin} blob: data:; form-action ${url.origin}` : "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
     "referrer-policy": "no-referrer",
   } });
 }

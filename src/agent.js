@@ -2,7 +2,10 @@
 // 모델이 답 대신 <<tool>>{"name":"web_search","args":{"q":"…"}}<</tool>> 한 줄을 내면 그 도구를 실행하고 결과를 넣어 다시 물어요. 최대 maxSteps 번.
 // 어느 회사 모델이든(Gemini·Groq·Cohere·MiMo·GLM·OpenRouter·Kilo·Ollama) 같은 방식으로 돼요 — 회사별 함수 호출 API 를 쓰지 않고 글로만 주고받아요.
 // 도구: web_search(웹 검색) · read_page(페이지 읽기) · search_notes(내 노트 찾기) · read_note(내 노트 읽기) · my_plans(내 계획 보기)
+// 보안(프롬프트 주입): 한 요청 = 도구 세션 하나(toolSession). read_page 는 사용자가 직접 적은 주소나 이번 요청의 web_search 결과 주소만,
+//   글자 하나 다르지 않게 그대로 열어요 — 모델이 노트 내용을 붙여 만든 주소(?q=…)로 바깥에 흘리지 못하게. 계획 지우기는 AI 에게 없어요(화면에서 직접).
 import { aiText, TEXT_ORDER, orderFrom, PRIVATE_SAFE } from "./ai.js";
+import { publicUrl, safeFetch } from "./lib/ssrf.js";
 
 // 모델이 꺾쇠를 하나 빼먹는 일이 잦아요(<<tool>…, …<</tool>, <tool>…</tool>) — 다 알아봐요
 const TOOL_RE = /<{1,2}\s*tool\s*>{1,2}\s*([\s\S]*?)\s*<{1,2}\s*\/\s*tool\s*>{1,2}/;
@@ -92,24 +95,38 @@ export async function webSearch(q, n = 6) {
   return { results: [], error: "검색 결과를 받지 못했어요." };
 }
 
+// 바깥 페이지 본문 읽기. 사설 주소(localhost · 10.x · [::1] · 메타데이터 …)는 안 열고, 리디렉트도 한 번씩 같은 검사를 거쳐요 (src/lib/ssrf.js)
 export async function readPage(url, max = 7000) {
   url = String(url || "").trim();
   if (!/^https?:\/\//i.test(url)) return { error: "http(s) 주소만 읽을 수 있어요." };
+  if (!publicUrl(url)) return { error: "이 주소는 열 수 없어요 (내부 · 사설 주소)." };
   // 1) Jina Reader — 본문을 마크다운으로
   try {
     const res = await fetch("https://r.jina.ai/" + url, { headers: { accept: "text/plain", "user-agent": UA, "x-no-cache": "true" }, signal: withTimeout(12000) });
     if (res.ok) { const t = (await res.text()).trim(); if (t.length > 80) return { url, text: clip(t, max), via: "jina" }; }
   } catch {}
-  // 2) 그냥 받아서 태그 걷어내기
+  // 2) 그냥 받아서 태그 걷어내기 (safeFetch: 리디렉트도 주소마다 사설 주소 검사)
   try {
-    const res = await fetch(url, { headers: { "user-agent": UA, accept: "text/html,*/*" }, signal: withTimeout(10000), redirect: "follow" });
+    const res = await safeFetch(url, { headers: { "user-agent": UA, accept: "text/html,*/*" }, signal: withTimeout(10000) });
     if (!res.ok) return { error: `페이지를 열지 못했어요 (${res.status}).` };
     const html = await res.text();
     const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1];
     const body = /<body[^>]*>([\s\S]*?)<\/body>/i.exec(html)?.[1] || html;
     return { url, title: title ? strip(title) : undefined, text: clip(strip(body), max), via: "raw" };
-  } catch (e) { return { error: "페이지를 읽지 못했어요." }; }
+  } catch (e) { return { error: /열 수 없어요|리디렉트/.test(e?.message || "") ? e.message : "페이지를 읽지 못했어요." }; }
 }
+
+// ---------- 도구 세션: 이번 요청에서 read_page 가 열어도 되는 주소 ----------
+// 사용자가 직접 적은 글(texts — 서버가 붙인 [미리 찾아본 자료] 같은 꼬리는 빼고)의 주소 + 이번 요청의 web_search 결과 주소만. 비교는 정리한 주소(# 뺌) 그대로 — 모델이 고친 주소는 안 열어요.
+const urlKey = (u) => { try { const x = new URL(String(u).trim().replace(/[.,!?。]+$/, "")); x.hash = ""; return x.href; } catch { return null; } };
+export function toolSession(...texts) {
+  const urls = new Set();
+  for (const t of texts) for (const u of userText(t).match(URL_RE) || []) { const k = urlKey(u); if (k) urls.add(k); }
+  return { urls, updates: 0 };
+}
+const allowFound = (session, found) => { if (session) for (const x of found?.results || []) { const k = urlKey(x.url); if (k) session.urls.add(k); } return found; };
+export const MAX_AGENT_UPDATES = 5; // 한 요청에서 AI 가 고칠 수 있는 계획 수 (주입된 글이 계획을 한꺼번에 바꾸지 못하게)
+export const NO_DELETE = "계획 지우기는 AI 가 하지 않아요. 계획 화면에서 직접 지워 주세요.";
 
 async function searchNotes(env, user, q, n = 6) {
   q = String(q || "").trim().slice(0, 100);
@@ -143,17 +160,20 @@ export const searchQuery = (text) => {
 const WEB_HINT = /(검색|찾아\s?봐|찾아\s?줘|알아\s?봐|조사|최신|요즘|최근\s?(소식|뉴스|동향)|뉴스|속보|가격|환율|주가|시세|날씨|출시|발표|업데이트\s?내용|공식\s?(사이트|문서)|레퍼런스|출처|자료\s?찾|latest|news|price|docs?\b)/i;
 export const needsWeb = (text) => WEB_HINT.test(String(text).replace(/\[(미리|첨부)[\s\S]*$/, "").slice(0, 800));
 export const URL_RE = /https?:\/\/[^\s<>"'`)\]]+/g;
+// 사용자 글에서 서버가 붙인 자료([미리 찾아본 자료] · [첨부 이미지 …])는 빼요 — 그 안의 주소는 사용자가 적은 게 아니에요
+const userText = (t) => String(t || "").replace(/\[(미리 검색한|미리 찾아본|첨부 이미지)[\s\S]*$/, "");
 
 // 도구 바퀴 전에 미리 해 두는 조사: 글 속 링크는 바로 읽고, web 이 true(토글) 거나 "auto" 인데 웹이 필요한 말이면 한 번 검색해요.
 // → { note: 질문 뒤에 붙일 자료 글, steps: [{ name, args, summary, auto }] }
-export async function autoResearch(text, web = "auto") {
+// session(toolSession) 이 있으면 검색 결과 주소를 거기에 더해 둬요 (뒤의 read_page 가 열 수 있게)
+export async function autoResearch(text, web = "auto", session = null) {
   const raw = String(text || "").replace(/\[(미리|첨부)[\s\S]*$/, "");
   const urls = [...new Set(raw.match(URL_RE) || [])].map((u) => u.replace(/[.,!?。]+$/, "")).slice(0, 2);
   const doSearch = web === true || (web === "auto" && needsWeb(raw));
   const q = doSearch ? searchQuery(raw) : "";
   const [pages, found] = await Promise.all([
     Promise.all(urls.map((url) => readPage(url, 6000).then((r) => ({ url, r })))),
-    q ? webSearch(q, 6) : null,
+    q ? webSearch(q, 6).then((r) => allowFound(session, r)) : null,
   ]);
   const steps = [], parts = [];
   for (const { url, r } of pages) { steps.push({ name: "read_page", args: { url }, summary: toolSummary("read_page", { url }, r), auto: true }); parts.push(`### 링크 ${url}\n${r.error || JSON.stringify(r).slice(0, 6000)}`); }
@@ -218,10 +238,7 @@ async function updatePlan(env, user, a) {
   await env.DB.prepare("UPDATE plans SET text = ?, start = ?, mins = ?, period = ?, done = ?, done_at = ?, missed = ?, priority = ?, updated_at = ? WHERE id = ?").bind(text, start, mins, period, done, done ? p.done_at || Date.now() : null, missed, priority, Date.now(), p.id).run();
   return { ok: true, plan: { id: p.id, text, start, mins, period, done: !!done, missed: !!missed } };
 }
-async function deletePlan(env, user, a) {
-  const r = await env.DB.prepare("DELETE FROM plans WHERE id = ? AND user_id = ?").bind(String(a.id || ""), user.id).run();
-  return r.meta?.changes ? { ok: true } : { error: "그 id 의 계획이 없어요." };
-}
+// delete_plan 은 이름만 남아 있어요 (예전 대화 · 화면 표시용) — 부르면 NO_DELETE 로 거절해요
 export const WRITE_TOOLS = new Set(["add_plan", "update_plan", "delete_plan"]);
 // "넣었어요 / 이미 들어가 있어요" 처럼 계획을 바꿨다고(또는 이미 있다고) 말하는 답 — 이번 요청에서 도구를 안 불렀다면 거짓일 수 있어요
 export const CLAIM_RE = /(넣었|넣어\s*(?:뒀|놨|드렸)|등록했|등록됐|추가했|추가해\s*(?:뒀|놨|드렸)|추가되어|추가됐|추가돼|추가된\s*상태|추가\s*완료|저장했|저장됐|들어가\s*있|들어갔|넣어져|옮겼|바꿨|변경했|지웠|삭제했|표시했)/;
@@ -230,25 +247,32 @@ export const TOOL_DOCS = {
   day_plans: { desc: "그날 계획(할 일·시간표)을 id 와 함께 봐요", args: '{"date":"2026-09-29"}' },
   add_plan: { desc: "계획을 새로 넣어요. 시간이 있으면 start(24시간 HH:MM)·mins(분), 없으면 할 일. scope 는 day(기본)·week·month", args: '{"date":"2026-09-29","text":"영어 수업","start":"21:30","mins":60}' },
   update_plan: { desc: "계획을 고쳐요(시간 옮기기·이름 바꾸기·끝냄 done · 못함 missed 표시). id 는 day_plans 로 확인", args: '{"id":"…","start":"22:00","done":true}' },
-  delete_plan: { desc: "계획을 지워요. id 는 day_plans 로 확인", args: '{"id":"…"}' },
   web_search: { desc: "웹에서 최신 정보를 찾아요", args: '{"q":"검색어"}' },
-  read_page: { desc: "웹 페이지 본문을 읽어요 (검색 결과 url 을 넣어요)", args: '{"url":"https://…"}' },
+  read_page: { desc: "웹 페이지 본문을 읽어요 (사용자가 적은 주소나 web_search 결과의 url 을 글자 그대로 — 다른 주소는 거절돼요)", args: '{"url":"https://…"}' },
   search_notes: { desc: "내 노트에서 제목·내용으로 찾아요", args: '{"q":"찾을 말"}' },
   read_note: { desc: "내 노트 하나를 통째로 읽어요", args: '{"title":"노트 제목"}' },
   my_plans: { desc: "내 계획(오늘·이번 주·이번 달)을 봐요", args: '{}' },
 };
 
+// extra.session: toolSession() — read_page 허용 주소 · 계획 고치기 횟수. 없으면 read_page 는 거절 (닫힌 쪽이 기본)
 export async function runAgentTool(env, user, name, args, extra = {}) {
+  const ses = extra.session || null;
   switch (name) {
-    case "web_search": return webSearch(args.q);
-    case "read_page": return readPage(args.url);
+    case "web_search": return allowFound(ses, await webSearch(args.q));
+    case "read_page": {
+      const k = urlKey(args.url);
+      if (!ses || !k || !ses.urls.has(k)) return { error: "read_page 는 사용자가 적은 주소나 이번 web_search 결과의 주소만 그대로 열 수 있어요." };
+      return readPage(args.url);
+    }
     case "search_notes": return searchNotes(env, user, args.q);
     case "read_note": return readNote(env, user, args.title);
     case "my_plans": return myPlans(env, user, extra.periods);
     case "day_plans": return dayPlans(env, user, args.date);
     case "add_plan": return addPlan(env, user, args);
-    case "update_plan": return updatePlan(env, user, args);
-    case "delete_plan": return deletePlan(env, user, args);
+    case "update_plan":
+      if (ses && ++ses.updates > MAX_AGENT_UPDATES) return { error: `한 번에 계획은 ${MAX_AGENT_UPDATES}개까지만 고칠 수 있어요. 나머지는 다시 말해 주세요.` };
+      return updatePlan(env, user, args);
+    case "delete_plan": return { error: NO_DELETE };
     default: return { error: `모르는 도구: ${name}` };
   }
 }
@@ -303,9 +327,10 @@ export async function runAgent(env, user, { system, messages, tools = Object.key
   const convo = messages.map((m) => ({ role: m.role, content: m.content }));
   const steps = [];
   let used = null;
+  const session = toolSession(...messages.filter((m) => m.role === "user").map((m) => m.content), researchOn);
   // 링크는 먼저 읽고, 웹 모드(preSearch true)거나 웹이 필요한 말("auto")이면 먼저 한 번 검색해 두어요 (모델이 검색을 건너뛰고 지어내지 않게)
   if (tools.includes("web_search")) {
-    const pre = await autoResearch(researchOn ?? (convo[convo.length - 1]?.content || ""), preSearch);
+    const pre = await autoResearch(researchOn ?? (convo[convo.length - 1]?.content || ""), preSearch, session);
     for (const step of pre.steps) { steps.push(step); if (onStep) await onStep(step); }
     if (pre.note) convo[convo.length - 1] = { role: "user", content: `${convo[convo.length - 1].content}\n\n${pre.note}` };
   }
@@ -319,7 +344,7 @@ export async function runAgent(env, user, { system, messages, tools = Object.key
       if (claims && i < maxSteps) { convo.push({ role: "assistant", content: r.text }, { role: "user", content: "아직 도구를 실제로 부르지 않았어. 말만 하지 말고 지금 필요한 도구 줄(<<tool>>…<</tool>>)을 한 줄만 출력해." }); continue; }
       return { text: stripToolLines(r.text), model: used, steps };
     }
-    const result = await runAgentTool(env, user, call.name, call.args, { periods });
+    const result = await runAgentTool(env, user, call.name, call.args, { periods, session });
     const step = { name: call.name, args: call.args, summary: toolSummary(call.name, call.args, result) };
     steps.push(step); if (onStep) await onStep(step);
     convo.push({ role: "assistant", content: `<<tool>>${JSON.stringify(call)}<</tool>>` });

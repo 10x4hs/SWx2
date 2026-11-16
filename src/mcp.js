@@ -5,6 +5,7 @@
 import { sha256, b64url } from "./lib/crypto.js";
 import { resourceMetadataUrl } from "./oauth.js";
 import { kstToday } from "./lib/day.js";
+import { canUse, FEATURES } from "./features.js";
 
 const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const STATUSES = ["todo", "doing", "blocked", "done"];
@@ -77,6 +78,9 @@ export async function handleMcp(req, env, ec, deps) {
       headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "www-authenticate": `Bearer realm="swx2", resource_metadata="${resourceMetadataUrl(origin)}"${auth ? ', error="invalid_token"' : ""}` },
     });
   }
+
+  // MCP 는 '${FEATURES.mcp}' 기능이 열린 사람만 (토큰을 만든 뒤 기능이 닫혀도 여기서 막혀요). 도구마다의 기능 잠금은 internalCall 이 따로 봐요
+  if (!canUse(who.user, "mcp")) return json({ jsonrpc: "2.0", id: null, error: { code: -32003, message: `'${FEATURES.mcp}' 은(는) 잠겨 있어요. 앱에서 사용 신청을 하면 관리자가 열어 줘요.` } }, 403);
 
   let msg;
   try { msg = await req.json(); } catch { return json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "JSON 이 아니에요." } }, 400); }

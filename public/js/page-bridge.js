@@ -12,7 +12,7 @@
     go: (hash) => call("go", { hash }), toast: (text) => call("toast", { text }),
     store: { get: (key) => call("store.get", { key }), set: (key, value) => call("store.set", { key, value }), all: () => call("store.all", {}) },
     others: () => call("others", {}),
-    // 짧은 도우미 — 모두 trio.api 를 얇게 감싼 것 (남이 공유한 페이지에선 add · done 이 실패해요)
+    // 짧은 도우미 — 모두 trio.api 를 얇게 감싼 것 (남이 공유한 페이지에선 plans · notes 가 다 실패해요: 허용 목록 page-guard.js)
     plans: {
       day: async (ymd) => (await trio.api("GET", "/plans?periods=D:" + (ymd || trio.today))).plans,
       today: () => trio.plans.day(trio.today),

