@@ -6,6 +6,7 @@ import { HttpError, fail, json, body, now, uid, str } from "./http.js";
 import { match } from "./router.js";
 import { PEERS } from "./teams.js";
 import { pushUsers } from "./push.js";
+import { AVATAR_V, avatarUrl } from "./avatar.js";
 
 const COLORS = ["#E8552B", "#4C6FFF", "#14A38B"]; // Golden Gate orange, bay blue, cypress green
 const SESSION_DAYS = 30;
@@ -13,7 +14,7 @@ const PBKDF2_ITERATIONS = 100_000; // Workers' WebCrypto maximum
 
 // 로그인한 사람 한 줄 — 세션(requireUser)과 토큰(tokenUser)이 같은 모양을 쓰게 (role · features · trial_until · must_change_pw 까지)
 // ?2 = 지금 시각 (기간이 끝난 기능은 빼요)
-const USER_COLS = "u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, u.avatar, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.dock_folders, u.hidden_pages, u.graph_prefs, u.diary_circle, u.role, u.state, u.last_seen_at, u.trial_until, (SELECT group_concat(feature) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > ?2)) AS feature_list";
+const USER_COLS = `u.id, u.username, u.display_name, u.color, u.day_goal, u.bio, ${AVATAR_V("u.avatar")} AS avatar_v, u.status, u.plans_open, u.must_change_pw, u.ai_model, u.dock_order, u.dock_folders, u.hidden_pages, u.graph_prefs, u.diary_circle, u.role, u.state, u.last_seen_at, u.trial_until, (SELECT group_concat(feature) FROM user_features f WHERE f.user_id = u.id AND (f.expires_at IS NULL OR f.expires_at > ?2)) AS feature_list`; // 사진 본문(avatar)은 안 읽어요 — 버전만 (src/avatar.js)
 const withFeatures = (row, mustChangePw) => {
   const { feature_list, agent, client_name, client_id, access_expires, ...u } = row;
   return { ...u, features: feature_list ? feature_list.split(",") : [], must_change_pw: mustChangePw };
@@ -83,6 +84,17 @@ export async function startSession(req, env, userId, impBy = null) {
   await env.DB.prepare("INSERT INTO sessions (id, user_id, expires_at, imp_by) VALUES (?, ?, ?, ?)")
     .bind(await sha256(token), userId, now() + days * 864e5, impBy).run();
   return cookie(req, token, days * 86400);
+}
+// 대신 들어가기 기록 (관리자 화면 #/admin): 시작 · 끝마다 한 줄 — 누가(admin) · 누구로(user) · 언제(at) · 어디서(ip = IP 해시 12글자, IP 그대로는 안 남겨요)
+// 저장: 그 관리자의 user_app_state 한 줄(app = IMP_LOG — /apps API 의 APPS 표에 없어서 화면에서는 못 읽고 못 써요) = 배열, 최근 IMP_KEEP 줄. 새 표(마이그레이션) 없이
+export const IMP_LOG = "imp_log", IMP_KEEP = 200;
+export async function logImpersonation(env, req, kind, adminId, userId) {
+  const ip = (await sha256("imp-ip:" + (req.headers.get("cf-connecting-ip") || "local"))).slice(0, 12), t = now();
+  const row = JSON.stringify({ kind, at: t, admin: adminId, user: userId, ip });
+  // 한 문장으로 덧붙이기 (동시에 와도 안 사라지게) · 가득 차면 가장 오래된 줄을 빼요
+  await env.DB.prepare(`INSERT INTO user_app_state (user_id, app, data, updated_at) VALUES (?1, ?2, json_array(json(?3)), ?4)
+    ON CONFLICT(user_id, app) DO UPDATE SET data = json_insert(CASE WHEN json_array_length(data) >= ?5 THEN json_remove(data, '$[0]') ELSE data END, '$[#]', json(?3)), updated_at = ?4`)
+    .bind(adminId, IMP_LOG, row, t, IMP_KEEP).run();
 }
 export const sessionId = async (req) => { const t = sessionToken(req); return t ? sha256(t) : null; };
 // 승인 대기 · 정지된 계정은 들어올 수 없어요
@@ -156,7 +168,7 @@ export async function requireUser(req, env) {
 // 활동 상태: 정해진 단어만 · coding 이면 쓰는 AI 도구(여럿)
 const STATUSES = ["coding", "working", "studying", "reading", "resting", "sleeping", "away"], TOOLS = ["claude", "codex", "gemini"];
 const readStatus = (raw) => { try { const o = typeof raw === "string" ? JSON.parse(raw) : raw; return o && STATUSES.includes(o.s) ? { s: o.s, tools: o.s === "coding" ? (o.tools || []).filter((t) => TOOLS.includes(t)) : [], at: o.at || null } : null; } catch { return null; } };
-const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: u.avatar || null, status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true, ai_model: u.ai_model || null, dock_order: readList(u.dock_order), dock_folders: readObj(u.dock_folders) || {}, hidden_pages: readList(u.hidden_pages), graph_prefs: readObj(u.graph_prefs), diary_circle: u.diary_circle === 1, role: u.role || "member", impersonated_by: u.imp_name || null, features: u.features || [], trial_until: u.trial_until > Date.now() ? u.trial_until : null }); // 본인에게만 (로그인 · /me)
+const publicUser = (u) => ({ id: u.id, username: u.username, display_name: u.display_name, color: u.color, day_goal: u.day_goal, bio: u.bio || null, avatar: avatarUrl(u.id, u.avatar_v), status: readStatus(u.status), plans_open: u.plans_open !== 0, must_change_pw: u.must_change_pw === true, ai_model: u.ai_model || null, dock_order: readList(u.dock_order), dock_folders: readObj(u.dock_folders) || {}, hidden_pages: readList(u.hidden_pages), graph_prefs: readObj(u.graph_prefs), diary_circle: u.diary_circle === 1, role: u.role || "member", impersonated_by: u.imp_name || null, features: u.features || [], trial_until: u.trial_until > Date.now() ? u.trial_until : null }); // 본인에게만 (로그인 · /me)
 function readObj(v) { try { const o = JSON.parse(v || "null"); return o && typeof o === "object" && !Array.isArray(o) ? o : null; } catch { return null; } }
 const DOCK_KEY = /^(nav:[a-z-]{1,20}|page:[A-Za-z0-9-]{1,64})$/;
 function folderMap(v) {
@@ -208,7 +220,7 @@ export function registerAuth(on) {
     await ipLimit(req, env);
     const b = await body(req);
     const username = String(b.username || "").trim().toLowerCase();
-    const u = await env.DB.prepare("SELECT * FROM users WHERE username = ?").bind(username).first();
+    const u = await env.DB.prepare(`SELECT *, ${AVATAR_V()} AS avatar_v FROM users WHERE username = ?`).bind(username).first();
     // 아이디만으로 들어가기 (PASSWORDLESS=1): 세 사람만 쓰는 공간이라 비밀번호를 묻지 않아요 ("x-trio-strict: 1" 이면 로컬에서도 배포본처럼 — smoke 용)
     if (!pwStrict(req, env)) {
       if (!u) fail(401, "없는 아이디예요.");
@@ -233,7 +245,8 @@ export function registerAuth(on) {
 
   on("POST", "/auth/logout", async ({ req, env }) => {
     const token = sessionToken(req);
-    if (token) await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(await sha256(token)).run();
+    const gone = token ? await env.DB.prepare("DELETE FROM sessions WHERE id = ? RETURNING user_id, imp_by").bind(await sha256(token)).first() : null;
+    if (gone?.imp_by) await logImpersonation(env, req, "end", gone.imp_by, gone.user_id); // 대신 들어간 채로 로그아웃 = 끝
     return json({ ok: true }, 200, { "set-cookie": cookie(req, "", 0) });
   }, { auth: false });
 
@@ -286,7 +299,7 @@ export function registerAuth(on) {
       if (bio && bio.length > 40) fail(400, "한 줄 소개는 40자까지예요.");
     }
     // 프로필 사진: 브라우저가 줄여 보낸 data URL 만 (jpeg · png · webp, 80KB 까지). null 이면 지워요
-    let avatar = user.avatar || null;
+    let avatar = null; // 보낸 게 없으면(undefined) 사진은 그대로 두고 건드리지 않아요
     if (b.avatar !== undefined) {
       if (b.avatar === null || b.avatar === "") avatar = null;
       else if (typeof b.avatar === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(b.avatar) && b.avatar.length <= 80_000) avatar = b.avatar;
@@ -298,13 +311,13 @@ export function registerAuth(on) {
       else { status = readStatus({ ...b.status, at: Date.now() }); if (!status) fail(400, "상태 형식이 올바르지 않아요."); }
     }
     const plans_open = b.plans_open !== undefined ? !!b.plans_open : user.plans_open !== 0;
-    await env.DB.prepare("UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = ?, status = ?, plans_open = ?, ai_model = ?, dock_order = ?, dock_folders = ?, hidden_pages = ?, graph_prefs = ? WHERE id = ?").bind(display, goal, color, bio, avatar, status ? JSON.stringify(status) : null, plans_open ? 1 : 0, aiModel, dockOrder, dockFolders, hiddenPages, graphPrefs, user.id).run();
-    return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar, status, plans_open, ai_model: aiModel, dock_order: readList(dockOrder), dock_folders: readObj(dockFolders) || {}, hidden_pages: readList(hiddenPages), graph_prefs: readObj(graphPrefs) } });
+    const saved = await env.DB.prepare(`UPDATE users SET display_name = ?, day_goal = ?, color = ?, bio = ?, avatar = CASE WHEN ? THEN ? ELSE avatar END, status = ?, plans_open = ?, ai_model = ?, dock_order = ?, dock_folders = ?, hidden_pages = ?, graph_prefs = ? WHERE id = ? RETURNING ${AVATAR_V()} AS avatar_v`).bind(display, goal, color, bio, b.avatar !== undefined ? 1 : 0, avatar, status ? JSON.stringify(status) : null, plans_open ? 1 : 0, aiModel, dockOrder, dockFolders, hiddenPages, graphPrefs, user.id).first();
+    return json({ user: { ...publicUser(user), display_name: display, day_goal: goal, color, bio, avatar: avatarUrl(user.id, saved?.avatar_v), status, plans_open, ai_model: aiModel, dock_order: readList(dockOrder), dock_folders: readObj(dockFolders) || {}, hidden_pages: readList(hiddenPages), graph_prefs: readObj(graphPrefs) } });
   });
 
   // 같은 팀 사람(나 포함)만
   on("GET", "/users", async ({ env, user }) => {
-    const { results } = await env.DB.prepare(`SELECT id, username, display_name, color, day_goal, bio, avatar, status, plans_open FROM users WHERE state = 'active' AND id IN ${PEERS("?")} ORDER BY created_at`).bind(user.id).all();
-    return json({ users: results.map((u) => ({ ...u, status: readStatus(u.status), plans_open: u.plans_open !== 0 })) });
+    const { results } = await env.DB.prepare(`SELECT id, username, display_name, color, day_goal, bio, ${AVATAR_V()} AS avatar_v, status, plans_open FROM users WHERE state = 'active' AND id IN ${PEERS("?")} ORDER BY created_at`).bind(user.id).all();
+    return json({ users: results.map(({ avatar_v, ...u }) => ({ ...u, avatar: avatarUrl(u.id, avatar_v), status: readStatus(u.status), plans_open: u.plans_open !== 0 })) });
   });
 }

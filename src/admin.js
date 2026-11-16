@@ -2,7 +2,7 @@
 // 임시 비밀번호 · 이 회원으로 들어가기(비밀번호 없이, 하루짜리 세션 — 돌아가기로 관리자 세션으로 돌아와요)
 import { b64url } from "./lib/crypto.js";
 import { fail, json, now, uid, body } from "./http.js";
-import { startSession, sessionId, hashPassword } from "./auth.js";
+import { startSession, sessionId, hashPassword, logImpersonation, IMP_LOG } from "./auth.js";
 import { pushUsers } from "./push.js";
 import { TRIAL_MS, DEMO_IDS, kst, tellUser } from "./features.js";
 import { helpRoom, adminIds, MAX_BODY } from "./room.js";
@@ -248,18 +248,31 @@ export function registerAdmin(on) {
     ]);
     return json({ ok: true, temp_password: temp }, 200, { "cache-control": "no-store" });
   });
+  // 대신 들어가기 기록: 모든 관리자의 시작 · 끝 (최근 100줄, 새 것 먼저) — 기록은 auth.js logImpersonation
+  on("GET", "/admin/impersonations", async ({ env, user }) => {
+    needAdmin(user);
+    const { results } = await env.DB.prepare("SELECT value FROM user_app_state s, json_each(s.data) WHERE s.app = ? ORDER BY json_extract(value, '$.at') DESC LIMIT 100").bind(IMP_LOG).all();
+    const rows = results.map((r) => { try { return JSON.parse(r.value); } catch { return null; } }).filter(Boolean);
+    const ids = [...new Set(rows.flatMap((r) => [r.admin, r.user]))];
+    const names = ids.length ? (await env.DB.prepare("SELECT id, username, display_name FROM users WHERE id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids)).all()).results : [];
+    const who = Object.fromEntries(names.map((n) => [n.id, { username: n.username, display_name: n.display_name }]));
+    return json({ log: rows.map((r) => ({ kind: r.kind === "end" ? "end" : "start", at: r.at, ip: r.ip, admin: { id: r.admin, ...(who[r.admin] || {}) }, user: { id: r.user, ...(who[r.user] || {}) } })) }, 200, { "cache-control": "no-store" });
+  });
   // 이 회원으로 들어가기: 지금 관리자 세션은 그대로 두고, 그 회원의 하루짜리 세션 쿠키로 바꿔요
   on("POST", "/admin/users/:id/impersonate", async ({ env, user, params, req }) => {
     needAdmin(user);
     const u = await target(env, params.id); notAdmin(u);
     if (u.state !== "active") fail(400, "활성 회원만 들어갈 수 있어요.");
-    return json({ ok: true }, 200, { "set-cookie": await startSession(req, env, u.id, user.id) });
+    const cookie = await startSession(req, env, u.id, user.id);
+    await logImpersonation(env, req, "start", user.id, u.id);
+    return json({ ok: true }, 200, { "set-cookie": cookie });
   });
   // 관리자로 돌아가기: 대신 들어간 세션을 지우고 관리자 세션을 새로 줘요
   on("POST", "/auth/unimpersonate", async ({ env, user, req }) => {
     if (!user.imp_by) fail(400, "대신 들어간 상태가 아니에요.");
     const admin = await env.DB.prepare("SELECT id FROM users WHERE id = ? AND role = 'admin' AND state = 'active'").bind(user.imp_by).first();
     await env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(await sessionId(req)).run();
+    await logImpersonation(env, req, "end", user.imp_by, user.id);
     if (!admin) fail(401, "관리자 계정을 찾지 못했어요. 다시 로그인해 주세요.");
     return json({ ok: true }, 200, { "set-cookie": await startSession(req, env, admin.id) });
   });

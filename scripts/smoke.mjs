@@ -1441,13 +1441,15 @@ await section("profile", async () => {
   r = await call("a", "GET", "/me"); ok(r.data.user.display_name === "테스트A" && "bio" in r.data.user, "profile: /me returns bio");
   // 프로필 사진: 앱이 줄여 보낸 data URL 만, 80KB 까지, null 로 지우기
   const PIC = "data:image/jpeg;base64," + Buffer.from("x".repeat(600)).toString("base64");
-  r = await call("a", "PATCH", "/me", { avatar: PIC }); ok(r.status === 200 && r.data.user.avatar === PIC, "profile: photo saved");
-  r = await call("b", "GET", "/users"); ok(r.data.users.some((u) => u.display_name === "테스트A" && u.avatar === PIC), "profile: friends get the photo");
-  r = await call("a", "GET", "/me"); ok(r.data.user.avatar === PIC, "profile: /me returns photo");
+  // 목록 · /me 에는 사진 대신 버전 주소(/api/avatar/<id>?v=…)가 와요 — 사진 자체는 그 주소로 (hygiene 구역이 캐시 · 권한을 봐요)
+  const AV = /^\/api\/avatar\/[A-Za-z0-9_-]+\?v=[A-Za-z0-9._-]+$/;
+  r = await call("a", "PATCH", "/me", { avatar: PIC }); const picUrl = r.data?.user?.avatar; ok(r.status === 200 && AV.test(picUrl || ""), "profile: photo saved (answer has its versioned URL)");
+  r = await call("b", "GET", "/users"); ok(r.data.users.some((u) => u.display_name === "테스트A" && u.avatar === picUrl), "profile: friends get the photo URL");
+  r = await call("a", "GET", "/me"); ok(r.data.user.avatar === picUrl, "profile: /me returns the same photo URL");
   r = await call("a", "PATCH", "/me", { avatar: "https://evil.example/x.jpg" }); ok(r.status === 400, "profile: non-data-URL photo → 400");
   r = await call("a", "PATCH", "/me", { avatar: "data:text/html;base64,PHNjcmlwdD4=" }); ok(r.status === 400, "profile: non-image data URL → 400");
   r = await call("a", "PATCH", "/me", { avatar: "data:image/jpeg;base64," + "A".repeat(80_001) }); ok(r.status === 400, "profile: photo over 80KB → 400");
-  r = await call("a", "PATCH", "/me", { display_name: "테스트A" }); ok(r.data.user.avatar === PIC, "profile: other edits keep the photo");
+  r = await call("a", "PATCH", "/me", { display_name: "테스트A" }); ok(r.data.user.avatar === picUrl, "profile: other edits keep the photo");
   r = await call("a", "PATCH", "/me", { avatar: null }); ok(r.status === 200 && r.data.user.avatar === null, "profile: null removes photo");
 });
 
@@ -1734,6 +1736,79 @@ await section("apikeys", async () => {
   for (const x of (await call("a", "GET", "/apikeys")).data.keys) await call("a", "DELETE", "/apikeys/" + x.id);
   r = await v1("/plans/today", H); ok(r.status === 401, "v1: revoked key 401");
   await call("a", "DELETE", "/plans/" + plan.id);
+});
+
+// ---------- 서버 정리: 프로필 사진 캐시 · OAuth 등록 제한 · 대신 들어가기 기록 ----------
+await section("hygiene", async () => {
+  const W = "t_w" + tag, N = "t_n" + tag, IMPA = "t_v" + tag;
+  mk(W, "사진주인", "password1"); mk(IMPA, "관리V", "password1");
+  execFileSync("node", ["scripts/add-user.mjs", N, "남", "password1"], { stdio: "ignore" }); // 팀 없음 → 남
+  d1(`UPDATE users SET role = 'admin' WHERE username = '${IMPA}'`);
+  const t0 = Date.now(), wId = d1(`SELECT id FROM users WHERE username = '${W}'`)[0].id;
+  const raw = async (who, path, headers = {}) => fetch(BASE + path, { headers: { cookie: jar[who] || "", ...headers } });
+  const reg = (body, ip) => fetch(BASE + "/oauth/register", { method: "POST", headers: { "content-type": "application/json", ...(ip ? { "cf-connecting-ip": ip } : {}) }, body: JSON.stringify(body) });
+  const CB = ["https://hyg.example/cb"];
+  // 세 부분이 서로 막지 않게: 한 부분이 던지면 FAIL 하나로 적고 다음으로
+  const part = async (name, fn) => { try { await fn(); } catch (e) { ok(false, `${name}: threw ${e?.message || e}`); } };
+  try {
+    for (const [k, u] of [["w", W], ["n", N], ["v", IMPA]]) await call(k, "POST", "/auth/login", { username: u, password: "password1" });
+    await part("avatar", async () => {
+    // 1) 프로필 사진: 목록에는 주소만 · 그 주소는 1년 캐시(immutable) + ETag · 304 · 남은 404
+    const bytes = Buffer.from("\x89PNG hygiene " + tag), PIC = "data:image/png;base64," + bytes.toString("base64");
+    r = await call("w", "PATCH", "/me", { avatar: PIC }); const url = r.data?.user?.avatar || "";
+    r = await call("a", "GET", "/users"); const listed = r.data?.users?.find((u) => u.id === wId);
+    ok(listed && listed.avatar === url && !JSON.stringify(r.data).includes("data:image"), `avatar: /users carries a URL, not the photo bytes (${String(listed?.avatar).slice(0, 40)})`);
+    r = await call("w", "GET", "/me"); ok(r.data.user.avatar === url && /^\/api\/avatar\//.test(url), "avatar: /me carries the same versioned URL");
+    let res = await raw("a", url); const got = Buffer.from(await res.arrayBuffer()), cc = res.headers.get("cache-control") || "", etag = res.headers.get("etag");
+    ok(res.status === 200 && res.headers.get("content-type") === "image/png" && got.equals(bytes), `avatar: URL serves the image bytes (${res.status})`);
+    ok(/immutable/.test(cc) && /max-age=31536000/.test(cc) && /private/.test(cc) && !!etag, `avatar: versioned URL is cached for a year, private (${cc})`);
+    res = await raw("a", url, { "if-none-match": etag }); ok(res.status === 304, `avatar: same ETag → 304 (${res.status})`);
+    res = await raw("a", url.replace(/\?v=.*/, "?v=old")); ok(res.status === 200 && /no-cache/.test(res.headers.get("cache-control") || ""), "avatar: old version URL is not cached long");
+    res = await raw("n", url); ok(res.status === 404, `avatar: someone outside the team can't load it (${res.status})`);
+    res = await raw("x", url); ok(res.status === 401, `avatar: logged-out request → 401 (${res.status})`);
+    r = await call("w", "PATCH", "/me", { avatar: "data:image/png;base64," + Buffer.from("other " + tag).toString("base64") });
+    ok(r.data?.user?.avatar && r.data.user.avatar !== url, "avatar: a new photo gets a new URL (old cache can't stick)");
+    });
+    await part("oauth register", async () => {
+    // 2) OAuth 등록 제한: 주소 길이 · 개수 · IP 당 시간 제한 · 전체 개수 · 안 쓰인 클라이언트 정리
+    let res = await reg({ client_name: "hyg", redirect_uris: ["https://hyg.example/" + "a".repeat(600)] }); ok(res.status === 400, `oauth register: redirect URI over 512 chars → 400 (${res.status})`);
+    res = await reg({ client_name: "hyg", redirect_uris: Array.from({ length: 6 }, (_, i) => `https://hyg.example/cb${i}`) }); ok(res.status === 400, `oauth register: more than 5 redirect URIs → 400 (${res.status})`);
+    res = await reg({ client_name: "hyg", redirect_uris: ["javascript:alert(1)"] }); ok(res.status === 400, "oauth register: non-http redirect → 400");
+    const ip = `203.0.113.${1 + (Number.parseInt(tag, 36) % 250)}`; let hit = 0, n = 0;
+    for (; n < 12; n++) { res = await reg({ client_name: "hyg", redirect_uris: CB }, ip); if (res.status === 429) { hit = n + 1; break; } }
+    ok(hit === 11, `oauth register: the same IP is stopped after 10 in an hour (429 on try ${hit || "never"})`);
+    res = await reg({ client_name: "hyg", redirect_uris: CB }, "198.51.100.9"); ok(res.status === 201, `oauth register: another IP still works (${res.status})`);
+    const total = d1("SELECT COUNT(*) AS n FROM oauth_clients")[0].n, fill = Math.max(0, 500 - total);
+    if (fill) d1(`WITH RECURSIVE k(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM k WHERE i < ${fill}) INSERT INTO oauth_clients (client_id, client_name, redirect_uris, created_at) SELECT 'c_hygfill${tag}_' || i, 'hyg', '[]', ${t0} FROM k`);
+    res = await reg({ client_name: "hyg", redirect_uris: CB }, "198.51.100.10"); ok(res.status === 503, `oauth register: full (500 clients) → 503 (${res.status})`);
+    d1(`DELETE FROM oauth_clients WHERE client_id LIKE 'c_hygfill${tag}_%'`);
+    const old = t0 - 10 * 864e5, aId = d1(`SELECT id FROM users WHERE username = '${W}'`)[0].id;
+    d1(`INSERT INTO oauth_clients (client_id, client_name, redirect_uris, created_at) VALUES ('c_hygstale${tag}', 'hyg', '[]', ${old}), ('c_hygused${tag}', 'hyg', '[]', ${old}), ('c_hygfresh${tag}', 'hyg', '[]', ${t0});
+        INSERT INTO oauth_tokens (access_hash, refresh_hash, client_id, user_id, scope, access_expires, refresh_expires, created_at) VALUES ('hygacc${tag}', 'hygref${tag}', 'c_hygused${tag}', '${aId}', 'mcp', ${t0}, ${t0 + 864e5}, ${old})`);
+    r = await call("w", "POST", "/cron/run?cron=purge");
+    const left = d1(`SELECT client_id FROM oauth_clients WHERE client_id IN ('c_hygstale${tag}', 'c_hygused${tag}', 'c_hygfresh${tag}')`).map((x) => x.client_id).sort();
+    ok(r.status === 200 && left.join() === [`c_hygfresh${tag}`, `c_hygused${tag}`].sort().join(), `oauth cleanup: daily purge drops a 10-day-old client that never got a token, keeps used + new ones (${r.status} · ${left.length} left)`);
+    });
+    await part("impersonation log", async () => {
+    // 3) 대신 들어가기 기록: 시작 · 끝(돌아가기 · 로그아웃) · 누가 · 누구로 · IP 해시 · 관리자만
+    const vId = d1(`SELECT id FROM users WHERE username = '${IMPA}'`)[0].id, nId = d1(`SELECT id FROM users WHERE username = '${N}'`)[0].id;
+    await call("vi", "POST", "/auth/login", { username: IMPA, password: "password1" });
+    r = await call("vi", "POST", `/admin/users/${nId}/impersonate`); ok(r.status === 200, "impersonation: admin goes in as a member");
+    r = await call("vi", "POST", "/auth/unimpersonate"); ok(r.status === 200, "impersonation: back to admin");
+    await call("vi", "POST", `/admin/users/${nId}/impersonate`); await call("vi", "POST", "/auth/logout");
+    r = await call("v", "GET", "/admin/impersonations");
+    const mine = (r.data?.log || []).filter((e) => e.admin.id === vId && e.user.id === nId);
+    ok(r.status === 200 && mine.filter((e) => e.kind === "start").length === 2 && mine.filter((e) => e.kind === "end").length === 2, `impersonation log: 2 starts + 2 ends (unimpersonate · logout) recorded (${r.status} · ${mine.map((e) => e.kind).join(",")})`);
+    ok(mine.length === 4 && mine.every((e) => e.admin.username === IMPA && e.user.username === N && /^[0-9a-f]{12}$/.test(e.ip) && e.at >= t0), "impersonation log: who · whom · when · IP hash (not the raw IP)");
+    ok(mine[0]?.kind === "end" && mine[0].at >= mine[mine.length - 1].at, "impersonation log: newest first");
+    r = await call("n", "GET", "/admin/impersonations"); ok(r.status === 403, "impersonation log: members can't read it");
+    r = await call("n", "GET", "/apps/imp_log/state"); ok(r.status === 404, "impersonation log: not reachable through the /apps store");
+    });
+  } finally {
+    await call("w", "PATCH", "/me", { avatar: null });
+    d1(`DELETE FROM oauth_clients WHERE client_name = 'hyg' AND (created_at >= ${t0} OR client_id LIKE 'c_hyg%')`);
+    d1(`DELETE FROM oauth_tokens WHERE access_hash = 'hygacc${tag}'`);
+  }
 });
 
 // 개인 자료 공급사 (서버 없이 — fetch 를 잠깐 가짜로 바꿔서 확인해요)

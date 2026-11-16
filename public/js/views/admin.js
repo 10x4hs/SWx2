@@ -97,7 +97,7 @@ export function mount(root, ctx) {
   };
   const draw = () => {
     const s = data.stats, n = feats.requests.length;
-    const TABS = [["users", "회원", s.pending], ["reqs", "기능 신청", n], ["ann", "공지", 0], ["teams", "팀", 0], ["decide", "AI 판정", 0]];
+    const TABS = [["users", "회원", s.pending], ["reqs", "기능 신청", n], ["ann", "공지", 0], ["teams", "팀", 0], ["imp", "대신 들어가기", 0], ["decide", "AI 판정", 0]];
     body.innerHTML = `
       <nav class="adm-tabs" role="tablist">${TABS.map(([k, l, c]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}${c ? ` <span class="adm-count">${c}</span>` : ""}</button>`).join("")}</nav>
       <section class="adm-pane" data-pane="users" ${tab === "users" ? "" : "hidden"}>
@@ -117,8 +117,9 @@ export function mount(root, ctx) {
           <p class="faint adm-ann-hint"># 제목 · **굵게** · *기울임* · - 목록 · [글자](https://주소) · \`코드\` · 사진은 끌어다 놓거나 붙여 넣어도 돼요 — 첫 줄이 띠에 떠요</p>
           <div class="adm-acts"><button type="button" class="btn sm ghost" data-ann-img>사진 넣기</button><input type="file" class="adm-ann-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden><button type="button" class="btn sm ghost" data-ann-pv aria-pressed="false">미리보기</button><button type="button" class="btn sm ghost" data-ann-cancel hidden>새로 쓰기</button><button class="btn sm">올리기</button></div></form></section>
       <section class="adm-pane" data-pane="teams" ${tab === "teams" ? "" : "hidden"}><div class="adm-teams"><p class="faint">불러오는 중…</p></div></section>
+      <section class="adm-pane" data-pane="imp" ${tab === "imp" ? "" : "hidden"}><div class="adm-imp"><p class="faint">불러오는 중…</p></div></section>
       <section class="adm-pane" data-pane="decide" ${tab === "decide" ? "" : "hidden"}><div class="adm-decide"><p class="faint">불러오는 중…</p></div></section>`;
-    drawRows(); drawBc(); drawAnn(); loadTeams(); loadDecide();
+    drawRows(); drawBc(); drawAnn(); loadTeams(); loadImp(); loadDecide();
   };
   body.addEventListener("input", (e) => {
     if (e.target.matches(".adm-search")) { q = e.target.value.trim().toLowerCase(); drawRows(); }
@@ -211,6 +212,14 @@ export function mount(root, ctx) {
     el.innerHTML = teams.length ? teams.map((t) => `<div class="adm-team"><b>${esc(t.name)}</b> <small class="faint">팀장 @${esc(t.owner || "—")} · 코드 ${esc(t.code)} · ${day(t.created_at)}</small>
       <div class="adm-team-m">${t.members.map((m) => `<span>${esc(m.display_name || m.username)} <small class="faint">@${esc(m.username)}</small></span>`).join("")}</div></div>`).join("") : '<p class="faint">아직 팀이 없어요.</p>';
   }).catch(() => {});
+  // 대신 들어가기 기록 (GET /admin/impersonations): 누가 · 누구로 · 언제 · 시작/끝 · IP 해시 (IP 그대로는 안 남겨요)
+  const when = (t) => new Date(t).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const nm = (u) => (u.username ? `${esc(u.display_name || u.username)} <small class="faint">@${esc(u.username)}</small>` : '<span class="faint">지운 회원</span>');
+  const loadImp = () => api.adminImpersonations().then(({ log }) => {
+    const el = body.querySelector(".adm-imp"); if (!el) return;
+    el.innerHTML = `<p class="faint">관리자가 '들어가기'로 회원 화면에 들어간 때와 나온 때예요 (최근 100줄). 들어간 세션은 하루 뒤 저절로 끝나요.</p>
+      <div class="adm-table-wrap"><table class="adm-table"><thead><tr><th>언제</th><th></th><th>관리자</th><th>회원</th><th class="adm-col-seen">IP 해시</th></tr></thead><tbody>${log.map((r) => `<tr><td>${when(r.at)}</td><td><span class="adm-badge">${r.kind === "end" ? "끝" : "시작"}</span></td><td>${nm(r.admin)}</td><td>${nm(r.user)}</td><td class="mono adm-col-seen">${esc(r.ip || "")}</td></tr>`).join("") || '<tr><td colspan="5" class="faint">아직 기록이 없어요</td></tr>'}</tbody></table></div>`;
+  }).catch((e) => { const el = body.querySelector(".adm-imp"); if (el) el.innerHTML = `<p class="faint">${esc(e.message || "불러오지 못했어요.")}</p>`; });
   // AI 판정 (src/decide.js · GET /decide/stats): 엔진 · 질문 종류별로 사람 결과와 맞은 비율 · 확신 구간별 정확도
   const KIND = { rel_type: "관계 제안", rel_guess: "연결할 때 짐작", concept_sort: "새 노트 자리", route: "튜터 길 고르기", test: "평가" };
   const pc = (x) => (x == null ? "—" : Math.round(x * 100) + "%");

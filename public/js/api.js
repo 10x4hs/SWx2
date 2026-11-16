@@ -65,6 +65,7 @@ export const api = {
   adminAnnUpdate: (id, b) => request("PATCH", `/admin/announcements/${id}`, b),
   adminAnnOrder: (ids) => request("POST", "/admin/announcements/order", { ids }),
   adminTeams: () => request("GET", "/admin/teams"),
+  adminImpersonations: () => request("GET", "/admin/impersonations"), // 대신 들어가기 기록 (시작 · 끝)
   adminPlans: (id, from, to) => request("GET", `/admin/users/${id}/plans?from=${from}&to=${to}`),
   adminAnnounce: (body, extra = {}) => request("POST", "/admin/announcements", { body, ...extra }),
   // 공지 사진: 파일 그대로 올려요 → { src: "/api/ann/img/…" }
