@@ -4,6 +4,7 @@
 //   GET /px/<token>/<base64url(주소)>   프록시 본체. html 은 HTMLRewriter 로 스트리밍 재작성 + shim 주입, css 는 url() 재작성, 나머지는 그대로
 // 격리: 응답에 CSP sandbox(allow-same-origin 없음) → 외부 코드는 우리 쿠키 · 저장소에 못 닿아요. 쿠키는 전달하지 않아요(무상태 → 로그인은 안 돼요).
 // 한계(사용자 고지): 구글 · 네이버 로그인 불가, 사이트마다 깨질 수 있음, 무료 요금제라 느릴 수 있음.
+import { publicUrl, safeFetch } from "./lib/ssrf.js";
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
 const TOKEN_TTL = 3600e3;
 const ATTRS = ["href", "src", "srcset", "action", "poster", "data-src", "data-srcset", "formaction", "ping"];
@@ -26,14 +27,8 @@ async function checkToken(env, token) {
   const exp = +body.split(".").pop(); return exp > Date.now() ? body : null;
 }
 
-// 사설망 · 자기 자신은 금지
-function allowed(target, selfHost) {
-  if (!/^https?:$/.test(target.protocol)) return false;
-  const h = target.hostname.toLowerCase();
-  if (h === selfHost || h === "localhost" || h.endsWith(".local") || h.endsWith(".internal")) return false;
-  if (/^(127\.|10\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h) || h === "::1" || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80")) return false;
-  return true;
-}
+// 사설망 · 자기 자신은 금지 (src/lib/ssrf.js — AI 페이지 읽기와 같은 검사)
+const allowed = (target, selfHost) => !!publicUrl(target, selfHost);
 const px = (token, abs) => `/px/${token}/${b64u(abs)}`;
 function rewriteUrl(raw, base, token) {
   const v = String(raw || "").trim();
@@ -116,7 +111,7 @@ export function registerProxy(on, { json, fail }) {
     const hit = cache.get(key); if (hit && hit.at > Date.now() - 600e3) return json(hit.v);
     let v;
     try {
-      const r = await fetch(target.href, { method: "GET", headers: { "user-agent": UA, accept: "text/html,*/*" }, redirect: "follow", cf: { cacheTtl: 0 } });
+      const r = await safeFetch(target.href, { method: "GET", headers: { "user-agent": UA, accept: "text/html,*/*" }, cf: { cacheTtl: 0 } }, url.hostname);
       const xfo = (r.headers.get("x-frame-options") || "").toLowerCase();
       const csp = (r.headers.get("content-security-policy") || "") + " " + (r.headers.get("content-security-policy-report-only") ? "" : "");
       const fa = /frame-ancestors\s+([^;]+)/i.exec(r.headers.get("content-security-policy") || "");
@@ -135,7 +130,7 @@ export function registerProxy(on, { json, fail }) {
     const host = target.hostname.replace(/^www\./, "");
     let title = host, icon = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(target.hostname)}&sz=64`;
     try {
-      const r = await fetch(target.href, { headers: { "user-agent": UA, accept: "text/html,*/*", "accept-language": "ko,en;q=0.8" }, redirect: "follow", cf: { cacheTtl: 600 } });
+      const r = await safeFetch(target.href, { headers: { "user-agent": UA, accept: "text/html,*/*", "accept-language": "ko,en;q=0.8" }, cf: { cacheTtl: 600 } }, url.hostname);
       const html = (await r.text()).slice(0, 200_000);
       const t = /<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)/i.exec(html)?.[1] || /<title[^>]*>([^<]{1,120})<\/title>/i.exec(html)?.[1];
       if (t) title = t.replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim().slice(0, 40) || host;

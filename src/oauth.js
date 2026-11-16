@@ -7,6 +7,7 @@
 // 코드 · 토큰 · 비밀값은 전부 SHA-256 만 저장해요. 토큰 하나 = 그 사람 계정 권한.
 
 import { sha256, b64url } from "./lib/crypto.js";
+import { canUse, FEATURES } from "./features.js";
 
 const ACCESS_TTL = 3600e3;            // 1시간
 const REFRESH_TTL = 30 * 864e5;       // 30일
@@ -122,6 +123,8 @@ async function authorize(req, env, url, deps) {
       </form>`, loginErr ? 401 : 200);
   }
   if (user.must_change_pw) return page("먼저 비밀번호를 바꿔 주세요", `<p>앱(<a href="/">${esc(url.origin)}</a>)에서 첫 비밀번호를 바꾼 뒤 다시 연결해 주세요.</p>`, 403, setCookie);
+  // MCP 연결은 그 기능이 열린 사람만 (토큰이 생긴 뒤에도 /mcp 가 같은 검사를 해요)
+  if (!canUse(user, "mcp")) return page("MCP 연결이 잠겨 있어요", `<p>'${esc(FEATURES.mcp)}' 은(는) 아직 잠겨 있어요. 앱(<a href="/">${esc(url.origin)}</a>)에서 사용 신청을 하면 관리자가 열어 줘요.</p>`, 403, setCookie);
 
   if (req.method === "POST" && form.action === "allow") {
     const code = rand(32);

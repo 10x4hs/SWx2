@@ -1,9 +1,10 @@
 // 사용자 페이지 러너 — /pf/<id>/index.html 을 sandbox iframe 에 띄우고(allow-same-origin 없음 → 쿠키 · fetch("/api") 못 씀),
-// 페이지 안 브리지(public/js/page-bridge.js)와 postMessage 로 이야기해요. 내 페이지는 앱 API 읽기·쓰기 전부, 남이 공유한 페이지는 GET 만.
+// 페이지 안 브리지(public/js/page-bridge.js)와 postMessage 로 이야기해요. 부를 수 있는 앱 API 는 허용 목록(page-guard.js)만:
+// 내 페이지는 페이지 규칙에 적힌 것, 남이 공유한 페이지는 이 페이지 저장소 · /me · /users 만.
 // kind=url 페이지는 바깥 사이트를 그대로 iframe 으로 (브리지 없음).
 import { api } from "./api.js";
 import { toast, ymd, today, esc } from "./util.js";
-import { pageApiBlock } from "./page-guard.js";
+import { pageApiBlock, pageApiFilter } from "./page-guard.js";
 
 const VARS = ["--bg", "--page-bg", "--paper", "--ink", "--ink-2", "--ink-3", "--line", "--line-2", "--glass", "--glass-3", "--hover", "--accent", "--accent-soft", "--font", "--c-blue", "--c-green", "--c-amber", "--c-rose", "--c-teal", "--c-purple", "--m0", "--m1", "--m2"];
 function themeInfo() {
@@ -52,10 +53,10 @@ export function mountRunner(host, ctx, page, { preview = null } = {}) {
   };
   async function handle(m) {
     if (m.type === "api") {
-      // 주소 정리 · /auth · /pages · 친구 일기 · 일기 친구 초대 · 남이 공유한 페이지는 읽기만 (page-guard.js)
-      const no = pageApiBlock(m.method, m.path, readonly);
+      // 허용 목록만 (page-guard.js) — 남이 공유한 페이지는 이 페이지 저장소 · /me · /users 만, 돌려줄 때도 공개 칸만
+      const no = pageApiBlock(m.method, m.path, { readonly, pageId: page.id });
       if (no) throw new Error(no);
-      return api.raw(m.method, m.path, m.body);
+      return pageApiFilter(m.method, m.path, await api.raw(m.method, m.path, m.body), readonly);
     }
     if (m.type === "go") { if (/^#\//.test(m.hash || "")) ctx.go(m.hash); return true; }
     if (m.type === "toast") { toast(String(m.text || "").slice(0, 200)); return true; }

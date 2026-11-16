@@ -105,18 +105,23 @@ async function route(req, env, url, ec) {
       const t = await tokenUser(env, bearer);
       if (!t) fail(401, "위젯 연결이 끊겼어요. 웹에서 다시 연결해 주세요.");
       ctx.user = t.user;
-      return r.handler(ctx);
-    }
-    ctx.user = await requireUser(req, env);
-    // 기능 잠금: 관리자 말고는 승인받은 기능만 (뉴스 · 대화방 · 계획은 누구나)
-    const locked = gate(req.method, path, ctx.user);
-    if (locked) return locked;
-    // AI 하루 사용량: 첫 팀(SWx2) 밖의 사람은 하루 AI_DAILY 번까지 (키 비용)
-    if (req.method === "POST" && AI_PATH.test(path)) await aiQuota(env, ctx.user);
-    // 첫 로그인: 비밀번호를 바꾸기 전에는 내 정보·멤버 목록·로그인 관련 API만 쓸 수 있어요
-    if (ctx.user.must_change_pw && !MUST_CHANGE_OPEN(path)) fail(403, "먼저 비밀번호를 바꿔 주세요.", { must_change_password: true });
+    } else ctx.user = await requireUser(req, env);
+    const stop = await authorize(env, req.method, path, ctx.user);
+    if (stop) return stop;
   }
   return r.handler(ctx);
+}
+
+// 로그인한 사람이 이 주소를 써도 되는지 — 웹(route) · MCP(internalCall) · 위젯 토큰이 모두 이걸 거쳐요. 막을 땐 throw(HttpError) 또는 대신 줄 응답
+async function authorize(env, method, path, user) {
+  // 기능 잠금: 관리자 말고는 승인받은 기능만 (뉴스 · 대화방 · 계획은 누구나)
+  const locked = gate(method, path, user);
+  if (locked) return locked;
+  // AI 하루 사용량: 첫 팀(SWx2) 밖의 사람은 하루 AI_DAILY 번까지 (키 비용)
+  if (method === "POST" && AI_PATH.test(path)) await aiQuota(env, user);
+  // 첫 로그인: 비밀번호를 바꾸기 전에는 내 정보·멤버 목록·로그인 관련 API만 쓸 수 있어요
+  if (user.must_change_pw && !MUST_CHANGE_OPEN(path)) fail(403, "먼저 비밀번호를 바꿔 주세요.", { must_change_password: true });
+  return null;
 }
 
 const AI_PATH = /^\/(?:ai\/[a-z-]+|books\/ask|apps\/cim\/ask|apps\/psy\/spar|svm\/translate|papers\/(?:ask|explain|quiz)|review\/week\/ai|room\/ai|news\/(?:summarize|item\/[^/]+\/(?:deep|summarize|ask)|comments\/[^/]+\/ai-rebut))$/;
@@ -127,7 +132,7 @@ async function aiQuota(env, user) {
   if (!r.meta.changes) fail(429, `오늘 AI 는 ${max}번까지 쓸 수 있어요. 내일 다시 써 주세요.`);
 }
 
-// 앱 API 를 HTTP 없이 안에서 부르기 (MCP 도구가 웹 화면과 같은 검증 · 권한을 쓰게)
+// 앱 API 를 HTTP 없이 안에서 부르기 (MCP 도구가 웹 화면과 같은 검증 · 권한 · 기능 잠금 · AI 사용량을 쓰게 — authorize)
 async function internalCall(env, ec, origin, user, method, path, payload) {
   const url = new URL("/api" + path, origin), p = url.pathname.slice(4);
   const hit = match(method, p);
@@ -135,7 +140,7 @@ async function internalCall(env, ec, origin, user, method, path, payload) {
   const { r, m } = hit;
   const req = new Request(url, { method, headers: { "content-type": "application/json", "x-trio": "1" }, body: payload === undefined ? undefined : JSON.stringify(payload) });
   try {
-    const res = await r.handler({ req, env, ec, url, params: m.groups || {}, q: url.searchParams, user });
+    const res = (r.auth && (await authorize(env, method, p, user))) || (await r.handler({ req, env, ec, url, params: m.groups || {}, q: url.searchParams, user }));
     return { status: res.status, data: await res.json().catch(() => null) };
   } catch (e) {
     if (e instanceof HttpError) return { status: e.status, data: { error: e.message } };

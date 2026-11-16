@@ -2,7 +2,7 @@
 // 키는 Worker 비밀값(GEMINI_API_KEY, GROQ_API_KEY, COHERE_API_KEY, MIMO_API_KEY, ZHIPU_API_KEY, OPENROUTER_API_KEY, KILO_API_KEY, OLLAMA_API_KEY)에만 있고 브라우저로 나가지 않아요.
 
 import { mockText, mockJson, mockChunks, MOCK_MODEL } from "./lib/aimock.js";
-import { toolPrompt, parseToolCall, runAgentTool, toolSummary, autoResearch, WRITE_TOOLS, CLAIM_RE, dayPlans, stripToolLines } from "./agent.js";
+import { toolPrompt, parseToolCall, runAgentTool, toolSummary, autoResearch, WRITE_TOOLS, CLAIM_RE, dayPlans, stripToolLines, toolSession, NO_DELETE } from "./agent.js";
 import { cleanImages, withImages } from "./vision.js";
 import { kstToday } from "./lib/day.js";
 
@@ -161,7 +161,7 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
 
     let system = b.use_context === false ? basePrompt(user) : await contextPrompt(env, user, b, message);
     // 모든 모델이 에이전트처럼: 웹 검색 · 페이지 읽기 · 노트 · 계획 도구가 늘 열려 있어요. 계획 고치기는 모델 하나일 때만 (비교 모드에서 셋이 같은 일을 넣지 않게)
-    const TOOLS = ["web_search", "read_page", "search_notes", "read_note", "my_plans", ...(live.length === 1 ? ["day_plans", "add_plan", "update_plan", "delete_plan"] : [])];
+    const TOOLS = ["web_search", "read_page", "search_notes", "read_note", "my_plans", ...(live.length === 1 ? ["day_plans", "add_plan", "update_plan"] : [])]; // 지우기는 AI 에게 없어요 (agent.js NO_DELETE)
     // 날짜 감각: 사용자가 '보고 있는 날짜'(b.day — 달력에서 고른 날)와 '실제 오늘'(b.today)은 다를 수 있어요.
     // 날짜 말이 없는 요청은 보고 있는 날짜 하나에만 넣게 해요 (예전엔 오늘·내일 둘 다 보여 줘서 두 날에 넣는 일이 있었어요)
     const isYmd = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
@@ -169,7 +169,7 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
     const realToday = isYmd(b.today) ? b.today : kstToday();
     const dayWord = viewDay === realToday ? "오늘" : viewDay > realToday ? "실제 오늘이 아니라 앞으로 올 날" : "실제 오늘이 아니라 지난 날";
     system += "\n\n" + toolPrompt(TOOLS, 4) + (live.length === 1
-      ? `\n계획을 넣거나 고쳐 달라고 하면 add_plan 등으로 직접 해. 시간은 24시간 HH:MM.\n사용자가 지금 보고 있는 날짜: ${viewDay} (${dayWord}). 실제 오늘: ${realToday}.\n사용자가 날짜를 말하지 않으면 add_plan 의 date 는 반드시 ${viewDay} 하나만 써. '내일'·'모레'·'다음 주' 처럼 날짜 말이 있을 때만 그 날짜로(기준은 보고 있는 날짜 ${viewDay}) 넣어.`
+      ? `\n계획을 넣거나 고쳐 달라고 하면 add_plan 등으로 직접 해. 시간은 24시간 HH:MM. 지워 달라고 하면 "${NO_DELETE}" 라고 답해.\n사용자가 지금 보고 있는 날짜: ${viewDay} (${dayWord}). 실제 오늘: ${realToday}.\n사용자가 날짜를 말하지 않으면 add_plan 의 date 는 반드시 ${viewDay} 하나만 써. '내일'·'모레'·'다음 주' 처럼 날짜 말이 있을 때만 그 날짜로(기준은 보고 있는 날짜 ${viewDay}) 넣어.`
       : "");
     // 지금 DB 에 실제로 있는 '보고 있는 날짜' 계획을 사실로 넣어 줘요 — 앞 대화의 "넣었어요"를 믿고 상태를 지어내지 않게
     if (live.length === 1) {
@@ -195,9 +195,11 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
       // 이미지 읽기 · 링크 읽기 · (필요하면) 웹 검색은 한 번만 해서 모든 모델이 같이 써요
       const each = (o) => Promise.all(live.map((t) => send({ ...o, model: t })));
       let ask = message;
+      // read_page 가 열 수 있는 주소: 이 대화에서 사용자가 적은 주소 + 이번 web_search 결과 (agent.js toolSession)
+      const session = toolSession(message, ...past.filter((m) => m.role === "user").map((m) => m.content));
       try {
         if (images.length) await each({ type: "status", text: "이미지 읽는 중…" });
-        const [vis, pre] = await Promise.all([withImages(env, message, images), autoResearch(message, b.web === true ? true : "auto")]);
+        const [vis, pre] = await Promise.all([withImages(env, message, images), autoResearch(message, b.web === true ? true : "auto", session)]);
         for (const st of [vis.step, ...pre.steps].filter(Boolean)) await each({ type: "tool", ...st });
         ask = [vis.text, pre.note].filter(Boolean).join("\n\n");
         if (vis.note) await env.DB.prepare("UPDATE chat_messages SET content = ? WHERE id = ?").bind(`${message}\n\n${vis.note}`, userMsg.id).run();
@@ -207,7 +209,7 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
         const history = past.filter((m) => m.role === "user" || m.model === t).slice(-16);
         try {
           const { sys, tools } = forTarget(t);
-          const r = await runToolLoop(env, user, t, sys, history, ask, tools, b.periods, (o) => send({ ...o, model: t }));
+          const r = await runToolLoop(env, user, t, sys, history, ask, tools, b.periods, (o) => send({ ...o, model: t }), session);
           await send({ type: "done", model: t, used: r.used, fallback: r.used !== MODELS[t].chain[0], changed: r.changed }); // fallback = 첫 모델이 아닌 걸로 답함
           return { t, text: r.text };
         } catch (e) {
@@ -230,7 +232,7 @@ export function registerAi(on, { json, body, fail, str, uid, now }) {
 
 // 도구 바퀴(채팅용): 글은 바로바로 흘려보내되, 첫 글자가 도구 줄(<<tool>> · ```tool · {)로 시작하면 모아 두고 실행해요.
 // 글을 흘려보낸 뒤에 도구 줄이 나오면 { type: "reset" } 으로 화면의 그 답을 지우고 이어서 해요.
-async function runToolLoop(env, user, t, system, history, message, tools, periods, send) {
+async function runToolLoop(env, user, t, system, history, message, tools, periods, send, session) {
   const convo = [...history];
   let msg = message, used = null, changed = false, nudges = 0;
   const acted = [];   // 이번 요청에서 실제로 실행한 도구 (계획 바꾸기 · 확인)
@@ -280,7 +282,7 @@ async function runToolLoop(env, user, t, system, history, message, tools, period
     }
     if (mode === "stream") await send({ type: "reset" });
     await send({ type: "status", text: `${TOOL_KO[call.name] || call.name} 중…` });
-    const result = await runAgentTool(env, user, call.name, call.args, { periods: Object.values(periods || {}) });
+    const result = await runAgentTool(env, user, call.name, call.args, { periods: Object.values(periods || {}), session });
     if (WRITE_TOOLS.has(call.name) && !result.error) changed = true;
     const summary = toolSummary(call.name, call.args, result);
     acted.push({ name: call.name, ok: !result.error, summary });

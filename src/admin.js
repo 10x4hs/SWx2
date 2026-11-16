@@ -244,6 +244,7 @@ export function registerAdmin(on) {
     await env.DB.batch([
       env.DB.prepare("UPDATE users SET pw_hash = ?, pw_salt = ?, must_change_pw = 1, fail_count = 0, locked_until = 0, pw_changed_at = ? WHERE id = ?").bind(hash, salt, now(), u.id),
       env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(u.id),
+      env.DB.prepare("DELETE FROM user_app_state WHERE user_id = ? AND app = 'login_fails'").bind(u.id), // IP 별 로그인 잠금도 풀어요 (auth.js LOGIN_FAILS)
     ]);
     return json({ ok: true, temp_password: temp }, 200, { "cache-control": "no-store" });
   });

@@ -7,6 +7,7 @@
 //   DELETE /library/:id                           넣은 사람만
 import { postRoomMessage, checkRoom, canEnter } from "./room.js";
 import { PEERS } from "./teams.js";
+import { privateHost, safeFetch } from "./lib/ssrf.js";
 // 창고는 같은 팀 사람(나 포함)이 넣은 것만 보여요. 표시(읽는 중 · 메모)도 같은 팀 사람 것만
 
 const KINDS = new Set(["book", "link", "video"]);
@@ -18,16 +19,7 @@ const LIST_LIMIT = 500;
 const YT_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be", "www.youtu.be"]);
 const YT_ID = /^[A-Za-z0-9_-]{11}$/;
 
-// ---------- URL 안전 검사 ----------
-// Workers 는 DNS 를 못 풀어서 호스트 이름 문자열로만 사설 주소를 막아요 (localhost · 127.x · 10.x · 192.168.x · 172.16~31.x · ::1 · .internal)
-function privateHost(host) {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal") || h.endsWith(".local")) return true;
-  if (h === "::1" || h === "0.0.0.0" || (h.includes(":") && /^(fe80|fc|fd)/.test(h))) return true;
-  if (/^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) || /^169\.254\./.test(h) || /^0\./.test(h)) return true;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
-  return false;
-}
+// ---------- URL 안전 검사 (사설 주소: src/lib/ssrf.js) ----------
 // http(s) 만, 사설 주소 아님. 아니면 null
 export function safeUrl(raw) {
   if (typeof raw !== "string") return null;
@@ -44,7 +36,7 @@ export function safeUrl(raw) {
 async function fetchTimeout(url, init = {}, ms = FETCH_TIMEOUT) {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), ms);
-  try { return await fetch(url, { redirect: "follow", ...init, signal: ac.signal }); }
+  try { return await safeFetch(url, { ...init, signal: ac.signal }); } // 리디렉트도 주소마다 사설 주소 검사
   finally { clearTimeout(t); }
 }
 
