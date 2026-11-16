@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "playwright": "1.63.0",
-    "wrangler": "^4.142.0"
+    "wrangler": "^4.162.0"
   },
   "dependencies": {
     "dompurify": "^3.4.18",
