@@ -10,7 +10,7 @@
   border: 1px solid var(--glass-edge);
   box-shadow: var(--glass-hi), 0 12px 30px -14px rgba(0, 0, 0, .55);
   color: var(--ink);
-  font: 500 13px/1.35 var(--font);
+  font: 500 var(--fs-md)/1.35 var(--font);
   letter-spacing: -.005em;
   opacity: 0;
   transform: translate(-50%, -8px);
@@ -51,13 +51,13 @@
   border-radius: 10px; min-height: 30px;
 }
 .pwa-hint-go { padding: 0 12px; background: var(--ink); color: var(--glass-3); font-weight: 600; white-space: nowrap; }
-.pwa-hint-x { width: 30px; color: var(--ink-3); font-size: 18px; line-height: 1; }
+.pwa-hint-x { width: 30px; color: var(--ink-3); font-size: var(--fs-2xl); line-height: 1; }
 .pwa-hint-x:hover { background: var(--hover); color: var(--ink); }
 .pwa-hint-go:focus-visible,
 .pwa-hint-x:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 @media (max-width: 480px) {
-  .pwa-net, .pwa-hint { font-size: 12.5px; }
+  .pwa-net, .pwa-hint { font-size: var(--fs-sm); }
 }
 
 @media (prefers-reduced-motion: reduce) {
