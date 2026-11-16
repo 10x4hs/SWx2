@@ -41,8 +41,10 @@ function asMeta(origin) {
   };
 }
 
-// 등록한 주소와 글자 하나까지 같아야 해요. https 만 (개발용 localhost 는 http 허용)
+// 등록한 주소와 글자 하나까지 같아야 해요. https 만 (개발용 localhost 는 http 허용) · 주소 하나 MAX_URI 글자까지
+const MAX_URI = 512, MAX_URIS = 5;
 const okRedirect = (u) => {
+  if (typeof u !== "string" || u.length > MAX_URI) return false;
   try {
     const x = new URL(u);
     if (x.hash) return false;
@@ -69,12 +71,27 @@ export async function handleOAuth(req, env, url, deps) {
 }
 
 // ---------- 등록 ----------
+// 아무나(로그인 없이) 부를 수 있어서 막아 둬요 — 새 표(마이그레이션) 없이:
+//   IP 하나당 REG_PER_HOUR 번 / 시간: client_id 가 "c_<IP 해시 8글자><무작위>" 라서 최근 1시간 안의 같은 앞자리를 세요
+//   전체 MAX_CLIENTS 개까지: 넘으면 503 (토큰을 한 번도 못 받은 오래된 클라이언트는 매일 크론이 지워요 — purgeStaleClients)
+//   redirect_uris 는 MAX_URIS 개 · 하나 MAX_URI 글자까지 (okRedirect) · client_name 은 80글자로 잘라요
+export const REG_PER_HOUR = 10, MAX_CLIENTS = 500, STALE_CLIENT_DAYS = 7;
+// cf-connecting-ip 는 Cloudflare 가 늘 넣어 줘요 (손님이 못 바꿔요). 없으면 내 컴퓨터(wrangler dev) → IP 제한은 빼요 (검사가 여러 번 돌아도 막히지 않게)
+const ipOf = (req) => req.headers.get("cf-connecting-ip") || "";
+const ipTag = async (ip) => (await sha256("oauth-reg:" + (ip || "local"))).slice(0, 8);
 async function register(req, env) {
+  if (Number(req.headers.get("content-length") || 0) > 16_384) return oerr("invalid_client_metadata", "등록 내용이 너무 커요.");
   let b; try { b = await req.json(); } catch { return oerr("invalid_client_metadata", "JSON 으로 보내 주세요."); }
-  const uris = Array.isArray(b.redirect_uris) ? b.redirect_uris.filter((u) => typeof u === "string") : [];
-  if (!uris.length || uris.length > 10 || !uris.every(okRedirect)) return oerr("invalid_redirect_uri", "redirect_uris 는 https 주소(개발용 localhost 는 http)여야 해요.");
+  if (!b || typeof b !== "object") return oerr("invalid_client_metadata", "JSON 객체로 보내 주세요.");
+  const uris = Array.isArray(b.redirect_uris) ? b.redirect_uris : [];
+  if (!uris.length || uris.length > MAX_URIS || !uris.every(okRedirect)) return oerr("invalid_redirect_uri", `redirect_uris 는 https 주소(개발용 localhost 는 http) ${MAX_URIS}개까지 · 하나 ${MAX_URI}글자까지예요.`);
+  const ip = ipOf(req), tag = await ipTag(ip), now = Date.now();
+  const lim = await env.DB.prepare("SELECT (SELECT COUNT(*) FROM oauth_clients WHERE client_id >= ?1 AND client_id < ?2 AND created_at > ?3) AS mine, (SELECT COUNT(*) FROM oauth_clients) AS total")
+    .bind("c_" + tag, "c_" + tag + "~", now - 3600e3).first();
+  if (ip && lim.mine >= REG_PER_HOUR) return oerr("slow_down", "등록을 너무 자주 했어요. 한 시간 뒤에 다시 해 주세요.", 429);
+  if (lim.total >= MAX_CLIENTS) return oerr("temporarily_unavailable", "지금은 새 앱을 등록할 수 없어요. 나중에 다시 해 주세요.", 503);
   const method = ["none", "client_secret_post", "client_secret_basic"].includes(b.token_endpoint_auth_method) ? b.token_endpoint_auth_method : "client_secret_post";
-  const id = "c_" + rand(16), secret = method === "none" ? null : rand(32), now = Date.now();
+  const id = "c_" + tag + rand(16), secret = method === "none" ? null : rand(32);
   const name = String(b.client_name || "MCP 앱").slice(0, 80);
   await env.DB.prepare("INSERT INTO oauth_clients (client_id, client_secret_hash, client_name, redirect_uris, created_at) VALUES (?, ?, ?, ?, ?)")
     .bind(id, secret ? await sha256(secret) : null, name, JSON.stringify(uris), now).run();
@@ -82,6 +99,13 @@ async function register(req, env) {
     client_id: id, ...(secret ? { client_secret: secret, client_secret_expires_at: 0 } : {}), client_id_issued_at: Math.floor(now / 1000),
     client_name: name, redirect_uris: uris, grant_types: ["authorization_code", "refresh_token"], response_types: ["code"], token_endpoint_auth_method: method, scope: SCOPE,
   }, 201);
+}
+
+// 매일 크론(src/cron.js purgeExpired): 등록한 지 STALE_CLIENT_DAYS 일이 지났는데 토큰을 한 번도 못 받은(지금 토큰 · 코드도 없는) 클라이언트를 지워요
+export async function purgeStaleClients(env, t = Date.now()) {
+  const r = await env.DB.prepare("DELETE FROM oauth_clients WHERE created_at < ? AND NOT EXISTS (SELECT 1 FROM oauth_tokens k WHERE k.client_id = oauth_clients.client_id) AND NOT EXISTS (SELECT 1 FROM oauth_codes c WHERE c.client_id = oauth_clients.client_id AND c.expires_at > ?)")
+    .bind(t - STALE_CLIENT_DAYS * 864e5, t).run();
+  return r.meta.changes;
 }
 
 // ---------- 로그인 · 허용 ----------

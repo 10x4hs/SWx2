@@ -2149,6 +2149,50 @@ try {
       sq(`DELETE FROM users WHERE username = '${adm}'`);
     }
   });
+  // ---------- 관리자 '대신 들어가기' 기록 탭 + 프로필 사진 주소(/api/avatar/…?v=) 그리기 (컴퓨터 · 폰) ----------
+  await section("admin", async () => {
+    const adm = "t_e2v" + tag, mem = "t_e2m" + tag, sq = (q) => execFileSync("npx", ["wrangler", "d1", "execute", "dsm-mafia", "--local", "--json", "--command", q], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    execFileSync("node", ["scripts/add-user.mjs", adm, "기록검사", "password1", "--team=" + TEAM, "--features=all"], { stdio: "ignore" });
+    execFileSync("node", ["scripts/add-user.mjs", mem, "들어갈사람", "password1", "--team=" + TEAM], { stdio: "ignore" });
+    sq(`UPDATE users SET role = 'admin' WHERE username = '${adm}'`);
+    const memId = JSON.parse(sq(`SELECT id FROM users WHERE username = '${mem}'`))[0].results[0].id;
+    const PIC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    let runs = 0;
+    try {
+      for (const [w, h, tv] of [[1300, 900, "컴퓨터", "desktop"], [390, 844, "폰", "phone"]].filter((v) => VIEWPORTS.includes(v[3]))) {
+        const ac = await browser.newContext({ viewport: { width: w, height: h }, serviceWorkers: "block" });
+        try {
+          await ac.request.post(BASE + "/api/auth/login", { headers: H, data: { username: adm, password: "password1" } });
+          await ac.request.patch(BASE + "/api/me", { headers: H, data: { avatar: PIC } });
+          // 들어갔다 나오기 = 기록 2줄 (시작 · 끝) — 다른 창(같은 관리자)에서
+          const ic = await browser.newContext();
+          await ic.request.post(BASE + "/api/auth/login", { headers: H, data: { username: adm, password: "password1" } });
+          await ic.request.post(BASE + `/api/admin/users/${memId}/impersonate`, { headers: H });
+          await ic.request.post(BASE + "/api/auth/unimpersonate", { headers: H }); await ic.close();
+          const ap = await ac.newPage(), errs = [];
+          ap.on("pageerror", (e) => errs.push(e.message));
+          await ap.goto(BASE + "/#/admin"); await ap.waitForSelector('.adm-tabs [data-tab="imp"]', { timeout: 15000 });
+          await ap.click('.adm-tabs [data-tab="imp"]'); await ap.waitForSelector(".adm-imp table", { timeout: 8000 });
+          const imp = await ap.evaluate((m) => {
+            const pane = document.querySelector('[data-pane="imp"]'), rows = [...pane.querySelectorAll("tbody tr")].filter((r) => r.textContent.includes("@" + m));
+            return { shown: !pane.hidden, n: rows.length, kinds: rows.map((r) => r.querySelector(".adm-badge")?.textContent).join(","), over: document.documentElement.scrollWidth - innerWidth };
+          }, mem);
+          runs += 2; // 화면마다 들어갔다 나오기 한 번씩 → 기록이 2줄씩 늘어요 (새 것 먼저)
+          ok(imp.shown && imp.n === runs && imp.kinds.startsWith("끝,시작") && imp.over <= 1 && !errs.length, `${tv} · 관리자 '대신 들어가기' 기록 탭 — ${imp.n}줄 (${imp.kinds}) · 가로 넘침 ${imp.over}px${errs.length ? " — " + errs[0] : ""}`);
+          await ap.locator(".adm-imp").screenshot({ path: `${process.env.SHOT_DIR || "/tmp"}/admin-imp-${tv === "폰" ? "phone" : "desktop"}.png` }).catch(() => {});
+          // 내 사진: 동그라미가 /api/avatar 주소로 그려지고, 그 주소가 실제 사진을 줘요
+          const av = await ap.evaluate(async () => {
+            const el = document.querySelector(".av.pic"), url = el && /url\(["']?([^"')]+)/.exec(el.style.getPropertyValue("--pic"))?.[1];
+            const r = url ? await fetch(url) : null;
+            return { url, status: r?.status, type: r?.headers.get("content-type"), cc: r?.headers.get("cache-control") };
+          });
+          ok(/^\/api\/avatar\/[\w-]+\?v=/.test(av.url || "") && av.status === 200 && av.type === "image/png" && /immutable/.test(av.cc || ""), `${tv} · 프로필 사진 — 주소로 그리고 1년 캐시 (${av.url ? "주소 OK" : "사진 없음"} · ${av.status} · ${av.cc})`);
+        } finally { await ac.close(); }
+      }
+    } finally {
+      sq(`DELETE FROM users WHERE username IN ('${adm}', '${mem}')`);
+    }
+  });
   // ---------- Silicon Valley Mafia (#/svm, 관리자만) — scripts/e2e-svm.mjs (컴퓨터 · 폰 · 회원은 안 보임) ----------
   await section("svm", () => svmE2E({ browser, BASE, H, ok, VIEWPORTS, TEAM, tag, member: user, aiMock }));
   // ---------- Psychology (#/psy, 기능 psy) — scripts/e2e-psy.mjs (컴퓨터 · 폰 · 기능 없는 회원은 안 보임) ----------

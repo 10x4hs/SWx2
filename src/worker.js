@@ -40,6 +40,7 @@ import { registerFiles } from "./files.js";
 import { registerNotes, indexStmts, MAX_NOTE } from "./notes.js";
 import { registerRecords } from "./records.js";
 import { registerApiKeys, handleV1 } from "./apikeys.js";
+import { registerAvatar } from "./avatar.js";
 import { aiMockOn, mockEnv } from "./lib/aimock.js";
 export { RoomHub } from "./hub.js"; // Durable Object 클래스는 main 모듈에서 내보내야 해요
 
@@ -150,6 +151,7 @@ async function internalCall(env, ec, origin, user, method, path, payload) {
 
 // ---------- routes: 등록 순서가 곧 매칭 순서예요 (auth → plans · logs → diary → notes → records → 나머지) ----------
 registerAuth(on);
+registerAvatar(on, { fail }); // 프로필 사진 (GET /avatar/:id?v= — 버전 주소 · 1년 캐시)
 registerPlans(on);
 registerDiary(on);
 registerAdmin(on);

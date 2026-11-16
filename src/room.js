@@ -10,6 +10,7 @@
 // 방 권한: 팀 방('all' = 첫 팀 SWx2, 'team:<id>')은 그 팀 사람만, dm 방은 같은 팀인 두 사람만 (아니면 403). room 을 안 주면 'all'.
 // AI는 그 방의 최근 40개 메시지와 창고 목록만 봐요. 개인 노트·일기·계획은 절대 안 보내요.
 import { pushUsers } from "./push.js";
+import { AVATAR_V, avatarUrl } from "./avatar.js";
 import { hubNotify, hubConnect } from "./hub.js";
 import { TEXT_ORDER } from "./ai.js";
 import { runAgent } from "./agent.js";
@@ -116,8 +117,8 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
   // 문의방 사람들 이름 (팀이 달라 ctx.users 에 없을 수 있어서)
   async function roomPeople(env, room) {
     const ids = await roomUserIds(env, room);
-    const { results } = await env.DB.prepare(`SELECT id, username, display_name, color, avatar FROM users WHERE id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all();
-    return Object.fromEntries(results.map((u) => [u.id, u]));
+    const { results } = await env.DB.prepare(`SELECT id, username, display_name, color, ${AVATAR_V()} AS avatar_v FROM users WHERE id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all();
+    return Object.fromEntries(results.map(({ avatar_v, ...u }) => [u.id, { ...u, avatar: avatarUrl(u.id, avatar_v) }]));
   }
   // 방의 다른 사람들 (푸시 알림 대상): 'all' 은 나 빼고 모두, dm 은 상대 한 명
   async function roomMembers(env, room, me) {
@@ -301,8 +302,8 @@ export function registerRoom(on, { json, body, fail, uid, now }) {
   // 관리자 문의방 목록 — 관리자: 글이 있는 모든 문의방(회원 이름 · 마지막 글 시각) · 회원: 내 문의방
   on("GET", "/room/help", async ({ env, user }) => {
     if (user.role !== "admin" || user.imp_by) return json({ mine: helpRoom(user.id), rooms: [] });
-    const { results } = await env.DB.prepare("SELECT m.room, MAX(m.created_at) AS last_at, u.id, u.username, u.display_name, u.color, u.avatar FROM room_messages m JOIN users u ON 'help:' || u.id = m.room WHERE m.room LIKE 'help:%' GROUP BY m.room ORDER BY last_at DESC LIMIT 200").all();
-    return json({ mine: null, rooms: results.map((r) => ({ room: r.room, last_at: r.last_at, user: { id: r.id, username: r.username, display_name: r.display_name, color: r.color, avatar: r.avatar } })) });
+    const { results } = await env.DB.prepare(`SELECT m.room, MAX(m.created_at) AS last_at, u.id, u.username, u.display_name, u.color, ${AVATAR_V("u.avatar")} AS avatar_v FROM room_messages m JOIN users u ON 'help:' || u.id = m.room WHERE m.room LIKE 'help:%' GROUP BY m.room ORDER BY last_at DESC LIMIT 200`).all();
+    return json({ mine: null, rooms: results.map((r) => ({ room: r.room, last_at: r.last_at, user: { id: r.id, username: r.username, display_name: r.display_name, color: r.color, avatar: avatarUrl(r.id, r.avatar_v) } })) });
   });
 
   on("GET", "/room/ws", async ({ req, env, user }) => {

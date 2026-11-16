@@ -17,6 +17,7 @@ import { kstToday } from "./lib/day.js";
 import { withBudget, left } from "./lib/budget.js";
 import { ragCron } from "./rag.js";
 import { ontoCron } from "./onto.js";
+import { purgeStaleClients } from "./oauth.js";
 
 export const CRON = { SAVE: "5 15 * * *", WEEKLY: "0 13 * * SUN", NEWS_AM: "0 23 * * *", HOURLY: "10 * * * *", NEWS_CLOSE: "10 14 * * *" };
 
@@ -38,7 +39,7 @@ export async function runCron(env, cron) {
   return withBudget(NEWS_BUDGET, async () => ({ save: await autoSaveYesterday(env), papers: await cleanupPaperNotes(env, kstToday(0)), purged: await purgeExpired(env).catch((e) => ({ error: String(e?.message || e) })) }));
 }
 
-// 매일 00:05: 만료된 로그인 · OAuth 기록 지우기 (로그인할 때만 지우던 걸 오래 안 들어온 사람 것까지)
+// 매일 00:05: 만료된 로그인 · OAuth 기록 · 안 쓰인 OAuth 클라이언트 지우기 (로그인할 때만 지우던 걸 오래 안 들어온 사람 것까지)
 export async function purgeExpired(env) {
   const t = Date.now();
   const r = await env.DB.batch([
@@ -46,7 +47,8 @@ export async function purgeExpired(env) {
     env.DB.prepare("DELETE FROM oauth_tokens WHERE refresh_expires < ?").bind(t),
     env.DB.prepare("DELETE FROM oauth_codes WHERE expires_at < ?").bind(t - 864e5),
   ]);
-  return { sessions: r[0].meta.changes, tokens: r[1].meta.changes, codes: r[2].meta.changes };
+  // OAuth 클라이언트: 등록만 하고 7일 넘게 토큰이 하나도 없는 것 (src/oauth.js — 다시 연결하면 앱이 새로 등록해요)
+  return { sessions: r[0].meta.changes, tokens: r[1].meta.changes, codes: r[2].meta.changes, clients: await purgeStaleClients(env, t) };
 }
 
 // 보조 장치: Cloudflare 크론이 멈춘 적이 있어요 (2026-10-14, 02:10 이후 11시간 동안 한 번도 안 돌았음).
@@ -66,11 +68,12 @@ export async function cronCatchUp(env) {
 }
 
 export function registerCron(on, { json, fail }) {
-  // 테스트용: 크론 하나를 바로 돌려요 (로컬 개발에서만 — .dev.vars 의 PASSWORDLESS=1). ?cron=hourly|am|close
+  // 테스트용: 크론 하나를 바로 돌려요 (로컬 개발에서만 — .dev.vars 의 PASSWORDLESS=1). ?cron=hourly|am|close · purge = 매일 크론의 지우기만
   on("POST", "/cron/run", async ({ env, q }) => {
     if (env.PASSWORDLESS !== "1") fail(404, "없는 주소예요.");
+    if (q.get("cron") === "purge") return json(await purgeExpired(env));
     const key = { hourly: CRON.HOURLY, am: CRON.NEWS_AM, close: CRON.NEWS_CLOSE }[q.get("cron")];
-    if (!key) fail(400, "cron=hourly|am|close");
+    if (!key) fail(400, "cron=hourly|am|close|purge");
     return json(await runCron(env, key));
   });
 }
