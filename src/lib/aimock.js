@@ -48,6 +48,11 @@ export function mockJson() {
 
 /** 스트리밍 흉내: 글을 몇 조각으로 나눠서 */
 export const mockChunks = (text) => text.match(/.{1,12}/gsu) || [text];
+/** 조각을 진짜 모델처럼 조금씩 — 한 번에 다 보내면 브라우저가 한 덩어리로 받아서 '첫 글자가 끝보다 먼저'를 흉내 내지 못해요 */
+export async function mockStream(text, emit, gap = 15) {
+  const parts = mockChunks(text);
+  for (let i = 0; i < parts.length; i++) { if (i) await new Promise((r) => setTimeout(r, gap)); await emit(parts[i]); }
+}
 
 const fakeAI = {
   async run(model, input = {}) {

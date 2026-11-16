@@ -59,6 +59,8 @@ export async function openDaily(ctx, day) {
 }
 
 export function update(r) { if (live) live.route(r); }
+// 화면이 닫히며(다시 그리기 · 다른 화면) 마저 보낸 저장 — 새 화면은 이게 끝난 뒤에 노트를 받아요 (안 그러면 저장 전 내용 · updated_at 을 받아서 다음 저장이 409)
+let leftSaves = Promise.resolve();
 
 export function mount(root, ctx, r) {
   const S = { notes: [], filter: "", tag: null, cur: null, backlinks: [], tags: [], children: [], crumbs: [], mode: getMode(), status: "", listOpen: getListOpen(), pick: null }; // pick = 보기 방식을 직접 고른 노트 (영상 노트는 그 전까지 보기로 열어요)
@@ -285,6 +287,7 @@ export function mount(root, ctx, r) {
   // ---------- saving ----------
   let chain = Promise.resolve();
   const setStatus = (t) => { S.status = t; const el = $("#ed-status", root); if (el) el.textContent = t; };
+  let leaving = false; // 페이지를 닫거나 새로 고치는 중 — 기다리던 저장을 keepalive 로 바로 보내요 (아래 leave)
   const save = debounce(() => {
     if (!mine()) return;
     const id = S.cur.id, title = $("#ed-title", root)?.value.trim();
@@ -293,10 +296,11 @@ export function mount(root, ctx, r) {
     if (ED && S.mode === "block") { const j = JSON.stringify(ED.getDoc()); if (j !== lastSaved) { patch.blocks = ED.getDoc(); lastSaved = j; } }
     else { const body = $("#ed-text", root)?.value; if (body !== undefined && body !== S.cur.body) patch.body = body; }
     if (!Object.keys(patch).length) return;
+    const keepalive = leaving;
     chain = chain.then(async () => {
       try {
         // base_updated_at: 다른 탭 · 기기에서 먼저 고쳤으면 409 → 덮어쓰지 않고 새로 불러와요
-        const { note } = await api.saveNote(id, { ...patch, base_updated_at: S.cur?.id === id ? S.cur.updated_at : undefined });
+        const { note } = await api.saveNote(id, { ...patch, base_updated_at: S.cur?.id === id ? S.cur.updated_at : undefined }, { keepalive });
         if (S.cur?.id === id) { S.cur = note; setStatus("저장됨 " + nowTime()); }
         const c = noteCache.get(id); if (c) c.data = { ...c.data, note };
         const li = S.notes.find((x) => x.id === id);
@@ -309,6 +313,11 @@ export function mount(root, ctx, r) {
       }
     });
   }, 650);
+  // 0.65초 기다리던 수정이 탭 닫기 · 새로 고침 · 폰 앱 전환으로 사라지지 않게 (note-menu.js 의 지우기와 같은 방식)
+  const leave = () => { leaving = true; try { save.flush(); } finally { leaving = false; } };
+  const onHidden = () => { if (document.visibilityState === "hidden") leave(); };
+  addEventListener("pagehide", leave);
+  document.addEventListener("visibilitychange", onHidden);
 
   function bindEditor() {
     $("#bl-count", root)?.addEventListener("click", (e) => { e.preventDefault(); $("#ed-back-h", root)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
@@ -493,11 +502,13 @@ export function mount(root, ctx, r) {
     const hit = noteCache.get(id);
     if (hit && S.cur?.id !== id) show(hit.data); // 본 적 있으면 먼저 띄우고
     try {
+      await leftSaves;
       const d = await api.note(id);
       noteCache.set(id, { at: Date.now(), data: d });
       if (location.hash !== "#/notes/" + id) return; // 그 사이 다른 데로 갔어요
-      const same = hit && hit.data.note.updated_at === d.note.updated_at && hit.data.backlinks.length === d.backlinks.length && hit.data.children?.length === d.children?.length;
-      if (!same || S.cur?.id !== id) show(d);
+      // 지금 화면에 떠 있는 것(S.cur)과 비교해요 — 캐시 항목(hit)은 그 사이 다른 화면의 저장이 고쳐 놓았을 수 있어서, 그걸 보면 옛 updated_at 을 띄운 채로 남아 다음 저장이 409 가 돼요
+      const same = S.cur?.id === id && S.cur.updated_at === d.note.updated_at && S.backlinks.length === d.backlinks.length && S.children?.length === d.children?.length;
+      if (!same) show(d);
       if (mine() && !d.note.body.trim()) setTimeout(() => { const t = $("#ed-title", root); if (t?.value.startsWith("제목 없음")) t.select(); else if (ED) ED.focus("end"); else $("#ed-text", root)?.focus(); }, 30);
     } catch (e) { toast(e.message, "err"); S.cur = null; drawEmpty(); }
   }
@@ -578,7 +589,7 @@ export function mount(root, ctx, r) {
   live = { route };
   loadList(); open(r.id);
 
-  return () => { save.flush(); us.dispose(); closeSuggest(); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; VN?.destroy(); VN = null; live = null; window.removeEventListener("trio:changed", onChanged); };
+  return () => { save.flush(); leftSaves = chain; removeEventListener("pagehide", leave); document.removeEventListener("visibilitychange", onHidden); us.dispose(); closeSuggest(); ED?.destroy(); ED = null; DBV?.destroy(); DBV = null; VN?.destroy(); VN = null; live = null; window.removeEventListener("trio:changed", onChanged); };
 }
 
 // "· 웹 검색 2 · 페이지 1 · 이미지 1" 처럼 AI 가 무엇을 찾아봤는지
