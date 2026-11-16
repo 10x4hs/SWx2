@@ -113,7 +113,8 @@ AI 키는 `.dev.vars`에 넣어요 (git에 안 올라가요) → [docs/guide/ai.
 | 검사 (빠름 / 보통 / 전부) | `npm run test:quick` · `test:normal` · `test:full` |
 | 실제 브라우저 검사 (데스크톱 + 폰) | `npm run e2e` |
 | 계정 만들기 | `npm run user:add -- <아이디> <이름> <비밀번호> [--remote]` |
-| 배포 | `npm run deploy:all` |
+| 배포 (관문 검사 · 백업 포함) | `npm run deploy` |
+| 운영 DB 백업 | `npm run backup` |
 | 로컬 DB 초기화 | `npm run db:reset` |
 
 ## 📖 문서

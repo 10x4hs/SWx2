@@ -1,0 +1,28 @@
+# PR · main 푸시마다: 서버 없이 빨리 도는 검사 (문법 · 내용 목록 · 단위). 화면 검사는 배포 관문(scripts/deploy.sh)에서 돌아요.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: JS syntax
+        run: |
+          bad=$(git ls-files 'src/*.js' 'public/*.js' 'scripts/*.mjs' 'scripts/*.js' | xargs -P 8 -I{} sh -c 'node --check "{}" 2>/dev/null || echo "{}"')
+          if [ -n "$bad" ]; then echo "syntax errors:"; echo "$bad"; exit 1; fi
+      - name: Content indexes
+        run: |
+          node scripts/assets.mjs --check
+          node scripts/mba-index.mjs --check
+          for a in "" vg onto aip; do node scripts/dev-index.mjs $a --check; done
+      - name: Unit tests
+        run: node --test scripts/*.test.mjs
