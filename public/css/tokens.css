@@ -56,6 +56,28 @@
   --e-4: 0 18px 40px -18px rgba(0, 0, 0, .2);
   --shadow: var(--glass-hi), 0 24px 60px -34px rgba(0, 0, 0, .28);
 
+  /* type scale — shared sheets read these; per-app sheets (news, mba, psy, dev, svm, cim, easy, papers) keep their own.
+     Floors: captions/meta ≥ 11px, UI and body labels ≥ 12.5px (PR #198). Big display numbers stay raw px on purpose. */
+  --fs-2xs: 11px;   /* caption · meta · badge (the floor) */
+  --fs-xs: 12px;    /* small meta, chip counts */
+  --fs-sm: 12.5px;  /* label / small body floor */
+  --fs-md: 13px;    /* dense UI: menus, list rows */
+  --fs-base: 14px;  /* default UI text, buttons */
+  --fs-lg: 15px;    /* reading body (body = 15px) */
+  --fs-xl: 16px;    /* section titles, inputs on phone (no iOS zoom) */
+  --fs-2xl: 18px;   /* panel headings */
+  --fs-3xl: 20px;   /* screen headings */
+  --fs-4xl: 24px;   /* page titles */
+
+  /* fixed status colors — the same in light and dark (admin, update pings, switches) */
+  --ok: #1F9D55; --ok-hi: #3CCF7F;      /* approve buttons / "active" text */
+  --warn-hi: #F0B54A;                   /* "pending" text */
+  --info: #2F6FED;                      /* admin primary (go, impersonate, tab underline) */
+  --danger: #D64545; --danger-hi: #FF6B6B; /* delete / destructive */
+  --notify: #FF8A00;                    /* "new update" dots and rings */
+  --violet-hi: #B9A6FF;                 /* trial accounts */
+  --switch-on: #34C759;                 /* settings toggles */
+
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --r-pill: 999px;
   --r: 22px;
 

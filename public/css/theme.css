@@ -278,8 +278,8 @@
 .pw-back.thm-back { background: rgba(0, 0, 0, .14); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .thm-dialog { width: min(480px, 100%); max-height: calc(100dvh - 32px); grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 16px; }
 .thm-scroll { overflow-y: auto; min-height: 0; display: grid; gap: 20px; margin: 0 -6px; padding: 2px 6px 4px; overscroll-behavior: contain; }
-.thm-sec h3 { margin: 0 0 9px; font: 600 13px/1.2 var(--font); color: var(--ink-2); letter-spacing: 0; }
-.thm-hint { margin: 7px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-3); }
+.thm-sec h3 { margin: 0 0 9px; font: 600 var(--fs-md)/1.2 var(--font); color: var(--ink-2); letter-spacing: 0; }
+.thm-hint { margin: 7px 0 0; font-size: var(--fs-sm); line-height: 1.5; color: var(--ink-3); }
 
 /* 미리보기: 고른 배경 위 유리 카드 하나 (강조 색 · 유리 · 투명도가 앱과 같은 토큰으로) */
 .thm-preview { position: relative; height: 136px; flex: none; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); isolation: isolate; }
@@ -288,8 +288,8 @@
 .thm-pv-wall[data-wp="default"] { filter: grayscale(1) blur(3px); transform: scale(1.08); }
 .thm-sw[data-wp="default"] { filter: grayscale(1); }
 .thm-pv-card { position: absolute; left: 14px; top: 14px; bottom: 14px; width: min(64%, 250px); display: grid; align-content: start; gap: 5px; padding: 9px 12px;
-  border-radius: 12px; background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--glass-edge); box-shadow: var(--glass-hi); font-size: 12px; color: var(--ink-2); }
-.thm-pv-card b { font: 700 12.5px/1.2 var(--font); color: var(--ink); }
+  border-radius: 12px; background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--glass-edge); box-shadow: var(--glass-hi); font-size: var(--fs-xs); color: var(--ink-2); }
+.thm-pv-card b { font: 700 var(--fs-sm)/1.2 var(--font); color: var(--ink); }
 .thm-pv-row { display: flex; align-items: center; gap: 7px; }
 .thm-pv-check { width: 13px; height: 13px; flex: none; border-radius: 4px; border: 1.5px solid var(--line-2); position: relative; }
 .thm-pv-check.on { background: var(--accent); border-color: var(--accent); }
@@ -297,13 +297,13 @@
 .thm-pv-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 2px; }
 .thm-pv-toggle { width: 26px; height: 15px; border-radius: 8px; background: var(--accent); position: relative; }
 .thm-pv-toggle::after { content: ""; position: absolute; right: 2px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
-.thm-pv-btn { padding: 3px 11px; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: 11.5px; }
+.thm-pv-btn { padding: 3px 11px; border-radius: 8px; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: var(--fs-xs); }
 
 .thm-seg { display: flex; }
 .thm-seg button { flex: 1; }
 
 .thm-walls { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 12px 10px; }
-.thm-wall, .thm-ac { border: 0; background: none; padding: 3px 0; display: grid; justify-items: center; gap: 6px; font: 500 12.5px/1.2 var(--font); color: var(--ink-2); cursor: pointer; border-radius: 12px; }
+.thm-wall, .thm-ac { border: 0; background: none; padding: 3px 0; display: grid; justify-items: center; gap: 6px; font: 500 var(--fs-sm)/1.2 var(--font); color: var(--ink-2); cursor: pointer; border-radius: 12px; }
 .thm-sw { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; border: 1px solid var(--line-2); overflow: hidden; }
 .thm-wall[aria-checked="true"] .thm-sw { box-shadow: 0 0 0 2px var(--glass-3), 0 0 0 4px var(--accent); }
 .thm-wall[aria-checked="true"], .thm-ac[aria-checked="true"] { color: var(--ink); font-weight: 650; }
@@ -317,11 +317,11 @@
 .thm-ac[aria-checked="true"] .thm-dot { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 0 0 2px var(--glass-3), 0 0 0 4px var(--dot); }
 
 .thm-switch { gap: 10px; }
-.thm-switch b { font-size: 14px; font-weight: 600; color: var(--ink); }
+.thm-switch b { font-size: var(--fs-base); font-weight: 600; color: var(--ink); }
 .thm-solid .thm-hint { margin-left: 44px; }
 .thm-switch input:disabled + span { opacity: .6; }
 .thm-foot { align-items: center; flex-wrap: wrap; }
-.thm-sync { margin-right: auto; font-size: 12px; color: var(--ink-3); }
+.thm-sync { margin-right: auto; font-size: var(--fs-xs); color: var(--ink-3); }
 
 @media (prefers-reduced-motion: no-preference) {
   .thm-sw, .thm-dot { transition: box-shadow .18s var(--ease); }
@@ -329,17 +329,17 @@
 @media (max-width: 520px) {
   .thm-dialog { padding: 18px 16px; gap: 14px; }
   .thm-walls { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px; }
-  .thm-ac { width: calc((100% - 12px) / 7); min-width: 40px; font-size: 11px; }
+  .thm-ac { width: calc((100% - 12px) / 7); min-width: 40px; font-size: var(--fs-2xs); }
   .thm-accents { gap: 6px 2px; justify-content: space-between; }
   .thm-sync { flex-basis: 100%; }
 }
 
 /* ---------- 꾸미기 창 v2: 리퀴드 글래스 세기 · 글씨체 · 글자 크기 · 모서리 · 끼워 넣는 줄(언어) ---------- */
-.thm-sub { margin: 12px 0 7px; font: 600 12px/1.2 var(--font); color: var(--ink-3); }
+.thm-sub { margin: 12px 0 7px; font: 600 var(--fs-xs)/1.2 var(--font); color: var(--ink-3); }
 .thm-pv-card { zoom: var(--font-scale, 1); }
 .thm-fonts { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .thm-font { display: grid; gap: 4px; justify-items: start; padding: 9px 11px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--panel);
-  font: 500 11.5px/1.2 var(--font); color: var(--ink-3); cursor: pointer; text-align: left; }
+  font: 500 var(--fs-xs)/1.2 var(--font); color: var(--ink-3); cursor: pointer; text-align: left; }
 .thm-font .thm-fs { font-size: 17px; line-height: 1.25; color: var(--ink); white-space: nowrap; }
 .thm-font[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); color: var(--ink-2); }
 .thm-font[data-v="default"] .thm-fs { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Pretendard Variable", "Apple SD Gothic Neo", system-ui, sans-serif; }
@@ -348,7 +348,7 @@
 .thm-font[data-v="round"] .thm-fs { font-family: "Gowun Dodum", sans-serif; }
 .thm-font[data-v="serif"] .thm-fs { font-family: "Noto Serif KR", serif; }
 .thm-font[data-v="hand"] .thm-fs { font-family: "Gaegu", cursive; font-size: 19px; }
-.thm-font[data-v="mono"] .thm-fs { font-family: "JetBrains Mono", D2Coding, ui-monospace, monospace; font-size: 15px; }
+.thm-font[data-v="mono"] .thm-fs { font-family: "JetBrains Mono", D2Coding, ui-monospace, monospace; font-size: var(--fs-lg); }
 .thm-sw { position: relative; }
 .thm-mv, .thm-mv-key { display: inline-block; width: 0; height: 0; border-style: solid; border-width: 4px 0 4px 6px; border-color: transparent transparent transparent currentColor; }
 .thm-mv { position: absolute; right: 5px; bottom: 5px; color: rgba(255, 255, 255, .95); filter: drop-shadow(0 0 2px rgba(0, 0, 0, .5)); }
