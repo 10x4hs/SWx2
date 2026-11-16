@@ -42,7 +42,7 @@ node --test scripts/*.test.mjs > /dev/null 2>&1 || die "단위 검사 실패 (no
 echo "내용 · 단위 검사 OK"
 if [ -z "${SKIP_E2E:-}" ]; then
   node scripts/test.mjs quick --files=README.md --port=8829 > "$TMP/quick.log" 2>&1 || { tail -n 30 "$TMP/quick.log" >&2; die "화면 검사(test.mjs quick) 실패 — 위 로그를 봐 주세요"; }
-  grep -E "통과|PASS" "$TMP/quick.log" | tail -n 1 || true
+  grep -E "^합계" "$TMP/quick.log" | tail -n 1 || true
 else
   echo "⚠ SKIP_E2E: 화면 검사를 건너뛰었어요"
 fi
