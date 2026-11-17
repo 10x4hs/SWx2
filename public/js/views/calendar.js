@@ -5,6 +5,7 @@ import { api } from "../api.js";
 import { $, esc, ymd, today, parseYmd, addDays, pad, hm, toast, debounce, studyMins } from "../util.js";
 import { icon } from "../icons.js";
 import { mountDay } from "./day.js";
+import { planTabs } from "../home-tabs.js";
 
 const DOW = ["월", "화", "수", "목", "금", "토", "일"]; // 월요일부터 (잔디·주간 차트와 같게)
 const DOW_SUN = ["일", "월", "화", "수", "목", "금", "토"];
@@ -34,7 +35,7 @@ export function mount(root, ctx, r) {
   const monthHref = (d) => `#/calendar/m/${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
   let days = {}, alive = true, monthReq = 0, stopDay = null, stopYear = null;
 
-  root.innerHTML = `
+  root.innerHTML = planTabs("cal") + `
     <div class="view cal-view">
       <header class="vhead">
         <div class="title">

@@ -7,6 +7,7 @@ import { icon } from "../icons.js";
 import { renderMarkdown } from "../md.js";
 import { mountAiPick, aiPrefs, stepsHTML } from "../ai-pick.js";
 import { attachImages, splitImageNote } from "../imgattach.js";
+import { planTabs } from "../home-tabs.js";
 
 const SCOPES = [["day", "오늘"], ["week", "이번 주"], ["month", "이번 달"]];
 const STARTERS = {
@@ -21,7 +22,7 @@ export function mount(root, ctx, r) {
   const S = { scope: ["day", "week", "month"].includes(r.scope) ? r.scope : saved?.scope || "week", msgs: Array.isArray(saved?.msgs) ? saved.msgs.filter((m) => !m.pending) : [], busy: false, plan: null, model: "" };
   // 다른 화면에 갔다 와도 대화가 남게 (이 기기에만)
   const persist = () => { try { localStorage.setItem(SAVE, JSON.stringify({ scope: S.scope, msgs: S.msgs.filter((m) => !m.pending).slice(-30) })); } catch {} };
-  root.innerHTML = `
+  root.innerHTML = planTabs("ai") + `
     <div class="pl" id="pl">
       <header class="pl-top">
         <a class="icon-btn sm" href="#/ai" aria-label="AI 튜터로">${icon.left(16)}</a>

@@ -15,6 +15,7 @@ import { moreBtn } from "../row-more.js";
 import { undoScope } from "../undo.js";
 import { sortChip } from "../rel.js";
 import { back as brainBack, upHash, learnParents, syncDock } from "../brain-nav.js";
+import { brainTabs } from "../home-tabs.js";
 
 let live = null; // the mounted notes view, so route changes can swap notes without remounting
 
@@ -68,13 +69,12 @@ export function mount(root, ctx, r) {
   let VN = null; // 영상 노트 한 화면 (보기)
   const us = undoScope("brain"); // ⌘Z: 목록 우클릭(이름 · 옮기기 · 지우기 …) — Obsidian 그래프와 같은 기록. 편집기 안의 글은 편집기가 따로
 
-  root.innerHTML = `
+  root.innerHTML = brainTabs("notes") + `
     <div class="notes${S.listOpen ? "" : " list-hidden"}" id="notes">
       <aside class="note-list" aria-label="노트 목록">
         <div class="top">
           <div class="row" style="justify-content:space-between">
             <h1 class="sr-only">노트</h1>
-            <nav class="seg nt-tabs" aria-label="Notes · Obsidian"><a href="#/notes" aria-current="page">Notes</a><a href="#/brain">Obsidian</a></nav>
             <span class="row" style="gap:2px">
               <button class="btn ghost sm" type="button" id="daily">Today</button>
               <button class="btn sm accent" type="button" id="new">${icon.plus(14)}New page</button>

@@ -11,7 +11,8 @@ import { keepDraft } from "../draft.js";
 import { mountCommand } from "../ai-command.js";
 import { openMenu, closeMenu } from "../ctxmenu.js";
 import { moreBtn } from "../row-more.js";
-import { mountBoard, modeSeg, flipList } from "../board/board.js";
+import { mountBoard, flipList } from "../board/board.js";
+import { planTabs, markTab } from "../home-tabs.js";
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const rel = (d) => { const t = ymd(today()); if (d === t) return "오늘"; if (d === ymd(addDays(today(), 1))) return "내일"; if (d === ymd(addDays(today(), -1))) return "어제"; return ""; };
@@ -22,25 +23,24 @@ export function update(r) { outer?.update(r); }
 // [보드 | 목록] — 고른 보기는 사람마다 기억해요 (localStorage). 주소에 날짜가 있으면(#/checklist/2026-10-20) 그날 목록으로 열어요.
 const modeKey = (ctx) => "trio.ck.mode." + (ctx.me?.id || "me");
 const readMode = (ctx) => { try { return localStorage.getItem(modeKey(ctx)) === "board" ? "board" : "list"; } catch { return "list"; } };
+// 탭 줄(Plan): 체크리스트 = #/checklist/list · 보드 = #/checklist/board — 고른 것을 기억해서 #/checklist 는 마지막 보기로
+const modeOf = (ctx, r) => (r.day === "board" ? "board" : r.day === "list" || DAY_RE.test(r.day || "") ? "list" : readMode(ctx));
 export function mount(root, ctx, r) {
   let stop = null, mode = null;
+  root.innerHTML = planTabs("list");
+  const tabs = root.firstElementChild;
   const show = (m, rr = r) => {
     if (m === mode) return;
     stop?.(); closeMenu(); mode = m;
-    const sub = document.createElement("div"); sub.className = "ck-host"; root.replaceChildren(sub); // 보기마다 새 칸 — 손 이벤트가 쌓이지 않게
+    try { localStorage.setItem(modeKey(ctx), m); } catch {}
+    markTab(root, m);
+    const sub = document.createElement("div"); sub.className = "ck-host"; root.replaceChildren(tabs, sub); // 보기마다 새 칸 — 손 이벤트가 쌓이지 않게
     if (m === "board") { const b = mountBoard(sub, ctx); stop = () => b.dispose(); }
-    else stop = mountList(sub, ctx, rr);
+    else stop = mountList(sub, ctx, rr); // 날짜가 없으면(보드에서 목록으로) 오늘
   };
-  const onMode = (e) => {
-    const b = e.target.closest("[data-mode]"); if (!b || !root.contains(b)) return;
-    const m = b.dataset.mode; try { localStorage.setItem(modeKey(ctx), m); } catch {}
-    if (m === "list" && mode === "board") r = { ...r, day: null }; // 보드에서 목록으로 = 오늘
-    show(m);
-  };
-  root.addEventListener("click", onMode);
-  show(DAY_RE.test(r.day || "") ? "list" : readMode(ctx));
-  outer = { update(rr) { r = rr; if (DAY_RE.test(rr.day || "") && mode === "board") return show("list", rr); if (mode === "list") inst?.update(rr); } };
-  return () => { root.removeEventListener("click", onMode); stop?.(); outer = null; };
+  show(modeOf(ctx, r));
+  outer = { update(rr) { r = rr; const m = modeOf(ctx, rr); if (m !== mode) return show(m, rr); if (mode === "list") inst?.update(rr); } };
+  return () => { stop?.(); outer = null; };
 }
 
 function mountList(root, ctx, r) {
@@ -48,7 +48,7 @@ function mountList(root, ctx, r) {
   root.innerHTML = `
     <div class="ck">
       <header class="gl-top">
-        <span class="row" style="gap:8px"><button type="button" class="icon-btn back-btn" id="ck-back" aria-label="뒤로">${icon.left(18)}</button><span class="eyebrow">체크리스트</span>${modeSeg("list")}</span>
+        <span class="row" style="gap:8px"><button type="button" class="icon-btn back-btn" id="ck-back" aria-label="뒤로">${icon.left(18)}</button><span class="eyebrow">체크리스트</span></span>
         <div class="gl-nav">
           <a class="icon-btn sm" id="ck-prev" aria-label="전날">${icon.left(16)}</a>
           <a class="btn sm ghost" id="ck-now">오늘</a>

@@ -7,11 +7,6 @@
   --tb-card-bg: var(--glass-3);
 }
 
-/* 보드 | 목록 */
-.ck-mode { margin-left: 4px; background: var(--track); border-radius: 10px; }
-.ck-mode button { border-radius: 8px; }
-.ck-mode [aria-selected="true"] { background: var(--glass-3); box-shadow: var(--e-2); }
-
 .ck.tb { max-width: 1280px; gap: 16px; }
 .tb-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .tb-title { font-size: 38px; letter-spacing: -.02em; }

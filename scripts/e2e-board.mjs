@@ -57,13 +57,13 @@ export async function boardE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots 
     // 1) 보드 | 목록
     step = "1 보드로 바꾸기";
     await go("#/checklist", 2200);
-    const hasSeg = await p.locator(".ck-mode [data-mode=board]").count();
-    await p.click(".ck-mode [data-mode=board]"); await p.waitForSelector(".tb-col", { timeout: 6000 });
+    const hasSeg = await p.locator(".home-tabs [data-tab=board]").count();
+    await p.click(".home-tabs [data-tab=board]"); await p.waitForSelector(".tb-col", { timeout: 6000 });
     const cols = await p.$$eval(".tb-col", (els) => els.map((e) => e.querySelector(".tb-col-name").textContent).join("|"));
     const remembered = await p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("trio.ck.mode.")).map((k) => localStorage.getItem(k)).join());
     await go("#/checklist", 2200);
     const stillBoard = await p.locator(".tb-board .tb-col").count();
-    ok(hasSeg === 1 && cols === "할 일|진행 중|완료" && remembered === "board" && stillBoard === 3, `${tv} · 보드 — [보드 | 목록] · 칸 ${cols} · 기억 ${remembered} · 새로 열어도 보드 ${stillBoard === 3}`);
+    ok(hasSeg === 1 && cols === "할 일|진행 중|완료" && remembered === "board" && stillBoard === 3, `${tv} · 보드 — Plan 탭 [보드] · 칸 ${cols} · 기억 ${remembered} · 새로 열어도 보드 ${stillBoard === 3}`);
 
     // 2) 새 할 일 → 할 일 칸
     step = "2 새 할 일";
@@ -212,14 +212,14 @@ export async function boardE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots 
     // 목록 보기: 체크하면 줄 긋고 맨 아래로
     step = "7 목록 체크";
     await go("#/checklist", 2200);
-    await p.click(".ck-mode [data-mode=list]"); await p.waitForSelector("#ck-list .gl-item", { timeout: 5000 });
+    await p.click(".home-tabs [data-tab=list]"); await p.waitForSelector("#ck-list .gl-item", { timeout: 5000 });
     await p.click(`#ck-list .gl-item:has(.gl-text:text-is("${T2}")) [data-toggle]`); await sleep(700);
     const lastDone = await p.evaluate((t) => { const li = [...document.querySelectorAll("#ck-list .gl-item")]; const me = li.find((x) => x.querySelector(".gl-text")?.textContent === t); return !!me && me.classList.contains("done") && li.filter((x) => !x.classList.contains("done")).every((x) => li.indexOf(x) < li.indexOf(me)); }, T2);
     const s2b = await byText(T2);
     ok(lastDone && s2b?.done === 1 && s2b.status === "done", `${tv} · 목록 — 체크하면 줄 긋고 아래로 · 보드도 완료 칸 (서버 ${s2b?.status})`);
-    await p.click(".ck-mode [data-mode=board]"); await p.waitForSelector(".tb-col", { timeout: 5000 });
+    await p.click(".home-tabs [data-tab=board]"); await p.waitForSelector(".tb-col", { timeout: 5000 });
     ok((await colOfCard(T2)) === "done", `${tv} · 보드 — 목록에서 체크한 일은 완료 칸`);
-    await p.click(".ck-mode [data-mode=list]"); await sleep(300); // 다음 검사를 위해 원래 보기(목록)로
+    await p.click(".home-tabs [data-tab=list]"); await sleep(300); // 다음 검사를 위해 원래 보기(목록)로
 
     const errs = getErrs().filter((e) => !/Failed to load resource|favicon/.test(e));
     ok(!errs.length, `${tv} · 보드 — 화면 오류 없음${errs.length ? " · " + errs.slice(0, 2).join(" / ") : ""}`);
