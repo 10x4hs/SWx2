@@ -4,7 +4,7 @@ import { $, $$, esc, initial, toast, avatar } from "../util.js";
 import { api } from "../api.js";
 import { icon } from "../icons.js";
 import { renderMarkdown } from "../md.js";
-import { chatMarkup, mountChat } from "./chat.js";
+import { chatMarkup, mountChat } from "../tutor.js";
 import { loadTerms, annotate, mountTermCard } from "./terms.js";
 import { fillFigtr } from "./figtr.js";
 import { loadStudyTime, fmtMin } from "./studytime.js";
@@ -391,7 +391,7 @@ export function mountPaper(root, ctx, id) {
     });
   }
 
-  // ---------- AI 튜터 (papers/chat.js) ----------
+  // ---------- AI 튜터 (tutor.js) ----------
   let stopChat = null;
   function bindTutor() { stopChat?.(); stopChat = mountChat(view, id, $(".pp-article", view), (bub) => { if (dict?.rx) annotate(bub, dict); }); }
 

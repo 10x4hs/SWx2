@@ -284,25 +284,9 @@ input.dv-plan-in { min-height: 48px; }
 
 /* AI 튜터 — 오른쪽 서랍 · 왼쪽 가장자리를 끌거나 작게/보통/크게 · 폰은 아래에서 올라오는 판(위 손잡이로 높이) */
 .bk-ai-btn { height: 42px; padding: 0 16px; white-space: nowrap; border-radius: 999px; border: 1px solid var(--pp-line2); background: var(--pp-sheet); color: var(--pp-ink); font: 600 14px var(--pp-ko); cursor: pointer; }
-.bk-ai-btn:hover, .bk-ai-on .bk-ai-btn { border-color: var(--pp-acc); color: var(--pp-acc); }
-.bk-ai { position: fixed; right: 16px; top: 72px; bottom: 84px; z-index: 32; width: var(--ai-w, 440px); display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px 20px; border-radius: 12px; background: var(--pp-sheet); border: 1px solid var(--pp-line2); box-shadow: 0 24px 60px -24px rgba(40, 30, 10, .35); }
-.dv[data-sw-theme="night"] .bk-ai { box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .7); }
-.bk-ai[hidden] { display: none; }
-.bk-ai-grip { position: absolute; left: -7px; top: 0; bottom: 0; width: 14px; display: grid; place-items: center; cursor: col-resize; touch-action: none; }
-.bk-ai-grip i { width: 4px; height: 48px; border-radius: 2px; background: var(--pp-line2); transition: background .15s; }
-.bk-ai-grip:hover i, .bk-ai-grip:focus-visible i, .bk-ai-drag .bk-ai-grip i { background: var(--pp-acc); }
-.bk-ai-drag, .bk-ai-drag * { user-select: none !important; }
-.bk-ai-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-.bk-ai-n { font: 600 13px var(--pp-ko); color: var(--pp-sub); }
-.bk-ai-r { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.bk-ai-sz { display: inline-flex; border: 1px solid var(--pp-line2); border-radius: 8px; overflow: hidden; }
-.bk-ai-sz button { height: 30px; padding: 0 10px; border: 0; background: transparent; color: var(--pp-sub); font: 600 12.5px var(--pp-ko); cursor: pointer; }
-.bk-ai-sz button + button { border-left: 1px solid var(--pp-line2); }
-.bk-ai-sz button[aria-pressed="true"] { background: var(--pp-ink); color: var(--pp-bg); }
-.bk-ai .dv-chip { height: 30px; padding: 0 12px; font-size: 13px; }
-.bk-ai #dv-ai { flex: 1; min-height: 0; overflow: auto; padding: 0; border: 0; background: transparent; }
-.bk-ai #dv-ai .ppc { height: 100%; }
-@media (min-width: 1100px) { .dv.bk-ai-on { padding-right: calc(var(--ai-w, 440px) + 32px); } }
+.bk-ai-btn:hover, .tut-on .bk-ai-btn { border-color: var(--pp-acc); color: var(--pp-acc); }
+.dv { --tut-top: 72px; --tut-bottom: 84px; --tut-z: 32; } /* 서랍(tutor.js · papers.css .tut)은 위 띠와 아래 띠 사이에 */
+.dv[data-sw-theme="night"] .tut { box-shadow: 0 24px 60px -20px rgba(0, 0, 0, .7); }
 
 /* ---------- 오늘 ---------- */
 .bk-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
@@ -483,9 +467,6 @@ input.dv-plan-in { min-height: 48px; }
   .bk-back { font-size: 13px; }
   .bk-ai-btn { padding: 0 12px; font-size: 13px; }
   .bk-lecs li { flex-direction: column; align-items: flex-start; }
-  .bk-ai { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; height: var(--ai-h, 66dvh); padding: 20px 12px 12px; }
-  .bk-ai-grip { left: 0; right: 0; top: 0; bottom: auto; width: auto; height: 20px; cursor: row-resize; }
-  .bk-ai-grip i { width: 48px; height: 4px; }
   .fig-h { padding: 10px 10px 8px 12px; }
   .fig-cap { padding: 12px 12px 4px; font-size: 15px; }
   .fig-bar { padding: 4px 10px 10px 12px; }

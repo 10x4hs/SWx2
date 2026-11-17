@@ -8,7 +8,7 @@
 //   ⑥ 1 → 3 → 7일 간격 복습, 여러 논문 문제를 섞어서(간격 · 교차 연습)
 import { api } from "../api.js";
 import { toast } from "../util.js";
-import { chatMarkup, mountChat } from "./chat.js";
+import { chatMarkup, mountChat } from "../tutor.js";
 import { fillFigtr } from "./figtr.js";
 import { mountMarks } from "./marks.js";
 import { loadStudyTime, fmtMin } from "./studytime.js";

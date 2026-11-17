@@ -2,7 +2,7 @@
 // 코치는 답을 바로 주지 않고 질문과 힌트로 끌어내요. 내가 적은 답은 이 기기에만 남고, 코치에게 물을 때 같이 보내요.
 import { $, esc, toast } from "../util.js";
 import { api, streamMbaAsk } from "../api.js";
-import { chatMarkup, mountChat } from "../papers/chat.js";
+import { chatMarkup, mountChat } from "../tutor.js";
 import { index, moduleDoc, state, doneSet } from "./data.js";
 import { md, store, back, meter } from "./ui.js";
 

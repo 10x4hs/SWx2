@@ -14,6 +14,7 @@
 import { aiText, TEXT_ORDER, PRIVATE_SAFE } from "./ai.js";
 import { retrieve, settings, hrefOf } from "./rag.js";
 import { checkCites } from "./lib/rag-text.js";
+import { sseResponse } from "./lib/sse.js";
 // 길 고르기 (src/airoute.js): 규칙 먼저 · 애매하면 embed-proto. 기본은 기록만(DECIDE_ROUTE 비어 있음 = log), DECIDE_ROUTE=1 이면 프롬프트 한 줄 + 내 자료 질문의 노트 근거 4개
 import { routeAsk, routeMode, ROUTES } from "./airoute.js";
 
@@ -144,22 +145,14 @@ export function registerCimAsk(on, { json, body, fail }) {
         return json({ text: c.text, used: r.used, sources: publicSources(list, c.used) });
       } catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
     }
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter(), enc = new TextEncoder();
-    let open = true;
-    const send = async (o) => { if (!open) return; try { await writer.write(enc.encode(`data: ${JSON.stringify(o)}\n\n`)); } catch { open = false; } };
-    ec.waitUntil((async () => {
-      try {
-        await send({ type: "sources", sources: publicSources(list) });
-        const r = await run(async (t, meta) => {
-          if (meta?.reset) { await send({ type: "reset" }); if (meta.sources) await send({ type: "sources", sources: publicSources(list) }); return; }
-          await send({ type: "delta", text: t });
-        });
-        const c = checkCites(r.text, list.length);
-        await send({ type: "end", text: c.text, used: r.used, sources: publicSources(list, c.used) });
-      } catch (e) { await send({ type: "error", message: e.message || "AI 답을 받지 못했어요." }); }
-      open = false; try { await writer.close(); } catch {}
-    })());
-    return new Response(readable, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", "x-accel-buffering": "no" } });
+    return sseResponse(ec, async (send) => {
+      await send({ type: "sources", sources: publicSources(list) });
+      const r = await run(async (t, meta) => {
+        if (meta?.reset) { await send({ type: "reset" }); if (meta.sources) await send({ type: "sources", sources: publicSources(list) }); return; }
+        await send({ type: "delta", text: t });
+      });
+      const c = checkCites(r.text, list.length);
+      await send({ type: "end", text: c.text, used: r.used, sources: publicSources(list, c.used) });
+    });
   });
 }
