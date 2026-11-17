@@ -1,22 +1,26 @@
 // AI 모델 고르기 + 웹 검색 켜기 — 어디서든(일정 AI 비서 · 노트 AI · 편집기 · 계획 AI) 같은 설정을 써요.
 // 모델은 계정에 저장돼요(users.ai_model · PATCH /me) — 다른 기기에서도, 자정 AI 점수 · 주간 회고도 이 모델을 먼저 써요.
-// localStorage trio-ai-pick = { model, web } 는 빠르게 그리려는 사본이고, 로그인할 때 syncAiPrefs(me) 로 계정 값에 맞춰요. web 은 이 기기에만.
+// localStorage trio-ai-pick = { model } 는 빠르게 그리려는 사본이고, 로그인할 때 syncAiPrefs(me) 로 계정 값에 맞춰요.
+// 웹 먼저 찾기(web)도 계정에 저장돼요 (js/prefs.js "ai_web") — 설정 → AI 와 같은 값.
 import { api } from "./api.js";
+import { getPref, setPref } from "./prefs.js";
 import { esc, toast } from "./util.js";
 
 const KEY = "trio-ai-pick";
 let cache = null; // 모델 목록은 한 번만 받아요
-export function aiPrefs() { try { const v = JSON.parse(localStorage.getItem(KEY) || "{}"); return { model: typeof v.model === "string" ? v.model : "", web: v.web === true }; } catch { return { model: "", web: false }; } }
+const readModel = () => { try { const v = JSON.parse(localStorage.getItem(KEY) || "{}"); return typeof v.model === "string" ? v.model : ""; } catch { return ""; } };
+export function aiPrefs() { return { model: readModel(), web: getPref("ai_web", false) === true }; }
 export function setAiPrefs(p) {
-  const before = aiPrefs().model;
-  try { localStorage.setItem(KEY, JSON.stringify({ ...aiPrefs(), ...p })); } catch {}
+  const before = readModel();
+  if (p.web !== undefined) setPref("ai_web", p.web === true); // 다른 칸은 "trio:prefs" 로 따라가요
+  if (p.model !== undefined) try { const v = JSON.parse(localStorage.getItem(KEY) || "{}"); localStorage.setItem(KEY, JSON.stringify({ ...(v && typeof v === "object" ? v : {}), model: p.model || "" })); } catch {}
   if (p.model !== undefined && p.model !== before) {
     api.updateMe({ ai_model: p.model || "" }).catch((e) => toast(e.message || "AI 모델을 저장하지 못했어요.", "err"));
     window.dispatchEvent(new CustomEvent("trio:ai-model", { detail: { model: p.model || "" } })); // 같은 화면의 다른 고르기 칸도 맞춰요
   }
 }
 // 로그인 · 내 정보가 바뀌면 계정의 모델로 맞춰요 (서버 값이 기준)
-export function syncAiPrefs(me) { if (!me) return; try { localStorage.setItem(KEY, JSON.stringify({ ...aiPrefs(), model: me.ai_model || "" })); } catch {} }
+export function syncAiPrefs(me) { if (!me) return; try { const v = JSON.parse(localStorage.getItem(KEY) || "{}"); localStorage.setItem(KEY, JSON.stringify({ ...(v && typeof v === "object" ? v : {}), model: me.ai_model || "" })); } catch {} }
 export async function aiModels() { if (!cache) cache = api.aiModels().then((r) => r.models.filter((m) => m.id !== "all")).catch(() => []); return cache; }
 // 실제로 답한 모델 이름(예: openai/gpt-oss-120b) → 고르기 목록의 이름 { pick, label } (계산식 점수는 "formula")
 export async function whoAnswered(used) {
@@ -41,6 +45,8 @@ export function mountAiPick(host, opts = {}) {
   // 다른 곳에서 모델을 바꾸면 이 칸도 따라가요 (화면에서 빠지면 듣기를 그만둬요)
   const follow = (e) => { if (!host.isConnected) return window.removeEventListener("trio:ai-model", follow); if (sel.value !== e.detail.model) sel.value = e.detail.model; };
   window.addEventListener("trio:ai-model", follow);
+  const followWeb = (e) => { if (!host.isConnected) return window.removeEventListener("trio:prefs", followWeb); if (web && e.detail.keys.includes("ai_web")) web.setAttribute("aria-pressed", String(aiPrefs().web)); };
+  window.addEventListener("trio:prefs", followWeb);
   web?.addEventListener("click", () => { const on = web.getAttribute("aria-pressed") !== "true"; web.setAttribute("aria-pressed", String(on)); setAiPrefs({ web: on }); opts.onChange?.(aiPrefs()); });
   return { get: aiPrefs };
 }

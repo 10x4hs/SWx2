@@ -1,5 +1,5 @@
 // 친구가 공개한 페이지를 '내 화면에서만' 숨기기 (Dock 아이콘 · 공부 과목 탭). 계정에 저장돼요 (users.hidden_pages · PATCH /me).
-// 친구 쪽에는 아무 변화가 없어요. 다시 보이게 하려면 프로필 → 숨긴 페이지.
+// 친구 쪽에는 아무 변화가 없어요. 다시 보이게 하려면 설정 → 숨긴 페이지 (#/settings/hidden).
 import { api } from "./api.js";
 import { toast } from "./util.js";
 
@@ -16,7 +16,7 @@ async function save(next, msg) {
 }
 export async function hidePage(p) {
   if (!me || p.mine) return;
-  try { await save([...new Set([...(me.hidden_pages || []), p.id])], `'${p.title}' 를 내 화면에서 숨겼어요. 프로필 → 숨긴 페이지에서 다시 보이게 할 수 있어요.`); }
+  try { await save([...new Set([...(me.hidden_pages || []), p.id])], `'${p.title}' 를 내 화면에서 숨겼어요. 설정 → 숨긴 페이지에서 다시 보이게 할 수 있어요.`); }
   catch (e) { toast(e.message || "숨기지 못했어요.", "err"); }
 }
 export async function unhidePage(id) {

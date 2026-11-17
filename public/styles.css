@@ -3461,10 +3461,30 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 .set-link:hover { background: var(--hover); }
 .set-link.danger > span { color: #ff453a; }
 .set-reset { border: 1px solid var(--line); background: transparent; color: var(--ink-2); padding: 7px 14px; border-radius: 9px; font-size: var(--fs-md); }
+/* 설정 한 곳 (2026-11-17): 고르기 칸 · 숫자 칸 · 상태 · 화면 꾸미기(theme-panel 의 칸을 그대로) */
+.set-h2 { margin: 28px 0 4px; font-size: var(--fs-3xl); }
+.set-seg { flex-wrap: wrap; }
+.set-seg button { min-height: 32px; }
+.set-num { width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
+.set-date { width: auto; min-width: 150px; }
+.set-unit { color: var(--ink-3); font-size: var(--fs-sm); }
+.set-news { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.set-block { padding: 12px 16px; display: grid; gap: 10px; }
+.set-now { margin: 0; font-size: var(--fs-base); color: var(--ink-2); }
+.set-empty { margin: 0; padding: 14px 16px; color: var(--ink-3); font-size: var(--fs-base); }
+.set .st-chip { padding: 5px 11px; gap: 5px; border-radius: 999px; border: 1px solid var(--line); background: transparent; font: 500 var(--fs-md) var(--font); color: var(--ink-2); min-height: 32px; display: inline-flex; align-items: center; }
+.set .st-chip[aria-pressed="true"] { background: var(--ink); color: var(--page-bg); border-color: var(--ink); }
+.set .st-chip.st-clear { color: var(--ink-3); border-style: dashed; }
+.set-thm { padding: 16px; display: grid; gap: 16px; overflow: visible; }
+.set-thm .thm-scroll { overflow: visible; margin: 0; padding: 0; }
+.set-thm .thm-preview { max-width: 420px; }
+.set-thm .thm-inline-foot { display: flex; gap: 10px; align-items: center; }
 @media (max-width: 860px) {
   .set { grid-template-columns: 1fr; }
   .set-nav { grid-auto-flow: column; justify-content: start; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 12px; }
   .set-nav b { display: none; }
+  .set-nav button { white-space: nowrap; flex: none; }
+  .set-dock { display: none; } /* 폰은 아래 탭바라 Dock 설정이 없어요 */
   .set-pane { padding: 18px 16px 32px; }
   .set-row { grid-template-columns: 1fr; gap: 8px; }
 }

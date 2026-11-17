@@ -41,7 +41,12 @@ export function statusBadge(st) {
   return `<span class="av-st${chars.length ? " chars" : ""}" data-s="${st.s}" title="${statusText(st)}">${inner}</span>`;
 }
 
-// 내 메뉴 안의 상태 고르기. onPick(next | null)
+// 고르기 칸에서 누른 버튼(data-st · data-tool) → 다음 상태 (내 메뉴 · 설정 → 계정이 같이 써요)
+export function nextStatus(cur, b) {
+  if (b.dataset.tool) { const t = new Set(cur?.tools || []); t.has(b.dataset.tool) ? t.delete(b.dataset.tool) : t.add(b.dataset.tool); return { s: "coding", tools: [...t] }; }
+  return b.dataset.st && b.dataset.st !== cur?.s ? { s: b.dataset.st, tools: b.dataset.st === "coding" ? ["claude"] : [] } : null;
+}
+// 내 메뉴 · 설정 안의 상태 고르기. onPick(next | null)
 export function statusPicker(st) {
   const cur = st?.s || "", tools = st?.tools || [];
   return `<div class="st-pick" role="group" aria-label="지금 활동 상태">

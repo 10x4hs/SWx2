@@ -3,7 +3,7 @@
 //   1) 기본값이면 css/theme.css 를 빼도 계산된 색이 똑같아요 (= 예전 화면 그대로)
 //   2) 프로필 메뉴 → '화면 꾸미기' → 강조 색(파랑) · 배경화면(세이지) · 투명도 줄이기 → 버튼 · 체크 · 배경 · 흐림이 바로 바뀌어요
 //   3) 계정에 저장(/api/apps/ui/state) → 새로 열어도 그대로 · 이 기기 사본을 지워도 서버 값으로 돌아와요
-//   5) v2: 리퀴드 글래스 세기(강하게) · 글씨체(둥근 고딕 — 그때만 웹 글꼴 받음) · 글자 크기(아주 크게 — 가로로 넘치지 않음) · 모서리 · 언어 자리
+//   5) v2: 리퀴드 글래스 세기(강하게) · 글씨체(둥근 고딕 — 그때만 웹 글꼴 받음) · 글자 크기(아주 크게 — 가로로 넘치지 않음) · 모서리 · 설정 → 화면 바로가기
 //      + 배경화면 20개 × 밝게/어둡게 × 리퀴드 글래스 강하게 · 맑게 에서 글자 대비 (판 색을 배경 색 위에 겹쳐 계산 · 글자 4.5:1 이상)
 //   4) 키보드: 라디오 묶음에서 → 로 다음 색 · Esc 로 닫기 · '기본으로' → 처음 화면
 import { execFileSync } from "node:child_process";
@@ -107,14 +107,14 @@ export async function themeE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots 
       return {
         link: !!document.getElementById("thm-font-round"), fontOk: document.fonts.check('16px "Gowun Dodum"', "가"),
         dockShadow: dock ? getComputedStyle(dock).boxShadow : "", r: getComputedStyle(document.documentElement).getPropertyValue("--r").trim(),
-        slot: !!document.querySelector('.thm-dialog [data-slot="lang"]'), solidOff: !document.documentElement.dataset.solid,
+        slot: !document.querySelector('.thm-dialog [data-slot]') && !!document.querySelector('.thm-dialog a[href="#/settings/screen"]'), solidOff: !document.documentElement.dataset.solid, // slot: 빈 언어 자리는 없앴고 설정 → 화면 바로가기 (2026-11-17)
       };
     });
     await shot("v2-panel");
     ok(v.attrs.fx === "strong" && v.attrs.font === "round" && v.attrs.size === "xl" && v.attrs.radius === "round" && extra.solidOff
       && /blur\(51px\)/.test(v.mainBlur) && /saturate\(2\.4\)|saturate\(240%\)/.test(v.mainBlur) && /inset/.test(extra.dockShadow)
       && /Gowun Dodum/.test(v.font) && extra.link && !fontLinkBefore && v.zoom === (w < 520 ? "1.12" : "1.25") && extra.fontOk && extra.r === "28px" && extra.slot,
-      `${tv} · 꾸미기 v2 바로 적용 — 리퀴드 ${v.attrs.fx} (흐림 ${v.mainBlur}) · 글씨체 ${v.attrs.font} (링크 ${fontLinkBefore}→${extra.link} · 받음 ${extra.fontOk}) · 크기 ${v.attrs.size} (zoom ${v.zoom}) · 모서리 ${extra.r} · 언어 자리 ${extra.slot}`);
+      `${tv} · 꾸미기 v2 바로 적용 — 리퀴드 ${v.attrs.fx} (흐림 ${v.mainBlur}) · 글씨체 ${v.attrs.font} (링크 ${fontLinkBefore}→${extra.link} · 받음 ${extra.fontOk}) · 크기 ${v.attrs.size} (zoom ${v.zoom}) · 모서리 ${extra.r} · 빈 자리 없음 · 설정 바로가기 ${extra.slot}`);
     // 아주 크게여도 화면들이 가로로 넘치지 않아요 (창을 닫고 몇 화면 돌아봐요)
     await p.click(".thm-foot [data-close]"); await sleep(300);
     const over = [], pre = [];

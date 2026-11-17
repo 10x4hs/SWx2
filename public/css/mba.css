@@ -92,7 +92,8 @@ body:has(.host-mba) .bg { opacity: .12; filter: blur(2px) grayscale(1); }
 .mb-today-bar i { border-radius: 2px; }
 .mb-today-bar .acc { background: #8FB300; } .mb-today-bar .acc2 { background: #B8D94A; } .mb-today-bar .ink { background: #111; } .mb-today-bar .mid { background: #777; } .mb-today-bar .low { background: #BDBDB8; }
 .mb-today-next { margin-top: 12px; font: 500 13.5px/1.5 var(--mb-ko); }
-.mb-chips { display: flex; gap: 6px; margin-top: 12px; }
+.mb-chips { display: flex; gap: 6px; margin-top: 12px; align-items: center; }
+.mb-set { margin-left: auto; font-size: var(--fs-sm); color: var(--ink-3, currentColor); opacity: .8; }
 .mb-today .mb-chip { color: #000; box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
 .mb-today .mb-chip:hover { box-shadow: inset 0 0 0 1px #000; }
 .mb-today .mb-chip.on { background: #000; color: var(--mb-ink); box-shadow: none; }
