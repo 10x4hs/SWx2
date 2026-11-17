@@ -63,11 +63,14 @@ export async function noteFilesE2E({ p, ctx, ok, tv, BASE, H }) {
     ok(c.img === 1 && c.file === 2 && c.pdf === 1 && nw > 0, `${tv} · 노트 첨부: 다시 열어도 그대로 ${JSON.stringify(c)}`);
     // 고치고 바로 닫기 · 새로 고침: 0.65초 저장 대기 중이던 수정도 남아요 (페이지를 떠날 때 keepalive 로 마저 보내요 — views/notes.js)
     const title = "바로 닫기 " + Date.now();
+    // 실패하면 까닭이 보이게: 떠나는 순간의 제목 칸 · 저장 상태를 sessionStorage 에 (새로 고침 뒤 읽어요 — 가끔(약 5%) 실패했는데 다시 돌리면 재현이 안 됐어요)
+    await p.evaluate(() => addEventListener("pagehide", () => { try { sessionStorage.setItem("e2e-leave", JSON.stringify({ title: document.querySelector("#ed-title")?.value, status: document.querySelector("#ed-status")?.textContent, ctrl: !!navigator.serviceWorker?.controller })); } catch {} }));
     await p.fill("#ed-title", title);
     await p.reload();
     let saved2 = "";
     for (let end = Date.now() + 8000; saved2 !== title && Date.now() < end;) { saved2 = (await (await ctx.request.get(BASE + "/api/notes/" + id)).json()).note?.title; if (saved2 !== title) await sleep(200); }
-    ok(saved2 === title, `${tv} · 노트: 고치고 바로 새로 고침해도 남아요 — 서버 제목 "${saved2}"`);
+    const leaveLog = saved2 === title ? "" : " · 떠날 때 " + (await p.evaluate(() => sessionStorage.getItem("e2e-leave")).catch(() => "?"));
+    ok(saved2 === title, `${tv} · 노트: 고치고 바로 새로 고침해도 남아요 — 서버 제목 "${saved2}"${leaveLog}`);
   } finally {
     await ctx.request.delete(BASE + "/api/notes/" + id, { headers: H }).catch(() => {});
   }
