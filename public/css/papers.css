@@ -353,7 +353,7 @@ iframe.pp-vid-frame { cursor: auto; }
 .ppc-quote-x { flex: none; border: 0; background: transparent; color: var(--ink-2); width: 26px; height: 26px; margin: -3px -2px -3px 0; border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
 .ppc-quote-x:hover { background: var(--hover); color: var(--ink); }
 .ppc-row { display: flex; align-items: flex-end; gap: 6px; padding: 6px 6px 6px 12px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--glass-3); }
-.ppc-row:focus-within { border-color: var(--ink-3); }
+.ppc-row:focus-within { border-color: var(--ink); } .ppc .ppc-in:focus-visible { outline: none; } /* 테두리는 입력 줄(.ppc-row)이 보여 줘요 */
 .ppc-in { flex: 1; border: 0; background: transparent; resize: none; outline: none; font: 14px/1.5 var(--font); color: var(--ink); padding: 5px 0; max-height: 160px; }
 .ppc-in::placeholder { color: var(--ink-3); }
 .ppc-send, .ppc-stop { flex: none; width: 32px; height: 32px; border-radius: 10px; border: 0; background: var(--ink); color: var(--on-ink); display: grid; place-items: center; }
@@ -632,3 +632,49 @@ iframe.pp-vid-frame { cursor: auto; }
 .apip-list li { display: grid; gap: 2px; }
 .apip-list code { white-space: pre-wrap; word-break: break-all; }
 .upage-api { margin-top: 10px; font-size: 13px; text-align: center; }
+
+/* ---------- 공부 AI 튜터 (js/tutor.js) — 근거 · 바로 답 · 화면 줄 · 오류, 그리고 서랍 하나 (CIM · SW 과정) ----------
+   색은 앱 공통 이름(--ink · --line · --paper …)만 읽어요 → .dv(종이) · .cim 이 자기 색으로 바꿔 줘요 */
+.ppc-cite { display: inline-block; min-width: 1.35em; padding: 0 .3em; margin: 0 1px; border-radius: 6px; background: var(--hover); color: var(--ink); font-size: .72em; font-weight: 700; line-height: 1.5; text-align: center; vertical-align: .25em; text-decoration: none; }
+a.ppc-cite:hover { background: var(--ink); color: var(--on-ink); }
+.ppc-src { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.ppc-src > span { font-size: var(--fs-sm); font-weight: 700; color: var(--ink-3); margin-right: 2px; }
+.ppc-src-c { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 10px 3px 4px; border: 1px solid var(--line-2); border-radius: 999px; font-size: var(--fs-md); font-weight: 600; color: var(--ink-2); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ppc-src-c b { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 999px; background: var(--hover); color: var(--ink); font-size: var(--fs-2xs); }
+a.ppc-src-c:hover { border-color: var(--ink); color: var(--ink); }
+.ppc-more { display: flex; margin-top: 10px; border: 1px solid var(--line-2); cursor: pointer; font-weight: 600; }
+.ppc-more:hover { border-color: var(--ink); color: var(--ink); }
+.ppc-sep { margin: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--ink-3); text-align: center; border-top: 1px solid var(--line); padding-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ppc-err { border-left: 3px solid var(--danger); padding: 2px 0 2px 12px; font-size: var(--fs-base); }
+.ppc-err b { display: block; color: var(--danger); }
+.ppc-err p { margin: 0; color: var(--ink-3); }
+
+.tut { position: fixed; right: 16px; top: var(--tut-top, 16px); bottom: var(--tut-bottom, 16px); z-index: var(--tut-z, 60); width: var(--tut-w, 440px); display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px 20px; border-radius: 12px; background: var(--paper, var(--panel)); color: var(--ink); border: 1px solid var(--line-2); box-shadow: 0 24px 60px -24px rgba(40, 30, 10, .35); }
+.tut[hidden] { display: none; }
+.tut-grip { position: absolute; left: -7px; top: 0; bottom: 0; width: 14px; display: grid; place-items: center; cursor: col-resize; touch-action: none; }
+.tut-grip i { width: 4px; height: 48px; border-radius: 2px; background: var(--line-2); transition: background .15s; }
+.tut-grip:hover i, .tut-grip:focus-visible i, .tut-drag .tut-grip i { background: var(--ink); }
+.tut-drag, .tut-drag * { user-select: none !important; -webkit-user-select: none !important; }
+.tut-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tut-n { font-size: var(--fs-md); font-weight: 600; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tut-r { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.tut-sz { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+.tut-sz button, .tut-b { height: 30px; padding: 0 10px; border: 0; background: transparent; color: var(--ink-3); font: inherit; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; }
+.tut-sz button + button { border-left: 1px solid var(--line-2); }
+.tut-sz button[aria-pressed="true"], .tut-b[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+.tut-b { border: 1px solid var(--line-2); border-radius: 8px; }
+.tut-b:hover, .tut-sz button:hover { color: var(--ink); }
+.tut-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.tut .tut-body > .ppc { flex: 1; min-height: 0; height: auto; border: 0; border-radius: 0; background: transparent; }
+.tut .ppc-head > svg, .tut .ppc-head > b { display: none; } /* 이름은 서랍 머리에 — 여기는 '지금 화면' 줄과 지우기만 */
+.tut .ppc-head { padding: 0 0 8px; border-bottom: 1px solid var(--line); }
+.tut .ppc-head .faint { margin-left: 0; margin-right: auto; font-size: var(--fs-md); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tut .ppc-log { padding: 4px 2px; }
+.tut .ppc-quick { padding: 0; flex-wrap: wrap; overflow: visible; -webkit-mask-image: none; mask-image: none; }
+.tut .ppc-form { padding: 0; }
+@media (min-width: 1100px) { .tut-on { padding-right: calc(var(--tut-w, 440px) + 32px); } } /* 넓은 화면은 본문이 비켜 나란히 */
+@media (max-width: 760px) { /* 폰: 아래에서 올라오는 판, 위 손잡이로 높이 */
+  .tut { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; height: var(--tut-h, 62dvh); padding: 20px 12px 12px; }
+  .tut-grip { left: 0; right: 0; top: 0; bottom: auto; width: auto; height: 20px; cursor: row-resize; }
+  .tut-grip i { width: 48px; height: 4px; }
+}

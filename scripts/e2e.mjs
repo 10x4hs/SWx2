@@ -1272,7 +1272,7 @@ try {
       ok(wk.no === "07" && wk.days === 5 && wk.rows === 4 && wk.story && wk5 && !wk.over && !errs.length, `${tv} · 개발 한 주 — ${wk.no} · ${wk.days}일 · 그날 카드 ${wk.rows} · 두런 장면 ${wk.story} · 5일째로 ${wk5} · 가로 넘침 ${wk.over}${errs.length ? " — " + errs[0] : ""}`);
       errs = [];
       await hop("#/sw/dev/security/c09", "#dv-read h1", 700);
-      const cd = await p.evaluate(() => ({ code: /kauth\.kakao\.com/.test(document.querySelector(".dv-code")?.textContent || ""), src: document.querySelectorAll(".dv-src a").length, ai: !!document.querySelector("#dv-ai .ppc-form, #dv-ai form"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+      const cd = await p.evaluate(() => ({ code: /kauth\.kakao\.com/.test(document.querySelector(".dv-code")?.textContent || ""), src: document.querySelectorAll(".dv-src a").length, ai: !!document.querySelector("#bk-ai .ppc-form"), over: document.documentElement.scrollWidth > innerWidth + 1 }));
       await p.click("#dv-recall-b"); await p.click(".dv-qz .dv-opt").catch(() => {}); await sleep(150);
       const cd2 = await p.evaluate(() => ({ ans: !document.querySelector("#dv-recall-a").hidden, why: !document.querySelector(".dv-qz .dv-why")?.hidden }));
       ok(cd.code && cd.src >= 1 && cd.ai && cd2.ans && cd2.why && !cd.over && !errs.length, `${tv} · 개발 카드 — 카카오 주소 코드 ${cd.code} · 출처 ${cd.src} · AI ${cd.ai} · 떠올리기 답 ${cd2.ans} · 퀴즈 해설 ${cd2.why} · 가로 넘침 ${cd.over}${errs.length ? " — " + errs[0] : ""}`);
@@ -1361,7 +1361,7 @@ try {
       const t1 = await box(); await p.click('#bk-ai [data-sz="s"]'); await sleep(300);
       const t2 = await box();
       const k = tv === "폰" ? "h" : "w", grows = t1[k] > t0[k] && t2[k] < t0[k];
-      await p.click("#bk-ai-x"); await sleep(200);
+      await p.click("#bk-ai [data-tut-x]"); await sleep(200);
       const kept = await p.evaluate(() => document.querySelector("#bk-ai").hidden && JSON.parse(localStorage.getItem("sw-ai-size") || "{}").k === "s");
       ok(grows && kept && !errs.length, `${tv} · 튜터 크기 — 보통 ${t0[k]} → 크게 ${t1[k]} → 작게 ${t2[k]} · 접기 · 기억 ${kept}${errs.length ? " — " + errs[0] : ""}`);
 
@@ -1423,14 +1423,14 @@ try {
       let asked = null;
       await p.route("**/api/apps/cim/ask", (rt) => { asked = JSON.parse(rt.request().postData() || "{}"); rt.fulfill({ status: 200, contentType: "text/event-stream", body: `data: ${JSON.stringify({ type: "delta", text: "**쉽게** 말하면" })}\n\ndata: ${JSON.stringify({ type: "end", text: "**쉽게** 말하면 이래요 [1].", sources: [{ n: 1, type: "cim", id: "s3c6-13", title: "근거 카드", path: "CIM > 3과목 6장", href: "#/cim/study/s3c6/13", cited: true }, { n: 2, type: "cim", id: "s3c6-12", title: "안 쓴 카드", path: "CIM", href: "#/cim/study/s3c6/12", cited: false }] })}\n\n` }); });
       await p.click(".c-v [data-ai-open]"); await sleep(300);
-      const chips = await p.$$eval("#c-ai-quick [data-ai-q]", (e) => e.map((x) => x.textContent));
-      await p.click("#c-ai-quick [data-ai-q]"); await sleep(600);
-      const ans = await p.evaluate(() => document.querySelector(".c-ai-msg.bot strong")?.textContent || "");
+      const chips = await p.$$eval("#c-ai [data-ppc-quick]", (e) => e.map((x) => x.textContent));
+      await p.click("#c-ai [data-ppc-quick]"); await sleep(600);
+      const ans = await p.evaluate(() => document.querySelector("#c-ai .ppc-msg.assistant strong")?.textContent || "");
       // 근거: 답 속 [1] 은 카드로 가는 링크, 아래 칩은 실제로 단 근거(cited)만
-      const cite = await p.evaluate(() => ({ link: document.querySelector(".c-ai-msg.bot a.c-cite")?.getAttribute("href") || "", chips: [...document.querySelectorAll(".c-ai-src .c-src")].map((x) => x.getAttribute("href")) }));
+      const cite = await p.evaluate(() => ({ link: document.querySelector("#c-ai a.ppc-cite")?.getAttribute("href") || "", chips: [...document.querySelectorAll("#c-ai .ppc-src .ppc-src-c")].map((x) => x.getAttribute("href")) }));
       let sized = true;
       if (w > 760) { await p.click('[data-sz="s"]'); await sleep(300); sized = (await p.$eval("#c-ai", (e) => Math.round(e.getBoundingClientRect().width))) === 340; await p.click('[data-sz="m"]'); }
-      await p.click("[data-ai-x]"); await p.unroute("**/api/apps/cim/ask");
+      await p.click("#c-ai [data-tut-x]"); await p.unroute("**/api/apps/cim/ask");
       ok(asked?.context?.kind === "quiz" && /^s\dc\d+-\d+$/.test(asked.context.key || "") && asked.context.options?.length === 4 && Number.isInteger(asked.context.picked) && chips.length === 2 && ans === "쉽게" && cite.link === "#/cim/study/s3c6/13" && cite.chips.join() === "#/cim/study/s3c6/13" && sized && !errs.length, `${tv} · CIM AI 패널 — 빠른 질문 [${chips.join(" · ")}] · 문맥 ${asked?.context?.kind} (${asked?.context?.key}) · 내 답 ${asked?.context?.picked} · 굵게 "${ans}" · 근거 [1]→${cite.link} · 칩 ${cite.chips.join(",")} · 크기 ${sized}${errs.length ? " — " + errs[0] : ""}`);
       // 공부: 목록 19장 → 장 → 카드 한 장씩(그림 · 왜 이 공식) → 목차로 이동
       errs = [];
@@ -1459,12 +1459,12 @@ try {
         let calls = 0, asked2 = null;
         await p.route("**/api/apps/cim/ask", (rt) => { calls++; asked2 = JSON.parse(rt.request().postData() || "{}"); rt.fulfill({ status: 200, contentType: "text/event-stream", body: `data: ${JSON.stringify({ type: "delta", text: "자세히" })}\n\ndata: ${JSON.stringify({ type: "end", text: "자세히 말하면 이래요 [1].", sources: [] })}\n\n` }); });
         await p.click(".c-v [data-ai-open]"); await sleep(300);
-        const t0 = Date.now(); await p.click('#c-ai-quick [data-ai-q="쉽게 설명해줘"]');
-        await p.waitForSelector("[data-ai-more]", { timeout: 2000 }).catch(() => {});
-        const instMs = Date.now() - t0, inst = await p.evaluate(() => ({ li: document.querySelectorAll(".c-ai-msg.bot li").length, more: !!document.querySelector("[data-ai-more]") }));
+        const t0 = Date.now(); await p.click('#c-ai [data-ppc-quick="쉽게 설명해줘"]');
+        await p.waitForSelector("[data-ppc-more]", { timeout: 2000 }).catch(() => {});
+        const instMs = Date.now() - t0, inst = await p.evaluate(() => ({ li: document.querySelectorAll("#c-ai .ppc-msg.assistant li").length, more: !!document.querySelector("[data-ppc-more]") }));
         await shotE("instant");
         const calls0 = calls;
-        await p.click("[data-ai-more]"); await sleep(700);
+        await p.click("[data-ppc-more]"); await sleep(700);
         await p.unroute("**/api/apps/cim/ask");
         // 진짜 서버: 답이 글자 조각(delta) 여러 번으로 오고, 첫 조각이 끝(end)보다 먼저 와요
         const stream = await p.evaluate(async () => {
@@ -1474,7 +1474,7 @@ try {
           for (;;) { const { value, done } = await rd.read(); if (done) break; buf += dec.decode(value, { stream: true }); let i; while ((i = buf.indexOf("\n\n")) >= 0) { const l = buf.slice(0, i); buf = buf.slice(i + 2); if (!l.startsWith("data: ")) continue; const e = JSON.parse(l.slice(6)); if (e.type === "delta") { deltas++; if (first == null) first = performance.now() - t; } if (e.type === "end") end = performance.now() - t; } }
           return { status: r.status, first: Math.round(first ?? -1), end: Math.round(end ?? -1), deltas };
         });
-        await p.click("[data-ai-x]");
+        await p.click("#c-ai [data-tut-x]");
         ok(bookOk && qOk && cont === `#/cim/study/${nextK.replace("-", "/")}` && /교재 \d+쪽/.test(pgs) && ev.lines >= 3 && ev.lines <= 5 && ev.pts >= 1 && /^교재 \d+쪽$/.test(ev.page) && ev.first && ev.closed && inst.li >= 3 && inst.more && calls0 === 0 && instMs < 1000 && calls === 1 && /더 자세히/.test(asked2?.messages?.at(-1)?.content || "") && asked2?.context?.easy?.lines?.length >= 3 && stream.status === 200 && stream.deltas > 1 && stream.first >= 0 && stream.first < stream.end && !errs.length,
           `${tv} · CIM 교재 순서 · 쉽게 보기 — 오늘 카드 ${tc.slice(0, 3).join(",")}… (문제도 그 카드 ${qOk}) · 이어 읽기 ${cont} · 오늘 ${pgs} · 카드 쉽게 ${ev.lines}줄 · 포인트 ${ev.pts} · ${ev.page} · 원문 접힘 ${ev.closed} · 빠른 질문 바로 ${instMs}ms (AI 호출 ${calls0}) → 더 자세히 호출 ${calls} · 스트림 첫 글자 ${stream.first}ms / 끝 ${stream.end}ms (${stream.deltas}조각)${errs.length ? " — " + errs[0] : ""}`);
       }
@@ -1526,6 +1526,45 @@ try {
       ok(back.h === "#/cim/study/s3c7/12" && top0 > 100 && Math.abs(back.top - top0) < 60 && up === "#/cim/study" && !errs.length, `${tv} · CIM 보던 곳 그대로 — ${back.h} · 스크롤 ${top0}→${back.top} · 한 번 더 → ${up}${errs.length ? " — " + errs[0] : ""}`);
       await p.evaluate(() => { localStorage.removeItem("trio-dock-last"); localStorage.removeItem("cim-ai-open"); localStorage.removeItem("cim-ai-size"); Object.keys(localStorage).filter((k) => k.startsWith("cim-intro:")).forEach((k) => localStorage.removeItem(k)); });
       await p.goto("about:blank"); const sl = await (await ctx.request.get(BASE + "/api/apps/cim/state", { headers: H })).json(); await ctx.request.put(BASE + "/api/apps/cim/state", { headers: H, data: { data: { v: 2 }, at: sl.updated_at } }).catch(() => {}); // 폰 차례도 빈 기록에서 (같은 임시 계정)
+    }
+
+    });
+    // ---------- 공부 튜터 서랍 하나 (2026-11-17) — CIM 과 SW 과정에서 작게 · 보통 · 크게 · 끌기 · 화살표 키 · Esc 가 똑같이, 폰은 아래에서 올라오는 판 ----------
+    await sec("tutor-drawer", async () => {
+    {
+      errs = [];
+      const phone = w <= 760;
+      const KEYS = ["cim-ai-size", "cim-ai-open", "sw-ai-size", "sw-ai-open"];
+      const measure = async (url, ready, aside, opener, sizeKey) => {
+        await p.evaluate((ks) => ks.forEach((k) => localStorage.removeItem(k)), KEYS);
+        await go(url, 1500); await p.waitForSelector(ready, { timeout: 10000 }).catch(() => {}); await sleep(300);
+        await p.evaluate(() => { const i = document.querySelector("#c-intro"); if (i && !i.hidden) i.hidden = true; }); // CIM 처음 안내는 이 검사와 상관없어요
+        await p.click(opener); await sleep(300);
+        const box = () => p.evaluate((s) => { const el = document.querySelector(s); if (!el || el.hidden) return null; const r = el.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), l: Math.round(r.left), r: Math.round(innerWidth - r.right), b: Math.round(innerHeight - r.bottom) }; }, aside);
+        const o = { m0: await box() };
+        for (const k of ["s", "l", "m"]) { await p.click(`${aside} [data-sz="${k}"]`); await sleep(150); o[k] = await box(); }
+        const grip = `${aside} [role="separator"]`;
+        const g = await p.$eval(grip, (e) => { const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+        await p.mouse.move(g.x, g.y); await p.mouse.down(); await p.mouse.move(phone ? g.x : g.x - 100, phone ? g.y - 100 : g.y, { steps: 6 }); await p.mouse.up(); await sleep(150);
+        o.drag = await box();
+        await p.focus(grip); await p.keyboard.press(phone ? "ArrowUp" : "ArrowLeft"); await sleep(150);
+        o.key = await box();
+        o.saved = await p.evaluate((k) => JSON.parse(localStorage.getItem(k) || "null"), sizeKey);
+        await p.keyboard.press("Escape"); await sleep(150);
+        o.closed = !(await box());
+        return o;
+      };
+      const cim = await measure("#/cim/study/s3c6/12", "#k-s3c6-12", "#c-ai", ".c-shead [data-ai-open]", "cim-ai-size");
+      const sw = await measure("#/sw/vg/vg-embeddings/c06", "#dv-read h1", "#bk-ai", "#bk-ai-open", "sw-ai-size");
+      await p.evaluate((ks) => ks.forEach((k) => localStorage.removeItem(k)), KEYS);
+      const dim = phone ? "h" : "w", seq = (o) => ["m0", "s", "m", "l", "drag", "key"].map((k) => o[k]?.[dim] ?? "x").join("/");
+      const sheet = (o) => !phone || ["s", "m", "l"].every((k) => o[k] && o[k].l === 8 && o[k].r === 8 && o[k].b === 8); // 폰: 양옆 · 아래 8px 판
+      const vh = await p.evaluate(() => innerHeight), iw = await p.evaluate(() => innerWidth);
+      const want = phone ? { s: Math.round(vh * 0.42), m: Math.round(vh * 0.62), l: Math.round(vh * 0.9) } : { s: 340, m: 440, l: Math.min(640, Math.max(320, iw - 360)) };
+      const presets = (o) => ["s", "m", "l"].every((k) => Math.abs((o[k]?.[dim] ?? -99) - want[k]) <= 2) && o.m0?.[dim] === o.m?.[dim];
+      const moved = (o) => o.drag?.[dim] > o.m?.[dim] + 60 && o.key?.[dim] > o.drag?.[dim] && o.saved?.k === "";
+      ok(seq(cim) === seq(sw) && presets(cim) && presets(sw) && moved(cim) && moved(sw) && sheet(cim) && sheet(sw) && cim.closed && sw.closed && !errs.length,
+        `${tv} · 튜터 서랍 같음 — ${dim} CIM ${seq(cim)} · SW ${seq(sw)} (기대 작게 ${want.s} · 보통 ${want.m} · 크게 ${want.l}) · 폰 판 ${sheet(cim)}/${sheet(sw)} · Esc 닫힘 ${cim.closed}/${sw.closed}${errs.length ? " — " + errs[0] : ""}`);
     }
 
     });

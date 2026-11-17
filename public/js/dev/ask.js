@@ -2,7 +2,7 @@
 // 카드 화면 옆 튜터와 같은 채팅 부품이고, 대화는 주마다 따로 기억해요. 본문 글자를 긁으면 그 문장으로 물어볼 수 있어요.
 import { $, esc } from "../util.js";
 import { streamCourseAsk } from "../api.js";
-import { chatMarkup, mountChat } from "../papers/chat.js";
+import { chatMarkup, mountChat } from "../tutor.js";
 import { index, state, position, topbar, C } from "./data.js";
 import { loadMap, moduleFigs, figTokens, figRefs } from "../figs/catalog.js";
 import { mountFigure } from "../figs/player.js";

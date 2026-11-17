@@ -3,19 +3,10 @@
 //   튜터가 답 안에 [[그림:id]] 를 쓰면 그 자리에 같은 그림이 떠요.
 import { $, $$, esc, toast } from "../util.js";
 import { streamCourseAsk } from "../api.js";
-import { chatMarkup, mountChat } from "../papers/chat.js";
+import { chatMarkup, mountChat, drawerMarkup, mountDrawer } from "../tutor.js";
 import { index, moduleDoc, state, readSet, md, srcList, meter, topbar, nextBar, C, cApi } from "./data.js";
 import { loadMap, moduleFigs, slotHtml, figTokens, figRefs } from "../figs/catalog.js";
 import { mountSlots, mountFigure } from "../figs/player.js";
-
-// AI 튜터 크기 — 넓은 화면은 너비, 폰은 높이. 작게 · 보통 · 크게 + 끌어서 아무 크기 (이 기기에 기억)
-const AI_KEY = "sw-ai-size";
-const SIZES = { s: [340, 0.42], m: [440, 0.66], l: [720, 0.92] };
-const narrow = () => innerWidth <= 720;
-function aiSize() { try { const v = JSON.parse(localStorage.getItem(AI_KEY) || "null"); if (v && v.w && v.h) return v; } catch {} return { w: 440, h: 0.66, k: "m" }; }
-function saveAi(v) { try { localStorage.setItem(AI_KEY, JSON.stringify(v)); } catch {} }
-const clampW = (w) => Math.round(Math.max(300, Math.min(w, Math.max(320, Math.min(980, innerWidth * 0.62)))));
-const clampH = (h) => Math.max(0.3, Math.min(0.94, h));
 
 export function mountCard(host, ctx, modId, cardId) {
   let alive = true;
@@ -33,7 +24,6 @@ export function mountCard(host, ctx, modId, cardId) {
     const figs = moduleFigs(map, C.key, m), here = figs.filter((p) => p.card === cardId);
     const at = (k) => here.filter((p) => String(p.after ?? "end") === String(k)).map((p) => slotHtml(p, { key: `${C.key}/${modId}/${cardId}#${here.indexOf(p)}` })).join(""); // key: 돌아오면 보던 단계 그대로
     const byId = figRefs(figs, cardId); // 튜터가 부르는 그림: 이 카드에 있으면 이 카드의 것
-    let deep = false;
     host.innerHTML = `${topbar("", "", [{ t: `${m.no} ${m.short || m.title}`, href: `${C.base}/${m.id}` }, { t: `카드 ${ci + 1} / ${doc.cards.length}` }])}
       <div class="bk-progress" role="progressbar" aria-label="이 장에서 읽은 카드" aria-valuemin="0" aria-valuemax="${doc.cards.length}" aria-valuenow="${nRead}"><i style="width:${Math.round((nRead / doc.cards.length) * 100)}%"></i><b style="left:${Math.round((ci / doc.cards.length) * 100)}%;width:${Math.max(1, Math.round(100 / doc.cards.length))}%"></b></div>
       <div class="bk">
@@ -61,12 +51,7 @@ export function mountCard(host, ctx, modId, cardId) {
           <footer class="bk-src"><p class="bk-src-h">출처 · 2026-10-15 확인</p><p class="dv-src">${srcList(c.sources)}</p></footer>
         </article>
       </div>
-      <aside class="bk-ai" id="bk-ai" hidden aria-label="AI 튜터">
-        <div class="bk-ai-grip" role="separator" aria-orientation="vertical" aria-label="튜터 크기 — 끌거나 화살표 키" tabindex="0"><i></i></div>
-        <div class="bk-ai-h"><span class="bk-ai-n">AI 튜터 · ${esc(C.tutor)}</span>
-          <span class="bk-ai-r"><span class="bk-ai-sz" role="group" aria-label="튜터 크기">${[["s", "작게"], ["m", "보통"], ["l", "크게"]].map(([k, l]) => `<button type="button" data-sz="${k}" aria-pressed="false">${l}</button>`).join("")}</span><button class="dv-chip" id="dv-lv" aria-pressed="false" title="답 수준">쉽게</button><button class="dv-chip" id="bk-ai-x" aria-label="튜터 접기">접기</button></span></div>
-        <div class="dv-panel" id="dv-ai">${chatMarkup("full", { quick: C.quickCard, sub: C.tutor, empty: "이 카드에서 막히는 걸 물어봐요. 본문을 긁으면 그 문장으로 물어볼 수 있어요. ‘그림으로 보여 줘’ 하면 그림을 띄워 줘요.", ph: C.ph })}</div>
-      </aside>
+      ${drawerMarkup({ id: "bk-ai", title: `AI 튜터 · ${C.tutor}`, level: true, body: chatMarkup("full", { quick: C.quickCard, sub: `지금 카드 · ${c.title}`, empty: "이 카드에서 막히는 걸 물어봐요. 본문을 긁으면 그 문장으로 물어볼 수 있어요. ‘그림으로 보여 줘’ 하면 그림을 띄워 줘요.", ph: C.ph }) })}
       ${nextBar({ id: "dv-done", label: wasRead ? "다시 읽었어요" : "다 읽었어요", sub: go.sub, back: `<span class="bk-left">${prev ? `<a class="bk-back" href="${C.base}/${modId}/${prev.id}">← 이전</a>` : `<a class="bk-back" href="${C.base}/${modId}">← 모듈</a>`}<button type="button" class="bk-ai-btn" id="bk-ai-open" aria-expanded="false" aria-controls="bk-ai">AI 튜터</button></span>` })}`;
     const top = $(".dv-top", host), bar = $(".bk-progress", host); if (top && bar) top.appendChild(bar); // 쪽 진도 선은 위 띠 맨 아래에 (띠가 두 줄이 돼도 딱 붙게)
     stops.push(mountSlots($("#dv-read", host)));
@@ -77,9 +62,8 @@ export function mountCard(host, ctx, modId, cardId) {
       mountFigure(slot, { id: p.fig, no: p.no, title: p.title, opts: p.opts || {}, compact: true });
     });
     const opts = { level: "easy", quick: C.quickCard, post: (html) => figTokens(html, byId), stream: (id, msgs, ev, sig, level) => streamCourseAsk(C.key, modId, cardId, msgs, ev, sig, level, "") };
-    stops.push(mountChat($("#dv-ai", host), `${C.key}-${modId}-${cardId}`, $("#dv-read", host), decorate, opts) || null);
-    stops.push(tutor(host));
-    $("#dv-lv", host).addEventListener("click", (e) => { deep = !deep; opts.level = deep ? "deep" : "easy"; e.currentTarget.setAttribute("aria-pressed", deep); e.currentTarget.textContent = deep ? "깊게" : "쉽게"; });
+    stops.push(mountChat($("#bk-ai", host), `${C.key}-${modId}-${cardId}`, $("#dv-read", host), decorate, opts));
+    stops.push(mountDrawer(host, $("#bk-ai", host), { opener: "#bk-ai-open", sizeKey: "sw-ai-size", openKey: "sw-ai-open", onLevel: (lv) => { opts.level = lv; } }));
     $("#dv-deep-b", host)?.addEventListener("click", (e) => { const d = $("#dv-deep", host), open = d.hidden; d.hidden = !open; e.currentTarget.setAttribute("aria-expanded", open); e.currentTarget.textContent = open ? "접기" : "더 자세히 펼치기"; });
     $("#dv-recall-b", host).addEventListener("click", (e) => { const a = $("#dv-recall-a", host), open = a.hidden; a.hidden = !open; e.currentTarget.setAttribute("aria-expanded", open); e.currentTarget.textContent = open ? "답 접기" : "적었어요 · 답 보기"; });
     const answered = new Map();
@@ -103,42 +87,4 @@ export function mountCard(host, ctx, modId, cardId) {
     if (!next && nextM) $(".bk-go-s", host) && ($(".bk-go-s", host).textContent = `이 장의 마지막 카드 · 다음 장은 ${nextM.no} ${nextM.title}`);
   })().catch((e) => { if (alive) host.innerHTML = `${topbar("")}<p class="dv-err">카드를 불러오지 못했어요. ${esc(e.message || "")}</p>`; });
   return () => { alive = false; stops.forEach((f) => { try { f?.(); } catch {} }); };
-}
-
-// 튜터 서랍: 열기 · 접기 · 크기(끌기 · 버튼 · 화살표 키). 넓은 화면은 읽는 칸이 옆으로 비켜 나란히, 폰은 아래에서 올라오는 판
-function tutor(host) {
-  const ai = $("#bk-ai", host), btn = $("#bk-ai-open", host), grip = $(".bk-ai-grip", ai);
-  let size = aiSize();
-  const apply = () => {
-    host.style.setProperty("--ai-w", clampW(size.w) + "px");
-    host.style.setProperty("--ai-h", Math.round(clampH(size.h) * 100) + "dvh");
-    $$("[data-sz]", ai).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.sz === size.k)));
-    grip.setAttribute("aria-orientation", narrow() ? "horizontal" : "vertical");
-    grip.setAttribute("aria-valuenow", String(narrow() ? Math.round(clampH(size.h) * 100) : clampW(size.w)));
-  };
-  const setOpen = (open, focus = true) => {
-    ai.hidden = !open; btn.setAttribute("aria-expanded", String(open)); host.classList.toggle("bk-ai-on", open);
-    try { sessionStorage.setItem("sw-ai-open", open ? "1" : ""); } catch {}
-    if (open) { apply(); if (focus) ai.querySelector("textarea, input")?.focus({ preventScroll: true }); }
-  };
-  btn.addEventListener("click", () => setOpen(ai.hidden));
-  $("#bk-ai-x", host).addEventListener("click", () => { setOpen(false); btn.focus(); });
-  // 넓은 화면에서 튜터를 열어 둔 채 다른 카드로 가거나 돌아오면 그대로 열려 있어요 (옆에 나란히라 글을 가리지 않아서) — 폰은 가리니까 닫힌 채로
-  try { if (sessionStorage.getItem("sw-ai-open") === "1" && innerWidth >= 1100) setOpen(true, false); } catch {}
-  ai.addEventListener("click", (e) => { const b = e.target.closest("[data-sz]"); if (!b) return; const [w, h] = SIZES[b.dataset.sz]; size = { w: b.dataset.sz === "l" ? Math.min(w, innerWidth * 0.55) : w, h, k: b.dataset.sz }; apply(); saveAi(size); });
-  // 끌기: 넓은 화면 = 왼쪽 가장자리를 좌우로, 폰 = 위 손잡이를 위아래로
-  grip.addEventListener("pointerdown", (e) => {
-    e.preventDefault(); grip.setPointerCapture(e.pointerId); host.classList.add("bk-ai-drag");
-    const mv = (ev) => { if (narrow()) size = { ...size, h: clampH(1 - ev.clientY / innerHeight), k: "" }; else size = { ...size, w: clampW(innerWidth - ev.clientX - 16), k: "" }; apply(); };
-    const up = () => { host.classList.remove("bk-ai-drag"); grip.removeEventListener("pointermove", mv); grip.removeEventListener("pointerup", up); grip.removeEventListener("pointercancel", up); saveAi(size); };
-    grip.addEventListener("pointermove", mv); grip.addEventListener("pointerup", up); grip.addEventListener("pointercancel", up);
-  });
-  grip.addEventListener("keydown", (e) => {
-    const d = narrow() ? { ArrowUp: 0.05, ArrowDown: -0.05 }[e.key] : { ArrowLeft: 30, ArrowRight: -30 }[e.key]; if (!d) return;
-    e.preventDefault(); if (narrow()) size = { ...size, h: clampH(size.h + d), k: "" }; else size = { ...size, w: clampW(size.w + d), k: "" }; apply(); saveAi(size);
-  });
-  const onResize = () => apply();
-  addEventListener("resize", onResize);
-  apply();
-  return () => removeEventListener("resize", onResize);
 }

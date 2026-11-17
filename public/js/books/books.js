@@ -6,7 +6,7 @@
 // 장 위의 '깊게' 스위치를 켜면 수식 · 원어 · 논문 근거 · 코드(deep 블록)가 보여요. 복습 규칙은 논문 쉽게 읽기와 같아요 (1 → 3 → 7일).
 import { api, streamBookAsk } from "../api.js";
 import { toast } from "../util.js";
-import { chatMarkup, mountChat } from "../papers/chat.js";
+import { chatMarkup, mountChat } from "../tutor.js";
 import { $, $$, esc, store, getJSON, md, inline, plain, blocks, quizHtml, answer, wireMotion, wireZoom, wireProgress, wireToc, bar, capOf } from "../papers/ez-core.js";
 import { widgetHtml, wireWidgets } from "./widgets.js";
 

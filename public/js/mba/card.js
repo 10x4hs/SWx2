@@ -1,7 +1,7 @@
 // 경영 마이크로디그리 — 모듈 한 개(2주 · 10일 계획) · 카드 한 장(떠올리기 → 생각 → 그림 → 예시 → 더 자세히 → 적용 → 퀴즈) + 오른쪽 AI 튜터
 import { $, $$, esc, toast } from "../util.js";
 import { api, streamMbaAsk } from "../api.js";
-import { chatMarkup, mountChat } from "../papers/chat.js";
+import { chatMarkup, mountChat } from "../tutor.js";
 import { index, moduleDoc, state, progressOf, position, doneSet } from "./data.js";
 import { renderVisual } from "./charts.js";
 import { md, store, back, meter, weeksOf } from "./ui.js";

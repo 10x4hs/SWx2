@@ -2,6 +2,7 @@
 // 옵시디언 노트에 끼워 넣는 개인 토큰 페이지. 셋이 서로의 체크와 한 줄 정리를 봐요 — 쓰기는 본인만.
 // 공부 자료는 정적 파일(public/papers/*)이고, 여기선 기록만 다뤄요.
 import { aiJson, aiText } from "./ai.js";
+import { sseResponse, relay } from "./lib/sse.js";
 import { sha256, b64url } from "./lib/crypto.js";
 import { kstTodayReq } from "./lib/day.js";
 import { PEERS } from "./teams.js";
@@ -247,18 +248,10 @@ export function registerPapers(on, { json, body, fail, now }) {
       catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
     }
     // 스트리밍(SSE): data: {type: "delta"|"reset"|"end"|"error", …}
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter(), enc = new TextEncoder();
-    let open = true;
-    const send = async (o) => { if (!open) return; try { await writer.write(enc.encode(`data: ${JSON.stringify(o)}\n\n`)); } catch { open = false; } };
-    ec.waitUntil((async () => {
-      try {
-        const r = await aiText(env, sys, clean, undefined, (t, meta) => (meta?.reset ? send({ type: "reset" }) : send({ type: "delta", text: t })));
-        await send({ type: "end", text: r.text, used: r.used });
-      } catch (e) { await send({ type: "error", message: e.message || "AI 답을 받지 못했어요." }); }
-      open = false; try { await writer.close(); } catch {}
-    })());
-    return new Response(readable, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", "x-accel-buffering": "no" } });
+    return sseResponse(ec, async (send) => {
+      const r = await aiText(env, sys, clean, undefined, relay(send));
+      await send({ type: "end", text: r.text, used: r.used });
+    });
   });
 
   // 옵시디언에 넣을 노트: 새 토큰을 만들고(옛 것은 무효) 노트 본문을 돌려줘요

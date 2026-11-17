@@ -6,6 +6,7 @@
 //   POST /books/ask              그 장의 내용을 넣은 AI 튜터 (SSE · 쉽게/깊게)
 // 복습 규칙은 논문 쉽게 읽기(papers.js easy_reads)와 같아요 — 1 → 3 → 7일 간격 (Cepeda 2008).
 import { aiText } from "./ai.js";
+import { sseResponse, relay } from "./lib/sse.js";
 import { kstTodayReq } from "./lib/day.js";
 
 const GAP = [0, 1, 3, 7];
@@ -105,17 +106,9 @@ ${text}`.replace(/\*\*/g, "");
       try { const r = await aiText(env, sys, clean); return json({ text: r.text, used: r.used }); }
       catch (e) { fail(e.status || 502, e.message || "AI 답을 받지 못했어요."); }
     }
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter(), enc = new TextEncoder();
-    let open = true;
-    const send = async (o) => { if (!open) return; try { await writer.write(enc.encode(`data: ${JSON.stringify(o)}\n\n`)); } catch { open = false; } };
-    ec.waitUntil((async () => {
-      try {
-        const r = await aiText(env, sys, clean, undefined, (t, meta) => (meta?.reset ? send({ type: "reset" }) : send({ type: "delta", text: t })));
-        await send({ type: "end", text: r.text, used: r.used });
-      } catch (e) { await send({ type: "error", message: e.message || "AI 답을 받지 못했어요." }); }
-      open = false; try { await writer.close(); } catch {}
-    })());
-    return new Response(readable, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", "x-accel-buffering": "no" } });
+    return sseResponse(ec, async (send) => {
+      const r = await aiText(env, sys, clean, undefined, relay(send));
+      await send({ type: "end", text: r.text, used: r.used });
+    });
   });
 }
