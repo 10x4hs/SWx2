@@ -211,7 +211,7 @@ try {
     // ---------- ⑧-3 Dock 확대 · Settings: 마우스 아래 아이콘이 가장 크고(커서 높이와 같은 아이콘) · 끌면 원래 자리 · 내 메뉴 Settings → 크기 바꾸면 바로 · 나오는 범위 ----------
     await sec("dock-settings", async () => {
     try {
-      if (w < 861) { await go("#/settings", 1800); const has = await p.locator(".set-nav [data-tab]").count(); ok(has === 4, `${tv} · Settings — 폰에서도 열림 (분류 ${has})`); return; }
+      if (w < 861) { await go("#/settings", 1800); const has = await p.locator(".set-nav [data-tab]").count(); ok(has === 8, `${tv} · Settings — 폰에서도 열림 (분류 ${has})`); return; }
       await go("#/", 2200);
       const icons = () => p.evaluate(() => [...document.querySelectorAll(".rail.dock #dock-list > [data-dock] > .app-ic, .rail.dock #dock-list > a.rail-btn > .app-ic")].map((ic) => { const r = ic.getBoundingClientRect(); return { w: Math.round(r.width), y: Math.round(r.top + r.height / 2), k: ic.parentElement.dataset.dock }; }));
       const base = await icons(), mid = base[3];
@@ -231,6 +231,7 @@ try {
       await p.mouse.move(700, 400); await sleep(900);
       // 내 메뉴 → Settings
       await p.locator("#me-btn").click(); await p.locator("#set-btn").click(); await sleep(1200);
+      await p.locator('[data-tab="screen"]').click(); await sleep(300); // Dock 은 '화면' 분류 아래 (2026-11-17)
       const menuGone = await p.evaluate(() => !document.querySelector("#mcp-btn, #pw-btn, #logout-btn"));
       await p.locator("#s-size").fill("2"); await sleep(200); const noEdge = await p.locator("#s-edge").count() === 0;
       const prefs = await p.evaluate(() => JSON.parse(localStorage.getItem("dock-prefs") || "{}"));
@@ -242,6 +243,54 @@ try {
         `${tv} · Dock 확대 · Settings — 커서 아래 가장 큼 ${under} (${top.k}) · ${base[3].w}→${top.w}px · 끌면 제자리 ${flat} · 검색 · 타이머 · 프로필 고정 ${still} · 위 ${fTop.first}≥${fTop.s[1]} · 아래 ${fBot.last}≤${fBot.t[0]}${flat ? "" : " " + JSON.stringify(pressed.find((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)) + "/" + JSON.stringify(base[pressed.findIndex((x, i) => Math.abs(x.y - base[i].y) > 2 || Math.abs(x.w - base[i].w) > 4)])} · 메뉴 정리 ${menuGone} · 저장 ${prefs.size} · 나오는 범위 없앰 ${noEdge} · 2배 ${big2}px · 계정 탭 ${acct}`);
     } catch (e) { ok(false, `${tv} · Dock 확대 · Settings — ${String(e.message).split("\n")[0]}`); }
       await p.evaluate(() => { try { localStorage.removeItem("dock-prefs"); } catch {} });
+    });
+    // ---------- ⑧-3b 설정 한 곳 (#/settings, 2026-11-17): 공부 분량은 계정에 — 설정 ↔ 앱이 같은 값 · 다른 기기도 같아요 · 옛 기기 값은 한 번 올려요 ----------
+    await sec("settings", async () => {
+    let dctx = null;
+    try {
+      errs = [];
+      const prefsNow = async () => (await (await ctx.request.get(BASE + "/api/apps/prefs/state", { headers: H })).json());
+      const resetPrefs = async () => { const cur = await prefsNow(); await ctx.request.put(BASE + "/api/apps/prefs/state", { headers: H, data: { data: {}, at: cur.updated_at } }); };
+      const checked = (key) => p.evaluate((k) => document.querySelector(`[data-pref="${k}"] [aria-checked="true"]`)?.dataset.v || "", key);
+      await resetPrefs();
+      await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith("trio-prefs:") || ["mb-minutes2", "dv-minutes", "trio-en-rate", "focus-custom-min"].includes(k)) localStorage.removeItem(k); });
+      // ① 설정에서 바꾸면 → MBA 화면이 그 값
+      await go("#/settings/study", 2000);
+      const tabs = await p.locator(".set-nav [data-tab]").count();
+      await p.click('[data-pref="mba_min"] [data-v="60"]'); await sleep(900);
+      await go("#/mba", 2600);
+      const mbaShows = await p.evaluate(() => (document.querySelector("#mb-tmin")?.textContent || "").startsWith("60") && document.querySelector('.mb-today [data-min="60"]')?.getAttribute("aria-pressed") === "true");
+      // ② 앱(SW 목록)에서 바꾸면 → 설정이 그 값
+      await p.evaluate(() => { try { localStorage.setItem("sw-list:toc", "1"); } catch {} }); await go("#/sw/dev", 2500);
+      await p.click('.dv [data-min="30"]').catch(() => {}); await sleep(900);
+      await go("#/settings/study", 2000);
+      const devShows = await checked("dev_min");
+      const srv = (await prefsNow()).data || {};
+      // ③ 다른 기기 (새 브라우저 · 빈 localStorage): 같은 값
+      dctx = await browser.newContext({ viewport: { width: w, height: h }, serviceWorkers: "block" });
+      await dctx.request.post(BASE + "/api/auth/login", { headers: H, data: { username: user } });
+      const d = await dctx.newPage();
+      await d.goto(BASE + "/#/settings/study"); await sleep(2200);
+      const other = await d.evaluate(() => ({ mba: document.querySelector('[data-pref="mba_min"] [aria-checked="true"]')?.dataset.v, dev: document.querySelector('[data-pref="dev_min"] [aria-checked="true"]')?.dataset.v }));
+      await d.goto(BASE + "/#/mba"); await sleep(2600);
+      const otherMba = await d.evaluate(() => (document.querySelector("#mb-tmin")?.textContent || "").startsWith("60"));
+      ok(tabs === 8 && mbaShows && devShows === "30" && srv.mba_min === 60 && srv.dev_min === 30 && other.mba === "60" && other.dev === "30" && otherMba && !errs.length,
+        `${tv} · 설정 한 곳 — 분류 ${tabs} · 설정 60분 → MBA ${mbaShows} · SW 앱 30분 → 설정 ${devShows} · 계정 ${JSON.stringify(srv)} · 다른 기기 ${JSON.stringify(other)} / MBA ${otherMba}${errs.length ? " — " + errs[0] : ""}`);
+      // ④ 옛 기기 값(localStorage 만)은 한 번 계정으로 올라가고, 옛 칸은 지워져요 · 다시 생겨도 계정 값이 이겨요
+      await resetPrefs();
+      await d.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith("trio-prefs:")) localStorage.removeItem(k); localStorage.setItem("trio-en-rate", "0.8"); localStorage.setItem("focus-custom-min", "33"); localStorage.setItem("mb-minutes2", "120"); });
+      await d.goto("about:blank"); await d.goto(BASE + "/#/settings/study"); await sleep(2400);
+      const mig = await d.evaluate(() => ({ rate: document.querySelector('[data-pref="en_rate"] [aria-checked="true"]')?.dataset.v, focus: document.querySelector("#s-focus")?.value, mba: document.querySelector('[data-pref="mba_min"] [aria-checked="true"]')?.dataset.v, left: ["trio-en-rate", "focus-custom-min", "mb-minutes2"].filter((k) => localStorage.getItem(k) != null) }));
+      const up = (await prefsNow()).data || {};
+      await d.evaluate(() => localStorage.setItem("trio-en-rate", "1")); await d.reload(); await sleep(2200);
+      const once = (await prefsNow()).data?.en_rate;
+      const rate2 = await d.evaluate(() => document.querySelector('[data-pref="en_rate"] [aria-checked="true"]')?.dataset.v);
+      ok(mig.rate === "0.8" && mig.focus === "33" && mig.mba === "120" && !mig.left.length && up.en_rate === 0.8 && up.focus_min === 33 && up.mba_min === 120 && once === 0.8 && rate2 === "0.8",
+        `${tv} · 설정 — 옛 기기 값 한 번 올리기 ${JSON.stringify(mig)} · 계정 ${JSON.stringify(up)} · 다시 생긴 옛 값은 무시 ${once}/${rate2}`);
+    } catch (e) { ok(false, `${tv} · 설정 한 곳 — ${String(e.message).split("\n")[0]}`); }
+    await dctx?.close().catch(() => {});
+    { const cur = await (await ctx.request.get(BASE + "/api/apps/prefs/state", { headers: H })).json(); await ctx.request.put(BASE + "/api/apps/prefs/state", { headers: H, data: { data: {}, at: cur.updated_at } }); }
+    await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith("trio-prefs:") || k === "sw-list:toc") localStorage.removeItem(k); }).catch(() => {});
     });
     // ---------- ⑧-4 작은 화면(14인치 · 높이 640) + 자동 숨김: 앱 줄만 스크롤 · 타이머 · 프로필은 화면 안 · 스크롤바 / 집중 타이머 '직접' 시간 ----------
     await sec("dock-scroll", async () => {

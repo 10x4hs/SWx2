@@ -1,5 +1,6 @@
 // 경영 마이크로디그리 — 내용 파일(public/mba/*.json) 읽기 · 하루 시간 설정 · 오늘의 순서 · 학습 현황 계산
 import { api } from "../api.js";
+import { getPref, setPref } from "../prefs.js";
 
 const cache = new Map();
 export function getJSON(path) {
@@ -17,11 +18,10 @@ export const words = () => getJSON("/mba/words.json");
 export const kit = () => getJSON("/mba/kit.json");
 export function state() { return api.mbaState().catch(() => ({ today: "", items: [], due: [], days: [], done: [] })); }
 
-// 하루 시간 (이 기기에만 기억) — 하루 1~2시간: 60 · 90 · 120분, 기본 90분
-const KEY = "mb-minutes2";
+// 하루 시간 (계정에 저장 · 설정 → 공부와 같은 값, js/prefs.js "mba_min") — 하루 1~2시간: 60 · 90 · 120분, 기본 90분
 export const MINUTES = [60, 90, 120];
-export function minutes() { try { const v = Number(localStorage.getItem(KEY)); return MINUTES.includes(v) ? v : 90; } catch { return 90; } }
-export function setMinutes(v) { try { localStorage.setItem(KEY, String(v)); } catch {} }
+export function minutes() { const v = Number(getPref("mba_min", 90)); return MINUTES.includes(v) ? v : 90; }
+export function setMinutes(v) { if (MINUTES.includes(+v)) setPref("mba_min", +v); }
 export const cardsPerDay = (m) => ({ 60: 2, 90: 3, 120: 4 })[m] || 3;
 export const reviewLimit = (m) => ({ 60: 12, 90: 18, 120: 25 })[m] || 18;
 

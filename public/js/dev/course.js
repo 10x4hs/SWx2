@@ -34,7 +34,7 @@ export function mountCourse(host, ctx, key) {
           <h2 id="dv-today-h">${mins}분 · 새 카드 ${fresh.length || N}장${due ? ` · 복습 ${due}장` : ""}</h2>
           <p class="toc-today-s">${first ? `${esc(first.module.no)} ${esc(first.module.title)} · ${esc(first.card.title)}부터` : pos.done ? "카드를 모두 읽었어요. 복습과 회의실이 남았어요." : ""}</p></div>
         <div class="toc-today-a"><a class="dv-btn" href="${C.base}/today">오늘 ${mins}분 시작 →</a>
-          <div class="cs-chips" role="group" aria-label="하루 공부 시간">${MINUTES.map((n) => `<button class="dv-chip${n === mins ? " on" : ""}" data-min="${n}" aria-pressed="${n === mins}">${n}분</button>`).join("")}</div></div>
+          <div class="cs-chips" role="group" aria-label="하루 공부 시간">${MINUTES.map((n) => `<button class="dv-chip${n === mins ? " on" : ""}" data-min="${n}" aria-pressed="${n === mins}">${n}분</button>`).join("")}<a class="cs-set" href="#/settings/study" title="설정 → 공부 (계정에 저장돼요)">설정</a></div></div>
       </section>`;
   }
   function draw() {

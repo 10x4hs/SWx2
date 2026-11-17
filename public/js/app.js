@@ -11,7 +11,7 @@ import { featureOfRoute, isOpen, loadFeatures, mountLocked } from "./features.js
 import { openMcpPanel } from "./mcp-panel.js";
 import { openApiPanel } from "./api-panel.js";
 import { openProfile } from "./profile-edit.js";
-import { statusPicker, statusText } from "./status.js";
+import { statusPicker, statusText, nextStatus } from "./status.js";
 import { wireDockDrag } from "./dock-drag.js";
 import { setHiddenMe } from "./hidden-pages.js";
 import { initCustomize, loadCustom, applyUi, afterMount } from "./customize.js"; // Dock 우클릭 → 내 CSS · HTML · JS
@@ -25,6 +25,7 @@ import { enter as enterRoute, navHref, watchScroll, restoreTop } from "./dock-me
 import { hasHistory } from "./undo.js"; // ⌘Z · ⌘⇧Z (계획 · 일기 · Obsidian) // Dock 앱마다 보던 곳 그대로
 import { openPalette, initPalette } from "./palette.js";
 import { timer, renderTimer, initTimer } from "./focus-timer.js";
+import { syncPrefs, prefsSignedOut } from "./prefs.js"; // 설정 한 곳 — 공부 분량 · 읽기 속도 · 웹 먼저 찾기 (계정)
 import { syncUi, signedOut as uiSignedOut } from "./theme.js"; // 화면 꾸미기 — 테마 · 배경 · 강조 색 (첫 화면 전에 index.html 이 먼저 맞춰요)
 import { openThemePanel } from "./theme-panel.js";
 import { initAutoFocus } from "./auto-focus.js";
@@ -59,6 +60,7 @@ function showAuth() {
   if (ctx.me && timer.running) timer.stop(); // 로그아웃하면 타이머도 멈춰요
   ctx.me = null;
   uiSignedOut(); // 로그아웃 화면은 이 기기에 남은 꾸미기 그대로
+  prefsSignedOut();
   stopLive();
   lastView = null;
   document.querySelector(".pw-back")?.remove();
@@ -196,7 +198,7 @@ function impBar() {
   document.body.append(bar);
 }
 async function enter(user) {
-  [ctx.users, ctx.teams] = await Promise.all([api.users().then((r) => toned(r.users)), api.teams().then((r) => r.teams).catch(() => []), loadFeatures(ctx)]);
+  [ctx.users, ctx.teams] = await Promise.all([api.users().then((r) => toned(r.users)), api.teams().then((r) => r.teams).catch(() => []), loadFeatures(ctx), syncPrefs(user).catch(() => {})]); // 설정 값은 첫 화면 전에 같이 받아요
   ctx.me = { ...user, color: ctx.users.find((u) => u.id === user.id)?.color || MEMBER_TONES[0] };
   syncAiPrefs(ctx.me); // 계정에 저장된 AI 모델로 맞춰요
   setHiddenMe(ctx.me); // 내 화면에서 숨긴 친구 페이지
@@ -355,10 +357,7 @@ function renderMeRow() {
   menu.querySelector(".me-st:not(.me-left)").addEventListener("click", async (e) => {
     e.stopPropagation();
     const b = e.target.closest("[data-st],[data-tool]"); if (!b) return;
-    const cur = ctx.me.status;
-    let next;
-    if (b.dataset.tool) { const t = new Set(cur?.tools || []); t.has(b.dataset.tool) ? t.delete(b.dataset.tool) : t.add(b.dataset.tool); next = { s: "coding", tools: [...t] }; }
-    else next = b.dataset.st && b.dataset.st !== cur?.s ? { s: b.dataset.st, tools: b.dataset.st === "coding" ? ["claude"] : [] } : null;
+    const next = nextStatus(ctx.me.status, b);
     try {
       const r = await api.updateMe({ status: next });
       window.dispatchEvent(new CustomEvent("trio:me", { detail: { ...ctx.me, ...r.user } }));

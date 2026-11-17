@@ -1,6 +1,6 @@
 // '화면 꾸미기' 창 (프로필 메뉴에서 열어요) — 고르는 즉시 앱 전체가 바뀌고, 계정에 저장돼 다른 기기도 같아요 (theme.js)
 // 테마 · 배경화면 · 강조 색 · 유리(질감 · 세기) · 글씨체 · 글자 크기 · 모서리는 라디오 묶음(화살표로 옮기면 바로 골라져요), 투명도 줄이기는 스위치.
-// 같은 창 모양(.pw-dialog)을 써요. 다른 모듈이 줄을 끼워 넣을 수 있어요: registerPanelRow("lang", (sec, ctx) => { … }) — 언어(i18n) 자리.
+// 같은 창 모양(.pw-dialog)을 써요. 설정 → 화면(#/settings/screen)도 같은 칸을 그대로 써요 (mountThemeControls).
 import { icon } from "./icons.js";
 import { esc } from "./util.js";
 import { WALLS, ACCENTS, THEMES, FX, FONTS, SIZES, RADII, MOVING, getPrefs, setPrefs, reset, systemSolid, flush, loadFont } from "./theme.js";
@@ -9,22 +9,11 @@ const GLASS = [["clear", "맑게"], ["tinted", "색 입힘"]];
 const GROUPS = ["theme", "wall", "accent", "glass", "fx", "font", "size", "radius"];
 const SAMPLE = "가나다 Aa";
 
-// 끼워 넣는 줄: slot 이름 → fn(section, { close, prefs }). 창을 열 때마다 불러요. 돌려준 함수가 있으면 창을 닫을 때 불러요.
-// 지금 있는 자리: "lang" (글자 크기 아래 · 투명도 줄이기 위). 이름이 없는 자리면 맨 아래에 붙어요.
-const ROWS = new Map();
-export function registerPanelRow(slot, fn) { ROWS.set(String(slot), fn); }
 const radios = (name, list, cur, cls, inner = (k, label) => `<span>${esc(label)}</span>`) =>
   list.map(([k, label]) => `<button type="button" role="radio" class="${cls}" data-v="${k}" aria-checked="${k === cur}" tabindex="${k === cur ? 0 : -1}" aria-label="${esc(label)}">${inner(k, label)}</button>`).join("");
 
-export function openThemePanel() {
-  if (document.querySelector(".thm-back")) return;
-  const prevFocus = document.activeElement;
-  const p = getPrefs();
-  const back = document.createElement("div");
-  back.className = "palette-back pw-back thm-back";
-  back.innerHTML = `
-    <section class="pw-dialog glass thm-dialog" role="dialog" aria-modal="true" aria-labelledby="thm-title">
-      <div class="pw-head"><h2 id="thm-title">화면 꾸미기</h2><button class="icon-btn sm" type="button" data-close aria-label="닫기">${icon.x(16)}</button></div>
+// 견본 · 고르기 칸 (창과 설정 화면이 같이 써요)
+const previewHTML = (p) => `
       <div class="thm-preview" aria-hidden="true">
         <div class="thm-pv-wall" data-wp="${p.wall}"></div>
         <div class="thm-pv-card">
@@ -34,6 +23,8 @@ export function openThemePanel() {
           <span class="thm-pv-foot"><i class="thm-pv-toggle"></i><span class="thm-pv-btn">저장</span></span>
         </div>
       </div>
+`;
+const sectionsHTML = (p) => `
       <div class="thm-scroll">
         <section class="thm-sec">
           <h3 id="thm-h-theme">테마</h3>
@@ -71,27 +62,15 @@ export function openThemePanel() {
           <h3 id="thm-h-radius">모서리</h3>
           <div class="seg thm-seg" role="radiogroup" aria-labelledby="thm-h-radius" data-group="radius">${radios("radius", RADII, p.radius, "")}</div>
         </section>
-        <section class="thm-sec thm-slot" data-slot="lang" hidden></section>
         <section class="thm-sec thm-solid">
           <label class="switch thm-switch"><input type="checkbox" role="switch" id="thm-solid" ${p.solid ? "checked" : ""} aria-describedby="thm-solid-hint"><span></span><b>투명도 줄이기</b></label>
           <p class="thm-hint" id="thm-solid-hint"></p>
         </section>
       </div>
-      <div class="pw-foot thm-foot"><span class="thm-sync" id="thm-sync" role="status" aria-live="polite">모든 기기에 저장돼요</span><button class="btn ghost" type="button" id="thm-reset">기본으로</button><button class="btn accent" type="button" data-close>완료</button></div>
-    </section>`;
-  document.body.append(back);
-  const dlg = back.querySelector(".thm-dialog");
-  for (const [k] of FONTS) loadFont(k, SAMPLE); // 견본 글자만 받아요 (Google Fonts text= · 몇 KB)
+`;
 
-  // 끼워 넣는 줄 (언어 등)
-  const unrows = [];
-  for (const [slot, fn] of ROWS) {
-    let sec = back.querySelector(`[data-slot="${CSS.escape(slot)}"]`);
-    if (!sec) { sec = document.createElement("section"); sec.className = "thm-sec thm-slot"; sec.dataset.slot = slot; back.querySelector(".thm-scroll").append(sec); }
-    try { const un = fn(sec, { close: () => close(), prefs: getPrefs() }); if (typeof un === "function") unrows.push(un); sec.hidden = !sec.childElementCount; }
-    catch (e) { console.warn("theme panel row", slot, e); sec.hidden = true; }
-  }
-
+// 칸을 움직이게 해요 — box 안에 .thm-preview · [role=radiogroup] · #thm-solid · #thm-reset · #thm-sync 가 있어요. 돌려준 함수 = 듣기 그만
+function wire(back) {
   const paint = () => {
     const c = getPrefs();
     for (const g of GROUPS) {
@@ -129,12 +108,37 @@ export function openThemePanel() {
   const onSync = (e) => { sync.textContent = { saving: "저장하는 중…", saved: "모든 기기에 저장했어요", offline: "이 기기에 두었어요 · 연결되면 다시 보낼게요" }[e.detail.s] || ""; };
   const onUi = () => paint(); // 다른 탭 · 기기 설정이 바뀌어도 창이 따라가요
   window.addEventListener("trio:ui-sync", onSync); window.addEventListener("trio:ui", onUi);
+  return () => { window.removeEventListener("trio:ui-sync", onSync); window.removeEventListener("trio:ui", onUi); flush(); };
+}
+
+// 설정 화면 안에 그대로 (창 없이)
+export function mountThemeControls(host) {
+  const p = getPrefs();
+  host.innerHTML = previewHTML(p) + sectionsHTML(p).replace('class="thm-scroll"', 'class="thm-scroll thm-inline"')
+    + `<div class="thm-foot thm-inline-foot"><span class="thm-sync" id="thm-sync" role="status" aria-live="polite">모든 기기에 저장돼요</span><button class="btn ghost" type="button" id="thm-reset">기본으로</button></div>`;
+  for (const [k] of FONTS) loadFont(k, SAMPLE);
+  return wire(host);
+}
+
+export function openThemePanel() {
+  if (document.querySelector(".thm-back")) return;
+  const prevFocus = document.activeElement;
+  const p = getPrefs();
+  const back = document.createElement("div");
+  back.className = "palette-back pw-back thm-back";
+  back.innerHTML = `
+    <section class="pw-dialog glass thm-dialog" role="dialog" aria-modal="true" aria-labelledby="thm-title">
+      <div class="pw-head"><h2 id="thm-title">화면 꾸미기</h2><button class="icon-btn sm" type="button" data-close aria-label="닫기">${icon.x(16)}</button></div>
+${previewHTML(p)}${sectionsHTML(p)}      <div class="pw-foot thm-foot"><span class="thm-sync" id="thm-sync" role="status" aria-live="polite">모든 기기에 저장돼요</span><a class="btn ghost" href="#/settings/screen" data-close>설정에서 보기</a><button class="btn ghost" type="button" id="thm-reset">기본으로</button><button class="btn accent" type="button" data-close>완료</button></div>
+    </section>`;
+  document.body.append(back);
+  const dlg = back.querySelector(".thm-dialog");
+  for (const [k] of FONTS) loadFont(k, SAMPLE); // 견본 글자만 받아요 (Google Fonts text= · 몇 KB)
+  const unwire = wire(back);
 
   const close = () => {
     back.remove(); document.removeEventListener("keydown", onKey, true);
-    for (const un of unrows) { try { un(); } catch {} }
-    window.removeEventListener("trio:ui-sync", onSync); window.removeEventListener("trio:ui", onUi);
-    flush(); prevFocus?.focus?.();
+    unwire(); prevFocus?.focus?.();
   };
   const onKey = (e) => {
     if (e.key === "Escape") { e.stopPropagation(); close(); return; }

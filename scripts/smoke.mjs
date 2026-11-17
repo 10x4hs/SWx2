@@ -143,6 +143,7 @@ r = await call("l", "POST", "/ai/command", {}); ok(r.status !== 403, `free: AI f
 r = await call("l", "GET", "/ai/chats"); ok(r.status === 403 && r.data.locked === "ai", "locked: AI tab chats still need the ai feature");
 r = await call("l", "POST", "/apps/cim/ask", { messages: [{ role: "user", content: "?" }] }); ok(r.status === 403 && r.data.locked === "cim", "locked: CIM AI tutor needs the cim feature");
 r = await call("l", "GET", "/apps/ui/state"); ok(r.status === 200 && r.data.data === null, `free: 화면 꾸미기 (/apps/ui/state) is open to a user with no features (${r.status})`);
+r = await call("l", "GET", "/apps/prefs/state"); ok(r.status === 200 && r.data.data === null, `free: 설정 (/apps/prefs/state) is open to a user with no features (${r.status})`);
 r = await call("l", "GET", "/search/semantic?q=" + encodeURIComponent("증권거래세 세율")); ok(r.status === 200 && Array.isArray(r.data.results) && !r.data.results.some((x) => x.type === "cim"), "semantic search: open to everyone (notes) · CIM cards only with the cim feature");
 d1(`DELETE FROM users WHERE username = 't_l${tag}'`);
 // Silicon Valley Mafia (#/svm): 관리자만 — 회원은 기능 · 체험이 다 열려 있어도 없는 주소(404), 관리자는 내용 · 기록 · 번역
@@ -418,6 +419,13 @@ r = await call("a", "POST", "/plans", { scope: "day", period: r.data.plan.period
   r = await call("b", "GET", "/apps/ui/state"); ok(r.status === 200 && r.data.data === null && r.data.updated_at === 0, "ui: private per user");
   r = await call("b", "PUT", "/apps/ui/state", { data: { accent: "pink" }, at: 0 }); ok(r.status === 200, "ui: b saves its own");
   r = await call("a", "GET", "/apps/ui/state"); ok(r.data?.data?.accent === "blue" && r.data.updated_at === uiAt, "ui: b's save leaves a's copy alone");
+  // 설정 (/apps/prefs/state, js/prefs.js): 공부 분량 · 읽기 속도 · 웹 먼저 찾기 — 계정에 한 덩어리 · 로그인 필요 · 4KB · 사람별 · 409 면 서버 값
+  r = await call("anon", "GET", "/apps/prefs/state"); ok(r.status === 401, "prefs: logged out → 401");
+  r = await call("a", "PUT", "/apps/prefs/state", { data: { mba_min: 60, dev_min: 30, en_rate: 0.8, focus_min: 35, ai_web: true }, at: 0 }); const prAt = r.data?.updated_at; ok(r.status === 200 && prAt > 0, `prefs: first save (${r.status})`);
+  r = await call("a", "GET", "/apps/prefs/state"); ok(r.status === 200 && r.data.data?.mba_min === 60 && r.data.data.ai_web === true && r.data.updated_at === prAt, "prefs: round-trips");
+  r = await call("a", "PUT", "/apps/prefs/state", { data: { mba_min: 120 }, at: 0 }); ok(r.status === 409 && r.data.data?.mba_min === 60, "prefs: stale write → 409 with the server copy");
+  r = await call("a", "PUT", "/apps/prefs/state", { data: { big: "x".repeat(4_001) }, at: prAt }); ok(r.status === 413, "prefs: over 4 KB → 413");
+  r = await call("b", "GET", "/apps/prefs/state"); ok(r.status === 200 && r.data.data === null, "prefs: private per user");
   // CIM AI 튜터 (POST /apps/cim/ask): 질문이 없으면 400 (AI 를 부르기 전에 막아요)
   r = await call("a", "POST", "/apps/cim/ask", { messages: [], context: { kind: "card", title: "검사" } }); ok(r.status === 400, "cim ask: empty question → 400");
   // ---------- 뜻으로 찾기 (GET /search/semantic) · 근거 달린 튜터 (src/rag.js · migrations/0067) ----------

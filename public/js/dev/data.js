@@ -1,6 +1,7 @@
 // 개발 흐름 마이크로디그리 — 내용 파일(public/dev/*.json) 읽기 · 하루 시간 · 오늘의 순서 · 진도와 현황 계산
 import { api } from "../api.js";
 import { esc } from "../util.js";
+import { getPref, setPref } from "../prefs.js";
 
 const cache = new Map();
 export function getJSON(path) {
@@ -47,11 +48,10 @@ const THEME = "sw-theme";
 export function theme() { try { return localStorage.getItem(THEME) === "night" ? "night" : "paper"; } catch { return "paper"; } }
 export function setTheme(t) { try { localStorage.setItem(THEME, t === "night" ? "night" : "paper"); } catch {} }
 
-// 하루 시간 (이 기기에만 기억) — 하루 30 · 45 · 60분, 기본 45분. 경영 과정과 같이 해도 무리가 덜한 양이에요.
-const KEY = "dv-minutes";
+// 하루 시간 (계정에 저장 · 설정 → 공부와 같은 값, js/prefs.js "dev_min") — 하루 30 · 45 · 60분, 기본 45분. 경영 과정과 같이 해도 무리가 덜한 양이에요.
 export const MINUTES = [30, 45, 60];
-export function minutes() { try { const v = Number(localStorage.getItem(KEY)); return MINUTES.includes(v) ? v : 45; } catch { return 45; } }
-export function setMinutes(v) { try { localStorage.setItem(KEY, String(v)); } catch {} }
+export function minutes() { const v = Number(getPref("dev_min", 45)); return MINUTES.includes(v) ? v : 45; }
+export function setMinutes(v) { if (MINUTES.includes(+v)) setPref("dev_min", +v); }
 export const cardsPerDay = (m) => ({ 30: 3, 45: 4, 60: 5 })[m] || 4;
 export const reviewLimit = (m) => ({ 30: 8, 45: 12, 60: 16 })[m] || 12;
 const SPLIT = { 30: [3, 5, 14, 6, 2], 45: [5, 8, 20, 10, 2], 60: [6, 10, 26, 15, 3] };

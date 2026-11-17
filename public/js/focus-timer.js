@@ -8,6 +8,7 @@
 import { api } from "./api.js";
 import { $, esc, ymd, today, nowTime, toast, pad } from "./util.js";
 import { icon } from "./icons.js";
+import { getPref, setPref } from "./prefs.js";
 
 // ctx 는 app.js 가 갖고 있어서 init 으로 받아요. 할 일 ▶ 가 ctx.timer 로 부르니 여기서 붙여 줘요
 let ctx;
@@ -50,9 +51,9 @@ function restore(x, fromOther = false) {
 }
 
 const PRESETS = [15, 25, 50, 90];
-// '직접' = 1~240분을 내가 쳐요. 마지막에 친 값은 이 기기에 기억해요
+// '직접' = 1~240분을 내가 쳐요. 마지막에 친 값은 계정에 기억해요 (설정 → 공부와 같은 값, js/prefs.js "focus_min")
 let customOpen = false;
-const lastCustom = () => { try { return +localStorage.getItem("focus-custom-min") || 40; } catch { return 40; } };
+const lastCustom = () => { const m = Math.round(+getPref("focus_min", 40)); return m >= 1 && m <= 240 ? m : 40; };
 const DONE_MS = 4000, FLASH_MS = 2200;
 // 시작 · 일시정지 · 처음으로 · 끝 에서 "지금 공부 중" 상태를 서버에 알려요 (무엇을 하는지는 안 보내요).
 const presence = (state, ends_at) => api.setPresence(state === "focus" ? { state, ends_at } : { state }).catch(() => {});
@@ -341,7 +342,7 @@ export function renderTimer() {
     const m = Math.round(+minIn.value); if (!(m >= 1 && m <= 240)) return;
     timer.preset = timer.total = timer.left = m * 60; timer.paint();
     const go = card.querySelector("#tm-start span"); if (go) go.textContent = `${m}분 집중 시작`;
-    try { localStorage.setItem("focus-custom-min", String(m)); } catch {}
+    setPref("focus_min", m);
   });
   minIn?.addEventListener("keydown", (e) => { if (e.key === "Enter") card.querySelector("#tm-start")?.click(); });
   card.querySelector("#tm-label").addEventListener("input", (e) => { // 이름을 직접 바꾸면 할 일과의 연결은 풀어요

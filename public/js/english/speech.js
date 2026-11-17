@@ -1,7 +1,6 @@
 // 소리 — 브라우저 음성 합성(🔊 듣기)과 음성 인식(🎙 따라 말하기). 둘 다 없으면 버튼을 숨겨요.
-import { store } from "./data.js";
+import { getPref, setPref } from "../prefs.js";
 
-const RATE_KEY = "trio-en-rate";
 // 무채색 선 아이콘 (UI 에는 색을 넣지 않아요)
 const ic = (d, z = 16) => `<svg width="${z}" height="${z}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 export const speakerIcon = (z) => ic('<path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>', z);
@@ -11,8 +10,9 @@ export const canSpeak = () => typeof window !== "undefined" && "speechSynthesis"
 const SR = typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 export const canListen = () => !!SR;
 
-export const getRate = () => (store.get(RATE_KEY, 1) === 0.8 ? 0.8 : 1);
-export const setRate = (r) => store.set(RATE_KEY, r === 0.8 ? 0.8 : 1);
+// 읽기 속도 — 계정에 저장 (설정 → 공부와 같은 값, js/prefs.js "en_rate")
+export const getRate = () => (getPref("en_rate", 1) === 0.8 ? 0.8 : 1);
+export const setRate = (r) => setPref("en_rate", r === 0.8 ? 0.8 : 1);
 
 // 미국 영어 목소리 하나 고르기 (목록은 늦게 올 수 있어요)
 let voice = null;

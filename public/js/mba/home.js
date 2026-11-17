@@ -116,7 +116,7 @@ export function mountHome(host, ctx) {
             <div class="mb-today-min" id="mb-tmin">${mins}<small>분</small></div>
             <div class="mb-today-bar" id="mb-tbar" aria-hidden="true">${bar()}</div>
             <div class="mb-today-next">${nx ? `다음 · <a href="#/mba/${esc(nx.module.id)}/${esc(nx.card.id)}">${esc(nx.card.title)}</a>` : "모든 카드를 읽었어요 — 복습만 남았어요"}</div>
-            <div class="mb-chips" role="group" aria-label="하루 공부 시간">${chips()}</div>
+            <div class="mb-chips" role="group" aria-label="하루 공부 시간">${chips()}<a class="mb-set" href="#/settings/study" title="설정 → 공부 (계정에 저장돼요)">설정</a></div>
           </div>
         </div>
       </section>
