@@ -414,9 +414,9 @@ function parseRoute() {
   if (a === "graph") return { view: "brain", nav: "brain", id: null }; // 예전 노트 그래프 → Brain
   if (a === "team" || !a || a === "home") return { view: "home", nav: "home" };
   if (a === "ai") return { view: "ai", nav: "ai", id: b || null };
-  if (a === "planner") return { view: "planner", nav: "ai", scope: b || null };
-  if (a === "checklist") return { view: "checklist", nav: "calendar", day: b || null }; // 하루 체크리스트 (홈의 오늘 링에서)
-  if (a === "goals") return { view: "goals", nav: "home", scope: b || "week", key: c || null }; // 이번 주 · 이번 달 · 올해 목표 (홈 링에서)
+  if (a === "planner") return { view: "planner", nav: "calendar", scope: b || null }; // AI로 짜기 — Plan 탭 줄 안
+  if (a === "checklist") return { view: "checklist", nav: "calendar", day: b || null }; // 하루 체크리스트 (홈의 오늘 링에서) · /list · /board = Plan 탭
+  if (a === "goals") return { view: "goals", nav: "calendar", scope: b || "week", key: c || null }; // 이번 주 · 이번 달 · 올해 목표 (홈 링에서)
   if (a === "diary") return { view: "diaryRoom", nav: "diary", who: b === "u" ? c || null : null, day: b === "u" ? d || null : b || null }; // 둘이 같이 보는 일기 (#/diary/<날짜> · #/diary/u/<id>/<날짜>)
   if (a === "calendar" && b === "diary") return { view: "diaryRoom", nav: "diary", who: null, day: c || null }; // 일기 페이지 (일기 모임은 새 페이지로)
   if (a === "calendar" && b === "year") return { view: "calendar", nav: "calendar", mode: "year", tab: c === "rec" ? "rec" : "diary", year: /^\d{4}$/.test(d || "") ? +d : null };
@@ -446,9 +446,9 @@ function parseRoute() {
 }
 let lastView = null;
 // 같은 화면 안에서 주소만 바뀌면 껍데기는 그대로 두고 update(r) 만 불러요
-//   notes: 목록을 그대로 · brain: 층만 · diary/diaryRoom · goals · checklist(주·월·년 탭) · calendar(날짜만) · study(영어 ↔ 논문 ↔ 과목 탭)
+//   notes: 목록을 그대로 · brain: 층만 · diaryRoom · goals · checklist(주·월·년 탭) · calendar(날짜만) · study(영어 ↔ 논문 ↔ 과목 탭)
 //   page(페이지 사이) · news(지구본은 그대로, 패널만) · cim · psy · svm · mba · dev(탭 · 장 · 카드 사이) · room(대화 | 창고 탭)
-const IN_PLACE = new Set(["notes", "brain", "diary", "diaryRoom", "goals", "checklist", "calendar", "study", "page", "news", "cim", "psy", "svm", "mba", "dev", "room"]);
+const IN_PLACE = new Set(["notes", "brain", "diaryRoom", "goals", "checklist", "calendar", "study", "page", "news", "cim", "psy", "svm", "mba", "dev", "room"]);
 const inStudyOf = (r) => r.view === "english" || r.view === "papers" || r.view === "books" || (r.view === "page" && r.place === "study");
 let loadSeq = 0; // 화면 모듈을 받는 동안 다른 화면으로 가면, 늦게 온 모듈은 그리지 않아요
 

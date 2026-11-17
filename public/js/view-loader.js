@@ -11,7 +11,6 @@ const LAZY = {
   brain: () => import("./views/brain.js"),
   ai: () => import("./views/ai.js"),
   planner: () => import("./views/planner.js"),
-  diary: () => import("./views/diary.js"),
   diaryRoom: () => import("./views/diary-room.js"),
   goals: () => import("./views/goals.js"),
   checklist: () => import("./views/checklist.js"),

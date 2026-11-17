@@ -45,6 +45,7 @@ import { cimCbtE2E } from "./e2e-cimcbt.mjs";
 import { readE2E } from "./e2e-read.mjs";
 import { gestE2E } from "./e2e-gest.mjs";
 import { lazyE2E } from "./e2e-lazy.mjs";
+import { homesE2E } from "./e2e-homes.mjs";
 import { section, count, aiMock, writeSummary } from "./lib/sections.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
@@ -787,6 +788,11 @@ try {
     await sec("board", async () => {
     await boardE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs: () => errs, shots: process.env.SHOTS || null }); // ㉖ 할 일 보드
 
+    });
+    // ---------- ㉙ Dock 의 두 집 (2026-11-17, scripts/e2e-homes.mjs) — Plan · Obsidian 탭 줄 · 서로 한 번에 · Dock 불 · 360px 한 줄 · 옛 주소 ----------
+    await sec("homes", async () => {
+    errs = [];
+    await homesE2E({ p, go, ok, tv, w, h, getErrs: () => errs });
     });
     // ---------- ㉔ 화면 꾸미기 (2026-10-24, scripts/e2e-theme.mjs) — 기본값은 예전 그대로 · 강조 색 · 배경화면 · 투명도 줄이기 바로 적용 · 계정 저장 · 409 · 기본으로 ----------
     await sec("theme", async () => {

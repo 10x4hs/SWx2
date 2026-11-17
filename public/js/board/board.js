@@ -24,9 +24,6 @@ const CAL = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke=
 const NOTE = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 3.5h10M3 7h10M3 10.5h6"/></svg>`;
 const TICK = `<svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-// 보드 | 목록 바꾸기 (checklist.js 도 같은 것을 그려요)
-export const modeSeg = (cur) => `<div class="seg sm ck-mode" role="tablist" aria-label="보기">${[["board", "보드"], ["list", "목록"]].map(([k, l]) => `<button type="button" role="tab" data-mode="${k}" aria-selected="${cur === k}">${l}</button>`).join("")}</div>`;
-
 // 체크하면 줄 긋고 아래로 미끄러지기 — 다시 그리기 전후 자리를 재서 움직여요 (FLIP)
 export function flipList(box, redraw, sel = "[data-id]") {
   const before = new Map($$(sel, box).map((el) => [el.dataset.id, el.getBoundingClientRect().top]));
@@ -52,7 +49,6 @@ export function mountBoard(root, ctx) {
     <div class="ck tb">
       <header class="gl-top">
         <span class="row" style="gap:8px"><button type="button" class="icon-btn back-btn" id="tb-back" aria-label="뒤로">${icon.left(18)}</button><span class="eyebrow">체크리스트</span></span>
-        ${modeSeg("board")}
       </header>
       <section class="tb-head">
         <div><h1 class="gl-title tb-title">할 일 보드</h1><p class="tb-sum" id="tb-sum" aria-live="polite"></p></div>

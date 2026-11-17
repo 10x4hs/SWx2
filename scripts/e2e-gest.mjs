@@ -75,10 +75,10 @@ export async function gestE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs }) {
     await go("#/calendar/" + day, 2600);
     await check("하루 계획 블록", `#dp-grid .block[data-id="${plan.id}"]`, ["편집", "끝냄", "삭제"]);
     await go("#/checklist", 2200);
-    if (await p.locator(".ck-mode [data-mode=list]").count()) { await p.click(".ck-mode [data-mode=list]"); await sleep(600); }
+    if (await p.locator(".home-tabs [data-tab=list]").count()) { await p.click(".home-tabs [data-tab=list]"); await sleep(600); }
     await check("체크리스트 줄", `.gl-item[data-id="${todo.id}"]`, ["이름 고치기", "끝냄"]);
-    if (await p.locator(".ck-mode [data-mode=board]").count()) {
-      await p.click(".ck-mode [data-mode=board]"); await p.waitForSelector(".tb-card", { timeout: 6000 }).catch(() => {});
+    if (await p.locator(".home-tabs [data-tab=board]").count()) {
+      await p.click(".home-tabs [data-tab=board]"); await p.waitForSelector(".tb-card", { timeout: 6000 }).catch(() => {});
       await check("보드 카드", `.tb-card[data-id="${todo.id}"]`, ["자세히", "끝냄", "지우기"]);
       // 두 번 눌러야만 되던 칸 이름 바꾸기: 초점 + Enter 로도 (data-dblkey)
       await p.focus('.tb-col-name[data-rename="todo"]').catch(() => {});
@@ -87,7 +87,7 @@ export async function gestE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs }) {
       await p.keyboard.press("Escape"); await sleep(250);
       const restored = await p.evaluate(() => !document.querySelector(".tb-col-in") && document.querySelector('.tb-col-name[data-rename="todo"]')?.textContent === "할 일");
       ok(renaming && restored, `${tv} · 두 번 누르기 대신 키보드 — 칸 이름에 초점 + Enter → 이름 칸 ${renaming} · Esc 로 그대로 ${restored}`);
-      await p.click(".ck-mode [data-mode=list]").catch(() => {}); await sleep(300);
+      await p.click(".home-tabs [data-tab=list]").catch(() => {}); await sleep(300);
     }
 
     // 4) ? → 단축키 창 · Tab 은 창 안에서 · Esc → 연 자리로

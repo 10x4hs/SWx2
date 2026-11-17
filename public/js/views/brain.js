@@ -19,6 +19,7 @@ import { undoScope } from "../undo.js";
 import { back as brainBack, upHash, learnParents, syncDock, viewOf, keepView } from "../brain-nav.js";
 import { relPop, setRelUndo, openInbox, closeRelPop, closeInbox, edgeStyle, LEGEND, relKo } from "../rel.js";
 import { pairKey } from "../graph/brain-data.js";
+import { brainTabs } from "../home-tabs.js";
 
 let inst = null;
 export function update(r) { inst?.update(r); }
@@ -37,7 +38,7 @@ export function mount(root, ctx, r) {
   let tree = null, raw = null, parents = new Map(), graph = null, drawnSig = "", drawnLevel, focus = r.id || null, alive = true, retried = null, spawn = {};
   const us = undoScope("brain"); // ⌘Z · ⌘⇧Z: 만들기 · 이름 · 옮기기 · 지우기 · 연결 · 끊기 (노트 화면과 같은 기록)
   const introKey = "trio-brain-intro:" + (ctx.me?.id || "");
-  root.innerHTML = `
+  root.innerHTML = brainTabs("map") + `
     <div class="brain">
       <header class="brain-bar">
         <div class="brain-path">

@@ -424,11 +424,6 @@ body.at-gate .bg, body.at-gate .grain { display: none; }
 }
 .diary-foot { display: flex; justify-content: space-between; font-size: var(--fs-xs); }
 
-/* ---------- diary page ---------- */
-@media (max-width: 860px) {
-  .host-diary { height: auto; }
-}
-
 /* home hero */
 .hc-left { justify-items: center; }
 
@@ -1390,8 +1385,6 @@ a.btn { text-decoration: none; }
 .cal-year .grass .dw { font-size: var(--fs-2xs); }
 
 /* ---------- 노트 | 그래프 탭 ---------- */
-.nt-tabs a { padding: 6px 14px; font-weight: 650; }
-.note-list .top .nt-tabs { justify-self: start; }
 
 /* ---------- 홈: 지금 공부 중 · 응원 ---------- */
 .ws-live { display: inline-flex; align-items: center; gap: 6px; margin-left: 2px; padding-left: 8px; border-left: 1px solid var(--line-2); font: 600 var(--fs-xs)/1 var(--font); letter-spacing: 0; color: var(--ink-2); white-space: nowrap; }
@@ -1884,7 +1877,6 @@ a.btn { text-decoration: none; }
 .dp-diary .dd-go { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); color: var(--ink-2); }
 .dp-diary .dd-sn { font-size: var(--fs-base); line-height: 1.55; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-.host-diary { height: 100%; }
 .dy { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; margin: 0 auto; padding: 8px 4px 40px; }
 .dy-top { display: flex; align-items: center; gap: 14px; }
 .dy-when { flex: 1; display: grid; gap: 2px; }
@@ -1901,14 +1893,7 @@ a.btn { text-decoration: none; }
 .dy-card { padding: 14px 16px; border-radius: 16px; display: grid; gap: 10px; }
 .dy-card h2 { margin: 0; font: 700 var(--fs-md) var(--font); color: var(--ink); }
 .dy-card .dy-h2 { display: flex; justify-content: space-between; align-items: baseline; }
-.dy-plan-link { font-weight: 500; font-size: var(--fs-sm); color: var(--ink-2, var(--muted)); text-decoration: none; }
-.dy-plan-link:hover { color: var(--ink); }
-.dy-done, .dy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.dy-done li { display: flex; align-items: center; gap: 8px; font-size: var(--fs-base); color: var(--ink-2); }
-.dy-done li.on { color: var(--ink); }
-.dy-done .ck { flex: none; width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid var(--ink-3); display: grid; place-items: center; font: 700 var(--fs-2xs)/1 var(--font); }
-.dy-done li.on .ck { background: var(--ink); border-color: var(--ink); color: var(--paper-solid); }
-.dy-done em { font: 500 var(--fs-xs) var(--mono); font-style: normal; color: var(--ink-3); }
+.dy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .dy-list { max-height: 46vh; overflow-y: auto; }
 .dy-list a { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; padding: 8px 10px; border-radius: 10px; text-decoration: none; color: var(--ink); }
 .dy-list a:hover, .dy-list a[aria-current="page"] { background: var(--hover); }
@@ -2841,8 +2826,6 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 .cg [hidden] { display: none !important; }
 .cg-top { position: absolute; left: 20px; top: 16px; display: grid; gap: 2px; pointer-events: none; }
 .cg-top a { pointer-events: auto; }
-.cg-back { color: var(--cg-ink2); text-decoration: none; font-size: var(--fs-sm); }
-.cg-back:hover { color: var(--cg-ink); }
 .cg-title { margin: 0; font: 600 var(--fs-3xl)/1.2 var(--font); color: var(--cg-ink); }
 .cg-stat { margin: 0; font-size: var(--fs-xs); color: var(--cg-ink2); }
 .cg-zoom { position: absolute; left: 16px; bottom: 16px; display: grid; gap: 4px; }
@@ -3583,3 +3566,18 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
 .dm-ask:hover { color: var(--ink); text-decoration: underline; }
 @media (max-width: 860px) { .dock-more-pop { left: 16px; right: 16px; width: auto; } .dm-req { min-height: 40px; } }
 @media (prefers-reduced-motion: no-preference) { .dock-more-pop { animation: dm-in .16s var(--ease, ease-out); } @keyframes dm-in { from { opacity: 0; transform: translateY(4px); } } }
+
+/* ---------- Dock 의 두 집 — Plan · Obsidian 탭 줄 (home-tabs.js, 2026-11-17) ----------
+   화면마다 맨 위 같은 자리 · 폰에서 넘치면 한 줄로 옆으로 넘겨요 (Dock 처럼, 줄바꿈 없이) */
+.home-tabs { display: flex; align-items: center; justify-content: center; gap: 8px; max-width: calc(100% - 24px); margin: 10px auto 6px; flex: none; }
+.home-tabs-nav { flex: 0 1 auto; min-width: 0; border-radius: 999px; overflow-x: auto; scrollbar-width: none; }
+.home-tabs-nav::-webkit-scrollbar { display: none; }
+.home-tabs-nav a { flex: none; white-space: nowrap; border-radius: 999px; padding: 5px 16px; }
+.home-tabs .home-tabs-ai { flex: none; white-space: nowrap; border-radius: 999px; }
+.home-tabs .home-tabs-ai[aria-current="page"] { color: var(--ink); background: var(--lg-fill-hi); }
+@media (max-width: 420px) { .home-tabs { gap: 6px; } .home-tabs-nav a { padding: 5px 11px; } }
+/* 화면을 꽉 채우는 곳(지도 · 노트 · 그래프 · AI로 짜기): 탭 줄 아래 남은 높이를 다 써요 */
+@media (min-width: 861px) {
+  :is(.host-notes, .host-brain, .host-graph, .host-planner):has(> .home-tabs) { display: flex; flex-direction: column; }
+  :is(.host-notes, .host-brain, .host-graph, .host-planner):has(> .home-tabs) > :is(.notes, .brain, .obs, .pl) { flex: 1 1 0; height: auto; min-height: 0; }
+}

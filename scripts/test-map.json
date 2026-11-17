@@ -142,6 +142,8 @@
     "scripts/e2e.mjs": { "smoke": [], "e2e": ["*"] },
     "scripts/e2e-onto.mjs": { "smoke": [], "e2e": ["onto"] },
     "scripts/e2e-board.mjs": { "smoke": [], "e2e": ["board"] },
+    "scripts/e2e-homes.mjs": { "smoke": [], "e2e": ["homes"] },
+    "public/js/home-tabs.js": { "smoke": [], "e2e": ["homes", "board"] },
     "scripts/e2e-theme.mjs": { "smoke": [], "e2e": ["theme"] },
     "scripts/e2e-island.mjs": { "smoke": [], "e2e": ["island"] },
     "scripts/e2e-notefiles.mjs": { "smoke": [], "e2e": ["note-files"] },

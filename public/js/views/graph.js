@@ -6,6 +6,7 @@ import { api } from "../api.js";
 import { $, esc, toast } from "../util.js";
 import { openByTitle } from "./notes.js";
 import { clusterNotes } from "../graph/concepts.js";
+import { brainTabs } from "../home-tabs.js";
 
 const SETTINGS_KEY = "trio-cgraph";
 const DEFAULTS = { open: true, orphans: true, ghosts: false, node: 1, line: 1, text: 12, fade: 1.1, center: 1, repel: 1, link: 1, dist: 1 };
@@ -18,11 +19,10 @@ const C = { bg: "#1e1e1e", node: "#9a9a9a", line: "rgba(255,255,255,.14)", lineO
 export function mount(root, ctx) {
   const set = load();
   const range = (k, label, min, max, step) => `<label class="cg-row"><span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}" data-set="${k}" value="${set[k]}"></label>`;
-  root.innerHTML = `
+  root.innerHTML = brainTabs("graph") + `
     <div class="obs cg" id="obs">
       <canvas id="gc" aria-label="Concept graph of notes"></canvas>
       <header class="cg-top">
-        <a class="cg-back" href="#/brain">‹ Obsidian</a>
         <h1 class="cg-title">Graph</h1>
         <p class="cg-stat" id="gstat"></p>
       </header>
