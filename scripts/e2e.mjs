@@ -46,6 +46,7 @@ import { readE2E } from "./e2e-read.mjs";
 import { gestE2E } from "./e2e-gest.mjs";
 import { lazyE2E } from "./e2e-lazy.mjs";
 import { homesE2E } from "./e2e-homes.mjs";
+import { portraitE2E } from "./e2e-portrait.mjs";
 import { section, count, aiMock, writeSummary } from "./lib/sections.mjs";
 
 const BASE = process.env.BASE || "http://127.0.0.1:8787";
@@ -794,6 +795,11 @@ try {
     errs = [];
     await homesE2E({ p, go, ok, tv, w, h, getErrs: () => errs });
     });
+    // ---------- ㉚ 폰 세로로도 (2026-11-18, scripts/e2e-portrait.mjs) — 하루 일정 카드 안 · 시간표 폭 · 뉴스레터 메뉴 모두 보임 · 일기 1년 표가 고른 날 쪽 ----------
+    if (tv === "폰") await sec("portrait", async () => {
+    errs = [];
+    await portraitE2E({ p, go, ok, tv });
+    });
     // ---------- ㉔ 화면 꾸미기 (2026-10-24, scripts/e2e-theme.mjs) — 기본값은 예전 그대로 · 강조 색 · 배경화면 · 투명도 줄이기 바로 적용 · 계정 저장 · 409 · 기본으로 ----------
     await sec("theme", async () => {
     errs = [];
@@ -1203,9 +1209,9 @@ try {
     await hop("#/news/world", ".gn-ranks [data-cc]", 1500);
     const wv = await p.evaluate(() => ({ cv: (document.querySelector("#gn-globe")?.width || 0) > 100, n: document.querySelectorAll(".gn-ranks [data-cc]").length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
     ok(wv.cv && wv.n > 0 && !wv.over, `${tv} · 세계 — 지구본 · 나라 ${wv.n}곳 · 가로 넘침 없음`);
-    { // 섹션 탭은 한 줄 (폰에서 글자가 세로로 쪼개지지 않게)
-      const tabs = await p.evaluate(() => { const a = [...document.querySelectorAll(".gn-views a")]; const hs = a.map((x) => x.getBoundingClientRect().height); return { n: a.length, maxH: Math.max(...hs), rowH: document.querySelector(".gn-views").getBoundingClientRect().height }; });
-      ok(tabs.n > 3 && tabs.maxH < 40 && tabs.rowH < 48, `${tv} · 뉴스 섹션 탭 한 줄 — 탭 ${tabs.n}개 · 가장 높은 탭 ${Math.round(tabs.maxH)}px · 줄 높이 ${Math.round(tabs.rowH)}px`);
+    { // 섹션 탭: 탭마다 한 줄 (폰에서 글자가 세로로 쪼개지지 않게) · 폰 세로에서는 두 줄까지 감싸서 모든 탭이 화면 안에 (2026-11-18 — 옆으로 숨으면 가로로 돌려야 보였어요)
+      const tabs = await p.evaluate(() => { const a = [...document.querySelectorAll(".gn-views a")]; const rs = a.map((x) => x.getBoundingClientRect()); const rows = new Set(rs.map((r) => Math.round(r.top))).size; return { n: a.length, maxH: Math.max(...rs.map((r) => r.height)), rows, out: rs.filter((r) => r.left < 0 || r.right > innerWidth).length }; });
+      ok(tabs.n > 3 && tabs.maxH < 40 && tabs.rows <= (w < 700 ? 2 : 1) && tabs.out === 0, `${tv} · 뉴스 섹션 탭 — 탭 ${tabs.n}개 · 가장 높은 탭 ${Math.round(tabs.maxH)}px · ${tabs.rows}줄 · 화면 밖 ${tabs.out}개`);
     }
     await hop("#/news/co", ".gn-sub", 800);
     const wasOn = await p.evaluate(() => document.querySelector(".gn-sub")?.getAttribute("aria-pressed") === "true");
