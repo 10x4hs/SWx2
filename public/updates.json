@@ -2,6 +2,15 @@
  "about": "업데이트 1번 = 우리가 체감하는 기능 묶음 하나. commits 는 그 묶음에 들어간 커밋. 새 커밋은 배포할 때 scripts/updates-check.mjs 가 빠졌는지 알려 줘요.",
  "updates": [
   {
+   "date": "2026-11-18",
+   "kind": "fix",
+   "title": "폰을 세로로 들고도 일정 · 뉴스레터가 다 보여요",
+   "body": "폰을 가로로 돌리지 않아도 돼요. 하루 일정은 친구가 많아도 화면 밖으로 밀리지 않고, 친구 이름 줄만 옆으로 넘겨요. 시간표도 더 넓어졌어요. 뉴스레터 위 메뉴는 두 줄로 나와서 Following · My Library · Leaderboard · Comments 도 바로 보여요. 일기의 1년 칸 표는 오늘이 보이는 쪽으로 열려요.",
+   "commits": [
+    "256cf6b"
+   ]
+  },
+  {
    "date": "2026-11-17",
    "kind": "design",
    "title": "Plan · Obsidian 이 한 집씩으로 정리됐어요",
