@@ -1804,6 +1804,8 @@ try {
       await p.evaluate(() => [...document.querySelectorAll("#dp-grid .block")].find((x) => x.querySelector("[data-edit]")?.textContent === "짧은 휴식")?.scrollIntoView({ block: "center" }));
       await sleep(300);
       // 2026-11-02 (줌): 모든 계획이 같은 블록(체크 있음) · 5분 = 한 줄(21px) · 1시간 = 252px · 진짜 겹침만 나란히
+      // 2026-11-18: 폰(720px 이하)은 1시간 = 168px · 최소 높이 = 5분(14px) (day.js HOUR_PX_PHONE · ONE_H_PHONE)
+      const HOUR_H = w <= 720 ? 168 : 252, MIN_H = w <= 720 ? 14 : 20;
       const L = await p.evaluate(() => {
         const r = (t) => { const b = [...document.querySelectorAll("#dp-grid [data-id]")].find((x) => x.querySelector("[data-edit]")?.textContent === t); if (!b) return null; const q = b.getBoundingClientRect(); return { top: q.top, h: q.height, left: q.left, w: q.width, cls: b.className, chk: !!b.querySelector("input.check") }; };
         const hr = (h) => document.querySelector(`#dp-grid .hour[data-h="${h}"]`)?.getBoundingClientRect().height || 0;
@@ -1811,7 +1813,7 @@ try {
       });
       const stacked = L.rest && L.test && (L.test.top >= L.rest.top + L.rest.h - 1 || L.test.left >= L.rest.left + L.rest.w - 1 || L.rest.left >= L.test.left + L.test.w - 1); // 위아래 또는 나란히 — 겹치지 않으면 돼요
       const full = L.test && L.a && L.test.w >= L.a.w * 1.8; // 50분 시험은 겹치는 게 없으니 넓게 (겹침 A/B 는 반씩)
-      ok(stacked && L.rest.chk && L.rest.h >= 18 && L.rest.h <= 22 && Math.round(L.h8) === 252 && Math.round(L.h11) === 252 && L.b?.left > L.a?.left + 50 && full && L.rest.left === L.test.left && !errs.length,
+      ok(stacked && L.rest.chk && Math.abs(L.rest.h - MIN_H) <= 2 && Math.round(L.h8) === HOUR_H && Math.round(L.h11) === HOUR_H && L.b?.left > L.a?.left + 50 && full && L.rest.left === L.test.left && !errs.length,
         `${tv} · 하루 계획표 — 5분 휴식 체크 ${L.rest?.chk} · 바로 뒤 시험과 안 겹침 ${stacked} · 휴식 높이 ${Math.round(L.rest?.h)}px · 8시 칸 ${Math.round(L.h8)}px · 50분 넓게 ${full} · 진짜 겹침 나란히 ${L.b?.left > L.a?.left + 50}${errs.length ? " — " + errs[0] : ""}`);
       if (tv === "컴퓨터") {
         // 빈 칸 시각: 휴식 바로 위(08:50~08:55) → "+ 08:50에 추가"
