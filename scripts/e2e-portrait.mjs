@@ -24,6 +24,21 @@ export async function portraitE2E({ p, go, ok, tv }) {
       });
       ok(!day.miss && day.out === 0 && (W < 390 || day.grid >= day.W * 0.75),
         `${tv} ${W}px · 하루 일정 — 카드 밖으로 ${day.out ?? "?"}px${day.who ? " (" + day.who + ") ← " + day.wide : ""} · 카드 ${day.page} · 시간표 폭 ${day.grid}/${day.W}`);
+      // 1-b) 폰 시간표 읽기 쉽게 (2026-11-18): 한 시간 168px · 블록은 불투명(뒤 눈금 · '+ 추가' 글자가 비치지 않게) · '+ 추가' 는 칸 맨 위
+      if (W === 390) {
+        const origin = new URL(p.url()).origin, H = { "content-type": "application/json", "x-trio": "1" };
+        const made = await (await p.request.post(origin + "/api/plans", { headers: H, data: { scope: "day", period: "D:" + todayStr(), text: "세로 검사 블록", start: "23:00", mins: 40 } })).json().catch(() => ({}));
+        try {
+          await go("#/calendar/" + todayStr(), 2200);
+          await p.waitForSelector("#dp-grid .block", { timeout: 10000 }).catch(() => {});
+          const tt = await p.evaluate(() => {
+            const hour = document.querySelector(".day-grid .hour"), blk = document.querySelector("#dp-grid .block"), btn = document.querySelector(".day-grid .hour > button");
+            const alpha = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (m) { const v = m[1].split(/[ ,/]+/).filter(Boolean); return v.length > 3 ? +v[3] : 1; } const k = c.match(/color\([^ ]+ [^ ]+ [^ ]+ [^ /)]+(?: \/ ([\d.]+))?\)/); return k ? (k[1] == null ? 1 : +k[1]) : 0; };
+            return { hourH: Math.round(hour?.getBoundingClientRect().height || 0), a: blk ? alpha(getComputedStyle(blk).backgroundColor) : -1, bg: blk ? getComputedStyle(blk).backgroundColor : "", top: btn ? getComputedStyle(btn).alignItems : "" };
+          });
+          ok(tt.hourH === 168 && tt.a === 1 && tt.top === "flex-start", `${tv} ${W}px · 시간표 읽기 — 한 시간 ${tt.hourH}px · 블록 불투명 ${tt.a} (${tt.bg}) · '+ 추가' 칸 맨 위 ${tt.top}`);
+        } finally { if (made.plan?.id) await p.request.delete(origin + "/api/plans/" + made.plan.id, { headers: H }).catch(() => {}); }
+      }
       // 2) 뉴스레터 위 메뉴
       await go("#/news", 2500);
       await p.waitForSelector(".gn-views a", { timeout: 10000 }).catch(() => {});

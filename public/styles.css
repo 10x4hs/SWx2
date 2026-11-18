@@ -1682,6 +1682,16 @@ a.btn { text-decoration: none; }
   .slot-add { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "t t" "m b"; }
   .slot-add [name="text"] { grid-area: t; } .slot-add [name="mins"] { grid-area: m; } .slot-add .btn { grid-area: b; } .slot-add .icon-btn { display: none; }
   .hour > button { opacity: 1; }
+  /* 하루 계획표 읽기 쉽게 (2026-11-18): 한 시간 168px(day.js HOUR_PX_PHONE) · 15분선만 · 블록은 불투명하게(뒤 눈금 · '+ 추가' 글자가 비치지 않게) · 글자 한 단계 크게 */
+  .cal-page .hour, .day-grid .hour { background-image: repeating-linear-gradient(to bottom, transparent 0 calc(var(--hour-px, 252px) / 4 - 1px), var(--line) calc(var(--hour-px, 252px) / 4 - 1px) calc(var(--hour-px, 252px) / 4)); }
+  .day-grid .hour > span { color: var(--ink-2); }
+  /* '+ 14:00에 추가' 는 칸 맨 위(정시 줄)에 — 가운데(14:30)에 두면 14:30 에 끝나는 블록 테두리에 반쯤 걸쳐 보였어요. 그 시각에 계획이 있으면 블록이 다 가려요 */
+  .day-grid .hour > button { display: flex; align-items: flex-start; padding-top: 6px; }
+  #dp-grid .block { background: color-mix(in srgb, var(--me) 16%, var(--paper-solid)); border-color: color-mix(in srgb, var(--me) 40%, transparent); }
+  #dp-grid .block.done { background: color-mix(in srgb, var(--c-green) 28%, var(--paper-solid)); }
+  #dp-grid .block.miss { background: repeating-linear-gradient(135deg, var(--track) 0 6px, transparent 6px 12px), var(--paper-solid); }
+  #dp-grid .block .when { font-size: var(--fs-xs); color: var(--ink-2); }
+  #dp-grid .block.tiny .check { width: 13px; height: 13px; } /* 5분짜리(14px) 블록에 맞게 — 위의 20px 체크보다 뒤에 */
 }
 
 /* ---------- v14: 노트 = Notion 식 블록 편집기 · 페이지 · 그래프에서 연결 ---------- */
@@ -2002,8 +2012,8 @@ a.btn { text-decoration: none; }
 .prio-sel { flex: none; width: auto; min-width: 96px; }
 .block[data-p="low"] { border-left-color: var(--p-low); } .block[data-p="medium"] { border-left-color: var(--p-medium); } .block[data-p="high"] { border-left-color: var(--p-high); }
 .block[data-p="xhigh"] { border-left-color: var(--p-xhigh); } .block[data-p="max"] { border-left-color: var(--p-max); box-shadow: 0 0 0 1px color-mix(in srgb, var(--p-max) 40%, transparent); }
-.cal-page .hour, .day-grid .hour { height: 252px; background-image: repeating-linear-gradient(to bottom, transparent 0 62px, var(--line) 62px 63px), repeating-linear-gradient(to bottom, transparent 0 20px, color-mix(in srgb, var(--line) 45%, transparent) 20px 21px); background-position: 52px 0; background-size: calc(100% - 52px) 100%; background-repeat: no-repeat; }
-.cal-page .hour.editing { height: auto; min-height: 252px; background-image: none; }
+.cal-page .hour, .day-grid .hour { height: var(--hour-px, 252px); background-image: repeating-linear-gradient(to bottom, transparent 0 62px, var(--line) 62px 63px), repeating-linear-gradient(to bottom, transparent 0 20px, color-mix(in srgb, var(--line) 45%, transparent) 20px 21px); background-position: 52px 0; background-size: calc(100% - 52px) 100%; background-repeat: no-repeat; }
+.cal-page .hour.editing { height: auto; min-height: var(--hour-px, 252px); background-image: none; }
 .hour > button { margin: 0; height: 100%; }
 .block.thin .icon-btn { width: 20px; height: 20px; }
 .slot-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 0; }
@@ -2456,7 +2466,7 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
   #dp-grid .block .check { width: 20px; height: 20px; }
   #dp-grid .block .icon-btn { display: none; } /* 좁은 블록에선 꾹 눌러 메뉴로 */
   #dp-grid .block .check, #dp-grid .block .dp-play { flex: none; }
-  .block .txt { font-size: var(--fs-md); }
+  .block .txt { font-size: var(--fs-base); }
 
   /* 추가 · 고치기 창 → 아래에서 올라오는 시트 */
   #dp-sheet { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }

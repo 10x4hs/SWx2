@@ -18,13 +18,15 @@ import { mountPlanClip, MOD } from "../plan-clip.js";
 import { planUndo } from "../plan-undo.js"; // ⌘Z · ⌘⇧Z: 옮기기 · 길이 · 이름 · 끝냄 · 우선순위 · 미루기 · 지우기 · 추가 · 붙여넣기
 
 const HOUR_PX = 252; // 한 시간 = 252px → 5분 = 21px = 글 한 줄. 언제나 실제 비율
+const HOUR_PX_PHONE = 168; // 폰(720px 이하): 한 시간 = 168px → 15분 = 42px. 한 화면에 1.5배 더 — 252px 면 40분 블록이 화면의 1/4 을 빈 면으로 채웠어요 (2026-11-18)
 const STEP = 5;     // 시간표를 누르거나 끌 때만 5분 칸 (적는 시각 · 길이는 1분 단위)
 const DEFAULT_MINS = 60; // 새 계획의 기본 길이 — 바로 전에 넣은 길이를 따라가지 않아요
 const LINE_H = 18;  // 그룹 안 한 줄 높이(px)
 const ONE_H = 20;   // 모든 블록의 최소 높이 = 한 줄 (체크 + 이름). 1분 계획도 이만큼은 보여요
+const ONE_H_PHONE = 14; // 폰(한 시간 168px)의 최소 높이 = 5분 (14px) — 작은 체크 · 작은 글자 한 줄 (.block.tiny). 15 만 돼도 5분 계획이 다음 계획에 1px 걸쳐 나란히 좁아졌어요
 // 분 → 세로 위치(px) 표: Y[i] = 시간표 맨 위(m0 분)에서 i분 뒤의 위치 (1시간 = HOUR_PX, 늘이지 않아요)
-function axis(m0) {
-  const base = HOUR_PX / 60, Y = [0];
+function axis(m0, px = HOUR_PX) {
+  const base = px / 60, Y = [0];
   for (let i = 0; i < 1440 - m0; i++) Y.push(Y[i] + base);
   return Y;
 }
@@ -237,7 +239,9 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     const startH = 0; // 시간표는 언제나 00:00–24:00 (처음엔 06:00 · 첫 계획 · 지금 근처로 스크롤해 둬요)
     const nowM = toMin(nowTime());
     const m0 = startH * 60;
-    const Y = axis(m0), yAt = (m) => Y[Math.max(0, Math.min(1440, m) - m0)], PPM = HOUR_PX / 60;
+    const HP = phone() ? HOUR_PX_PHONE : HOUR_PX;
+    const MINH = phone() ? ONE_H_PHONE : ONE_H; // 블록 최소 높이 — 폰에선 5분(14px) 남짓이라, 5분 계획이 바로 뒤 계획에 걸쳐 둘 다 반쪽으로 좁아지지 않게
+    const Y = axis(m0, HP), yAt = (m) => Y[Math.max(0, Math.min(1440, m) - m0)], PPM = HP / 60;
     // 그릴 것: 어제에서 이어진 칸 · 그룹(같은 group_id 2개 이상) · 계획 블록 (길이와 상관없이 모두 같은 모양 · 체크 있음)
     // 자정을 넘는 계획은 e 가 1440 을 넘어요 (위치는 24:00 까지만). le = 겹침 계산용 끝 = 진짜 끝, 짧은 계획은 최소 높이가 닿는 데까지 (걸치면 나란히)
     const items = (S.spill || []).map((p) => { const e = toMin(p.start) + (p.mins || 30) - 1440; return { p, s: 0, e, le: Math.max(e, 1), cont: true }; });
@@ -246,7 +250,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     for (const p of timed) {
       const s = toMin(p.start), e = s + Math.max(1, p.mins || 30);
       if (p.group_id && byGrp.get(p.group_id).length > 1) continue;
-      items.push({ p, s, e, le: Math.max(e, s + ONE_H / PPM) }); // 최소 높이로 다음 계획에 걸치면 옆 칸으로 (위치는 그대로)
+      items.push({ p, s, e, le: Math.max(e, s + MINH / PPM) }); // 최소 높이로 다음 계획에 걸치면 옆 칸으로 (위치는 그대로)
     }
     for (const [gid, ms] of byGrp) {
       if (ms.length < 2) continue;
@@ -269,7 +273,7 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     for (const it of items) { if (group.length && it.s >= groupEnd) flushCols(); group.push(it); groupEnd = Math.max(groupEnd, it.le); }
     if (group.length) flushCols();
     // 화면 위치: 언제나 실제 시각 위치 (시간 눈금 · 지금 선과 딱 맞게). 아주 짧은 계획이 최소 높이로 다음 계획에 걸치면 다음 계획이 위에 그려져요 — 밀어내지 않아요 (밀면 쌓여서 뒤 블록이 몇 분씩 어긋났어요)
-    const hOf = (it) => it.grp ? Math.max(yAt(it.e) - yAt(it.s) - 2, (S.fold.has(it.grp) ? 1 : it.ms.length + 1) * LINE_H + 8) : it.cont ? Math.max(yAt(it.e) - yAt(0) - 2, ONE_H) : Math.max(yAt(it.e) - yAt(it.s) - 2, ONE_H);
+    const hOf = (it) => it.grp ? Math.max(yAt(it.e) - yAt(it.s) - 2, (S.fold.has(it.grp) ? 1 : it.ms.length + 1) * LINE_H + 8) : it.cont ? Math.max(yAt(it.e) - yAt(0) - 2, MINH) : Math.max(yAt(it.e) - yAt(it.s) - 2, MINH);
     for (const it of placed) { it.h = hOf(it); it.top = (it.cont ? yAt(0) : yAt(it.s)) + 1; }
     // 1시간 칸 (늘이지 않아요 — 15분 눈금은 CSS 배경)
     let hours = "";
@@ -329,11 +333,12 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     el.classList.toggle("ro", ro());
     const u = ctx.users.find((x) => x.id === who);
     const hintEl = $(".dp-hint", el);
-    if (hintEl) hintEl.textContent = ro() ? (S.closed ? `${u?.display_name || "친구"} 님은 하루 계획표를 공개하지 않았어요 (비공개).` : `${u?.display_name || "친구"} 님의 하루 계획표예요 · 보기만 할 수 있어요.`) : `빈 시각을 누르면 바로 적을 수 있어요. 시각 · 길이는 1분 단위로 고쳐도 돼요. Enter 추가 · Esc 닫기.${matchMedia("(hover: hover) and (pointer: fine)").matches ? ` 계획에 마우스를 대고 ${MOD}C · 붙일 시각에 대고 ${MOD}V (Shift+클릭 여러 개 · ${MOD}A 전체).` : ""}`;
+    if (hintEl) hintEl.textContent = ro() ? (S.closed ? `${u?.display_name || "친구"} 님은 하루 계획표를 공개하지 않았어요 (비공개).` : `${u?.display_name || "친구"} 님의 하루 계획표예요 · 보기만 할 수 있어요.`) : phone() ? "빈 시각을 누르면 바로 적을 수 있어요. 계획을 꾹 누르면 메뉴가 나와요." : `빈 시각을 누르면 바로 적을 수 있어요. 시각 · 길이는 1분 단위로 고쳐도 돼요. Enter 추가 · Esc 닫기.${matchMedia("(hover: hover) and (pointer: fine)").matches && !phone() ? ` 계획에 마우스를 대고 ${MOD}C · 붙일 시각에 대고 ${MOD}V (Shift+클릭 여러 개 · ${MOD}A 전체).` : ""}`;
     if (ro()) { S.editSlot = null; S.editId = null; }
     const sheet = phone();
     const fa = document.activeElement, focusName = fa?.closest?.("[data-slot-form]") ? fa.name : null; // 다시 그린 뒤에도 쓰던 칸에 커서
     $("#dp-grid", el).innerHTML = hours + `<div class="blocks">${blocks}</div>` + nowLine + (sheet ? "" : pop);
+    $("#dp-grid", el).style.setProperty("--hour-px", HP + "px"); // CSS 의 한 시간 높이도 같은 값 (.day-grid .hour)
     let host = $("#dp-sheet", el);
     if (sheet && pop) {
       // <dialog> 맨 위층에 띄워요 — 유리 카드(backdrop-filter) 안에선 position: fixed 가 화면 기준이 안 돼요
@@ -882,7 +887,12 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
     },
   });
 
+  // 폰 ↔ 넓은 화면을 넘나들면(창 크기 · 폰 돌리기) 한 시간 높이가 바뀌니 다시 그려요
+  const wideMq = matchMedia("(max-width: 720px)"), onWide = () => { if (alive) drawGrid(); };
+  wideMq.addEventListener("change", onWide);
+
   return () => {
+    wideMq.removeEventListener("change", onWide);
     alive = false; stopAic?.(); closeMenu();
     ["pointerup", "pointercancel"].forEach((t) => window.removeEventListener(t, cancelPress));
     window.removeEventListener("pointerup", endLasso); window.removeEventListener("pointercancel", endLasso);
