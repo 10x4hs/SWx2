@@ -1255,7 +1255,7 @@ a.btn { text-decoration: none; }
 .cal-legend .lg-bar { width: 22px; height: 4px; border-radius: 99px; background: linear-gradient(90deg, var(--c-green) 60%, var(--c-teal) 60%); }
 
 /* 그날 한 페이지 */
-.cal-page { display: grid; min-width: 0; scroll-margin-top: 12px; }
+.cal-page { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; scroll-margin-top: 12px; } /* 한 칸 — 안의 긴 줄(친구 이름 칩 등)이 카드를 화면 밖으로 넓히지 못하게 */
 .cd-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .cd-rel { display: inline-block; font-size: var(--fs-sm); font-weight: 650; color: var(--ink-3); margin-bottom: 4px; }
 .cd-rel.now { color: var(--on-ink); background: var(--ink); padding: 2px 8px; border-radius: 99px; }
@@ -1890,7 +1890,7 @@ a.btn { text-decoration: none; }
   background-image: repeating-linear-gradient(transparent 0 calc(1.85em - 1px), var(--line) calc(1.85em - 1px) 1.85em); background-attachment: local; }
 .dy-paper .diary-text::placeholder { color: var(--ink-3); }
 .dy-side { display: grid; gap: 14px; position: sticky; top: 8px; }
-.dy-card { padding: 14px 16px; border-radius: 16px; display: grid; gap: 10px; }
+.dy-card { padding: 14px 16px; border-radius: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; } /* 한 칸 — 1년 표(560px)가 카드를 화면 밖으로 넓히지 않고 안에서 옆으로 넘겨요 */
 .dy-card h2 { margin: 0; font: 700 var(--fs-md) var(--font); color: var(--ink); }
 .dy-card .dy-h2 { display: flex; justify-content: space-between; align-items: baseline; }
 .dy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -2490,8 +2490,12 @@ a.hw:hover .hw-bar { background: rgba(255, 255, 255, .08); }
 @media (max-width: 720px) {
   /* 폰: 날짜가 세로로 깨지지 않게 — 사람 고르기 · 이전/다음은 날짜 아래 한 줄로 */
   .cal-page .cd-head { flex-wrap: wrap; }
-  .cal-page .cd-head .pager { flex: 1 1 100%; order: 2; justify-content: space-between; }
-  .dp-who { margin: 0; }
+  .cal-page .cd-head .pager { flex: 1 1 100%; order: 2; justify-content: space-between; min-width: 0; }
+  .cal-page .cd-head > * { min-width: 0; }
+  /* 친구가 많으면 이름 칩 줄이 길어져 하루 화면을 통째로 밀어냈어요 (가로로 돌려야 보였어요) → 그 줄만 옆으로 넘겨요, 이전/다음 · 날짜는 늘 보여요 */
+  .dp-who { margin: 0; flex: 0 1 auto; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .dp-who::-webkit-scrollbar { display: none; }
+  .dp-who button { flex: none; }
 }
 
 /* ---------- 캘린더: 달력만 / 그날 전체 화면 ---------- */
@@ -3581,3 +3585,13 @@ select option, select optgroup { background-color: #fff; color: #1d1d1f; }
   :is(.host-notes, .host-brain, .host-graph, .host-planner):has(> .home-tabs) { display: flex; flex-direction: column; }
   :is(.host-notes, .host-brain, .host-graph, .host-planner):has(> .home-tabs) > :is(.notes, .brain, .obs, .pl) { flex: 1 1 0; height: auto; min-height: 0; }
 }
+
+/* ---------- 폰 세로로도 (2026-11-18) — "가로로 돌려야 일정 · 뉴스레터가 제대로 보여요" ----------
+   화면 양옆 여백을 줄이고, 하루 일정은 카드 안 카드(시간표 상자)를 납작하게 → 시간표가 화면 폭의 대부분을 써요 */
+@media (max-width: 600px) {
+  .view { padding-left: 10px; padding-right: 10px; }
+  .cal-page { padding: 16px 14px; }
+  .cal-page .cd-sec.dp-tt { padding: 10px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
+  :root[data-theme="light"] .cal-page .cd-sec.dp-tt { background: none; }
+}
+

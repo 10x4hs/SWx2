@@ -43,6 +43,9 @@
 .gn-bar { position: sticky; top: 0; z-index: 5; display: flex; justify-content: center; align-items: center; gap: 8px 28px; flex-wrap: wrap; min-height: 40px; background: var(--g-bg); border-top: 1px dotted var(--g-line); border-bottom: 1px dotted var(--g-line); }
 .gn-views { display: flex; gap: 24px; font-size: 13px; min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
 .gn-views::-webkit-scrollbar { display: none; }
+/* 폰 세로: 메뉴를 옆으로 숨기지 않고 두 줄로 — 아홉 칸이 다 보여요 (단어는 쪼개지지 않아요: a 는 flex: none · nowrap) */
+@media (max-width: 600px) { .gn-views { flex-wrap: wrap; justify-content: center; overflow-x: visible; column-gap: 14px; row-gap: 0; } }
+@media (max-width: 380px) { .gn-views { column-gap: 11px; } }
 .gn-views a { flex: none; color: var(--g-ink2); padding: 4px 0; }
 .gn-views a:hover { color: var(--g-tint); }
 .gn-views a[aria-current="page"] { color: var(--g-tint); }
@@ -411,3 +414,5 @@ body:has(.host-news) .bg { opacity: .15; filter: blur(2px) grayscale(1); }
 .gn-usage-t td:not(:first-child), .gn-usage-t th:not(:first-child) { text-align: right; }
 .gn .gn-s.gn-soft { padding: 0; font-size: inherit; font-style: italic; }
 @media (max-width: 720px) { .gn-views { -webkit-mask: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask: linear-gradient(90deg, #000 calc(100% - 28px), transparent); padding-right: 24px; } }
+/* 폰 세로: 메뉴가 두 줄로 감싸지면 오른쪽 흐림(옆으로 더 있다는 표시)은 필요 없어요 — 마지막 칸이 흐려지지 않게 (위 720px 규칙보다 뒤에) */
+@media (max-width: 600px) { .gn-views { -webkit-mask: none; mask: none; padding-right: 0; } }

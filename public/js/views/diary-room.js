@@ -127,6 +127,9 @@ export function mount(root, ctx, r) {
           : `<a class="g${cls}${ds === day ? " sel" : ""}" href="${href(who, ds)}" style="grid-column:${wk + 1};grid-row:${k + 1}" title="${tip}" aria-label="${tip}"></a>`;
       }
       $("#dr-grass", root).innerHTML = `<div class="dr-grass-wrap"><div class="dr-grass">${cells}</div></div><p class="dr-key faint"><i class="g m3"></i>쓴 날 <i class="g ${who === me ? "m3 priv" : "lock"}"></i>비공개${who === me ? " (나만)" : ""}</p>`;
+      // 좁은 화면(폰 세로)에선 1년 표가 옆으로 넘쳐요 → 고른 날이 보이는 쪽으로 밀어 둬요 (1월부터 보이면 오늘이 화면 밖이었어요)
+      const wrap = $("#dr-grass .dr-grass-wrap", root), sel = wrap?.querySelector(".g.sel");
+      if (wrap && sel && wrap.scrollWidth > wrap.clientWidth) wrap.scrollLeft = Math.max(0, sel.getBoundingClientRect().left - wrap.getBoundingClientRect().left - wrap.clientWidth * 0.7);
       $("#dr-list", root).innerHTML = entries.length ? entries.slice(0, 30).map((e) => `<li><a href="${href(who, e.day)}" ${e.day === day ? 'aria-current="page"' : ""}><b>${esc(shortDate(e.day))}</b>${e.private ? lockChip() : `${moodChip(e.mood)}${e.shared === false ? lockChip("나만") : ""}<span class="sn">${esc(plainText(e.snippet).slice(0, 70))}</span>`}</a></li>`).join("")
         : `<li class="faint">${who === me ? "아직 쓴 일기가 없어요." : "아직 볼 수 있는 일기가 없어요."}</li>`;
     } catch (e) { $("#dr-grass", root).innerHTML = `<p class="faint">${esc(e.message || "불러오지 못했어요.")}</p>`; }

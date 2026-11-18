@@ -127,6 +127,8 @@ export function mountDay(el, ctx, day, { onChange, who: startWho } = {}) {
       <div class="dp-scroll" id="dp-scroll"><div class="day-grid" id="dp-grid"></div></div>
       <div class="dp-selbar" id="dp-selbar" hidden></div>
     </section>`;
+  // 폰에서 친구 칩 줄이 옆으로 넘치면 고른 사람이 보이게 밀어 둬요 (페이지는 움직이지 않게 scrollLeft 만)
+  { const ws = $(".dp-who", el), on = ws?.querySelector('[aria-selected="true"]'); if (ws && on && ws.scrollWidth > ws.clientWidth) ws.scrollLeft = Math.max(0, on.offsetLeft - ws.offsetLeft - (ws.clientWidth - on.offsetWidth) / 2); }
 
   // ---------- data ----------
   let loadSeq = 0; // 늦게 온 옛 답은 버려요 (마지막으로 부른 것만)
