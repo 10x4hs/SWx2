@@ -1,5 +1,6 @@
 // Visual diff for CSS-only refactors: screenshot shared screens, then pixel-diff two runs.
 //   BASE=http://127.0.0.1:8807 USER_ID=t_wdes node scripts/visual-diff.mjs shoot <dir>   # needs a running `wrangler dev`
+//   SCREENS=apps … shoot <dir>                                                         # per-app screens (news, mba, sw, cim, psy, svm, papers, books)
 //   node scripts/visual-diff.mjs diff <beforeDir> <afterDir>                           # % changed pixels per shot
 // Time is frozen, motion reduced, animations off and service workers blocked so two runs of the same code match.
 import { chromium } from "playwright";
@@ -9,7 +10,9 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 const [mode, a, b] = process.argv.slice(2);
-const SCREENS = [["home", "#/"], ["plan", "#/calendar"], ["notes", "#/notes"], ["brain", "#/brain"], ["settings", "#/settings"], ["study", "#/study"], ["news", "#/news"]];
+const APP_SCREENS = [["news", "#/news"], ["mba", "#/mba"], ["sw", "#/sw"], ["swdev", "#/sw/dev"], ["cim", "#/cim"], ["psy", "#/psy"], ["svm", "#/svm"], ["papers", "#/papers"], ["easy", "#/papers/easy"], ["books", "#/books"]];
+const SHARED_SCREENS = [["home", "#/"], ["plan", "#/calendar"], ["notes", "#/notes"], ["brain", "#/brain"], ["settings", "#/settings"], ["study", "#/study"], ["news", "#/news"]];
+const SCREENS = process.env.SCREENS === "apps" ? APP_SCREENS : SHARED_SCREENS; // SCREENS=apps = per-app sheets
 const VIEWS = [["desktop", 1300, 900], ["phone", 390, 844]];
 const H = { "x-trio": "1", "content-type": "application/json" };
 const FREEZE = "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}";
