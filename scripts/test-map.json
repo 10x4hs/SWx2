@@ -62,6 +62,7 @@
     "public/js/views/diary-room.js": { "smoke": [], "e2e": ["portrait", "diary-undo"] },
     "public/js/views/day.js": { "smoke": [], "e2e": ["portrait", "home-day", "plan-multi", "plan-short", "plan-undo", "plan-copy", "plan-length"] },
     "scripts/e2e-portrait.mjs": { "smoke": [], "e2e": ["portrait"] },
+    "public/js/liquid-glass.js": { "smoke": [], "e2e": ["gate-glass"] },
     "scripts/e2e-svm.mjs": { "smoke": [], "e2e": ["svm"] },
     "src/psy.js": { "smoke": ["psy"], "e2e": ["psy"] },
     "src/psy/": { "smoke": [], "e2e": [] },
