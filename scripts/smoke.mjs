@@ -1582,7 +1582,8 @@ await section("security", async () => {
 await section("news-map", async () => {
   const fid = "smk-f" + tag, iid = "smk-i" + tag, t0 = Date.now();
   d1(`INSERT INTO news_feeds (id, url, name, topic, created_at) VALUES ('${fid}', 'https://example.com/${fid}', 'Smoke Feed', 'china', ${t0})`);
-  d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, one_liner, geo, created_at) VALUES ('${iid}', '${fid}', 'https://example.com/${iid}', 'Beijing tightens rare earth smoke export', ${t0 - 3600e3}, 'China said on Monday it will tighten rare earth exports. Washington called the move coercive.', '중국이 희토류 수출을 죄어요', '["CN","US"]', ${t0})`);
+  // 방금 나온 글로 — 지도의 '실시간'은 최근 40개라, 1시간 전 글은 로컬 DB 의 다른 새 글에 밀려 안 보였어요 (2026-11-20)
+  d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, one_liner, geo, created_at) VALUES ('${iid}', '${fid}', 'https://example.com/${iid}', 'Beijing tightens rare earth smoke export', ${t0 - 1000}, 'China said on Monday it will tighten rare earth exports. Washington called the move coercive.', '중국이 희토류 수출을 죄어요', '["CN","US"]', ${t0})`);
   const uid2 = "smk-u" + tag;
   d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, dated, raw, created_at) VALUES ('${uid2}', '${fid}', 'https://example.com/${uid2}', 'Undated smoke item', ${t0}, 0, 'x', ${t0})`);
   const yday = new Date(t0 + 9 * 3600e3 - 864e5).toISOString().slice(0, 10);
@@ -1637,7 +1638,11 @@ await section("news-edition", async () => {
   const rb = await withBudget(3, async () => { for (let i = 0; i < 5; i++) { try { await fetch(BASE + "/"); } catch (e) { blocked = e; break; } } });
   ok(rb.used === 3 && blocked instanceof BudgetError, "budget: 4th fetch over a limit of 3 is refused");
 
+  // 지난 실행이 중간에 멈추며 남긴 '임시 마감'(smk-hold)부터 지워요 — 남아 있으면 그날이 영영 마감된 걸로 보여 엉뚱한 날을 골랐어요 (2026-11-20)
+  d1(`DELETE FROM news_editions WHERE headline = 'smk-hold'`);
+  // 로컬 DB 에는 그날그날 받아 둔 진짜 뉴스가 있을 수 있어요 → 아래 검사는 우리가 넣은 smk- 글만 세요 (2026-11-20: 9/20–10/11 매일 진짜 글이 있어 글 수가 달라 실패했어요)
   const t0 = Date.now(), D = kstDay(t0 - 58 * 864e5), DT = Date.parse(D + "T03:00:00Z"); // 그날 정오(한국)
+  const mine = (list) => (list || []).filter((x) => String(x?.id ?? x?.item?.id ?? "").startsWith("smk-")).length;
   // 지난 실행이 남긴 smk- 줄 · 그날 신문부터 지워요
   d1(`DELETE FROM news_editions WHERE day IN (SELECT DISTINCT day FROM news_items WHERE id LIKE 'smk-%')`);
   d1(`DELETE FROM news_items WHERE id LIKE 'smk-%'`); d1(`DELETE FROM news_feeds WHERE id LIKE 'smk-f%'`); d1(`DELETE FROM news_jobs WHERE name = 'backfill'`);
@@ -1657,12 +1662,12 @@ await section("news-edition", async () => {
   if (holdNew.length) d1(`INSERT INTO news_editions (day, headline, status, item_count, built_at) VALUES ${holdNew.map((d) => `('${d}', 'smk-hold', 'closed', 0, 0)`).join(",")}`);
   if (holdDraft.length) d1(`UPDATE news_editions SET status = 'closed' WHERE day IN (${inList(holdDraft)})`);
   d1(`INSERT INTO news_items (id, feed_id, url, title, published_at, raw, created_at, day, section) VALUES ('${nx}', '${fa}', 'https://example.com/${nx}', 'NOANSWER smoke', ${Date.parse(D0 + "T03:00:00Z")}, 'x', ${t0}, '${D0}', 'ai')`);
-  r = await call("a", "POST", "/news/backfill"); ok(r.data.day === D0 && r.data.built === false && r.data.todo === 1, "backfill: no answer once → retried later");
+  r = await call("a", "POST", "/news/backfill"); ok(r.data.day === D0 && r.data.built === false && r.data.todo >= 1 && (r.data.failed || []).some((f) => /NOANSWER/.test(f)), "backfill: no answer once → retried later");
   r = await call("a", "POST", "/news/backfill"); ok(r.data.day === D0 && r.data.built === true && r.data.stuck < 3, "backfill: no answer twice → item skipped, day closes normally");
   ok(d1(`SELECT sum_skip, summary FROM news_items WHERE id = '${nx}'`)[0].sum_skip === 1, "backfill: skipped item flagged sum_skip=1, summary null (D1)");
   r = await call("a", "POST", "/news/backfill");
-  ok(r.status === 200 && r.data.day === D && r.data.summed === 5 && r.data.built === true && r.data.subrequests <= 40, "backfill: step summarizes the oldest day and closes its edition");
-  ok(d1(`SELECT COUNT(*) AS n FROM news_items WHERE day = '${D}' AND summary IS NOT NULL AND one_liner IS NOT NULL`)[0].n === 5, "backfill: summary + one_liner stored (D1)");
+  ok(r.status === 200 && r.data.day === D && r.data.summed >= 5 && r.data.built === true && r.data.subrequests <= 40, "backfill: step summarizes the oldest day and closes its edition");
+  ok(d1(`SELECT COUNT(*) AS n FROM news_items WHERE day = '${D}' AND id LIKE 'smk-%' AND summary IS NOT NULL AND one_liner IS NOT NULL`)[0].n === 5, "backfill: summary + one_liner stored (D1)");
   const built1 = d1(`SELECT built_at, status FROM news_editions WHERE day = '${D}'`)[0];
   ok(built1?.status === "closed", "backfill: edition row closed (D1)");
   r = await call("a", "POST", "/news/backfill");
@@ -1670,11 +1675,11 @@ await section("news-edition", async () => {
   r = await call("a", "GET", `/news/edition/${D}`);
   const E = r.data;
   ok(r.status === 200 && E.status === "closed" && E.headline && E.front.length >= 3 && E.front.length <= 5 && E.front.every((f) => f.item.summary && typeof f.why === "string"), "edition: front 3–5 with summaries");
-  ok(E.sections.tech.length === 3 && E.sections.ai.length === 2 && E.sections.geopolitics.length === 0 && E.sections.economy.length === 0 && Array.isArray(E.late) && E.count === 5, "edition: sections from feed topics");
+  ok(mine(E.sections.tech) === 3 && mine(E.sections.ai) === 2 && mine(E.sections.geopolitics) === 0 && mine(E.sections.economy) === 0 && Array.isArray(E.late) && E.count >= 5, "edition: sections from feed topics");
   ok(E.sections.tech[0].readers && typeof E.sections.tech[0].comments === "number" && E.sections.tech[0].summary, "edition: items carry summary + readers + comments");
   r = await call("a", "GET", `/news/editions?from=${kstDay(t0 - 60 * 864e5)}&to=${kstDay(t0)}`);
   const L = r.data.editions.find((e) => e.day === D);
-  ok(r.status === 200 && L && L.counts.tech === 3 && L.counts.ai === 2 && L.items === 5 && L.status === "closed", "editions: list with counts");
+  ok(r.status === 200 && L && L.counts.tech >= 3 && L.counts.ai >= 2 && L.items >= 5 && L.status === "closed", "editions: list with counts");
   r = await call("a", "GET", "/news/edition/2026-13-99x"); ok(r.status === 400, "edition: bad day 400");
   r = await call("a", "GET", "/news/edition/today"); ok(r.status === 200 && ["live", "draft", "closed"].includes(r.data.status), "edition: today works (live before any build)");
 
