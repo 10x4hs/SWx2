@@ -24,3 +24,30 @@ test("shared sheets use --fs-* for sizes on (or within 0.5px of) a step", () => 
   }
   assert.deepEqual(bad.slice(0, 20), [], `${bad.length} raw sizes that should be tokens`);
 });
+
+// Per-app sheets: same type rule, and every colour lives in a custom property (palette at the top of each sheet).
+const APPS = ["news", "mba", "psy", "dev", "svm", "cim", "easy", "papers"].map((n) => `css/${n}.css`);
+const rawSizes = (css) => [...css.matchAll(/font-size\s*:\s*([\d.]+)px/g), ...css.matchAll(/(?:^|[\s;{])font\s*:\s*(?:(?:italic|normal|bold|\d{3})\s+)*([\d.]+)px/g)];
+
+// off-step sizes (13.5, 14.5 …) stay raw on purpose: no visible change
+test("per-app sheets use --fs-* for sizes exactly on a step", () => {
+  const bad = [];
+  for (const f of APPS) {
+    const css = fs.readFileSync(new URL(f, ROOT), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const m of rawSizes(css)) if (Object.values(STEPS).includes(+m[1])) bad.push(`${f}: ${m[0].trim()}`);
+  }
+  assert.deepEqual(bad.slice(0, 20), [], `${bad.length} raw sizes that should be tokens`);
+});
+
+test("per-app sheets keep hex colours in custom properties only", () => {
+  const bad = [];
+  for (const f of APPS) {
+    const css = fs.readFileSync(new URL(f, ROOT), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const d of css.split(/[;{}]/)) {
+      if (/^\s*--[\w-]+\s*:/.test(d) || !d.includes(":")) continue;
+      const val = d.slice(d.indexOf(":") + 1).replace(/var\(--[\w-]+\s*,[^)]*\)/g, ""); // var() fallbacks are fine
+      for (const [h] of val.matchAll(/#[0-9a-fA-F]{3,8}\b/g)) bad.push(`${f}: ${h} in ${d.trim().slice(0, 60)}`);
+    }
+  }
+  assert.deepEqual(bad.slice(0, 20), [], `${bad.length} raw hex colours outside a palette variable`);
+});
