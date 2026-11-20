@@ -1414,6 +1414,25 @@ await section("mcp", async () => {
   t = await tool(TA, "task_update", { id: tid, note: "메모만" }); ok(!t.err, "mcp: others can still leave a note");
   t = await tool(TB, "task_update", { id: tid, status: "done", result: "끝" }); ok(!t.err, "mcp: owner finishes");
   t = await tool(TA, "task_get", { id: tid }); ok(t.text.includes("smoke-b: 맡음") && t.text.includes("smoke-a: 메모만") && t.text.includes("done"), "mcp: log records who did what");
+  // 계획 고치기 · 끝내기 · 지우기 (2026-11-20 — ChatGPT 로 연결한 친구가 "지우기는 직접 해야 한다"고 했어요)
+  {
+    const tl = (await mcp(TA, "tools/list")).data?.result?.tools || [], del = tl.find((x) => x.name === "plan_delete"), upd = tl.find((x) => x.name === "plan_update");
+    ok(del?.annotations?.destructiveHint === true && upd?.annotations?.destructiveHint === false, "mcp: plan_delete marked destructive, plan_update not");
+    const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), next = new Date(Date.now() + 9 * 3600e3 + 864e5).toISOString().slice(0, 10);
+    t = await tool(TA, "plan_add", { text: "mcp 계획 " + tag, start: "07:10", mins: 20 }); ok(!t.err, "mcp: plan_add");
+    t = await tool(TA, "plans_list", {}); const pid = ((t.text.split("\n").find((l) => l.includes("mcp 계획 " + tag)) || "").match(/\[([0-9a-f-]{8})\]/) || [])[1];
+    ok(!!pid, "mcp: plans_list shows [id]");
+    t = await tool(TA, "plan_update", { id: pid, done: true }); const l1 = (await tool(TA, "plans_list", {})).text.split("\n").find((l) => l.includes(pid)) || "";
+    ok(!t.err && l1.startsWith("- [x]"), "mcp: plan_update done → [x]");
+    t = await tool(TA, "plan_update", { id: pid, text: "mcp 고친 계획 " + tag, start: "07:40" }); const l2 = (await tool(TA, "plans_list", {})).text.split("\n").find((l) => l.includes(pid)) || "";
+    ok(!t.err && l2.includes("07:40") && l2.includes("mcp 고친 계획 " + tag), "mcp: plan_update text + start");
+    t = await tool(TA, "plan_update", { id: pid }); ok(t.err, "mcp: plan_update with nothing to change → isError");
+    t = await tool(TA, "plan_update", { id: "zzzzzzzz" }); ok(t.err && t.text.includes("없어요"), "mcp: unknown plan id → isError");
+    t = await tool(TA, "plan_update", { id: pid, move_to: next }); const moved = (await tool(TA, "plans_list", { day: next })).text.includes(pid);
+    ok(!t.err && moved && !(await tool(TA, "plans_list", {})).text.includes(pid), "mcp: plan_update move_to another day");
+    t = await tool(TA, "plan_delete", { id: pid }); ok(t.err, "mcp: plan_delete looks on today by default (moved plan → isError)");
+    t = await tool(TA, "plan_delete", { id: pid, day: next }); ok(!t.err && !(await tool(TA, "plans_list", { day: next })).text.includes(pid), "mcp: plan_delete with day");
+  }
   t = await tool(TA, "note_write", { title: "t mcp 노트 " + tag, body: "첫 줄", mode: "create" }); ok(!t.err, "mcp: note create");
   t = await tool(TB, "note_write", { title: "t mcp 노트 " + tag, body: "둘째 줄" }); t = await tool(TA, "note_read", { title: "t mcp 노트 " + tag });
   ok(t.text.includes("첫 줄") && t.text.includes("둘째 줄") && t.text.includes("smoke-b"), "mcp: append keeps body + signs agent");

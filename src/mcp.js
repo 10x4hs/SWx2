@@ -21,6 +21,17 @@ const INSTRUCTIONS = `SWx2 — 팀이 같이 쓰는 공부 앱(논문 스프린�
 
 const S = (props, required = []) => ({ type: "object", properties: props, required, additionalProperties: false });
 const str = (description, extra = {}) => ({ type: "string", description, ...extra });
+// plan_update · plan_delete 의 id: 그날(day, 기본 오늘) 계획에서 앞글자로 찾아요 — 여럿이 맞거나 없으면 알려 줘요
+async function planOf(a, c) {
+  const id = String(a.id || "").trim().replace(/^\[|\]$/g, "");
+  if (id.length < 6) bad("id 는 plans_list 의 [id] 앞 6글자 이상이에요.");
+  const day = DAY.test(a.day || "") ? a.day : kstToday();
+  const { plans } = await api(c, "GET", "/plans?periods=D:" + day);
+  const hit = plans.filter((p) => p.id.startsWith(id));
+  if (hit.length > 1) bad(`id '${id}' 가 ${day} 에 ${hit.length}개 맞아요. 더 길게 주세요.`);
+  if (!hit.length) bad(`${day} 에 id '${id}' 계획이 없어요. 다른 날이면 day 를 주세요 (plans_list 로 확인).`);
+  return hit[0];
+}
 
 const TOOLS = [
   { name: "whoami", description: "이 연결이 누구(사용자)이고 어떤 에이전트로 붙었는지, 오늘 날짜(한국 시간).", inputSchema: S({}) },
@@ -45,6 +56,12 @@ const TOOLS = [
   { name: "plans_list", description: "그날의 계획(시간표 · 체크리스트). day 없으면 오늘.", inputSchema: S({ day: str("YYYY-MM-DD") }) },
   { name: "plan_add", description: "그날 계획 넣기. start(HH:MM)와 mins 를 주면 시간표, start 없으면 체크리스트(mins 만 주면 예상 시간).",
     inputSchema: S({ text: str("할 일"), day: str("YYYY-MM-DD (기본 오늘)"), start: str("HH:MM"), mins: { type: "integer", minimum: 5, maximum: 720 }, priority: { type: ["integer", "string"], description: "우선순위 1(가장 급함) ~ 5(여유). 예전 이름 low|medium|high|xhigh|max 도 돼요" } }, ["text"]) },
+  { name: "plan_update", description: "계획 고치기 · 끝냄 표시. id 는 plans_list 의 [id] (앞 6글자 이상). 바꿀 것만 주세요: done(끝냄 true/false) · text · start(HH:MM) · mins · priority · move_to(다른 날 YYYY-MM-DD 로 옮기기). 다른 날 계획이면 day 도 주세요.",
+    annotations: { title: "계획 고치기", readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    inputSchema: S({ id: str("계획 id (앞 6글자 이상)"), day: str("그 계획이 있는 날 YYYY-MM-DD (기본 오늘)"), done: { type: "boolean" }, text: str("새 할 일"), start: str("HH:MM"), mins: { type: "integer", minimum: 1, maximum: 720 }, priority: { type: ["integer", "string"], description: "1(가장 급함) ~ 5(여유)" }, move_to: str("옮길 날 YYYY-MM-DD") }, ["id"]) },
+  { name: "plan_delete", description: "계획 지우기 (되돌릴 수 없어요 — 사용자에게 먼저 확인받고 부르세요). id 는 plans_list 의 [id].",
+    annotations: { title: "계획 지우기", readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+    inputSchema: S({ id: str("계획 id (앞 6글자 이상)"), day: str("그 계획이 있는 날 YYYY-MM-DD (기본 오늘)") }, ["id"]) },
   // ---- 공용 작업판 ----
   { name: "tasks_list", description: "에이전트 공용 작업판. status=open(기본: todo · doing · blocked) | all | todo | doing | blocked | done.", inputSchema: S({ status: str("open | all | todo | doing | blocked | done") }) },
   { name: "task_get", description: "작업 하나의 전체 내용과 진행 기록.", inputSchema: S({ id: str("작업 id (앞 6글자 이상)") }, ["id"]) },
@@ -308,15 +325,35 @@ const CALL = {
     const { plans } = await api(c, "GET", "/plans?periods=D:" + day);
     if (!plans.length) return `${day} 계획이 없어요.`;
     const PRIO_N = { max: 1, xhigh: 2, high: 3, medium: 4, low: 5 };
-    const fmt = (p) => `- [${p.done ? "x" : " "}] ${p.start ? `${p.start} (${p.mins || "?"}분) ` : p.mins ? `(예상 ${p.mins}분) ` : ""}${p.text}${p.priority ? ` · ${PRIO_N[p.priority]}순위` : ""}`;
+    const fmt = (p) => `- [${p.done ? "x" : " "}] [${p.id.slice(0, 8)}] ${p.start ? `${p.start} (${p.mins || "?"}분) ` : p.mins ? `(예상 ${p.mins}분) ` : ""}${p.text}${p.priority ? ` · ${PRIO_N[p.priority]}순위` : ""}`;
     const timed = plans.filter((p) => p.start), todo = plans.filter((p) => !p.start);
-    return [`# ${day}`, timed.length ? "## 시간표" : "", ...timed.map(fmt), todo.length ? "## 체크리스트" : "", ...todo.map(fmt)].filter(Boolean).join("\n");
+    return [`# ${day} (고치기 · 끝내기 · 지우기는 [id] 로: plan_update · plan_delete)`, timed.length ? "## 시간표" : "", ...timed.map(fmt), todo.length ? "## 체크리스트" : "", ...todo.map(fmt)].filter(Boolean).join("\n");
   },
 
   async plan_add(a, c) {
     const day = DAY.test(a.day || "") ? a.day : kstToday();
     const r = await api(c, "POST", "/plans", { scope: "day", period: "D:" + day, text: a.text, ...(a.start ? { start: a.start, mins: a.mins || 30 } : a.mins ? { mins: a.mins } : {}), ...(a.priority ? { priority: a.priority } : {}) });
     return `${day}에 넣었어요: ${r.plan.start ? r.plan.start + " " : ""}${r.plan.text}`;
+  },
+
+  // 계획 고치기 · 끝내기 · 지우기 (2026-11-20 — 친구가 ChatGPT 에서 "계획 지우기는 직접 해야 한다"고 해서). 화면과 같은 /plans API 를 불러요
+  async plan_update(a, c) {
+    const p = await planOf(a, c), body = {};
+    if (a.done !== undefined) body.done = !!a.done;
+    if (a.text !== undefined) body.text = String(a.text);
+    if (a.start !== undefined) { body.start = a.start || null; if (a.mins === undefined && a.start) body.mins = p.mins || 30; }
+    if (a.mins !== undefined) body.mins = a.mins;
+    if (a.priority !== undefined) body.priority = a.priority;
+    if (a.move_to !== undefined) { if (!DAY.test(a.move_to)) bad("move_to 는 YYYY-MM-DD 예요."); body.period = "D:" + a.move_to; }
+    if (!Object.keys(body).length) bad("바꿀 것(done · text · start · mins · priority · move_to)을 하나 이상 주세요.");
+    const r = await api(c, "PATCH", "/plans/" + p.id, body), q = r.plan || { ...p, ...body };
+    return `고쳤어요: [${p.id.slice(0, 8)}] ${q.done ? "✓ " : ""}${q.start ? q.start + " " : ""}${q.text}${body.period ? ` → ${a.move_to}` : ""}`;
+  },
+
+  async plan_delete(a, c) {
+    const p = await planOf(a, c);
+    await api(c, "DELETE", "/plans/" + p.id);
+    return `지웠어요: [${p.id.slice(0, 8)}] ${p.start ? p.start + " " : ""}${p.text}`;
   },
 
   async tasks_list(a, c) {
