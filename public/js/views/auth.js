@@ -1,6 +1,7 @@
 // 입장 화면 — 구름 위 유리 알약 하나. 아이디 → 비밀번호 순서로 같은 자리에서 바뀌어요.
 import { api } from "../api.js";
 import { $, esc } from "../util.js";
+import { liquidDefs, mountLiquidGlass } from "../liquid-glass.js";
 
 const arrow = `<svg width="20" height="14" viewBox="0 0 20 14" aria-hidden="true"><path d="M1 7h17M12 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -12,6 +13,8 @@ export function mountAuth(root, { onDone }) {
     <div class="gate" id="gate">
       <div class="gate-media" aria-hidden="true"></div>
       <div class="gate-veil" aria-hidden="true"></div>
+      <div class="gate-prism" aria-hidden="true"></div>
+      ${liquidDefs()}
       <p class="gate-mark">SWx2</p>
       <form class="gate-form" id="gate-form" autocomplete="on" novalidate>
         <div class="pill" id="pill">
@@ -28,6 +31,7 @@ export function mountAuth(root, { onDone }) {
 
   const gate = $("#gate", root), form = $("#gate-form", root), input = $("#gate-input", root);
   const pill = $("#pill", root), who = $("#pill-who", root), msg = $("#gate-msg", root), label = $("#gate-label", root), status = $("#gate-status", root);
+  mountLiquidGlass(gate, pill); // 유리 알약: 뒤 구름이 휘어 보이고(굴절) 가장자리에서 빛이 갈라져요(색수차) · 빛이 손가락을 따라가요
   // 가입 승인 현황: 관리자마다 승인했는지 + [다시 확인] (비밀번호는 이 화면에서만 잠깐 들고 있어요)
   let again = null;
   const showStatus = (name, list = [], creds = null) => {

@@ -795,6 +795,17 @@ try {
     errs = [];
     await homesE2E({ p, go, ok, tv, w, h, getErrs: () => errs });
     });
+    // ---------- ㉛ 입장 화면 리퀴드 글래스 (2026-11-20, js/liquid-glass.js) — Chromium 에선 굴절 필터가 켜지고 변위 지도가 알약 크기, 빛이 손가락을 따라가요 ----------
+    if (tv === "컴퓨터") await sec("gate-glass", async () => {
+      const gc = await browser.newContext({ viewport: { width: 1300, height: 860 }, serviceWorkers: "block" }); const gp = await gc.newPage();
+      try {
+        await gp.goto(BASE + "/#/settings"); await gp.waitForSelector("#pill", { timeout: 10000 }); await sleep(600);
+        const a = await gp.evaluate(() => { const pl = document.querySelector("#pill"), m = document.querySelector("#lg-map"); return { on: pl.classList.contains("lg-on"), bf: getComputedStyle(pl).backdropFilter, mw: +m?.getAttribute("width"), pw: Math.round(pl.offsetWidth), map: (m?.getAttribute("href") || "").startsWith("data:image/png"), lx: pl.style.getPropertyValue("--lx") }; });
+        const r = await gp.locator("#pill").boundingBox(); await gp.mouse.move(r.x + r.width - 10, r.y + r.height / 2); await sleep(200);
+        const lx2 = await gp.evaluate(() => document.querySelector("#pill").style.getPropertyValue("--lx"));
+        ok(a.on && /url\(/.test(a.bf) && a.map && a.mw === a.pw && lx2 !== a.lx && parseInt(lx2) > 80, `${tv} · 입장 화면 유리 — 굴절 ${a.on} (${a.bf.slice(0, 26)}) · 변위 지도 ${a.mw}/${a.pw}px · 빛 ${a.lx} → ${lx2}`);
+      } finally { await gc.close(); }
+    });
     // ---------- ㉚ 폰 세로로도 (2026-11-18, scripts/e2e-portrait.mjs) — 하루 일정 카드 안 · 시간표 폭 · 뉴스레터 메뉴 모두 보임 · 일기 1년 표가 고른 날 쪽 ----------
     if (tv === "폰") await sec("portrait", async () => {
     errs = [];
