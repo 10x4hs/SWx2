@@ -13,7 +13,7 @@
     "secrets:push": "bash scripts/secrets-push.sh",
     "test:unit": "node --test scripts/*.test.mjs",
     "seed": "node scripts/seed.mjs",
-    "test": "node scripts/assets.mjs --check && node scripts/mba-index.mjs --check && node scripts/dev-index.mjs --check && node scripts/dev-index.mjs vg --check && node scripts/dev-index.mjs onto --check && node scripts/dev-index.mjs aip --check && node scripts/smoke.mjs",
+    "test": "node scripts/assets.mjs --check && node scripts/course-index.mjs --check && node scripts/smoke.mjs",
     "e2e": "node scripts/e2e.mjs",
     "test:quick": "node scripts/test.mjs quick",
     "test:normal": "node scripts/test.mjs normal",

@@ -2,17 +2,10 @@
 import { api } from "../api.js";
 import { getPref, setPref } from "../prefs.js";
 
-const cache = new Map();
-export function getJSON(path) {
-  if (!cache.has(path)) {
-    const p = fetch(path).then((r) => { if (!r.ok) throw new Error(`${path} ${r.status}`); return r.json(); });
-    p.catch(() => cache.delete(path));
-    cache.set(path, p);
-  }
-  return cache.get(path);
-}
-export const index = () => getJSON("/mba/index.json");
-export const moduleDoc = (id) => getJSON(`/mba/${id}.json`);
+import { getJSON, courseIndex, courseModule, readSet, doneSet } from "../course/load.js";
+export { getJSON, readSet, doneSet };
+export const index = () => courseIndex("/mba");
+export const moduleDoc = (id) => courseModule("/mba", id);
 export const company = () => getJSON("/mba/company.json");
 export const words = () => getJSON("/mba/words.json");
 export const kit = () => getJSON("/mba/kit.json");
@@ -40,8 +33,6 @@ export function steps(m) {
 }
 
 // ---------- 진도 ----------
-export function readSet(st) { return new Set((st.items || []).map((x) => x.module + "/" + x.card)); }
-export function doneSet(st) { return new Set((st.done || []).map((x) => x.module + "/" + x.item)); }
 export function nextCard(idx, st) {
   const read = readSet(st);
   for (const m of idx.modules) for (const c of m.cards) if (!read.has(m.id + "/" + c.id)) return { module: m, card: c };

@@ -36,8 +36,7 @@ BAD="$(git ls-files 'src/*.js' 'public/*.js' 'scripts/*.mjs' 'scripts/*.js' | xa
 [ -z "$BAD" ] || die "문법 오류: $BAD"
 echo "JS 문법 OK ($(git ls-files 'src/*.js' 'public/*.js' 'scripts/*.mjs' 'scripts/*.js' | wc -l | tr -d ' ')개)"
 node scripts/assets.mjs --check > /dev/null || die "assets --check 실패 (node scripts/assets.mjs --check)"
-for a in "" vg onto aip; do node scripts/dev-index.mjs $a --check > /dev/null || die "dev-index $a --check 실패"; done
-node scripts/mba-index.mjs --check > /dev/null || die "mba-index --check 실패"
+node scripts/course-index.mjs --check > /dev/null || die "course-index --check 실패"
 node --test scripts/*.test.mjs > /dev/null 2>&1 || die "단위 검사 실패 (node --test scripts/*.test.mjs)"
 echo "내용 · 단위 검사 OK"
 if [ -z "${SKIP_E2E:-}" ]; then

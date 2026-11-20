@@ -22,7 +22,6 @@ jobs:
       - name: Content indexes
         run: |
           node scripts/assets.mjs --check
-          node scripts/mba-index.mjs --check
-          for a in "" vg onto aip; do node scripts/dev-index.mjs $a --check; done
+          node scripts/course-index.mjs --check
       - name: Unit tests
         run: node --test scripts/*.test.mjs
