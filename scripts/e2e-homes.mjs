@@ -16,18 +16,18 @@ export async function homesE2E({ p, go, ok, tv, w, h, getErrs }) {
   for (const [name, tabs, nav] of homes) {
     // 1) 화면마다: 탭 줄 하나 · 지금 탭 · Dock 불
     const bad = [];
-    for (const [k, hash] of tabs) {
-      await go(hash, 1800);
+    for (const [k, hash, sel] of tabs) {
+      await go(hash, sel);
       const s = await state();
       if (s.n !== 1 || s.cur !== k || s.dock !== nav) bad.push(`${hash}: 탭줄 ${s.n} · 지금 ${s.cur} · Dock ${s.dock}`);
     }
     ok(!bad.length, `${tv} · ${name} — 화면마다 탭 줄 · 지금 탭 · Dock '${name}' 불${bad.length ? " — " + bad.join(" | ") : ""}`);
     // 2) 어느 화면에서든 다른 탭으로 한 번에
     const miss = [];
-    for (const [from, hash] of tabs) {
+    for (const [from, hash, fsel] of tabs) {
       for (const [to, , sel] of tabs) {
         if (to === from) continue;
-        await go(hash, 1500);
+        await go(hash, fsel);
         await p.click(`.home-tabs [data-tab="${to}"]`);
         const got = await p.waitForSelector(sel, { timeout: 6000 }).then(() => true, () => false);
         await sleep(250);
@@ -42,8 +42,8 @@ export async function homesE2E({ p, go, ok, tv, w, h, getErrs }) {
   if (w < 861) {
     await p.setViewportSize({ width: 360, height: h });
     const bad = [];
-    for (const [, tabs] of homes) for (const [k, hash] of tabs) {
-      await go(hash, 1600);
+    for (const [, tabs] of homes) for (const [k, hash, sel] of tabs) {
+      await go(hash, sel);
       const m = await p.evaluate(() => {
         const bar = document.querySelector(".home-tabs"), links = [...bar.querySelectorAll("a")];
         const one = links.every((a) => { const r = a.getBoundingClientRect(); return r.height < 44 && r.width > 24 && a.getClientRects().length === 1; });
