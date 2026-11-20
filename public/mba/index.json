@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "note": "node scripts/mba-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.",
+  "note": "node scripts/course-index.mjs 가 모듈 파일에서 만들어요. 손으로 고치지 마세요.",
   "modules": [
     {
       "id": "accounting",

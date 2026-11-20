@@ -3,15 +3,8 @@ import { api } from "../api.js";
 import { esc } from "../util.js";
 import { getPref, setPref } from "../prefs.js";
 
-const cache = new Map();
-export function getJSON(path) {
-  if (!cache.has(path)) {
-    const p = fetch(path).then((r) => { if (!r.ok) throw new Error(`${path} ${r.status}`); return r.json(); });
-    p.catch(() => cache.delete(path));
-    cache.set(path, p);
-  }
-  return cache.get(path);
-}
+import { getJSON, courseIndex, courseModule, readSet, doneSet } from "../course/load.js";
+export { getJSON, readSet, doneSet };
 // 과정 — SW 공간(#/sw) 안에서 같은 엔진으로 여러 과정을 열어요. 한 번에 하나만 열려 있어서 지금 과정을 여기 둬요.
 //   key: 서버 경로(/api/<key>/…) · base: 화면 주소 · dir: 내용 파일 폴더
 export const COURSES = {
@@ -34,8 +27,8 @@ export const COURSES = {
 };
 export let C = COURSES.dev;
 export function setCourse(k) { C = COURSES[k] || COURSES.dev; }
-export const index = () => getJSON(`${C.dir}/index.json`);
-export const moduleDoc = (id) => getJSON(`${C.dir}/${id}.json`);
+export const index = () => courseIndex(C.dir);
+export const moduleDoc = (id) => courseModule(C.dir, id);
 export const docsDoc = () => getJSON(`${C.dir}/docs.json`);
 export const cApi = {
   state: () => api.courseState(C.key), read: (...a) => api.courseRead(C.key, ...a), review: (r) => api.courseReview(C.key, r),
@@ -79,8 +72,6 @@ export const WHY = [
 ];
 
 // ---------- 진도 ----------
-export const readSet = (st) => new Set((st.items || []).map((x) => x.module + "/" + x.card));
-export const doneSet = (st) => new Set((st.done || []).map((x) => x.module + "/" + x.item));
 export function nextCards(idx, st, n) {
   const read = readSet(st), out = [];
   for (const m of idx.modules) for (const c of m.cards) { if (!read.has(m.id + "/" + c.id)) out.push({ module: m, card: c }); if (out.length >= n) return out; }
