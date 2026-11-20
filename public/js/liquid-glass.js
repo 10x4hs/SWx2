@@ -5,9 +5,9 @@
 //   backdrop-filter 의 url(#필터)는 Chromium 만 그려요 → 그 밖(사파리 · 아이폰)은 반사광 · 프리즘만, 유리는 예전 그대로 (lg-on 없음)
 //   움직임 줄이기를 켜면 빛은 왼쪽 위에 멈춰 있어요.
 
-const SCALES = [36, 27, 18]; // R · G · B 휨 세기(px) — 차이가 색수차예요 (더 세면 구름이 세로 줄무늬로 늘어져요)
-const BEZEL = 0.26;          // 가장자리에서 휘는 띠의 두께 (알약 높이에 대한 비율) — 가운데는 맑게
-const LENS = 0.16;           // 안쪽 전체를 살짝 확대 (렌즈) — 테두리에서 바깥 구름과 이어짐이 끊겨 "유리"로 보여요
+const SCALES = [50, 36, 22]; // R · G · B 휨 세기(px) — 차이가 색수차예요 (더 세면 구름이 세로 줄무늬로 늘어져요)
+const BEZEL = 0.3;           // 가장자리에서 휘는 띠의 두께 (알약 높이에 대한 비율) — 가운데는 맑게
+const LENS = 0.22;           // 안쪽 전체를 살짝 확대 (렌즈) — 테두리에서 바깥 구름과 이어짐이 끊겨 "유리"로 보여요
 
 export const liquidDefs = () => `<svg class="lg-defs" width="0" height="0" aria-hidden="true" focusable="false">
   <filter id="lg-refract" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
