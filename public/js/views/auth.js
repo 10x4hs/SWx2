@@ -13,7 +13,6 @@ export function mountAuth(root, { onDone }) {
     <div class="gate" id="gate">
       <div class="gate-media" aria-hidden="true"></div>
       <div class="gate-veil" aria-hidden="true"></div>
-      <div class="gate-prism" aria-hidden="true"></div>
       ${liquidDefs()}
       <p class="gate-mark">SWx2</p>
       <form class="gate-form" id="gate-form" autocomplete="on" novalidate>
@@ -31,7 +30,7 @@ export function mountAuth(root, { onDone }) {
 
   const gate = $("#gate", root), form = $("#gate-form", root), input = $("#gate-input", root);
   const pill = $("#pill", root), who = $("#pill-who", root), msg = $("#gate-msg", root), label = $("#gate-label", root), status = $("#gate-status", root);
-  mountLiquidGlass(gate, pill); // 유리 알약: 뒤 구름이 휘어 보이고(굴절) 가장자리에서 빛이 갈라져요(색수차) · 빛이 손가락을 따라가요
+  mountLiquidGlass(gate, pill); // 유리 알약: 뒤 구름이 가장자리에서 휘어 보이고(굴절) · 흰 반사광이 손가락을 살짝 따라가요
   // 가입 승인 현황: 관리자마다 승인했는지 + [다시 확인] (비밀번호는 이 화면에서만 잠깐 들고 있어요)
   let again = null;
   const showStatus = (name, list = [], creds = null) => {

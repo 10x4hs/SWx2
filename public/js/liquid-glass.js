@@ -1,13 +1,14 @@
-// 리퀴드 글래스 — 입장 화면의 유리 알약 (2026-11-20)
-//   · 굴절: 알약 모양에 맞춘 변위 지도(가장자리일수록 많이 휨)를 캔버스로 만들어 SVG 필터(feDisplacementMap)로 뒤 배경에 걸어요
-//   · 색수차: 빨강 · 초록 · 파랑을 조금씩 다른 세기로 휘어서 가장자리에서 빛이 갈라져 보여요
-//   · 빛: 손가락 · 마우스 쪽에서 오는 반사광(테두리 · 안쪽 광택)과 구름 위 프리즘 띠가 따라 움직여요
+// 리퀴드 글래스 — 입장 화면의 유리 알약 (2026-11-20, 애플 Liquid Glass 를 따라 절제 2026-11-20)
+//   애플: 주변을 비추고 굴절시키고 · 움직임에 반응하는 반사광 · 색은 뒤 콘텐츠에서 · 콘텐츠에 집중 → 그것만 남겼어요
+//   · 굴절: 알약 모양에 맞춘 변위 지도(가장자리 띠만 휨, 안쪽은 아주 살짝 확대)를 SVG 필터(feDisplacementMap)로 뒤 배경에 걸어요
+//   · 색 갈라짐은 눈에 거의 안 띄게 (R · G · B 휨 차이 4px) — 무지개 테두리 · 프리즘 띠는 뺐어요 (과했어요)
+//   · 반사광: 빛이 오는 쪽(--la) 테두리가 밝은 흰 선 하나, 손가락 · 마우스를 살짝 따라가요
 //   backdrop-filter 의 url(#필터)는 Chromium 만 그려요 → 그 밖(사파리 · 아이폰)은 반사광 · 프리즘만, 유리는 예전 그대로 (lg-on 없음)
 //   움직임 줄이기를 켜면 빛은 왼쪽 위에 멈춰 있어요.
 
-const SCALES = [50, 36, 22]; // R · G · B 휨 세기(px) — 차이가 색수차예요 (더 세면 구름이 세로 줄무늬로 늘어져요)
-const BEZEL = 0.3;           // 가장자리에서 휘는 띠의 두께 (알약 높이에 대한 비율) — 가운데는 맑게
-const LENS = 0.22;           // 안쪽 전체를 살짝 확대 (렌즈) — 테두리에서 바깥 구름과 이어짐이 끊겨 "유리"로 보여요
+const SCALES = [24, 22, 20]; // R · G · B 휨 세기(px) — 차이(4px)는 가장자리가 유리처럼 보일 만큼만
+const BEZEL = 0.28;          // 가장자리에서 휘는 띠의 두께 (알약 높이에 대한 비율) — 가운데는 맑게
+const LENS = 0.08;           // 안쪽을 아주 살짝 확대 (렌즈) — 테두리에서 바깥 구름과 이어짐이 끊길 만큼만
 
 export const liquidDefs = () => `<svg class="lg-defs" width="0" height="0" aria-hidden="true" focusable="false">
   <filter id="lg-refract" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
@@ -51,11 +52,7 @@ export function mountLiquidGlass(gate, pill) {
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const set = (x, y) => {
     const r = pill.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    pill.style.setProperty("--lx", `${Math.round(((x - r.left) / r.width) * 100)}%`);
-    pill.style.setProperty("--ly", `${Math.round(((y - r.top) / r.height) * 100)}%`);
     pill.style.setProperty("--la", `${Math.round((Math.atan2(y - cy, x - cx) * 180) / Math.PI + 90)}deg`);
-    gate.style.setProperty("--px", `${(((x / innerWidth) - 0.5) * 8).toFixed(2)}vw`);
-    gate.style.setProperty("--pa", `${Math.round(105 + ((y / innerHeight) - 0.5) * 30)}deg`);
   };
   { const r = pill.getBoundingClientRect(); set(r.left + r.width * 0.15, r.top - r.height); } // 처음: 왼쪽 위에서 오는 빛
   if (!still) {
