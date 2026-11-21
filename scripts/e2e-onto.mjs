@@ -24,17 +24,19 @@ export async function ontoE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots =
     const X = await post({ title: T("바나나"), body: "노란 열대 과일이에요.", parent_id: R });
     const Y = await post({ title: T("과일"), body: "먹을 수 있는 식물의 열매예요.", parent_id: R });
     const Z = await post({ title: T("사과"), body: "빨갛고 단단한 과일이에요.", parent_id: R });
-    const nodeAt = async (title) => { let a = null; for (let i = 0; i < 25; i++) { const b = await p.evaluate((t) => { const c = document.querySelector(".og-c"); if (!c?.__nodes) return null; const r = c.getBoundingClientRect(), n = c.__nodes().find((x) => x.title === t); return n && { x: n.x + r.left, y: n.y + r.top }; }, title); if (a && b && Math.hypot(a.x - b.x, a.y - b.y) < 0.5) return b; a = b; await sleep(160); } return a; };
+    const nodeAt = async (title) => { let a = null; for (let i = 0; i < 60; i++) { const b = await p.evaluate((t) => { const c = document.querySelector(".og-c"); if (!c?.__nodes) return null; const r = c.getBoundingClientRect(), n = c.__nodes().find((x) => x.title === t); return n && { x: n.x + r.left, y: n.y + r.top }; }, title); if (a && b && Math.hypot(a.x - b.x, a.y - b.y) < 0.5) return b; a = b; await sleep(160); } return a; };
     const linkOf = (a, b) => p.evaluate(([a, b]) => (document.querySelector(".og-c")?.__links?.() || []).find((l) => (l.s === a && l.t === b) || (l.s === b && l.t === a)) || null, [a, b]);
     const touch = (x, y, ms = 40) => p.evaluate(async ([x, y, ms]) => { const c = document.querySelector(".og-c"); const ev = (t) => c.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 9, pointerType: "touch", isPrimary: true, clientX: x, clientY: y, button: 0 })); ev("pointerdown"); await new Promise((r) => setTimeout(r, ms)); ev("pointerup"); }, [x, y, ms]);
     const tap = async (at) => { if (w > 600) await p.mouse.click(at.x, at.y); else await touch(at.x, at.y); };
     const menuAt = async (x, y) => { if (w > 600) await p.mouse.click(x, y, { button: "right" }); else await touch(x, y, 650); await p.waitForSelector(".cm", { timeout: 4000 }).catch(() => {}); return p.evaluate(() => [...document.querySelectorAll(".cm [data-k]")].map((b) => b.textContent.trim()).join("|")); };
     const midOf = async (a, b) => { const l = await p.evaluate(([a, b]) => { const c = document.querySelector(".og-c"), r = c.getBoundingClientRect(), l = c.__links().find((l) => (l.s === a && l.t === b) || (l.s === b && l.t === a)); return l && { x: r.left + (l.x1 + l.x2) / 2, y: r.top + (l.y1 + l.y2) / 2 }; }, [a, b]); return l; };
+    // API 로 방금 만든 노트를 화면이 보게 — 서비스 워커가 받아 둔 옛 노트 목록을 비워요 (e2e.mjs freshApi 와 같아요)
+    const fresh = () => p.evaluate(async () => { for (const n of await caches.keys()) if (n.startsWith("dsm-api-")) await caches.delete(n); }).catch(() => {});
     const popOpen = () => p.waitForSelector(".relpop", { timeout: 5000 }).then(() => true, () => false);
 
     // 1) 연결 → 작은 창 → 예시 → 서버 · 선 모양 → ⌘Z / ⌘⇧Z
     step = "1 연결 → 관계 고르기";
-    await go("#/brain/" + encodeURIComponent(R), 3500);
+    await fresh(); await go("#/brain/" + encodeURIComponent(R), ".og-c");
     await tap(await nodeAt(T("바나나"))); await sleep(450);
     await tap(await nodeAt(T("과일")));
     const pop1 = await popOpen();
@@ -84,7 +86,7 @@ export async function ontoE2E({ p, ctx, go, ok, tv, w, BASE, H, getErrs, shots =
     step = "3 AI 제안함";
     const me = (await get("/me")).user.id, s1 = "es1" + Date.now().toString(36) + w, s2 = "es2" + Date.now().toString(36) + w, t0 = Date.now();
     d1(`INSERT INTO note_rel (id, user_id, src_id, dst_id, rel, status, origin, confidence, evidence, created_at, updated_at) VALUES ('${s1}', '${me}', '${Z}', '${Y}', 'example_of', 'suggested', 'ai', 0.82, '사과는 과일의 한 예', ${t0}, ${t0}), ('${s2}', '${me}', '${Z}', '${X}', 'contrasts_with', 'suggested', 'ai', 0.7, NULL, ${t0}, ${t0})`);
-    await go("#/brain/" + encodeURIComponent(R), 3500);
+    await fresh(); await go("#/brain/" + encodeURIComponent(R), ".og-c");
     const badge = await p.evaluate(() => { const b = document.querySelector("[data-inbox]"); return b && !b.hidden ? b.textContent.replace(/\s+/g, " ").trim() : null; });
     await p.click("[data-inbox]");
     await p.waitForSelector(".relsheet li[data-id]", { timeout: 6000 }).catch(() => {});
