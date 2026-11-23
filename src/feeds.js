@@ -88,6 +88,8 @@ export const SEED = [
   ["Electrek", "https://electrek.co/feed/", "energy", "en", true, "전기차 · 테슬라 · 배터리 소식"],
   ["The Robot Report", "https://www.therobotreport.com/feed/", "semi", "en", true, "로봇 · 휴머노이드 산업"],
   ["MarkTechPost", "https://www.marktechpost.com/feed/", "ai", "en", true, "새 AI 모델 · 논문 · 프레임워크를 빠르게 정리"],
+  // 2026-11-23 사용자 요청 (InfoQ AI·ML·데이터 엔지니어링 트렌드 글) — 열어서 어제 글까지 있는 것 확인. migrations/0074 에도 같은 줄
+  ["InfoQ AI, ML & Data Eng", "https://feed.infoq.com/ai-ml-data-eng/", "ai", "en", true, "실무 엔지니어가 쓰는 AI·ML·데이터 엔지니어링 소식 · 트렌드 리포트 · QCon 발표"],
   ["New Atlas", "https://newatlas.com/index.rss", "semi", "en", true, "신기술 · 기기 · 과학 발견"],
 ];
 

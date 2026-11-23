@@ -2,6 +2,13 @@
  "about": "업데이트 1번 = 우리가 체감하는 기능 묶음 하나. commits 는 그 묶음에 들어간 커밋. 새 커밋은 배포할 때 scripts/updates-check.mjs 가 빠졌는지 알려 줘요.",
  "updates": [
   {
+   "date": "2026-11-23",
+   "kind": "new",
+   "title": "뉴스에 InfoQ(AI · ML · 데이터 엔지니어링)가 들어와요",
+   "body": "InfoQ 의 AI · ML · 데이터 엔지니어링 글이 다른 AI 뉴스와 같이 들어와요. 실무 엔지니어가 쓰는 새 도구 · 트렌드 리포트 · QCon 발표 소식이에요.",
+   "commits": []
+  },
+  {
    "date": "2026-11-20",
    "kind": "new",
    "title": "MCP(ChatGPT · Claude)로 계획을 끝내고 · 고치고 · 지울 수 있어요",
