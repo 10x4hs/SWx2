@@ -1,0 +1,2 @@
+-- 뉴스 소스 추가: InfoQ AI, ML & Data Engineering (2026-11-23 사용자 요청, 열어서 최근 글 확인). src/feeds.js SEED 에도 같은 줄
+INSERT OR IGNORE INTO news_feeds (id, url, name, topic, lang, note, created_at) VALUES (lower(hex(randomblob(8))), 'https://feed.infoq.com/ai-ml-data-eng/', 'InfoQ AI, ML & Data Eng', 'ai', 'en', '실무 엔지니어가 쓰는 AI·ML·데이터 엔지니어링 소식 · 트렌드 리포트 · QCon 발표', CAST(strftime('%s','now') AS INTEGER) * 1000);
